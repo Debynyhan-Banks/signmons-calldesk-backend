@@ -15,12 +15,13 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Now
 
-- [ ] APP-006 Intake review and booking readiness (`SCR-APP-012`)
-  - Owner: backend app
-  - Ticket spec: `/Users/debynyhanbanks/Web Projects/signmons-governance/TICKETS/APP-006.md`
+- [ ] BE-002 Marketing lead-capture API persistence contract (supports `FE-007`)
+  - Owner: backend
+  - Scope: provide/verify persisted endpoint used by contact capture flow
 
 ## Next
 
+- [ ] APP-006 Intake review and booking readiness (`SCR-APP-012`) - starts after marketing DoD exit criteria
 - [ ] APP-007 Urgency classification and escalation review (`SCR-APP-013`)
 - [ ] APP-008 Dispatch board and technician assignment (`SCR-APP-014`, `SCR-APP-017`)
 - [ ] BE-001 Keyword opt-in/out persistence and telemetry
