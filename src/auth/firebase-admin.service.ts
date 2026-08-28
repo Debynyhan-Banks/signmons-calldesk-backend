@@ -1,22 +1,30 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { ConfigType } from "@nestjs/config";
-import admin from "firebase-admin";
+import {
+  applicationDefault,
+  getApps,
+  initializeApp,
+  type App,
+  type AppOptions,
+} from "firebase-admin/app";
+import { getAuth as getFirebaseAuth, type Auth } from "firebase-admin/auth";
 import appConfig from "../config/app.config";
 
 @Injectable()
 export class FirebaseAdminService {
-  private readonly app: admin.app.App;
+  private readonly app: App;
 
   constructor(
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {
-    if (admin.apps.length > 0 && admin.apps[0]) {
-      this.app = admin.apps[0];
+    const apps = getApps();
+    if (apps.length > 0 && apps[0]) {
+      this.app = apps[0];
       return;
     }
 
-    const options: admin.AppOptions = {};
+    const options: AppOptions = {};
     const projectId =
       this.config.firebaseProjectId ??
       process.env.GOOGLE_CLOUD_PROJECT ??
@@ -25,11 +33,11 @@ export class FirebaseAdminService {
       options.projectId = projectId;
     }
 
-    options.credential = admin.credential.applicationDefault();
-    this.app = admin.initializeApp(options);
+    options.credential = applicationDefault();
+    this.app = initializeApp(options);
   }
 
-  getAuth(): admin.auth.Auth {
-    return admin.auth(this.app);
+  getAuth(): Auth {
+    return getFirebaseAuth(this.app);
   }
 }

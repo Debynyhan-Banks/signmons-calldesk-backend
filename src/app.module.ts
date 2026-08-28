@@ -13,6 +13,8 @@ import { SanitizationModule } from "./sanitization/sanitization.module";
 import { ToolRegistryModule } from "./ai/tools/tool-registry.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { HealthController } from "./health/health.controller";
+import { HealthService } from "./health/health.service";
+import { WebchatModule } from "./integrations/webchat/webchat.module";
 
 @Module({
   imports: [
@@ -33,10 +35,12 @@ import { HealthController } from "./health/health.controller";
       },
     ]),
     AiModule,
+    WebchatModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
     AppService,
+    HealthService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

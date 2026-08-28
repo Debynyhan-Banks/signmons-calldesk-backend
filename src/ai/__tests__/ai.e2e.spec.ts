@@ -1,4 +1,5 @@
-import { INestApplication } from "@nestjs/common";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import type OpenAI from "openai";
@@ -58,6 +59,8 @@ const canRunE2E =
   process.env.RUN_E2E === "true" && Boolean(process.env.TEST_DATABASE_URL);
 const describeOrSkip = canRunE2E ? describe : describe.skip;
 const devAuthSecret = process.env.DEV_AUTH_SECRET ?? "dev-auth-secret";
+const webchatTenantId = "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1";
+const webchatSecret = "e2e-webchat-secret-at-least-24-characters";
 
 const devHeaders = (tenantId: string) => ({
   "Content-Type": "application/json",
@@ -78,17 +81,25 @@ describeOrSkip("AI create-job flow (e2e)", () => {
     communicationEvent: { deleteMany: (args?: unknown) => Promise<unknown> };
     conversation: {
       deleteMany: (args?: unknown) => Promise<unknown>;
-      findFirst: (args?: unknown) => Promise<{ currentFSMState?: string } | null>;
+      findFirst: (
+        args?: unknown,
+      ) => Promise<{ currentFSMState?: string } | null>;
     };
     conversationJobLink: {
       deleteMany: (args?: unknown) => Promise<unknown>;
       findMany: (args?: unknown) => Promise<Array<{ jobId: string }>>;
     };
-    job: { deleteMany: (args?: unknown) => Promise<unknown>; findMany: (args?: unknown) => Promise<Array<{ id: string }>> };
+    job: {
+      deleteMany: (args?: unknown) => Promise<unknown>;
+      findMany: (args?: unknown) => Promise<Array<{ id: string }>>;
+    };
     propertyAddress: { deleteMany: (args?: unknown) => Promise<unknown> };
     customer: { deleteMany: (args?: unknown) => Promise<unknown> };
     serviceCategory: { deleteMany: (args?: unknown) => Promise<unknown> };
-    tenantOrganization: { deleteMany: (args?: unknown) => Promise<unknown> };
+    tenantOrganization: {
+      create: (args: unknown) => Promise<unknown>;
+      deleteMany: (args?: unknown) => Promise<unknown>;
+    };
   };
 
   beforeAll(async () => {
@@ -98,7 +109,15 @@ describeOrSkip("AI create-job flow (e2e)", () => {
     process.env.ADMIN_API_TOKEN =
       process.env.ADMIN_API_TOKEN ?? "test-admin-token";
     process.env.DEV_AUTH_ENABLED = "true";
-    process.env.DEV_AUTH_SECRET = process.env.DEV_AUTH_SECRET ?? "dev-auth-secret";
+    process.env.DEV_AUTH_SECRET =
+      process.env.DEV_AUTH_SECRET ?? "dev-auth-secret";
+    process.env.WEBCHAT_INTEGRATIONS_JSON = JSON.stringify([
+      {
+        name: "eternity",
+        tenantId: webchatTenantId,
+        keyHash: createHash("sha256").update(webchatSecret).digest("hex"),
+      },
+    ]);
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -109,6 +128,17 @@ describeOrSkip("AI create-job flow (e2e)", () => {
 
     app = moduleRef.createNestApplication();
     app.use(requestContextMiddleware);
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        forbidUnknownValues: true,
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+        validateCustomDecorators: true,
+        stopAtFirstError: true,
+      }),
+    );
     await app.init();
 
     prismaService = app.get(PrismaService);
@@ -325,5 +355,52 @@ describeOrSkip("AI create-job flow (e2e)", () => {
     });
     expect(tenantALinks).toHaveLength(1);
     expect(tenantBLinks).toHaveLength(1);
+  });
+
+  it("authenticates webchat by server credential and intercepts life-safety messages", async () => {
+    const server: Parameters<typeof request>[0] = app.getHttpServer();
+    await prisma.tenantOrganization.create({
+      data: {
+        id: webchatTenantId,
+        name: "eternity_hvacr",
+        timezone: "America/New_York",
+        settings: {
+          displayName: "Eternity Mechanical Services",
+          instructions: "Collect contact details for human follow-up.",
+        },
+      },
+    });
+
+    await request(server)
+      .post("/api/integrations/webchat/triage")
+      .set("Authorization", `Bearer ${webchatSecret}`)
+      .send({
+        sessionId: "website-session-1",
+        message: "I smell gas beside the furnace.",
+      })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          status: "safety_escalation",
+          requiresHumanHandoff: true,
+          emergencyServicesRecommended: true,
+        });
+      });
+
+    await request(server)
+      .post("/api/integrations/webchat/triage")
+      .set("Authorization", "Bearer invalid-secret-that-is-long-enough")
+      .send({ sessionId: "website-session-2", message: "No cooling today." })
+      .expect(401);
+
+    await request(server)
+      .post("/api/integrations/webchat/triage")
+      .set("Authorization", `Bearer ${webchatSecret}`)
+      .send({
+        tenantId: "84cad48e-63cc-4d8e-96f2-06ed0b437324",
+        sessionId: "website-session-3",
+        message: "No cooling today.",
+      })
+      .expect(400);
   });
 });

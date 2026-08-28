@@ -209,9 +209,7 @@ export class CallLogService {
   private mapPayloadToMessage(
     payload: Prisma.JsonValue,
     createdAt: Date,
-  ):
-    | { role: "user" | "assistant"; content: string; createdAt: Date }
-    | null {
+  ): { role: "user" | "assistant"; content: string; createdAt: Date } | null {
     if (!payload || typeof payload !== "object") {
       return null;
     }

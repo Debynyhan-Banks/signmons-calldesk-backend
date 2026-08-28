@@ -56,13 +56,13 @@ describe("RequestAuthGuard", () => {
     } as never;
     const firebaseAdmin = {
       getAuth: () => ({
-        verifyIdToken: async () =>
-          ({
+        verifyIdToken: () =>
+          Promise.resolve({
             iss: "https://securetoken.google.com/signmons",
             aud: "signmons",
             tenantId: "tenant-123",
             sub: "user-123",
-          }) as unknown,
+          } as unknown),
       }),
     } as FirebaseAdminService;
     const guard = new RequestAuthGuard(config, firebaseAdmin);

@@ -14,7 +14,7 @@ import { getRequestContext } from "../../common/context/request-context";
 
 @Injectable()
 export class AiProviderService implements IAiProvider {
-  private readonly defaultModel = "gpt-4o-mini";
+  private readonly defaultModel: string;
   private readonly previewModel = "gpt-5.1-codex";
 
   constructor(
@@ -23,7 +23,9 @@ export class AiProviderService implements IAiProvider {
     private readonly config: ConfigType<typeof appConfig>,
     private readonly errorHandler: AiErrorHandler,
     private readonly loggingService: LoggingService,
-  ) {}
+  ) {
+    this.defaultModel = config.openAiModel;
+  }
 
   async createCompletion(
     options: CompletionRequestOptions,
@@ -129,9 +131,9 @@ export class AiProviderService implements IAiProvider {
       max_tokens: options.maxTokens,
     });
 
+    let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
-        clearTimeout(timer);
+      timer = setTimeout(() => {
         this.loggingService.warn(
           {
             event: "ai_budget_triggered",
@@ -144,7 +146,11 @@ export class AiProviderService implements IAiProvider {
       }, timeoutMs);
     });
 
-    return Promise.race([request, timeout]);
+    try {
+      return await Promise.race([request, timeout]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   private logAiEvent(

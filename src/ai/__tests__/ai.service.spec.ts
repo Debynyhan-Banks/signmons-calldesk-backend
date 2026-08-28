@@ -15,6 +15,7 @@ import type { IAiProviderClient } from "../providers/ai-provider.interface";
 import appConfig from "../../config/app.config";
 import { ToolSelectorService } from "../tools/tool-selector.service";
 import { ConversationsService } from "../../conversations/conversations.service";
+import { LifeSafetyService } from "../safety/life-safety.service";
 
 jest.mock("fs", () => ({
   readFileSync: jest.fn(() => "System prompt"),
@@ -101,6 +102,8 @@ describe("AiService", () => {
       identityIssuer: "http://localhost",
       identityAudience: "signmons",
       corsOrigins: ["http://localhost:3000"],
+      openAiModel: "gpt-4o-mini",
+      webchatIntegrations: [],
     };
 
     service = new AiService(
@@ -113,6 +116,7 @@ describe("AiService", () => {
       tenantsService,
       callLogService,
       conversationsService,
+      new LifeSafetyService(),
       config,
     );
   });
@@ -144,6 +148,21 @@ describe("AiService", () => {
         metadata: expect.objectContaining({ openAIResponseId: "resp-1" }),
       }),
     );
+  });
+
+  it("returns deterministic safety guidance without calling the AI provider", async () => {
+    const response = await service.triage(
+      tenantId,
+      sessionId,
+      "I smell gas near the furnace.",
+    );
+
+    expect(response).toMatchObject({
+      status: "safety_escalation",
+      requiresHumanHandoff: true,
+      emergencyServicesRecommended: true,
+    });
+    expect(aiProvider.createCompletion).not.toHaveBeenCalled();
   });
 
   it("routes create_job tool calls to the job repository", async () => {
@@ -350,6 +369,8 @@ describe("AiProviderService", () => {
     identityIssuer: "http://localhost",
     identityAudience: "signmons",
     corsOrigins: ["http://localhost:3000"],
+    openAiModel: "gpt-4o-mini",
+    webchatIntegrations: [],
   };
 
   let client: jest.Mocked<IAiProviderClient>;

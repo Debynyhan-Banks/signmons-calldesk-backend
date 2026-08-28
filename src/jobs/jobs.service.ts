@@ -135,13 +135,14 @@ export class JobsService implements IJobRepository {
       rawArgs: rawArgs ?? "",
       normalizedArgs: normalized,
       validationErrors:
-        errors.length || extraKeys.length
-          ? { errors, extraKeys }
-          : undefined,
+        errors.length || extraKeys.length ? { errors, extraKeys } : undefined,
     };
     if (extraKeys.length) {
       throw new BadRequestException(
-        this.buildValidationError("Job payload contains unexpected fields.", audit),
+        this.buildValidationError(
+          "Job payload contains unexpected fields.",
+          audit,
+        ),
       );
     }
     if (errors.length) {
@@ -260,15 +261,13 @@ export class JobsService implements IJobRepository {
   private async findExistingJobForSession(
     tenantId: string,
     sessionId: string,
-  ): Promise<
-    Prisma.JobGetPayload<{
-      include: {
-        customer: true;
-        propertyAddress: true;
-        serviceCategory: true;
-      };
-    }> | null
-  > {
+  ): Promise<Prisma.JobGetPayload<{
+    include: {
+      customer: true;
+      propertyAddress: true;
+      serviceCategory: true;
+    };
+  }> | null> {
     const logs = await this.prisma.communicationContent.findMany({
       where: {
         tenantId,
@@ -308,10 +307,7 @@ export class JobsService implements IJobRepository {
     return typeof record.jobId === "string" ? record.jobId : null;
   }
 
-  private async findOrCreateServiceCategory(
-    tenantId: string,
-    name: string,
-  ) {
+  private async findOrCreateServiceCategory(tenantId: string, name: string) {
     const existing = await this.prisma.serviceCategory.findFirst({
       where: {
         tenantId,
@@ -382,9 +378,7 @@ export class JobsService implements IJobRepository {
       DRAIN: "DRAINS",
       DRAINS: "DRAINS",
     } as Record<string, CreateJobPayload["issueCategory"]>;
-    return (
-      mapped[normalized] ?? (normalized as CreateJobPayload["issueCategory"])
-    );
+    return mapped[normalized] ?? normalized;
   }
 
   private normalizeUrgency(value: unknown): CreateJobPayload["urgency"] {
@@ -427,9 +421,7 @@ export class JobsService implements IJobRepository {
     return value === "EMERGENCY" ? JobUrgency.EMERGENCY : JobUrgency.STANDARD;
   }
 
-  private mapPreferredWindow(
-    value?: string,
-  ): PreferredWindowLabel | undefined {
+  private mapPreferredWindow(value?: string): PreferredWindowLabel | undefined {
     if (!value) {
       return undefined;
     }

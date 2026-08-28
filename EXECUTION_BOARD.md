@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] BLOCKED Backend implementation queue (marketing-first phase active)
-  - Global pointer: `FE-012` in `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_EXECUTION_POINTER.md`
+  - Global pointer returns to `FE-013` after BE-003 completion in `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_EXECUTION_POINTER.md`
   - Backend execution remains queued until governance explicitly moves `Now` to a backend ticket.
 
 ## Next
@@ -36,6 +36,8 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Done
 
+- [x] BE-003 Eternity webchat backend production readiness
+  - Evidence: `evidence/BE-003/readiness-report.md`
 - [x] R6-P0-1 SMS Twilio signature guard parity
 - [x] R6-P0-2 Stripe local-bypass env validation parity
 - [x] R6-P0-3 Exception diagnostic redaction policy
