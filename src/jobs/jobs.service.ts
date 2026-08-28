@@ -392,29 +392,53 @@ export class JobsService implements IJobRepository {
     if (normalized === "STANDARD" || normalized === "NORMAL") {
       return "STANDARD";
     }
+    // The AI prompt/tool distinguishes high-priority requests, while the
+    // current persistence model intentionally stores only emergency or
+    // standard urgency. Preserve the request instead of rejecting the tool
+    // call; only life-safety/emergency cases belong in EMERGENCY.
+    if (normalized === "HIGH" || normalized === "HIGH PRIORITY") {
+      return "STANDARD";
+    }
     return "" as never;
   }
 
   private normalizePreferredTime(value: unknown): string | undefined {
     if (typeof value !== "string") return undefined;
     const normalized = this.sanitizationService.normalizeWhitespace(value);
-    const upper = normalized.toUpperCase();
-    const slots = ["ASAP", "MORNING", "AFTERNOON", "EVENING"];
-    if (slots.includes(upper)) {
-      return upper;
+    const upper = normalized.toUpperCase().replace(/\./g, "");
+
+    if (/\bASAP\b|AS SOON AS POSSIBLE/.test(upper)) return "ASAP";
+    if (/\bMORNING\b/.test(upper)) return "MORNING";
+    if (/\bAFTERNOON\b/.test(upper)) return "AFTERNOON";
+    if (/\bEVENING\b/.test(upper)) return "EVENING";
+
+    const twelveHour = upper.match(
+      /\b(1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(AM|PM)\b/,
+    );
+    if (twelveHour) {
+      const hour =
+        (Number(twelveHour[1]) % 12) + (twelveHour[2] === "PM" ? 12 : 0);
+      return this.preferredWindowForHour(hour);
     }
-    const timestamp = Date.parse(normalized);
-    if (!Number.isNaN(timestamp)) {
-      return new Date(timestamp).toISOString();
+
+    const twentyFourHour = upper.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
+    if (twentyFourHour) {
+      return this.preferredWindowForHour(Number(twentyFourHour[1]));
     }
+
     return normalized;
   }
 
   private isPreferredTimeValid(value?: string): boolean {
     if (!value) return true;
     const slots = ["ASAP", "MORNING", "AFTERNOON", "EVENING"];
-    if (slots.includes(value)) return true;
-    return !Number.isNaN(Date.parse(value));
+    return slots.includes(value);
+  }
+
+  private preferredWindowForHour(hour: number): string {
+    if (hour < 12) return "MORNING";
+    if (hour < 17) return "AFTERNOON";
+    return "EVENING";
   }
 
   private mapUrgency(value: string): JobUrgency {
