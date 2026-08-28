@@ -17,6 +17,7 @@ import { AiErrorHandler } from "./ai-error.handler";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { AuthModule } from "../auth/auth.module";
 import { ConversationsService } from "../conversations/conversations.service";
+import { LifeSafetyService } from "./safety/life-safety.service";
 
 @Module({
   imports: [JobsModule, TenantsModule, AuthModule],
@@ -48,6 +49,8 @@ import { ConversationsService } from "../conversations/conversations.service";
     ConversationsService,
     AiErrorHandler,
     AiService,
+    LifeSafetyService,
   ],
+  exports: [AiService],
 })
 export class AiModule {}

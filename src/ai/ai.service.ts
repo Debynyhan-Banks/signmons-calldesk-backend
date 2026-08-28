@@ -22,6 +22,7 @@ import { CallLogService } from "../logging/call-log.service";
 import { ConversationsService } from "../conversations/conversations.service";
 import appConfig from "../config/app.config";
 import { getRequestContext } from "../common/context/request-context";
+import { LifeSafetyService } from "./safety/life-safety.service";
 
 @Injectable()
 export class AiService {
@@ -37,17 +38,12 @@ export class AiService {
     @Inject(TENANTS_SERVICE) private readonly tenantsService: TenantsService,
     private readonly callLogService: CallLogService,
     private readonly conversationsService: ConversationsService,
+    private readonly lifeSafetyService: LifeSafetyService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {
     try {
-      const promptPath = join(
-        process.cwd(),
-        "src",
-        "ai",
-        "prompts",
-        "calldeskSystemPrompt.txt",
-      );
+      const promptPath = join(__dirname, "prompts", "calldeskSystemPrompt.txt");
       this.systemPrompt = readFileSync(promptPath, "utf8");
     } catch (error) {
       this.loggingService.error(
@@ -94,6 +90,21 @@ export class AiService {
         safeTenantId,
         safeSessionId,
       );
+      const safetyEscalation = this.lifeSafetyService.assess(safeUserMessage);
+      if (safetyEscalation) {
+        await this.callLogService.createLog({
+          tenantId: safeTenantId,
+          sessionId: safeSessionId,
+          conversationId: conversation.id,
+          transcript: safeUserMessage,
+          aiResponse: safetyEscalation.reply,
+          metadata: {
+            sessionId: safeSessionId,
+            responseType: safetyEscalation.status,
+          },
+        });
+        return safetyEscalation;
+      }
       const tenantContextPrompt = tenantContext.prompt;
       const recentMessages = await this.callLogService.getRecentMessages(
         safeTenantId,
@@ -131,7 +142,7 @@ export class AiService {
 
       if (validation.type === "tool") {
         const toolCall = validation.toolCall;
-        if (this.isFunctionToolCall(toolCall) && toolCall.function?.name) {
+        if (toolCall.function.name) {
           return this.handleToolCall(
             safeTenantId,
             safeSessionId,
@@ -145,9 +156,7 @@ export class AiService {
         return {
           status: "tool_called",
           toolName: toolCall.type,
-          rawArgs: this.isFunctionToolCall(toolCall)
-            ? toolCall.function?.arguments ?? null
-            : null,
+          rawArgs: toolCall.function.arguments ?? null,
         };
       }
 
@@ -180,14 +189,6 @@ export class AiService {
         openAIResponseId,
       });
     }
-  }
-
-  private isFunctionToolCall(
-    toolCall: OpenAI.ChatCompletionMessageToolCall,
-  ): toolCall is OpenAI.ChatCompletionMessageToolCall & {
-    function: { name: string; arguments?: string | null };
-  } {
-    return toolCall.type === "function" && "function" in toolCall;
   }
 
   private async handleToolCall(
@@ -284,23 +285,23 @@ export class AiService {
         throw new BadRequestException("Too many tool calls.");
       }
       const toolCall = message.tool_calls[0];
-      if (!this.isFunctionToolCall(toolCall) || !toolCall.function?.name) {
+      if (!toolCall.function.name) {
         this.logAiEvent(tenantId, "ai.invalid_output", {
           model,
           reason: "invalid_tool_call",
         });
         throw new BadRequestException("Invalid tool call response.");
       }
-        const rawArgs = toolCall.function.arguments ?? "";
-        if (!rawArgs.trim()) {
-          this.logAiEvent(tenantId, "ai.invalid_output", {
-            model,
-            reason: "missing_tool_args",
-          });
-          throw new BadRequestException("Tool call arguments missing.");
-        }
-        return { type: "tool" as const, toolCall };
+      const rawArgs = toolCall.function.arguments ?? "";
+      if (!rawArgs.trim()) {
+        this.logAiEvent(tenantId, "ai.invalid_output", {
+          model,
+          reason: "missing_tool_args",
+        });
+        throw new BadRequestException("Tool call arguments missing.");
       }
+      return { type: "tool" as const, toolCall };
+    }
 
     const replyPayload = Array.isArray(message.content)
       ? message.content

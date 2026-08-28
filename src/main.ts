@@ -28,6 +28,7 @@ async function bootstrap() {
     methods: ["POST", "OPTIONS", "GET"],
     allowedHeaders: [
       "Content-Type",
+      "Authorization",
       "x-admin-token",
       "x-admin-api-key",
       "x-dev-auth",
@@ -55,7 +56,7 @@ async function bootstrap() {
     res.header("Access-Control-Allow-Origin", responseOrigin);
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, x-admin-token, x-admin-api-key, x-dev-auth, x-dev-role, x-dev-user-id, x-dev-tenant-id",
+      "Content-Type, Authorization, x-admin-token, x-admin-api-key, x-dev-auth, x-dev-role, x-dev-user-id, x-dev-tenant-id",
     );
     res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.header("Vary", "Origin");

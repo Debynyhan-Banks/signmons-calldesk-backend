@@ -31,7 +31,8 @@ export class ConversationsService {
       return existing;
     }
 
-    const safeSessionId = this.sanitizationService.sanitizeIdentifier(sessionId);
+    const safeSessionId =
+      this.sanitizationService.sanitizeIdentifier(sessionId);
     const safeTenantId = this.sanitizationService.sanitizeIdentifier(tenantId);
 
     const placeholderPhone = `unknown-${safeSessionId ?? randomUUID()}`;

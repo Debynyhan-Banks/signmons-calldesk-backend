@@ -18,14 +18,6 @@ export class ToolSelectorService {
     const enabled = new Set(this.config.enabledTools);
     return this.toolRegistry
       .getTools()
-      .filter(
-        (tool) => this.isFunctionTool(tool) && enabled.has(tool.function?.name ?? ""),
-      );
-  }
-
-  private isFunctionTool(
-    tool: ChatCompletionTool,
-  ): tool is ChatCompletionTool & { function: { name: string } } {
-    return tool.type === "function" && "function" in tool;
+      .filter((tool) => enabled.has(tool.function.name));
   }
 }

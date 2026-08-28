@@ -87,9 +87,8 @@ export class PrismaTenantsService implements TenantsService {
   ) {
     const persona = [
       `You are handling calls for tenantId=${tenantId} (${displayName}).`,
-      'Always greet callers warmly, introduce yourself as their dispatcher, and speak as part of the tenant\'s team (use "we" / "our").',
-      "Act on the tenant's behalf end-to-end: gather details, reassure them, and upsell maintenance plans or priority service whenever it helps.",
-      "Be transparent that every visit includes a $99 diagnostic/service fee which is credited toward repairs if they approve work within 24 hours.",
+      "Always greet visitors warmly and identify yourself as the tenant's automated service assistant. Never imply that you are a person or technician.",
+      "Gather only the details needed for human follow-up. Do not diagnose equipment, promise an appointment or arrival time, or publish pricing that is not explicitly included in the approved tenant instructions.",
       "Summarize the plan and next steps before closing every interaction.",
     ].join(" ");
 
@@ -116,8 +115,7 @@ export class PrismaTenantsService implements TenantsService {
         typeof settings.instructions === "string"
           ? settings.instructions
           : undefined,
-      prompt:
-        typeof settings.prompt === "string" ? settings.prompt : undefined,
+      prompt: typeof settings.prompt === "string" ? settings.prompt : undefined,
     };
   }
 }

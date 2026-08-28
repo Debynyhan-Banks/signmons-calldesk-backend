@@ -70,22 +70,25 @@ export class RequestAuthGuard implements CanActivate {
     const token = authHeader.slice("Bearer ".length).trim();
     const claims = await this.verifyFirebaseToken(token);
 
-    const tenantId = claims.tenantId ?? claims.tenant_id;
-    const userId = claims.sub ?? claims.user_id ?? claims.uid;
+    const tenantId =
+      getStringClaim(claims, "tenantId") ?? getStringClaim(claims, "tenant_id");
+    const userId =
+      getStringClaim(claims, "sub") ??
+      getStringClaim(claims, "user_id") ??
+      getStringClaim(claims, "uid");
+    const role = getStringClaim(claims, "role");
     if (!tenantId || !userId) {
       throw new UnauthorizedException("Missing tenant identity.");
     }
-    if (!claims.role) {
+    if (!role) {
       throw new UnauthorizedException("Missing role claim.");
     }
 
-    setAuthContext({ userId, tenantId, role: claims.role });
+    setAuthContext({ userId, tenantId, role });
     return true;
   }
 
-  private async verifyFirebaseToken(
-    token: string,
-  ): Promise<DecodedIdToken> {
+  private async verifyFirebaseToken(token: string): Promise<DecodedIdToken> {
     try {
       const claims = await this.firebaseAdmin
         .getAuth()
@@ -100,6 +103,14 @@ export class RequestAuthGuard implements CanActivate {
       throw new UnauthorizedException("Invalid bearer token.");
     }
   }
+}
+
+function getStringClaim(
+  claims: DecodedIdToken,
+  name: string,
+): string | undefined {
+  const value = (claims as unknown as Record<string, unknown>)[name];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 function verifyIssuerAndAudience(

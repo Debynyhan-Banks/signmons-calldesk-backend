@@ -20,6 +20,14 @@ export interface AppConfig {
   identityAudience: string;
   firebaseProjectId?: string;
   corsOrigins: string[];
+  openAiModel: string;
+  webchatIntegrations: WebchatIntegrationConfig[];
+}
+
+export interface WebchatIntegrationConfig {
+  name: string;
+  tenantId: string;
+  keyHash: string;
 }
 
 const DEFAULT_DATABASE_URL =
@@ -32,6 +40,9 @@ export default registerAs("app", (): AppConfig => {
       .map((origin) => origin.trim())
       .filter(Boolean) ?? [];
   const corsOrigins = rawOrigins.length > 0 ? rawOrigins : DEFAULT_CORS_ORIGINS;
+  const webchatIntegrations = parseWebchatIntegrations(
+    process.env.WEBCHAT_INTEGRATIONS_JSON,
+  );
 
   return {
     environment: (process.env.NODE_ENV as NodeEnvironment) ?? "development",
@@ -48,22 +59,42 @@ export default registerAs("app", (): AppConfig => {
     aiMaxRetries: Number(process.env.AI_MAX_RETRIES ?? 1),
     port: Number(process.env.PORT ?? 3000),
     databaseUrl: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL,
-    adminApiToken: process.env.ADMIN_API_TOKEN ?? "changeme-admin-token",
+    adminApiToken:
+      process.env.ADMIN_API_TOKEN ?? "development-only-admin-token",
     devAuthEnabled:
       (process.env.DEV_AUTH_ENABLED ?? "false").toLowerCase() === "true",
     devAuthSecret: process.env.DEV_AUTH_SECRET ?? "dev-auth-secret",
     identityIssuer:
-      process.env.IDENTITY_ISSUER ??
-      process.env.FIREBASE_ISSUER ??
-      "",
+      process.env.IDENTITY_ISSUER ?? process.env.FIREBASE_ISSUER ?? "",
     identityAudience:
-      process.env.IDENTITY_AUDIENCE ??
-      process.env.FIREBASE_AUDIENCE ??
-      "",
+      process.env.IDENTITY_AUDIENCE ?? process.env.FIREBASE_AUDIENCE ?? "",
     firebaseProjectId:
       process.env.FIREBASE_ADMIN_PROJECT_ID ??
       process.env.FIREBASE_PROJECT_ID ??
       process.env.GOOGLE_CLOUD_PROJECT,
     corsOrigins,
+    openAiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+    webchatIntegrations,
   };
 });
+
+function parseWebchatIntegrations(
+  value: string | undefined,
+): WebchatIntegrationConfig[] {
+  if (!value) return [];
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(isWebchatIntegrationConfig);
+}
+
+function isWebchatIntegrationConfig(
+  value: unknown,
+): value is WebchatIntegrationConfig {
+  if (!value || typeof value !== "object") return false;
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.name === "string" &&
+    typeof entry.tenantId === "string" &&
+    typeof entry.keyHash === "string"
+  );
+}

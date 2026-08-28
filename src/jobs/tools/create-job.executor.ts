@@ -15,9 +15,7 @@ export class CreateJobToolExecutor {
     @Inject(JOB_REPOSITORY) private readonly jobsRepository: IJobRepository,
   ) {}
 
-  async execute(
-    context: ToolExecutionContext,
-  ): Promise<ToolExecutionResult> {
+  async execute(context: ToolExecutionContext): Promise<ToolExecutionResult> {
     const job: JobRecord = await this.jobsRepository.createJobFromToolCall({
       tenantId: context.tenantId,
       sessionId: context.sessionId,

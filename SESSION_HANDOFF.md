@@ -1,24 +1,27 @@
 # Backend Session Handoff
 
-Last Updated: 2026-04-28
+Last Updated: 2026-08-28
 
 ## Current Program Pointer
 
-- Global `Now`: `FE-012` (dispatch and scheduling page)
-- Backend state: queued/blocked (marketing-first phase active)
+- Completed backend exception: `BE-003` (Eternity webchat backend production readiness)
+- Next global pointer: `FE-013` after governance completion sync
+- Backend state: contract-ready but not deployed or connected to the Eternity website
 
 ## Completed In This Session
 
-- Backend docs alignment baseline created for high-ticket frontend/governance state.
-- Backend execution board updated to explicit blocked mode until governance unlocks backend `Now`.
-- Governance artifact references added as first-class backend docs index entries.
-- Screen vocabulary normalization table added to prevent `SCR-TEN-*` vs canonical ID drift.
+- Repaired reproducible install/build and Prisma generation.
+- Added canonical schema reconciliation that preserves the legacy schema and verified it on PostgreSQL 16 with seeded records.
+- Added tenant-bound server-to-server webchat authentication and deterministic life-safety interception.
+- Removed unapproved pricing, default promotion, and human-impersonation language from default prompts.
+- Restored lint, build, unit, database integration, architecture, and critical-audit gates.
+- Recorded exact evidence and remaining deployment prerequisites in `evidence/BE-003/readiness-report.md`.
 
 ## Next Actions (Strict Order)
 
-1. Wait for governance/global pointer to unlock backend execution.
-2. When unlocked, move owning backend ticket to `Now` and execute one ticket only.
-3. Keep route/API/CTA mappings synchronized with governance matrix and link map.
+1. Synchronize BE-003 completion in governance and return the global pointer to FE-013.
+2. Do not connect the live Eternity website until deployment credentials, managed database, tenant configuration, human escalation ownership, and privacy disclosure are approved.
+3. Re-run dependency audit and all gates before deployment.
 
 ## Restart Commands
 
