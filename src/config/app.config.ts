@@ -29,6 +29,7 @@ export interface AppConfig {
   twilioAuthToken: string;
   twilioPhoneNumber: string;
   jobNotificationSmsNumbers: string[];
+  conversationDataEncryptionKey: string;
 }
 
 export interface WebchatIntegrationConfig {
@@ -93,6 +94,8 @@ export default registerAs("app", (): AppConfig => {
     jobNotificationSmsNumbers: parseCommaSeparated(
       process.env.JOB_NOTIFICATION_SMS_NUMBERS,
     ),
+    conversationDataEncryptionKey:
+      process.env.CONVERSATION_DATA_ENCRYPTION_KEY ?? "0".repeat(64),
   };
 });
 

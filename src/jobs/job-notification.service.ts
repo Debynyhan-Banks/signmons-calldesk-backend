@@ -14,6 +14,16 @@ export class JobNotificationService {
     private readonly loggingService: LoggingService,
   ) {}
 
+  enqueueJobCreated(job: JobRecord): void {
+    void this.notifyJobCreated(job).catch((error: unknown) => {
+      this.loggingService.error(
+        `Unexpected new-job notification failure for job ${job.id}.`,
+        error instanceof Error ? error : undefined,
+        JobNotificationService.name,
+      );
+    });
+  }
+
   async notifyJobCreated(job: JobRecord): Promise<void> {
     const deliveries: Array<{
       channel: NotificationChannel;

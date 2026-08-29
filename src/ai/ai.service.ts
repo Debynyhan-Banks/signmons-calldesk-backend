@@ -149,6 +149,7 @@ export class AiService {
             conversation.id,
             toolCall.function.name,
             toolCall.function.arguments ?? undefined,
+            safeUserMessage,
             responseModel,
           );
         }
@@ -197,6 +198,7 @@ export class AiService {
     conversationId: string,
     name: string,
     rawArgs?: string,
+    userMessage?: string,
     model?: string,
   ) {
     if (name !== "create_job") {
@@ -239,10 +241,30 @@ export class AiService {
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
+        const invalidFields = this.extractInvalidFields(error);
         this.logAiEvent(tenantId, "ai.invalid_output", {
           model,
           reason: "tool_args_invalid",
+          invalidFields,
         });
+        const reply = this.buildCorrectionReply(invalidFields);
+        await this.callLogService.createLog({
+          tenantId,
+          sessionId,
+          conversationId,
+          transcript: userMessage ?? "",
+          aiResponse: reply,
+          metadata: {
+            sessionId,
+            responseType: "needs_correction",
+            invalidFields,
+          },
+        });
+        return {
+          status: "needs_correction" as const,
+          reply,
+          invalidFields,
+        };
       }
       this.errorHandler.handle(error, {
         tenantId,
@@ -253,6 +275,34 @@ export class AiService {
         },
       });
     }
+  }
+
+  private extractInvalidFields(error: BadRequestException): string[] {
+    const response = error.getResponse();
+    if (!response || typeof response !== "object") return [];
+    const invalidFields = (response as { invalidFields?: unknown })
+      .invalidFields;
+    return Array.isArray(invalidFields)
+      ? invalidFields.filter(
+          (field): field is string => typeof field === "string",
+        )
+      : [];
+  }
+
+  private buildCorrectionReply(invalidFields: string[]): string {
+    const labels: Record<string, string> = {
+      customerName: "your full name",
+      phone: "the best 10-digit callback number",
+      issueCategory: "whether this is HVAC, boiler, or refrigeration service",
+      urgency: "whether the equipment is down or still operating",
+      description: "a short description of the problem",
+      preferredTime: "your preferred date or time, such as ‘Tuesday after 3’",
+    };
+    const field = invalidFields.find((candidate) => labels[candidate]);
+    if (field) {
+      return `I couldn't save the request because I need ${labels[field]} again. Please enter that detail, and I’ll keep the rest of your information.`;
+    }
+    return "I couldn't save the request because one detail needs correction. Please re-enter the best 10-digit callback number, and I’ll keep the rest of your information.";
   }
 
   private validateAssistantMessage(
@@ -328,7 +378,12 @@ export class AiService {
   private logAiEvent(
     tenantId: string,
     event: "ai.refusal" | "ai.invalid_output",
-    details: { model?: string; reason: string; promptVersion?: string },
+    details: {
+      model?: string;
+      reason: string;
+      promptVersion?: string;
+      invalidFields?: string[];
+    },
   ) {
     const context = getRequestContext();
     const payload: Record<string, unknown> = {
@@ -341,6 +396,9 @@ export class AiService {
 
     if (details.promptVersion) {
       payload.promptVersion = details.promptVersion;
+    }
+    if (details.invalidFields?.length) {
+      payload.invalidFields = details.invalidFields;
     }
 
     this.loggingService.warn(payload, AiService.name);

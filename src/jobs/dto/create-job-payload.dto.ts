@@ -14,6 +14,10 @@ const ISSUE_CATEGORIES = [
   "ELECTRICAL",
   "DRAINS",
   "GENERAL",
+  "BOILER",
+  "REFRIGERATION",
+  "COMMERCIAL_HVAC",
+  "COMMERCIAL_REFRIGERATION",
 ] as const;
 
 type IssueCategory = (typeof ISSUE_CATEGORIES)[number];

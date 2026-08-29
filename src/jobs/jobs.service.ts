@@ -2,8 +2,12 @@ import { randomUUID } from "crypto";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { plainToInstance } from "class-transformer";
 import { validateSync } from "class-validator";
-import type { Prisma } from "@prisma/client";
-import { JobStatus, JobUrgency, PreferredWindowLabel } from "@prisma/client";
+import {
+  JobStatus,
+  JobUrgency,
+  PreferredWindowLabel,
+  Prisma,
+} from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { SanitizationService } from "../sanitization/sanitization.service";
 import { CreateJobPayloadDto } from "./dto/create-job-payload.dto";
@@ -78,35 +82,51 @@ export class JobsService implements IJobRepository {
       },
     });
 
-    const job = await this.prisma.job.create({
-      data: {
-        id: randomUUID(),
-        tenantId,
-        customerId: customer.id,
-        customerTenantId: tenantId,
-        propertyAddressId: propertyAddress.id,
-        propertyAddressTenantId: tenantId,
-        serviceCategoryId: serviceCategory.id,
-        serviceCategoryTenantId: tenantId,
-        status: JobStatus.CREATED,
-        urgency: this.mapUrgency(normalizedPayload.urgency),
-        description: normalizedPayload.description ?? null,
-        preferredWindowLabel: this.inferPreferredWindow(
-          normalizedPayload.preferredTime,
-        ),
-        preferredTimeText: normalizedPayload.preferredTime ?? null,
-        pricingSnapshot: {},
-        policySnapshot: {},
-      },
-      include: {
-        customer: true,
-        propertyAddress: true,
-        serviceCategory: true,
-      },
-    });
+    let job;
+    try {
+      job = await this.prisma.job.create({
+        data: {
+          id: randomUUID(),
+          tenantId,
+          intakeSessionId: request.sessionId,
+          customerId: customer.id,
+          customerTenantId: tenantId,
+          propertyAddressId: propertyAddress.id,
+          propertyAddressTenantId: tenantId,
+          serviceCategoryId: serviceCategory.id,
+          serviceCategoryTenantId: tenantId,
+          status: JobStatus.CREATED,
+          urgency: this.mapUrgency(normalizedPayload.urgency),
+          description: normalizedPayload.description ?? null,
+          preferredWindowLabel: this.inferPreferredWindow(
+            normalizedPayload.preferredTime,
+          ),
+          preferredTimeText: normalizedPayload.preferredTime ?? null,
+          pricingSnapshot: {},
+          policySnapshot: {},
+        },
+        include: {
+          customer: true,
+          propertyAddress: true,
+          serviceCategory: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existing = await this.findJobBySessionId(
+          tenantId,
+          request.sessionId,
+        );
+        if (existing) return this.mapJob(existing);
+      }
+      throw error;
+    }
 
     const jobRecord = this.mapJob(job);
-    await this.jobNotificationService.notifyJobCreated(jobRecord);
+    this.jobNotificationService.enqueueJobCreated(jobRecord);
     return jobRecord;
   }
 
@@ -136,6 +156,7 @@ export class JobsService implements IJobRepository {
     const normalized = this.normalizePayload(raw);
     const extraKeys = this.findUnexpectedKeys(raw);
     const errors = this.validatePayload(normalized);
+    const invalidFields = errors.map((error) => error.property).filter(Boolean);
     const audit = {
       rawArgs: rawArgs ?? "",
       normalizedArgs: normalized,
@@ -147,12 +168,17 @@ export class JobsService implements IJobRepository {
         this.buildValidationError(
           "Job payload contains unexpected fields.",
           audit,
+          [...invalidFields, ...extraKeys],
         ),
       );
     }
     if (errors.length) {
       throw new BadRequestException(
-        this.buildValidationError("Job payload validation failed.", audit),
+        this.buildValidationError(
+          "Job payload validation failed.",
+          audit,
+          invalidFields,
+        ),
       );
     }
     return { payload: normalized, audit };
@@ -225,9 +251,12 @@ export class JobsService implements IJobRepository {
   private buildValidationError(
     message: string,
     audit: { rawArgs: string; normalizedArgs: CreateJobPayload },
+    invalidFields: string[],
   ) {
     const includeAudit = process.env.NODE_ENV !== "production";
-    return includeAudit ? { message, audit } : { message };
+    return includeAudit
+      ? { message, invalidFields, audit }
+      : { message, invalidFields };
   }
 
   private mapJob(
@@ -266,6 +295,9 @@ export class JobsService implements IJobRepository {
       serviceCategory: true;
     };
   }> | null> {
+    const directMatch = await this.findJobBySessionId(tenantId, sessionId);
+    if (directMatch) return directMatch;
+
     const logs = await this.prisma.communicationContent.findMany({
       where: {
         tenantId,
@@ -289,6 +321,17 @@ export class JobsService implements IJobRepository {
 
     return this.prisma.job.findUnique({
       where: { id: jobId },
+      include: {
+        customer: true,
+        propertyAddress: true,
+        serviceCategory: true,
+      },
+    });
+  }
+
+  private findJobBySessionId(tenantId: string, sessionId: string) {
+    return this.prisma.job.findFirst({
+      where: { tenantId, intakeSessionId: sessionId },
       include: {
         customer: true,
         propertyAddress: true,
@@ -375,6 +418,12 @@ export class JobsService implements IJobRepository {
       PLUMBING: "PLUMBING",
       DRAIN: "DRAINS",
       DRAINS: "DRAINS",
+      BOILER: "BOILER",
+      REFRIGERATION: "REFRIGERATION",
+      "COMMERCIAL HVAC": "COMMERCIAL_HVAC",
+      COMMERCIALHVAC: "COMMERCIAL_HVAC",
+      "COMMERCIAL REFRIGERATION": "COMMERCIAL_REFRIGERATION",
+      COMMERCIALREFRIGERATION: "COMMERCIAL_REFRIGERATION",
     } as Record<string, CreateJobPayload["issueCategory"]>;
     return mapped[normalized] ?? normalized;
   }

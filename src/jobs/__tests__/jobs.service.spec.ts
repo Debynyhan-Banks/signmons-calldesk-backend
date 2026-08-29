@@ -38,12 +38,15 @@ describe("JobsService", () => {
 
   let prisma: {
     communicationContent: { findMany: jest.Mock };
-    job: { findUnique: jest.Mock; create: jest.Mock };
+    job: { findFirst: jest.Mock; findUnique: jest.Mock; create: jest.Mock };
     customer: { upsert: jest.Mock };
     serviceCategory: { findFirst: jest.Mock; create: jest.Mock };
     propertyAddress: { create: jest.Mock };
   };
-  let jobNotificationService: { notifyJobCreated: jest.Mock };
+  let jobNotificationService: {
+    enqueueJobCreated: jest.Mock;
+    notifyJobCreated: jest.Mock;
+  };
   let service: JobsService;
 
   beforeEach(() => {
@@ -52,6 +55,7 @@ describe("JobsService", () => {
         findMany: jest.fn(),
       },
       job: {
+        findFirst: jest.fn().mockResolvedValue(null),
         findUnique: jest.fn(),
         create: jest.fn(),
       },
@@ -67,6 +71,7 @@ describe("JobsService", () => {
       },
     };
     jobNotificationService = {
+      enqueueJobCreated: jest.fn(),
       notifyJobCreated: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -91,7 +96,21 @@ describe("JobsService", () => {
 
     expect(result.id).toBe(jobRecord.id);
     expect(prisma.job.create).not.toHaveBeenCalled();
-    expect(jobNotificationService.notifyJobCreated).not.toHaveBeenCalled();
+    expect(jobNotificationService.enqueueJobCreated).not.toHaveBeenCalled();
+  });
+
+  it("returns an idempotent job directly from its intake session", async () => {
+    prisma.job.findFirst.mockResolvedValue(jobRecord as never);
+
+    const result = await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs,
+    });
+
+    expect(result.id).toBe(jobRecord.id);
+    expect(prisma.communicationContent.findMany).not.toHaveBeenCalled();
+    expect(prisma.job.create).not.toHaveBeenCalled();
   });
 
   it("creates a new job when no existing session job is found", async () => {
@@ -110,8 +129,13 @@ describe("JobsService", () => {
 
     expect(result.id).toBe(jobRecord.id);
     expect(prisma.job.create).toHaveBeenCalled();
-    expect(jobNotificationService.notifyJobCreated).toHaveBeenCalledWith(
+    expect(jobNotificationService.enqueueJobCreated).toHaveBeenCalledWith(
       expect.objectContaining({ id: jobRecord.id }),
+    );
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ intakeSessionId: sessionId }),
+      }),
     );
   });
 

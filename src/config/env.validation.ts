@@ -48,6 +48,15 @@ export const envValidationSchema = Joi.object({
   TWILIO_AUTH_TOKEN: Joi.string().allow("").default(""),
   TWILIO_PHONE_NUMBER: Joi.string().allow("").default(""),
   JOB_NOTIFICATION_SMS_NUMBERS: Joi.string().allow("").default(""),
+  CONVERSATION_DATA_ENCRYPTION_KEY: Joi.when("NODE_ENV", {
+    is: "production",
+    then: Joi.string()
+      .pattern(/^[0-9a-f]{64}$/i)
+      .required(),
+    otherwise: Joi.string()
+      .pattern(/^[0-9a-f]{64}$/i)
+      .default("0".repeat(64)),
+  }),
   PORT: Joi.number().min(0).max(65535).default(3000),
 }).custom((rawValues: unknown, helpers) => {
   const values = rawValues as Record<string, unknown>;

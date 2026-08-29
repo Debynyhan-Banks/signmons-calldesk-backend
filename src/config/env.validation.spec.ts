@@ -19,6 +19,7 @@ describe("environment validation", () => {
     RESEND_API_KEY: "resend-production-key",
     RESEND_FROM_EMAIL: "Eternity <requests@mail.eternityhvacr.com>",
     JOB_NOTIFICATION_EMAILS: "ben@eternityhvacr.com",
+    CONVERSATION_DATA_ENCRYPTION_KEY: "b".repeat(64),
   };
 
   it("accepts a production-safe configuration", () => {
@@ -64,6 +65,13 @@ describe("environment validation", () => {
       ...productionEnvironment,
       RESEND_API_KEY: "",
     });
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects production without a conversation encryption key", () => {
+    const { CONVERSATION_DATA_ENCRYPTION_KEY: _key, ...withoutKey } =
+      productionEnvironment;
+    const result = envValidationSchema.validate(withoutKey);
     expect(result.error).toBeDefined();
   });
 });

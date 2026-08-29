@@ -332,6 +332,7 @@ model Job {
   status          JobStatus
   urgency         JobUrgency
   description     String?
+  intakeSessionId String? @db.VarChar(64)
 
   pricingSnapshot Json
   policySnapshot  Json
@@ -356,6 +357,7 @@ model Job {
   conversationLinks   ConversationJobLink[]
 
   @@unique([id, tenantId])
+  @@unique([tenantId, intakeSessionId])
   @@index([tenantId])
   @@index([tenantId, status, urgency])
   @@index([assignedUserId, assignedUserTenantId])

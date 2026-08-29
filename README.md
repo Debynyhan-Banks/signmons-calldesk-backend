@@ -86,6 +86,7 @@ Keep using admin tokens sparingly and rotate them if you share access.
 - `JOB_NOTIFICATION_EMAILS` – comma-separated internal recipients notified whenever Signmons creates a job.
 - `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` – optional Twilio credentials for internal SMS alerts.
 - `JOB_NOTIFICATION_SMS_NUMBERS` – optional comma-separated E.164 phone numbers that receive new-job SMS alerts.
+- `CONVERSATION_DATA_ENCRYPTION_KEY` – required in production; a 64-character hexadecimal AES-256 key used to protect the unredacted conversational memory needed to finish multi-turn service requests. Redacted text remains in normal audit logs.
 
 Customer availability is preserved in `Job.preferredTimeText` exactly as supplied after sanitization. Signmons also infers a broad `preferredWindowLabel` when possible, but an unrecognized date or time phrase never blocks an otherwise valid job.
 

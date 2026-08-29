@@ -16,6 +16,7 @@ import appConfig from "../../config/app.config";
 import { ToolSelectorService } from "../tools/tool-selector.service";
 import { ConversationsService } from "../../conversations/conversations.service";
 import { LifeSafetyService } from "../safety/life-safety.service";
+import { BadRequestException } from "@nestjs/common";
 
 jest.mock("fs", () => ({
   readFileSync: jest.fn(() => "System prompt"),
@@ -104,6 +105,7 @@ describe("AiService", () => {
       corsOrigins: ["http://localhost:3000"],
       openAiModel: "gpt-4o-mini",
       webchatIntegrations: [],
+      conversationDataEncryptionKey: "0".repeat(64),
     };
 
     service = new AiService(
@@ -241,6 +243,65 @@ describe("AiService", () => {
     );
   });
 
+  it("turns invalid job fields into a recoverable correction question", async () => {
+    aiProvider.createCompletion.mockResolvedValue({
+      id: "resp-correction",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: [
+              {
+                id: "call-correction",
+                type: "function",
+                function: {
+                  name: "create_job",
+                  arguments: JSON.stringify({
+                    customerName: "Alice",
+                    phone: "***-***-3183",
+                    issueCategory: "HEATING",
+                    urgency: "STANDARD",
+                    description: "No heat",
+                    preferredTime: "Tuesday after 3",
+                  }),
+                },
+              },
+            ],
+          },
+        },
+      ],
+    } as never);
+    jobsRepository.createJobFromToolCall.mockRejectedValue(
+      new BadRequestException({
+        message: "Job payload validation failed.",
+        invalidFields: ["phone"],
+      }),
+    );
+
+    const response = await service.triage(
+      tenantId,
+      sessionId,
+      "Tuesday after 3 works.",
+    );
+
+    expect(response).toMatchObject({
+      status: "needs_correction",
+      invalidFields: ["phone"],
+      reply: expect.stringContaining("10-digit callback number"),
+    });
+    expect(callLogService.createLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transcript: "Tuesday after 3 works.",
+        metadata: expect.objectContaining({
+          responseType: "needs_correction",
+          invalidFields: ["phone"],
+        }),
+      }),
+    );
+    expect(errorHandler.handle).not.toHaveBeenCalled();
+  });
+
   it("delegates provider errors to the AiErrorHandler", async () => {
     aiProvider.createCompletion.mockRejectedValue(new Error("network"));
     await service.triage(tenantId, sessionId, "Hello");
@@ -371,6 +432,7 @@ describe("AiProviderService", () => {
     corsOrigins: ["http://localhost:3000"],
     openAiModel: "gpt-4o-mini",
     webchatIntegrations: [],
+    conversationDataEncryptionKey: "0".repeat(64),
   };
 
   let client: jest.Mocked<IAiProviderClient>;
