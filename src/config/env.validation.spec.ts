@@ -16,6 +16,9 @@ describe("environment validation", () => {
         keyHash: "a".repeat(64),
       },
     ]),
+    RESEND_API_KEY: "resend-production-key",
+    RESEND_FROM_EMAIL: "Eternity <requests@mail.eternityhvacr.com>",
+    JOB_NOTIFICATION_EMAILS: "ben@eternityhvacr.com",
   };
 
   it("accepts a production-safe configuration", () => {
@@ -44,6 +47,22 @@ describe("environment validation", () => {
       WEBCHAT_INTEGRATIONS_JSON: JSON.stringify([
         { name: "eternity", tenantId: "attacker-controlled", keyHash: "bad" },
       ]),
+    });
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects a live create-job integration without an internal recipient", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      JOB_NOTIFICATION_EMAILS: "",
+    });
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects an email recipient without Resend credentials", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      RESEND_API_KEY: "",
     });
     expect(result.error).toBeDefined();
   });

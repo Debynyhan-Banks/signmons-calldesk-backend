@@ -337,6 +337,7 @@ model Job {
   policySnapshot  Json
 
   preferredWindowLabel PreferredWindowLabel?
+  preferredTimeText    String? @db.VarChar(160)
   serviceWindowStart   DateTime?
   serviceWindowEnd     DateTime?
 

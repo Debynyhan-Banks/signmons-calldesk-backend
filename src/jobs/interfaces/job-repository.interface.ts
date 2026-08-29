@@ -39,6 +39,7 @@ export interface JobRecord {
   urgency: string;
   description?: string;
   preferredTime?: string;
+  preferredTimeText?: string;
   status: JobStatus;
   createdAt: Date;
   updatedAt: Date;

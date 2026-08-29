@@ -22,6 +22,13 @@ export interface AppConfig {
   corsOrigins: string[];
   openAiModel: string;
   webchatIntegrations: WebchatIntegrationConfig[];
+  resendApiKey: string;
+  resendFromEmail: string;
+  jobNotificationEmails: string[];
+  twilioAccountSid: string;
+  twilioAuthToken: string;
+  twilioPhoneNumber: string;
+  jobNotificationSmsNumbers: string[];
 }
 
 export interface WebchatIntegrationConfig {
@@ -75,8 +82,28 @@ export default registerAs("app", (): AppConfig => {
     corsOrigins,
     openAiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
     webchatIntegrations,
+    resendApiKey: process.env.RESEND_API_KEY ?? "",
+    resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "",
+    jobNotificationEmails: parseCommaSeparated(
+      process.env.JOB_NOTIFICATION_EMAILS,
+    ),
+    twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+    twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+    twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
+    jobNotificationSmsNumbers: parseCommaSeparated(
+      process.env.JOB_NOTIFICATION_SMS_NUMBERS,
+    ),
   };
 });
+
+function parseCommaSeparated(value: string | undefined): string[] {
+  return value
+    ? value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    : [];
+}
 
 function parseWebchatIntegrations(
   value: string | undefined,

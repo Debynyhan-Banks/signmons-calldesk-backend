@@ -7,6 +7,7 @@ import { JobStatus, JobUrgency, PreferredWindowLabel } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { SanitizationService } from "../sanitization/sanitization.service";
 import { CreateJobPayloadDto } from "./dto/create-job-payload.dto";
+import { JobNotificationService } from "./job-notification.service";
 import {
   CreateJobFromToolCallRequest,
   CreateJobPayload,
@@ -19,6 +20,7 @@ export class JobsService implements IJobRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sanitizationService: SanitizationService,
+    private readonly jobNotificationService: JobNotificationService,
   ) {}
 
   async createJobFromToolCall(
@@ -89,9 +91,10 @@ export class JobsService implements IJobRepository {
         status: JobStatus.CREATED,
         urgency: this.mapUrgency(normalizedPayload.urgency),
         description: normalizedPayload.description ?? null,
-        preferredWindowLabel: this.mapPreferredWindow(
+        preferredWindowLabel: this.inferPreferredWindow(
           normalizedPayload.preferredTime,
         ),
+        preferredTimeText: normalizedPayload.preferredTime ?? null,
         pricingSnapshot: {},
         policySnapshot: {},
       },
@@ -102,7 +105,9 @@ export class JobsService implements IJobRepository {
       },
     });
 
-    return this.mapJob(job);
+    const jobRecord = this.mapJob(job);
+    await this.jobNotificationService.notifyJobCreated(jobRecord);
+    return jobRecord;
   }
 
   async listJobs(tenantId: string): Promise<JobRecord[]> {
@@ -148,11 +153,6 @@ export class JobsService implements IJobRepository {
     if (errors.length) {
       throw new BadRequestException(
         this.buildValidationError("Job payload validation failed.", audit),
-      );
-    }
-    if (!this.isPreferredTimeValid(normalized.preferredTime)) {
-      throw new BadRequestException(
-        this.buildValidationError("Preferred time is invalid.", audit),
       );
     }
     return { payload: normalized, audit };
@@ -202,9 +202,6 @@ export class JobsService implements IJobRepository {
       payload.issueCategory,
     );
     const normalizedUrgency = this.normalizeUrgency(payload.urgency);
-    const normalizedPreferredTime = this.normalizePreferredTime(
-      payload.preferredTime,
-    );
     return {
       customerName: this.normalizeRequiredText(payload.customerName),
       phone: this.normalizePhone(payload.phone),
@@ -212,7 +209,7 @@ export class JobsService implements IJobRepository {
       issueCategory: normalizedIssueCategory,
       urgency: normalizedUrgency,
       description: this.normalizeOptionalText(payload.description),
-      preferredTime: normalizedPreferredTime,
+      preferredTime: this.normalizeOptionalText(payload.preferredTime),
     };
   }
 
@@ -252,6 +249,7 @@ export class JobsService implements IJobRepository {
       urgency: job.urgency,
       description: job.description ?? undefined,
       preferredTime: job.preferredWindowLabel ?? undefined,
+      preferredTimeText: job.preferredTimeText ?? undefined,
       status: job.status,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
@@ -402,15 +400,28 @@ export class JobsService implements IJobRepository {
     return "" as never;
   }
 
-  private normalizePreferredTime(value: unknown): string | undefined {
-    if (typeof value !== "string") return undefined;
-    const normalized = this.sanitizationService.normalizeWhitespace(value);
-    const upper = normalized.toUpperCase().replace(/\./g, "");
+  private mapUrgency(value: string): JobUrgency {
+    return value === "EMERGENCY" ? JobUrgency.EMERGENCY : JobUrgency.STANDARD;
+  }
 
-    if (/\bASAP\b|AS SOON AS POSSIBLE/.test(upper)) return "ASAP";
-    if (/\bMORNING\b/.test(upper)) return "MORNING";
-    if (/\bAFTERNOON\b/.test(upper)) return "AFTERNOON";
-    if (/\bEVENING\b/.test(upper)) return "EVENING";
+  private inferPreferredWindow(
+    value?: string,
+  ): PreferredWindowLabel | undefined {
+    if (!value) return undefined;
+    const upper = value.toUpperCase().replace(/\./g, "");
+
+    if (/\bASAP\b|AS SOON AS POSSIBLE|RIGHT AWAY|IMMEDIATELY/.test(upper)) {
+      return PreferredWindowLabel.ASAP;
+    }
+    if (/\bMORNING\b|BEFORE NOON/.test(upper)) {
+      return PreferredWindowLabel.MORNING;
+    }
+    if (/\bAFTERNOON\b|\bNOON\b/.test(upper)) {
+      return PreferredWindowLabel.AFTERNOON;
+    }
+    if (/\bEVENING\b|AFTER WORK|\bNIGHT\b/.test(upper)) {
+      return PreferredWindowLabel.EVENING;
+    }
 
     const twelveHour = upper.match(
       /\b(1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(AM|PM)\b/,
@@ -422,39 +433,14 @@ export class JobsService implements IJobRepository {
     }
 
     const twentyFourHour = upper.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
-    if (twentyFourHour) {
-      return this.preferredWindowForHour(Number(twentyFourHour[1]));
-    }
-
-    return normalized;
+    return twentyFourHour
+      ? this.preferredWindowForHour(Number(twentyFourHour[1]))
+      : undefined;
   }
 
-  private isPreferredTimeValid(value?: string): boolean {
-    if (!value) return true;
-    const slots = ["ASAP", "MORNING", "AFTERNOON", "EVENING"];
-    return slots.includes(value);
-  }
-
-  private preferredWindowForHour(hour: number): string {
-    if (hour < 12) return "MORNING";
-    if (hour < 17) return "AFTERNOON";
-    return "EVENING";
-  }
-
-  private mapUrgency(value: string): JobUrgency {
-    return value === "EMERGENCY" ? JobUrgency.EMERGENCY : JobUrgency.STANDARD;
-  }
-
-  private mapPreferredWindow(value?: string): PreferredWindowLabel | undefined {
-    if (!value) {
-      return undefined;
-    }
-    const normalized = value.trim().toUpperCase();
-    if (normalized in PreferredWindowLabel) {
-      return PreferredWindowLabel[
-        normalized as keyof typeof PreferredWindowLabel
-      ];
-    }
-    return undefined;
+  private preferredWindowForHour(hour: number): PreferredWindowLabel {
+    if (hour < 12) return PreferredWindowLabel.MORNING;
+    if (hour < 17) return PreferredWindowLabel.AFTERNOON;
+    return PreferredWindowLabel.EVENING;
   }
 }

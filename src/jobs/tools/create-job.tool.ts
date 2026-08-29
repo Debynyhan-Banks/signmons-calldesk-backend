@@ -43,7 +43,8 @@ export const CREATE_JOB_TOOL: ChatCompletionTool = {
         },
         preferredTime: {
           type: "string",
-          description: "Preferred appointment window if mentioned.",
+          description:
+            "Customer's preferred date, time, range, or general availability in their own words, if mentioned. Preserve wording such as 'Tuesday after 3', 'between 4 and 6', or 'anytime next week'.",
         },
       },
       required: ["customerName", "phone", "issueCategory", "urgency"],

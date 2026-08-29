@@ -71,6 +71,6 @@ export class CreateJobPayloadDto {
   @Transform(transformOptionalString)
   @IsOptional()
   @IsString()
-  @MaxLength(80)
+  @MaxLength(160)
   preferredTime?: string;
 }

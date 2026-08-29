@@ -1,0 +1,2 @@
+ALTER TABLE "Job"
+ADD COLUMN "preferredTimeText" VARCHAR(160);

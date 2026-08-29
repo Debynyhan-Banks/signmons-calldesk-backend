@@ -41,6 +41,13 @@ export const envValidationSchema = Joi.object({
   AI_MAX_RETRIES: Joi.number().min(0).max(5).default(1),
   OPENAI_MODEL: Joi.string().min(3).max(100).default("gpt-4o-mini"),
   WEBCHAT_INTEGRATIONS_JSON: Joi.string().default("[]"),
+  RESEND_API_KEY: Joi.string().allow("").default(""),
+  RESEND_FROM_EMAIL: Joi.string().allow("").default(""),
+  JOB_NOTIFICATION_EMAILS: Joi.string().allow("").default(""),
+  TWILIO_ACCOUNT_SID: Joi.string().allow("").default(""),
+  TWILIO_AUTH_TOKEN: Joi.string().allow("").default(""),
+  TWILIO_PHONE_NUMBER: Joi.string().allow("").default(""),
+  JOB_NOTIFICATION_SMS_NUMBERS: Joi.string().allow("").default(""),
   PORT: Joi.number().min(0).max(65535).default(3000),
 }).custom((rawValues: unknown, helpers) => {
   const values = rawValues as Record<string, unknown>;
@@ -51,6 +58,27 @@ export const envValidationSchema = Joi.object({
     return helpers.error("any.invalid", {
       message: "DEV_AUTH_ENABLED cannot be true in production.",
     });
+  }
+  const notificationEmails = parseConfiguredList(
+    values.JOB_NOTIFICATION_EMAILS,
+  );
+  const notificationSmsNumbers = parseConfiguredList(
+    values.JOB_NOTIFICATION_SMS_NUMBERS,
+  );
+  if (
+    notificationEmails.length > 0 &&
+    (!hasConfiguredString(values.RESEND_API_KEY) ||
+      !hasConfiguredString(values.RESEND_FROM_EMAIL))
+  ) {
+    return helpers.error("any.invalid");
+  }
+  if (
+    notificationSmsNumbers.length > 0 &&
+    (!hasConfiguredString(values.TWILIO_ACCOUNT_SID) ||
+      !hasConfiguredString(values.TWILIO_AUTH_TOKEN) ||
+      !hasConfiguredString(values.TWILIO_PHONE_NUMBER))
+  ) {
+    return helpers.error("any.invalid");
   }
   try {
     const rawIntegrations = values.WEBCHAT_INTEGRATIONS_JSON;
@@ -76,6 +104,15 @@ export const envValidationSchema = Joi.object({
         return helpers.error("any.invalid");
       }
     }
+    if (
+      values.NODE_ENV === "production" &&
+      integrations.length > 0 &&
+      String(values.ENABLED_TOOLS).split(",").includes("create_job") &&
+      notificationEmails.length === 0 &&
+      notificationSmsNumbers.length === 0
+    ) {
+      return helpers.error("any.invalid");
+    }
   } catch {
     return helpers.error("any.invalid");
   }
@@ -91,3 +128,16 @@ export const envValidationSchema = Joi.object({
   }
   return values;
 });
+
+function parseConfiguredList(value: unknown): string[] {
+  return typeof value === "string"
+    ? value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    : [];
+}
+
+function hasConfiguredString(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}

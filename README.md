@@ -82,6 +82,12 @@ Keep using admin tokens sparingly and rotate them if you share access.
 - `IDENTITY_ISSUER` / `IDENTITY_AUDIENCE` – expected JWT issuer/audience in production.
 - `FIREBASE_PROJECT_ID` – Firebase project id for Admin SDK token verification.
 - `WEBCHAT_INTEGRATIONS_JSON` – JSON array of `{name, tenantId, keyHash}` entries for server-held website credentials.
+- `RESEND_API_KEY` / `RESEND_FROM_EMAIL` – Resend credentials used for internal new-job email notifications.
+- `JOB_NOTIFICATION_EMAILS` – comma-separated internal recipients notified whenever Signmons creates a job.
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` – optional Twilio credentials for internal SMS alerts.
+- `JOB_NOTIFICATION_SMS_NUMBERS` – optional comma-separated E.164 phone numbers that receive new-job SMS alerts.
+
+Customer availability is preserved in `Job.preferredTimeText` exactly as supplied after sanitization. Signmons also infers a broad `preferredWindowLabel` when possible, but an unrecognized date or time phrase never blocks an otherwise valid job.
 
 ## Tenant Identity Rules (T-01)
 

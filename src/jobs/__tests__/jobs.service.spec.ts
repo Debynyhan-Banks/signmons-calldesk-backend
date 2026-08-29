@@ -2,6 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 import { JobsService } from "../jobs.service";
 import { SanitizationService } from "../../sanitization/sanitization.service";
 import type { PrismaService } from "../../prisma/prisma.service";
+import type { JobNotificationService } from "../job-notification.service";
 
 describe("JobsService", () => {
   const tenantId = "tenant-1";
@@ -20,6 +21,7 @@ describe("JobsService", () => {
     urgency: "STANDARD",
     description: null,
     preferredWindowLabel: null,
+    preferredTimeText: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     customer: {
@@ -41,6 +43,7 @@ describe("JobsService", () => {
     serviceCategory: { findFirst: jest.Mock; create: jest.Mock };
     propertyAddress: { create: jest.Mock };
   };
+  let jobNotificationService: { notifyJobCreated: jest.Mock };
   let service: JobsService;
 
   beforeEach(() => {
@@ -63,10 +66,14 @@ describe("JobsService", () => {
         create: jest.fn(),
       },
     };
+    jobNotificationService = {
+      notifyJobCreated: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new JobsService(
       prisma as unknown as PrismaService,
       new SanitizationService(),
+      jobNotificationService as unknown as JobNotificationService,
     );
   });
 
@@ -84,6 +91,7 @@ describe("JobsService", () => {
 
     expect(result.id).toBe(jobRecord.id);
     expect(prisma.job.create).not.toHaveBeenCalled();
+    expect(jobNotificationService.notifyJobCreated).not.toHaveBeenCalled();
   });
 
   it("creates a new job when no existing session job is found", async () => {
@@ -102,6 +110,9 @@ describe("JobsService", () => {
 
     expect(result.id).toBe(jobRecord.id);
     expect(prisma.job.create).toHaveBeenCalled();
+    expect(jobNotificationService.notifyJobCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: jobRecord.id }),
+    );
   });
 
   it("accepts high-priority AI output without treating it as an emergency", async () => {
@@ -157,6 +168,13 @@ describe("JobsService", () => {
         data: expect.objectContaining({ preferredWindowLabel: "EVENING" }),
       }),
     );
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          preferredTimeText: "Tomorrow at 5pm",
+        }),
+      }),
+    );
   });
 
   it("fails closed when required fields are missing", async () => {
@@ -208,23 +226,41 @@ describe("JobsService", () => {
     expect(prisma.job.create).not.toHaveBeenCalled();
   });
 
-  it("fails closed when preferredTime is invalid", async () => {
+  it.each([
+    "sometime next week",
+    "Tuesday after 3",
+    "between 4 and 6",
+    "anytime",
+    "weekends are best",
+  ])("preserves flexible preferred time wording: %s", async (preferredTime) => {
     prisma.communicationContent.findMany.mockResolvedValue([]);
+    prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
+    prisma.serviceCategory.findFirst.mockResolvedValue({
+      id: "svc-1",
+    } as never);
+    prisma.propertyAddress.create.mockResolvedValue({ id: "addr-1" } as never);
+    prisma.job.create.mockResolvedValue({
+      ...jobRecord,
+      preferredTimeText: preferredTime,
+    } as never);
 
-    await expect(
-      service.createJobFromToolCall({
-        tenantId,
-        sessionId,
-        rawArgs: JSON.stringify({
-          customerName: "Alice",
-          phone: "1234567890",
-          issueCategory: "HEATING",
-          urgency: "STANDARD",
-          preferredTime: "sometime next week",
-        }),
+    await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs: JSON.stringify({
+        customerName: "Alice",
+        phone: "1234567890",
+        issueCategory: "HEATING",
+        urgency: "STANDARD",
+        preferredTime,
       }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.job.create).not.toHaveBeenCalled();
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ preferredTimeText: preferredTime }),
+      }),
+    );
   });
 
   it("fails closed when unexpected fields are present", async () => {
