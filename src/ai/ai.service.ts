@@ -12,6 +12,7 @@ import { AI_PROVIDER } from "./ai.constants";
 import type { IAiProvider } from "./interfaces/ai-provider.interface";
 import { JOB_REPOSITORY } from "../jobs/jobs.constants";
 import type { IJobRepository } from "../jobs/interfaces/job-repository.interface";
+import type { LeadAttribution } from "../jobs/interfaces/job-repository.interface";
 import { TENANTS_SERVICE } from "../tenants/tenants.constants";
 import type { TenantsService } from "../tenants/interfaces/tenants-service.interface";
 import { AiErrorHandler } from "./ai-error.handler";
@@ -77,7 +78,12 @@ export class AiService {
     }
   }
 
-  async triage(tenantId: string, sessionId: string, userMessage: string) {
+  async triage(
+    tenantId: string,
+    sessionId: string,
+    userMessage: string,
+    leadAttribution?: LeadAttribution,
+  ) {
     if (!this.systemPrompt) {
       throw new InternalServerErrorException(
         "AI is not configured on the server.",
@@ -193,6 +199,7 @@ export class AiService {
             toolCall.function.arguments ?? undefined,
             safeUserMessage,
             responseModel,
+            leadAttribution,
           );
         }
 
@@ -232,6 +239,7 @@ export class AiService {
           messages,
           assistantReply: guardedReply,
           tools,
+          leadAttribution,
         });
         if (finalized) return finalized;
       }
@@ -548,6 +556,7 @@ export class AiService {
     messages: OpenAI.ChatCompletionMessageParam[];
     assistantReply: string;
     tools: OpenAI.ChatCompletionTool[];
+    leadAttribution?: LeadAttribution;
   }) {
     const createJobTool = params.tools.find(
       (tool) => tool.function.name === "create_job",
@@ -607,6 +616,7 @@ export class AiService {
         validation.toolCall.function.arguments ?? undefined,
         params.userMessage,
         forced.model ?? params.responseModel,
+        params.leadAttribution,
       );
       this.loggingService.log(
         {
@@ -692,6 +702,7 @@ export class AiService {
     rawArgs?: string,
     userMessage?: string,
     model?: string,
+    leadAttribution?: LeadAttribution,
   ) {
     if (name !== "create_job") {
       return {
@@ -707,6 +718,7 @@ export class AiService {
         sessionId,
         rawArgs,
         deferInitialNotification: true,
+        leadAttribution,
       });
       await this.conversationsService.linkJobToConversation({
         tenantId,

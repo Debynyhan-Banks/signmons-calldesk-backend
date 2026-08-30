@@ -19,6 +19,14 @@ describe("JobNotificationService", () => {
     status: "CREATED",
     createdAt: new Date("2026-08-29T12:00:00Z"),
     updatedAt: new Date("2026-08-29T12:00:00Z"),
+    leadAttribution: {
+      channel: "website_chat",
+      landingPage: "/resources/furnace-repair-vs-replacement",
+      sourcePage: "/services/furnace-heating-repair",
+      referrerHost: "www.google.com",
+      utmSource: "google",
+      utmMedium: "organic",
+    },
   };
 
   let loggingService: {
@@ -63,6 +71,10 @@ describe("JobNotificationService", () => {
     expect(payload.to).toEqual(["ben@eternityhvacr.com"]);
     expect(payload.text).toContain("Preferred time: Tuesday after 5");
     expect(payload.text).toContain("Reference: A1B2C3D4");
+    expect(payload.text).toContain("Lead source: google / organic");
+    expect(payload.text).toContain(
+      "Origin page: /services/furnace-heating-repair",
+    );
     expect(loggingService.log).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "job_notification_sent",

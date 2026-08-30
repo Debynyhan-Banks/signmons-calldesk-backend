@@ -17,6 +17,7 @@ import {
   CreateJobPayload,
   IJobRepository,
   JobRecord,
+  LeadAttribution,
 } from "./interfaces/job-repository.interface";
 
 @Injectable()
@@ -82,6 +83,9 @@ export class JobsService implements IJobRepository {
       },
     });
 
+    const leadAttribution = this.normalizeLeadAttribution(
+      request.leadAttribution,
+    );
     let job;
     try {
       job = await this.prisma.job.create({
@@ -106,7 +110,10 @@ export class JobsService implements IJobRepository {
           policySnapshot: {
             propertyType: normalizedPayload.propertyType,
             serviceIntent: normalizedPayload.serviceIntent,
-          },
+            ...(leadAttribution
+              ? { leadAttribution: { ...leadAttribution } }
+              : {}),
+          } as Prisma.InputJsonValue,
         },
         include: {
           customer: true,
@@ -311,6 +318,7 @@ export class JobsService implements IJobRepository {
       serviceWindowStart: job.serviceWindowStart ?? undefined,
       serviceWindowEnd: job.serviceWindowEnd ?? undefined,
       calendarEventId: job.calendarEventId ?? undefined,
+      leadAttribution: this.leadAttributionValue(job.policySnapshot),
       status: job.status,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
@@ -430,6 +438,50 @@ export class JobsService implements IJobRepository {
     }
     const value = (snapshot as Record<string, unknown>)[key];
     return typeof value === "string" ? value : fallback;
+  }
+
+  private leadAttributionValue(
+    snapshot: Prisma.JsonValue,
+  ): LeadAttribution | undefined {
+    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+      return undefined;
+    }
+    return this.normalizeLeadAttribution(
+      (snapshot as Record<string, unknown>).leadAttribution,
+    );
+  }
+
+  private normalizeLeadAttribution(
+    value: unknown,
+  ): LeadAttribution | undefined {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return undefined;
+    }
+    const input = value as Record<string, unknown>;
+    if (input.channel !== "website_chat") return undefined;
+
+    const path = (candidate: unknown) => {
+      const normalized = this.normalizeOptionalText(candidate);
+      return normalized && /^\/[A-Za-z0-9/_-]*$/.test(normalized)
+        ? normalized.slice(0, 200)
+        : undefined;
+    };
+    const text = (candidate: unknown, limit: number) =>
+      this.normalizeOptionalText(candidate)?.slice(0, limit);
+    const referrerHost = text(input.referrerHost, 253);
+
+    return {
+      channel: "website_chat",
+      landingPage: path(input.landingPage),
+      sourcePage: path(input.sourcePage),
+      referrerHost:
+        referrerHost && /^[A-Za-z0-9.-]+$/.test(referrerHost)
+          ? referrerHost.toLowerCase()
+          : undefined,
+      utmSource: text(input.utmSource, 100),
+      utmMedium: text(input.utmMedium, 100),
+      utmCampaign: text(input.utmCampaign, 160),
+    };
   }
 
   private normalizePhone(value: unknown): string {

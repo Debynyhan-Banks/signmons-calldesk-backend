@@ -20,11 +20,22 @@ export interface CreateJobRequest {
   payload: CreateJobPayload;
 }
 
+export interface LeadAttribution {
+  channel: "website_chat";
+  landingPage?: string;
+  sourcePage?: string;
+  referrerHost?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+}
+
 export interface CreateJobFromToolCallRequest {
   tenantId: string;
   sessionId: string;
   rawArgs?: string;
   deferInitialNotification?: boolean;
+  leadAttribution?: LeadAttribution;
 }
 
 export type JobStatus =
@@ -53,6 +64,7 @@ export interface JobRecord {
   serviceWindowStart?: Date;
   serviceWindowEnd?: Date;
   calendarEventId?: string;
+  leadAttribution?: LeadAttribution;
   status: JobStatus;
   createdAt: Date;
   updatedAt: Date;

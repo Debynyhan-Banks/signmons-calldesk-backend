@@ -25,12 +25,12 @@ export class WebchatController {
 
   @Post("triage")
   @Throttle({ default: { limit: 15, ttl: 60 } })
-  triage(@Body() { sessionId, message }: TriageDto) {
+  triage(@Body() { sessionId, message, attribution }: TriageDto) {
     const tenantId = getRequestContext()?.tenantId;
     if (!tenantId) {
       throw new UnauthorizedException("Tenant context is missing.");
     }
-    return this.aiService.triage(tenantId, sessionId, message);
+    return this.aiService.triage(tenantId, sessionId, message, attribution);
   }
 
   @Post("appointments/confirm")

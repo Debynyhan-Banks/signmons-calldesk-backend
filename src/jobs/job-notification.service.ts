@@ -269,6 +269,8 @@ export class JobNotificationService {
       `Preferred time: ${job.preferredTimeText ?? job.preferredTime ?? "Not provided"}`,
       `Address: ${job.address ?? "Not provided"}`,
       `Details: ${job.description ?? "Not provided"}`,
+      `Lead source: ${this.leadSource(job)}`,
+      `Origin page: ${job.leadAttribution?.sourcePage ?? "Not recorded"}`,
       this.note(kind),
     ].join("\n");
   }
@@ -286,6 +288,8 @@ export class JobNotificationService {
       ],
       ["Address", job.address ?? "Not provided"],
       ["Details", job.description ?? "Not provided"],
+      ["Lead source", this.leadSource(job)],
+      ["Origin page", job.leadAttribution?.sourcePage ?? "Not recorded"],
     ]
       .map(
         ([label, value]) =>
@@ -353,6 +357,21 @@ export class JobNotificationService {
 
   private reference(jobId: string): string {
     return jobId.replace(/-/g, "").slice(0, 8).toUpperCase();
+  }
+
+  private leadSource(job: JobRecord): string {
+    const attribution = job.leadAttribution;
+    if (!attribution) return "Not recorded";
+    if (attribution.utmSource) {
+      return [
+        attribution.utmSource,
+        attribution.utmMedium,
+        attribution.utmCampaign,
+      ]
+        .filter(Boolean)
+        .join(" / ");
+    }
+    return attribution.referrerHost || "Direct website chat";
   }
 
   private logConfigurationWarning(

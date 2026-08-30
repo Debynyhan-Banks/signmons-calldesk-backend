@@ -139,6 +139,46 @@ describe("JobsService", () => {
     );
   });
 
+  it("stores privacy-safe website attribution with the job", async () => {
+    prisma.communicationContent.findMany.mockResolvedValue([]);
+    prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
+    prisma.serviceCategory.findFirst.mockResolvedValue(null as never);
+    prisma.serviceCategory.create.mockResolvedValue({ id: "svc-1" } as never);
+    prisma.propertyAddress.create.mockResolvedValue({ id: "addr-1" } as never);
+    prisma.job.create.mockResolvedValue(jobRecord as never);
+
+    await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs,
+      leadAttribution: {
+        channel: "website_chat",
+        landingPage: "/resources/furnace-repair-vs-replacement",
+        sourcePage: "/services/furnace-heating-repair",
+        referrerHost: "www.google.com",
+        utmSource: "google",
+        utmMedium: "organic",
+      },
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          policySnapshot: expect.objectContaining({
+            leadAttribution: {
+              channel: "website_chat",
+              landingPage: "/resources/furnace-repair-vs-replacement",
+              sourcePage: "/services/furnace-heating-repair",
+              referrerHost: "www.google.com",
+              utmSource: "google",
+              utmMedium: "organic",
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
   it("defers the initial email when the booking flow will offer live slots", async () => {
     prisma.communicationContent.findMany.mockResolvedValue([]);
     prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
