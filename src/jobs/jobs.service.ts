@@ -129,7 +129,9 @@ export class JobsService implements IJobRepository {
     }
 
     const jobRecord = this.mapJob(job);
-    this.jobNotificationService.enqueueJobCreated(jobRecord);
+    if (!request.deferInitialNotification) {
+      this.jobNotificationService.enqueueJobCreated(jobRecord);
+    }
     return jobRecord;
   }
 

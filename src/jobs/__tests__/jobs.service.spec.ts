@@ -139,6 +139,24 @@ describe("JobsService", () => {
     );
   });
 
+  it("defers the initial email when the booking flow will offer live slots", async () => {
+    prisma.communicationContent.findMany.mockResolvedValue([]);
+    prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
+    prisma.serviceCategory.findFirst.mockResolvedValue(null as never);
+    prisma.serviceCategory.create.mockResolvedValue({ id: "svc-1" } as never);
+    prisma.propertyAddress.create.mockResolvedValue({ id: "addr-1" } as never);
+    prisma.job.create.mockResolvedValue(jobRecord as never);
+
+    await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs,
+      deferInitialNotification: true,
+    });
+
+    expect(jobNotificationService.enqueueJobCreated).not.toHaveBeenCalled();
+  });
+
   it("accepts high-priority AI output without treating it as an emergency", async () => {
     prisma.communicationContent.findMany.mockResolvedValue([]);
     prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);

@@ -26,6 +26,24 @@ import { LifeSafetyService } from "./safety/life-safety.service";
 import { SchedulingService } from "../scheduling/scheduling.service";
 import { JobNotificationService } from "../jobs/job-notification.service";
 
+type IntakeField =
+  | "name"
+  | "phone"
+  | "address"
+  | "description"
+  | "category"
+  | "propertyType"
+  | "serviceIntent"
+  | "urgency";
+
+interface IntakeSnapshot {
+  collected: Set<IntakeField>;
+  residential: boolean;
+  heatingOrCooling: boolean;
+  repairLike: boolean;
+  volunteeredEmergency: boolean;
+}
+
 @Injectable()
 export class AiService {
   private readonly systemPrompt: string | null;
@@ -113,24 +131,44 @@ export class AiService {
       const recentMessages = await this.callLogService.getRecentMessages(
         safeTenantId,
         safeSessionId,
-        10,
+        40,
       );
       const conversationHistory: OpenAI.ChatCompletionMessageParam[] =
         recentMessages.map((entry) => ({
           role: entry.role,
           content: entry.content,
         }));
+      const intakeSnapshot = this.buildIntakeSnapshot(
+        conversationHistory,
+        safeUserMessage,
+      );
       const messages: OpenAI.ChatCompletionMessageParam[] = [
         { role: "system", content: this.systemPrompt },
         { role: "system", content: tenantContextPrompt },
+        {
+          role: "system",
+          content: this.buildIntakeMemoryPrompt(intakeSnapshot),
+        },
         ...conversationHistory,
         { role: "user", content: safeUserMessage },
       ];
 
       const tools = this.toolSelector.getEnabledToolsForTenant(safeTenantId);
+      const createJobTool = tools.find(
+        (tool) => tool.function.name === "create_job",
+      );
+      const shouldCreateResidentialBooking =
+        Boolean(createJobTool) &&
+        this.isResidentialBookingReady(intakeSnapshot);
       const response = await this.aiProviderService.createCompletion({
         messages,
         tools: tools.length ? tools : undefined,
+        toolChoice: shouldCreateResidentialBooking
+          ? {
+              type: "function",
+              function: { name: "create_job" },
+            }
+          : undefined,
         maxTokens: this.config.aiMaxTokens,
       });
       openAIResponseId = response.id;
@@ -165,12 +203,26 @@ export class AiService {
         };
       }
 
+      const guardedReply = this.guardAgainstRepeatedQuestion(
+        validation.reply,
+        intakeSnapshot,
+      );
+      if (guardedReply !== validation.reply) {
+        this.loggingService.warn(
+          {
+            event: "ai_repeat_question_blocked",
+            tenantId: safeTenantId,
+            sessionId: safeSessionId,
+          },
+          AiService.name,
+        );
+      }
       const reply = {
         status: "reply" as const,
-        reply: validation.reply,
+        reply: guardedReply,
       };
 
-      if (tools.length && this.looksLikeSubmissionClaim(validation.reply)) {
+      if (tools.length && this.looksLikeSubmissionClaim(guardedReply)) {
         const finalized = await this.forceJobFinalization({
           tenantId: safeTenantId,
           sessionId: safeSessionId,
@@ -178,7 +230,7 @@ export class AiService {
           userMessage: safeUserMessage,
           responseModel,
           messages,
-          assistantReply: validation.reply,
+          assistantReply: guardedReply,
           tools,
         });
         if (finalized) return finalized;
@@ -189,7 +241,7 @@ export class AiService {
         sessionId: safeSessionId,
         conversationId: conversation.id,
         transcript: userMessage,
-        aiResponse: validation.reply,
+        aiResponse: guardedReply,
         metadata: {
           sessionId: safeSessionId,
           openAIResponseId,
@@ -217,6 +269,274 @@ export class AiService {
       /\b(?:will|i'll) (?:pass|send|forward) (?:this|your) information\b/i,
       /\b(?:our|the human) team (?:will|'ll) (?:follow up|reach out|contact you)\b/i,
     ].some((pattern) => pattern.test(reply));
+  }
+
+  private buildIntakeSnapshot(
+    history: OpenAI.ChatCompletionMessageParam[],
+    currentMessage: string,
+  ): IntakeSnapshot {
+    const collected = new Set<IntakeField>();
+    const exchanges = [
+      ...history
+        .filter(
+          (
+            message,
+          ): message is
+            | OpenAI.ChatCompletionSystemMessageParam
+            | OpenAI.ChatCompletionUserMessageParam
+            | OpenAI.ChatCompletionAssistantMessageParam =>
+            ["user", "assistant"].includes(message.role) &&
+            typeof message.content === "string",
+        )
+        .map((message) => ({
+          role: message.role,
+          text: message.content as string,
+        })),
+      { role: "user" as const, text: currentMessage },
+    ];
+    const customerText = exchanges
+      .filter((entry) => entry.role === "user")
+      .map((entry) => entry.text)
+      .join(" \n ");
+    const normalizedCustomerText = customerText.toLowerCase();
+
+    if (
+      /\b(?:my name is|this is)\s+[a-z][a-z'-]+(?:\s+[a-z][a-z'-]+){0,2}(?=\s+(?:and|my|i|with|the)\b|[,.!?]|$)/i.test(
+        customerText,
+      )
+    ) {
+      collected.add("name");
+    }
+    if (
+      /(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/.test(
+        customerText,
+      )
+    ) {
+      collected.add("phone");
+    }
+    if (
+      /\b\d{1,6}\s+[a-z0-9][a-z0-9.' -]{2,}(?:\b(?:st|street|rd|road|ave|avenue|blvd|boulevard|dr|drive|ln|lane|ct|court|way|pl|place)\b|\s\d{5}\b)/i.test(
+        customerText,
+      )
+    ) {
+      collected.add("address");
+    }
+    if (/\b(?:residential|my home|house|homeowner)\b/i.test(customerText)) {
+      collected.add("propertyType");
+    }
+    if (
+      /\b(?:commercial|business|managed property|apartment building|multifamily)\b/i.test(
+        customerText,
+      )
+    ) {
+      collected.add("propertyType");
+    }
+    if (
+      /\b(?:ac|a\/c|air condition(?:er|ing)?|cooling|furnace|heat(?:ing)?|boiler|refrigerat(?:or|ion))\b/i.test(
+        customerText,
+      )
+    ) {
+      collected.add("category");
+    }
+    if (
+      /\b(?:broken|broke|not working|doesn'?t work|don'?t work|blowing (?:hot|cold)|no (?:heat|cooling|air)|leak(?:ing)?|making (?:a )?(?:noise|sound)|won'?t (?:start|run|turn on)|stopped working|it'?s down)\b/i.test(
+        customerText,
+      )
+    ) {
+      collected.add("description");
+    }
+    if (
+      /\b(?:repair|fix(?: it)?|diagnostic|install(?:ation)?|maintenance|replace(?:ment)?)\b/i.test(
+        customerText,
+      )
+    ) {
+      collected.add("serviceIntent");
+    }
+    if (/\bemergency\b/i.test(customerText)) collected.add("urgency");
+
+    for (let index = 1; index < exchanges.length; index += 1) {
+      const previous = exchanges[index - 1];
+      const current = exchanges[index];
+      if (previous.role !== "assistant" || current.role !== "user") continue;
+      const question = previous.text.toLowerCase();
+      const answer = current.text.trim();
+      if (!answer) continue;
+      if (
+        /\b(?:your name|full name|what name|who am i speaking)\b/.test(question)
+      )
+        collected.add("name");
+      if (/\b(?:phone|callback number|best number)\b/.test(question))
+        collected.add("phone");
+      if (/\b(?:address|service location|where.*service)\b/.test(question))
+        collected.add("address");
+      if (
+        /\b(?:describe|symptom|what.*(?:wrong|problem|doing)|issue.*experiencing)\b/.test(
+          question,
+        )
+      )
+        collected.add("description");
+      if (
+        /\b(?:type of equipment|heating, cooling|equipment.*involved|service category)\b/.test(
+          question,
+        )
+      )
+        collected.add("category");
+      if (
+        /\b(?:property type|residential, commercial|home, business|managed property)\b/.test(
+          question,
+        )
+      )
+        collected.add("propertyType");
+      if (
+        /\b(?:service intent|diagnostic, repair|installation.*maintenance|looking for a)\b/.test(
+          question,
+        )
+      )
+        collected.add("serviceIntent");
+      if (/\b(?:priority|emergency.*standard|urgent)\b/.test(question))
+        collected.add("urgency");
+    }
+
+    const residential = /\b(?:residential|my home|house|homeowner)\b/i.test(
+      customerText,
+    );
+    const heatingOrCooling =
+      /\b(?:ac|a\/c|air condition(?:er|ing)?|cooling|furnace|heat(?:ing)?)\b/i.test(
+        customerText,
+      );
+    const repairLike =
+      /\b(?:broken|broke|not working|doesn'?t work|don'?t work|blowing (?:hot|cold)|no (?:heat|cooling|air)|repair|fix(?: it)?|stopped working|it'?s down)\b/i.test(
+        customerText,
+      );
+    const volunteeredEmergency = /\bemergency\b/i.test(normalizedCustomerText);
+    if (repairLike) collected.add("serviceIntent");
+    return {
+      collected,
+      residential,
+      heatingOrCooling,
+      repairLike,
+      volunteeredEmergency,
+    };
+  }
+
+  private buildIntakeMemoryPrompt(snapshot: IntakeSnapshot): string {
+    const labels: Record<IntakeField, string> = {
+      name: "customer name",
+      phone: "callback number",
+      address: "service address",
+      description: "problem description",
+      category: "equipment/service category",
+      propertyType: "property type",
+      serviceIntent: "service intent",
+      urgency: "urgency",
+    };
+    const supplied = [...snapshot.collected].map((field) => labels[field]);
+    const residentialRule =
+      snapshot.heatingOrCooling && snapshot.repairLike
+        ? `This is a heating/cooling failure. Infer REPAIR or DIAGNOSTIC. Never ask the customer to choose a priority level or service intent. ${
+            snapshot.volunteeredEmergency
+              ? "The customer volunteered that this is an emergency; preserve EMERGENCY without asking them to classify it again."
+              : "Use STANDARD because the customer has not volunteered a qualifying emergency condition."
+          }`
+        : "Never ask the customer to label a request emergency, high priority, or standard; infer urgency from facts they volunteer.";
+    return [
+      "AUTHORITATIVE INTAKE MEMORY:",
+      `Already supplied: ${supplied.length ? supplied.join(", ") : "none yet"}.`,
+      "Never ask for an already supplied field again, even if it appeared early in the conversation.",
+      residentialRule,
+      this.isResidentialBookingReady(snapshot)
+        ? "All fields required for a residential appointment are present. Call create_job now so the customer can choose a live time."
+        : "Ask only for the next genuinely missing required field.",
+    ].join(" ");
+  }
+
+  private isResidentialBookingReady(snapshot: IntakeSnapshot): boolean {
+    return (
+      snapshot.residential &&
+      snapshot.heatingOrCooling &&
+      snapshot.repairLike &&
+      [
+        "name",
+        "phone",
+        "address",
+        "description",
+        "category",
+        "propertyType",
+      ].every((field) => snapshot.collected.has(field as IntakeField))
+    );
+  }
+
+  private guardAgainstRepeatedQuestion(
+    reply: string,
+    snapshot: IntakeSnapshot,
+  ): string {
+    const normalized = reply.toLowerCase();
+    const asksQuestion =
+      reply.includes("?") ||
+      /\b(?:please provide|can you|could you|what is|what's|let me know|tell me|is this)\b/.test(
+        normalized,
+      );
+    if (!asksQuestion) return reply;
+    const asksFor: Array<[IntakeField, RegExp]> = [
+      ["name", /\b(?:your name|full name|what name|provide.*name)\b/],
+      ["phone", /\b(?:phone number|callback number|best number)\b/],
+      ["address", /\b(?:your address|service address|address where)\b/],
+      [
+        "description",
+        /\b(?:describe.*(?:issue|problem|symptom)|what problem|what.*experiencing|what.*wrong)\b/,
+      ],
+      [
+        "category",
+        /\b(?:type of equipment|heating, cooling|equipment.*involved)\b/,
+      ],
+      [
+        "propertyType",
+        /\b(?:property type|residential, commercial|home, business|managed property)\b/,
+      ],
+      [
+        "serviceIntent",
+        /\b(?:service intent|diagnostic, repair|repair, installation|looking for.*(?:diagnostic|repair))\b/,
+      ],
+      [
+        "urgency",
+        /\b(?:priority level|emergency.*(?:high priority|standard)|high priority.*standard)\b/,
+      ],
+    ];
+    const repeatsCollected = asksFor.some(
+      ([field, pattern]) =>
+        snapshot.collected.has(field) && pattern.test(normalized),
+    );
+    const asksForbiddenPriority = asksFor[7][1].test(normalized);
+    const asksInferredIntent =
+      snapshot.heatingOrCooling &&
+      snapshot.repairLike &&
+      asksFor[6][1].test(normalized);
+    if (!repeatsCollected && !asksForbiddenPriority && !asksInferredIntent) {
+      return reply;
+    }
+    return this.nextMissingQuestion(snapshot);
+  }
+
+  private nextMissingQuestion(snapshot: IntakeSnapshot): string {
+    if (!snapshot.collected.has("name")) {
+      return "What name should we put on the service request?";
+    }
+    if (!snapshot.collected.has("phone")) {
+      return "What is the best 10-digit callback number?";
+    }
+    if (!snapshot.collected.has("address")) {
+      return "What is the service address, including the ZIP code?";
+    }
+    if (!snapshot.collected.has("category")) {
+      return "What type of equipment needs service—for example, air conditioning, furnace, boiler, or refrigeration?";
+    }
+    if (!snapshot.collected.has("description")) {
+      return "What is the equipment doing or not doing?";
+    }
+    if (!snapshot.collected.has("propertyType")) {
+      return "Is the service location a home, a business, or a managed property?";
+    }
+    return "I have the required details. I’m preparing the available appointment times now.";
   }
 
   private async forceJobFinalization(params: {
@@ -386,6 +706,7 @@ export class AiService {
         tenantId,
         sessionId,
         rawArgs,
+        deferInitialNotification: true,
       });
       await this.conversationsService.linkJobToConversation({
         tenantId,
@@ -428,6 +749,7 @@ export class AiService {
           );
         }
       }
+      this.jobNotificationService.enqueueJobCreated(job);
       return {
         status: "job_created",
         job,

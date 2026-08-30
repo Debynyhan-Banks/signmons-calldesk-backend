@@ -24,6 +24,7 @@ export interface CreateJobFromToolCallRequest {
   tenantId: string;
   sessionId: string;
   rawArgs?: string;
+  deferInitialNotification?: boolean;
 }
 
 export type JobStatus =

@@ -45,6 +45,10 @@ describe("AiService", () => {
   let callLogService: jest.Mocked<CallLogService>;
   let conversationsService: jest.Mocked<ConversationsService>;
   let jobNotificationService: jest.Mocked<JobNotificationService>;
+  let schedulingService: {
+    isInstantBookingEligible: jest.Mock;
+    getAvailableSlots: jest.Mock;
+  };
   let config: ReturnType<typeof appConfig>;
   let service: AiService;
 
@@ -91,7 +95,12 @@ describe("AiService", () => {
     } as never);
     jobNotificationService = {
       enqueueOrphanedIntake: jest.fn(),
+      enqueueJobCreated: jest.fn(),
     } as unknown as jest.Mocked<JobNotificationService>;
+    schedulingService = {
+      isInstantBookingEligible: jest.fn().mockReturnValue(false),
+      getAvailableSlots: jest.fn(),
+    };
     config = {
       environment: "test",
       openAiApiKey: "test",
@@ -125,10 +134,7 @@ describe("AiService", () => {
       callLogService,
       conversationsService,
       new LifeSafetyService(),
-      {
-        isInstantBookingEligible: jest.fn().mockReturnValue(false),
-        getAvailableSlots: jest.fn(),
-      } as never,
+      schedulingService as never,
       jobNotificationService,
       config,
     );
@@ -231,6 +237,7 @@ describe("AiService", () => {
       tenantId,
       sessionId,
       rawArgs: expect.any(String),
+      deferInitialNotification: true,
     });
     expect(callLogService.createLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -253,6 +260,229 @@ describe("AiService", () => {
       sessionId,
       "conversation-1",
     );
+    expect(jobNotificationService.enqueueJobCreated).toHaveBeenCalledWith(
+      jobRecord,
+    );
+  });
+
+  it("retains opener details and forces job creation after the residential answer", async () => {
+    (
+      toolSelector.getEnabledToolsForTenant as jest.MockedFunction<
+        ToolSelectorService["getEnabledToolsForTenant"]
+      >
+    ).mockReturnValue([CREATE_JOB_TOOL]);
+    callLogService.getRecentMessages.mockResolvedValue([
+      {
+        role: "user",
+        content: "Hello this is Debynyhan Banks, my AC is blowing hot air.",
+        createdAt: new Date("2026-08-30T12:00:00Z"),
+      },
+      {
+        role: "assistant",
+        content: "What is the best callback number?",
+        createdAt: new Date("2026-08-30T12:00:01Z"),
+      },
+      {
+        role: "user",
+        content: "216-703-3183",
+        createdAt: new Date("2026-08-30T12:00:02Z"),
+      },
+      {
+        role: "assistant",
+        content: "What is the service address?",
+        createdAt: new Date("2026-08-30T12:00:03Z"),
+      },
+      {
+        role: "user",
+        content: "2009 East 200th Street, Euclid, Ohio 44119",
+        createdAt: new Date("2026-08-30T12:00:04Z"),
+      },
+    ]);
+    aiProvider.createCompletion.mockResolvedValue({
+      id: "resp-memory-job",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: [
+              {
+                id: "call-memory-job",
+                type: "function",
+                function: {
+                  name: "create_job",
+                  arguments: JSON.stringify({
+                    customerName: "Debynyhan Banks",
+                    phone: "216-703-3183",
+                    address: "2009 East 200th Street, Euclid, Ohio 44119",
+                    issueCategory: "COOLING",
+                    urgency: "STANDARD",
+                    description: "AC is blowing hot air",
+                    propertyType: "RESIDENTIAL",
+                    serviceIntent: "REPAIR",
+                  }),
+                },
+              },
+            ],
+          },
+        },
+      ],
+    } as never);
+    const jobRecord: JobRecord = {
+      id: "memory-job-1",
+      tenantId,
+      customerName: "Debynyhan Banks",
+      phone: "+12167033183",
+      address: "2009 East 200th Street, Euclid, Ohio 44119",
+      issueCategory: "COOLING",
+      urgency: "STANDARD",
+      description: "AC is blowing hot air",
+      propertyType: "RESIDENTIAL",
+      serviceIntent: "REPAIR",
+      status: "CREATED",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    jobsRepository.createJobFromToolCall.mockResolvedValue(jobRecord);
+
+    await service.triage(tenantId, sessionId, "Residential");
+
+    expect(callLogService.getRecentMessages).toHaveBeenCalledWith(
+      tenantId,
+      sessionId,
+      40,
+    );
+    expect(aiProvider.createCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        toolChoice: {
+          type: "function",
+          function: { name: "create_job" },
+        },
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            role: "system",
+            content: expect.stringContaining("Already supplied"),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("blocks a priority question and asks only for the next missing field", async () => {
+    callLogService.getRecentMessages.mockResolvedValue([
+      {
+        role: "user",
+        content: "Hello, this is Marti. My AC is blowing hot air.",
+        createdAt: new Date("2026-08-30T12:00:00Z"),
+      },
+      {
+        role: "assistant",
+        content: "What is the best callback number?",
+        createdAt: new Date("2026-08-30T12:00:01Z"),
+      },
+      {
+        role: "user",
+        content: "216-555-2222",
+        createdAt: new Date("2026-08-30T12:00:02Z"),
+      },
+      {
+        role: "assistant",
+        content: "What is the service address?",
+        createdAt: new Date("2026-08-30T12:00:03Z"),
+      },
+      {
+        role: "user",
+        content: "2009 East 200th Street, Euclid, Ohio 44119",
+        createdAt: new Date("2026-08-30T12:00:04Z"),
+      },
+    ]);
+    aiProvider.createCompletion.mockResolvedValue({
+      id: "resp-repeat-priority",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content:
+              "Is this an emergency, high priority, or a standard request?",
+          },
+        },
+      ],
+    } as never);
+
+    const response = await service.triage(tenantId, sessionId, "Thanks");
+
+    expect(response).toEqual({
+      status: "reply",
+      reply:
+        "Is the service location a home, a business, or a managed property?",
+    });
+    expect(loggingService.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "ai_repeat_question_blocked" }),
+      AiService.name,
+    );
+  });
+
+  it("sends only the appointment email path when live slots are offered", async () => {
+    aiProvider.createCompletion.mockResolvedValue({
+      id: "resp-availability-job",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: [
+              {
+                id: "call-availability-job",
+                type: "function",
+                function: {
+                  name: "create_job",
+                  arguments: JSON.stringify({
+                    customerName: "Alice",
+                    phone: "2165551212",
+                    address: "1 Main Street, Euclid, Ohio 44119",
+                    issueCategory: "COOLING",
+                    urgency: "STANDARD",
+                    description: "AC blowing hot air",
+                    propertyType: "RESIDENTIAL",
+                    serviceIntent: "REPAIR",
+                  }),
+                },
+              },
+            ],
+          },
+        },
+      ],
+    } as never);
+    const jobRecord: JobRecord = {
+      id: "slot-job-1",
+      tenantId,
+      customerName: "Alice",
+      phone: "+12165551212",
+      address: "1 Main Street, Euclid, Ohio 44119",
+      issueCategory: "COOLING",
+      urgency: "STANDARD",
+      description: "AC blowing hot air",
+      propertyType: "RESIDENTIAL",
+      serviceIntent: "REPAIR",
+      status: "CREATED",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    jobsRepository.createJobFromToolCall.mockResolvedValue(jobRecord);
+    schedulingService.isInstantBookingEligible.mockReturnValue(true);
+    schedulingService.getAvailableSlots.mockResolvedValue([
+      {
+        token: "slot-token",
+        start: "2026-08-31T12:00:00.000Z",
+        end: "2026-08-31T15:00:00.000Z",
+        label: "Mon, Aug 31, 8–11 AM",
+      },
+    ]);
+
+    const response = await service.triage(tenantId, sessionId, "Create job");
+
+    expect(response).toMatchObject({ status: "availability" });
+    expect(jobNotificationService.enqueueJobCreated).not.toHaveBeenCalled();
   });
 
   it("forces job creation when the assistant claims a completed intake without calling the tool", async () => {
