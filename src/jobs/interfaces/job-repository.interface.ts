@@ -6,6 +6,13 @@ export interface CreateJobPayload {
   urgency: string;
   description?: string;
   preferredTime?: string;
+  propertyType: "RESIDENTIAL" | "COMMERCIAL" | "MANAGED";
+  serviceIntent:
+    | "DIAGNOSTIC"
+    | "REPAIR"
+    | "INSTALLATION"
+    | "MAINTENANCE"
+    | "OTHER";
 }
 
 export interface CreateJobRequest {
@@ -40,6 +47,11 @@ export interface JobRecord {
   description?: string;
   preferredTime?: string;
   preferredTimeText?: string;
+  propertyType: CreateJobPayload["propertyType"];
+  serviceIntent: CreateJobPayload["serviceIntent"];
+  serviceWindowStart?: Date;
+  serviceWindowEnd?: Date;
+  calendarEventId?: string;
   status: JobStatus;
   createdAt: Date;
   updatedAt: Date;

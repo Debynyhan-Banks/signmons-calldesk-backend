@@ -14,6 +14,6 @@ import { JobNotificationService } from "./job-notification.service";
     },
     JobsToolRegistrar,
   ],
-  exports: [JOB_REPOSITORY, JobsService],
+  exports: [JOB_REPOSITORY, JobsService, JobNotificationService],
 })
 export class JobsModule {}

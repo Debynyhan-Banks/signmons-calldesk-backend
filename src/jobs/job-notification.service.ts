@@ -24,7 +24,25 @@ export class JobNotificationService {
     });
   }
 
+  enqueueAppointmentConfirmed(job: JobRecord): void {
+    void this.notifyAppointmentConfirmed(job).catch((error: unknown) => {
+      this.loggingService.error(
+        `Unexpected appointment notification failure for job ${job.id}.`,
+        error instanceof Error ? error : undefined,
+        JobNotificationService.name,
+      );
+    });
+  }
+
+  async notifyAppointmentConfirmed(job: JobRecord): Promise<void> {
+    await this.deliver(job, true);
+  }
+
   async notifyJobCreated(job: JobRecord): Promise<void> {
+    await this.deliver(job, false);
+  }
+
+  private async deliver(job: JobRecord, confirmed: boolean): Promise<void> {
     const deliveries: Array<{
       channel: NotificationChannel;
       send: () => Promise<void>;
@@ -32,7 +50,10 @@ export class JobNotificationService {
 
     if (this.config.jobNotificationEmails.length > 0) {
       if (this.config.resendApiKey && this.config.resendFromEmail) {
-        deliveries.push({ channel: "email", send: () => this.sendEmail(job) });
+        deliveries.push({
+          channel: "email",
+          send: () => this.sendEmail(job, confirmed),
+        });
       } else {
         this.logConfigurationWarning(job.id, "email");
       }
@@ -44,7 +65,10 @@ export class JobNotificationService {
         this.config.twilioAuthToken &&
         this.config.twilioPhoneNumber
       ) {
-        deliveries.push({ channel: "sms", send: () => this.sendSms(job) });
+        deliveries.push({
+          channel: "sms",
+          send: () => this.sendSms(job, confirmed),
+        });
       } else {
         this.logConfigurationWarning(job.id, "sms");
       }
@@ -83,7 +107,7 @@ export class JobNotificationService {
     });
   }
 
-  private async sendEmail(job: JobRecord): Promise<void> {
+  private async sendEmail(job: JobRecord, confirmed: boolean): Promise<void> {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -93,9 +117,11 @@ export class JobNotificationService {
       body: JSON.stringify({
         from: this.config.resendFromEmail,
         to: this.config.jobNotificationEmails,
-        subject: `${job.urgency === "EMERGENCY" ? "URGENT: " : ""}New Signmons request — ${job.issueCategory}`,
-        text: this.buildPlainText(job),
-        html: this.buildHtml(job),
+        subject: confirmed
+          ? `Appointment confirmed — ${job.customerName}`
+          : `${job.urgency === "EMERGENCY" ? "URGENT: " : ""}New Signmons request — ${job.issueCategory}`,
+        text: this.buildPlainText(job, confirmed),
+        html: this.buildHtml(job, confirmed),
       }),
       signal: AbortSignal.timeout(8_000),
     });
@@ -105,12 +131,12 @@ export class JobNotificationService {
     }
   }
 
-  private async sendSms(job: JobRecord): Promise<void> {
+  private async sendSms(job: JobRecord, confirmed: boolean): Promise<void> {
     const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(this.config.twilioAccountSid)}/Messages.json`;
     const authorization = Buffer.from(
       `${this.config.twilioAccountSid}:${this.config.twilioAuthToken}`,
     ).toString("base64");
-    const body = this.buildSms(job);
+    const body = this.buildSms(job, confirmed);
 
     const results = await Promise.all(
       this.config.jobNotificationSmsNumbers.map(async (recipient) => {
@@ -137,9 +163,11 @@ export class JobNotificationService {
     void results;
   }
 
-  private buildPlainText(job: JobRecord): string {
+  private buildPlainText(job: JobRecord, confirmed: boolean): string {
     return [
-      "New service request created by Signmons",
+      confirmed
+        ? "Residential diagnostic appointment confirmed by Signmons"
+        : "New service request created by Signmons",
       `Reference: ${this.reference(job.id)}`,
       `Customer: ${job.customerName}`,
       `Phone: ${job.phone}`,
@@ -148,11 +176,13 @@ export class JobNotificationService {
       `Preferred time: ${job.preferredTimeText ?? job.preferredTime ?? "Not provided"}`,
       `Address: ${job.address ?? "Not provided"}`,
       `Details: ${job.description ?? "Not provided"}`,
-      "The requested time is a preference and is not a confirmed appointment.",
+      confirmed
+        ? "This appointment was instantly confirmed from live calendar availability."
+        : "The requested time is a preference and is not a confirmed appointment.",
     ].join("\n");
   }
 
-  private buildHtml(job: JobRecord): string {
+  private buildHtml(job: JobRecord, confirmed: boolean): string {
     const rows = [
       ["Reference", this.reference(job.id)],
       ["Customer", job.customerName],
@@ -172,12 +202,20 @@ export class JobNotificationService {
       )
       .join("");
 
-    return `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0b2646"><div style="max-width:640px;border:1px solid #d9e1ec"><div style="padding:20px 24px;background:#0b2646;color:white;border-bottom:5px solid #f47a38"><strong>New Signmons service request</strong></div><div style="padding:24px"><table style="width:100%;border-collapse:collapse">${rows}</table><p style="margin:20px 0 0;color:#667085">The requested time is a preference and is not a confirmed appointment.</p><p><a href="tel:${escapeHtml(job.phone)}" style="display:inline-block;padding:12px 16px;background:#f47a38;color:#0b2646;text-decoration:none;font-weight:bold">Call customer</a></p></div></div></body></html>`;
+    const heading = confirmed
+      ? "Residential diagnostic appointment confirmed"
+      : "New Signmons service request";
+    const note = confirmed
+      ? "This appointment was instantly confirmed from live calendar availability."
+      : "The requested time is a preference and is not a confirmed appointment.";
+    return `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0b2646"><div style="max-width:640px;border:1px solid #d9e1ec"><div style="padding:20px 24px;background:#0b2646;color:white;border-bottom:5px solid #f47a38"><strong>${heading}</strong></div><div style="padding:24px"><table style="width:100%;border-collapse:collapse">${rows}</table><p style="margin:20px 0 0;color:#667085">${note}</p><p><a href="tel:${escapeHtml(job.phone)}" style="display:inline-block;padding:12px 16px;background:#f47a38;color:#0b2646;text-decoration:none;font-weight:bold">Call customer</a></p></div></div></body></html>`;
   }
 
-  private buildSms(job: JobRecord): string {
+  private buildSms(job: JobRecord, confirmed: boolean): string {
     const time = job.preferredTimeText ?? job.preferredTime ?? "not provided";
-    return `New Signmons request ${this.reference(job.id)}: ${job.customerName}, ${job.phone}, ${job.issueCategory}, ${job.urgency}, preferred ${time}. Not yet confirmed.`;
+    return confirmed
+      ? `CONFIRMED ${this.reference(job.id)}: ${job.customerName}, ${job.phone}, residential ${job.issueCategory} diagnostic, ${time}.`
+      : `New Signmons request ${this.reference(job.id)}: ${job.customerName}, ${job.phone}, ${job.issueCategory}, ${job.urgency}, preferred ${time}. Not yet confirmed.`;
   }
 
   private reference(jobId: string): string {

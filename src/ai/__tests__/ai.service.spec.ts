@@ -119,6 +119,10 @@ describe("AiService", () => {
       callLogService,
       conversationsService,
       new LifeSafetyService(),
+      {
+        isInstantBookingEligible: jest.fn().mockReturnValue(false),
+        getAvailableSlots: jest.fn(),
+      } as never,
       config,
     );
   });

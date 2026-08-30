@@ -341,6 +341,7 @@ model Job {
   preferredTimeText    String? @db.VarChar(160)
   serviceWindowStart   DateTime?
   serviceWindowEnd     DateTime?
+  calendarEventId      String? @db.VarChar(256)
 
   offerExpiresAt  DateTime?
   acceptedAt      DateTime?
@@ -364,6 +365,7 @@ model Job {
   @@index([customerId, customerTenantId])
   @@index([propertyAddressId, propertyAddressTenantId])
   @@index([serviceCategoryId, serviceCategoryTenantId])
+  @@unique([tenantId, serviceWindowStart, serviceWindowEnd])
 }
 
 model JobOffer {

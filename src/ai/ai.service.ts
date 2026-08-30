@@ -23,6 +23,7 @@ import { ConversationsService } from "../conversations/conversations.service";
 import appConfig from "../config/app.config";
 import { getRequestContext } from "../common/context/request-context";
 import { LifeSafetyService } from "./safety/life-safety.service";
+import { SchedulingService } from "../scheduling/scheduling.service";
 
 @Injectable()
 export class AiService {
@@ -39,6 +40,7 @@ export class AiService {
     private readonly callLogService: CallLogService,
     private readonly conversationsService: ConversationsService,
     private readonly lifeSafetyService: LifeSafetyService,
+    private readonly schedulingService: SchedulingService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {
@@ -234,6 +236,29 @@ export class AiService {
         sessionId,
         conversationId,
       );
+      if (this.schedulingService.isInstantBookingEligible(job)) {
+        try {
+          const slots = await this.schedulingService.getAvailableSlots(job);
+          if (slots.length) {
+            return {
+              status: "availability" as const,
+              job,
+              slots,
+              message:
+                "Choose an available arrival window to confirm your residential diagnostic appointment.",
+            };
+          }
+        } catch (error) {
+          this.loggingService.warn(
+            {
+              event: "appointment_availability_unavailable",
+              jobId: job.id,
+              reason: error instanceof Error ? error.message : "unknown",
+            },
+            AiService.name,
+          );
+        }
+      }
       return {
         status: "job_created",
         job,

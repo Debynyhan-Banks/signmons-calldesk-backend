@@ -23,6 +23,13 @@ const ISSUE_CATEGORIES = [
 type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
 
 type Urgency = "EMERGENCY" | "STANDARD";
+type PropertyType = "RESIDENTIAL" | "COMMERCIAL" | "MANAGED";
+type ServiceIntent =
+  | "DIAGNOSTIC"
+  | "REPAIR"
+  | "INSTALLATION"
+  | "MAINTENANCE"
+  | "OTHER";
 
 const transformRequiredString = ({ value }: TransformFnParams): string =>
   typeof value === "string" ? value.trim() : "";
@@ -77,4 +84,10 @@ export class CreateJobPayloadDto {
   @IsString()
   @MaxLength(160)
   preferredTime?: string;
+
+  @IsEnum(["RESIDENTIAL", "COMMERCIAL", "MANAGED"])
+  propertyType!: PropertyType;
+
+  @IsEnum(["DIAGNOSTIC", "REPAIR", "INSTALLATION", "MAINTENANCE", "OTHER"])
+  serviceIntent!: ServiceIntent;
 }

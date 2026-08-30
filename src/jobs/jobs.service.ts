@@ -103,7 +103,10 @@ export class JobsService implements IJobRepository {
           ),
           preferredTimeText: normalizedPayload.preferredTime ?? null,
           pricingSnapshot: {},
-          policySnapshot: {},
+          policySnapshot: {
+            propertyType: normalizedPayload.propertyType,
+            serviceIntent: normalizedPayload.serviceIntent,
+          },
         },
         include: {
           customer: true,
@@ -193,6 +196,8 @@ export class JobsService implements IJobRepository {
       "urgency",
       "description",
       "preferredTime",
+      "propertyType",
+      "serviceIntent",
     ]);
     return Object.keys(payload).filter((key) => !allowed.has(key));
   }
@@ -236,6 +241,18 @@ export class JobsService implements IJobRepository {
       urgency: normalizedUrgency,
       description: this.normalizeOptionalText(payload.description),
       preferredTime: this.normalizeOptionalText(payload.preferredTime),
+      propertyType: (this.normalizeEnum(payload.propertyType, [
+        "RESIDENTIAL",
+        "COMMERCIAL",
+        "MANAGED",
+      ]) || "MANAGED") as CreateJobPayload["propertyType"],
+      serviceIntent: (this.normalizeEnum(payload.serviceIntent, [
+        "DIAGNOSTIC",
+        "REPAIR",
+        "INSTALLATION",
+        "MAINTENANCE",
+        "OTHER",
+      ]) || "OTHER") as CreateJobPayload["serviceIntent"],
     };
   }
 
@@ -279,6 +296,19 @@ export class JobsService implements IJobRepository {
       description: job.description ?? undefined,
       preferredTime: job.preferredWindowLabel ?? undefined,
       preferredTimeText: job.preferredTimeText ?? undefined,
+      propertyType: this.policyValue(
+        job.policySnapshot,
+        "propertyType",
+        "MANAGED",
+      ) as CreateJobPayload["propertyType"],
+      serviceIntent: this.policyValue(
+        job.policySnapshot,
+        "serviceIntent",
+        "OTHER",
+      ) as CreateJobPayload["serviceIntent"],
+      serviceWindowStart: job.serviceWindowStart ?? undefined,
+      serviceWindowEnd: job.serviceWindowEnd ?? undefined,
+      calendarEventId: job.calendarEventId ?? undefined,
       status: job.status,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
@@ -378,6 +408,26 @@ export class JobsService implements IJobRepository {
     if (typeof value !== "string") return undefined;
     const sanitized = this.sanitizationService.sanitizeText(value);
     return sanitized.length ? sanitized : undefined;
+  }
+
+  private normalizeEnum(value: unknown, allowed: readonly string[]): string {
+    if (typeof value !== "string") return "";
+    const normalized = this.sanitizationService
+      .normalizeWhitespace(value)
+      .toUpperCase();
+    return allowed.includes(normalized) ? normalized : "";
+  }
+
+  private policyValue(
+    snapshot: Prisma.JsonValue,
+    key: string,
+    fallback: string,
+  ): string {
+    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+      return fallback;
+    }
+    const value = (snapshot as Record<string, unknown>)[key];
+    return typeof value === "string" ? value : fallback;
   }
 
   private normalizePhone(value: unknown): string {

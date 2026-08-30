@@ -3,9 +3,10 @@ import { AiModule } from "../../ai/ai.module";
 import { TenantGuard } from "../../common/guards/tenant.guard";
 import { WebchatController } from "./webchat.controller";
 import { WebchatIntegrationGuard } from "./webchat-integration.guard";
+import { SchedulingModule } from "../../scheduling/scheduling.module";
 
 @Module({
-  imports: [AiModule],
+  imports: [AiModule, SchedulingModule],
   controllers: [WebchatController],
   providers: [WebchatIntegrationGuard, TenantGuard],
 })

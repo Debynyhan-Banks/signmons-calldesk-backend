@@ -50,6 +50,23 @@ export const CREATE_JOB_TOOL: ChatCompletionTool = {
           description:
             "Customer's preferred date, time, range, or general availability in their own words, if mentioned. Preserve wording such as 'Tuesday after 3', 'between 4 and 6', or 'anytime next week'.",
         },
+        propertyType: {
+          type: "string",
+          description: "Type of property receiving service.",
+          enum: ["RESIDENTIAL", "COMMERCIAL", "MANAGED"],
+        },
+        serviceIntent: {
+          type: "string",
+          description:
+            "Whether the customer needs diagnosis, repair, installation, maintenance, or another service.",
+          enum: [
+            "DIAGNOSTIC",
+            "REPAIR",
+            "INSTALLATION",
+            "MAINTENANCE",
+            "OTHER",
+          ],
+        },
       },
       required: [
         "customerName",
@@ -57,7 +74,8 @@ export const CREATE_JOB_TOOL: ChatCompletionTool = {
         "issueCategory",
         "urgency",
         "description",
-        "preferredTime",
+        "propertyType",
+        "serviceIntent",
       ],
       additionalProperties: false,
     },

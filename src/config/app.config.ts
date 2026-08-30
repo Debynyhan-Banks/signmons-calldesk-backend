@@ -30,6 +30,11 @@ export interface AppConfig {
   twilioPhoneNumber: string;
   jobNotificationSmsNumbers: string[];
   conversationDataEncryptionKey: string;
+  schedulingEnabled: boolean;
+  googleCalendarId: string;
+  schedulingTimeZone: string;
+  schedulingLookaheadDays: number;
+  schedulingMinNoticeMinutes: number;
 }
 
 export interface WebchatIntegrationConfig {
@@ -96,6 +101,16 @@ export default registerAs("app", (): AppConfig => {
     ),
     conversationDataEncryptionKey:
       process.env.CONVERSATION_DATA_ENCRYPTION_KEY ?? "0".repeat(64),
+    schedulingEnabled:
+      (process.env.SCHEDULING_ENABLED ?? "false").toLowerCase() === "true",
+    googleCalendarId: process.env.GOOGLE_CALENDAR_ID ?? "",
+    schedulingTimeZone: process.env.SCHEDULING_TIME_ZONE ?? "America/New_York",
+    schedulingLookaheadDays: Number(
+      process.env.SCHEDULING_LOOKAHEAD_DAYS ?? 14,
+    ),
+    schedulingMinNoticeMinutes: Number(
+      process.env.SCHEDULING_MIN_NOTICE_MINUTES ?? 120,
+    ),
   };
 });
 

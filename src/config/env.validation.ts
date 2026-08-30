@@ -57,6 +57,13 @@ export const envValidationSchema = Joi.object({
       .pattern(/^[0-9a-f]{64}$/i)
       .default("0".repeat(64)),
   }),
+  SCHEDULING_ENABLED: Joi.string()
+    .valid("true", "false", "TRUE", "FALSE")
+    .default("false"),
+  GOOGLE_CALENDAR_ID: Joi.string().allow("").default(""),
+  SCHEDULING_TIME_ZONE: Joi.string().default("America/New_York"),
+  SCHEDULING_LOOKAHEAD_DAYS: Joi.number().min(1).max(45).default(14),
+  SCHEDULING_MIN_NOTICE_MINUTES: Joi.number().min(0).max(10080).default(120),
   PORT: Joi.number().min(0).max(65535).default(3000),
 }).custom((rawValues: unknown, helpers) => {
   const values = rawValues as Record<string, unknown>;
@@ -134,6 +141,12 @@ export const envValidationSchema = Joi.object({
       values.FIREBASE_PROJECT_ID ||
       values.GOOGLE_CLOUD_PROJECT;
     if (!firebaseProject) return helpers.error("any.invalid");
+  }
+  if (
+    String(values.SCHEDULING_ENABLED).toLowerCase() === "true" &&
+    !hasConfiguredString(values.GOOGLE_CALENDAR_ID)
+  ) {
+    return helpers.error("any.invalid");
   }
   return values;
 });
