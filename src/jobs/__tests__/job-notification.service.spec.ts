@@ -147,6 +147,52 @@ describe("JobNotificationService", () => {
     );
   });
 
+  it("sends one clear reschedule notification with the new confirmed time", async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 202 }));
+    const service = createService({
+      resendApiKey: "resend-test-key",
+      resendFromEmail: "Eternity <requests@mail.eternityhvacr.com>",
+      jobNotificationEmails: ["ben@eternityhvacr.com"],
+    });
+
+    await service.notifyAppointmentRescheduled({
+      ...job,
+      preferredTimeText: "Thursday, September 3, 11:00 AM–2:00 PM",
+    });
+
+    const [, request] = fetchSpy.mock.calls[0];
+    const payload = JSON.parse(
+      typeof request?.body === "string" ? request.body : "{}",
+    ) as {
+      subject: string;
+      text: string;
+    };
+    expect(payload.subject).toBe("Appointment rescheduled — Alice Example");
+    expect(payload.text).toContain("Thursday, September 3, 11:00 AM–2:00 PM");
+    expect(payload.text).toContain("Eternity Dispatch has been updated");
+  });
+
+  it("sends one cancellation notification confirming the slot was released", async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 202 }));
+    const service = createService({
+      resendApiKey: "resend-test-key",
+      resendFromEmail: "Eternity <requests@mail.eternityhvacr.com>",
+      jobNotificationEmails: ["ben@eternityhvacr.com"],
+    });
+
+    await service.notifyAppointmentCancelled(job);
+
+    const [, request] = fetchSpy.mock.calls[0];
+    const payload = JSON.parse(
+      typeof request?.body === "string" ? request.body : "{}",
+    ) as {
+      subject: string;
+      text: string;
+    };
+    expect(payload.subject).toBe("Appointment cancelled — Alice Example");
+    expect(payload.text).toContain("calendar time has been released");
+  });
+
   function createService(
     overrides: Partial<ConfigType<typeof appConfig>>,
   ): JobNotificationService {

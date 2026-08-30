@@ -30,10 +30,26 @@ interface SignedSlot {
   expiresAt: number;
 }
 
+interface SignedAppointmentManagement {
+  version: 1;
+  purpose: "appointment-management";
+  tenantId: string;
+  jobId: string;
+  expiresAt: number;
+}
+
 interface BusyPeriod {
   start: string;
   end: string;
 }
+
+type AppointmentJob = Prisma.JobGetPayload<{
+  include: {
+    customer: true;
+    propertyAddress: true;
+    serviceCategory: true;
+  };
+}>;
 
 const SERVICE_WINDOWS = [
   { label: "8–11 AM", start: "08:00", end: "11:00" },
@@ -248,19 +264,282 @@ export class SchedulingService {
     }
   }
 
+  async manageAppointment(input: {
+    tenantId: string;
+    managementToken: string;
+    action: "view" | "availability" | "reschedule" | "cancel";
+    slotToken?: string;
+  }) {
+    const authority = this.verifyManagementToken(
+      input.managementToken,
+      input.tenantId,
+    );
+    const job = await this.loadAppointment(authority.tenantId, authority.jobId);
+    const record = this.mapJob(job);
+
+    if (input.action === "view") {
+      return this.managementResponse(record);
+    }
+
+    if (input.action === "cancel") {
+      return this.cancelAppointment(job);
+    }
+
+    if (
+      job.status !== JobStatus.ACCEPTED ||
+      !job.calendarEventId ||
+      !job.serviceWindowStart ||
+      !job.serviceWindowEnd
+    ) {
+      throw new ConflictException(
+        "This appointment can no longer be changed online. Please call Eternity.",
+      );
+    }
+
+    if (input.action === "availability") {
+      const slots = await this.getAvailableSlots(record);
+      return {
+        status: "appointment_availability" as const,
+        appointment: this.appointmentSummary(record),
+        slots,
+      };
+    }
+
+    if (!input.slotToken) {
+      throw new BadRequestException("Choose a new appointment time.");
+    }
+    return this.rescheduleAppointment(job, record, input.slotToken);
+  }
+
   private confirmedResponse(job: JobRecord) {
     return {
       status: "appointment_confirmed" as const,
       job,
-      appointment: {
-        start: job.serviceWindowStart?.toISOString(),
-        end: job.serviceWindowEnd?.toISOString(),
-        label:
-          job.serviceWindowStart && job.serviceWindowEnd
-            ? this.formatWindow(job.serviceWindowStart, job.serviceWindowEnd)
-            : "Confirmed",
-      },
+      appointment: this.appointmentSummary(job),
+      managementToken: this.signManagementToken(job),
     };
+  }
+
+  private managementResponse(job: JobRecord) {
+    return {
+      status: "appointment_details" as const,
+      state: job.status === "CANCELLED" ? "cancelled" : "confirmed",
+      reference: this.reference(job.id),
+      appointment: this.appointmentSummary(job),
+    };
+  }
+
+  private appointmentSummary(job: JobRecord) {
+    return {
+      start: job.serviceWindowStart?.toISOString(),
+      end: job.serviceWindowEnd?.toISOString(),
+      label:
+        job.serviceWindowStart && job.serviceWindowEnd
+          ? this.formatWindow(job.serviceWindowStart, job.serviceWindowEnd)
+          : (job.preferredTimeText ?? "Cancelled"),
+    };
+  }
+
+  private async rescheduleAppointment(
+    job: AppointmentJob,
+    record: JobRecord,
+    slotToken: string,
+  ) {
+    const slot = this.verifySlot(slotToken);
+    if (slot.tenantId !== job.tenantId || slot.jobId !== job.id) {
+      throw new BadRequestException("This appointment choice is invalid.");
+    }
+    const start = new Date(slot.start);
+    const end = new Date(slot.end);
+    if (
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start >= end
+    ) {
+      throw new BadRequestException("This appointment choice is invalid.");
+    }
+    if (
+      job.serviceWindowStart?.getTime() === start.getTime() &&
+      job.serviceWindowEnd?.getTime() === end.getTime()
+    ) {
+      return {
+        status: "appointment_rescheduled" as const,
+        reference: this.reference(job.id),
+        appointment: this.appointmentSummary(record),
+      };
+    }
+    const busy = await this.fetchBusy(start, end);
+    if (this.overlapsBusy(start, end, busy)) {
+      throw new ConflictException(
+        "That appointment was just taken. Please choose another time.",
+      );
+    }
+
+    const originalStart = job.serviceWindowStart;
+    const originalEnd = job.serviceWindowEnd;
+    const originalTimeText = job.preferredTimeText;
+    const calendarEventId = job.calendarEventId;
+    if (!calendarEventId) {
+      throw new ConflictException(
+        "This appointment can no longer be changed online. Please call Eternity.",
+      );
+    }
+    try {
+      const reservation = await this.prisma.job.updateMany({
+        where: {
+          id: job.id,
+          tenantId: job.tenantId,
+          status: JobStatus.ACCEPTED,
+          calendarEventId,
+          serviceWindowStart: originalStart,
+          serviceWindowEnd: originalEnd,
+        },
+        data: {
+          serviceWindowStart: start,
+          serviceWindowEnd: end,
+          preferredTimeText: this.formatWindow(start, end),
+        },
+      });
+      if (reservation.count !== 1) {
+        throw new ConflictException(
+          "This appointment changed while you were viewing it. Please refresh.",
+        );
+      }
+      await this.updateCalendarEvent(calendarEventId, start, end);
+      const updatedRecord: JobRecord = {
+        ...record,
+        serviceWindowStart: start,
+        serviceWindowEnd: end,
+        preferredTimeText: this.formatWindow(start, end),
+        updatedAt: new Date(),
+      };
+      this.notifications.enqueueAppointmentRescheduled(updatedRecord);
+      return {
+        status: "appointment_rescheduled" as const,
+        reference: this.reference(job.id),
+        appointment: this.appointmentSummary(updatedRecord),
+      };
+    } catch (error) {
+      await this.prisma.job.updateMany({
+        where: {
+          id: job.id,
+          tenantId: job.tenantId,
+          calendarEventId,
+          serviceWindowStart: start,
+          serviceWindowEnd: end,
+        },
+        data: {
+          serviceWindowStart: originalStart,
+          serviceWindowEnd: originalEnd,
+          preferredTimeText: originalTimeText,
+        },
+      });
+      if (error instanceof ConflictException) throw error;
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictException(
+          "That appointment was just taken. Please choose another time.",
+        );
+      }
+      this.loggingService.error(
+        `Appointment reschedule failed for job ${job.id}.`,
+        error instanceof Error ? error : undefined,
+        SchedulingService.name,
+      );
+      throw new ServiceUnavailableException(
+        "We could not change that appointment. Your original time is still reserved.",
+      );
+    }
+  }
+
+  private async cancelAppointment(job: AppointmentJob) {
+    if (job.status === JobStatus.CANCELLED) {
+      return {
+        status: "appointment_cancelled" as const,
+        reference: this.reference(job.id),
+      };
+    }
+    if (
+      job.status !== JobStatus.ACCEPTED ||
+      !job.calendarEventId ||
+      !job.serviceWindowStart ||
+      !job.serviceWindowEnd
+    ) {
+      throw new ConflictException(
+        "This appointment can no longer be cancelled online. Please call Eternity.",
+      );
+    }
+
+    const eventId = job.calendarEventId;
+    const originalStart = job.serviceWindowStart;
+    const originalEnd = job.serviceWindowEnd;
+    const originalTimeText =
+      job.preferredTimeText ?? this.formatWindow(originalStart, originalEnd);
+    const cancellation = await this.prisma.job.updateMany({
+      where: {
+        id: job.id,
+        tenantId: job.tenantId,
+        status: JobStatus.ACCEPTED,
+        calendarEventId: eventId,
+        serviceWindowStart: originalStart,
+        serviceWindowEnd: originalEnd,
+      },
+      data: {
+        status: JobStatus.CANCELLED,
+        calendarEventId: null,
+        serviceWindowStart: null,
+        serviceWindowEnd: null,
+        preferredTimeText: originalTimeText,
+      },
+    });
+    if (cancellation.count !== 1) {
+      throw new ConflictException(
+        "This appointment changed while you were viewing it. Please refresh.",
+      );
+    }
+
+    try {
+      await this.deleteCalendarEvent(eventId);
+      this.notifications.enqueueAppointmentCancelled({
+        ...this.mapJob(job),
+        status: "CANCELLED",
+        calendarEventId: undefined,
+        serviceWindowStart: undefined,
+        serviceWindowEnd: undefined,
+        preferredTimeText: originalTimeText,
+        updatedAt: new Date(),
+      });
+      return {
+        status: "appointment_cancelled" as const,
+        reference: this.reference(job.id),
+      };
+    } catch (error) {
+      await this.prisma.job.updateMany({
+        where: {
+          id: job.id,
+          tenantId: job.tenantId,
+          status: JobStatus.CANCELLED,
+          calendarEventId: null,
+        },
+        data: {
+          status: JobStatus.ACCEPTED,
+          calendarEventId: eventId,
+          serviceWindowStart: originalStart,
+          serviceWindowEnd: originalEnd,
+          preferredTimeText: originalTimeText,
+        },
+      });
+      this.loggingService.error(
+        `Appointment cancellation failed for job ${job.id}.`,
+        error instanceof Error ? error : undefined,
+        SchedulingService.name,
+      );
+      throw new ServiceUnavailableException(
+        "We could not cancel that appointment. It remains scheduled; please call Eternity.",
+      );
+    }
   }
 
   private buildCandidates(now: Date) {
@@ -373,6 +652,68 @@ export class SchedulingService {
     return payload.id;
   }
 
+  private async updateCalendarEvent(
+    eventId: string,
+    start: Date,
+    end: Date,
+  ): Promise<void> {
+    const headers = await this.authorizationHeaders();
+    const calendarId = encodeURIComponent(this.config.googleCalendarId);
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(eventId)}`,
+      {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({
+          start: {
+            dateTime: start.toISOString(),
+            timeZone: this.config.schedulingTimeZone,
+          },
+          end: {
+            dateTime: end.toISOString(),
+            timeZone: this.config.schedulingTimeZone,
+          },
+        }),
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`Google Calendar returned HTTP ${response.status}.`);
+    }
+  }
+
+  private async deleteCalendarEvent(eventId: string): Promise<void> {
+    const headers = await this.authorizationHeaders();
+    const calendarId = encodeURIComponent(this.config.googleCalendarId);
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(eventId)}`,
+      {
+        method: "DELETE",
+        headers,
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Google Calendar returned HTTP ${response.status}.`);
+    }
+  }
+
+  private async loadAppointment(
+    tenantId: string,
+    jobId: string,
+  ): Promise<AppointmentJob> {
+    const job = await this.prisma.job.findFirst({
+      where: { id: jobId, tenantId },
+      include: {
+        customer: true,
+        propertyAddress: true,
+        serviceCategory: true,
+      },
+    });
+    if (!job) throw new BadRequestException("Appointment not found.");
+    return job;
+  }
+
   private async authorizationHeaders(): Promise<Record<string, string>> {
     const client = await this.auth.getClient();
     const headers = await client.getRequestHeaders();
@@ -396,6 +737,86 @@ export class SchedulingService {
       .update(encoded)
       .digest("base64url");
     return `${encoded}.${signature}`;
+  }
+
+  private signManagementToken(job: JobRecord): string {
+    return this.signPayload({
+      version: 1,
+      purpose: "appointment-management",
+      tenantId: job.tenantId,
+      jobId: job.id,
+      expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
+    });
+  }
+
+  private verifyManagementToken(
+    token: string,
+    tenantId: string,
+  ): SignedAppointmentManagement {
+    const payload = this.verifySignedPayload(token);
+    if (
+      payload.version !== 1 ||
+      payload.purpose !== "appointment-management" ||
+      typeof payload.tenantId !== "string" ||
+      typeof payload.jobId !== "string" ||
+      typeof payload.expiresAt !== "number" ||
+      payload.tenantId !== tenantId ||
+      payload.expiresAt < Date.now()
+    ) {
+      throw new BadRequestException(
+        "This appointment link is invalid or has expired.",
+      );
+    }
+    return payload as unknown as SignedAppointmentManagement;
+  }
+
+  private signPayload(payload: Record<string, unknown>): string {
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    const signature = createHmac(
+      "sha256",
+      this.config.conversationDataEncryptionKey,
+    )
+      .update(encoded)
+      .digest("base64url");
+    return `${encoded}.${signature}`;
+  }
+
+  private verifySignedPayload(token: string): Record<string, unknown> {
+    const [encoded, suppliedSignature] = token.split(".");
+    if (!encoded || !suppliedSignature) {
+      throw new BadRequestException(
+        "This appointment link is invalid or has expired.",
+      );
+    }
+    const expectedSignature = createHmac(
+      "sha256",
+      this.config.conversationDataEncryptionKey,
+    )
+      .update(encoded)
+      .digest("base64url");
+    const supplied = Buffer.from(suppliedSignature);
+    const expected = Buffer.from(expectedSignature);
+    if (
+      supplied.length !== expected.length ||
+      !timingSafeEqual(supplied, expected)
+    ) {
+      throw new BadRequestException(
+        "This appointment link is invalid or has expired.",
+      );
+    }
+    try {
+      const payload = JSON.parse(
+        Buffer.from(encoded, "base64url").toString("utf8"),
+      ) as unknown;
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        throw new Error("Invalid payload");
+      }
+      return payload as Record<string, unknown>;
+    } catch {
+      throw new BadRequestException(
+        "This appointment link is invalid or has expired.",
+      );
+    }
   }
 
   private verifySlot(token: string): SignedSlot {

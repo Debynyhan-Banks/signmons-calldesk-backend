@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import { GoogleAuth } from "google-auth-library";
 import type { AppConfig } from "../config/app.config";
 import type { JobNotificationService } from "../jobs/job-notification.service";
@@ -33,10 +34,14 @@ describe("SchedulingService", () => {
   const prisma = {
     job: {
       findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn(),
+      updateMany: jest.fn(),
     },
   };
   const notifications = {
     enqueueAppointmentConfirmed: jest.fn(),
+    enqueueAppointmentRescheduled: jest.fn(),
+    enqueueAppointmentCancelled: jest.fn(),
   };
   const logger = {
     error: jest.fn(),
@@ -47,6 +52,10 @@ describe("SchedulingService", () => {
   beforeEach(() => {
     jest.restoreAllMocks();
     prisma.job.findMany.mockResolvedValue([]);
+    prisma.job.findFirst.mockReset();
+    prisma.job.updateMany.mockReset();
+    notifications.enqueueAppointmentRescheduled.mockReset();
+    notifications.enqueueAppointmentCancelled.mockReset();
     service = new SchedulingService(
       prisma as unknown as PrismaService,
       notifications as unknown as JobNotificationService,
@@ -115,4 +124,159 @@ describe("SchedulingService", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  it("opens a confirmed appointment through a signed management link", async () => {
+    prisma.job.findFirst.mockResolvedValue(appointmentJob());
+
+    const result = await service.manageAppointment({
+      tenantId: baseJob.tenantId,
+      managementToken: managementToken(),
+      action: "view",
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: "appointment_details",
+        state: "confirmed",
+        reference: "11111111",
+      }),
+    );
+  });
+
+  it("reschedules the database and existing calendar event before notifying operations", async () => {
+    const current = appointmentJob();
+    const nextStart = new Date("2026-09-03T15:00:00.000Z");
+    const nextEnd = new Date("2026-09-03T18:00:00.000Z");
+    const updated = appointmentJob({
+      serviceWindowStart: nextStart,
+      serviceWindowEnd: nextEnd,
+      preferredTimeText: "Thursday, September 3, 11:00 AM–2:00 PM",
+    });
+    prisma.job.findFirst
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(updated);
+    prisma.job.updateMany.mockResolvedValue({ count: 1 });
+    jest.spyOn(GoogleAuth.prototype, "getClient").mockResolvedValue({
+      getRequestHeaders: jest
+        .fn()
+        .mockResolvedValue(new Headers({ authorization: "Bearer test" })),
+    } as never);
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            calendars: { "dispatch@example.com": { busy: [] } },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "event-1" }), { status: 200 }),
+      );
+
+    const result = await service.manageAppointment({
+      tenantId: baseJob.tenantId,
+      managementToken: managementToken(),
+      action: "reschedule",
+      slotToken: signedSlot(nextStart, nextEnd),
+    });
+
+    expect(result.status).toBe("appointment_rescheduled");
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      expect.stringContaining("/events/event-1"),
+      expect.objectContaining({ method: "PATCH" }),
+    );
+    expect(notifications.enqueueAppointmentRescheduled).toHaveBeenCalledTimes(
+      1,
+    );
+  });
+
+  it("cancels the job, deletes the calendar event and notifies operations once", async () => {
+    prisma.job.findFirst
+      .mockResolvedValueOnce(appointmentJob())
+      .mockResolvedValueOnce(
+        appointmentJob({
+          status: "CANCELLED",
+          calendarEventId: null,
+          serviceWindowStart: null,
+          serviceWindowEnd: null,
+        }),
+      );
+    prisma.job.updateMany.mockResolvedValue({ count: 1 });
+    jest.spyOn(GoogleAuth.prototype, "getClient").mockResolvedValue({
+      getRequestHeaders: jest
+        .fn()
+        .mockResolvedValue(new Headers({ authorization: "Bearer test" })),
+    } as never);
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+
+    const result = await service.manageAppointment({
+      tenantId: baseJob.tenantId,
+      managementToken: managementToken(),
+      action: "cancel",
+    });
+
+    expect(result.status).toBe("appointment_cancelled");
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/events/event-1"),
+      expect.objectContaining({ method: "DELETE" }),
+    );
+    expect(notifications.enqueueAppointmentCancelled).toHaveBeenCalledTimes(1);
+  });
+
+  function managementToken(): string {
+    return sign({
+      version: 1,
+      purpose: "appointment-management",
+      tenantId: baseJob.tenantId,
+      jobId: baseJob.id,
+      expiresAt: Date.now() + 60_000,
+    });
+  }
+
+  function signedSlot(start: Date, end: Date): string {
+    return sign({
+      tenantId: baseJob.tenantId,
+      jobId: baseJob.id,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      expiresAt: Date.now() + 60_000,
+    });
+  }
+
+  function sign(payload: Record<string, unknown>): string {
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    const signature = createHmac("sha256", config.conversationDataEncryptionKey)
+      .update(encoded)
+      .digest("base64url");
+    return `${encoded}.${signature}`;
+  }
+
+  function appointmentJob(overrides: Record<string, unknown> = {}) {
+    return {
+      id: baseJob.id,
+      tenantId: baseJob.tenantId,
+      customer: { fullName: baseJob.customerName, phone: baseJob.phone },
+      propertyAddress: { formattedAddress: baseJob.address },
+      serviceCategory: { name: baseJob.issueCategory },
+      urgency: baseJob.urgency,
+      description: baseJob.description,
+      policySnapshot: {
+        propertyType: "RESIDENTIAL",
+        serviceIntent: "DIAGNOSTIC",
+      },
+      preferredWindowLabel: null,
+      preferredTimeText: "Monday, August 31, 11:00 AM–2:00 PM",
+      serviceWindowStart: new Date("2026-08-31T15:00:00.000Z"),
+      serviceWindowEnd: new Date("2026-08-31T18:00:00.000Z"),
+      calendarEventId: "event-1",
+      status: "ACCEPTED",
+      createdAt: new Date("2026-08-30T12:00:00.000Z"),
+      updatedAt: new Date("2026-08-30T12:00:00.000Z"),
+      ...overrides,
+    };
+  }
 });

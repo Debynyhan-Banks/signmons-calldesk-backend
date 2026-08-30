@@ -90,6 +90,8 @@ Keep using admin tokens sparingly and rotate them if you share access.
 
 Customer availability is preserved in `Job.preferredTimeText` exactly as supplied after sanitization. Signmons also infers a broad `preferredWindowLabel` when possible, but an unrecognized date or time phrase never blocks an otherwise valid job.
 
+Eligible confirmed residential diagnostic appointments receive a signed, 90-day management credential. The website keeps that credential in the URL fragment so it is not sent with the initial page request. Customers can use it to view the confirmed Eastern Time window, choose another live window or cancel. Reschedules patch the existing Eternity Dispatch event; cancellations release the database reservation and calendar event. Each successful change produces one internal operations notification. Repeated cancellation requests are idempotent, and conflicts are rechecked before a replacement time is accepted.
+
 ## Tenant Identity Rules (T-01)
 
 - `tenantId` is authoritative from verified auth claims in production.

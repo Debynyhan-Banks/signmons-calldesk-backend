@@ -12,6 +12,7 @@ import { getRequestContext } from "../../common/context/request-context";
 import { TenantGuard } from "../../common/guards/tenant.guard";
 import { WebchatIntegrationGuard } from "./webchat-integration.guard";
 import { ConfirmAppointmentDto } from "../../scheduling/dto/confirm-appointment.dto";
+import { ManageAppointmentDto } from "../../scheduling/dto/manage-appointment.dto";
 import { SchedulingService } from "../../scheduling/scheduling.service";
 
 @Controller("api/integrations/webchat")
@@ -40,5 +41,15 @@ export class WebchatController {
       throw new UnauthorizedException("Tenant context is missing.");
     }
     return this.schedulingService.confirmAppointment({ tenantId, ...body });
+  }
+
+  @Post("appointments/manage")
+  @Throttle({ default: { limit: 20, ttl: 60 } })
+  manageAppointment(@Body() body: ManageAppointmentDto) {
+    const tenantId = getRequestContext()?.tenantId;
+    if (!tenantId) {
+      throw new UnauthorizedException("Tenant context is missing.");
+    }
+    return this.schedulingService.manageAppointment({ tenantId, ...body });
   }
 }
