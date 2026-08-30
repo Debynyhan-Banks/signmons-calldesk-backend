@@ -92,6 +92,12 @@ Customer availability is preserved in `Job.preferredTimeText` exactly as supplie
 
 Eligible confirmed residential diagnostic appointments receive a signed, 90-day management credential. The website keeps that credential in the URL fragment so it is not sent with the initial page request. Customers can use it to view the confirmed Eastern Time window, choose another live window or cancel. Reschedules patch the existing Eternity Dispatch event; cancellations release the database reservation and calendar event. Each successful change produces one internal operations notification. Repeated cancellation requests are idempotent, and conflicts are rechecked before a replacement time is accepted.
 
+### Planned customer appointment email improvement
+
+After an eligible calendar booking is committed, Signmons should send exactly one branded transactional confirmation email to the customer. The intake flow asks for the email once and retains it without repeating captured questions. The email includes the confirmed Eastern Time arrival window, appointment reference, concise service type, private absolute management link, calendar action, call/text fallback and a warning not to forward the link. A successful reschedule sends one updated confirmation; cancellation sends one cancellation notice without an active management action.
+
+Customer email-delivery failure must not roll back a confirmed job or calendar event. It must create an operator-visible delivery failure with a safe retry path. Management credentials must never be copied into analytics, ordinary application logs or operator message-preview telemetry. Customer SMS delivery remains a later optional channel after Twilio is configured and approved.
+
 ## Tenant Identity Rules (T-01)
 
 - `tenantId` is authoritative from verified auth claims in production.
