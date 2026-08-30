@@ -17,6 +17,8 @@ import { ToolSelectorService } from "../tools/tool-selector.service";
 import { ConversationsService } from "../../conversations/conversations.service";
 import { LifeSafetyService } from "../safety/life-safety.service";
 import { BadRequestException } from "@nestjs/common";
+import { CREATE_JOB_TOOL } from "../../jobs/tools/create-job.tool";
+import type { JobNotificationService } from "../../jobs/job-notification.service";
 
 jest.mock("fs", () => ({
   readFileSync: jest.fn(() => "System prompt"),
@@ -42,6 +44,7 @@ describe("AiService", () => {
   let tenantsService: jest.Mocked<TenantsService>;
   let callLogService: jest.Mocked<CallLogService>;
   let conversationsService: jest.Mocked<ConversationsService>;
+  let jobNotificationService: jest.Mocked<JobNotificationService>;
   let config: ReturnType<typeof appConfig>;
   let service: AiService;
 
@@ -86,6 +89,9 @@ describe("AiService", () => {
     conversationsService.ensureConversation.mockResolvedValue({
       id: "conversation-1",
     } as never);
+    jobNotificationService = {
+      enqueueOrphanedIntake: jest.fn(),
+    } as unknown as jest.Mocked<JobNotificationService>;
     config = {
       environment: "test",
       openAiApiKey: "test",
@@ -123,6 +129,7 @@ describe("AiService", () => {
         isInstantBookingEligible: jest.fn().mockReturnValue(false),
         getAvailableSlots: jest.fn(),
       } as never,
+      jobNotificationService,
       config,
     );
   });
@@ -217,7 +224,8 @@ describe("AiService", () => {
     expect(response).toEqual({
       status: "job_created",
       job: jobRecord,
-      message: "Job created successfully.",
+      message:
+        "Service request received — reference JOB1. Eternity will follow up using the contact information provided.",
     });
     expect(jobsRepository.createJobFromToolCall).toHaveBeenCalledWith({
       tenantId,
@@ -245,6 +253,163 @@ describe("AiService", () => {
       sessionId,
       "conversation-1",
     );
+  });
+
+  it("forces job creation when the assistant claims a completed intake without calling the tool", async () => {
+    (
+      toolSelector.getEnabledToolsForTenant as jest.MockedFunction<
+        ToolSelectorService["getEnabledToolsForTenant"]
+      >
+    ).mockReturnValue([CREATE_JOB_TOOL]);
+    aiProvider.createCompletion
+      .mockResolvedValueOnce({
+        id: "resp-unsubmitted",
+        model: "gpt-4o-mini",
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content:
+                "Just to confirm, I have: Name: Debynyhan Banks; Phone: received; Address: received; Issue: furnace blowing cold air; Property Type: Residential; Service Intent: Repair. I will pass this information to our human team for follow-up.",
+            },
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({
+        id: "resp-forced-job",
+        model: "gpt-4o-mini",
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                {
+                  id: "call-forced-job",
+                  type: "function",
+                  function: {
+                    name: "create_job",
+                    arguments: JSON.stringify({
+                      customerName: "Debynyhan Banks",
+                      phone: "216-703-3183",
+                      address: "2099 W Recher Ave, Euclid, OH 44119",
+                      issueCategory: "HEATING",
+                      urgency: "STANDARD",
+                      description: "Furnace is blowing cold air",
+                      propertyType: "RESIDENTIAL",
+                      serviceIntent: "REPAIR",
+                    }),
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      } as never);
+    const jobRecord: JobRecord = {
+      id: "a1b2c3d4-e5f6-4789-9012-345678901234",
+      tenantId,
+      customerName: "Debynyhan Banks",
+      phone: "+12167033183",
+      address: "2099 W Recher Ave, Euclid, OH 44119",
+      issueCategory: "HEATING",
+      urgency: "STANDARD",
+      description: "Furnace is blowing cold air",
+      propertyType: "RESIDENTIAL",
+      serviceIntent: "REPAIR",
+      status: "CREATED",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    jobsRepository.createJobFromToolCall.mockResolvedValue(jobRecord);
+
+    const response = await service.triage(tenantId, sessionId, "Repair");
+
+    expect(response).toMatchObject({
+      status: "job_created",
+      job: jobRecord,
+      message: expect.stringContaining("A1B2C3D4"),
+    });
+    expect(aiProvider.createCompletion).toHaveBeenCalledTimes(2);
+    expect(aiProvider.createCompletion).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        tools: [CREATE_JOB_TOOL],
+        toolChoice: {
+          type: "function",
+          function: { name: "create_job" },
+        },
+      }),
+    );
+    expect(loggingService.log).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "intake_auto_finalized" }),
+      AiService.name,
+    );
+  });
+
+  it("states that the request was not saved and alerts operations when forced creation fails", async () => {
+    (
+      toolSelector.getEnabledToolsForTenant as jest.MockedFunction<
+        ToolSelectorService["getEnabledToolsForTenant"]
+      >
+    ).mockReturnValue([CREATE_JOB_TOOL]);
+    aiProvider.createCompletion
+      .mockResolvedValueOnce({
+        id: "resp-unsubmitted",
+        choices: [
+          {
+            message: {
+              role: "assistant",
+              content:
+                "Just to confirm, I have: Name: Debynyhan Banks; Phone: received; Address: received; Issue: furnace blowing cold air; Property Type: Residential; Service Intent: Repair. We received your request and our team will follow up.",
+            },
+          },
+        ],
+      } as never)
+      .mockRejectedValueOnce(new Error("provider unavailable"));
+
+    const response = await service.triage(tenantId, sessionId, "Repair");
+
+    expect(response).toMatchObject({
+      status: "needs_correction",
+      reply: expect.stringContaining("has not been sent"),
+    });
+    expect(jobNotificationService.enqueueOrphanedIntake).toHaveBeenCalledWith(
+      sessionId,
+      expect.stringContaining("provider unavailable"),
+    );
+    expect(loggingService.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "orphaned_intake_detected" }),
+      AiService.name,
+    );
+  });
+
+  it("does not force a job from an unsupported follow-up promise without confirmed fields", async () => {
+    (
+      toolSelector.getEnabledToolsForTenant as jest.MockedFunction<
+        ToolSelectorService["getEnabledToolsForTenant"]
+      >
+    ).mockReturnValue([CREATE_JOB_TOOL]);
+    aiProvider.createCompletion.mockResolvedValue({
+      id: "resp-premature-follow-up",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: "Our team will follow up with you soon.",
+          },
+        },
+      ],
+    } as never);
+
+    const response = await service.triage(tenantId, sessionId, "I need help");
+
+    expect(response).toMatchObject({
+      status: "needs_correction",
+      reply: expect.stringContaining("has not been sent"),
+    });
+    expect(aiProvider.createCompletion).toHaveBeenCalledTimes(1);
+    expect(jobsRepository.createJobFromToolCall).not.toHaveBeenCalled();
+    expect(jobNotificationService.enqueueOrphanedIntake).toHaveBeenCalled();
   });
 
   it("turns invalid job fields into a recoverable correction question", async () => {

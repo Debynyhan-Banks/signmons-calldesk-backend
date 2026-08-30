@@ -55,8 +55,14 @@ describe("SchedulingService", () => {
     );
   });
 
-  it("allows only complete standard residential heating or cooling diagnostics", () => {
+  it("allows complete standard residential heating or cooling diagnostic and repair visits", () => {
     expect(service.isInstantBookingEligible(baseJob)).toBe(true);
+    expect(
+      service.isInstantBookingEligible({
+        ...baseJob,
+        serviceIntent: "REPAIR",
+      }),
+    ).toBe(true);
     expect(
       service.isInstantBookingEligible({
         ...baseJob,

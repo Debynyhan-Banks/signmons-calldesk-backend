@@ -59,7 +59,7 @@ export class SchedulingService {
     return (
       this.config.schedulingEnabled &&
       job.propertyType === "RESIDENTIAL" &&
-      job.serviceIntent === "DIAGNOSTIC" &&
+      ["DIAGNOSTIC", "REPAIR"].includes(job.serviceIntent) &&
       job.urgency === "STANDARD" &&
       Boolean(job.address && job.address !== "Unknown address") &&
       ["HEATING", "COOLING"].includes(job.issueCategory)

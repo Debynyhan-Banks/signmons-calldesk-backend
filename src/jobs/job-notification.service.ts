@@ -34,12 +34,67 @@ export class JobNotificationService {
     });
   }
 
+  enqueueOrphanedIntake(sessionId: string, reason: string): void {
+    void this.notifyOrphanedIntake(sessionId, reason).catch(
+      (error: unknown) => {
+        this.loggingService.error(
+          `Unexpected orphaned-intake notification failure for session ${sessionId}.`,
+          error instanceof Error ? error : undefined,
+          JobNotificationService.name,
+        );
+      },
+    );
+  }
+
   async notifyAppointmentConfirmed(job: JobRecord): Promise<void> {
     await this.deliver(job, true);
   }
 
   async notifyJobCreated(job: JobRecord): Promise<void> {
     await this.deliver(job, false);
+  }
+
+  async notifyOrphanedIntake(sessionId: string, reason: string): Promise<void> {
+    if (
+      this.config.jobNotificationEmails.length === 0 ||
+      !this.config.resendApiKey ||
+      !this.config.resendFromEmail
+    ) {
+      this.loggingService.warn(
+        { event: "orphaned_intake_notification_not_configured", sessionId },
+        JobNotificationService.name,
+      );
+      return;
+    }
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${this.config.resendApiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        from: this.config.resendFromEmail,
+        to: this.config.jobNotificationEmails,
+        subject: "Action needed — Signmons intake was not saved",
+        text: [
+          "Signmons detected a webchat that appeared complete but did not create a service request.",
+          `Session: ${sessionId}`,
+          `Reason: ${reason}`,
+          "Review the recent webchat conversation and contact the customer manually when contact details are available.",
+        ].join("\n"),
+      }),
+      signal: AbortSignal.timeout(8_000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Resend returned HTTP ${response.status}.`);
+    }
+
+    this.loggingService.log(
+      { event: "orphaned_intake_notification_sent", sessionId },
+      JobNotificationService.name,
+    );
   }
 
   private async deliver(job: JobRecord, confirmed: boolean): Promise<void> {

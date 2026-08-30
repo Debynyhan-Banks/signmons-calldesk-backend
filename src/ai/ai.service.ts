@@ -24,6 +24,7 @@ import appConfig from "../config/app.config";
 import { getRequestContext } from "../common/context/request-context";
 import { LifeSafetyService } from "./safety/life-safety.service";
 import { SchedulingService } from "../scheduling/scheduling.service";
+import { JobNotificationService } from "../jobs/job-notification.service";
 
 @Injectable()
 export class AiService {
@@ -41,6 +42,7 @@ export class AiService {
     private readonly conversationsService: ConversationsService,
     private readonly lifeSafetyService: LifeSafetyService,
     private readonly schedulingService: SchedulingService,
+    private readonly jobNotificationService: JobNotificationService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {
@@ -168,6 +170,20 @@ export class AiService {
         reply: validation.reply,
       };
 
+      if (tools.length && this.looksLikeSubmissionClaim(validation.reply)) {
+        const finalized = await this.forceJobFinalization({
+          tenantId: safeTenantId,
+          sessionId: safeSessionId,
+          conversationId: conversation.id,
+          userMessage: safeUserMessage,
+          responseModel,
+          messages,
+          assistantReply: validation.reply,
+          tools,
+        });
+        if (finalized) return finalized;
+      }
+
       await this.callLogService.createLog({
         tenantId: safeTenantId,
         sessionId: safeSessionId,
@@ -192,6 +208,160 @@ export class AiService {
         openAIResponseId,
       });
     }
+  }
+
+  private looksLikeSubmissionClaim(reply: string): boolean {
+    return [
+      /\b(?:we|i) (?:have )?received your (?:message|request)\b/i,
+      /\brequest (?:has been |was )?(?:submitted|received|recorded|saved)\b/i,
+      /\b(?:will|i'll) (?:pass|send|forward) (?:this|your) information\b/i,
+      /\b(?:our|the human) team (?:will|'ll) (?:follow up|reach out|contact you)\b/i,
+    ].some((pattern) => pattern.test(reply));
+  }
+
+  private async forceJobFinalization(params: {
+    tenantId: string;
+    sessionId: string;
+    conversationId: string;
+    userMessage: string;
+    responseModel?: string;
+    messages: OpenAI.ChatCompletionMessageParam[];
+    assistantReply: string;
+    tools: OpenAI.ChatCompletionTool[];
+  }) {
+    const createJobTool = params.tools.find(
+      (tool) => tool.function.name === "create_job",
+    );
+    if (!createJobTool) return null;
+
+    this.loggingService.warn(
+      {
+        event: "intake_completion_without_job",
+        tenantId: params.tenantId,
+        sessionId: params.sessionId,
+      },
+      AiService.name,
+    );
+
+    if (!this.hasCompletedIntakeSummary(params.assistantReply)) {
+      return this.handleOrphanedIntake(
+        params,
+        "submission claim did not include enough confirmed intake fields",
+      );
+    }
+
+    try {
+      const forced = await this.aiProviderService.createCompletion({
+        messages: [
+          ...params.messages,
+          { role: "assistant", content: params.assistantReply },
+          {
+            role: "system",
+            content:
+              "You indicated that this service intake was complete, but no job was created. Call create_job now using only details confirmed in the conversation. Do not invent contact details, addresses, urgency, property type or service intent. A standard residential heating or cooling repair request is eligible for an initial diagnostic appointment and should retain serviceIntent REPAIR.",
+          },
+        ],
+        tools: [createJobTool],
+        toolChoice: {
+          type: "function",
+          function: { name: "create_job" },
+        },
+        maxTokens: this.config.aiMaxTokens,
+      });
+      const forcedMessage = forced.choices[0]?.message;
+      if (!forcedMessage) throw new Error("Forced job response was empty.");
+      const validation = this.validateAssistantMessage(
+        forcedMessage,
+        params.tenantId,
+        forced.model ?? params.responseModel,
+      );
+      if (validation.type !== "tool") {
+        throw new Error("Forced job response did not call create_job.");
+      }
+
+      const result = await this.handleToolCall(
+        params.tenantId,
+        params.sessionId,
+        params.conversationId,
+        validation.toolCall.function.name,
+        validation.toolCall.function.arguments ?? undefined,
+        params.userMessage,
+        forced.model ?? params.responseModel,
+      );
+      this.loggingService.log(
+        {
+          event: "intake_auto_finalized",
+          tenantId: params.tenantId,
+          sessionId: params.sessionId,
+        },
+        AiService.name,
+      );
+      return result;
+    } catch (error) {
+      const reason =
+        error instanceof Error
+          ? error.message
+          : "automatic finalization failed";
+      return this.handleOrphanedIntake(params, reason, error);
+    }
+  }
+
+  private hasCompletedIntakeSummary(reply: string): boolean {
+    const normalized = reply.toLowerCase();
+    const confirmedFields = [
+      "name:",
+      "phone:",
+      "address:",
+      "issue",
+      "property type:",
+      "service intent:",
+    ].filter((label) => normalized.includes(label)).length;
+    return confirmedFields >= 4 || /\bjust to confirm\b/i.test(reply);
+  }
+
+  private async handleOrphanedIntake(
+    params: {
+      tenantId: string;
+      sessionId: string;
+      conversationId: string;
+      userMessage: string;
+    },
+    reason: string,
+    error?: unknown,
+  ) {
+    this.loggingService.error(
+      `Automatic intake finalization failed for session ${params.sessionId}.`,
+      error instanceof Error ? error : undefined,
+      AiService.name,
+    );
+    this.loggingService.warn(
+      {
+        event: "orphaned_intake_detected",
+        tenantId: params.tenantId,
+        sessionId: params.sessionId,
+        reason,
+      },
+      AiService.name,
+    );
+    this.jobNotificationService.enqueueOrphanedIntake(params.sessionId, reason);
+    const safeReply =
+      "I couldn't save this request, so it has not been sent to Eternity yet. Please try once more or call or text 216-703-3183 for help.";
+    await this.callLogService.createLog({
+      tenantId: params.tenantId,
+      sessionId: params.sessionId,
+      conversationId: params.conversationId,
+      transcript: params.userMessage,
+      aiResponse: safeReply,
+      metadata: {
+        sessionId: params.sessionId,
+        responseType: "orphaned_intake",
+      },
+    });
+    return {
+      status: "needs_correction" as const,
+      reply: safeReply,
+      invalidFields: [],
+    };
   }
 
   private async handleToolCall(
@@ -244,8 +414,7 @@ export class AiService {
               status: "availability" as const,
               job,
               slots,
-              message:
-                "Choose an available arrival window to confirm your residential diagnostic appointment.",
+              message: `Service request ${this.reference(job.id)} was saved. Choose an available arrival window to confirm your residential diagnostic appointment.`,
             };
           }
         } catch (error) {
@@ -262,7 +431,7 @@ export class AiService {
       return {
         status: "job_created",
         job,
-        message: "Job created successfully.",
+        message: `Service request received — reference ${this.reference(job.id)}. Eternity will follow up using the contact information provided.`,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -300,6 +469,10 @@ export class AiService {
         },
       });
     }
+  }
+
+  private reference(jobId: string): string {
+    return jobId.replace(/-/g, "").slice(0, 8).toUpperCase();
   }
 
   private extractInvalidFields(error: BadRequestException): string[] {

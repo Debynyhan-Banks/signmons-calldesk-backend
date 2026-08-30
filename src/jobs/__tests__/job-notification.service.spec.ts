@@ -120,6 +120,33 @@ describe("JobNotificationService", () => {
     );
   });
 
+  it("emails operations when a completed-looking intake was not saved", async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 202 }));
+    const service = createService({
+      resendApiKey: "resend-test-key",
+      resendFromEmail: "Eternity <requests@mail.eternityhvacr.com>",
+      jobNotificationEmails: ["ben@eternityhvacr.com"],
+    });
+
+    await service.notifyOrphanedIntake(
+      "session-1234",
+      "automatic finalization failed",
+    );
+
+    const [, request] = fetchSpy.mock.calls[0];
+    const requestBody = typeof request?.body === "string" ? request.body : "";
+    const payload = JSON.parse(requestBody) as {
+      subject: string;
+      text: string;
+    };
+    expect(payload.subject).toContain("intake was not saved");
+    expect(payload.text).toContain("Session: session-1234");
+    expect(loggingService.log).toHaveBeenCalledWith(
+      expect.objectContaining({ event: "orphaned_intake_notification_sent" }),
+      "JobNotificationService",
+    );
+  });
+
   function createService(
     overrides: Partial<ConfigType<typeof appConfig>>,
   ): JobNotificationService {
