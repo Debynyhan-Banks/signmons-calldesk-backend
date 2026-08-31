@@ -1,19 +1,34 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module";
+import { TenantGuard } from "../common/guards/tenant.guard";
 import { JOB_REPOSITORY } from "./jobs.constants";
 import { JobsService } from "./jobs.service";
 import { JobsToolRegistrar } from "./tools/jobs-tool.registrar";
 import { JobNotificationService } from "./job-notification.service";
+import { JobLifecycleService } from "./job-lifecycle.service";
+import { JobOperationsAccessGuard } from "./job-operations-access.guard";
+import { JobsController } from "./jobs.controller";
 
 @Module({
+  imports: [AuthModule],
+  controllers: [JobsController],
   providers: [
     JobsService,
     JobNotificationService,
+    JobLifecycleService,
+    JobOperationsAccessGuard,
+    TenantGuard,
     {
       provide: JOB_REPOSITORY,
       useExisting: JobsService,
     },
     JobsToolRegistrar,
   ],
-  exports: [JOB_REPOSITORY, JobsService, JobNotificationService],
+  exports: [
+    JOB_REPOSITORY,
+    JobsService,
+    JobNotificationService,
+    JobLifecycleService,
+  ],
 })
 export class JobsModule {}

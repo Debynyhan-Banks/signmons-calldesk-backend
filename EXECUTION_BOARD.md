@@ -16,12 +16,13 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Now
 
-- [ ] BLOCKED Backend implementation queue (marketing-first phase active)
-  - BE-007 is complete; the global pointer returned to FE-013.
-  - Backend execution remains queued until governance explicitly moves `Now` to another backend ticket.
+- [ ] APP-003 Job completion lifecycle foundation (`SCR-APP-005`)
+  - Owner-approved Eternity pilot operations exception.
+  - Scope is limited to an authenticated, tenant-isolated and audited completion transition.
 
 ## Next
 
+- [ ] BLOCKED Backend implementation queue after APP-003; global program returns to FE-013
 - [ ] APP-006 Intake review and booking readiness (`SCR-APP-012`) - starts after marketing DoD exit criteria + explicit pointer unlock
 - [ ] APP-007 Urgency classification and escalation review (`SCR-APP-013`)
 - [ ] APP-008 Dispatch board and technician assignment (`SCR-APP-014`, `SCR-APP-017`)
