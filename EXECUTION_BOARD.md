@@ -16,9 +16,10 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Now
 
-- [ ] BLOCKED Backend implementation queue (marketing-first phase active)
-  - Global pointer returns to `FE-013` after BE-003 completion in `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_EXECUTION_POINTER.md`
-  - Backend execution remains queued until governance explicitly moves `Now` to a backend ticket.
+- [ ] BE-007 Tenant lead-source reporting pilot (`SCR-APP-018`, `SCR-APP-019`)
+  - Owner-approved narrow Eternity pilot exception.
+  - Contract: authenticated, tenant-scoped, PII-free `GET /reports/lead-sources` with bounded date range and explicit metric lineage.
+  - FE-013 resumes after BE-007 completes.
 
 ## Next
 

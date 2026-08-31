@@ -1,12 +1,20 @@
 # Backend Session Handoff
 
-Last Updated: 2026-08-28
+Last Updated: 2026-08-30
+
+## Active owner-approved pilot
+
+- Canonical `Now`: `BE-007` tenant lead-source reporting pilot.
+- Contract: authenticated `GET /reports/lead-sources`, verified tenant context, owner/admin/manager access, explicit UTC date bounds up to 366 days, PII-free aggregate output and no-store caching.
+- Implementation is isolated under `src/reporting/`; focused tests cover calculations, accepted-lineage cancellation handling, unauthorized roles, bounded ranges and a PII-free Prisma select.
+- Required backend gates currently pass: build, 80 tests and architecture check. Repository-wide lint still contains two pre-existing test-file findings outside BE-007 and is not a backend completion gate.
+- Next: push the focused backend commit, deploy one Cloud Run revision, verify the live endpoint rejects unauthenticated access, and produce production-safe aggregate evidence.
 
 ## Current Program Pointer
 
-- Completed backend exception: `BE-003` (Eternity webchat backend production readiness)
-- Next global pointer: `FE-013` after governance completion sync
-- Backend state: contract-ready but not deployed or connected to the Eternity website
+- Active backend exception: `BE-007` tenant lead-source reporting pilot
+- Next global pointer: `FE-013` after BE-007 completion
+- Backend state: Eternity pilot is live; reporting release is implemented locally and awaiting verified deployment
 
 ## Completed In This Session
 

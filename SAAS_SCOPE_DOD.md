@@ -11,7 +11,7 @@ This local file defines backend-specific alignment checks and readiness gating.
 
 ## Backend Alignment Checklist
 
-- [ ] Current backend work item is explicitly allowed by governance `EXECUTION_BOARD.md` and global pointer.
+- [x] Current backend work item is explicitly allowed by governance `EXECUTION_BOARD.md` and global pointer (`BE-007` owner-approved pilot exception).
 - [ ] No APP implementation starts while marketing-first phase is active unless pointer unlock is explicit.
 - [ ] Public routes with backend dependencies match governance:
   - `/demo` -> `POST /api/marketing/try-demo`, `GET /api/marketing/try-demo/:leadId`, `POST /api/marketing/try-demo/status`

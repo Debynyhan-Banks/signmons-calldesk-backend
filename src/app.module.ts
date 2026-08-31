@@ -15,6 +15,7 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { HealthController } from "./health/health.controller";
 import { HealthService } from "./health/health.service";
 import { WebchatModule } from "./integrations/webchat/webchat.module";
+import { ReportingModule } from "./reporting/reporting.module";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { WebchatModule } from "./integrations/webchat/webchat.module";
     ]),
     AiModule,
     WebchatModule,
+    ReportingModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

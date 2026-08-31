@@ -98,6 +98,19 @@ After an eligible calendar booking is committed, Signmons should send exactly on
 
 Customer email-delivery failure must not roll back a confirmed job or calendar event. It must create an operator-visible delivery failure with a safe retry path. Management credentials must never be copied into analytics, ordinary application logs or operator message-preview telemetry. Customer SMS delivery remains a later optional channel after Twilio is configured and approved.
 
+## Tenant lead-source reporting
+
+Authenticated tenant owners, admins and managers can request a privacy-safe lead-source summary:
+
+```text
+GET /reports/lead-sources?from=2026-08-01T04:00:00.000Z&to=2026-09-01T04:00:00.000Z
+Authorization: Bearer <Firebase ID token>
+```
+
+`from` is inclusive, `to` is exclusive and the range cannot exceed 366 days. The response contains created, booked, completed, cancelled, attributed and unattributed counts; booking/completion ratios; campaign groups; and top landing paths. Rates are ratios from `0` to `1`. The database query selects only job status, accepted/completed timestamps and the bounded attribution snapshot—never customer contact data, addresses, messages, calendar identifiers or appointment-management credentials. Responses are private and non-cacheable.
+
+Tenant identity comes only from the verified token. Do not expose a reporting credential in browser JavaScript; a tenant dashboard must use an authenticated session or an approved server-side reporting proxy.
+
 ## Tenant Identity Rules (T-01)
 
 - `tenantId` is authoritative from verified auth claims in production.
