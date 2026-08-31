@@ -41,6 +41,8 @@ Date: 2026-08-31
 - Operator UI tests: 2 passed.
 - Operator UI production build: passed; `/app/intake-review` prerendered successfully.
 - Chrome console errors: none during local desktop/mobile verification.
+- Hosted operator UI production export: passed and verified in Chrome at `https://signmons-calldesk.web.app/app/intake-review`.
+- Live console-to-API CORS preflight: HTTP 204 with the dedicated console origin echoed in `Access-Control-Allow-Origin`.
 
 ## Visual evidence
 
@@ -51,4 +53,13 @@ The screenshots intentionally show the disconnected state. No production credent
 
 ## Deployment status
 
-Implementation is verified locally and is not yet deployed. Deployment requires an explicit release action and production operator authentication configuration.
+Released on 2026-08-31.
+
+- Backend merge commit: `2b715e4e3fe8ee371f0a604fdb3b76d657c13f5a`.
+- Cloud Build: `baa2702c-c2b2-4ae9-804b-0f1485f226fe` (`SUCCESS`).
+- Cloud Run revision: `signmons-calldesk-staging-00018-mxr`, serving image `us-east5-docker.pkg.dev/signmons/signmons/signmons-calldesk-backend:2b715e4` at 100 percent traffic.
+- Database readiness: HTTP 200.
+- Unauthenticated intake-review access: sanitized HTTP 401.
+- Dedicated Firebase Hosting site: `https://signmons-calldesk.web.app`; the public Signmons marketing Hosting site was not changed.
+- The hosted shell contains no customer data. Tenant-scoped records remain inaccessible until the operator supplies a verified Firebase ID token with an `owner`, `admin`, or `dispatcher` claim.
+- The temporary build account access to the Cloud Build source bucket and Artifact Registry repository was revoked after the successful image build, and the account was disabled again.

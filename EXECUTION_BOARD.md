@@ -16,11 +16,10 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Now
 
-- [ ] APP-006 Intake review and booking readiness (`SCR-APP-012`)
+- [ ] APP-007 Urgency classification and escalation review (`SCR-APP-013`)
 
 ## Next
 
-- [ ] APP-007 Urgency classification and escalation review (`SCR-APP-013`)
 - [ ] APP-008 Dispatch board and technician assignment (`SCR-APP-014`, `SCR-APP-017`)
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
 - [ ] APP-018 Brand voice and AI personality configuration (`SCR-APP-027`)
@@ -33,6 +32,8 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Done
 
+- [x] APP-006 Intake review and booking readiness (`SCR-APP-012`)
+  - Evidence: `evidence/APP-006/readiness-report.md`
 - [x] APP-003 Job completion lifecycle foundation (`SCR-APP-005`)
   - Evidence: `evidence/APP-003/readiness-report.md`
 - [x] BE-007 Tenant lead-source reporting pilot

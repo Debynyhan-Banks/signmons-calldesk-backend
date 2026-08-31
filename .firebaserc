@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "signmons"
+  },
+  "targets": {
+    "signmons": {
+      "hosting": {
+        "calldesk": [
+          "signmons-calldesk"
+        ]
+      }
+    }
   }
 }

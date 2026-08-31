@@ -10,6 +10,7 @@ yarn-error.log*
 pnpm-debug.log*
 .idea
 .vscode
+.firebase/
 
 
 # Snyk Security Extension - AI Rules (auto-generated)

@@ -19,6 +19,17 @@ The default API URL is `http://localhost:3000`.
 
 The intake screen accepts a verified Firebase operator ID token in production. Local development may use `NEXT_PUBLIC_DEV_AUTH_SECRET`, `NEXT_PUBLIC_DEV_AUTH_ROLE`, `NEXT_PUBLIC_DEV_AUTH_USER_ID`, and `NEXT_PUBLIC_TENANT_ID`; development headers are rejected by the backend in production.
 
+## Hosting
+
+The operator UI has its own Firebase Hosting target and must never be deployed to the public Signmons marketing target.
+
+```bash
+NEXT_PUBLIC_API_URL=https://signmons-calldesk-staging-845074063310.us-east5.run.app npm run build
+firebase deploy --only hosting:calldesk --project signmons
+```
+
+Production URL: `https://signmons-calldesk.web.app/app/intake-review`.
+
 ## Gates
 
 ```bash
