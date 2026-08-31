@@ -12,8 +12,8 @@ This local file defines backend-specific alignment checks and readiness gating.
 
 ## Backend Alignment Checklist
 
-- [x] Current backend work item is explicitly allowed by governance `EXECUTION_BOARD.md` and global pointer (`APP-003` owner-approved Eternity pilot operations exception).
-- [x] APP-003 is explicitly unlocked as a narrow exception; marketing-first work resumes at FE-013 after completion.
+- [x] APP-003 was explicitly allowed by governance and completed as an owner-approved Eternity pilot operations exception.
+- [x] Marketing-first work has resumed at FE-013; the backend queue is blocked until another explicit unlock.
 - [ ] Public routes with backend dependencies match governance:
   - `/demo` -> `POST /api/marketing/try-demo`, `GET /api/marketing/try-demo/:leadId`, `POST /api/marketing/try-demo/status`
   - `/contact` -> `POST /api/marketing/lead-capture`
@@ -34,4 +34,4 @@ This local file defines backend-specific alignment checks and readiness gating.
 
 ## Readiness Gate
 
-`No APP implementation starts until marketing pointer unlock, except the explicitly authorized APP-003 Eternity pilot operation.`
+`No additional APP implementation starts until the marketing pointer unlocks it.`

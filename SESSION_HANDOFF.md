@@ -2,8 +2,15 @@
 
 Last Updated: 2026-08-30
 
-## Completed owner-approved pilot
+## Completed owner-approved pilots
 
+- Completed: `APP-003` job completion lifecycle foundation.
+- Contract: authenticated `POST /jobs/:jobId/complete`, verified tenant context, owner/admin access, `ACCEPTED` or `IN_PROGRESS` transition only, idempotent replay and atomic `AuditLog` creation.
+- Privacy: the response and audit metadata contain no customer identity, contact, address, description, calendar or appointment-management data.
+- Safeguard: no production job was completed during deployment or verification; field completion must be confirmed before an operator invokes the route.
+- Required backend gates pass: build, 98 tests, architecture check and focused lint.
+- Production: revision `signmons-calldesk-staging-00016-jz9` serves image `55d59de` at 100 percent traffic; readiness health passed and unauthenticated completion access returned a sanitized HTTP 401.
+- Evidence: `evidence/APP-003/readiness-report.md`.
 - Completed: `BE-007` tenant lead-source reporting pilot.
 - Contract: authenticated `GET /reports/lead-sources`, verified tenant context, owner/admin/manager access, explicit UTC date bounds up to 366 days, PII-free aggregate output and no-store caching.
 - Implementation is isolated under `src/reporting/`; focused tests cover calculations, accepted-lineage cancellation handling, unauthorized roles, bounded ranges and a PII-free Prisma select.
@@ -14,9 +21,9 @@ Last Updated: 2026-08-30
 
 ## Current Program Pointer
 
-- Completed backend exception: `BE-007` tenant lead-source reporting pilot
-- Next global pointer: `FE-013`
-- Backend state: Eternity pilot and the privacy-safe reporting API are live
+- Completed backend exceptions: `BE-007` reporting and `APP-003` audited job completion
+- Current global pointer: `FE-013`
+- Backend state: Eternity pilot, privacy-safe reporting and audited completion API are live
 
 ## Completed In This Session
 
@@ -29,9 +36,9 @@ Last Updated: 2026-08-30
 
 ## Next Actions (Strict Order)
 
-1. Synchronize BE-003 completion in governance and return the global pointer to FE-013.
-2. Do not connect the live Eternity website until deployment credentials, managed database, tenant configuration, human escalation ownership, and privacy disclosure are approved.
-3. Re-run dependency audit and all gates before deployment.
+1. Continue FE-013 in the Signmons marketing repository under the governance pointer.
+2. Do not add a public completion control to the Eternity website; completion belongs in an authenticated operator workflow.
+3. Do not mark a real job complete without confirmed field status.
 
 ## Restart Commands
 
