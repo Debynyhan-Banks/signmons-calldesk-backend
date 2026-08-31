@@ -12,15 +12,14 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
    - `npm run -s build`
    - `npm test -- --runInBand`
    - `npm run -s arch:check`
-5. No APP implementation starts until marketing pointer unlock is explicit in governance.
+5. APP implementation requires an explicit global pointer in governance.
 
 ## Now
 
-- [ ] BLOCKED Backend implementation queue; global program returned to FE-013
+- [ ] APP-006 Intake review and booking readiness (`SCR-APP-012`)
 
 ## Next
 
-- [ ] APP-006 Intake review and booking readiness (`SCR-APP-012`) - starts after marketing DoD exit criteria + explicit pointer unlock
 - [ ] APP-007 Urgency classification and escalation review (`SCR-APP-013`)
 - [ ] APP-008 Dispatch board and technician assignment (`SCR-APP-014`, `SCR-APP-017`)
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

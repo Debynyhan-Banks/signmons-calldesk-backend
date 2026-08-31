@@ -21,22 +21,32 @@ type ConversationEntry = {
 };
 
 const defaultInstructions =
-  "Greet callers with a warm \"Thanks for calling Demo HVAC, this is your dispatcher\" intro. Collect contact info, classify the issue, and reassure them we handle everything. Be transparent about our $99 diagnostic/service fee and let callers know it is credited toward repairs if they approve work within 24 hours. Always look for tasteful upsell moments (maintenance plans, priority booking) after understanding their problem. Close with a concise summary of what will happen next.";
+  'Greet callers with a warm "Thanks for calling Demo HVAC, this is your dispatcher" intro. Collect contact info, classify the issue, and reassure them we handle everything. Be transparent about our $99 diagnostic/service fee and let callers know it is credited toward repairs if they approve work within 24 hours. Always look for tasteful upsell moments (maintenance plans, priority booking) after understanding their problem. Close with a concise summary of what will happen next.';
 
 const formatAssistantResponse = (payload: TriageResponse): string => {
   if (payload && typeof payload === "object" && "status" in payload) {
-    if (payload.status === "reply") {
-      return payload.reply ?? "";
+    if (payload.status === "reply" && typeof payload.reply === "string") {
+      return payload.reply;
     }
 
-    if (payload.status === "job_created") {
-      const job = payload.job;
+    if (
+      payload.status === "job_created" &&
+      payload.job &&
+      typeof payload.job === "object"
+    ) {
+      const job = payload.job as Record<string, unknown>;
       return [
-        payload.message ?? "Job created successfully.",
-        job.customerName ? `Customer: ${job.customerName}` : null,
-        job.issueCategory ? `Category: ${job.issueCategory}` : null,
-        job.urgency ? `Urgency: ${job.urgency}` : null,
-        job.id ? `Job ID: ${job.id}` : null,
+        typeof payload.message === "string"
+          ? payload.message
+          : "Job created successfully.",
+        typeof job.customerName === "string"
+          ? `Customer: ${job.customerName}`
+          : null,
+        typeof job.issueCategory === "string"
+          ? `Category: ${job.issueCategory}`
+          : null,
+        typeof job.urgency === "string" ? `Urgency: ${job.urgency}` : null,
+        typeof job.id === "string" ? `Job ID: ${job.id}` : null,
       ]
         .filter(Boolean)
         .join(" | ");
@@ -98,9 +108,11 @@ export default function Home() {
       lastResponse &&
       typeof lastResponse === "object" &&
       "status" in lastResponse &&
-      lastResponse.status === "job_created"
+      lastResponse.status === "job_created" &&
+      lastResponse.job &&
+      typeof lastResponse.job === "object"
     ) {
-      return lastResponse.job;
+      return lastResponse.job as Record<string, unknown>;
     }
     return null;
   }, [lastResponse]);

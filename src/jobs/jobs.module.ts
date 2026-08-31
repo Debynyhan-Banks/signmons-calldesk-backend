@@ -6,6 +6,8 @@ import { JobsService } from "./jobs.service";
 import { JobsToolRegistrar } from "./tools/jobs-tool.registrar";
 import { JobNotificationService } from "./job-notification.service";
 import { JobLifecycleService } from "./job-lifecycle.service";
+import { IntakeReadinessService } from "./intake-readiness.service";
+import { IntakeReviewAccessGuard } from "./intake-review-access.guard";
 import { JobOperationsAccessGuard } from "./job-operations-access.guard";
 import { JobsController } from "./jobs.controller";
 
@@ -16,6 +18,8 @@ import { JobsController } from "./jobs.controller";
     JobsService,
     JobNotificationService,
     JobLifecycleService,
+    IntakeReadinessService,
+    IntakeReviewAccessGuard,
     JobOperationsAccessGuard,
     TenantGuard,
     {

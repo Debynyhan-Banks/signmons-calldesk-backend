@@ -54,9 +54,9 @@ Configure `WEBCHAT_INTEGRATIONS_JSON` with the SHA-256 hash of each random crede
 
 No website should send customer messages to this service until its privacy disclosure covers AI-assisted processing and retention.
 
-## Frontend sandbox
+## Operator UI
 
-A lightweight Next.js client lives under `ui/` so you can test the triage workflow without crafting curl commands.
+A Next.js client lives under `ui/` for authenticated CallDesk operations and local triage testing.
 
 1. Copy `ui/.env.local.example` to `ui/.env.local` and set `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3000`).
 2. From the repo root run:
@@ -65,9 +65,10 @@ A lightweight Next.js client lives under `ui/` so you can test the triage workfl
    npm install
    npm run dev
    ```
-3. The UI exposes two panels:
+3. The UI exposes:
    - **Onboard Tenant** – submits to `/tenants`. Enter your `ADMIN_API_TOKEN` in the form; it is never stored.
    - **AI Triage** – posts messages with `sessionId` to `/ai/triage`. Tenant identity comes from auth headers (dev or JWT).
+   - **Intake Review** (`/app/intake-review`) – loads the tenant-scoped booking queue, explicit missing-field status, emergency flags, retained conversation trace, payment/deposit status, attachments, and auditable readiness reviews. Production access requires a Firebase ID token with an `owner`, `admin`, or `dispatcher` role.
 
 Keep using admin tokens sparingly and rotate them if you share access.
 

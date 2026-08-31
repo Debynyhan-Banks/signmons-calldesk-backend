@@ -22,8 +22,8 @@ Last Updated: 2026-08-30
 ## Current Program Pointer
 
 - Completed backend exceptions: `BE-007` reporting and `APP-003` audited job completion
-- Current global pointer: `FE-013`
-- Backend state: Eternity pilot, privacy-safe reporting and audited completion API are live
+- Current global pointer: `APP-006`
+- Backend state: CallDesk intake review and booking readiness is the active product ticket
 
 ## Completed In This Session
 
@@ -36,7 +36,7 @@ Last Updated: 2026-08-30
 
 ## Next Actions (Strict Order)
 
-1. Continue FE-013 in the Signmons marketing repository under the governance pointer.
+1. Implement APP-006 intake review and booking readiness under the backend board.
 2. Do not add a public completion control to the Eternity website; completion belongs in an authenticated operator workflow.
 3. Do not mark a real job complete without confirmed field status.
 
