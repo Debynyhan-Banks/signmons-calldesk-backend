@@ -9,7 +9,14 @@ type JobNotificationKind =
   | "request_created"
   | "appointment_confirmed"
   | "appointment_rescheduled"
-  | "appointment_cancelled";
+  | "appointment_cancelled"
+  | "urgency_escalated";
+
+export interface NotificationDeliveryOutcome {
+  channel: NotificationChannel | "internal";
+  recipientGroup: "operations";
+  outcome: "delivered" | "failed" | "misconfigured" | "not_configured";
+}
 
 @Injectable()
 export class JobNotificationService {
@@ -87,6 +94,12 @@ export class JobNotificationService {
     await this.deliver(job, "request_created");
   }
 
+  async notifyUrgencyEscalation(
+    job: JobRecord,
+  ): Promise<NotificationDeliveryOutcome[]> {
+    return this.deliver(job, "urgency_escalated");
+  }
+
   async notifyOrphanedIntake(sessionId: string, reason: string): Promise<void> {
     if (
       this.config.jobNotificationEmails.length === 0 ||
@@ -133,11 +146,12 @@ export class JobNotificationService {
   private async deliver(
     job: JobRecord,
     kind: JobNotificationKind,
-  ): Promise<void> {
+  ): Promise<NotificationDeliveryOutcome[]> {
     const deliveries: Array<{
       channel: NotificationChannel;
       send: () => Promise<void>;
     }> = [];
+    const configurationOutcomes: NotificationDeliveryOutcome[] = [];
 
     if (this.config.jobNotificationEmails.length > 0) {
       if (this.config.resendApiKey && this.config.resendFromEmail) {
@@ -147,6 +161,11 @@ export class JobNotificationService {
         });
       } else {
         this.logConfigurationWarning(job.id, "email");
+        configurationOutcomes.push({
+          channel: "email",
+          recipientGroup: "operations",
+          outcome: "misconfigured",
+        });
       }
     }
 
@@ -162,6 +181,11 @@ export class JobNotificationService {
         });
       } else {
         this.logConfigurationWarning(job.id, "sms");
+        configurationOutcomes.push({
+          channel: "sms",
+          recipientGroup: "operations",
+          outcome: "misconfigured",
+        });
       }
     }
 
@@ -173,21 +197,33 @@ export class JobNotificationService {
         },
         JobNotificationService.name,
       );
-      return;
+      return configurationOutcomes.length
+        ? configurationOutcomes
+        : [
+            {
+              channel: "internal",
+              recipientGroup: "operations",
+              outcome: "not_configured",
+            },
+          ];
     }
 
     const results = await Promise.allSettled(
       deliveries.map((delivery) => delivery.send()),
     );
 
-    results.forEach((result, index) => {
+    const deliveryOutcomes = results.map((result, index) => {
       const channel = deliveries[index].channel;
       if (result.status === "fulfilled") {
         this.loggingService.log(
           { event: "job_notification_sent", channel, jobId: job.id },
           JobNotificationService.name,
         );
-        return;
+        return {
+          channel,
+          recipientGroup: "operations" as const,
+          outcome: "delivered" as const,
+        };
       }
 
       this.loggingService.error(
@@ -195,7 +231,13 @@ export class JobNotificationService {
         result.reason instanceof Error ? result.reason : undefined,
         JobNotificationService.name,
       );
+      return {
+        channel,
+        recipientGroup: "operations" as const,
+        outcome: "failed" as const,
+      };
     });
+    return [...configurationOutcomes, ...deliveryOutcomes];
   }
 
   private async sendEmail(
@@ -313,6 +355,9 @@ export class JobNotificationService {
     if (kind === "appointment_cancelled") {
       return `CANCELLED ${this.reference(job.id)}: ${job.customerName}, ${job.phone}, previous time ${time}.`;
     }
+    if (kind === "urgency_escalated") {
+      return `ESCALATED ${this.reference(job.id)}: ${job.issueCategory}, ${job.urgency}. Review this request in Signmons CallDesk.`;
+    }
     return `New Signmons request ${this.reference(job.id)}: ${job.customerName}, ${job.phone}, ${job.issueCategory}, ${job.urgency}, preferred ${time}. Not yet confirmed.`;
   }
 
@@ -325,6 +370,9 @@ export class JobNotificationService {
     }
     if (kind === "appointment_cancelled") {
       return `Appointment cancelled — ${job.customerName}`;
+    }
+    if (kind === "urgency_escalated") {
+      return `${job.urgency} request escalated — ${this.reference(job.id)}`;
     }
     return `${job.urgency === "EMERGENCY" ? "URGENT: " : ""}New Signmons request — ${job.issueCategory}`;
   }
@@ -339,6 +387,9 @@ export class JobNotificationService {
     if (kind === "appointment_cancelled") {
       return "Residential diagnostic appointment cancelled by customer";
     }
+    if (kind === "urgency_escalated") {
+      return "Urgency escalation from Signmons CallDesk";
+    }
     return "New service request created by Signmons";
   }
 
@@ -351,6 +402,9 @@ export class JobNotificationService {
     }
     if (kind === "appointment_cancelled") {
       return "The customer cancelled this appointment through the secure website link. The calendar time has been released.";
+    }
+    if (kind === "urgency_escalated") {
+      return "An authorized operator escalated this request. Review the job in CallDesk and record the operational outcome.";
     }
     return "The requested time is a preference and is not a confirmed appointment.";
   }

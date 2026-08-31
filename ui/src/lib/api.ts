@@ -102,6 +102,50 @@ export interface IntakeReviewDetail extends IntakeReviewSummary {
   }>;
 }
 
+export type UrgencyLevel = "EMERGENCY" | "HIGH" | "STANDARD";
+
+export interface NotificationDeliveryOutcome {
+  channel: "email" | "sms" | "internal";
+  recipientGroup: "operations";
+  outcome: "delivered" | "failed" | "misconfigured" | "not_configured";
+}
+
+export interface UrgencyReviewSummary {
+  jobId: string;
+  reference: string;
+  urgency: UrgencyLevel;
+  serviceCategory: string;
+  status: string;
+  createdAt: string;
+  rationale: {
+    decisionSource: "AI_INTAKE" | "OPERATOR_OVERRIDE" | "LEGACY_PERSISTED";
+    reasonCodes: string[];
+    triggerDetails: string[];
+    confidenceNote: string;
+  };
+  escalationPath: Array<{
+    order: number;
+    label: string;
+    required: boolean;
+  }>;
+}
+
+export interface UrgencyReviewDetail extends UrgencyReviewSummary {
+  history: Array<{
+    id: string;
+    type: "override" | "escalation";
+    actorId: string;
+    createdAt: string;
+    details: {
+      previousUrgency?: string;
+      urgency?: string;
+      reason?: string;
+      recipientGroup?: string;
+      deliveries?: NotificationDeliveryOutcome[];
+    };
+  }>;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -252,6 +296,57 @@ export async function reviewIntakeReadiness(
 }> {
   return postJson(
     `/jobs/${encodeURIComponent(jobId)}/readiness/review`,
+    {},
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function listUrgencyReviews(
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<UrgencyReviewSummary[]> {
+  return getJson<UrgencyReviewSummary[]>(
+    "/jobs/urgency-review",
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getUrgencyReview(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<UrgencyReviewDetail> {
+  return getJson<UrgencyReviewDetail>(
+    `/jobs/urgency-review/${encodeURIComponent(jobId)}`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function overrideJobUrgency(
+  jobId: string,
+  input: { urgency: UrgencyLevel; reason: string },
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{ changed: boolean; urgency: UrgencyLevel }> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/urgency/override`,
+    input,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function escalateJobUrgency(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  jobId: string;
+  urgency: UrgencyLevel;
+  changed: boolean;
+  escalation: { deliveries: NotificationDeliveryOutcome[] };
+}> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/escalations`,
     {},
     buildAuthHeaders(auth, tenantId),
   );

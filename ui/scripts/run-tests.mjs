@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 
 const result = spawnSync(
   process.execPath,
-  ["--test", "src/lib/intake-review.test.ts"],
+  ["--test", "src/lib/intake-review.test.ts", "src/lib/urgency-review.test.ts"],
   { stdio: "inherit" },
 );
 

@@ -10,6 +10,8 @@ import { IntakeReadinessService } from "./intake-readiness.service";
 import { IntakeReviewAccessGuard } from "./intake-review-access.guard";
 import { JobOperationsAccessGuard } from "./job-operations-access.guard";
 import { JobsController } from "./jobs.controller";
+import { UrgencyReviewAccessGuard } from "./urgency-review-access.guard";
+import { UrgencyReviewService } from "./urgency-review.service";
 
 @Module({
   imports: [AuthModule],
@@ -21,6 +23,8 @@ import { JobsController } from "./jobs.controller";
     IntakeReadinessService,
     IntakeReviewAccessGuard,
     JobOperationsAccessGuard,
+    UrgencyReviewAccessGuard,
+    UrgencyReviewService,
     TenantGuard,
     {
       provide: JOB_REPOSITORY,
@@ -33,6 +37,7 @@ import { JobsController } from "./jobs.controller";
     JobsService,
     JobNotificationService,
     JobLifecycleService,
+    UrgencyReviewService,
   ],
 })
 export class JobsModule {}

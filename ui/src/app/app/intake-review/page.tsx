@@ -148,13 +148,12 @@ export default function IntakeReviewPage() {
           <a className={styles.activeNav} href="/app/intake-review">
             <span aria-hidden="true">01</span> Intake review
           </a>
+          <a className={styles.disabledNav} href="/app/urgency-review">
+            <span aria-hidden="true">02</span> Urgency review
+          </a>
           <span className={styles.disabledNav}>
-            <span aria-hidden="true">02</span> Dispatch board
+            <span aria-hidden="true">03</span> Dispatch board
             <small>Next</small>
-          </span>
-          <span className={styles.disabledNav}>
-            <span aria-hidden="true">03</span> Customers
-            <small>Planned</small>
           </span>
         </nav>
         <div className={styles.navFooter}>

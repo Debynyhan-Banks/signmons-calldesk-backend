@@ -197,7 +197,7 @@ describe("JobsService", () => {
     expect(jobNotificationService.enqueueJobCreated).not.toHaveBeenCalled();
   });
 
-  it("accepts high-priority AI output without treating it as an emergency", async () => {
+  it("persists high-priority AI output without treating it as an emergency", async () => {
     prisma.communicationContent.findMany.mockResolvedValue([]);
     prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
     prisma.serviceCategory.findFirst.mockResolvedValue({
@@ -219,7 +219,15 @@ describe("JobsService", () => {
 
     expect(prisma.job.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ urgency: "STANDARD" }),
+        data: expect.objectContaining({
+          urgency: "HIGH",
+          policySnapshot: expect.objectContaining({
+            urgencyDecision: expect.objectContaining({
+              level: "HIGH",
+              reasonCodes: ["TIME_SENSITIVE_SERVICE_SIGNAL"],
+            }),
+          }),
+        }),
       }),
     );
   });
