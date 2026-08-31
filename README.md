@@ -54,9 +54,9 @@ Configure `WEBCHAT_INTEGRATIONS_JSON` with the SHA-256 hash of each random crede
 
 No website should send customer messages to this service until its privacy disclosure covers AI-assisted processing and retention.
 
-## Frontend sandbox
+## Operator UI
 
-A lightweight Next.js client lives under `ui/` so you can test the triage workflow without crafting curl commands.
+A Next.js client lives under `ui/` for authenticated CallDesk operations and local triage testing.
 
 1. Copy `ui/.env.local.example` to `ui/.env.local` and set `NEXT_PUBLIC_API_URL` (defaults to `http://localhost:3000`).
 2. From the repo root run:
@@ -65,9 +65,10 @@ A lightweight Next.js client lives under `ui/` so you can test the triage workfl
    npm install
    npm run dev
    ```
-3. The UI exposes two panels:
+3. The UI exposes:
    - **Onboard Tenant** – submits to `/tenants`. Enter your `ADMIN_API_TOKEN` in the form; it is never stored.
    - **AI Triage** – posts messages with `sessionId` to `/ai/triage`. Tenant identity comes from auth headers (dev or JWT).
+   - **Intake Review** (`/app/intake-review`) – loads the tenant-scoped booking queue, explicit missing-field status, emergency flags, retained conversation trace, payment/deposit status, attachments, and auditable readiness reviews. Production access requires a Firebase ID token with an `owner`, `admin`, or `dispatcher` role.
 
 Keep using admin tokens sparingly and rotate them if you share access.
 
@@ -82,6 +83,34 @@ Keep using admin tokens sparingly and rotate them if you share access.
 - `IDENTITY_ISSUER` / `IDENTITY_AUDIENCE` – expected JWT issuer/audience in production.
 - `FIREBASE_PROJECT_ID` – Firebase project id for Admin SDK token verification.
 - `WEBCHAT_INTEGRATIONS_JSON` – JSON array of `{name, tenantId, keyHash}` entries for server-held website credentials.
+- `RESEND_API_KEY` / `RESEND_FROM_EMAIL` – Resend credentials used for internal new-job email notifications.
+- `JOB_NOTIFICATION_EMAILS` – comma-separated internal recipients notified whenever Signmons creates a job.
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_PHONE_NUMBER` – optional Twilio credentials for internal SMS alerts.
+- `JOB_NOTIFICATION_SMS_NUMBERS` – optional comma-separated E.164 phone numbers that receive new-job SMS alerts.
+- `CONVERSATION_DATA_ENCRYPTION_KEY` – required in production; a 64-character hexadecimal AES-256 key used to protect the unredacted conversational memory needed to finish multi-turn service requests. Redacted text remains in normal audit logs.
+
+Customer availability is preserved in `Job.preferredTimeText` exactly as supplied after sanitization. Signmons also infers a broad `preferredWindowLabel` when possible, but an unrecognized date or time phrase never blocks an otherwise valid job.
+
+Eligible confirmed residential diagnostic appointments receive a signed, 90-day management credential. The website keeps that credential in the URL fragment so it is not sent with the initial page request. Customers can use it to view the confirmed Eastern Time window, choose another live window or cancel. Reschedules patch the existing Eternity Dispatch event; cancellations release the database reservation and calendar event. Each successful change produces one internal operations notification. Repeated cancellation requests are idempotent, and conflicts are rechecked before a replacement time is accepted.
+
+### Planned customer appointment email improvement
+
+After an eligible calendar booking is committed, Signmons should send exactly one branded transactional confirmation email to the customer. The intake flow asks for the email once and retains it without repeating captured questions. The email includes the confirmed Eastern Time arrival window, appointment reference, concise service type, private absolute management link, calendar action, call/text fallback and a warning not to forward the link. A successful reschedule sends one updated confirmation; cancellation sends one cancellation notice without an active management action.
+
+Customer email-delivery failure must not roll back a confirmed job or calendar event. It must create an operator-visible delivery failure with a safe retry path. Management credentials must never be copied into analytics, ordinary application logs or operator message-preview telemetry. Customer SMS delivery remains a later optional channel after Twilio is configured and approved.
+
+## Tenant lead-source reporting
+
+Authenticated tenant owners, admins and managers can request a privacy-safe lead-source summary:
+
+```text
+GET /reports/lead-sources?from=2026-08-01T04:00:00.000Z&to=2026-09-01T04:00:00.000Z
+Authorization: Bearer <Firebase ID token>
+```
+
+`from` is inclusive, `to` is exclusive and the range cannot exceed 366 days. The response contains created, booked, completed, cancelled, attributed and unattributed counts; booking/completion ratios; campaign groups; and top landing paths. Rates are ratios from `0` to `1`. The database query selects only job status, accepted/completed timestamps and the bounded attribution snapshot—never customer contact data, addresses, messages, calendar identifiers or appointment-management credentials. Responses are private and non-cacheable.
+
+Tenant identity comes only from the verified token. Do not expose a reporting credential in browser JavaScript; a tenant dashboard must use an authenticated session or an approved server-side reporting proxy.
 
 ## Tenant Identity Rules (T-01)
 

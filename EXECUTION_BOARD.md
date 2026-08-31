@@ -12,17 +12,14 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
    - `npm run -s build`
    - `npm test -- --runInBand`
    - `npm run -s arch:check`
-5. No APP implementation starts until marketing pointer unlock is explicit in governance.
+5. APP implementation requires an explicit global pointer in governance.
 
 ## Now
 
-- [ ] BLOCKED Backend implementation queue (marketing-first phase active)
-  - Global pointer returns to `FE-013` after BE-003 completion in `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_EXECUTION_POINTER.md`
-  - Backend execution remains queued until governance explicitly moves `Now` to a backend ticket.
+- [ ] APP-006 Intake review and booking readiness (`SCR-APP-012`)
 
 ## Next
 
-- [ ] APP-006 Intake review and booking readiness (`SCR-APP-012`) - starts after marketing DoD exit criteria + explicit pointer unlock
 - [ ] APP-007 Urgency classification and escalation review (`SCR-APP-013`)
 - [ ] APP-008 Dispatch board and technician assignment (`SCR-APP-014`, `SCR-APP-017`)
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
@@ -36,6 +33,10 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Done
 
+- [x] APP-003 Job completion lifecycle foundation (`SCR-APP-005`)
+  - Evidence: `evidence/APP-003/readiness-report.md`
+- [x] BE-007 Tenant lead-source reporting pilot
+  - Evidence: `evidence/BE-007/readiness-report.md`
 - [x] BE-003 Eternity webchat backend production readiness
   - Evidence: `evidence/BE-003/readiness-report.md`
 - [x] R6-P0-1 SMS Twilio signature guard parity

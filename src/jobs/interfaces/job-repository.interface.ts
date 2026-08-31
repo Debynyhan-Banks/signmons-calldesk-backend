@@ -6,6 +6,13 @@ export interface CreateJobPayload {
   urgency: string;
   description?: string;
   preferredTime?: string;
+  propertyType: "RESIDENTIAL" | "COMMERCIAL" | "MANAGED";
+  serviceIntent:
+    | "DIAGNOSTIC"
+    | "REPAIR"
+    | "INSTALLATION"
+    | "MAINTENANCE"
+    | "OTHER";
 }
 
 export interface CreateJobRequest {
@@ -13,10 +20,22 @@ export interface CreateJobRequest {
   payload: CreateJobPayload;
 }
 
+export interface LeadAttribution {
+  channel: "website_chat";
+  landingPage?: string;
+  sourcePage?: string;
+  referrerHost?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+}
+
 export interface CreateJobFromToolCallRequest {
   tenantId: string;
   sessionId: string;
   rawArgs?: string;
+  deferInitialNotification?: boolean;
+  leadAttribution?: LeadAttribution;
 }
 
 export type JobStatus =
@@ -39,6 +58,13 @@ export interface JobRecord {
   urgency: string;
   description?: string;
   preferredTime?: string;
+  preferredTimeText?: string;
+  propertyType: CreateJobPayload["propertyType"];
+  serviceIntent: CreateJobPayload["serviceIntent"];
+  serviceWindowStart?: Date;
+  serviceWindowEnd?: Date;
+  calendarEventId?: string;
+  leadAttribution?: LeadAttribution;
   status: JobStatus;
   createdAt: Date;
   updatedAt: Date;

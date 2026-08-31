@@ -4,6 +4,7 @@ import { LoggingService } from "./logging.service";
 import { CallLogService } from "./call-log.service";
 import { CallLogCleanupService } from "./call-log.cleanup";
 import { AlertingService } from "./alerting.service";
+import { ConversationMemoryCipher } from "./conversation-memory-cipher.service";
 
 @Global()
 @Module({
@@ -13,7 +14,13 @@ import { AlertingService } from "./alerting.service";
     CallLogService,
     CallLogCleanupService,
     AlertingService,
+    ConversationMemoryCipher,
   ],
-  exports: [LoggingService, CallLogService, AlertingService],
+  exports: [
+    LoggingService,
+    CallLogService,
+    AlertingService,
+    ConversationMemoryCipher,
+  ],
 })
 export class LoggingModule {}

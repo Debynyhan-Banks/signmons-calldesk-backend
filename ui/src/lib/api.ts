@@ -56,7 +56,50 @@ export interface DevAuthConfig {
 
 export interface RequestAuth {
   adminToken?: string;
+  bearerToken?: string;
   devAuth?: DevAuthConfig;
+}
+
+export interface IntakeReadiness {
+  state: "READY_TO_ASSIGN" | "MISSING_INFO";
+  missingFields: string[];
+  assessedAt: string;
+}
+
+export interface IntakeReviewSummary {
+  jobId: string;
+  reference: string;
+  customerName: string | null;
+  phone: string | null;
+  serviceAddress: string | null;
+  serviceCategory: string | null;
+  issueSummary: string | null;
+  urgency: string | null;
+  priority: "EMERGENCY" | "HIGH" | "STANDARD";
+  preferredWindow: string | null;
+  photos: string[];
+  paymentStatus: string;
+  depositRequired: boolean;
+  status: string;
+  sourceChannel: string | null;
+  createdAt: string;
+  readiness: IntakeReadiness;
+}
+
+export interface IntakeReviewDetail extends IntakeReviewSummary {
+  transcript: Array<{
+    id: string;
+    role: "caller" | "assistant" | "system";
+    content: string;
+    occurredAt: string;
+  }>;
+  reviewHistory: Array<{
+    id: string;
+    state: IntakeReadiness["state"];
+    missingFields: string[];
+    actorId: string;
+    createdAt: string;
+  }>;
 }
 
 export class ApiError extends Error {
@@ -73,6 +116,10 @@ function buildAuthHeaders(
   fallbackTenantId?: string,
 ): Record<string, string> {
   const headers: Record<string, string> = {};
+  const bearerToken = auth?.bearerToken?.trim();
+  if (bearerToken) {
+    headers.Authorization = `Bearer ${bearerToken}`;
+  }
   const adminToken = auth?.adminToken?.trim();
   if (adminToken) {
     headers["x-admin-token"] = adminToken;
@@ -101,7 +148,7 @@ function buildAuthHeaders(
 
 async function postJson<T>(
   path: string,
-  body: JsonRecord,
+  body: object,
   headers: Record<string, string> = {},
 ): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, {
@@ -124,10 +171,33 @@ async function postJson<T>(
     const message =
       typeof payload === "string"
         ? payload
-        : (payload?.message as string) ?? "Request failed";
+        : ((payload?.message as string) ?? "Request failed");
     throw new ApiError(message, response.status);
   }
 
+  return payload as T;
+}
+
+async function getJson<T>(
+  path: string,
+  headers: Record<string, string> = {},
+): Promise<T> {
+  const response = await fetch(`${apiBase}${path}`, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+  const isJson = response.headers
+    .get("content-type")
+    ?.includes("application/json");
+  const payload = isJson ? await response.json() : await response.text();
+  if (!response.ok) {
+    const message =
+      typeof payload === "string"
+        ? payload
+        : ((payload?.message as string) ?? "Request failed");
+    throw new ApiError(message, response.status);
+  }
   return payload as T;
 }
 
@@ -146,6 +216,43 @@ export async function sendTriage(
   return postJson<TriageResponse>(
     "/ai/triage",
     input,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function listIntakeReviews(
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<IntakeReviewSummary[]> {
+  return getJson<IntakeReviewSummary[]>(
+    "/jobs/intake-review",
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getIntakeReview(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<IntakeReviewDetail> {
+  return getJson<IntakeReviewDetail>(
+    `/jobs/intake-review/${encodeURIComponent(jobId)}`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function reviewIntakeReadiness(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  jobId: string;
+  readiness: IntakeReadiness;
+  review: { id: string; createdAt: string };
+}> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/readiness/review`,
+    {},
     buildAuthHeaders(auth, tenantId),
   );
 }

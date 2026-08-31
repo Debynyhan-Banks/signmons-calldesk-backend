@@ -18,9 +18,10 @@ import { TenantGuard } from "../common/guards/tenant.guard";
 import { AuthModule } from "../auth/auth.module";
 import { ConversationsService } from "../conversations/conversations.service";
 import { LifeSafetyService } from "./safety/life-safety.service";
+import { SchedulingModule } from "../scheduling/scheduling.module";
 
 @Module({
-  imports: [JobsModule, TenantsModule, AuthModule],
+  imports: [JobsModule, TenantsModule, AuthModule, SchedulingModule],
   controllers: [AiController],
   providers: [
     {

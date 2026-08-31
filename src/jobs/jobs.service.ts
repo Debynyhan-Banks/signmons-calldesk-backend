@@ -2,16 +2,22 @@ import { randomUUID } from "crypto";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { plainToInstance } from "class-transformer";
 import { validateSync } from "class-validator";
-import type { Prisma } from "@prisma/client";
-import { JobStatus, JobUrgency, PreferredWindowLabel } from "@prisma/client";
+import {
+  JobStatus,
+  JobUrgency,
+  PreferredWindowLabel,
+  Prisma,
+} from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { SanitizationService } from "../sanitization/sanitization.service";
 import { CreateJobPayloadDto } from "./dto/create-job-payload.dto";
+import { JobNotificationService } from "./job-notification.service";
 import {
   CreateJobFromToolCallRequest,
   CreateJobPayload,
   IJobRepository,
   JobRecord,
+  LeadAttribution,
 } from "./interfaces/job-repository.interface";
 
 @Injectable()
@@ -19,6 +25,7 @@ export class JobsService implements IJobRepository {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sanitizationService: SanitizationService,
+    private readonly jobNotificationService: JobNotificationService,
   ) {}
 
   async createJobFromToolCall(
@@ -76,33 +83,63 @@ export class JobsService implements IJobRepository {
       },
     });
 
-    const job = await this.prisma.job.create({
-      data: {
-        id: randomUUID(),
-        tenantId,
-        customerId: customer.id,
-        customerTenantId: tenantId,
-        propertyAddressId: propertyAddress.id,
-        propertyAddressTenantId: tenantId,
-        serviceCategoryId: serviceCategory.id,
-        serviceCategoryTenantId: tenantId,
-        status: JobStatus.CREATED,
-        urgency: this.mapUrgency(normalizedPayload.urgency),
-        description: normalizedPayload.description ?? null,
-        preferredWindowLabel: this.mapPreferredWindow(
-          normalizedPayload.preferredTime,
-        ),
-        pricingSnapshot: {},
-        policySnapshot: {},
-      },
-      include: {
-        customer: true,
-        propertyAddress: true,
-        serviceCategory: true,
-      },
-    });
+    const leadAttribution = this.normalizeLeadAttribution(
+      request.leadAttribution,
+    );
+    let job;
+    try {
+      job = await this.prisma.job.create({
+        data: {
+          id: randomUUID(),
+          tenantId,
+          intakeSessionId: request.sessionId,
+          customerId: customer.id,
+          customerTenantId: tenantId,
+          propertyAddressId: propertyAddress.id,
+          propertyAddressTenantId: tenantId,
+          serviceCategoryId: serviceCategory.id,
+          serviceCategoryTenantId: tenantId,
+          status: JobStatus.CREATED,
+          urgency: this.mapUrgency(normalizedPayload.urgency),
+          description: normalizedPayload.description ?? null,
+          preferredWindowLabel: this.inferPreferredWindow(
+            normalizedPayload.preferredTime,
+          ),
+          preferredTimeText: normalizedPayload.preferredTime ?? null,
+          pricingSnapshot: {},
+          policySnapshot: {
+            propertyType: normalizedPayload.propertyType,
+            serviceIntent: normalizedPayload.serviceIntent,
+            ...(leadAttribution
+              ? { leadAttribution: { ...leadAttribution } }
+              : {}),
+          } as Prisma.InputJsonValue,
+        },
+        include: {
+          customer: true,
+          propertyAddress: true,
+          serviceCategory: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existing = await this.findJobBySessionId(
+          tenantId,
+          request.sessionId,
+        );
+        if (existing) return this.mapJob(existing);
+      }
+      throw error;
+    }
 
-    return this.mapJob(job);
+    const jobRecord = this.mapJob(job);
+    if (!request.deferInitialNotification) {
+      this.jobNotificationService.enqueueJobCreated(jobRecord);
+    }
+    return jobRecord;
   }
 
   async listJobs(tenantId: string): Promise<JobRecord[]> {
@@ -131,6 +168,7 @@ export class JobsService implements IJobRepository {
     const normalized = this.normalizePayload(raw);
     const extraKeys = this.findUnexpectedKeys(raw);
     const errors = this.validatePayload(normalized);
+    const invalidFields = errors.map((error) => error.property).filter(Boolean);
     const audit = {
       rawArgs: rawArgs ?? "",
       normalizedArgs: normalized,
@@ -142,17 +180,17 @@ export class JobsService implements IJobRepository {
         this.buildValidationError(
           "Job payload contains unexpected fields.",
           audit,
+          [...invalidFields, ...extraKeys],
         ),
       );
     }
     if (errors.length) {
       throw new BadRequestException(
-        this.buildValidationError("Job payload validation failed.", audit),
-      );
-    }
-    if (!this.isPreferredTimeValid(normalized.preferredTime)) {
-      throw new BadRequestException(
-        this.buildValidationError("Preferred time is invalid.", audit),
+        this.buildValidationError(
+          "Job payload validation failed.",
+          audit,
+          invalidFields,
+        ),
       );
     }
     return { payload: normalized, audit };
@@ -167,6 +205,8 @@ export class JobsService implements IJobRepository {
       "urgency",
       "description",
       "preferredTime",
+      "propertyType",
+      "serviceIntent",
     ]);
     return Object.keys(payload).filter((key) => !allowed.has(key));
   }
@@ -202,9 +242,6 @@ export class JobsService implements IJobRepository {
       payload.issueCategory,
     );
     const normalizedUrgency = this.normalizeUrgency(payload.urgency);
-    const normalizedPreferredTime = this.normalizePreferredTime(
-      payload.preferredTime,
-    );
     return {
       customerName: this.normalizeRequiredText(payload.customerName),
       phone: this.normalizePhone(payload.phone),
@@ -212,7 +249,19 @@ export class JobsService implements IJobRepository {
       issueCategory: normalizedIssueCategory,
       urgency: normalizedUrgency,
       description: this.normalizeOptionalText(payload.description),
-      preferredTime: normalizedPreferredTime,
+      preferredTime: this.normalizeOptionalText(payload.preferredTime),
+      propertyType: (this.normalizeEnum(payload.propertyType, [
+        "RESIDENTIAL",
+        "COMMERCIAL",
+        "MANAGED",
+      ]) || "MANAGED") as CreateJobPayload["propertyType"],
+      serviceIntent: (this.normalizeEnum(payload.serviceIntent, [
+        "DIAGNOSTIC",
+        "REPAIR",
+        "INSTALLATION",
+        "MAINTENANCE",
+        "OTHER",
+      ]) || "OTHER") as CreateJobPayload["serviceIntent"],
     };
   }
 
@@ -228,9 +277,12 @@ export class JobsService implements IJobRepository {
   private buildValidationError(
     message: string,
     audit: { rawArgs: string; normalizedArgs: CreateJobPayload },
+    invalidFields: string[],
   ) {
     const includeAudit = process.env.NODE_ENV !== "production";
-    return includeAudit ? { message, audit } : { message };
+    return includeAudit
+      ? { message, invalidFields, audit }
+      : { message, invalidFields };
   }
 
   private mapJob(
@@ -252,6 +304,21 @@ export class JobsService implements IJobRepository {
       urgency: job.urgency,
       description: job.description ?? undefined,
       preferredTime: job.preferredWindowLabel ?? undefined,
+      preferredTimeText: job.preferredTimeText ?? undefined,
+      propertyType: this.policyValue(
+        job.policySnapshot,
+        "propertyType",
+        "MANAGED",
+      ) as CreateJobPayload["propertyType"],
+      serviceIntent: this.policyValue(
+        job.policySnapshot,
+        "serviceIntent",
+        "OTHER",
+      ) as CreateJobPayload["serviceIntent"],
+      serviceWindowStart: job.serviceWindowStart ?? undefined,
+      serviceWindowEnd: job.serviceWindowEnd ?? undefined,
+      calendarEventId: job.calendarEventId ?? undefined,
+      leadAttribution: this.leadAttributionValue(job.policySnapshot),
       status: job.status,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
@@ -268,6 +335,9 @@ export class JobsService implements IJobRepository {
       serviceCategory: true;
     };
   }> | null> {
+    const directMatch = await this.findJobBySessionId(tenantId, sessionId);
+    if (directMatch) return directMatch;
+
     const logs = await this.prisma.communicationContent.findMany({
       where: {
         tenantId,
@@ -291,6 +361,17 @@ export class JobsService implements IJobRepository {
 
     return this.prisma.job.findUnique({
       where: { id: jobId },
+      include: {
+        customer: true,
+        propertyAddress: true,
+        serviceCategory: true,
+      },
+    });
+  }
+
+  private findJobBySessionId(tenantId: string, sessionId: string) {
+    return this.prisma.job.findFirst({
+      where: { tenantId, intakeSessionId: sessionId },
       include: {
         customer: true,
         propertyAddress: true,
@@ -339,6 +420,70 @@ export class JobsService implements IJobRepository {
     return sanitized.length ? sanitized : undefined;
   }
 
+  private normalizeEnum(value: unknown, allowed: readonly string[]): string {
+    if (typeof value !== "string") return "";
+    const normalized = this.sanitizationService
+      .normalizeWhitespace(value)
+      .toUpperCase();
+    return allowed.includes(normalized) ? normalized : "";
+  }
+
+  private policyValue(
+    snapshot: Prisma.JsonValue,
+    key: string,
+    fallback: string,
+  ): string {
+    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+      return fallback;
+    }
+    const value = (snapshot as Record<string, unknown>)[key];
+    return typeof value === "string" ? value : fallback;
+  }
+
+  private leadAttributionValue(
+    snapshot: Prisma.JsonValue,
+  ): LeadAttribution | undefined {
+    if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+      return undefined;
+    }
+    return this.normalizeLeadAttribution(
+      (snapshot as Record<string, unknown>).leadAttribution,
+    );
+  }
+
+  private normalizeLeadAttribution(
+    value: unknown,
+  ): LeadAttribution | undefined {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return undefined;
+    }
+    const input = value as Record<string, unknown>;
+    if (input.channel !== "website_chat") return undefined;
+
+    const path = (candidate: unknown) => {
+      const normalized = this.normalizeOptionalText(candidate);
+      return normalized && /^\/[A-Za-z0-9/_-]*$/.test(normalized)
+        ? normalized.slice(0, 200)
+        : undefined;
+    };
+    const text = (candidate: unknown, limit: number) =>
+      this.normalizeOptionalText(candidate)?.slice(0, limit);
+    const referrerHost = text(input.referrerHost, 253);
+
+    return {
+      channel: "website_chat",
+      landingPage: path(input.landingPage),
+      sourcePage: path(input.sourcePage),
+      referrerHost:
+        referrerHost && /^[A-Za-z0-9.-]+$/.test(referrerHost)
+          ? referrerHost.toLowerCase()
+          : undefined,
+      utmSource: text(input.utmSource, 100),
+      utmMedium: text(input.utmMedium, 100),
+      utmCampaign: text(input.utmCampaign, 160),
+    };
+  }
+
   private normalizePhone(value: unknown): string {
     if (typeof value !== "string") return "";
     const digits = value.replace(/\D/g, "");
@@ -377,6 +522,12 @@ export class JobsService implements IJobRepository {
       PLUMBING: "PLUMBING",
       DRAIN: "DRAINS",
       DRAINS: "DRAINS",
+      BOILER: "BOILER",
+      REFRIGERATION: "REFRIGERATION",
+      "COMMERCIAL HVAC": "COMMERCIAL_HVAC",
+      COMMERCIALHVAC: "COMMERCIAL_HVAC",
+      "COMMERCIAL REFRIGERATION": "COMMERCIAL_REFRIGERATION",
+      COMMERCIALREFRIGERATION: "COMMERCIAL_REFRIGERATION",
     } as Record<string, CreateJobPayload["issueCategory"]>;
     return mapped[normalized] ?? normalized;
   }
@@ -392,45 +543,57 @@ export class JobsService implements IJobRepository {
     if (normalized === "STANDARD" || normalized === "NORMAL") {
       return "STANDARD";
     }
+    // The AI prompt/tool distinguishes high-priority requests, while the
+    // current persistence model intentionally stores only emergency or
+    // standard urgency. Preserve the request instead of rejecting the tool
+    // call; only life-safety/emergency cases belong in EMERGENCY.
+    if (normalized === "HIGH" || normalized === "HIGH PRIORITY") {
+      return "STANDARD";
+    }
     return "" as never;
-  }
-
-  private normalizePreferredTime(value: unknown): string | undefined {
-    if (typeof value !== "string") return undefined;
-    const normalized = this.sanitizationService.normalizeWhitespace(value);
-    const upper = normalized.toUpperCase();
-    const slots = ["ASAP", "MORNING", "AFTERNOON", "EVENING"];
-    if (slots.includes(upper)) {
-      return upper;
-    }
-    const timestamp = Date.parse(normalized);
-    if (!Number.isNaN(timestamp)) {
-      return new Date(timestamp).toISOString();
-    }
-    return normalized;
-  }
-
-  private isPreferredTimeValid(value?: string): boolean {
-    if (!value) return true;
-    const slots = ["ASAP", "MORNING", "AFTERNOON", "EVENING"];
-    if (slots.includes(value)) return true;
-    return !Number.isNaN(Date.parse(value));
   }
 
   private mapUrgency(value: string): JobUrgency {
     return value === "EMERGENCY" ? JobUrgency.EMERGENCY : JobUrgency.STANDARD;
   }
 
-  private mapPreferredWindow(value?: string): PreferredWindowLabel | undefined {
-    if (!value) {
-      return undefined;
+  private inferPreferredWindow(
+    value?: string,
+  ): PreferredWindowLabel | undefined {
+    if (!value) return undefined;
+    const upper = value.toUpperCase().replace(/\./g, "");
+
+    if (/\bASAP\b|AS SOON AS POSSIBLE|RIGHT AWAY|IMMEDIATELY/.test(upper)) {
+      return PreferredWindowLabel.ASAP;
     }
-    const normalized = value.trim().toUpperCase();
-    if (normalized in PreferredWindowLabel) {
-      return PreferredWindowLabel[
-        normalized as keyof typeof PreferredWindowLabel
-      ];
+    if (/\bMORNING\b|BEFORE NOON/.test(upper)) {
+      return PreferredWindowLabel.MORNING;
     }
-    return undefined;
+    if (/\bAFTERNOON\b|\bNOON\b/.test(upper)) {
+      return PreferredWindowLabel.AFTERNOON;
+    }
+    if (/\bEVENING\b|AFTER WORK|\bNIGHT\b/.test(upper)) {
+      return PreferredWindowLabel.EVENING;
+    }
+
+    const twelveHour = upper.match(
+      /\b(1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(AM|PM)\b/,
+    );
+    if (twelveHour) {
+      const hour =
+        (Number(twelveHour[1]) % 12) + (twelveHour[2] === "PM" ? 12 : 0);
+      return this.preferredWindowForHour(hour);
+    }
+
+    const twentyFourHour = upper.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/);
+    return twentyFourHour
+      ? this.preferredWindowForHour(Number(twentyFourHour[1]))
+      : undefined;
+  }
+
+  private preferredWindowForHour(hour: number): PreferredWindowLabel {
+    if (hour < 12) return PreferredWindowLabel.MORNING;
+    if (hour < 17) return PreferredWindowLabel.AFTERNOON;
+    return PreferredWindowLabel.EVENING;
   }
 }

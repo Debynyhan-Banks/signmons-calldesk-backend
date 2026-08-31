@@ -332,13 +332,16 @@ model Job {
   status          JobStatus
   urgency         JobUrgency
   description     String?
+  intakeSessionId String? @db.VarChar(64)
 
   pricingSnapshot Json
   policySnapshot  Json
 
   preferredWindowLabel PreferredWindowLabel?
+  preferredTimeText    String? @db.VarChar(160)
   serviceWindowStart   DateTime?
   serviceWindowEnd     DateTime?
+  calendarEventId      String? @db.VarChar(256)
 
   offerExpiresAt  DateTime?
   acceptedAt      DateTime?
@@ -355,12 +358,14 @@ model Job {
   conversationLinks   ConversationJobLink[]
 
   @@unique([id, tenantId])
+  @@unique([tenantId, intakeSessionId])
   @@index([tenantId])
   @@index([tenantId, status, urgency])
   @@index([assignedUserId, assignedUserTenantId])
   @@index([customerId, customerTenantId])
   @@index([propertyAddressId, propertyAddressTenantId])
   @@index([serviceCategoryId, serviceCategoryTenantId])
+  @@unique([tenantId, serviceWindowStart, serviceWindowEnd])
 }
 
 model JobOffer {

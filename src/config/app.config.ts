@@ -22,6 +22,19 @@ export interface AppConfig {
   corsOrigins: string[];
   openAiModel: string;
   webchatIntegrations: WebchatIntegrationConfig[];
+  resendApiKey: string;
+  resendFromEmail: string;
+  jobNotificationEmails: string[];
+  twilioAccountSid: string;
+  twilioAuthToken: string;
+  twilioPhoneNumber: string;
+  jobNotificationSmsNumbers: string[];
+  conversationDataEncryptionKey: string;
+  schedulingEnabled: boolean;
+  googleCalendarId: string;
+  schedulingTimeZone: string;
+  schedulingLookaheadDays: number;
+  schedulingMinNoticeMinutes: number;
 }
 
 export interface WebchatIntegrationConfig {
@@ -75,8 +88,40 @@ export default registerAs("app", (): AppConfig => {
     corsOrigins,
     openAiModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
     webchatIntegrations,
+    resendApiKey: process.env.RESEND_API_KEY ?? "",
+    resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "",
+    jobNotificationEmails: parseCommaSeparated(
+      process.env.JOB_NOTIFICATION_EMAILS,
+    ),
+    twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+    twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+    twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
+    jobNotificationSmsNumbers: parseCommaSeparated(
+      process.env.JOB_NOTIFICATION_SMS_NUMBERS,
+    ),
+    conversationDataEncryptionKey:
+      process.env.CONVERSATION_DATA_ENCRYPTION_KEY ?? "0".repeat(64),
+    schedulingEnabled:
+      (process.env.SCHEDULING_ENABLED ?? "false").toLowerCase() === "true",
+    googleCalendarId: process.env.GOOGLE_CALENDAR_ID ?? "",
+    schedulingTimeZone: process.env.SCHEDULING_TIME_ZONE ?? "America/New_York",
+    schedulingLookaheadDays: Number(
+      process.env.SCHEDULING_LOOKAHEAD_DAYS ?? 14,
+    ),
+    schedulingMinNoticeMinutes: Number(
+      process.env.SCHEDULING_MIN_NOTICE_MINUTES ?? 120,
+    ),
   };
 });
+
+function parseCommaSeparated(value: string | undefined): string[] {
+  return value
+    ? value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    : [];
+}
 
 function parseWebchatIntegrations(
   value: string | undefined,

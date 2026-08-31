@@ -14,11 +14,22 @@ const ISSUE_CATEGORIES = [
   "ELECTRICAL",
   "DRAINS",
   "GENERAL",
+  "BOILER",
+  "REFRIGERATION",
+  "COMMERCIAL_HVAC",
+  "COMMERCIAL_REFRIGERATION",
 ] as const;
 
 type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
 
 type Urgency = "EMERGENCY" | "STANDARD";
+type PropertyType = "RESIDENTIAL" | "COMMERCIAL" | "MANAGED";
+type ServiceIntent =
+  | "DIAGNOSTIC"
+  | "REPAIR"
+  | "INSTALLATION"
+  | "MAINTENANCE"
+  | "OTHER";
 
 const transformRequiredString = ({ value }: TransformFnParams): string =>
   typeof value === "string" ? value.trim() : "";
@@ -71,6 +82,12 @@ export class CreateJobPayloadDto {
   @Transform(transformOptionalString)
   @IsOptional()
   @IsString()
-  @MaxLength(80)
+  @MaxLength(160)
   preferredTime?: string;
+
+  @IsEnum(["RESIDENTIAL", "COMMERCIAL", "MANAGED"])
+  propertyType!: PropertyType;
+
+  @IsEnum(["DIAGNOSTIC", "REPAIR", "INSTALLATION", "MAINTENANCE", "OTHER"])
+  serviceIntent!: ServiceIntent;
 }

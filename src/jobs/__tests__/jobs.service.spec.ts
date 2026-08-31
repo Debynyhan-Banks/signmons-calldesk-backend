@@ -2,6 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 import { JobsService } from "../jobs.service";
 import { SanitizationService } from "../../sanitization/sanitization.service";
 import type { PrismaService } from "../../prisma/prisma.service";
+import type { JobNotificationService } from "../job-notification.service";
 
 describe("JobsService", () => {
   const tenantId = "tenant-1";
@@ -20,6 +21,7 @@ describe("JobsService", () => {
     urgency: "STANDARD",
     description: null,
     preferredWindowLabel: null,
+    preferredTimeText: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     customer: {
@@ -36,10 +38,14 @@ describe("JobsService", () => {
 
   let prisma: {
     communicationContent: { findMany: jest.Mock };
-    job: { findUnique: jest.Mock; create: jest.Mock };
+    job: { findFirst: jest.Mock; findUnique: jest.Mock; create: jest.Mock };
     customer: { upsert: jest.Mock };
     serviceCategory: { findFirst: jest.Mock; create: jest.Mock };
     propertyAddress: { create: jest.Mock };
+  };
+  let jobNotificationService: {
+    enqueueJobCreated: jest.Mock;
+    notifyJobCreated: jest.Mock;
   };
   let service: JobsService;
 
@@ -49,6 +55,7 @@ describe("JobsService", () => {
         findMany: jest.fn(),
       },
       job: {
+        findFirst: jest.fn().mockResolvedValue(null),
         findUnique: jest.fn(),
         create: jest.fn(),
       },
@@ -63,10 +70,15 @@ describe("JobsService", () => {
         create: jest.fn(),
       },
     };
+    jobNotificationService = {
+      enqueueJobCreated: jest.fn(),
+      notifyJobCreated: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new JobsService(
       prisma as unknown as PrismaService,
       new SanitizationService(),
+      jobNotificationService as unknown as JobNotificationService,
     );
   });
 
@@ -83,6 +95,21 @@ describe("JobsService", () => {
     });
 
     expect(result.id).toBe(jobRecord.id);
+    expect(prisma.job.create).not.toHaveBeenCalled();
+    expect(jobNotificationService.enqueueJobCreated).not.toHaveBeenCalled();
+  });
+
+  it("returns an idempotent job directly from its intake session", async () => {
+    prisma.job.findFirst.mockResolvedValue(jobRecord as never);
+
+    const result = await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs,
+    });
+
+    expect(result.id).toBe(jobRecord.id);
+    expect(prisma.communicationContent.findMany).not.toHaveBeenCalled();
     expect(prisma.job.create).not.toHaveBeenCalled();
   });
 
@@ -102,6 +129,134 @@ describe("JobsService", () => {
 
     expect(result.id).toBe(jobRecord.id);
     expect(prisma.job.create).toHaveBeenCalled();
+    expect(jobNotificationService.enqueueJobCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: jobRecord.id }),
+    );
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ intakeSessionId: sessionId }),
+      }),
+    );
+  });
+
+  it("stores privacy-safe website attribution with the job", async () => {
+    prisma.communicationContent.findMany.mockResolvedValue([]);
+    prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
+    prisma.serviceCategory.findFirst.mockResolvedValue(null as never);
+    prisma.serviceCategory.create.mockResolvedValue({ id: "svc-1" } as never);
+    prisma.propertyAddress.create.mockResolvedValue({ id: "addr-1" } as never);
+    prisma.job.create.mockResolvedValue(jobRecord as never);
+
+    await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs,
+      leadAttribution: {
+        channel: "website_chat",
+        landingPage: "/resources/furnace-repair-vs-replacement",
+        sourcePage: "/services/furnace-heating-repair",
+        referrerHost: "www.google.com",
+        utmSource: "google",
+        utmMedium: "organic",
+      },
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          policySnapshot: expect.objectContaining({
+            leadAttribution: {
+              channel: "website_chat",
+              landingPage: "/resources/furnace-repair-vs-replacement",
+              sourcePage: "/services/furnace-heating-repair",
+              referrerHost: "www.google.com",
+              utmSource: "google",
+              utmMedium: "organic",
+            },
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("defers the initial email when the booking flow will offer live slots", async () => {
+    prisma.communicationContent.findMany.mockResolvedValue([]);
+    prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
+    prisma.serviceCategory.findFirst.mockResolvedValue(null as never);
+    prisma.serviceCategory.create.mockResolvedValue({ id: "svc-1" } as never);
+    prisma.propertyAddress.create.mockResolvedValue({ id: "addr-1" } as never);
+    prisma.job.create.mockResolvedValue(jobRecord as never);
+
+    await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs,
+      deferInitialNotification: true,
+    });
+
+    expect(jobNotificationService.enqueueJobCreated).not.toHaveBeenCalled();
+  });
+
+  it("accepts high-priority AI output without treating it as an emergency", async () => {
+    prisma.communicationContent.findMany.mockResolvedValue([]);
+    prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
+    prisma.serviceCategory.findFirst.mockResolvedValue({
+      id: "svc-1",
+    } as never);
+    prisma.propertyAddress.create.mockResolvedValue({ id: "addr-1" } as never);
+    prisma.job.create.mockResolvedValue(jobRecord as never);
+
+    await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs: JSON.stringify({
+        customerName: "Alice",
+        phone: "1234567890",
+        issueCategory: "HEATING",
+        urgency: "HIGH",
+      }),
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ urgency: "STANDARD" }),
+      }),
+    );
+  });
+
+  it("normalizes a short customer time such as 5pm to the evening window", async () => {
+    prisma.communicationContent.findMany.mockResolvedValue([]);
+    prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
+    prisma.serviceCategory.findFirst.mockResolvedValue({
+      id: "svc-1",
+    } as never);
+    prisma.propertyAddress.create.mockResolvedValue({ id: "addr-1" } as never);
+    prisma.job.create.mockResolvedValue(jobRecord as never);
+
+    await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs: JSON.stringify({
+        customerName: "Alice",
+        phone: "1234567890",
+        issueCategory: "HEATING",
+        urgency: "STANDARD",
+        preferredTime: "Tomorrow at 5pm",
+      }),
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ preferredWindowLabel: "EVENING" }),
+      }),
+    );
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          preferredTimeText: "Tomorrow at 5pm",
+        }),
+      }),
+    );
   });
 
   it("fails closed when required fields are missing", async () => {
@@ -153,23 +308,41 @@ describe("JobsService", () => {
     expect(prisma.job.create).not.toHaveBeenCalled();
   });
 
-  it("fails closed when preferredTime is invalid", async () => {
+  it.each([
+    "sometime next week",
+    "Tuesday after 3",
+    "between 4 and 6",
+    "anytime",
+    "weekends are best",
+  ])("preserves flexible preferred time wording: %s", async (preferredTime) => {
     prisma.communicationContent.findMany.mockResolvedValue([]);
+    prisma.customer.upsert.mockResolvedValue({ id: "cust-1" } as never);
+    prisma.serviceCategory.findFirst.mockResolvedValue({
+      id: "svc-1",
+    } as never);
+    prisma.propertyAddress.create.mockResolvedValue({ id: "addr-1" } as never);
+    prisma.job.create.mockResolvedValue({
+      ...jobRecord,
+      preferredTimeText: preferredTime,
+    } as never);
 
-    await expect(
-      service.createJobFromToolCall({
-        tenantId,
-        sessionId,
-        rawArgs: JSON.stringify({
-          customerName: "Alice",
-          phone: "1234567890",
-          issueCategory: "HEATING",
-          urgency: "STANDARD",
-          preferredTime: "sometime next week",
-        }),
+    await service.createJobFromToolCall({
+      tenantId,
+      sessionId,
+      rawArgs: JSON.stringify({
+        customerName: "Alice",
+        phone: "1234567890",
+        issueCategory: "HEATING",
+        urgency: "STANDARD",
+        preferredTime,
       }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.job.create).not.toHaveBeenCalled();
+    });
+
+    expect(prisma.job.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ preferredTimeText: preferredTime }),
+      }),
+    );
   });
 
   it("fails closed when unexpected fields are present", async () => {

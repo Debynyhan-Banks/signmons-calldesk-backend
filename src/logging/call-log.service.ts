@@ -9,6 +9,7 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { SanitizationService } from "../sanitization/sanitization.service";
+import { ConversationMemoryCipher } from "./conversation-memory-cipher.service";
 
 export interface CreateCallLogInput {
   tenantId: string;
@@ -26,14 +27,23 @@ export class CallLogService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sanitizationService: SanitizationService,
+    private readonly conversationMemoryCipher: ConversationMemoryCipher,
   ) {}
 
   async createLog(input: CreateCallLogInput) {
     const sanitizedTranscript = this.obfuscatePii(
       this.sanitizationService.sanitizeText(input.transcript),
     );
+    const encryptedTranscript = this.conversationMemoryCipher.encrypt(
+      this.sanitizationService.sanitizeText(input.transcript),
+    );
     const sanitizedResponse = input.aiResponse
       ? this.obfuscatePii(
+          this.sanitizationService.sanitizeText(input.aiResponse),
+        )
+      : null;
+    const encryptedResponse = input.aiResponse
+      ? this.conversationMemoryCipher.encrypt(
           this.sanitizationService.sanitizeText(input.aiResponse),
         )
       : null;
@@ -50,6 +60,7 @@ export class CallLogService {
       conversationId: input.conversationId,
       direction: input.direction ?? "INBOUND",
       message: sanitizedTranscript,
+      encryptedMessage: encryptedTranscript,
       payload: metadataPayload,
     });
 
@@ -59,6 +70,7 @@ export class CallLogService {
         conversationId: input.conversationId,
         direction: "OUTBOUND",
         message: sanitizedResponse,
+        encryptedMessage: encryptedResponse ?? undefined,
         payload: metadataPayload,
       });
     }
@@ -133,12 +145,14 @@ export class CallLogService {
     conversationId,
     direction,
     message,
+    encryptedMessage,
     payload,
   }: {
     tenantId: string;
     conversationId?: string;
     direction: "INBOUND" | "OUTBOUND";
     message: string;
+    encryptedMessage?: string;
     payload: Prisma.InputJsonValue;
   }) {
     const eventId = randomUUID();
@@ -148,10 +162,12 @@ export class CallLogService {
         ? {
             ...(payload as Record<string, unknown>),
             message,
+            encryptedMessage,
             role: direction === "INBOUND" ? "user" : "assistant",
           }
         : {
             message,
+            encryptedMessage,
             role: direction === "INBOUND" ? "user" : "assistant",
           };
 
@@ -216,6 +232,7 @@ export class CallLogService {
     const data = payload as Record<string, unknown>;
     const role = data.role;
     const message = data.message;
+    const encryptedMessage = data.encryptedMessage;
     if (
       (role !== "user" && role !== "assistant") ||
       typeof message !== "string"
@@ -223,7 +240,11 @@ export class CallLogService {
       return null;
     }
 
-    return { role, content: message, createdAt };
+    const decrypted =
+      typeof encryptedMessage === "string"
+        ? this.conversationMemoryCipher.decrypt(encryptedMessage)
+        : null;
+    return { role, content: decrypted ?? message, createdAt };
   }
 
   private obfuscatePii(value: string): string {
