@@ -49,4 +49,17 @@ No operator credential or customer data was placed in the screenshots.
 
 ## Deployment status
 
-Implementation verified locally. Database migration, backend release and operator-console hosting release remain pending and require a separate deployment action.
+Released to the Signmons CallDesk staging environment on 2026-08-31.
+
+- Source commit: `afb3644` (`feat(app): implement APP-007 urgency escalation review`).
+- Container: `us-east5-docker.pkg.dev/signmons/signmons/signmons-calldesk-backend:afb3644`.
+- Container digest: `sha256:42f0936c78362ecee7a3270b9a559caae2dcd627912c7701c063fdfedee628da`.
+- Database migration job: `signmons-calldesk-migrate`; execution `signmons-calldesk-migrate-fp7rp` completed successfully.
+- Cloud Run revision: `signmons-calldesk-staging-00019-swf`, serving 100% of traffic.
+- Operator console: `https://signmons-calldesk.web.app/app/urgency-review`.
+- Live readiness check returned `200` with `status: ok`.
+- An unauthenticated urgency-review request returned the expected sanitized `401` response.
+- The production CORS preflight returned `204` and allowed `https://signmons-calldesk.web.app`.
+- Chrome release verification confirmed the hosted escalation-review page, authentication boundary, metrics, three urgency filters and privacy-safe disconnected state.
+
+The reusable migration job keeps future schema releases explicit and separate from serving traffic. The disabled build service account remained disabled; the release did not require temporary IAM grants.
