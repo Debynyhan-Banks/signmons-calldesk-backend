@@ -1,4 +1,16 @@
 {
+  "hosting": [
+    {
+      "target": "calldesk",
+      "public": "ui/out",
+      "cleanUrls": true,
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    }
+  ],
   "emulators": {
     "singleProjectMode": true,
     "auth": {

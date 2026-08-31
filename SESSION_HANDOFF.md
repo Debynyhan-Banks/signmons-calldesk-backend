@@ -1,6 +1,6 @@
 # Backend Session Handoff
 
-Last Updated: 2026-08-30
+Last Updated: 2026-08-31
 
 ## Completed owner-approved pilots
 
@@ -22,8 +22,9 @@ Last Updated: 2026-08-30
 ## Current Program Pointer
 
 - Completed backend exceptions: `BE-007` reporting and `APP-003` audited job completion
-- Current global pointer: `APP-006`
-- Backend state: CallDesk intake review and booking readiness is the active product ticket
+- Completed product ticket: `APP-006` intake review and booking readiness
+- Current global pointer: `APP-007`
+- Backend state: urgency classification and escalation review is the next CallDesk product ticket
 
 ## Completed In This Session
 
@@ -36,7 +37,7 @@ Last Updated: 2026-08-30
 
 ## Next Actions (Strict Order)
 
-1. Implement APP-006 intake review and booking readiness under the backend board.
+1. Implement APP-007 urgency classification and escalation review under the backend board.
 2. Do not add a public completion control to the Eternity website; completion belongs in an authenticated operator workflow.
 3. Do not mark a real job complete without confirmed field status.
 
