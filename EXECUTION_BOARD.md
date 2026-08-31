@@ -16,10 +16,9 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Now
 
-- [ ] BE-007 Tenant lead-source reporting pilot (`SCR-APP-018`, `SCR-APP-019`)
-  - Owner-approved narrow Eternity pilot exception.
-  - Contract: authenticated, tenant-scoped, PII-free `GET /reports/lead-sources` with bounded date range and explicit metric lineage.
-  - FE-013 resumes after BE-007 completes.
+- [ ] BLOCKED Backend implementation queue (marketing-first phase active)
+  - BE-007 is complete; the global pointer returned to FE-013.
+  - Backend execution remains queued until governance explicitly moves `Now` to another backend ticket.
 
 ## Next
 
@@ -37,6 +36,8 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Done
 
+- [x] BE-007 Tenant lead-source reporting pilot
+  - Evidence: `evidence/BE-007/readiness-report.md`
 - [x] BE-003 Eternity webchat backend production readiness
   - Evidence: `evidence/BE-003/readiness-report.md`
 - [x] R6-P0-1 SMS Twilio signature guard parity

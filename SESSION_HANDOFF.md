@@ -2,19 +2,21 @@
 
 Last Updated: 2026-08-30
 
-## Active owner-approved pilot
+## Completed owner-approved pilot
 
-- Canonical `Now`: `BE-007` tenant lead-source reporting pilot.
+- Completed: `BE-007` tenant lead-source reporting pilot.
 - Contract: authenticated `GET /reports/lead-sources`, verified tenant context, owner/admin/manager access, explicit UTC date bounds up to 366 days, PII-free aggregate output and no-store caching.
 - Implementation is isolated under `src/reporting/`; focused tests cover calculations, accepted-lineage cancellation handling, unauthorized roles, bounded ranges and a PII-free Prisma select.
 - Required backend gates currently pass: build, 80 tests and architecture check. Repository-wide lint still contains two pre-existing test-file findings outside BE-007 and is not a backend completion gate.
-- Next: push the focused backend commit, deploy one Cloud Run revision, verify the live endpoint rejects unauthenticated access, and produce production-safe aggregate evidence.
+- Production: revision `signmons-calldesk-staging-00015-7hq` serves image `8264c74` at 100 percent traffic; health passed and unauthenticated reporting access returned HTTP 401.
+- Evidence: `evidence/BE-007/readiness-report.md`; the production-safe August baseline contains 8 created, 5 booked, 0 completed, 1 cancelled, 1 attributed and 7 legacy unattributed jobs.
+- Next: return the Signmons program pointer to FE-013. Keep the Eternity presentation layer private; do not expose reporting credentials or business metrics in public browser code.
 
 ## Current Program Pointer
 
-- Active backend exception: `BE-007` tenant lead-source reporting pilot
-- Next global pointer: `FE-013` after BE-007 completion
-- Backend state: Eternity pilot is live; reporting release is implemented locally and awaiting verified deployment
+- Completed backend exception: `BE-007` tenant lead-source reporting pilot
+- Next global pointer: `FE-013`
+- Backend state: Eternity pilot and the privacy-safe reporting API are live
 
 ## Completed In This Session
 
