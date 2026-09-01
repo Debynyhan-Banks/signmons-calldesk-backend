@@ -22,7 +22,7 @@ const ISSUE_CATEGORIES = [
 
 type IssueCategory = (typeof ISSUE_CATEGORIES)[number];
 
-type Urgency = "EMERGENCY" | "STANDARD";
+type Urgency = "EMERGENCY" | "HIGH" | "STANDARD";
 type PropertyType = "RESIDENTIAL" | "COMMERCIAL" | "MANAGED";
 type ServiceIntent =
   | "DIAGNOSTIC"
@@ -68,8 +68,8 @@ export class CreateJobPayloadDto {
   })
   issueCategory!: IssueCategory;
 
-  @IsEnum(["EMERGENCY", "STANDARD"], {
-    message: "urgency must be EMERGENCY or STANDARD",
+  @IsEnum(["EMERGENCY", "HIGH", "STANDARD"], {
+    message: "urgency must be EMERGENCY, HIGH, or STANDARD",
   })
   urgency!: Urgency;
 

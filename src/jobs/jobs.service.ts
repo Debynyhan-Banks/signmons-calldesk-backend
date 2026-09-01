@@ -110,6 +110,18 @@ export class JobsService implements IJobRepository {
           policySnapshot: {
             propertyType: normalizedPayload.propertyType,
             serviceIntent: normalizedPayload.serviceIntent,
+            urgencyDecision: {
+              source: "AI_INTAKE",
+              level: normalizedPayload.urgency,
+              reasonCodes: [
+                normalizedPayload.urgency === "EMERGENCY"
+                  ? "QUALIFYING_EMERGENCY_SIGNAL"
+                  : normalizedPayload.urgency === "HIGH"
+                    ? "TIME_SENSITIVE_SERVICE_SIGNAL"
+                    : "NO_ESCALATION_SIGNAL",
+              ],
+              confidenceNote: "Operator verification required.",
+            },
             ...(leadAttribution
               ? { leadAttribution: { ...leadAttribution } }
               : {}),
@@ -543,18 +555,16 @@ export class JobsService implements IJobRepository {
     if (normalized === "STANDARD" || normalized === "NORMAL") {
       return "STANDARD";
     }
-    // The AI prompt/tool distinguishes high-priority requests, while the
-    // current persistence model intentionally stores only emergency or
-    // standard urgency. Preserve the request instead of rejecting the tool
-    // call; only life-safety/emergency cases belong in EMERGENCY.
     if (normalized === "HIGH" || normalized === "HIGH PRIORITY") {
-      return "STANDARD";
+      return "HIGH";
     }
     return "" as never;
   }
 
   private mapUrgency(value: string): JobUrgency {
-    return value === "EMERGENCY" ? JobUrgency.EMERGENCY : JobUrgency.STANDARD;
+    if (value === "EMERGENCY") return JobUrgency.EMERGENCY;
+    if (value === "HIGH") return JobUrgency.HIGH;
+    return JobUrgency.STANDARD;
   }
 
   private inferPreferredWindow(

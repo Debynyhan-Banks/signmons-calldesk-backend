@@ -23,8 +23,9 @@ Last Updated: 2026-08-31
 
 - Completed backend exceptions: `BE-007` reporting and `APP-003` audited job completion
 - Completed product ticket: `APP-006` intake review and booking readiness
-- Current global pointer: `APP-007`
-- Backend state: urgency classification and escalation review is the next CallDesk product ticket
+- Completed product ticket: `APP-007` urgency classification and escalation review; implementation verified locally and release pending
+- Current global pointer: `APP-008`
+- Backend state: dispatch board and technician assignment is the next CallDesk product ticket
 
 ## Completed In This Session
 
@@ -37,9 +38,10 @@ Last Updated: 2026-08-31
 
 ## Next Actions (Strict Order)
 
-1. Implement APP-007 urgency classification and escalation review under the backend board.
-2. Do not add a public completion control to the Eternity website; completion belongs in an authenticated operator workflow.
-3. Do not mark a real job complete without confirmed field status.
+1. Release APP-007's database migration, backend image, and operator-console route when deployment is explicitly requested.
+2. Implement APP-008 dispatch board and technician assignment under the backend board.
+3. Do not add a public completion control to the Eternity website; completion belongs in an authenticated operator workflow.
+4. Do not mark a real job complete without confirmed field status.
 
 ## Restart Commands
 

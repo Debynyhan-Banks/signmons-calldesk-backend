@@ -132,6 +132,42 @@ describe("JobNotificationService", () => {
     );
   });
 
+  it("returns a truthful not-configured urgency escalation outcome", async () => {
+    const service = createService({});
+
+    await expect(service.notifyUrgencyEscalation(job)).resolves.toEqual([
+      {
+        channel: "internal",
+        recipientGroup: "operations",
+        outcome: "not_configured",
+      },
+    ]);
+  });
+
+  it("returns the provider result for an urgency escalation", async () => {
+    fetchSpy.mockResolvedValue(new Response(null, { status: 202 }));
+    const service = createService({
+      resendApiKey: "resend-test-key",
+      resendFromEmail: "Eternity <requests@mail.eternityhvacr.com>",
+      jobNotificationEmails: ["ben@eternityhvacr.com"],
+    });
+
+    const outcomes = await service.notifyUrgencyEscalation(job);
+
+    expect(outcomes).toEqual([
+      {
+        channel: "email",
+        recipientGroup: "operations",
+        outcome: "delivered",
+      },
+    ]);
+    const [, request] = fetchSpy.mock.calls[0];
+    const payload = JSON.parse(
+      typeof request?.body === "string" ? request.body : "{}",
+    ) as { subject: string };
+    expect(payload.subject).toContain("request escalated");
+  });
+
   it("emails operations when a completed-looking intake was not saved", async () => {
     fetchSpy.mockResolvedValue(new Response(null, { status: 202 }));
     const service = createService({

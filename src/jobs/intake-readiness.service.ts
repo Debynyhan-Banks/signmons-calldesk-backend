@@ -317,9 +317,8 @@ export class IntakeReadinessService {
 
   private priority(job: IntakeJob): "EMERGENCY" | "HIGH" | "STANDARD" {
     if (job.urgency === JobUrgency.EMERGENCY) return "EMERGENCY";
-    return this.record(job.policySnapshot)?.priority === "HIGH"
-      ? "HIGH"
-      : "STANDARD";
+    if (job.urgency === JobUrgency.HIGH) return "HIGH";
+    return "STANDARD";
   }
 
   private photos(snapshot: Prisma.JsonValue): string[] {

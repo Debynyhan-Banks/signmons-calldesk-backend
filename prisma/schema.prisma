@@ -719,6 +719,7 @@ enum JobStatus {
 
 enum JobUrgency {
   STANDARD
+  HIGH
   EMERGENCY
 }
 

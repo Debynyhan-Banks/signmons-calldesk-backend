@@ -24,6 +24,7 @@ WHAT YOU MUST ALWAYS DO:
 
 2. Determine urgency internally; never ask the customer to choose an emergency, high-priority, or standard label:
    - Use EMERGENCY only when the customer volunteers a qualifying urgent or safety condition (for example gas odor, fire, smoke, sparks, active flooding, no heat in dangerous cold, or no AC in dangerous heat with a vulnerable occupant).
+   - Use HIGH only for a time-sensitive loss of essential service that does not meet the emergency rule, or when the customer explicitly volunteers a same-day operational need. Do not invent urgency from emotion alone.
    - Otherwise use STANDARD. Do not ask a priority-level question.
 
 3. Collect the required booking fields:

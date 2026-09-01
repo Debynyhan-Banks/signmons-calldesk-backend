@@ -102,6 +102,109 @@ export interface IntakeReviewDetail extends IntakeReviewSummary {
   }>;
 }
 
+export type UrgencyLevel = "EMERGENCY" | "HIGH" | "STANDARD";
+
+export interface NotificationDeliveryOutcome {
+  channel: "email" | "sms" | "internal";
+  recipientGroup: "operations";
+  outcome: "delivered" | "failed" | "misconfigured" | "not_configured";
+}
+
+export interface UrgencyReviewSummary {
+  jobId: string;
+  reference: string;
+  urgency: UrgencyLevel;
+  serviceCategory: string;
+  status: string;
+  createdAt: string;
+  rationale: {
+    decisionSource: "AI_INTAKE" | "OPERATOR_OVERRIDE" | "LEGACY_PERSISTED";
+    reasonCodes: string[];
+    triggerDetails: string[];
+    confidenceNote: string;
+  };
+  escalationPath: Array<{
+    order: number;
+    label: string;
+    required: boolean;
+  }>;
+}
+
+export interface UrgencyReviewDetail extends UrgencyReviewSummary {
+  history: Array<{
+    id: string;
+    type: "override" | "escalation";
+    actorId: string;
+    createdAt: string;
+    details: {
+      previousUrgency?: string;
+      urgency?: string;
+      reason?: string;
+      recipientGroup?: string;
+      deliveries?: NotificationDeliveryOutcome[];
+    };
+  }>;
+}
+
+export type DispatchQueue =
+  | "NEW_REQUEST"
+  | "READY_TO_ASSIGN"
+  | "ASSIGNED"
+  | "ESCALATED";
+
+export interface AssignedTechnician {
+  id: string;
+  fullName: string;
+  role: string;
+}
+
+export interface DispatchBoardSummary {
+  jobId: string;
+  reference: string;
+  queue: DispatchQueue;
+  serviceCategory: string;
+  urgency: UrgencyLevel;
+  status: string;
+  serviceWindowStart: string | null;
+  serviceWindowEnd: string | null;
+  assignedTechnician: AssignedTechnician | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DispatchCandidate {
+  userId: string;
+  fullName: string;
+  role: string;
+  available: boolean;
+  proficiency: "JUNIOR" | "STANDARD" | "EXPERT" | null;
+  activeAssignments: number;
+  eligible: boolean;
+  reasonCodes: string[];
+  reasons: string[];
+}
+
+export interface DispatchBoardDetail extends DispatchBoardSummary {
+  recommendation: {
+    version: "dispatch-v1";
+    technicianId: string;
+    technicianName: string;
+    reasonCodes: string[];
+    reasons: string[];
+  } | null;
+  candidates: DispatchCandidate[];
+  assignmentHistory: Array<{
+    id: string;
+    action: "job.assigned" | "job.reassigned" | "job.assignment_cancelled";
+    actorId: string;
+    technicianId: string | null;
+    previousTechnicianId: string | null;
+    override: boolean;
+    reason: string | null;
+    createdAt: string;
+  }>;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -253,6 +356,118 @@ export async function reviewIntakeReadiness(
   return postJson(
     `/jobs/${encodeURIComponent(jobId)}/readiness/review`,
     {},
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function listUrgencyReviews(
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<UrgencyReviewSummary[]> {
+  return getJson<UrgencyReviewSummary[]>(
+    "/jobs/urgency-review",
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getUrgencyReview(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<UrgencyReviewDetail> {
+  return getJson<UrgencyReviewDetail>(
+    `/jobs/urgency-review/${encodeURIComponent(jobId)}`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function overrideJobUrgency(
+  jobId: string,
+  input: { urgency: UrgencyLevel; reason: string },
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{ changed: boolean; urgency: UrgencyLevel }> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/urgency/override`,
+    input,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function escalateJobUrgency(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  jobId: string;
+  urgency: UrgencyLevel;
+  changed: boolean;
+  escalation: { deliveries: NotificationDeliveryOutcome[] };
+}> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/escalations`,
+    {},
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function listDispatchBoard(
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<DispatchBoardSummary[]> {
+  return getJson<DispatchBoardSummary[]>(
+    "/jobs/dispatch-board",
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getDispatchJob(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<DispatchBoardDetail> {
+  return getJson<DispatchBoardDetail>(
+    `/jobs/dispatch-board/${encodeURIComponent(jobId)}`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function assignDispatchJob(
+  jobId: string,
+  input: {
+    technicianId: string;
+    expectedUpdatedAt: string;
+    reason?: string;
+  },
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  changed: boolean;
+  jobId: string;
+  assignedTechnician: AssignedTechnician | null;
+  updatedAt: string;
+}> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/assignments`,
+    input,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function cancelDispatchAssignment(
+  jobId: string,
+  input: { expectedUpdatedAt: string; reason: string },
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  changed: boolean;
+  jobId: string;
+  assignedTechnician: null;
+  updatedAt: string;
+}> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/assignments/cancel`,
+    input,
     buildAuthHeaders(auth, tenantId),
   );
 }
