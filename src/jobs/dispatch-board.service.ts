@@ -24,6 +24,11 @@ export type DispatchQueue =
 
 type DispatchJob = Prisma.JobGetPayload<{
   include: {
+    tenant: {
+      select: {
+        timezone: true;
+      };
+    };
     serviceCategory: true;
     assignedUser: {
       select: {
@@ -79,6 +84,7 @@ export class DispatchBoardService {
         status: { in: ACTIVE_JOB_STATUSES },
       },
       include: {
+        tenant: { select: { timezone: true } },
         serviceCategory: true,
         assignedUser: {
           select: {
@@ -155,6 +161,7 @@ export class DispatchBoardService {
       const job = await transaction.job.findFirst({
         where: { id: input.jobId, tenantId: input.tenantId, deletedAt: null },
         include: {
+          tenant: { select: { timezone: true } },
           serviceCategory: true,
           assignedUser: {
             select: {
@@ -340,6 +347,7 @@ export class DispatchBoardService {
     const job = await this.prisma.job.findFirst({
       where: { id: jobId, tenantId, deletedAt: null },
       include: {
+        tenant: { select: { timezone: true } },
         serviceCategory: true,
         assignedUser: {
           select: {
@@ -504,6 +512,7 @@ export class DispatchBoardService {
         (job.assignedUserId ? TechnicianJobStatus.ASSIGNED : null),
       serviceWindowStart: job.serviceWindowStart?.toISOString() ?? null,
       serviceWindowEnd: job.serviceWindowEnd?.toISOString() ?? null,
+      timezone: job.tenant.timezone,
       assignedTechnician: job.assignedUser
         ? {
             id: job.assignedUser.id,

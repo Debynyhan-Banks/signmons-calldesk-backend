@@ -45,6 +45,7 @@ describe("DispatchBoardService", () => {
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
+    tenant: { timezone: "America/New_York" },
     serviceCategory: { id: "service-1", name: "HEATING" },
     assignedUser: null,
   };
@@ -92,6 +93,7 @@ describe("DispatchBoardService", () => {
       jobId,
       queue: "READY_TO_ASSIGN",
       serviceCategory: "HEATING",
+      timezone: "America/New_York",
     });
     expect(result[0]).not.toHaveProperty("customerName");
     expect(result[0]).not.toHaveProperty("phone");

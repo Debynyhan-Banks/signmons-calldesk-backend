@@ -19,41 +19,13 @@ import {
   dispatchMetrics,
   dispatchQueueLabel,
   filterDispatchBoard,
+  formatDispatchDate,
+  formatDispatchWindow,
 } from "@/lib/dispatch-board";
 import base from "../intake-review/intake-review.module.css";
 import styles from "./dispatch.module.css";
 
 type AuthMode = "firebase" | "dev";
-
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-
-const formatWindow = (start: string | null, end: string | null) => {
-  if (!start) return "Time not scheduled";
-  const startDate = new Date(start);
-  const endDate = end ? new Date(end) : null;
-  const date = new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  }).format(startDate);
-  const time = new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(startDate);
-  const endTime = endDate
-    ? new Intl.DateTimeFormat("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(endDate)
-    : null;
-  return `${date} · ${time}${endTime ? `–${endTime}` : ""}`;
-};
 
 export default function DispatchPage() {
   const hasDevAuth = Boolean(process.env.NEXT_PUBLIC_DEV_AUTH_SECRET);
@@ -237,7 +209,7 @@ export default function DispatchPage() {
       );
       setTechnicianLink(result.url);
       setNotice(
-        `Secure field link created for ${result.technician.fullName}. It expires ${formatDate(result.expiresAt)}.`,
+        `Secure field link created for ${result.technician.fullName}. It expires ${formatDispatchDate(result.expiresAt, detail.timezone)}.`,
       );
     } catch (actionError) {
       setError(errorMessage(actionError));
@@ -459,11 +431,15 @@ function DispatchCard({
     >
       <span className={styles.cardTop}>
         <strong>{item.serviceCategory}</strong>
-        <time>{formatDate(item.createdAt)}</time>
+        <time>{formatDispatchDate(item.createdAt, item.timezone)}</time>
       </span>
       <span>
         Job #{item.reference} ·{" "}
-        {formatWindow(item.serviceWindowStart, item.serviceWindowEnd)}
+        {formatDispatchWindow(
+          item.serviceWindowStart,
+          item.serviceWindowEnd,
+          item.timezone,
+        )}
       </span>
       <span className={styles.cardFooter}>
         <QueueBadge queue={item.queue} />
@@ -526,7 +502,11 @@ function DispatchDetail({
           <p className={base.eyebrow}>Job #{detail.reference}</p>
           <h2>{detail.serviceCategory}</h2>
           <p>
-            {formatWindow(detail.serviceWindowStart, detail.serviceWindowEnd)} ·{" "}
+            {formatDispatchWindow(
+              detail.serviceWindowStart,
+              detail.serviceWindowEnd,
+              detail.timezone,
+            )} ·{" "}
             {detail.urgency.toLowerCase()}
           </p>
         </div>
@@ -540,7 +520,8 @@ function DispatchDetail({
           {detail.technicianStatus
             ? detail.technicianStatus.toLowerCase().replace(/_/g, " ")
             : "Awaiting assignment"}
-          {" · "}Last changed {formatDate(detail.updatedAt)}
+          {" · "}Last changed{" "}
+          {formatDispatchDate(detail.updatedAt, detail.timezone)}
         </small>
         {detail.assignedTechnician ? (
           <div className={styles.fieldLinkActions}>
@@ -689,7 +670,9 @@ function DispatchDetail({
             {detail.assignmentHistory.map((event) => (
               <article key={event.id}>
                 <strong>{historyLabel(event.action)}</strong>
-                <time>{formatDate(event.createdAt)}</time>
+                <time>
+                  {formatDispatchDate(event.createdAt, detail.timezone)}
+                </time>
                 <p>
                   {event.reason ??
                     event.note ??

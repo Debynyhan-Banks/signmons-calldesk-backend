@@ -174,6 +174,7 @@ export interface DispatchBoardSummary {
     | null;
   serviceWindowStart: string | null;
   serviceWindowEnd: string | null;
+  timezone: string;
   assignedTechnician: AssignedTechnician | null;
   createdAt: string;
   updatedAt: string;
