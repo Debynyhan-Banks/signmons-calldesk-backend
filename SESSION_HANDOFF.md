@@ -1,6 +1,6 @@
 # Backend Session Handoff
 
-Last Updated: 2026-08-31
+Last Updated: 2026-09-01
 
 ## Completed owner-approved pilots
 
@@ -23,11 +23,18 @@ Last Updated: 2026-08-31
 
 - Completed backend exceptions: `BE-007` reporting and `APP-003` audited job completion
 - Completed product ticket: `APP-006` intake review and booking readiness
-- Completed product ticket: `APP-007` urgency classification and escalation review; implementation verified locally and release pending
-- Current global pointer: `APP-008`
-- Backend state: dispatch board and technician assignment is the next CallDesk product ticket
+- Completed product tickets: `APP-006`, `APP-007`, and `APP-008`
+- Current global pointer: `APP-009`
+- Backend state: technician mobile workflow is implemented on `codex/app-009-technician-workflow` and remains review-ready, not released
 
 ## Completed In This Session
+
+- Revalidated APP-009 implementation commit `01bc84a` and completed a bounded signed-link/test-isolation hardening section.
+- Enforced canonical HMAC signature text so textual token tampering fails closed.
+- Corrected Prisma PostgreSQL schema selection and made AI e2e tests assert and use `calldesk_test` rather than the local public schema.
+- Verified the isolated technician API flow: assigned list/detail `200`, accept update `200` with `ACCEPTED`, and expired link `401`; removed the fixture afterward.
+- Passed backend build, 156 tests, architecture check and full lint; passed UI build, lint and 11 tests.
+- Recorded browser fail-closed evidence and the remaining manual authenticated mobile review in `evidence/APP-009/readiness-report.md`.
 
 - Repaired reproducible install/build and Prisma generation.
 - Added canonical schema reconciliation that preserves the legacy schema and verified it on PostgreSQL 16 with seeded records.
@@ -38,10 +45,9 @@ Last Updated: 2026-08-31
 
 ## Next Actions (Strict Order)
 
-1. Release APP-007's database migration, backend image, and operator-console route when deployment is explicitly requested.
-2. Implement APP-008 dispatch board and technician assignment under the backend board.
-3. Do not add a public completion control to the Eternity website; completion belongs in an authenticated operator workflow.
-4. Do not mark a real job complete without confirmed field status.
+1. Review APP-009 on `codex/app-009-technician-workflow`, including one authenticated mobile secure-link pass against isolated data.
+2. Keep APP-009 in `Now`; do not begin APP-010 until the owner approves completion and governance advances the pointer.
+3. Do not execute the APP-009 migration, merge, deploy, or change a real job without explicit approval.
 
 ## Restart Commands
 

@@ -108,8 +108,8 @@ export class TechnicianLinkService {
     const parts = token.split(".");
     if (parts.length !== 2 || !parts[0] || !parts[1]) this.invalid();
 
-    const suppliedSignature = Buffer.from(parts[1], "base64url");
-    const expectedSignature = Buffer.from(this.sign(parts[0]), "base64url");
+    const suppliedSignature = Buffer.from(parts[1], "utf8");
+    const expectedSignature = Buffer.from(this.sign(parts[0]), "utf8");
     if (
       suppliedSignature.length !== expectedSignature.length ||
       !timingSafeEqual(suppliedSignature, expectedSignature)

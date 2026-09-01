@@ -59,6 +59,10 @@ export default registerAs("app", (): AppConfig => {
   const webchatIntegrations = parseWebchatIntegrations(
     process.env.WEBCHAT_INTEGRATIONS_JSON,
   );
+  const databaseUrl =
+    process.env.NODE_ENV === "test" && process.env.TEST_DATABASE_URL
+      ? process.env.TEST_DATABASE_URL
+      : (process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL);
 
   return {
     environment: (process.env.NODE_ENV as NodeEnvironment) ?? "development",
@@ -74,7 +78,7 @@ export default registerAs("app", (): AppConfig => {
     aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 15000),
     aiMaxRetries: Number(process.env.AI_MAX_RETRIES ?? 1),
     port: Number(process.env.PORT ?? 3000),
-    databaseUrl: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL,
+    databaseUrl,
     adminApiToken:
       process.env.ADMIN_API_TOKEN ?? "development-only-admin-token",
     devAuthEnabled:
