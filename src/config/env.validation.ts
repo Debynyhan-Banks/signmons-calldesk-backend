@@ -64,6 +64,17 @@ export const envValidationSchema = Joi.object({
   SCHEDULING_TIME_ZONE: Joi.string().default("America/New_York"),
   SCHEDULING_LOOKAHEAD_DAYS: Joi.number().min(1).max(45).default(14),
   SCHEDULING_MIN_NOTICE_MINUTES: Joi.number().min(0).max(10080).default(120),
+  TECHNICIAN_LINK_SECRET: Joi.when("NODE_ENV", {
+    is: "production",
+    then: Joi.string().min(32).required(),
+    otherwise: Joi.string()
+      .min(32)
+      .default("development-technician-link-secret-32-bytes"),
+  }),
+  TECHNICIAN_LINK_TTL_HOURS: Joi.number().min(1).max(168).default(72),
+  TECHNICIAN_APP_BASE_URL: Joi.string()
+    .uri({ scheme: ["http", "https"] })
+    .default("http://localhost:3101/app/technician"),
   PORT: Joi.number().min(0).max(65535).default(3000),
 }).custom((rawValues: unknown, helpers) => {
   const values = rawValues as Record<string, unknown>;

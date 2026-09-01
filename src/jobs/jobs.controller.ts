@@ -26,6 +26,8 @@ import { AssignJobDto } from "./dto/assign-job.dto";
 import { CancelJobAssignmentDto } from "./dto/cancel-job-assignment.dto";
 import { DispatchAccessGuard } from "./dispatch-access.guard";
 import { DispatchBoardService } from "./dispatch-board.service";
+import { CreateTechnicianLinkDto } from "./dto/create-technician-link.dto";
+import { TechnicianLinkService } from "./technician-link.service";
 
 const UUID_REQUEST_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -38,7 +40,27 @@ export class JobsController {
     private readonly intakeReadinessService: IntakeReadinessService,
     private readonly urgencyReviewService: UrgencyReviewService,
     private readonly dispatchBoardService: DispatchBoardService,
+    private readonly technicianLinkService: TechnicianLinkService,
   ) {}
+
+  @Post("technician-links/:technicianId")
+  @HttpCode(201)
+  @Header("Cache-Control", "private, no-store")
+  @Throttle({ default: { limit: 20, ttl: 60 } })
+  @UseGuards(DispatchAccessGuard)
+  createTechnicianLink(
+    @Param("technicianId", new ParseUUIDPipe()) technicianId: string,
+    @Body() body: CreateTechnicianLinkDto,
+  ) {
+    const context = this.operatorContext();
+    return this.technicianLinkService.issue({
+      tenantId: context.tenantId,
+      technicianId,
+      expiresInHours: body.expiresInHours,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+    });
+  }
 
   @Get("dispatch-board")
   @Header("Cache-Control", "private, no-store")

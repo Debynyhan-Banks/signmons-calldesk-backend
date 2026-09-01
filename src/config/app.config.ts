@@ -35,6 +35,9 @@ export interface AppConfig {
   schedulingTimeZone: string;
   schedulingLookaheadDays: number;
   schedulingMinNoticeMinutes: number;
+  technicianLinkSecret: string;
+  technicianLinkTtlHours: number;
+  technicianAppBaseUrl: string;
 }
 
 export interface WebchatIntegrationConfig {
@@ -56,6 +59,10 @@ export default registerAs("app", (): AppConfig => {
   const webchatIntegrations = parseWebchatIntegrations(
     process.env.WEBCHAT_INTEGRATIONS_JSON,
   );
+  const databaseUrl =
+    process.env.NODE_ENV === "test" && process.env.TEST_DATABASE_URL
+      ? process.env.TEST_DATABASE_URL
+      : (process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL);
 
   return {
     environment: (process.env.NODE_ENV as NodeEnvironment) ?? "development",
@@ -71,7 +78,7 @@ export default registerAs("app", (): AppConfig => {
     aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS ?? 15000),
     aiMaxRetries: Number(process.env.AI_MAX_RETRIES ?? 1),
     port: Number(process.env.PORT ?? 3000),
-    databaseUrl: process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL,
+    databaseUrl,
     adminApiToken:
       process.env.ADMIN_API_TOKEN ?? "development-only-admin-token",
     devAuthEnabled:
@@ -111,6 +118,13 @@ export default registerAs("app", (): AppConfig => {
     schedulingMinNoticeMinutes: Number(
       process.env.SCHEDULING_MIN_NOTICE_MINUTES ?? 120,
     ),
+    technicianLinkSecret:
+      process.env.TECHNICIAN_LINK_SECRET ??
+      "development-technician-link-secret-32-bytes",
+    technicianLinkTtlHours: Number(process.env.TECHNICIAN_LINK_TTL_HOURS ?? 72),
+    technicianAppBaseUrl:
+      process.env.TECHNICIAN_APP_BASE_URL ??
+      "http://localhost:3101/app/technician",
   };
 });
 

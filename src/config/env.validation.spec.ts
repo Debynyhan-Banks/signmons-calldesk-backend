@@ -20,6 +20,7 @@ describe("environment validation", () => {
     RESEND_FROM_EMAIL: "Eternity <requests@mail.eternityhvacr.com>",
     JOB_NOTIFICATION_EMAILS: "ben@eternityhvacr.com",
     CONVERSATION_DATA_ENCRYPTION_KEY: "b".repeat(64),
+    TECHNICIAN_LINK_SECRET: "c".repeat(64),
   };
 
   it("accepts a production-safe configuration", () => {
@@ -69,8 +70,15 @@ describe("environment validation", () => {
   });
 
   it("rejects production without a conversation encryption key", () => {
-    const { CONVERSATION_DATA_ENCRYPTION_KEY: _key, ...withoutKey } =
-      productionEnvironment;
+    const withoutKey: Record<string, unknown> = { ...productionEnvironment };
+    delete withoutKey.CONVERSATION_DATA_ENCRYPTION_KEY;
+    const result = envValidationSchema.validate(withoutKey);
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects production without a technician link signing secret", () => {
+    const withoutKey: Record<string, unknown> = { ...productionEnvironment };
+    delete withoutKey.TECHNICIAN_LINK_SECRET;
     const result = envValidationSchema.validate(withoutKey);
     expect(result.error).toBeDefined();
   });

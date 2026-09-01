@@ -9,6 +9,7 @@ import {
   RequestAuth,
   assignDispatchJob,
   cancelDispatchAssignment,
+  createTechnicianLink,
   escalateJobUrgency,
   getDispatchJob,
   listDispatchBoard,
@@ -72,6 +73,7 @@ export default function DispatchPage() {
   const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [technicianLink, setTechnicianLink] = useState<string | null>(null);
 
   const auth = useMemo<RequestAuth>(() => {
     if (authMode === "firebase") return { bearerToken };
@@ -93,6 +95,7 @@ export default function DispatchPage() {
   const loadDetail = useCallback(
     async (jobId: string) => {
       setSelectedId(jobId);
+      setTechnicianLink(null);
       setError(null);
       try {
         setDetail(await getDispatchJob(jobId, auth, tenantId));
@@ -213,6 +216,29 @@ export default function DispatchPage() {
           : "A recent escalation already exists; no duplicate notification was sent.",
       );
       await refreshSelected();
+    } catch (actionError) {
+      setError(errorMessage(actionError));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const issueTechnicianLink = async () => {
+    if (!detail?.assignedTechnician) return;
+    setActing(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await createTechnicianLink(
+        detail.assignedTechnician.id,
+        undefined,
+        auth,
+        tenantId,
+      );
+      setTechnicianLink(result.url);
+      setNotice(
+        `Secure field link created for ${result.technician.fullName}. It expires ${formatDate(result.expiresAt)}.`,
+      );
     } catch (actionError) {
       setError(errorMessage(actionError));
     } finally {
@@ -400,6 +426,8 @@ export default function DispatchPage() {
                 }
                 onCancel={(reason) => void cancelAssignment(reason)}
                 onEscalate={() => void escalate()}
+                onIssueLink={() => void issueTechnicianLink()}
+                technicianLink={technicianLink}
               />
             ) : (
               <EmptyState
@@ -451,12 +479,16 @@ function DispatchDetail({
   onAssign,
   onCancel,
   onEscalate,
+  onIssueLink,
+  technicianLink,
 }: {
   acting: boolean;
   detail: DispatchBoardDetail;
   onAssign: (technicianId: string, reason?: string) => void;
   onCancel: (reason: string) => void;
   onEscalate: () => void;
+  onIssueLink: () => void;
+  technicianLink: string | null;
 }) {
   const recommendedId = detail.recommendation?.technicianId ?? "";
   const [technicianId, setTechnicianId] = useState(
@@ -504,7 +536,34 @@ function DispatchDetail({
       <section className={styles.currentAssignment}>
         <span>Current assignment</span>
         <strong>{detail.assignedTechnician?.fullName ?? "Unassigned"}</strong>
-        <small>Last changed {formatDate(detail.updatedAt)}</small>
+        <small>
+          {detail.technicianStatus
+            ? detail.technicianStatus.toLowerCase().replace(/_/g, " ")
+            : "Awaiting assignment"}
+          {" · "}Last changed {formatDate(detail.updatedAt)}
+        </small>
+        {detail.assignedTechnician ? (
+          <div className={styles.fieldLinkActions}>
+            <button disabled={acting} onClick={onIssueLink} type="button">
+              Create secure field link
+            </button>
+            {technicianLink ? (
+              <>
+                <a href={technicianLink} rel="noreferrer" target="_blank">
+                  Open technician workspace
+                </a>
+                <button
+                  onClick={() =>
+                    void navigator.clipboard.writeText(technicianLink)
+                  }
+                  type="button"
+                >
+                  Copy link
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <section className={styles.recommendation}>
@@ -633,6 +692,7 @@ function DispatchDetail({
                 <time>{formatDate(event.createdAt)}</time>
                 <p>
                   {event.reason ??
+                    event.note ??
                     (event.override
                       ? "Authorized recommendation override."
                       : "Recommended assignment accepted.")}
@@ -689,7 +749,13 @@ function historyLabel(
 ) {
   if (action === "job.assigned") return "Technician assigned";
   if (action === "job.reassigned") return "Technician reassigned";
-  return "Assignment cancelled";
+  if (action === "job.assignment_cancelled") return "Assignment cancelled";
+  if (action === "job.technician_accepted") return "Technician accepted";
+  if (action === "job.technician_declined") return "Technician declined";
+  if (action === "job.technician_en_route") return "Technician is on the way";
+  if (action === "job.technician_started") return "Work started";
+  if (action === "job.technician_completed") return "Work completed";
+  return "Technician cannot take job";
 }
 
 function errorMessage(error: unknown) {

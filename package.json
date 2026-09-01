@@ -14,7 +14,7 @@
     "start": "NEST_CLI_TELEMETRY=false nest start",
     "start:dev": "NEST_CLI_TELEMETRY=false nest start --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,test}/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\"",
     "test": "jest",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "prisma:generate": "prisma generate && node scripts/link-prisma-client.js",

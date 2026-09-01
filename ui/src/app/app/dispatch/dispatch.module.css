@@ -90,6 +90,27 @@
   border: 1px solid var(--line);
   border-radius: 12px;
 }
+
+.fieldLinkActions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fieldLinkActions button,
+.fieldLinkActions a {
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid #c4d2e0;
+  border-radius: 9px;
+  background: #fff;
+  color: #0b294c;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
 .currentAssignment span,
 .currentAssignment small {
   color: var(--muted);

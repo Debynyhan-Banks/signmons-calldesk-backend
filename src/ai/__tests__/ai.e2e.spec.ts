@@ -1,10 +1,10 @@
 import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { createHash } from "node:crypto";
+import "dotenv/config";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import type OpenAI from "openai";
-import { AppModule } from "../../app.module";
-import { PrismaService } from "../../prisma/prisma.service";
+import type { PrismaService } from "../../prisma/prisma.service";
 import { AI_PROVIDER } from "../ai.constants";
 import type { IAiProvider } from "../interfaces/ai-provider.interface";
 import { requestContextMiddleware } from "../../common/context/request-context";
@@ -103,6 +103,7 @@ describeOrSkip("AI create-job flow (e2e)", () => {
   };
 
   beforeAll(async () => {
+    process.env.NODE_ENV = "test";
     if (process.env.TEST_DATABASE_URL) {
       process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
     }
@@ -118,6 +119,12 @@ describeOrSkip("AI create-job flow (e2e)", () => {
         keyHash: createHash("sha256").update(webchatSecret).digest("hex"),
       },
     ]);
+
+    const { AppModule } =
+      jest.requireActual<typeof import("../../app.module")>("../../app.module");
+    const { PrismaService: PrismaServiceToken } = jest.requireActual<
+      typeof import("../../prisma/prisma.service")
+    >("../../prisma/prisma.service");
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -141,8 +148,14 @@ describeOrSkip("AI create-job flow (e2e)", () => {
     );
     await app.init();
 
-    prismaService = app.get(PrismaService);
+    prismaService = app.get(PrismaServiceToken);
     prisma = prismaService as unknown as typeof prisma;
+    const [databaseContext] = await prismaService.$queryRawUnsafe<
+      Array<{ schema: string }>
+    >("select current_schema() as schema");
+    expect(databaseContext.schema).toBe(
+      new URL(process.env.TEST_DATABASE_URL ?? "").searchParams.get("schema"),
+    );
   });
 
   afterEach(async () => {

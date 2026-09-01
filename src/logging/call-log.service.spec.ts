@@ -6,8 +6,17 @@ import type appConfig from "../config/app.config";
 
 describe("CallLogService conversational memory", () => {
   it("keeps audit text redacted while restoring encrypted phone data for AI memory", async () => {
+    type CreateInput = {
+      data: { content: { create: { payload: Record<string, unknown> } } };
+    };
+    let capturedCreateInput: CreateInput | undefined;
     const prisma = {
-      communicationEvent: { create: jest.fn().mockResolvedValue({}) },
+      communicationEvent: {
+        create: jest.fn((input: CreateInput) => {
+          capturedCreateInput = input;
+          return Promise.resolve({});
+        }),
+      },
       communicationContent: {
         findFirst: jest.fn().mockResolvedValue(null),
         findMany: jest.fn(),
@@ -29,10 +38,8 @@ describe("CallLogService conversational memory", () => {
       transcript: "My callback number is 216-703-3183.",
     });
 
-    const createInput = prisma.communicationEvent.create.mock.calls[0][0] as {
-      data: { content: { create: { payload: Record<string, unknown> } } };
-    };
-    const storedPayload = createInput.data.content.create.payload;
+    expect(capturedCreateInput).toBeDefined();
+    const storedPayload = capturedCreateInput!.data.content.create.payload;
     expect(storedPayload.message).toBe("My callback number is ***-***-3183.");
     expect(storedPayload.encryptedMessage).not.toContain("2167033183");
 
