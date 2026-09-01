@@ -120,9 +120,8 @@ describeOrSkip("AI create-job flow (e2e)", () => {
       },
     ]);
 
-    const { AppModule } = jest.requireActual<
-      typeof import("../../app.module")
-    >("../../app.module");
+    const { AppModule } =
+      jest.requireActual<typeof import("../../app.module")>("../../app.module");
     const { PrismaService: PrismaServiceToken } = jest.requireActual<
       typeof import("../../prisma/prisma.service")
     >("../../prisma/prisma.service");

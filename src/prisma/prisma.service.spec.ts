@@ -22,8 +22,7 @@ describe("createPoolConfig", () => {
     expect(
       createPoolConfig("postgresql://calldesk:secret@localhost:5432/calldesk"),
     ).toEqual({
-      connectionString:
-        "postgresql://calldesk:secret@localhost:5432/calldesk",
+      connectionString: "postgresql://calldesk:secret@localhost:5432/calldesk",
     });
   });
 
