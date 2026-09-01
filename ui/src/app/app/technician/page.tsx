@@ -15,7 +15,9 @@ import {
   TechnicianJobGroup,
   primaryTechnicianAction,
   secondaryTechnicianActions,
+  shouldShowCustomerCall,
   technicianActionLabel,
+  technicianGroupAfterAction,
   technicianStatusLabel,
   technicianTokenFromHash,
 } from "@/lib/technician-workflow";
@@ -155,6 +157,7 @@ export default function TechnicianPage() {
       );
       const keepSelected =
         "assignmentReleased" in result ? undefined : detail.jobId;
+      setGroup((current) => technicianGroupAfterAction(current, action));
       await load(token, keepSelected);
     } catch (actionError) {
       setError(messageFor(actionError));
@@ -359,12 +362,14 @@ export default function TechnicianPage() {
                           {technicianActionLabel(action)}
                         </button>
                       ))}
-                      <a
-                        className={styles.callAction}
-                        href={`tel:${detail.customer.phone}`}
-                      >
-                        Call customer
-                      </a>
+                      {shouldShowCustomerCall(detail) && (
+                        <a
+                          className={styles.callAction}
+                          href={`tel:${detail.customer.phone}`}
+                        >
+                          Call customer
+                        </a>
+                      )}
                     </div>
                   </>
                 )}

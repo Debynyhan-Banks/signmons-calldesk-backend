@@ -51,5 +51,20 @@ export function secondaryTechnicianActions(
   job: TechnicianJobSummary,
 ): TechnicianJobAction[] {
   const primary = primaryTechnicianAction(job);
-  return job.availableActions.filter((action) => action !== primary);
+  const hasCannotTake = job.availableActions.includes("cannot_take");
+  return job.availableActions.filter(
+    (action) =>
+      action !== primary && !(action === "decline" && hasCannotTake),
+  );
+}
+
+export function technicianGroupAfterAction(
+  current: TechnicianJobGroup,
+  action: TechnicianJobAction,
+): TechnicianJobGroup {
+  return action === "complete" ? "completed" : current;
+}
+
+export function shouldShowCustomerCall(job: TechnicianJobSummary): boolean {
+  return job.technicianStatus !== "COMPLETED";
 }
