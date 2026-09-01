@@ -146,6 +146,65 @@ export interface UrgencyReviewDetail extends UrgencyReviewSummary {
   }>;
 }
 
+export type DispatchQueue =
+  | "NEW_REQUEST"
+  | "READY_TO_ASSIGN"
+  | "ASSIGNED"
+  | "ESCALATED";
+
+export interface AssignedTechnician {
+  id: string;
+  fullName: string;
+  role: string;
+}
+
+export interface DispatchBoardSummary {
+  jobId: string;
+  reference: string;
+  queue: DispatchQueue;
+  serviceCategory: string;
+  urgency: UrgencyLevel;
+  status: string;
+  serviceWindowStart: string | null;
+  serviceWindowEnd: string | null;
+  assignedTechnician: AssignedTechnician | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DispatchCandidate {
+  userId: string;
+  fullName: string;
+  role: string;
+  available: boolean;
+  proficiency: "JUNIOR" | "STANDARD" | "EXPERT" | null;
+  activeAssignments: number;
+  eligible: boolean;
+  reasonCodes: string[];
+  reasons: string[];
+}
+
+export interface DispatchBoardDetail extends DispatchBoardSummary {
+  recommendation: {
+    version: "dispatch-v1";
+    technicianId: string;
+    technicianName: string;
+    reasonCodes: string[];
+    reasons: string[];
+  } | null;
+  candidates: DispatchCandidate[];
+  assignmentHistory: Array<{
+    id: string;
+    action: "job.assigned" | "job.reassigned" | "job.assignment_cancelled";
+    actorId: string;
+    technicianId: string | null;
+    previousTechnicianId: string | null;
+    override: boolean;
+    reason: string | null;
+    createdAt: string;
+  }>;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -348,6 +407,67 @@ export async function escalateJobUrgency(
   return postJson(
     `/jobs/${encodeURIComponent(jobId)}/escalations`,
     {},
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function listDispatchBoard(
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<DispatchBoardSummary[]> {
+  return getJson<DispatchBoardSummary[]>(
+    "/jobs/dispatch-board",
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getDispatchJob(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<DispatchBoardDetail> {
+  return getJson<DispatchBoardDetail>(
+    `/jobs/dispatch-board/${encodeURIComponent(jobId)}`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function assignDispatchJob(
+  jobId: string,
+  input: {
+    technicianId: string;
+    expectedUpdatedAt: string;
+    reason?: string;
+  },
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  changed: boolean;
+  jobId: string;
+  assignedTechnician: AssignedTechnician | null;
+  updatedAt: string;
+}> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/assignments`,
+    input,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function cancelDispatchAssignment(
+  jobId: string,
+  input: { expectedUpdatedAt: string; reason: string },
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  changed: boolean;
+  jobId: string;
+  assignedTechnician: null;
+  updatedAt: string;
+}> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/assignments/cancel`,
+    input,
     buildAuthHeaders(auth, tenantId),
   );
 }

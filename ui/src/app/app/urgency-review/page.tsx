@@ -184,10 +184,9 @@ export default function UrgencyReviewPage() {
           <a className={base.activeNav} href="/app/urgency-review">
             <span aria-hidden="true">02</span> Urgency review
           </a>
-          <span className={base.disabledNav}>
+          <a className={base.disabledNav} href="/app/dispatch">
             <span aria-hidden="true">03</span> Dispatch board
-            <small>Next</small>
-          </span>
+          </a>
         </nav>
         <div className={base.navFooter}>
           <span className={base.liveDot} /> Explainable operator decisions

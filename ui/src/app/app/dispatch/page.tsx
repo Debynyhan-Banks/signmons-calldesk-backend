@@ -1,0 +1,699 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ApiError,
+  DispatchBoardDetail,
+  DispatchBoardSummary,
+  DispatchQueue,
+  RequestAuth,
+  assignDispatchJob,
+  cancelDispatchAssignment,
+  escalateJobUrgency,
+  getDispatchJob,
+  listDispatchBoard,
+} from "@/lib/api";
+import {
+  DispatchFilter,
+  dispatchMetrics,
+  dispatchQueueLabel,
+  filterDispatchBoard,
+} from "@/lib/dispatch-board";
+import base from "../intake-review/intake-review.module.css";
+import styles from "./dispatch.module.css";
+
+type AuthMode = "firebase" | "dev";
+
+const formatDate = (value: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+
+const formatWindow = (start: string | null, end: string | null) => {
+  if (!start) return "Time not scheduled";
+  const startDate = new Date(start);
+  const endDate = end ? new Date(end) : null;
+  const date = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(startDate);
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(startDate);
+  const endTime = endDate
+    ? new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(endDate)
+    : null;
+  return `${date} · ${time}${endTime ? `–${endTime}` : ""}`;
+};
+
+export default function DispatchPage() {
+  const hasDevAuth = Boolean(process.env.NEXT_PUBLIC_DEV_AUTH_SECRET);
+  const [authMode, setAuthMode] = useState<AuthMode>(
+    hasDevAuth ? "dev" : "firebase",
+  );
+  const [tenantId, setTenantId] = useState(
+    process.env.NEXT_PUBLIC_TENANT_ID ?? "",
+  );
+  const [bearerToken, setBearerToken] = useState("");
+  const [items, setItems] = useState<DispatchBoardSummary[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<DispatchBoardDetail | null>(null);
+  const [filter, setFilter] = useState<DispatchFilter>("all");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [acting, setActing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const auth = useMemo<RequestAuth>(() => {
+    if (authMode === "firebase") return { bearerToken };
+    return {
+      devAuth: {
+        secret: process.env.NEXT_PUBLIC_DEV_AUTH_SECRET ?? "",
+        role: process.env.NEXT_PUBLIC_DEV_AUTH_ROLE ?? "dispatcher",
+        userId: process.env.NEXT_PUBLIC_DEV_AUTH_USER_ID ?? "dev-dispatcher",
+        tenantId,
+      },
+    };
+  }, [authMode, bearerToken, tenantId]);
+
+  const authReady =
+    authMode === "firebase"
+      ? Boolean(bearerToken.trim())
+      : Boolean(hasDevAuth && tenantId.trim());
+
+  const loadDetail = useCallback(
+    async (jobId: string) => {
+      setSelectedId(jobId);
+      setError(null);
+      try {
+        setDetail(await getDispatchJob(jobId, auth, tenantId));
+      } catch (loadError) {
+        setError(errorMessage(loadError));
+        setDetail(null);
+      }
+    },
+    [auth, tenantId],
+  );
+
+  const loadItems = useCallback(async () => {
+    if (!authReady) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const next = await listDispatchBoard(auth, tenantId);
+      setItems(next);
+      const nextId =
+        next.find((item) => item.jobId === selectedId)?.jobId ??
+        next[0]?.jobId ??
+        null;
+      if (nextId) await loadDetail(nextId);
+      else setDetail(null);
+    } catch (loadError) {
+      setError(errorMessage(loadError));
+    } finally {
+      setLoading(false);
+    }
+  }, [auth, authReady, loadDetail, selectedId, tenantId]);
+
+  useEffect(() => {
+    if (hasDevAuth && tenantId) void loadItems();
+    // Initial local load only; later refreshes are operator initiated.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const visible = useMemo(
+    () => filterDispatchBoard(items, filter, search),
+    [filter, items, search],
+  );
+  const metrics = useMemo(() => dispatchMetrics(items), [items]);
+
+  const refreshSelected = async () => {
+    if (!selectedId) return;
+    const [nextDetail, nextItems] = await Promise.all([
+      getDispatchJob(selectedId, auth, tenantId),
+      listDispatchBoard(auth, tenantId),
+    ]);
+    setDetail(nextDetail);
+    setItems(nextItems);
+  };
+
+  const assign = async (technicianId: string, reason?: string) => {
+    if (!detail) return;
+    setActing(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await assignDispatchJob(
+        detail.jobId,
+        {
+          technicianId,
+          expectedUpdatedAt: detail.updatedAt,
+          reason: reason || undefined,
+        },
+        auth,
+        tenantId,
+      );
+      setNotice(
+        result.changed
+          ? `Assigned to ${result.assignedTechnician?.fullName ?? "the selected technician"}.`
+          : "That technician was already assigned; no duplicate audit was created.",
+      );
+      await refreshSelected();
+    } catch (actionError) {
+      setError(errorMessage(actionError));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const cancelAssignment = async (reason: string) => {
+    if (!detail) return;
+    setActing(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await cancelDispatchAssignment(
+        detail.jobId,
+        { expectedUpdatedAt: detail.updatedAt, reason },
+        auth,
+        tenantId,
+      );
+      setNotice(
+        result.changed
+          ? "Assignment cancelled; the customer job remains active."
+          : "This job was already unassigned.",
+      );
+      await refreshSelected();
+    } catch (actionError) {
+      setError(errorMessage(actionError));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const escalate = async () => {
+    if (!detail) return;
+    setActing(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await escalateJobUrgency(detail.jobId, auth, tenantId);
+      setNotice(
+        result.changed
+          ? "Escalation recorded and routed to operations."
+          : "A recent escalation already exists; no duplicate notification was sent.",
+      );
+      await refreshSelected();
+    } catch (actionError) {
+      setError(errorMessage(actionError));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  return (
+    <main className={base.shell}>
+      <aside className={base.nav}>
+        <a className={base.brand} href="/">
+          <span className={base.mark}>S</span>
+          <span>
+            <strong>Signmons</strong>
+            <small>CallDesk</small>
+          </span>
+        </a>
+        <nav aria-label="CallDesk">
+          <a className={base.disabledNav} href="/app/intake-review">
+            <span aria-hidden="true">01</span> Intake review
+          </a>
+          <a className={base.disabledNav} href="/app/urgency-review">
+            <span aria-hidden="true">02</span> Urgency review
+          </a>
+          <a className={base.activeNav} href="/app/dispatch">
+            <span aria-hidden="true">03</span> Dispatch board
+          </a>
+        </nav>
+        <div className={base.navFooter}>
+          <span className={base.liveDot} /> Human-controlled dispatch
+        </div>
+      </aside>
+
+      <section className={base.workspace}>
+        <header className={base.topbar}>
+          <div>
+            <p className={base.eyebrow}>Operations / Dispatch</p>
+            <h1>Assignment board</h1>
+            <p>
+              Match qualified technicians, explain overrides and keep control.
+            </p>
+          </div>
+          <div className={base.connectionPanel}>
+            <div
+              className={base.authTabs}
+              role="group"
+              aria-label="Authentication mode"
+            >
+              <button
+                className={authMode === "firebase" ? base.authActive : ""}
+                onClick={() => setAuthMode("firebase")}
+                type="button"
+              >
+                Operator token
+              </button>
+              {hasDevAuth ? (
+                <button
+                  className={authMode === "dev" ? base.authActive : ""}
+                  onClick={() => setAuthMode("dev")}
+                  type="button"
+                >
+                  Local dev
+                </button>
+              ) : null}
+            </div>
+            <input
+              aria-label={
+                authMode === "firebase"
+                  ? "Firebase operator ID token"
+                  : "Tenant ID"
+              }
+              onChange={(event) =>
+                authMode === "firebase"
+                  ? setBearerToken(event.target.value)
+                  : setTenantId(event.target.value)
+              }
+              placeholder={
+                authMode === "firebase"
+                  ? "Paste Firebase operator ID token"
+                  : "Tenant ID"
+              }
+              type={authMode === "firebase" ? "password" : "text"}
+              value={authMode === "firebase" ? bearerToken : tenantId}
+            />
+            <button
+              className={base.refreshButton}
+              disabled={!authReady || loading}
+              onClick={() => void loadItems()}
+              type="button"
+            >
+              {loading ? "Loading…" : items.length ? "Refresh" : "Connect"}
+            </button>
+          </div>
+        </header>
+
+        {error ? (
+          <div className={base.error} role="alert">
+            {error}
+          </div>
+        ) : null}
+        {notice ? (
+          <div className={styles.notice} role="status">
+            {notice}
+          </div>
+        ) : null}
+
+        <section className={styles.metrics} aria-label="Dispatch metrics">
+          <Metric label="Open jobs" value={metrics.total} />
+          <Metric label="New" value={metrics.newRequests} />
+          <Metric label="Ready" value={metrics.ready} tone="warning" />
+          <Metric label="Assigned" value={metrics.assigned} tone="success" />
+          <Metric label="Escalated" value={metrics.escalated} tone="danger" />
+        </section>
+
+        <section className={base.board}>
+          <div className={base.queue}>
+            <div className={base.queueHeader}>
+              <div>
+                <h2>Dispatch queue</h2>
+                <p>{visible.length} shown</p>
+              </div>
+              <input
+                aria-label="Search dispatch jobs"
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search job or tech"
+                type="search"
+                value={search}
+              />
+            </div>
+            <div
+              className={base.filters}
+              role="group"
+              aria-label="Dispatch filters"
+            >
+              {(
+                [
+                  "all",
+                  "NEW_REQUEST",
+                  "READY_TO_ASSIGN",
+                  "ASSIGNED",
+                  "ESCALATED",
+                ] as DispatchFilter[]
+              ).map((value) => (
+                <button
+                  className={filter === value ? base.filterActive : ""}
+                  key={value}
+                  onClick={() => setFilter(value)}
+                  type="button"
+                >
+                  {value === "all" ? "All" : dispatchQueueLabel(value)}
+                </button>
+              ))}
+            </div>
+            <div className={base.queueList}>
+              {!authReady ? (
+                <EmptyState
+                  title="Connect your operator account"
+                  copy="Use a verified operator identity to load this tenant-scoped board."
+                />
+              ) : visible.length === 0 && !loading ? (
+                <EmptyState
+                  title="No matching jobs"
+                  copy="Active jobs will appear here as intake and scheduling complete."
+                />
+              ) : (
+                visible.map((item) => (
+                  <DispatchCard
+                    item={item}
+                    key={item.jobId}
+                    onSelect={() => void loadDetail(item.jobId)}
+                    selected={selectedId === item.jobId}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className={base.detail} aria-live="polite">
+            {detail ? (
+              <DispatchDetail
+                acting={acting}
+                detail={detail}
+                onAssign={(technicianId, reason) =>
+                  void assign(technicianId, reason)
+                }
+                onCancel={(reason) => void cancelAssignment(reason)}
+                onEscalate={() => void escalate()}
+              />
+            ) : (
+              <EmptyState
+                title="Select a job"
+                copy="Review the recommendation and assign a technician without exposing customer contact details."
+              />
+            )}
+          </div>
+        </section>
+      </section>
+    </main>
+  );
+}
+
+function DispatchCard({
+  item,
+  onSelect,
+  selected,
+}: {
+  item: DispatchBoardSummary;
+  onSelect: () => void;
+  selected: boolean;
+}) {
+  return (
+    <button
+      className={`${styles.jobCard} ${selected ? styles.selectedCard : ""}`}
+      onClick={onSelect}
+      type="button"
+    >
+      <span className={styles.cardTop}>
+        <strong>{item.serviceCategory}</strong>
+        <time>{formatDate(item.createdAt)}</time>
+      </span>
+      <span>
+        Job #{item.reference} ·{" "}
+        {formatWindow(item.serviceWindowStart, item.serviceWindowEnd)}
+      </span>
+      <span className={styles.cardFooter}>
+        <QueueBadge queue={item.queue} />
+        <small>{item.assignedTechnician?.fullName ?? "Unassigned"}</small>
+      </span>
+    </button>
+  );
+}
+
+function DispatchDetail({
+  acting,
+  detail,
+  onAssign,
+  onCancel,
+  onEscalate,
+}: {
+  acting: boolean;
+  detail: DispatchBoardDetail;
+  onAssign: (technicianId: string, reason?: string) => void;
+  onCancel: (reason: string) => void;
+  onEscalate: () => void;
+}) {
+  const recommendedId = detail.recommendation?.technicianId ?? "";
+  const [technicianId, setTechnicianId] = useState(
+    detail.assignedTechnician?.id ?? recommendedId,
+  );
+  const [reason, setReason] = useState("");
+  const selected = detail.candidates.find(
+    (candidate) => candidate.userId === technicianId,
+  );
+  const isReassignment = Boolean(
+    detail.assignedTechnician && detail.assignedTechnician.id !== technicianId,
+  );
+  const isOverride = Boolean(
+    technicianId && (!selected?.eligible || recommendedId !== technicianId),
+  );
+  const reasonRequired = isReassignment || isOverride;
+
+  useEffect(() => {
+    setTechnicianId(
+      detail.assignedTechnician?.id ??
+        detail.recommendation?.technicianId ??
+        "",
+    );
+    setReason("");
+  }, [
+    detail.jobId,
+    detail.assignedTechnician?.id,
+    detail.recommendation?.technicianId,
+  ]);
+
+  return (
+    <>
+      <header className={base.detailHeader}>
+        <div>
+          <p className={base.eyebrow}>Job #{detail.reference}</p>
+          <h2>{detail.serviceCategory}</h2>
+          <p>
+            {formatWindow(detail.serviceWindowStart, detail.serviceWindowEnd)} ·{" "}
+            {detail.urgency.toLowerCase()}
+          </p>
+        </div>
+        <QueueBadge queue={detail.queue} />
+      </header>
+
+      <section className={styles.currentAssignment}>
+        <span>Current assignment</span>
+        <strong>{detail.assignedTechnician?.fullName ?? "Unassigned"}</strong>
+        <small>Last changed {formatDate(detail.updatedAt)}</small>
+      </section>
+
+      <section className={styles.recommendation}>
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={base.eyebrow}>Dispatch recommendation</p>
+            <h3>
+              {detail.recommendation?.technicianName ?? "No eligible match"}
+            </h3>
+          </div>
+          <span>dispatch-v1</span>
+        </div>
+        {detail.recommendation ? (
+          <ul>
+            {detail.recommendation.reasons.map((reasonLabel) => (
+              <li key={reasonLabel}>{reasonLabel}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>
+            No technician currently meets both service capability and
+            availability rules. An authorized override requires a reason.
+          </p>
+        )}
+        <small>
+          Decision support only. An authorized operator makes the assignment.
+        </small>
+      </section>
+
+      <section className={styles.assignmentPanel}>
+        <h3>
+          {detail.assignedTechnician
+            ? "Reassign technician"
+            : "Assign technician"}
+        </h3>
+        <label>
+          Technician
+          <select
+            value={technicianId}
+            onChange={(event) => setTechnicianId(event.target.value)}
+          >
+            <option value="">Select a technician</option>
+            {detail.candidates.map((candidate) => (
+              <option key={candidate.userId} value={candidate.userId}>
+                {candidate.fullName} ·{" "}
+                {candidate.proficiency?.toLowerCase() ?? "no capability"} ·{" "}
+                {candidate.activeAssignments} active
+                {candidate.eligible ? "" : " · override"}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selected ? (
+          <div className={styles.candidateFactors}>
+            {selected.reasons.map((candidateReason) => (
+              <span
+                className={
+                  selected.eligible ? styles.factorGood : styles.factorWarn
+                }
+                key={candidateReason}
+              >
+                {candidateReason}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <label>
+          Operator reason{" "}
+          {reasonRequired ? <strong>Required</strong> : <small>Optional</small>}
+          <textarea
+            maxLength={500}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Explain a reassignment or why a different technician is the better operational choice."
+            value={reason}
+          />
+        </label>
+        <button
+          className={styles.assignButton}
+          disabled={
+            !technicianId ||
+            acting ||
+            (reasonRequired && reason.trim().length < 10)
+          }
+          onClick={() => onAssign(technicianId, reason.trim() || undefined)}
+          type="button"
+        >
+          {acting
+            ? "Saving…"
+            : detail.assignedTechnician
+              ? "Save reassignment"
+              : "Confirm assignment"}
+        </button>
+      </section>
+
+      <section className={styles.secondaryActions}>
+        <button disabled={acting} onClick={onEscalate} type="button">
+          Escalate to operations
+        </button>
+        {detail.assignedTechnician ? (
+          <button
+            disabled={acting || reason.trim().length < 10}
+            onClick={() => onCancel(reason.trim())}
+            type="button"
+          >
+            Cancel assignment
+          </button>
+        ) : null}
+        {detail.assignedTechnician ? (
+          <small>
+            Enter a 10-character reason above before cancelling. The customer
+            job stays active.
+          </small>
+        ) : null}
+      </section>
+
+      <section className={styles.historySection}>
+        <div>
+          <h3>Assignment history</h3>
+          <span>{detail.assignmentHistory.length} events</span>
+        </div>
+        {detail.assignmentHistory.length ? (
+          <div className={styles.historyList}>
+            {detail.assignmentHistory.map((event) => (
+              <article key={event.id}>
+                <strong>{historyLabel(event.action)}</strong>
+                <time>{formatDate(event.createdAt)}</time>
+                <p>
+                  {event.reason ??
+                    (event.override
+                      ? "Authorized recommendation override."
+                      : "Recommended assignment accepted.")}
+                </p>
+                <small>Actor: {event.actorId}</small>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.noHistory}>No assignment changes recorded.</p>
+        )}
+      </section>
+    </>
+  );
+}
+
+function QueueBadge({ queue }: { queue: DispatchQueue }) {
+  return (
+    <span className={`${styles.queueBadge} ${styles[queue.toLowerCase()]}`}>
+      {dispatchQueueLabel(queue)}
+    </span>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  tone?: string;
+}) {
+  return (
+    <article className={`${base.metric} ${base[tone]}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </article>
+  );
+}
+
+function EmptyState({ title, copy }: { title: string; copy: string }) {
+  return (
+    <div className={base.emptyState}>
+      <span aria-hidden="true">↗</span>
+      <h3>{title}</h3>
+      <p>{copy}</p>
+    </div>
+  );
+}
+
+function historyLabel(
+  action: DispatchBoardDetail["assignmentHistory"][number]["action"],
+) {
+  if (action === "job.assigned") return "Technician assigned";
+  if (action === "job.reassigned") return "Technician reassigned";
+  return "Assignment cancelled";
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof ApiError
+    ? `${error.status}: ${error.message}`
+    : "CallDesk could not complete the dispatch request.";
+}

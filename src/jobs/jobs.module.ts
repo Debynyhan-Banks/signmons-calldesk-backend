@@ -12,6 +12,8 @@ import { JobOperationsAccessGuard } from "./job-operations-access.guard";
 import { JobsController } from "./jobs.controller";
 import { UrgencyReviewAccessGuard } from "./urgency-review-access.guard";
 import { UrgencyReviewService } from "./urgency-review.service";
+import { DispatchAccessGuard } from "./dispatch-access.guard";
+import { DispatchBoardService } from "./dispatch-board.service";
 
 @Module({
   imports: [AuthModule],
@@ -25,6 +27,8 @@ import { UrgencyReviewService } from "./urgency-review.service";
     JobOperationsAccessGuard,
     UrgencyReviewAccessGuard,
     UrgencyReviewService,
+    DispatchAccessGuard,
+    DispatchBoardService,
     TenantGuard,
     {
       provide: JOB_REPOSITORY,
@@ -38,6 +42,7 @@ import { UrgencyReviewService } from "./urgency-review.service";
     JobNotificationService,
     JobLifecycleService,
     UrgencyReviewService,
+    DispatchBoardService,
   ],
 })
 export class JobsModule {}
