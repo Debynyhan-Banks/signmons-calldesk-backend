@@ -17,6 +17,7 @@ const item = (
   serviceCategory: "HEATING",
   urgency: "STANDARD",
   status: "ACCEPTED",
+  technicianStatus: queue === "ASSIGNED" ? "ASSIGNED" : null,
   serviceWindowStart: "2026-09-01T13:00:00.000Z",
   serviceWindowEnd: "2026-09-01T15:00:00.000Z",
   assignedTechnician:

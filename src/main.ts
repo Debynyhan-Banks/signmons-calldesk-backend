@@ -35,6 +35,7 @@ async function bootstrap() {
       "x-dev-role",
       "x-dev-user-id",
       "x-dev-tenant-id",
+      "x-technician-link",
     ],
     maxAge: 3600,
   });
@@ -56,7 +57,7 @@ async function bootstrap() {
     res.header("Access-Control-Allow-Origin", responseOrigin);
     res.header(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, x-admin-token, x-admin-api-key, x-dev-auth, x-dev-role, x-dev-user-id, x-dev-tenant-id",
+      "Content-Type, Authorization, x-admin-token, x-admin-api-key, x-dev-auth, x-dev-role, x-dev-user-id, x-dev-tenant-id, x-technician-link",
     );
     res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.header("Vary", "Origin");

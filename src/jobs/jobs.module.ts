@@ -14,10 +14,13 @@ import { UrgencyReviewAccessGuard } from "./urgency-review-access.guard";
 import { UrgencyReviewService } from "./urgency-review.service";
 import { DispatchAccessGuard } from "./dispatch-access.guard";
 import { DispatchBoardService } from "./dispatch-board.service";
+import { TechnicianController } from "./technician.controller";
+import { TechnicianLinkService } from "./technician-link.service";
+import { TechnicianWorkflowService } from "./technician-workflow.service";
 
 @Module({
   imports: [AuthModule],
-  controllers: [JobsController],
+  controllers: [JobsController, TechnicianController],
   providers: [
     JobsService,
     JobNotificationService,
@@ -29,6 +32,8 @@ import { DispatchBoardService } from "./dispatch-board.service";
     UrgencyReviewService,
     DispatchAccessGuard,
     DispatchBoardService,
+    TechnicianLinkService,
+    TechnicianWorkflowService,
     TenantGuard,
     {
       provide: JOB_REPOSITORY,
@@ -43,6 +48,8 @@ import { DispatchBoardService } from "./dispatch-board.service";
     JobLifecycleService,
     UrgencyReviewService,
     DispatchBoardService,
+    TechnicianLinkService,
+    TechnicianWorkflowService,
   ],
 })
 export class JobsModule {}

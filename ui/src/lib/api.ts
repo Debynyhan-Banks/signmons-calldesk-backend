@@ -165,6 +165,13 @@ export interface DispatchBoardSummary {
   serviceCategory: string;
   urgency: UrgencyLevel;
   status: string;
+  technicianStatus:
+    | "ASSIGNED"
+    | "ACCEPTED"
+    | "EN_ROUTE"
+    | "IN_PROGRESS"
+    | "COMPLETED"
+    | null;
   serviceWindowStart: string | null;
   serviceWindowEnd: string | null;
   assignedTechnician: AssignedTechnician | null;
@@ -195,14 +202,73 @@ export interface DispatchBoardDetail extends DispatchBoardSummary {
   candidates: DispatchCandidate[];
   assignmentHistory: Array<{
     id: string;
-    action: "job.assigned" | "job.reassigned" | "job.assignment_cancelled";
+    action:
+      | "job.assigned"
+      | "job.reassigned"
+      | "job.assignment_cancelled"
+      | "job.technician_accepted"
+      | "job.technician_declined"
+      | "job.technician_en_route"
+      | "job.technician_started"
+      | "job.technician_completed"
+      | "job.technician_unavailable";
     actorId: string;
     technicianId: string | null;
     previousTechnicianId: string | null;
     override: boolean;
     reason: string | null;
+    note: string | null;
     createdAt: string;
   }>;
+}
+
+export type TechnicianJobAction =
+  | "accept"
+  | "decline"
+  | "on_my_way"
+  | "in_progress"
+  | "complete"
+  | "cannot_take";
+
+export interface TechnicianJobSummary {
+  jobId: string;
+  reference: string;
+  serviceCategory: string;
+  serviceAddress: string;
+  serviceWindowStart: string | null;
+  serviceWindowEnd: string | null;
+  urgency: UrgencyLevel;
+  technicianStatus:
+    | "ASSIGNED"
+    | "ACCEPTED"
+    | "EN_ROUTE"
+    | "IN_PROGRESS"
+    | "COMPLETED";
+  availableActions: TechnicianJobAction[];
+  updatedAt: string;
+}
+
+export interface TechnicianJobDetail extends TechnicianJobSummary {
+  customer: {
+    fullName: string;
+    phone: string;
+    email: string | null;
+  };
+  accessNotes: string | null;
+  issueSummary: string | null;
+  preferredTimeText: string | null;
+  jobStatus: string;
+}
+
+export interface TechnicianJobList {
+  technician: { id: string; fullName: string };
+  timezone: string;
+  linkExpiresAt: string;
+  groups: {
+    today: TechnicianJobSummary[];
+    upcoming: TechnicianJobSummary[];
+    completed: TechnicianJobSummary[];
+  };
 }
 
 export class ApiError extends Error {
@@ -469,6 +535,71 @@ export async function cancelDispatchAssignment(
     `/jobs/${encodeURIComponent(jobId)}/assignments/cancel`,
     input,
     buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function createTechnicianLink(
+  technicianId: string,
+  expiresInHours: number | undefined,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  technician: { id: string; fullName: string };
+  expiresAt: string;
+  url: string;
+}> {
+  return postJson(
+    `/jobs/technician-links/${encodeURIComponent(technicianId)}`,
+    expiresInHours ? { expiresInHours } : {},
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+function technicianHeaders(token: string): Record<string, string> {
+  return { "x-technician-link": token };
+}
+
+export async function listTechnicianJobs(
+  token: string,
+): Promise<TechnicianJobList> {
+  return getJson<TechnicianJobList>(
+    "/technician/jobs",
+    technicianHeaders(token),
+  );
+}
+
+export async function getTechnicianJob(
+  token: string,
+  jobId: string,
+): Promise<TechnicianJobDetail> {
+  return getJson<TechnicianJobDetail>(
+    `/technician/jobs/${encodeURIComponent(jobId)}`,
+    technicianHeaders(token),
+  );
+}
+
+export async function updateTechnicianJob(
+  token: string,
+  jobId: string,
+  input: {
+    action: TechnicianJobAction;
+    expectedUpdatedAt: string;
+    note?: string;
+  },
+): Promise<
+  | (TechnicianJobDetail & { changed: boolean })
+  | {
+      jobId: string;
+      action: "decline" | "cannot_take";
+      changed: true;
+      assignmentReleased: true;
+      updatedAt: string;
+    }
+> {
+  return postJson(
+    `/technician/jobs/${encodeURIComponent(jobId)}/status`,
+    input,
+    technicianHeaders(token),
   );
 }
 

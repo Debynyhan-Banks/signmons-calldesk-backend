@@ -11,6 +11,7 @@ import {
   JobUrgency,
   Prisma,
   ProficiencyLevel,
+  TechnicianJobStatus,
   UserStatus,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -57,6 +58,12 @@ const ASSIGNMENT_ACTIONS = [
   "job.assigned",
   "job.reassigned",
   "job.assignment_cancelled",
+  "job.technician_accepted",
+  "job.technician_declined",
+  "job.technician_en_route",
+  "job.technician_started",
+  "job.technician_completed",
+  "job.technician_unavailable",
 ];
 const OVERRIDE_REASON_MIN_LENGTH = 10;
 
@@ -212,6 +219,8 @@ export class DispatchBoardService {
         data: {
           assignedUserId: selected.userId,
           assignedUserTenantId: input.tenantId,
+          technicianStatus: TechnicianJobStatus.ASSIGNED,
+          technicianStatusUpdatedAt: new Date(),
         },
       });
       if (update.count !== 1) {
@@ -287,7 +296,12 @@ export class DispatchBoardService {
           updatedAt: expectedUpdatedAt,
           deletedAt: null,
         },
-        data: { assignedUserId: null, assignedUserTenantId: null },
+        data: {
+          assignedUserId: null,
+          assignedUserTenantId: null,
+          technicianStatus: null,
+          technicianStatusUpdatedAt: new Date(),
+        },
       });
       if (update.count !== 1) {
         throw new ConflictException(
@@ -485,6 +499,9 @@ export class DispatchBoardService {
       serviceCategory: job.serviceCategory.name,
       urgency: job.urgency,
       status: job.status,
+      technicianStatus:
+        job.technicianStatus ??
+        (job.assignedUserId ? TechnicianJobStatus.ASSIGNED : null),
       serviceWindowStart: job.serviceWindowStart?.toISOString() ?? null,
       serviceWindowEnd: job.serviceWindowEnd?.toISOString() ?? null,
       assignedTechnician: job.assignedUser
@@ -547,6 +564,7 @@ export class DispatchBoardService {
             : null,
         override: metadata.override === true,
         reason: typeof metadata.reason === "string" ? metadata.reason : null,
+        note: typeof metadata.note === "string" ? metadata.note : null,
         createdAt: audit.createdAt.toISOString(),
       };
     });

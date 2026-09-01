@@ -15,7 +15,9 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "Signmons CallDesk UI",
-  description: "Secure sandbox for onboarding tenants and testing the AI triage flow.",
+  description:
+    "Secure sandbox for onboarding tenants and testing the AI triage flow.",
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({

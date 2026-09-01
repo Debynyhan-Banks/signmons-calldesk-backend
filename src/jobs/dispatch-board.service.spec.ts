@@ -155,10 +155,11 @@ describe("DispatchBoardService", () => {
     expect(prisma.job.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ tenantId, updatedAt: now }),
-        data: {
+        data: expect.objectContaining({
           assignedUserId: techId,
           assignedUserTenantId: tenantId,
-        },
+          technicianStatus: "ASSIGNED",
+        }),
       }),
     );
     expect(prisma.auditLog.create).toHaveBeenCalledWith(
@@ -251,7 +252,11 @@ describe("DispatchBoardService", () => {
     expect(result.changed).toBe(true);
     expect(prisma.job.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: { assignedUserId: null, assignedUserTenantId: null },
+        data: expect.objectContaining({
+          assignedUserId: null,
+          assignedUserTenantId: null,
+          technicianStatus: null,
+        }),
       }),
     );
     expect(prisma.auditLog.create).toHaveBeenCalledWith(

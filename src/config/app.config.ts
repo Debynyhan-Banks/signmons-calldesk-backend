@@ -35,6 +35,9 @@ export interface AppConfig {
   schedulingTimeZone: string;
   schedulingLookaheadDays: number;
   schedulingMinNoticeMinutes: number;
+  technicianLinkSecret: string;
+  technicianLinkTtlHours: number;
+  technicianAppBaseUrl: string;
 }
 
 export interface WebchatIntegrationConfig {
@@ -111,6 +114,13 @@ export default registerAs("app", (): AppConfig => {
     schedulingMinNoticeMinutes: Number(
       process.env.SCHEDULING_MIN_NOTICE_MINUTES ?? 120,
     ),
+    technicianLinkSecret:
+      process.env.TECHNICIAN_LINK_SECRET ??
+      "development-technician-link-secret-32-bytes",
+    technicianLinkTtlHours: Number(process.env.TECHNICIAN_LINK_TTL_HOURS ?? 72),
+    technicianAppBaseUrl:
+      process.env.TECHNICIAN_APP_BASE_URL ??
+      "http://localhost:3101/app/technician",
   };
 });
 

@@ -330,6 +330,8 @@ model Job {
   assignedUser         User? @relation(fields: [assignedUserId, assignedUserTenantId], references: [id, tenantId], onDelete: SetNull)
 
   status          JobStatus
+  technicianStatus TechnicianJobStatus?
+  technicianStatusUpdatedAt DateTime?
   urgency         JobUrgency
   description     String?
   intakeSessionId String? @db.VarChar(64)
@@ -362,6 +364,7 @@ model Job {
   @@index([tenantId])
   @@index([tenantId, status, urgency])
   @@index([assignedUserId, assignedUserTenantId])
+  @@index([tenantId, assignedUserId, technicianStatus])
   @@index([customerId, customerTenantId])
   @@index([propertyAddressId, propertyAddressTenantId])
   @@index([serviceCategoryId, serviceCategoryTenantId])
@@ -715,6 +718,14 @@ enum JobStatus {
   IN_PROGRESS
   COMPLETED
   CANCELLED
+}
+
+enum TechnicianJobStatus {
+  ASSIGNED
+  ACCEPTED
+  EN_ROUTE
+  IN_PROGRESS
+  COMPLETED
 }
 
 enum JobUrgency {
