@@ -16,11 +16,11 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Now
 
-- [ ] APP-008 Dispatch board and technician assignment (`SCR-APP-014`, `SCR-APP-017`)
+- [ ] APP-009 Technician mobile job workflow (`SCR-TECH-001`, `SCR-TECH-002`, `SCR-TECH-003`)
 
 ## Next
 
-- [ ] APP-009 Technician mobile job workflow (`SCR-TECH-001`, `SCR-TECH-002`, `SCR-TECH-003`)
+- [ ] APP-010 Routing rules, service areas, and availability (`SCR-APP-015`, `SCR-APP-016`, `SCR-APP-024`, `SCR-TECH-004`)
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
 - [ ] APP-018 Brand voice and AI personality configuration (`SCR-APP-027`)
 - [ ] APP-019 Customer profiles and service history (`SCR-APP-028`)
@@ -32,8 +32,10 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Done
 
+- [x] APP-008 Dispatch board and technician assignment (`SCR-APP-014`, `SCR-APP-017`)
+  - Backend merge `d8de259`; Cloud Run revision `signmons-calldesk-staging-00020-m2m`; console `https://signmons-calldesk.web.app/app/dispatch`; evidence in `evidence/APP-008/readiness-report.md`.
 - [x] APP-007 Urgency classification and escalation review (`SCR-APP-013`)
-  - Evidence: `evidence/APP-007/readiness-report.md`; implementation verified locally, release pending.
+  - Evidence: `evidence/APP-007/readiness-report.md`; released on Cloud Run revision `signmons-calldesk-staging-00019-swf`.
 - [x] APP-006 Intake review and booking readiness (`SCR-APP-012`)
   - Evidence: `evidence/APP-006/readiness-report.md`
 - [x] APP-003 Job completion lifecycle foundation (`SCR-APP-005`)
