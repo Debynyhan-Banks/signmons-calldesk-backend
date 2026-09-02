@@ -2,7 +2,7 @@
 
 Date: 2026-09-02
 Branch: `codex/app-010-routing`
-Status: review ready; not merged or deployed
+Status: released to the Signmons CallDesk staging environment
 
 ## Delivered
 
@@ -54,18 +54,38 @@ Status: review ready; not merged or deployed
 - Audited the implementation against the canonical APP-010 data contract and confirmed the active pointer remained APP-010.
 - Added focused regressions for the missing/cross-tenant update boundary and normalized required names.
 - Re-ran the backend, UI, Prisma, architecture, governance and responsive-browser gates from the focused branch.
-- No merge, migration, deployment, IAM, secret, billing or real-customer action was performed.
+- Owner review was completed before merge and deployment.
+- No secret, billing or real-customer action was performed.
+
+## Deployment Evidence
+
+Released on 2026-09-02.
+
+- GitHub pull request: `#11`.
+- Main merge: `b809b9d6e1a516702d626af3caadd44c5dd245fe`.
+- Cloud Build: `956a786f-65cc-4a46-a613-5f16c0be2dc7` (`SUCCESS`).
+- Container: `us-east5-docker.pkg.dev/signmons/signmons/signmons-calldesk-backend:b809b9d`.
+- Container digest: `sha256:7e53085ad314e48ee9734f5bef3b2a1b631b74238585a88feba697671cdff0c0`.
+- Prisma migration execution: `signmons-calldesk-migrate-gsf6l` (`Completed=True`).
+- Cloud Run revision: `signmons-calldesk-staging-00023-47g`, ready and serving 100 percent of staging traffic.
+- Backend URL: `https://signmons-calldesk-staging-p572d6wipq-ul.a.run.app`.
+- Operator console: `https://signmons-calldesk.web.app/app/routing`.
+- Firebase Hosting target: `hosting:calldesk`; 40 static files released to `signmons-calldesk.web.app`.
+- Live liveness and database readiness returned HTTP `200` with `status: ok`.
+- Unauthenticated `GET /jobs/routing` returned the expected sanitized HTTP `401` response.
+- Production CORS preflight returned HTTP `204` and allowed `https://signmons-calldesk.web.app`.
+- Chrome release verification confirmed the hosted routing route, navigation, forms, policy controls, operator-token boundary and authentication-disabled write state.
+
+## Build Identity Lockdown
+
+The dedicated `signmons-build@signmons.iam.gserviceaccount.com` identity was enabled only for Cloud Build. Temporary Cloud Logging writer, build-bucket reader, build-object viewer and repository-scoped Artifact Registry writer grants were removed immediately after the image build. Verification returned `disabled: true`, zero project-role matches and zero build-bucket matches; the repository grant was also removed.
 
 ## Known Review Risk
 
 - `npm audit --omit=dev --audit-level=critical` exits successfully with no critical advisories, but reports `4` high and `8` moderate transitive advisories through Prisma and Firebase dependencies. The suggested automated remediations are breaking major-version changes, so dependency migration is intentionally not bundled into APP-010 hardening.
 
-## Release Requirements
+## Release Follow-up
 
-1. Owner review and approval of this branch.
-2. Merge the focused APP-010 commit.
-3. Run the new Prisma migration in the release workflow.
-4. Deploy backend and Firebase-hosted UI.
-5. Configure one real service area, rule and on-call technician, then run a real tenant acceptance test.
+Code review, merge, migration, backend deployment and Firebase Hosting deployment are complete. The remaining tenant acceptance step is to configure one real service area, one routing rule and one on-call technician, then verify a real dispatch recommendation before APP-010 is treated as operationally accepted for production use.
 
 The pre-existing deletion of `.github/instructions/snyk_rules.instructions.md` was not included in APP-010 work and must remain outside the APP-010 commit.
