@@ -6,7 +6,7 @@ Ticket: Customer booking status and confirmation flow
 
 ## Outcome
 
-APP-011 is implemented and ready for owner review. It has not been merged, migrated or deployed.
+APP-011 is owner-approved, merged and released to the Signmons CallDesk staging environment.
 
 ## Acceptance Evidence
 
@@ -63,11 +63,30 @@ APP-011 is implemented and ready for owner review. It has not been merged, migra
 - Reschedule disclosure, note field and send action are keyboard/role addressable.
 - Accessible snapshot exposes one `Secure booking link` label and clear heading/action hierarchy.
 
-## Release Requirements
+## Deployment Evidence
 
-1. Owner approval of both customer and dispatch screens.
-2. Focused commit and PR review.
-3. Apply the Prisma migration before routing production traffic to the new backend revision.
-4. Deploy Cloud Run and Firebase Hosting together so the public page and API contract remain aligned.
-5. Run one isolated staging secure-link flow: view, confirm, request reschedule and dispatcher verification.
-6. Record release identifiers and staging evidence before moving APP-011 to `Done`.
+Released on 2026-09-02.
+
+- Owner review: approved before merge and deployment.
+- GitHub pull request: `#13`.
+- Main merge: `28d394f6a205cb85398c5fc071582ea43f01c0dc`.
+- Cloud Build: `5c478614-709a-4f15-9579-e964d7bcca67` (`SUCCESS`).
+- Container: `us-east5-docker.pkg.dev/signmons/signmons/signmons-calldesk-backend:28d394f`.
+- Container digest: `sha256:6721f0d940fd97890d6c75e5ba7e4e5de3e4c1163b4f20a3f975fac80701d787`.
+- Prisma migration execution: `signmons-calldesk-migrate-xztrh` (`Completed=True`, one succeeded task).
+- Cloud Run revision: `signmons-calldesk-staging-00024-wwn`, ready and serving 100 percent of staging traffic.
+- Backend URL: `https://signmons-calldesk-staging-p572d6wipq-ul.a.run.app`.
+- Customer page: `https://signmons-calldesk.web.app/appointment/manage`.
+- Firebase Hosting target: `hosting:calldesk`; 44 static files released.
+
+## Staging Acceptance
+
+- Live liveness and database readiness returned HTTP `200` with `status: ok`.
+- The public appointment boundary rejected an invalid management credential with sanitized HTTP `400` output.
+- Production CORS preflight returned HTTP `204` and allowed `https://signmons-calldesk.web.app`.
+- Chrome loaded the hosted customer route and confirmed that an invalid secure link fails closed with a safe resend-link instruction.
+- Valid view, confirm, reschedule-request, dispatcher projection, tenant mismatch and audit behavior are covered by the released automated tests; owner UI review was completed against the isolated preview without creating or changing a real customer appointment.
+
+## Build Identity Lockdown
+
+The dedicated `signmons-build@signmons.iam.gserviceaccount.com` identity was enabled only for Cloud Build. Temporary Cloud Logging writer, build-bucket reader, build-object viewer and repository-scoped Artifact Registry writer grants were removed immediately after the successful build. Verification returned `disabled: true` and zero matching project, build-bucket and repository bindings.

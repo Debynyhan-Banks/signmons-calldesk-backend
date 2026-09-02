@@ -4,10 +4,10 @@ Last Updated: 2026-09-02
 
 ## Current Program Pointer
 
-- Active ticket: `APP-011` customer booking status and confirmation flow.
-- Branch: `codex/app-011-customer-booking-flow` from merged `origin/main` at `174acd5`.
-- Next ticket after owner acceptance and release: `APP-012` payment gate and webhook status workflow.
-- Do not merge, migrate, deploy or advance the pointer until the owner reviews APP-011.
+- Active ticket: `APP-012` payment gate and webhook status workflow.
+- APP-011 is owner-approved, merged and released from PR `#13` at `28d394f`.
+- Next ticket after APP-012: `APP-013` Twilio-backed notification center and transactional customer messaging.
+- Keep the WIP limit at one and do not start APP-013 until APP-012 is accepted and released.
 
 ## APP-011 Implementation
 
@@ -27,12 +27,20 @@ Last Updated: 2026-09-02
 - Repository-wide backend lint still reports five pre-existing APP-010 findings in `src/jobs/routing.service.ts`; lint is not an APP-011 backend completion gate and APP-011 introduced no lint findings.
 - Evidence: `evidence/APP-011/readiness-report.md` and customer status screenshots in the same directory.
 
+## APP-011 Release
+
+- Cloud Build `5c478614-709a-4f15-9579-e964d7bcca67` produced image `28d394f` with digest `sha256:6721f0d940fd97890d6c75e5ba7e4e5de3e4c1163b4f20a3f975fac80701d787`.
+- Migration execution `signmons-calldesk-migrate-xztrh` completed successfully.
+- Cloud Run revision `signmons-calldesk-staging-00024-wwn` serves 100 percent of staging traffic.
+- Firebase Hosting published `/appointment/manage`; live liveness, readiness, CORS and fail-closed secure-link checks passed.
+- Temporary build access was fully revoked and `signmons-build` was disabled after the build.
+
 ## Next Actions
 
-1. Owner reviews the customer status screen and dispatcher customer-response panel.
-2. After approval, create the focused APP-011 commit/PR, run the migration, deploy Cloud Run and Firebase Hosting, then perform secure-link staging acceptance.
-3. Revoke any temporary build permissions immediately after release, following the established release procedure.
-4. Move APP-011 to `Done` only after staging acceptance evidence is recorded.
+1. Reconcile the APP-012 ticket with the subscription-only product policy and Stripe payment-before-booking requirement.
+2. Implement the payment gate, webhook-driven payment status and customer recovery states without charging per booked job.
+3. Keep Stripe secrets server-side, enforce webhook signature verification and make fulfillment idempotent.
+4. Run owner review before merge, migration or deployment.
 
 ## Restart Commands
 
