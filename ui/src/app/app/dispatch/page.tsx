@@ -12,6 +12,7 @@ import {
   createTechnicianLink,
   escalateJobUrgency,
   getDispatchJob,
+  evaluateJobRouting,
   listDispatchBoard,
 } from "@/lib/api";
 import {
@@ -218,6 +219,26 @@ export default function DispatchPage() {
     }
   };
 
+  const evaluateRouting = async () => {
+    if (!detail) return;
+    setActing(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await evaluateJobRouting(detail.jobId, auth, tenantId);
+      setNotice(
+        result.matchedRule
+          ? `Routing evaluated: ${result.matchedRule.name}. The reason trace was audit logged.`
+          : "Routing evaluated with the safe default. The reason trace was audit logged.",
+      );
+      await refreshSelected();
+    } catch (actionError) {
+      setError(errorMessage(actionError));
+    } finally {
+      setActing(false);
+    }
+  };
+
   return (
     <main className={base.shell}>
       <aside className={base.nav}>
@@ -237,6 +258,9 @@ export default function DispatchPage() {
           </a>
           <a className={base.activeNav} href="/app/dispatch">
             <span aria-hidden="true">03</span> Dispatch board
+          </a>
+          <a className={base.disabledNav} href="/app/routing">
+            <span aria-hidden="true">04</span> Routing rules
           </a>
         </nav>
         <div className={base.navFooter}>
@@ -399,6 +423,7 @@ export default function DispatchPage() {
                 onCancel={(reason) => void cancelAssignment(reason)}
                 onEscalate={() => void escalate()}
                 onIssueLink={() => void issueTechnicianLink()}
+                onEvaluateRouting={() => void evaluateRouting()}
                 technicianLink={technicianLink}
               />
             ) : (
@@ -456,6 +481,7 @@ function DispatchDetail({
   onCancel,
   onEscalate,
   onIssueLink,
+  onEvaluateRouting,
   technicianLink,
 }: {
   acting: boolean;
@@ -464,6 +490,7 @@ function DispatchDetail({
   onCancel: (reason: string) => void;
   onEscalate: () => void;
   onIssueLink: () => void;
+  onEvaluateRouting: () => void;
   technicianLink: string | null;
 }) {
   const recommendedId = detail.recommendation?.technicianId ?? "";
@@ -506,8 +533,8 @@ function DispatchDetail({
               detail.serviceWindowStart,
               detail.serviceWindowEnd,
               detail.timezone,
-            )} ·{" "}
-            {detail.urgency.toLowerCase()}
+            )}{" "}
+            · {detail.urgency.toLowerCase()}
           </p>
         </div>
         <QueueBadge queue={detail.queue} />
@@ -555,7 +582,7 @@ function DispatchDetail({
               {detail.recommendation?.technicianName ?? "No eligible match"}
             </h3>
           </div>
-          <span>dispatch-v1</span>
+          <span>dispatch-v2 + routing-v1</span>
         </div>
         {detail.recommendation ? (
           <ul>
@@ -572,6 +599,34 @@ function DispatchDetail({
         <small>
           Decision support only. An authorized operator makes the assignment.
         </small>
+        <div className={styles.routingTrace}>
+          <strong>
+            {detail.routing.covered
+              ? "Service area allowed"
+              : "Service area blocked"}
+          </strong>
+          <span>
+            {detail.routing.matchedRule?.name ?? "Safe default policy"}
+          </span>
+          <ul>
+            {detail.routing.reasons.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          {detail.routing.escalationPath.length ? (
+            <p>
+              Escalation:{" "}
+              {detail.routing.escalationPath
+                .map(
+                  (item) => `${item.fullName} (${item.reason.toLowerCase()})`,
+                )
+                .join(", ")}
+            </p>
+          ) : null}
+          <button disabled={acting} onClick={onEvaluateRouting} type="button">
+            Re-evaluate and audit trace
+          </button>
+        </div>
       </section>
 
       <section className={styles.assignmentPanel}>

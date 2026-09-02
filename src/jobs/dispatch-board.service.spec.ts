@@ -120,7 +120,7 @@ describe("DispatchBoardService", () => {
     const result = await service.get(tenantId, jobId);
 
     expect(result.recommendation).toMatchObject({
-      version: "dispatch-v1",
+      version: "dispatch-v2",
       technicianId: techId,
       reasonCodes: expect.arrayContaining([
         "SERVICE_MATCH",
@@ -171,7 +171,7 @@ describe("DispatchBoardService", () => {
           action: "job.assigned",
           metadata: expect.objectContaining({
             technicianId: techId,
-            recommendationVersion: "dispatch-v1",
+            recommendationVersion: "dispatch-v2",
             override: false,
           }),
         }),

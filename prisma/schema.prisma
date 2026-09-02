@@ -49,6 +49,7 @@ model TenantOrganization {
   jobOffers               JobOffer[]
   userAvailabilityBlocks  UserAvailabilityBlock[]
   userServiceCapabilities UserServiceCapability[]
+  routingRules            RoutingRule[]
 }
 
 
@@ -69,6 +70,7 @@ model User {
   // Keep optional; uniqueness is enforced via a partial unique index in SQL migration (recommended).
   phone       String?
   isAvailable Boolean  @default(false)
+  isOnCall    Boolean  @default(false)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -130,6 +132,7 @@ model ServiceCategory {
 
   jobs                    Job[]
   userServiceCapabilities UserServiceCapability[]
+  routingRules            RoutingRule[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -215,6 +218,7 @@ model ServiceArea {
   updatedAt  DateTime @updatedAt
 
   coverageChecks CustomerCoverageCheck[]
+  routingRules   RoutingRule[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -452,6 +456,39 @@ model UserServiceCapability {
   @@index([serviceCategoryId, serviceCategoryTenantId])
 }
 
+model RoutingRule {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tenant    TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name      String
+  status    RoutingRuleStatus @default(ACTIVE)
+  priority  Int @default(100)
+
+  serviceCategoryId       String? @db.Uuid
+  serviceCategoryTenantId String? @db.Uuid
+  serviceCategory         ServiceCategory? @relation(fields: [serviceCategoryId, serviceCategoryTenantId], references: [id, tenantId], onDelete: Cascade)
+
+  serviceAreaId       String? @db.Uuid
+  serviceAreaTenantId String? @db.Uuid
+  serviceArea         ServiceArea? @relation(fields: [serviceAreaId, serviceAreaTenantId], references: [id, tenantId], onDelete: Cascade)
+
+  urgency              JobUrgency?
+  timeScope             RoutingTimeScope @default(ANY)
+  requireAvailable      Boolean @default(true)
+  requireOnCall         Boolean @default(false)
+  escalateToOwner       Boolean @default(false)
+  escalateToOnCall      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, tenantId])
+  @@index([tenantId, status, priority])
+  @@index([serviceCategoryId, serviceCategoryTenantId])
+  @@index([serviceAreaId, serviceAreaTenantId])
+}
+
 
 // =====================================================
 // PAYMENTS + LEDGER + WEBHOOKS
@@ -675,6 +712,17 @@ enum ServiceAreaType {
 enum ServiceAreaStatus {
   ACTIVE
   INACTIVE
+}
+
+enum RoutingRuleStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum RoutingTimeScope {
+  ANY
+  BUSINESS_HOURS
+  AFTER_HOURS
 }
 
 enum CoverageStatus {

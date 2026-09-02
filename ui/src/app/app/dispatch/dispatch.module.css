@@ -166,6 +166,31 @@
 .recommendation > small {
   color: var(--muted);
 }
+.routingTrace {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #cfe0ef;
+  display: grid;
+  gap: 7px;
+}
+.routingTrace > span,
+.routingTrace > p {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.routingTrace ul {
+  margin: 2px 0 2px 18px;
+}
+.routingTrace button {
+  width: fit-content;
+  padding: 9px 11px;
+  border: 1px solid #b9cade;
+  border-radius: 8px;
+  background: white;
+  color: var(--navy);
+  font-weight: 800;
+  cursor: pointer;
+}
 
 .assignmentPanel {
   padding-top: 20px;

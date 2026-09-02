@@ -185,6 +185,7 @@ export interface DispatchCandidate {
   fullName: string;
   role: string;
   available: boolean;
+  onCall: boolean;
   proficiency: "JUNIOR" | "STANDARD" | "EXPERT" | null;
   activeAssignments: number;
   eligible: boolean;
@@ -194,12 +195,13 @@ export interface DispatchCandidate {
 
 export interface DispatchBoardDetail extends DispatchBoardSummary {
   recommendation: {
-    version: "dispatch-v1";
+    version: "dispatch-v2";
     technicianId: string;
     technicianName: string;
     reasonCodes: string[];
     reasons: string[];
   } | null;
+  routing: RoutingEvaluation;
   candidates: DispatchCandidate[];
   assignmentHistory: Array<{
     id: string;
@@ -221,6 +223,71 @@ export interface DispatchBoardDetail extends DispatchBoardSummary {
     note: string | null;
     createdAt: string;
   }>;
+}
+
+export type RoutingTimeScope = "ANY" | "BUSINESS_HOURS" | "AFTER_HOURS";
+
+export interface RoutingEvaluation {
+  version: "routing-v1";
+  jobId: string;
+  timeScope: "BUSINESS_HOURS" | "AFTER_HOURS";
+  postalCode: string | null;
+  covered: boolean;
+  matchedRule: { id: string; name: string; priority: number } | null;
+  requirements: { requireAvailable: boolean; requireOnCall: boolean };
+  reasonCodes: string[];
+  reasons: string[];
+  escalationPath: Array<{
+    userId: string;
+    fullName: string;
+    role: string;
+    reason: "OWNER" | "ON_CALL";
+  }>;
+}
+
+export interface RoutingSnapshot {
+  rules: Array<{
+    id: string;
+    name: string;
+    status: "ACTIVE" | "INACTIVE";
+    priority: number;
+    serviceCategoryId: string | null;
+    serviceAreaId: string | null;
+    urgency: UrgencyLevel | null;
+    timeScope: RoutingTimeScope;
+    requireAvailable: boolean;
+    requireOnCall: boolean;
+    escalateToOwner: boolean;
+    escalateToOnCall: boolean;
+    serviceCategory: { id: string; name: string } | null;
+    serviceArea: { id: string; name: string } | null;
+  }>;
+  serviceAreas: Array<{
+    id: string;
+    name: string;
+    type: "ZIP";
+    status: "ACTIVE" | "INACTIVE";
+    definition: { postalCodes?: string[] };
+  }>;
+  technicians: Array<{
+    id: string;
+    fullName: string;
+    isAvailable: boolean;
+    isOnCall: boolean;
+    serviceCapabilities: Array<{
+      serviceCategoryId: string;
+      proficiency: "JUNIOR" | "STANDARD" | "EXPERT";
+      isEnabled: boolean;
+    }>;
+    availabilityBlocks: Array<{
+      id: string;
+      type: "UNAVAILABLE" | "AVAILABLE_OVERRIDE";
+      startAt: string;
+      endAt: string;
+      reason: string | null;
+    }>;
+  }>;
+  serviceCategories: Array<{ id: string; name: string }>;
 }
 
 export type TechnicianJobAction =
@@ -552,6 +619,82 @@ export async function createTechnicianLink(
   return postJson(
     `/jobs/technician-links/${encodeURIComponent(technicianId)}`,
     expiresInHours ? { expiresInHours } : {},
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getRoutingSnapshot(
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<RoutingSnapshot> {
+  return getJson("/jobs/routing", buildAuthHeaders(auth, tenantId));
+}
+
+export async function saveServiceArea(
+  serviceAreaId: string | null,
+  input: { name: string; status: "ACTIVE" | "INACTIVE"; postalCodes: string[] },
+  auth: RequestAuth,
+  tenantId?: string,
+) {
+  const path = serviceAreaId
+    ? `/jobs/routing/service-areas/${encodeURIComponent(serviceAreaId)}`
+    : "/jobs/routing/service-areas";
+  return postJson(path, input, buildAuthHeaders(auth, tenantId));
+}
+
+export async function saveRoutingRule(
+  ruleId: string | null,
+  input: {
+    name: string;
+    status: "ACTIVE" | "INACTIVE";
+    priority: number;
+    serviceCategoryId?: string;
+    serviceAreaId?: string;
+    urgency?: UrgencyLevel;
+    timeScope: RoutingTimeScope;
+    requireAvailable: boolean;
+    requireOnCall: boolean;
+    escalateToOwner: boolean;
+    escalateToOnCall: boolean;
+  },
+  auth: RequestAuth,
+  tenantId?: string,
+) {
+  const path = ruleId
+    ? `/jobs/routing/rules/${encodeURIComponent(ruleId)}`
+    : "/jobs/routing/rules";
+  return postJson(path, input, buildAuthHeaders(auth, tenantId));
+}
+
+export async function configureTechnicianRouting(
+  technicianId: string,
+  input: {
+    isAvailable: boolean;
+    isOnCall: boolean;
+    capabilities: Array<{
+      serviceCategoryId: string;
+      proficiency: "JUNIOR" | "STANDARD" | "EXPERT";
+      isEnabled: boolean;
+    }>;
+  },
+  auth: RequestAuth,
+  tenantId?: string,
+) {
+  return postJson(
+    `/jobs/routing/technicians/${encodeURIComponent(technicianId)}`,
+    input,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function evaluateJobRouting(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<RoutingEvaluation> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/routing/evaluate`,
+    {},
     buildAuthHeaders(auth, tenantId),
   );
 }
