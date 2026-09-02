@@ -28,6 +28,10 @@ import { DispatchAccessGuard } from "./dispatch-access.guard";
 import { DispatchBoardService } from "./dispatch-board.service";
 import { CreateTechnicianLinkDto } from "./dto/create-technician-link.dto";
 import { TechnicianLinkService } from "./technician-link.service";
+import { RoutingService } from "./routing.service";
+import { SaveRoutingRuleDto } from "./dto/save-routing-rule.dto";
+import { SaveServiceAreaDto } from "./dto/save-service-area.dto";
+import { ConfigureTechnicianRoutingDto } from "./dto/configure-technician-routing.dto";
 
 const UUID_REQUEST_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -41,7 +45,112 @@ export class JobsController {
     private readonly urgencyReviewService: UrgencyReviewService,
     private readonly dispatchBoardService: DispatchBoardService,
     private readonly technicianLinkService: TechnicianLinkService,
+    private readonly routingService: RoutingService,
   ) {}
+
+  @Get("routing")
+  @Header("Cache-Control", "private, no-store")
+  @Throttle({ default: { limit: 60, ttl: 60 } })
+  @UseGuards(DispatchAccessGuard)
+  getRoutingConfiguration() {
+    return this.routingService.snapshot(this.operatorContext().tenantId);
+  }
+
+  @Post("routing/rules")
+  @HttpCode(201)
+  @Header("Cache-Control", "private, no-store")
+  @UseGuards(DispatchAccessGuard)
+  createRoutingRule(@Body() body: SaveRoutingRuleDto) {
+    const context = this.operatorContext();
+    return this.routingService.saveRule({
+      tenantId: context.tenantId,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+      dto: body,
+    });
+  }
+
+  @Post("routing/rules/:ruleId")
+  @HttpCode(200)
+  @Header("Cache-Control", "private, no-store")
+  @UseGuards(DispatchAccessGuard)
+  updateRoutingRule(
+    @Param("ruleId", new ParseUUIDPipe()) ruleId: string,
+    @Body() body: SaveRoutingRuleDto,
+  ) {
+    const context = this.operatorContext();
+    return this.routingService.saveRule({
+      tenantId: context.tenantId,
+      ruleId,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+      dto: body,
+    });
+  }
+
+  @Post("routing/service-areas")
+  @HttpCode(201)
+  @Header("Cache-Control", "private, no-store")
+  @UseGuards(DispatchAccessGuard)
+  createServiceArea(@Body() body: SaveServiceAreaDto) {
+    const context = this.operatorContext();
+    return this.routingService.saveServiceArea({
+      tenantId: context.tenantId,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+      dto: body,
+    });
+  }
+
+  @Post("routing/service-areas/:serviceAreaId")
+  @HttpCode(200)
+  @Header("Cache-Control", "private, no-store")
+  @UseGuards(DispatchAccessGuard)
+  updateServiceArea(
+    @Param("serviceAreaId", new ParseUUIDPipe()) serviceAreaId: string,
+    @Body() body: SaveServiceAreaDto,
+  ) {
+    const context = this.operatorContext();
+    return this.routingService.saveServiceArea({
+      tenantId: context.tenantId,
+      serviceAreaId,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+      dto: body,
+    });
+  }
+
+  @Post("routing/technicians/:technicianId")
+  @HttpCode(200)
+  @Header("Cache-Control", "private, no-store")
+  @UseGuards(DispatchAccessGuard)
+  configureTechnicianRouting(
+    @Param("technicianId", new ParseUUIDPipe()) technicianId: string,
+    @Body() body: ConfigureTechnicianRoutingDto,
+  ) {
+    const context = this.operatorContext();
+    return this.routingService.configureTechnician({
+      tenantId: context.tenantId,
+      technicianId,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+      dto: body,
+    });
+  }
+
+  @Post(":jobId/routing/evaluate")
+  @HttpCode(200)
+  @Header("Cache-Control", "private, no-store")
+  @UseGuards(DispatchAccessGuard)
+  evaluateJobRouting(@Param("jobId", new ParseUUIDPipe()) jobId: string) {
+    const context = this.operatorContext();
+    return this.routingService.evaluateAndAudit({
+      tenantId: context.tenantId,
+      jobId,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+    });
+  }
 
   @Post("technician-links/:technicianId")
   @HttpCode(201)

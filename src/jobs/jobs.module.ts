@@ -17,6 +17,7 @@ import { DispatchBoardService } from "./dispatch-board.service";
 import { TechnicianController } from "./technician.controller";
 import { TechnicianLinkService } from "./technician-link.service";
 import { TechnicianWorkflowService } from "./technician-workflow.service";
+import { RoutingService } from "./routing.service";
 
 @Module({
   imports: [AuthModule],
@@ -34,6 +35,7 @@ import { TechnicianWorkflowService } from "./technician-workflow.service";
     DispatchBoardService,
     TechnicianLinkService,
     TechnicianWorkflowService,
+    RoutingService,
     TenantGuard,
     {
       provide: JOB_REPOSITORY,
@@ -50,6 +52,7 @@ import { TechnicianWorkflowService } from "./technician-workflow.service";
     DispatchBoardService,
     TechnicianLinkService,
     TechnicianWorkflowService,
+    RoutingService,
   ],
 })
 export class JobsModule {}

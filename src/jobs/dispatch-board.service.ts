@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
 import {
   AuditActorType,
@@ -15,6 +16,7 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { RoutingEvaluation, RoutingService } from "./routing.service";
 
 export type DispatchQueue =
   | "NEW_REQUEST"
@@ -46,6 +48,7 @@ type Candidate = {
   fullName: string;
   role: string;
   available: boolean;
+  onCall: boolean;
   proficiency: ProficiencyLevel | null;
   activeAssignments: number;
   eligible: boolean;
@@ -74,7 +77,10 @@ const OVERRIDE_REASON_MIN_LENGTH = 10;
 
 @Injectable()
 export class DispatchBoardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly routingService?: RoutingService,
+  ) {}
 
   async list(tenantId: string) {
     const jobs = await this.prisma.job.findMany({
@@ -107,17 +113,24 @@ export class DispatchBoardService {
 
   async get(tenantId: string, jobId: string) {
     const job = await this.findJob(tenantId, jobId);
-    const [escalatedIds, candidates, history] = await Promise.all([
+    const [escalatedIds, routing, history] = await Promise.all([
       this.escalatedJobIds(tenantId, [jobId]),
-      this.candidates(tenantId, job),
+      this.routingService?.evaluateJob(tenantId, jobId) ??
+        Promise.resolve(this.defaultRouting(jobId)),
       this.assignmentHistory(tenantId, jobId),
     ]);
+    const candidates = await this.candidates(
+      tenantId,
+      job,
+      this.prisma,
+      routing,
+    );
     const recommendation = this.recommend(candidates);
     return {
       ...this.toSummary(job, escalatedIds.has(job.id)),
       recommendation: recommendation
         ? {
-            version: "dispatch-v1",
+            version: "dispatch-v2",
             technicianId: recommendation.userId,
             technicianName: recommendation.fullName,
             reasonCodes: recommendation.reasonCodes.filter(
@@ -137,6 +150,7 @@ export class DispatchBoardService {
         fullName: candidate.fullName,
         role: candidate.role,
         available: candidate.available,
+        onCall: candidate.onCall,
         proficiency: candidate.proficiency,
         activeAssignments: candidate.activeAssignments,
         eligible: candidate.eligible,
@@ -144,6 +158,7 @@ export class DispatchBoardService {
         reasons: candidate.reasonCodes.map((code) => this.reasonLabel(code)),
       })),
       assignmentHistory: history,
+      routing,
     };
   }
 
@@ -189,10 +204,18 @@ export class DispatchBoardService {
         };
       }
 
+      const routing = this.routingService
+        ? await this.routingService.evaluateJob(
+            input.tenantId,
+            job.id,
+            transaction,
+          )
+        : this.defaultRouting(job.id);
       const candidates = await this.candidates(
         input.tenantId,
         job,
         transaction,
+        routing,
       );
       const selected = candidates.find(
         (candidate) => candidate.userId === input.technicianId,
@@ -248,9 +271,10 @@ export class DispatchBoardService {
           metadata: {
             previousTechnicianId: job.assignedUserId,
             technicianId: selected.userId,
-            recommendationVersion: "dispatch-v1",
+            recommendationVersion: "dispatch-v2",
             recommendedTechnicianId: recommendation?.userId ?? null,
             recommendationReasonCodes: recommendation?.reasonCodes ?? [],
+            routing: routing as unknown as Prisma.InputJsonValue,
             override: isOverride,
             reason: reason ?? null,
           } satisfies Prisma.InputJsonValue,
@@ -382,6 +406,7 @@ export class DispatchBoardService {
     tenantId: string,
     job: DispatchJob,
     client: Prisma.TransactionClient | PrismaService = this.prisma,
+    routing: RoutingEvaluation = this.defaultRouting(job.id),
   ): Promise<Candidate[]> {
     const users = await client.user.findMany({
       where: {
@@ -453,6 +478,11 @@ export class DispatchBoardService {
         }
         if (available) reasonCodes.push("AVAILABLE");
         else reasonCodes.push("MARKED_UNAVAILABLE");
+        if (user.isOnCall) reasonCodes.push("ON_CALL");
+        else if (routing.requirements.requireOnCall)
+          reasonCodes.push("NOT_ON_CALL");
+        if (routing.covered) reasonCodes.push("SERVICE_AREA_ALLOWED");
+        else reasonCodes.push("SERVICE_AREA_BLOCKED");
         if (!unavailable) reasonCodes.push("NO_SCHEDULE_CONFLICT");
         else reasonCodes.push("SCHEDULE_CONFLICT");
         if (user._count.jobs <= 2) reasonCodes.push("LOW_ACTIVE_WORKLOAD");
@@ -474,9 +504,16 @@ export class DispatchBoardService {
           fullName: user.fullName,
           role: user.role,
           available,
+          onCall: user.isOnCall,
           proficiency: capability?.proficiency ?? null,
           activeAssignments: user._count.jobs,
-          eligible: Boolean(capability && available && !unavailable),
+          eligible: Boolean(
+            capability &&
+            routing.covered &&
+            (!routing.requirements.requireAvailable ||
+              (available && !unavailable)) &&
+            (!routing.requirements.requireOnCall || user.isOnCall),
+          ),
           reasonCodes,
           score:
             proficiencyScore +
@@ -589,8 +626,29 @@ export class DispatchBoardService {
       MISSING_SERVICE_CAPABILITY: "No enabled capability for this service",
       MARKED_UNAVAILABLE: "Currently marked unavailable",
       SCHEDULE_CONFLICT: "Availability block overlaps the service window",
+      ON_CALL: "Technician is on call",
+      NOT_ON_CALL: "Routing rule requires an on-call technician",
+      SERVICE_AREA_ALLOWED: "Job is inside the applicable service area",
+      SERVICE_AREA_BLOCKED: "Job is outside the applicable service area",
     };
     return labels[code] ?? "Operational factor recorded";
+  }
+
+  private defaultRouting(jobId: string): RoutingEvaluation {
+    return {
+      version: "routing-v1",
+      jobId,
+      timeScope: "BUSINESS_HOURS",
+      postalCode: null,
+      covered: true,
+      matchedRule: null,
+      requirements: { requireAvailable: true, requireOnCall: false },
+      reasonCodes: ["NO_ROUTING_RULE_CONFIGURED"],
+      reasons: [
+        "No matching tenant rule; safe default availability policy applies",
+      ],
+      escalationPath: [],
+    };
   }
 
   private record(
