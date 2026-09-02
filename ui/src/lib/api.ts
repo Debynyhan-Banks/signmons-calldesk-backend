@@ -223,6 +223,18 @@ export interface DispatchBoardDetail extends DispatchBoardSummary {
     note: string | null;
     createdAt: string;
   }>;
+  customerBooking: {
+    state: "AWAITING_RESPONSE" | "CONFIRMED" | "RESCHEDULE_REQUESTED";
+    label: string;
+    updatedAt: string | null;
+    events: Array<{
+      id: string;
+      action: string;
+      label: string;
+      note: string | null;
+      createdAt: string;
+    }>;
+  };
 }
 
 export type RoutingTimeScope = "ANY" | "BUSINESS_HOURS" | "AFTER_HOURS";
@@ -337,6 +349,65 @@ export interface TechnicianJobList {
     upcoming: TechnicianJobSummary[];
     completed: TechnicianJobSummary[];
   };
+}
+
+export type CustomerBookingAction = "confirm" | "request_reschedule";
+
+export interface CustomerBookingStatus {
+  status:
+    | "appointment_details"
+    | "appointment_customer_confirmed"
+    | "appointment_reschedule_requested";
+  changed?: boolean;
+  state: "confirmed" | "cancelled";
+  bookingState:
+    | "REQUEST_RECEIVED"
+    | "PENDING_CUSTOMER_CONFIRMATION"
+    | "CONFIRMED"
+    | "RESCHEDULE_REQUESTED"
+    | "CANCELLED"
+    | "COMPLETED";
+  reference: string;
+  customerName: string;
+  serviceCategory: string;
+  appointment: {
+    start?: string;
+    end?: string;
+    label: string;
+  };
+  technician: {
+    state:
+      | "UNASSIGNED"
+      | "ASSIGNED"
+      | "ACCEPTED"
+      | "EN_ROUTE"
+      | "IN_PROGRESS"
+      | "COMPLETED";
+    label: string;
+  };
+  payment: {
+    state:
+      | "NOT_STARTED"
+      | "PENDING"
+      | "SUCCEEDED"
+      | "FAILED"
+      | "REFUNDED"
+      | "CANCELED";
+    label: string;
+  };
+  customerResponse: {
+    state: "AWAITING_RESPONSE" | "CONFIRMED" | "RESCHEDULE_REQUESTED";
+    label: string;
+    updatedAt: string | null;
+    events: Array<{
+      id: string;
+      action: string;
+      label: string;
+      note: string | null;
+      createdAt: string;
+    }>;
+  };
+  availableActions: CustomerBookingAction[];
 }
 
 export class ApiError extends Error {
@@ -745,6 +816,18 @@ export async function updateTechnicianJob(
     input,
     technicianHeaders(token),
   );
+}
+
+export async function manageCustomerBooking(
+  managementToken: string,
+  action: "view" | CustomerBookingAction,
+  note?: string,
+): Promise<CustomerBookingStatus> {
+  return postJson<CustomerBookingStatus>("/appointments/manage", {
+    managementToken,
+    action,
+    ...(note ? { note } : {}),
+  });
 }
 
 export function getApiBaseUrl(): string {

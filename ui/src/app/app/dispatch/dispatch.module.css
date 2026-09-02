@@ -126,10 +126,51 @@
 }
 
 .recommendation,
+.customerBooking,
 .assignmentPanel,
 .secondaryActions,
 .historySection {
   margin-top: 22px;
+}
+.customerBooking {
+  border: 1px solid #c9d8e7;
+  border-radius: 14px;
+  padding: 17px;
+  background: #ffffff;
+}
+.customerBookingAttention {
+  border-color: #f4a071;
+  box-shadow: inset 4px 0 var(--orange);
+  background: #fff9f5;
+}
+.customerBooking > p {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.customerBooking ol {
+  margin-top: 13px;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.customerBooking li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: 0.76rem;
+}
+.customerBooking li p {
+  margin-top: 3px;
+  color: var(--muted);
+}
+.customerBooking time {
+  color: var(--muted);
+  font-size: 0.68rem;
+  white-space: nowrap;
 }
 .recommendation {
   border: 1px solid #bcd5ee;

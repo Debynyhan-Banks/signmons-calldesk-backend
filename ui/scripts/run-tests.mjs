@@ -8,6 +8,7 @@ const result = spawnSync(
     "src/lib/urgency-review.test.ts",
     "src/lib/dispatch-board.test.ts",
     "src/lib/technician-workflow.test.ts",
+    "src/lib/customer-booking.test.ts",
   ],
   { stdio: "inherit" },
 );

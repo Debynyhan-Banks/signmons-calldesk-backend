@@ -37,6 +37,10 @@ describe("SchedulingService", () => {
       findFirst: jest.fn(),
       updateMany: jest.fn(),
     },
+    auditLog: {
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+    },
   };
   const notifications = {
     enqueueAppointmentConfirmed: jest.fn(),
@@ -54,6 +58,8 @@ describe("SchedulingService", () => {
     prisma.job.findMany.mockResolvedValue([]);
     prisma.job.findFirst.mockReset();
     prisma.job.updateMany.mockReset();
+    prisma.auditLog.findMany.mockReset().mockResolvedValue([]);
+    prisma.auditLog.create.mockReset().mockResolvedValue({ id: "audit-1" });
     notifications.enqueueAppointmentRescheduled.mockReset();
     notifications.enqueueAppointmentCancelled.mockReset();
     service = new SchedulingService(
@@ -129,7 +135,7 @@ describe("SchedulingService", () => {
     prisma.job.findFirst.mockResolvedValue(appointmentJob());
 
     const result = await service.manageAppointment({
-      tenantId: baseJob.tenantId,
+      expectedTenantId: baseJob.tenantId,
       managementToken: managementToken(),
       action: "view",
     });
@@ -138,9 +144,113 @@ describe("SchedulingService", () => {
       expect.objectContaining({
         status: "appointment_details",
         state: "confirmed",
+        bookingState: "PENDING_CUSTOMER_CONFIRMATION",
         reference: "11111111",
+        payment: {
+          state: "NOT_STARTED",
+          label: "Payment has not been requested",
+        },
+        technician: expect.objectContaining({ state: "UNASSIGNED" }),
       }),
     );
+  });
+
+  it("rejects a valid secure link when an integration supplies a different tenant", async () => {
+    await expect(
+      service.manageAppointment({
+        expectedTenantId: "99999999-9999-4999-8999-999999999999",
+        managementToken: managementToken(),
+        action: "view",
+      }),
+    ).rejects.toThrow("This appointment link is invalid or has expired.");
+    expect(prisma.job.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("keeps the legacy lowercase state while exposing the richer booking state", async () => {
+    prisma.job.findFirst.mockResolvedValue(
+      appointmentJob({
+        status: "CANCELLED",
+        calendarEventId: null,
+        serviceWindowStart: null,
+        serviceWindowEnd: null,
+      }),
+    );
+
+    const result = await service.manageAppointment({
+      managementToken: managementToken(),
+      action: "view",
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        state: "cancelled",
+        bookingState: "CANCELLED",
+      }),
+    );
+  });
+
+  it("records a customer confirmation once and returns the updated secure status", async () => {
+    prisma.job.findFirst.mockResolvedValue(appointmentJob());
+    prisma.auditLog.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: "audit-1",
+        action: "appointment.customer_confirmed",
+        metadata: {},
+        createdAt: new Date("2026-09-02T12:00:00.000Z"),
+      },
+    ]);
+
+    const result = await service.manageAppointment({
+      managementToken: managementToken(),
+      action: "confirm",
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: "appointment_customer_confirmed",
+        bookingState: "CONFIRMED",
+        changed: true,
+      }),
+    );
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId: baseJob.tenantId,
+        action: "appointment.customer_confirmed",
+        actorType: "CUSTOMER",
+        entityId: baseJob.id,
+      }),
+    });
+  });
+
+  it("records a customer reschedule request for dispatcher follow-up", async () => {
+    prisma.job.findFirst.mockResolvedValue(appointmentJob());
+    prisma.auditLog.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: "audit-2",
+        action: "appointment.customer_reschedule_requested",
+        metadata: { note: "Friday morning" },
+        createdAt: new Date("2026-09-02T12:05:00.000Z"),
+      },
+    ]);
+
+    const result = await service.manageAppointment({
+      managementToken: managementToken(),
+      action: "request_reschedule",
+      note: "  Friday   morning  ",
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: "appointment_reschedule_requested",
+        bookingState: "RESCHEDULE_REQUESTED",
+        changed: true,
+      }),
+    );
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        metadata: expect.objectContaining({ note: "Friday morning" }),
+      }),
+    });
   });
 
   it("reschedules the database and existing calendar event before notifying operations", async () => {
@@ -176,7 +286,7 @@ describe("SchedulingService", () => {
       );
 
     const result = await service.manageAppointment({
-      tenantId: baseJob.tenantId,
+      expectedTenantId: baseJob.tenantId,
       managementToken: managementToken(),
       action: "reschedule",
       slotToken: signedSlot(nextStart, nextEnd),
@@ -214,7 +324,7 @@ describe("SchedulingService", () => {
       .mockResolvedValue(new Response(null, { status: 204 }));
 
     const result = await service.manageAppointment({
-      tenantId: baseJob.tenantId,
+      expectedTenantId: baseJob.tenantId,
       managementToken: managementToken(),
       action: "cancel",
     });
@@ -259,6 +369,7 @@ describe("SchedulingService", () => {
     return {
       id: baseJob.id,
       tenantId: baseJob.tenantId,
+      customerId: "33333333-3333-4333-8333-333333333333",
       customer: { fullName: baseJob.customerName, phone: baseJob.phone },
       propertyAddress: { formattedAddress: baseJob.address },
       serviceCategory: { name: baseJob.issueCategory },
@@ -273,6 +384,10 @@ describe("SchedulingService", () => {
       serviceWindowStart: new Date("2026-08-31T15:00:00.000Z"),
       serviceWindowEnd: new Date("2026-08-31T18:00:00.000Z"),
       calendarEventId: "event-1",
+      assignedUserId: null,
+      assignedUser: null,
+      technicianStatus: null,
+      payment: null,
       status: "ACCEPTED",
       createdAt: new Date("2026-08-30T12:00:00.000Z"),
       updatedAt: new Date("2026-08-30T12:00:00.000Z"),

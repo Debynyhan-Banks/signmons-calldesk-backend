@@ -574,6 +574,42 @@ function DispatchDetail({
         ) : null}
       </section>
 
+      <section
+        className={`${styles.customerBooking} ${
+          detail.customerBooking.state === "RESCHEDULE_REQUESTED"
+            ? styles.customerBookingAttention
+            : ""
+        }`}
+      >
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={base.eyebrow}>Customer booking response</p>
+            <h3>{detail.customerBooking.label}</h3>
+          </div>
+          <span>{customerBookingStateLabel(detail.customerBooking.state)}</span>
+        </div>
+        {detail.customerBooking.events.length ? (
+          <ol>
+            {detail.customerBooking.events.slice(0, 4).map((event) => (
+              <li key={event.id}>
+                <div>
+                  <strong>{event.label}</strong>
+                  {event.note ? <p>“{event.note}”</p> : null}
+                </div>
+                <time>
+                  {formatDispatchDate(event.createdAt, detail.timezone)}
+                </time>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p>
+            The secure customer link is active. Confirmation or a reschedule
+            request will appear here without exposing the link token.
+          </p>
+        )}
+      </section>
+
       <section className={styles.recommendation}>
         <div className={styles.sectionHeading}>
           <div>
@@ -794,6 +830,14 @@ function historyLabel(
   if (action === "job.technician_started") return "Work started";
   if (action === "job.technician_completed") return "Work completed";
   return "Technician cannot take job";
+}
+
+function customerBookingStateLabel(
+  state: DispatchBoardDetail["customerBooking"]["state"],
+) {
+  if (state === "CONFIRMED") return "Confirmed";
+  if (state === "RESCHEDULE_REQUESTED") return "Action needed";
+  return "Awaiting response";
 }
 
 function errorMessage(error: unknown) {
