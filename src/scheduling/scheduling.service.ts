@@ -8,7 +8,12 @@ import {
 } from "@nestjs/common";
 import type { ConfigType } from "@nestjs/config";
 import { GoogleAuth } from "google-auth-library";
-import { JobStatus, Prisma } from "@prisma/client";
+import {
+  AuditActorType,
+  JobStatus,
+  PaymentStatus,
+  Prisma,
+} from "@prisma/client";
 import appConfig from "../config/app.config";
 import { JobNotificationService } from "../jobs/job-notification.service";
 import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
@@ -48,8 +53,30 @@ type AppointmentJob = Prisma.JobGetPayload<{
     customer: true;
     propertyAddress: true;
     serviceCategory: true;
+    assignedUser: {
+      select: {
+        id: true;
+        fullName: true;
+      };
+    };
+    payment: {
+      select: {
+        status: true;
+      };
+    };
   };
 }>;
+
+type CustomerResponseState =
+  | "AWAITING_RESPONSE"
+  | "CONFIRMED"
+  | "RESCHEDULE_REQUESTED";
+
+const CUSTOMER_APPOINTMENT_ACTIONS = [
+  "appointment.customer_confirmed",
+  "appointment.customer_reschedule_requested",
+  "appointment.customer_rescheduled",
+] as const;
 
 const SERVICE_WINDOWS = [
   { label: "8–11 AM", start: "08:00", end: "11:00" },
@@ -265,20 +292,35 @@ export class SchedulingService {
   }
 
   async manageAppointment(input: {
-    tenantId: string;
     managementToken: string;
-    action: "view" | "availability" | "reschedule" | "cancel";
+    action:
+      | "view"
+      | "confirm"
+      | "request_reschedule"
+      | "availability"
+      | "reschedule"
+      | "cancel";
     slotToken?: string;
+    note?: string;
+    expectedTenantId?: string;
   }) {
     const authority = this.verifyManagementToken(
       input.managementToken,
-      input.tenantId,
+      input.expectedTenantId,
     );
     const job = await this.loadAppointment(authority.tenantId, authority.jobId);
     const record = this.mapJob(job);
 
     if (input.action === "view") {
-      return this.managementResponse(record);
+      return this.managementResponse(job, record);
+    }
+
+    if (input.action === "confirm") {
+      return this.confirmAppointmentWindow(job, record);
+    }
+
+    if (input.action === "request_reschedule") {
+      return this.requestAppointmentReschedule(job, record, input.note);
     }
 
     if (input.action === "cancel") {
@@ -320,12 +362,78 @@ export class SchedulingService {
     };
   }
 
-  private managementResponse(job: JobRecord) {
+  private async managementResponse(job: AppointmentJob, record: JobRecord) {
+    const customerActivity = await this.customerActivity(job.tenantId, job.id);
     return {
       status: "appointment_details" as const,
-      state: job.status === "CANCELLED" ? "cancelled" : "confirmed",
-      reference: this.reference(job.id),
-      appointment: this.appointmentSummary(job),
+      state: job.status === JobStatus.CANCELLED ? "cancelled" : "confirmed",
+      bookingState: this.bookingState(job, customerActivity.state),
+      reference: this.reference(record.id),
+      customerName: job.customer.fullName,
+      serviceCategory: job.serviceCategory.name,
+      appointment: this.appointmentSummary(record),
+      technician: {
+        state: job.assignedUserId
+          ? (job.technicianStatus ?? "ASSIGNED")
+          : "UNASSIGNED",
+        label: this.technicianLabel(
+          job.assignedUserId
+            ? (job.technicianStatus ?? "ASSIGNED")
+            : "UNASSIGNED",
+        ),
+      },
+      payment: this.paymentSummary(job.payment?.status),
+      customerResponse: customerActivity,
+      availableActions: this.customerActions(job, customerActivity.state),
+    };
+  }
+
+  private async confirmAppointmentWindow(
+    job: AppointmentJob,
+    record: JobRecord,
+  ) {
+    this.requireActiveAppointment(job);
+    const activity = await this.customerActivity(job.tenantId, job.id);
+    const changed = activity.state !== "CONFIRMED";
+    if (changed) {
+      await this.recordCustomerAction(job, "appointment.customer_confirmed", {
+        appointmentLabel: this.appointmentSummary(record).label,
+      });
+    }
+    return {
+      ...(await this.managementResponse(job, record)),
+      status: "appointment_customer_confirmed" as const,
+      changed,
+    };
+  }
+
+  private async requestAppointmentReschedule(
+    job: AppointmentJob,
+    record: JobRecord,
+    note?: string,
+  ) {
+    this.requireActiveAppointment(job);
+    const normalizedNote = note?.replace(/\s+/g, " ").trim() || null;
+    const activity = await this.customerActivity(job.tenantId, job.id);
+    const latest = activity.events[0];
+    const changed = !(
+      activity.state === "RESCHEDULE_REQUESTED" &&
+      latest?.note === normalizedNote
+    );
+    if (changed) {
+      await this.recordCustomerAction(
+        job,
+        "appointment.customer_reschedule_requested",
+        {
+          note: normalizedNote,
+          currentAppointmentLabel: this.appointmentSummary(record).label,
+        },
+      );
+    }
+    return {
+      ...(await this.managementResponse(job, record)),
+      status: "appointment_reschedule_requested" as const,
+      changed,
     };
   }
 
@@ -338,6 +446,174 @@ export class SchedulingService {
           ? this.formatWindow(job.serviceWindowStart, job.serviceWindowEnd)
           : (job.preferredTimeText ?? "Cancelled"),
     };
+  }
+
+  private requireActiveAppointment(job: AppointmentJob): void {
+    if (
+      job.status !== JobStatus.ACCEPTED ||
+      !job.calendarEventId ||
+      !job.serviceWindowStart ||
+      !job.serviceWindowEnd
+    ) {
+      throw new ConflictException(
+        "This appointment can no longer be confirmed or changed online. Please contact the service company.",
+      );
+    }
+  }
+
+  private bookingState(
+    job: AppointmentJob,
+    customerState: CustomerResponseState,
+  ) {
+    if (job.status === JobStatus.CANCELLED) return "CANCELLED" as const;
+    if (job.status === JobStatus.COMPLETED) return "COMPLETED" as const;
+    if (customerState === "RESCHEDULE_REQUESTED") {
+      return "RESCHEDULE_REQUESTED" as const;
+    }
+    if (customerState === "CONFIRMED") return "CONFIRMED" as const;
+    if (job.serviceWindowStart && job.serviceWindowEnd) {
+      return "PENDING_CUSTOMER_CONFIRMATION" as const;
+    }
+    return "REQUEST_RECEIVED" as const;
+  }
+
+  private customerActions(
+    job: AppointmentJob,
+    customerState: CustomerResponseState,
+  ): Array<"confirm" | "request_reschedule"> {
+    if (
+      job.status !== JobStatus.ACCEPTED ||
+      !job.calendarEventId ||
+      !job.serviceWindowStart ||
+      !job.serviceWindowEnd
+    ) {
+      return [];
+    }
+    return customerState === "CONFIRMED"
+      ? ["request_reschedule"]
+      : ["confirm", "request_reschedule"];
+  }
+
+  private technicianLabel(status: string): string {
+    const labels: Record<string, string> = {
+      UNASSIGNED: "A technician has not been assigned yet",
+      ASSIGNED: "A technician has been assigned",
+      ACCEPTED: "Your technician accepted the job",
+      EN_ROUTE: "Your technician is on the way",
+      IN_PROGRESS: "Work is in progress",
+      COMPLETED: "Work is complete",
+    };
+    return labels[status] ?? "Technician status is being updated";
+  }
+
+  private paymentSummary(status?: PaymentStatus) {
+    const states: Record<PaymentStatus, string> = {
+      PENDING: "Payment is pending",
+      SUCCEEDED: "Payment received",
+      FAILED: "Payment needs attention",
+      REFUNDED: "Payment refunded",
+      CANCELED: "Payment was cancelled",
+    };
+    return status
+      ? { state: status, label: states[status] }
+      : {
+          state: "NOT_STARTED" as const,
+          label: "Payment has not been requested",
+        };
+  }
+
+  private async customerActivity(tenantId: string, jobId: string) {
+    const audits = await this.prisma.auditLog.findMany({
+      where: {
+        tenantId,
+        entityType: "Job",
+        entityId: jobId,
+        action: { in: [...CUSTOMER_APPOINTMENT_ACTIONS] },
+      },
+      select: {
+        id: true,
+        action: true,
+        metadata: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    const events = audits.map((audit) => {
+      const metadata = this.jsonRecord(audit.metadata);
+      return {
+        id: audit.id,
+        action: audit.action,
+        label: this.customerActionLabel(audit.action),
+        note: typeof metadata?.note === "string" ? metadata.note : null,
+        createdAt: audit.createdAt.toISOString(),
+      };
+    });
+    return {
+      state: this.customerResponseState(events[0]?.action),
+      label: this.customerResponseLabel(events[0]?.action),
+      updatedAt: events[0]?.createdAt ?? null,
+      events,
+    };
+  }
+
+  private customerResponseState(action?: string): CustomerResponseState {
+    if (action === "appointment.customer_confirmed") return "CONFIRMED";
+    if (action === "appointment.customer_reschedule_requested") {
+      return "RESCHEDULE_REQUESTED";
+    }
+    if (action === "appointment.customer_rescheduled") return "CONFIRMED";
+    return "AWAITING_RESPONSE";
+  }
+
+  private customerResponseLabel(action?: string): string {
+    if (action === "appointment.customer_confirmed") {
+      return "Customer confirmed the appointment window";
+    }
+    if (action === "appointment.customer_reschedule_requested") {
+      return "Customer requested a different appointment time";
+    }
+    if (action === "appointment.customer_rescheduled") {
+      return "Customer selected a new confirmed appointment window";
+    }
+    return "Waiting for customer confirmation";
+  }
+
+  private customerActionLabel(action: string): string {
+    if (action === "appointment.customer_confirmed") {
+      return "Appointment window confirmed";
+    }
+    if (action === "appointment.customer_reschedule_requested") {
+      return "Reschedule requested";
+    }
+    if (action === "appointment.customer_rescheduled") {
+      return "Appointment rescheduled";
+    }
+    return "Customer booking update";
+  }
+
+  private async recordCustomerAction(
+    job: AppointmentJob,
+    action: (typeof CUSTOMER_APPOINTMENT_ACTIONS)[number],
+    metadata: Prisma.InputJsonObject,
+  ): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId: job.tenantId,
+        action,
+        actorType: AuditActorType.CUSTOMER,
+        actorId: `customer:${job.customerId}`,
+        entityType: "Job",
+        entityId: job.id,
+        metadata,
+      },
+    });
+  }
+
+  private jsonRecord(value: Prisma.JsonValue | undefined) {
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : null;
   }
 
   private async rescheduleAppointment(
@@ -375,8 +651,8 @@ export class SchedulingService {
       );
     }
 
-    const originalStart = job.serviceWindowStart;
-    const originalEnd = job.serviceWindowEnd;
+    const originalStart = job.serviceWindowStart!;
+    const originalEnd = job.serviceWindowEnd!;
     const originalTimeText = job.preferredTimeText;
     const calendarEventId = job.calendarEventId;
     if (!calendarEventId) {
@@ -384,6 +660,8 @@ export class SchedulingService {
         "This appointment can no longer be changed online. Please call Eternity.",
       );
     }
+    let reservationChanged = false;
+    let calendarChanged = false;
     try {
       const reservation = await this.prisma.job.updateMany({
         where: {
@@ -405,7 +683,9 @@ export class SchedulingService {
           "This appointment changed while you were viewing it. Please refresh.",
         );
       }
+      reservationChanged = true;
       await this.updateCalendarEvent(calendarEventId, start, end);
+      calendarChanged = true;
       const updatedRecord: JobRecord = {
         ...record,
         serviceWindowStart: start,
@@ -413,6 +693,10 @@ export class SchedulingService {
         preferredTimeText: this.formatWindow(start, end),
         updatedAt: new Date(),
       };
+      await this.recordCustomerAction(job, "appointment.customer_rescheduled", {
+        previousAppointmentLabel: this.formatWindow(originalStart, originalEnd),
+        appointmentLabel: this.formatWindow(start, end),
+      });
       this.notifications.enqueueAppointmentRescheduled(updatedRecord);
       return {
         status: "appointment_rescheduled" as const,
@@ -420,20 +704,39 @@ export class SchedulingService {
         appointment: this.appointmentSummary(updatedRecord),
       };
     } catch (error) {
-      await this.prisma.job.updateMany({
-        where: {
-          id: job.id,
-          tenantId: job.tenantId,
-          calendarEventId,
-          serviceWindowStart: start,
-          serviceWindowEnd: end,
-        },
-        data: {
-          serviceWindowStart: originalStart,
-          serviceWindowEnd: originalEnd,
-          preferredTimeText: originalTimeText,
-        },
-      });
+      let calendarRestored = !calendarChanged;
+      if (calendarChanged) {
+        try {
+          await this.updateCalendarEvent(
+            calendarEventId,
+            originalStart,
+            originalEnd,
+          );
+          calendarRestored = true;
+        } catch (rollbackError) {
+          this.loggingService.error(
+            `Calendar rollback failed for job ${job.id}.`,
+            rollbackError instanceof Error ? rollbackError : undefined,
+            SchedulingService.name,
+          );
+        }
+      }
+      if (reservationChanged && calendarRestored) {
+        await this.prisma.job.updateMany({
+          where: {
+            id: job.id,
+            tenantId: job.tenantId,
+            calendarEventId,
+            serviceWindowStart: start,
+            serviceWindowEnd: end,
+          },
+          data: {
+            serviceWindowStart: originalStart,
+            serviceWindowEnd: originalEnd,
+            preferredTimeText: originalTimeText,
+          },
+        });
+      }
       if (error instanceof ConflictException) throw error;
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -708,6 +1011,17 @@ export class SchedulingService {
         customer: true,
         propertyAddress: true,
         serviceCategory: true,
+        assignedUser: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+        payment: {
+          select: {
+            status: true,
+          },
+        },
       },
     });
     if (!job) throw new BadRequestException("Appointment not found.");
@@ -751,7 +1065,7 @@ export class SchedulingService {
 
   private verifyManagementToken(
     token: string,
-    tenantId: string,
+    expectedTenantId?: string,
   ): SignedAppointmentManagement {
     const payload = this.verifySignedPayload(token);
     if (
@@ -760,7 +1074,8 @@ export class SchedulingService {
       typeof payload.tenantId !== "string" ||
       typeof payload.jobId !== "string" ||
       typeof payload.expiresAt !== "number" ||
-      payload.tenantId !== tenantId ||
+      (expectedTenantId !== undefined &&
+        payload.tenantId !== expectedTenantId) ||
       payload.expiresAt < Date.now()
     ) {
       throw new BadRequestException(

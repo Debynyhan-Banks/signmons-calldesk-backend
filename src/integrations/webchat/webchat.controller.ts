@@ -50,6 +50,9 @@ export class WebchatController {
     if (!tenantId) {
       throw new UnauthorizedException("Tenant context is missing.");
     }
-    return this.schedulingService.manageAppointment({ tenantId, ...body });
+    return this.schedulingService.manageAppointment({
+      ...body,
+      expectedTenantId: tenantId,
+    });
   }
 }

@@ -13,12 +13,30 @@ export class ManageAppointmentDto {
   managementToken!: string;
 
   @IsString()
-  @IsIn(["view", "availability", "reschedule", "cancel"])
-  action!: "view" | "availability" | "reschedule" | "cancel";
+  @IsIn([
+    "view",
+    "confirm",
+    "request_reschedule",
+    "availability",
+    "reschedule",
+    "cancel",
+  ])
+  action!:
+    | "view"
+    | "confirm"
+    | "request_reschedule"
+    | "availability"
+    | "reschedule"
+    | "cancel";
 
   @IsOptional()
   @IsString()
   @MinLength(20)
   @MaxLength(2048)
   slotToken?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }

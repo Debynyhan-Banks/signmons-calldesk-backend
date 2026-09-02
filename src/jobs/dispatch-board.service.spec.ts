@@ -106,7 +106,15 @@ describe("DispatchBoardService", () => {
     prisma.job.findFirst.mockResolvedValue(baseJob);
     prisma.auditLog.findMany
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "customer-audit-1",
+          action: "appointment.customer_reschedule_requested",
+          metadata: { note: "Friday morning" },
+          createdAt: new Date("2026-08-31T15:05:00.000Z"),
+        },
+      ]);
     prisma.user.findMany.mockResolvedValue([
       {
         ...qualifiedTech,
@@ -129,6 +137,11 @@ describe("DispatchBoardService", () => {
       ]),
     });
     expect(result.candidates[0]).not.toHaveProperty("score");
+    expect(result.customerBooking).toMatchObject({
+      state: "RESCHEDULE_REQUESTED",
+      label: "Customer requested a different appointment time",
+      events: [expect.objectContaining({ note: "Friday morning" })],
+    });
   });
 
   it("assigns the recommended technician atomically and records an audit", async () => {

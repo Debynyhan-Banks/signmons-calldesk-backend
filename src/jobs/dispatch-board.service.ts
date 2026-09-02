@@ -73,6 +73,11 @@ const ASSIGNMENT_ACTIONS = [
   "job.technician_completed",
   "job.technician_unavailable",
 ];
+const CUSTOMER_BOOKING_ACTIONS = [
+  "appointment.customer_confirmed",
+  "appointment.customer_reschedule_requested",
+  "appointment.customer_rescheduled",
+];
 const OVERRIDE_REASON_MIN_LENGTH = 10;
 
 @Injectable()
@@ -113,12 +118,15 @@ export class DispatchBoardService {
 
   async get(tenantId: string, jobId: string) {
     const job = await this.findJob(tenantId, jobId);
-    const [escalatedIds, routing, history] = await Promise.all([
-      this.escalatedJobIds(tenantId, [jobId]),
-      this.routingService?.evaluateJob(tenantId, jobId) ??
-        Promise.resolve(this.defaultRouting(jobId)),
-      this.assignmentHistory(tenantId, jobId),
-    ]);
+    const [escalatedIds, routing, history, customerBooking] = await Promise.all(
+      [
+        this.escalatedJobIds(tenantId, [jobId]),
+        this.routingService?.evaluateJob(tenantId, jobId) ??
+          Promise.resolve(this.defaultRouting(jobId)),
+        this.assignmentHistory(tenantId, jobId),
+        this.customerBookingActivity(tenantId, jobId),
+      ],
+    );
     const candidates = await this.candidates(
       tenantId,
       job,
@@ -158,6 +166,7 @@ export class DispatchBoardService {
         reasons: candidate.reasonCodes.map((code) => this.reasonLabel(code)),
       })),
       assignmentHistory: history,
+      customerBooking,
       routing,
     };
   }
@@ -509,10 +518,10 @@ export class DispatchBoardService {
           activeAssignments: user._count.jobs,
           eligible: Boolean(
             capability &&
-            routing.covered &&
-            (!routing.requirements.requireAvailable ||
-              (available && !unavailable)) &&
-            (!routing.requirements.requireOnCall || user.isOnCall),
+              routing.covered &&
+              (!routing.requirements.requireAvailable ||
+                (available && !unavailable)) &&
+              (!routing.requirements.requireOnCall || user.isOnCall),
           ),
           reasonCodes,
           score:
@@ -614,6 +623,63 @@ export class DispatchBoardService {
         createdAt: audit.createdAt.toISOString(),
       };
     });
+  }
+
+  private async customerBookingActivity(tenantId: string, jobId: string) {
+    const audits = await this.prisma.auditLog.findMany({
+      where: {
+        tenantId,
+        entityType: "Job",
+        entityId: jobId,
+        action: { in: CUSTOMER_BOOKING_ACTIONS },
+      },
+      select: {
+        id: true,
+        action: true,
+        metadata: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    const events = audits.map((audit) => {
+      const metadata = this.record(audit.metadata) ?? {};
+      return {
+        id: audit.id,
+        action: audit.action,
+        label: this.customerBookingLabel(audit.action),
+        note: typeof metadata.note === "string" ? metadata.note : null,
+        createdAt: audit.createdAt.toISOString(),
+      };
+    });
+    const action = events[0]?.action;
+    return {
+      state:
+        action === "appointment.customer_reschedule_requested"
+          ? ("RESCHEDULE_REQUESTED" as const)
+          : action === "appointment.customer_confirmed" ||
+              action === "appointment.customer_rescheduled"
+            ? ("CONFIRMED" as const)
+            : ("AWAITING_RESPONSE" as const),
+      label: action
+        ? this.customerBookingLabel(action)
+        : "Waiting for customer confirmation",
+      updatedAt: events[0]?.createdAt ?? null,
+      events,
+    };
+  }
+
+  private customerBookingLabel(action: string): string {
+    if (action === "appointment.customer_confirmed") {
+      return "Customer confirmed the appointment window";
+    }
+    if (action === "appointment.customer_reschedule_requested") {
+      return "Customer requested a different appointment time";
+    }
+    if (action === "appointment.customer_rescheduled") {
+      return "Customer selected a new confirmed appointment window";
+    }
+    return "Customer booking update";
   }
 
   private reasonLabel(code: string): string {
