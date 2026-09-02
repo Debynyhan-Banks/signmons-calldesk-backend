@@ -130,14 +130,24 @@ export class RoutingService {
       escalateToOnCall: input.dto.escalateToOnCall,
     };
     return this.prisma.$transaction(async (tx) => {
-      const rule = input.ruleId
-        ? await tx.routingRule.update({
+      let rule;
+      if (input.ruleId) {
+        try {
+          rule = await tx.routingRule.update({
             where: {
               id_tenantId: { id: input.ruleId, tenantId: input.tenantId },
             },
             data,
-          })
-        : await tx.routingRule.create({ data });
+          });
+        } catch (error) {
+          if (this.isRecordNotFound(error)) {
+            throw new NotFoundException("Routing rule was not found.");
+          }
+          throw error;
+        }
+      } else {
+        rule = await tx.routingRule.create({ data });
+      }
       await this.audit(tx, {
         tenantId: input.tenantId,
         actorId: input.actorId,
@@ -168,8 +178,10 @@ export class RoutingService {
         status: input.dto.status,
         definition: { postalCodes } satisfies Prisma.InputJsonValue,
       };
-      const area = input.serviceAreaId
-        ? await tx.serviceArea.update({
+      let area;
+      if (input.serviceAreaId) {
+        try {
+          area = await tx.serviceArea.update({
             where: {
               id_tenantId: {
                 id: input.serviceAreaId,
@@ -177,10 +189,18 @@ export class RoutingService {
               },
             },
             data,
-          })
-        : await tx.serviceArea.create({
-            data: { tenantId: input.tenantId, ...data },
           });
+        } catch (error) {
+          if (this.isRecordNotFound(error)) {
+            throw new NotFoundException("Service area was not found.");
+          }
+          throw error;
+        }
+      } else {
+        area = await tx.serviceArea.create({
+          data: { tenantId: input.tenantId, ...data },
+        });
+      }
       await this.audit(tx, {
         tenantId: input.tenantId,
         actorId: input.actorId,
@@ -540,6 +560,14 @@ export class RoutingService {
       ON_CALL_ESCALATION: "Emergency escalation includes on-call personnel",
     };
     return labels[code] ?? "Routing factor recorded";
+  }
+
+  private isRecordNotFound(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      (error as { code?: unknown }).code === "P2025"
+    );
   }
 
   private audit(

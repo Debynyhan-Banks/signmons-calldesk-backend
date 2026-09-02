@@ -1,3 +1,6 @@
+import { NotFoundException } from "@nestjs/common";
+import { plainToInstance } from "class-transformer";
+import { validate } from "class-validator";
 import {
   JobUrgency,
   RoutingRuleStatus,
@@ -6,6 +9,8 @@ import {
   ServiceAreaType,
   UserRole,
 } from "@prisma/client";
+import { SaveRoutingRuleDto } from "./dto/save-routing-rule.dto";
+import { SaveServiceAreaDto } from "./dto/save-service-area.dto";
 import { RoutingService } from "./routing.service";
 
 describe("RoutingService", () => {
@@ -45,7 +50,12 @@ describe("RoutingService", () => {
   const harness = () => {
     const prisma = {
       job: { findFirst: jest.fn().mockResolvedValue(baseJob) },
-      routingRule: { findMany: jest.fn().mockResolvedValue([rule]) },
+      routingRule: {
+        findMany: jest.fn().mockResolvedValue([rule]),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      serviceArea: { create: jest.fn(), update: jest.fn() },
       user: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -63,7 +73,12 @@ describe("RoutingService", () => {
         ]),
       },
       auditLog: { create: jest.fn().mockResolvedValue({ id: "audit-1" }) },
+      $transaction: jest.fn(),
     };
+    prisma.$transaction.mockImplementation(
+      (callback: (transaction: typeof prisma) => unknown) =>
+        Promise.resolve(callback(prisma)),
+    );
     return { prisma, service: new RoutingService(prisma as never) };
   };
 
@@ -122,5 +137,73 @@ describe("RoutingService", () => {
         }),
       }),
     });
+  });
+
+  it("uses the same not-found boundary for missing or cross-tenant rule updates", async () => {
+    const { prisma, service } = harness();
+    prisma.routingRule.update.mockRejectedValue({ code: "P2025" });
+
+    await expect(
+      service.saveRule({
+        tenantId,
+        ruleId: "77c939cd-b40f-4636-96bd-1f336f62a516",
+        actorId: "dispatcher-1",
+        dto: {
+          name: "After-hours routing",
+          status: RoutingRuleStatus.ACTIVE,
+          priority: 10,
+          timeScope: RoutingTimeScope.AFTER_HOURS,
+          requireAvailable: true,
+          requireOnCall: true,
+          escalateToOwner: true,
+          escalateToOnCall: true,
+        },
+      }),
+    ).rejects.toThrow(new NotFoundException("Routing rule was not found."));
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("uses the same not-found boundary for missing or cross-tenant service-area updates", async () => {
+    const { prisma, service } = harness();
+    prisma.serviceArea.update.mockRejectedValue({ code: "P2025" });
+
+    await expect(
+      service.saveServiceArea({
+        tenantId,
+        serviceAreaId: "d98ee344-b30a-4f4b-8fae-0e570730741b",
+        actorId: "dispatcher-1",
+        dto: {
+          name: "Greater Cleveland core",
+          status: ServiceAreaStatus.ACTIVE,
+          postalCodes: ["44119"],
+        },
+      }),
+    ).rejects.toThrow(new NotFoundException("Service area was not found."));
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects whitespace-only routing-rule and service-area names", async () => {
+    const ruleErrors = await validate(
+      plainToInstance(SaveRoutingRuleDto, {
+        name: "   ",
+        status: RoutingRuleStatus.ACTIVE,
+        priority: 10,
+        timeScope: RoutingTimeScope.ANY,
+        requireAvailable: true,
+        requireOnCall: false,
+        escalateToOwner: false,
+        escalateToOnCall: false,
+      }),
+    );
+    const areaErrors = await validate(
+      plainToInstance(SaveServiceAreaDto, {
+        name: "   ",
+        status: ServiceAreaStatus.ACTIVE,
+        postalCodes: ["44119"],
+      }),
+    );
+
+    expect(ruleErrors).toHaveLength(1);
+    expect(areaErrors).toHaveLength(1);
   });
 });

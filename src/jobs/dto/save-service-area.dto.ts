@@ -7,6 +7,7 @@ import {
   IsPostalCode,
   IsString,
   MaxLength,
+  MinLength,
 } from "class-validator";
 import { ServiceAreaStatus } from "@prisma/client";
 
@@ -16,6 +17,7 @@ const clean = ({ value }: { value: unknown }) =>
 export class SaveServiceAreaDto {
   @Transform(clean)
   @IsString()
+  @MinLength(1)
   @MaxLength(120)
   name!: string;
 

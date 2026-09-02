@@ -15,6 +15,8 @@ Status: review ready; not merged or deployed
 - Explicit audit-logged routing evaluation action.
 - Responsive `/app/routing` operator control center and routing trace in `/app/dispatch`.
 - Prisma migration for `RoutingRule` and technician `isOnCall` state.
+- Uniform not-found handling for missing and cross-tenant routing-rule and service-area updates.
+- Boundary validation that rejects whitespace-only routing-rule and service-area names.
 
 ## Acceptance Evidence
 
@@ -30,19 +32,33 @@ Status: review ready; not merged or deployed
 
 - Backend build: passed
 - Backend lint: passed
-- Backend tests: 159 passed across 24 suites
+- Backend tests: 162 passed across 24 suites
 - Architecture check: passed
 - Prisma validation: passed
+- Production dependency audit at the critical threshold: passed with no critical advisories; 4 high and 8 moderate transitive advisories remain documented below
 - UI production build: passed; `/app/routing` generated
 - UI lint: passed with no warnings
 - UI tests: 14 passed across 4 suites
-- Governance consistency check: pending final documentation sync
+- Governance consistency check: passed against the current APP-010 pointer and documentation worktree
 
 ## Visual QA
 
 - Desktop viewport: passed; forms, metrics, policy list and technician controls maintain hierarchy.
 - Phone viewport (390 x 844): passed; panels collapse to one column, controls remain readable and touch-safe.
 - Authentication-disabled state is clear and prevents unsafe writes.
+- `/app/routing` and `/app/dispatch` both rendered without application-origin console errors or horizontal document overflow.
+
+## Continuation Validation Section
+
+- Reconciled the backend and governance repositories with their remotes before work began.
+- Audited the implementation against the canonical APP-010 data contract and confirmed the active pointer remained APP-010.
+- Added focused regressions for the missing/cross-tenant update boundary and normalized required names.
+- Re-ran the backend, UI, Prisma, architecture, governance and responsive-browser gates from the focused branch.
+- No merge, migration, deployment, IAM, secret, billing or real-customer action was performed.
+
+## Known Review Risk
+
+- `npm audit --omit=dev --audit-level=critical` exits successfully with no critical advisories, but reports `4` high and `8` moderate transitive advisories through Prisma and Firebase dependencies. The suggested automated remediations are breaking major-version changes, so dependency migration is intentionally not bundled into APP-010 hardening.
 
 ## Release Requirements
 

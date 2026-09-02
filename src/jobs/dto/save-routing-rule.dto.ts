@@ -9,6 +9,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
 } from "class-validator";
 import {
   JobUrgency,
@@ -22,6 +23,7 @@ const clean = ({ value }: { value: unknown }) =>
 export class SaveRoutingRuleDto {
   @Transform(clean)
   @IsString()
+  @MinLength(1)
   @MaxLength(120)
   name!: string;
 
