@@ -27,6 +27,15 @@ const item = (
     queue === "ASSIGNED"
       ? { id: "tech-1", fullName: "Jordan Tech", role: "TECH" }
       : null,
+  paymentGate: {
+    required: false,
+    state: "NOT_REQUIRED",
+    paymentStatus: "NOT_REQUESTED",
+    amountTotalCents: null,
+    currency: null,
+    reasonCode: "PAYMENT_NOT_REQUIRED",
+    label: "Payment is not required before dispatch",
+  },
   createdAt: "2026-08-31T15:00:00.000Z",
   updatedAt: "2026-08-31T15:00:00.000Z",
 });
@@ -72,10 +81,7 @@ describe("dispatch board helpers", () => {
       "Wed, Sep 2 · 3:00 PM–6:00 PM",
     );
     assert.equal(
-      formatDispatchDate(
-        "2026-09-01T10:25:00.000Z",
-        "America/New_York",
-      ),
+      formatDispatchDate("2026-09-01T10:25:00.000Z", "America/New_York"),
       "Sep 1, 6:25 AM",
     );
   });

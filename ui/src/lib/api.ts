@@ -176,6 +176,21 @@ export interface DispatchBoardSummary {
   serviceWindowEnd: string | null;
   timezone: string;
   assignedTechnician: AssignedTechnician | null;
+  paymentGate: {
+    required: boolean;
+    state: "NOT_REQUIRED" | "LOCKED" | "UNLOCKED";
+    paymentStatus:
+      | "NOT_REQUESTED"
+      | "PENDING"
+      | "SUCCEEDED"
+      | "FAILED"
+      | "REFUNDED"
+      | "CANCELED";
+    amountTotalCents: number | null;
+    currency: string | null;
+    reasonCode: string;
+    label: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

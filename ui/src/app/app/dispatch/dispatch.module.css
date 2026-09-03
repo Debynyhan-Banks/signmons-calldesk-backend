@@ -127,10 +127,44 @@
 
 .recommendation,
 .customerBooking,
+.paymentGate,
 .assignmentPanel,
 .secondaryActions,
 .historySection {
   margin-top: 22px;
+}
+.paymentGate {
+  margin-top: 18px;
+  padding: 15px 17px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 16px;
+  border: 1px solid;
+  border-radius: 14px;
+}
+.paymentGate h3 {
+  margin-top: 3px;
+  font-size: 0.95rem;
+}
+.paymentGate > span {
+  align-self: center;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.paymentGate > small {
+  grid-column: 1 / -1;
+  line-height: 1.45;
+}
+.paymentGateLocked {
+  border-color: #ef9a9a;
+  background: #fff2f2;
+  color: #8d2020;
+}
+.paymentGateOpen {
+  border-color: #a9dcc9;
+  background: #ecf9f4;
+  color: #11664a;
 }
 .customerBooking {
   border: 1px solid #c9d8e7;
@@ -294,6 +328,7 @@
   background: #fff0e6;
 }
 .assignButton {
+  min-height: 44px;
   border: 0;
   border-radius: 10px;
   padding: 12px 15px;

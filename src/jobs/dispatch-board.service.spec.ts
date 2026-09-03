@@ -7,6 +7,7 @@ import {
   AvailabilityBlockType,
   JobStatus,
   JobUrgency,
+  PaymentStatus,
   ProficiencyLevel,
   UserRole,
 } from "@prisma/client";
@@ -47,6 +48,7 @@ describe("DispatchBoardService", () => {
     deletedAt: null,
     tenant: { timezone: "America/New_York" },
     serviceCategory: { id: "service-1", name: "HEATING" },
+    payment: null,
     assignedUser: null,
   };
   const qualifiedTech = {
@@ -94,11 +96,45 @@ describe("DispatchBoardService", () => {
       queue: "READY_TO_ASSIGN",
       serviceCategory: "HEATING",
       timezone: "America/New_York",
+      paymentGate: {
+        state: "NOT_REQUIRED",
+        reasonCode: "PAYMENT_NOT_REQUIRED",
+      },
     });
     expect(result[0]).not.toHaveProperty("customerName");
     expect(result[0]).not.toHaveProperty("phone");
     expect(result[0]).not.toHaveProperty("address");
     expect(result[0]).not.toHaveProperty("description");
+  });
+
+  it("keeps payment-required work out of the ready queue until payment succeeds", async () => {
+    const { prisma, service } = createHarness();
+    prisma.job.findMany.mockResolvedValue([
+      {
+        ...baseJob,
+        policySnapshot: { depositRequired: true },
+        payment: {
+          status: PaymentStatus.PENDING,
+          amountTotalCents: 9900,
+          currency: "usd",
+        },
+      },
+    ]);
+    prisma.auditLog.findMany.mockResolvedValue([]);
+
+    const result = await service.list(tenantId);
+
+    expect(result[0]).toMatchObject({
+      queue: "NEW_REQUEST",
+      paymentGate: {
+        required: true,
+        state: "LOCKED",
+        paymentStatus: "PENDING",
+        amountTotalCents: 9900,
+        currency: "usd",
+        reasonCode: "PAYMENT_PENDING",
+      },
+    });
   });
 
   it("returns an explainable deterministic recommendation", async () => {
@@ -190,6 +226,55 @@ describe("DispatchBoardService", () => {
         }),
       }),
     );
+  });
+
+  it("fails closed before recommendation or assignment when required payment is not successful", async () => {
+    const { prisma, service } = createHarness();
+    prisma.job.findFirst.mockResolvedValue({
+      ...baseJob,
+      policySnapshot: { serviceFeeRequired: true },
+      payment: {
+        status: PaymentStatus.FAILED,
+        amountTotalCents: 9900,
+        currency: "usd",
+      },
+    });
+
+    await expect(
+      service.assign({
+        tenantId,
+        jobId,
+        technicianId: techId,
+        expectedUpdatedAt: now.toISOString(),
+        actorId: "dispatcher-1",
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.user.findMany).not.toHaveBeenCalled();
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("unlocks the recommendation after required payment succeeds", async () => {
+    const { prisma, service } = createHarness();
+    prisma.job.findFirst.mockResolvedValue({
+      ...baseJob,
+      policySnapshot: { depositRequired: true },
+      payment: {
+        status: PaymentStatus.SUCCEEDED,
+        amountTotalCents: 9900,
+        currency: "usd",
+      },
+    });
+    prisma.auditLog.findMany.mockResolvedValue([]);
+    prisma.user.findMany.mockResolvedValue([qualifiedTech]);
+
+    const result = await service.get(tenantId, jobId);
+
+    expect(result.paymentGate).toMatchObject({
+      state: "UNLOCKED",
+      reasonCode: "PAYMENT_SUCCEEDED",
+    });
+    expect(result.recommendation?.technicianId).toBe(techId);
   });
 
   it("requires a reason when overriding an ineligible candidate", async () => {

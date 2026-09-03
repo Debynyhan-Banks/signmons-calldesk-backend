@@ -9,6 +9,18 @@ Last Updated: 2026-09-02
 - Next ticket after APP-012: `APP-013` Twilio-backed notification center and transactional customer messaging.
 - Keep the WIP limit at one and do not start APP-013 until APP-012 is accepted and released.
 
+## APP-012 Review Checkpoint
+
+- Branch: `codex/app-012-payment-gate` from backend `origin/main` at `8247a0a`.
+- Implemented one bounded vertical slice: the provider-independent payment-before-dispatch gate.
+- `depositRequired` and `serviceFeeRequired` now share one fail-closed reducer across intake readiness and dispatch.
+- Required jobs stay in `NEW_REQUEST`, expose a privacy-safe payment-gate status, return no eligible recommendation and reject new assignment until canonical payment status is `SUCCEEDED`.
+- `/app/dispatch` shows the lock reason and disables the assignment controls; desktop and 390px browser evidence is in `evidence/APP-012/`.
+- Backend build/lint, 24 suites and 175 tests, architecture and Prisma validation pass. UI build/lint and 4 suites/17 tests pass.
+- Isolated local HTTP proof verified pending -> HTTP 409/no mutation/no audit and simulated succeeded -> unlocked/recommendation. The fixture was removed.
+- No Stripe call/configuration, production migration, deployment, IAM, billing or real-data action occurred.
+- Evidence: `evidence/APP-012/readiness-report.md`.
+
 ## APP-011 Implementation
 
 - Added a public, rate-limited `POST /appointments/manage` boundary that treats the HMAC secure-link token as authority and keeps the existing tenant-authenticated webchat endpoint compatible.
@@ -37,10 +49,10 @@ Last Updated: 2026-09-02
 
 ## Next Actions
 
-1. Reconcile the APP-012 ticket with the subscription-only product policy and Stripe payment-before-booking requirement.
-2. Implement the payment gate, webhook-driven payment status and customer recovery states without charging per booked job.
-3. Keep Stripe secrets server-side, enforce webhook signature verification and make fulfillment idempotent.
-4. Run owner review before merge, migration or deployment.
+1. Review the APP-012 payment-gate checkpoint; keep APP-012 in `Now` and unreleased.
+2. In the next approved APP-012 section, implement payment/deposit request creation and signature-verified, idempotent webhook state transitions.
+3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
+4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 
 ## Restart Commands
 

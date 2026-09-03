@@ -575,6 +575,25 @@ function DispatchDetail({
       </section>
 
       <section
+        className={`${styles.paymentGate} ${
+          detail.paymentGate.state === "LOCKED"
+            ? styles.paymentGateLocked
+            : styles.paymentGateOpen
+        }`}
+      >
+        <div>
+          <p className={base.eyebrow}>Payment gate</p>
+          <h3>{detail.paymentGate.label}</h3>
+        </div>
+        <span>{detail.paymentGate.paymentStatus.replace(/_/g, " ")}</span>
+        <small>
+          {detail.paymentGate.state === "LOCKED"
+            ? "Assignment is disabled until a verified payment update unlocks this job."
+            : "This job currently satisfies its payment-before-dispatch policy."}
+        </small>
+      </section>
+
+      <section
         className={`${styles.customerBooking} ${
           detail.customerBooking.state === "RESCHEDULE_REQUESTED"
             ? styles.customerBookingAttention
@@ -626,6 +645,11 @@ function DispatchDetail({
               <li key={reasonLabel}>{reasonLabel}</li>
             ))}
           </ul>
+        ) : detail.paymentGate.state === "LOCKED" ? (
+          <p>
+            Dispatch recommendations are paused while the required payment gate
+            is locked.
+          </p>
         ) : (
           <p>
             No technician currently meets both service capability and
@@ -674,6 +698,7 @@ function DispatchDetail({
         <label>
           Technician
           <select
+            disabled={detail.paymentGate.state === "LOCKED"}
             value={technicianId}
             onChange={(event) => setTechnicianId(event.target.value)}
           >
@@ -715,6 +740,7 @@ function DispatchDetail({
         <button
           className={styles.assignButton}
           disabled={
+            detail.paymentGate.state === "LOCKED" ||
             !technicianId ||
             acting ||
             (reasonRequired && reason.trim().length < 10)
@@ -722,11 +748,13 @@ function DispatchDetail({
           onClick={() => onAssign(technicianId, reason.trim() || undefined)}
           type="button"
         >
-          {acting
-            ? "Saving…"
-            : detail.assignedTechnician
-              ? "Save reassignment"
-              : "Confirm assignment"}
+          {detail.paymentGate.state === "LOCKED"
+            ? "Payment required before assignment"
+            : acting
+              ? "Saving…"
+              : detail.assignedTechnician
+                ? "Save reassignment"
+                : "Confirm assignment"}
         </button>
       </section>
 
