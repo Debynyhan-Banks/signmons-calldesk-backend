@@ -38,6 +38,8 @@ export interface AppConfig {
   technicianLinkSecret: string;
   technicianLinkTtlHours: number;
   technicianAppBaseUrl: string;
+  stripeSecretKey: string;
+  customerPaymentReturnUrl: string;
 }
 
 export interface WebchatIntegrationConfig {
@@ -125,6 +127,10 @@ export default registerAs("app", (): AppConfig => {
     technicianAppBaseUrl:
       process.env.TECHNICIAN_APP_BASE_URL ??
       "http://localhost:3101/app/technician",
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
+    customerPaymentReturnUrl:
+      process.env.CUSTOMER_PAYMENT_RETURN_URL ??
+      "http://localhost:3101/payment/status",
   };
 });
 

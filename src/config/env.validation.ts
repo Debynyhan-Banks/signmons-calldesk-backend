@@ -75,6 +75,10 @@ export const envValidationSchema = Joi.object({
   TECHNICIAN_APP_BASE_URL: Joi.string()
     .uri({ scheme: ["http", "https"] })
     .default("http://localhost:3101/app/technician"),
+  STRIPE_SECRET_KEY: Joi.string().allow("").default(""),
+  CUSTOMER_PAYMENT_RETURN_URL: Joi.string()
+    .uri({ scheme: ["http", "https"] })
+    .default("http://localhost:3101/payment/status"),
   PORT: Joi.number().min(0).max(65535).default(3000),
 }).custom((rawValues: unknown, helpers) => {
   const values = rawValues as Record<string, unknown>;
@@ -158,6 +162,18 @@ export const envValidationSchema = Joi.object({
     !hasConfiguredString(values.GOOGLE_CALENDAR_ID)
   ) {
     return helpers.error("any.invalid");
+  }
+  if (
+    values.NODE_ENV === "production" &&
+    hasConfiguredString(values.STRIPE_SECRET_KEY)
+  ) {
+    const returnUrl = new URL(String(values.CUSTOMER_PAYMENT_RETURN_URL));
+    if (
+      returnUrl.protocol !== "https:" ||
+      ["localhost", "127.0.0.1", "::1"].includes(returnUrl.hostname)
+    ) {
+      return helpers.error("any.invalid");
+    }
   }
   return values;
 });

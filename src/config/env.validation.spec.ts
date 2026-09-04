@@ -82,4 +82,23 @@ describe("environment validation", () => {
     const result = envValidationSchema.validate(withoutKey);
     expect(result.error).toBeDefined();
   });
+
+  it("rejects a configured production checkout with a local return URL", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      STRIPE_SECRET_KEY: "sk_live_not-a-real-secret",
+      CUSTOMER_PAYMENT_RETURN_URL: "http://localhost:3101/payment/status",
+    });
+    expect(result.error).toBeDefined();
+  });
+
+  it("accepts a configured production checkout with an HTTPS return URL", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      STRIPE_SECRET_KEY: "sk_live_not-a-real-secret",
+      CUSTOMER_PAYMENT_RETURN_URL:
+        "https://signmons-calldesk.web.app/payment/status",
+    });
+    expect(result.error).toBeUndefined();
+  });
 });

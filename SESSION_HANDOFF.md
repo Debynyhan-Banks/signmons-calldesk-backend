@@ -1,6 +1,6 @@
 # Backend Session Handoff
 
-Last Updated: 2026-09-02
+Last Updated: 2026-09-04
 
 ## Current Program Pointer
 
@@ -20,6 +20,17 @@ Last Updated: 2026-09-02
 - Isolated local HTTP proof verified pending -> HTTP 409/no mutation/no audit and simulated succeeded -> unlocked/recommendation. The fixture was removed.
 - No Stripe call/configuration, production migration, deployment, IAM, billing or real-data action occurred.
 - Evidence: `evidence/APP-012/readiness-report.md`.
+
+## APP-012 Payment Request Checkpoint
+
+- Continued `codex/app-012-payment-gate` with one bounded backend-only payment/deposit request section.
+- Added authenticated owner/admin/dispatcher `POST /jobs/:jobId/payment-requests` and privacy-safe `GET /jobs/:jobId/payment-request` endpoints.
+- Required amount/currency come only from the job's tenant policy and pricing snapshots. Stale, closed, missing/cross-tenant, incomplete-pricing and unready connected-account cases fail before provider access.
+- Checkout creation is idempotent and uses a direct Stripe charge on the contractor tenant's connected account with a zero Signmons application fee. Only a SHA-256 request-key hash is stored; provider identifiers and checkout URLs stay out of tracking/audit projections.
+- Added request success/failure audits and migration `20260904100000_add_payment_request_tracking`.
+- Backend build/lint, 26 suites and 189 tests, architecture and Prisma validation pass. A disposable local PostgreSQL schema passed all migrations and authenticated POST/replay/GET proof with one success audit, then was removed.
+- No live Stripe request, Stripe/IAM/secret configuration, staging or production migration, deployment, billing or real-data action occurred. No rendered UI changed, so no new visual browser artifact was warranted.
+- APP-012 is approximately 40% complete; APP-006 through APP-016 is approximately 58% complete.
 
 ## APP-011 Implementation
 
@@ -49,8 +60,8 @@ Last Updated: 2026-09-02
 
 ## Next Actions
 
-1. Review the APP-012 payment-gate checkpoint; keep APP-012 in `Now` and unreleased.
-2. In the next approved APP-012 section, implement payment/deposit request creation and signature-verified, idempotent webhook state transitions.
+1. Review the APP-012 payment-gate and payment-request checkpoints; keep APP-012 in `Now` and unreleased.
+2. In the next approved APP-012 section, implement signature-verified, idempotent webhook state transitions.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 

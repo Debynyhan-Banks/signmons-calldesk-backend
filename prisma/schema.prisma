@@ -507,6 +507,9 @@ model Payment {
   status                    PaymentStatus
   stripePaymentIntentId     String?
   stripeCheckoutSessionId   String?
+  requestKeyHash            String? @db.VarChar(64)
+  checkoutExpiresAt         DateTime?
+  requestedAt               DateTime?
   stripeChargeId            String?
   destinationAccountId      String?
   amountTotalCents          Int
@@ -525,6 +528,7 @@ model Payment {
 
   @@unique([tenantId, jobId])
   @@unique([jobId, jobTenantId])
+  @@unique([tenantId, requestKeyHash])
   @@unique([id, tenantId])
 
   // Keep these indexed; enforce uniqueness "when NOT NULL" via hardened SQL indexes.
