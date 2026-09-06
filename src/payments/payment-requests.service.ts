@@ -35,6 +35,14 @@ type PaymentTracking = {
   requestActive: boolean;
 };
 
+type PaymentEventVisibility = {
+  id: string;
+  type: string;
+  status: string;
+  receivedAt: string;
+  processedAt: string | null;
+};
+
 const RETRYABLE_PAYMENT_STATUSES = new Set<PaymentStatus>([
   PaymentStatus.FAILED,
   PaymentStatus.CANCELED,
@@ -57,6 +65,40 @@ export class PaymentRequestsService {
     });
     if (!job) throw new NotFoundException("Job was not found.");
     return this.tracking(job.payment);
+  }
+
+  async events(
+    tenantId: string,
+    jobId: string,
+  ): Promise<PaymentEventVisibility[]> {
+    const job = await this.prisma.job.findFirst({
+      where: { tenantId, id: jobId, deletedAt: null },
+      select: { payment: { select: { id: true } } },
+    });
+    if (!job) throw new NotFoundException("Job was not found.");
+    if (!job.payment) return [];
+    const events = await this.prisma.stripeEvent.findMany({
+      where: {
+        tenantId,
+        payload: { path: ["paymentId"], equals: job.payment.id },
+      },
+      orderBy: { receivedAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        type: true,
+        processingStatus: true,
+        receivedAt: true,
+        processedAt: true,
+      },
+    });
+    return events.map((event) => ({
+      id: event.id,
+      type: event.type,
+      status: event.processingStatus,
+      receivedAt: event.receivedAt.toISOString(),
+      processedAt: event.processedAt?.toISOString() ?? null,
+    }));
   }
 
   async recover(tenantId: string, jobId: string) {

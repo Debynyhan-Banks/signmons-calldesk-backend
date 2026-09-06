@@ -252,6 +252,30 @@ export interface DispatchBoardDetail extends DispatchBoardSummary {
   };
 }
 
+export interface PaymentRequestTracking {
+  paymentRequestId: string | null;
+  status:
+    | "NOT_REQUESTED"
+    | "PENDING"
+    | "SUCCEEDED"
+    | "FAILED"
+    | "REFUNDED"
+    | "CANCELED";
+  amountTotalCents: number | null;
+  currency: string | null;
+  requestedAt: string | null;
+  checkoutExpiresAt: string | null;
+  requestActive: boolean;
+}
+
+export interface PaymentWebhookEvent {
+  id: string;
+  type: string;
+  status: string;
+  receivedAt: string;
+  processedAt: string | null;
+}
+
 export type RoutingTimeScope = "ANY" | "BUSINESS_HOURS" | "AFTER_HOURS";
 
 export interface RoutingEvaluation {
@@ -660,6 +684,44 @@ export async function getDispatchJob(
   return getJson<DispatchBoardDetail>(
     `/jobs/dispatch-board/${encodeURIComponent(jobId)}`,
     buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getPaymentRequest(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<PaymentRequestTracking> {
+  return getJson(
+    `/jobs/${encodeURIComponent(jobId)}/payment-request`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getPaymentEvents(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<PaymentWebhookEvent[]> {
+  return getJson(
+    `/jobs/${encodeURIComponent(jobId)}/payment-events`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function createPaymentRequest(
+  jobId: string,
+  expectedJobUpdatedAt: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<PaymentRequestTracking & { checkoutUrl: string }> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/payment-requests`,
+    { expectedJobUpdatedAt },
+    {
+      ...buildAuthHeaders(auth, tenantId),
+      "Idempotency-Key": crypto.randomUUID(),
+    },
   );
 }
 

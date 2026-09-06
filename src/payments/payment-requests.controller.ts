@@ -38,6 +38,13 @@ export class PaymentRequestsController {
     return this.payments.get(this.operatorContext().tenantId, jobId);
   }
 
+  @Get(":jobId/payment-events")
+  @Header("Cache-Control", "private, no-store")
+  @Throttle({ default: { limit: 60, ttl: 60 } })
+  getPaymentEvents(@Param("jobId", new ParseUUIDPipe()) jobId: string) {
+    return this.payments.events(this.operatorContext().tenantId, jobId);
+  }
+
   @Post(":jobId/payment-requests")
   @HttpCode(201)
   @Header("Cache-Control", "private, no-store")

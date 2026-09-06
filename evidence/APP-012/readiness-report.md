@@ -1,15 +1,15 @@
-# APP-012 Payment Gate, Request, Webhook, And Customer Recovery Checkpoints
+# APP-012 Payment Gate, Request, Webhook, Recovery, And Operator Visibility Checkpoints
 
 Date: 2026-09-06
 Branch: `codex/app-012-payment-gate`
 Ticket: `APP-012` payment gate and webhook status workflow
-Checkpoint: bounded payment-before-dispatch gate, authenticated payment-request API, signed webhook transitions, and secure customer recovery/status UI; review-ready, not released
+Checkpoint: bounded payment-before-dispatch gate, authenticated payment-request API and operator controls, signed webhook transitions and visibility, and secure customer recovery/status UI; review-ready, not released
 
 ## Outcome
 
-These checkpoints implement four bounded APP-012 vertical slices. A shared, provider-independent policy derives whether payment is required from the job's tenant-policy snapshot. Required jobs remain locked until canonical payment state `SUCCEEDED`; the backend prevents new assignment and the dispatcher UI explains the lock. An authenticated backend API can create and track the required contractor-to-customer checkout request without exposing provider identifiers. A public Stripe webhook boundary verifies signatures over the exact raw body, binds connected-account events to the tenant, applies idempotent payment transitions, and persists bounded event/audit evidence. The existing signed customer booking link can now recover only its current open, unpaid, unexpired Checkout session, while the return page leaves fulfillment authority with the webhook.
+These checkpoints implement five bounded APP-012 vertical slices. A shared, provider-independent policy derives whether payment is required from the job's tenant-policy snapshot. Required jobs remain locked until canonical payment state `SUCCEEDED`; the backend prevents new assignment and the dispatcher UI explains the lock. An authenticated backend API and operator surface can create and track the required contractor-to-customer checkout request without exposing provider identifiers. A public Stripe webhook boundary verifies signatures over the exact raw body, binds connected-account events to the tenant, applies idempotent payment transitions, and persists bounded event/audit evidence that operators can now see as a privacy-safe job timeline. The existing signed customer booking link can recover only its current open, unpaid, unexpired Checkout session, while the return page leaves fulfillment authority with the webhook.
 
-APP-012 remains in `Now`. The operator payment-request surface, complete payment-event visibility, persistent environment endpoint configuration, and release work remain later APP-012 sections.
+APP-012 remains in `Now`. Governed exception/manual-override behavior, persistent environment endpoint configuration, final end-to-end acceptance, and release work remain later APP-012 sections.
 
 ## Runtime Contract
 
@@ -39,13 +39,15 @@ APP-012 remains in `Now`. The operator payment-request surface, complete payment
 - Extended the signed `/appointments/manage` boundary with `continue_payment`. Ordinary status reads expose only `canContinue`; the Checkout URL is returned only after this authorized action.
 - Recovery never creates a new Checkout. It requires a tenant-scoped pending payment, future local expiry, the same currently enabled connected account, and a provider-confirmed open, unpaid, unexpired session whose URL is on Stripe Checkout's HTTPS host.
 - Added `/payment/status` success/cancel copy that treats the redirect as advisory and directs the customer back to the booking page for webhook-confirmed status.
+- Added an authenticated payment operations panel to `/app/dispatch`. It shows trusted amount/currency, request state and expiry, creates a request with a fresh UUID idempotency key, and exposes the temporary Checkout URL only in the immediate authorized response.
+- Added tenant/job-scoped `GET /jobs/:jobId/payment-events`, limited to 20 newest records and projected to internal row ID, bounded event type/status, and timestamps. Stripe event/account/session/payment-intent IDs, payloads and error text are not returned.
 
 ## Automated Evidence
 
 ### Backend
 
-- Focused payment request, provider, and customer recovery tests: 3 suites and 27 tests passed.
-- Full tests: 27 suites and 206 tests passed; 1 suite/3 tests skipped by the existing database-test policy.
+- Focused payment request, provider, recovery, and operator-event tests: 3 suites and 29 tests passed.
+- Full tests: 27 suites and 208 tests passed; 1 suite/3 tests skipped by the existing database-test policy.
 - `npm run -s build`: passed.
 - `npm run -s lint`: passed with no errors.
 - `npm run -s arch:check`: passed.
@@ -73,6 +75,7 @@ Focused coverage proves:
 - full refunds update both payment and refund state, and late success delivery cannot downgrade a refund;
 - stored webhook/audit evidence excludes customer payload fields.
 - signed customer recovery cannot cross tenants or connected accounts, cannot revive expired/completed sessions, and creates only a bounded customer audit without copying provider identifiers or URLs.
+- operator webhook visibility resolves the job's internal payment first, filters by both tenant and internal payment ID, returns at most 20 events, and excludes stored payload/provider identifiers.
 
 ### Frontend
 
@@ -125,6 +128,7 @@ The local dispatcher page was exercised with the isolated locked fixture.
 - The 2026-09-04 section changes only authenticated backend APIs and persistence; it adds no rendered UI. New visual browser screenshots were therefore not applicable. The compiled HTTP proof covered the actual transport boundary, validation, guards and serialization.
 - The customer payment return page was exercised for success and cancel states. Success copy says the payment was submitted but does not claim it succeeded; it explains that Stripe/webhook confirmation may still be in progress.
 - The pending-payment booking view displayed `Continue to payment` at desktop and 390px widths. The action was 50px high, the phone layout had no horizontal overflow, and the copy explains that Stripe opens in a new tab while the booking page stays available for verified status.
+- The operator payment panel displayed the trusted `$100.00` fixture, active-request state and human-readable verified event at desktop and 390px widths. The phone layout had no horizontal overflow and its disabled active-request control remained 44px high.
 
 ## Scope and Safety
 
@@ -135,8 +139,7 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 ## Remaining APP-012 Work and Risk
 
-- Add the operator payment-request surface.
-- Add operator webhook-event visibility, governed manual override handling, and end-to-end customer payment status evidence.
+- Add governed manual override/exception handling and final end-to-end customer payment status evidence.
 - Configure persistent staging/production webhook endpoints and secrets only as part of an explicitly approved release workflow.
 - The webhook transition slice and isolated Stripe CLI delivery proof are complete but not deployed; APP-012 remains unreleasable.
 
@@ -150,5 +153,5 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 ## Completion Estimate
 
-- APP-012: approximately 70% complete (payment gate, payment requests, signed/idempotent webhook transitions, isolated sandbox delivery proof, and customer recovery/status UI complete; operator UI, persistent endpoint configuration, and release acceptance remain).
-- Governed CallDesk APP-006 through APP-016 sequence: approximately 63% complete (APP-006 through APP-011 released, plus four implemented APP-012 slices; release acceptance remains the governing measure).
+- APP-012: approximately 80% complete (payment gate, payment requests and operator controls, signed/idempotent webhook transitions and bounded visibility, isolated sandbox delivery proof, and customer recovery/status UI complete; governed exceptions, persistent endpoint configuration, final acceptance and release remain).
+- Governed CallDesk APP-006 through APP-016 sequence: approximately 65% complete (APP-006 through APP-011 released, plus five implemented APP-012 slices; release acceptance remains the governing measure).

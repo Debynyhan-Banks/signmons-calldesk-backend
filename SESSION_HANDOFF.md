@@ -55,6 +55,16 @@ Last Updated: 2026-09-06
 - This section remains review-only. No live-mode call, persistent Stripe configuration, migration, deployment, or release occurred.
 - APP-012 is approximately 70% complete; APP-006 through APP-016 is approximately 63% complete.
 
+## APP-012 Operator Payment Visibility Checkpoint
+
+- Added an authenticated payment operations panel to `/app/dispatch` for owner/admin/dispatcher roles. It shows the job's trusted request amount, request status/expiry, and a bounded signed-event timeline.
+- Operators can create a request only through the existing server-authoritative endpoint. The UI supplies the currently loaded job version and a new UUID idempotency key; the temporary Checkout URL appears only in the successful authorized response for opening or copying.
+- Added tenant/job-scoped `GET /jobs/:jobId/payment-events`, capped at the newest 20 events and filtered through the job's internal payment ID. It returns only internal row ID, bounded type/status and timestamps—never Stripe event/account/session/payment-intent IDs, payloads or error text.
+- Desktop and 390px browser QA passed with trusted `$100.00` fixture display, active-request lock, human-readable verified event, 44px phone control, and no horizontal overflow.
+- This section remains review-only. No live Stripe call, persistent configuration, migration, deployment, merge, or release occurred.
+- Final gates pass: backend build/lint/architecture/Prisma validation and 27 suites/208 tests; UI lint/static build and 4 suites/17 tests.
+- APP-012 is approximately 80% complete; APP-006 through APP-016 is approximately 65% complete.
+
 ## APP-011 Implementation
 
 - Added a public, rate-limited `POST /appointments/manage` boundary that treats the HMAC secure-link token as authority and keeps the existing tenant-authenticated webchat endpoint compatible.
@@ -84,7 +94,7 @@ Last Updated: 2026-09-06
 ## Next Actions
 
 1. Review the APP-012 payment-gate and payment-request checkpoints; keep APP-012 in `Now` and unreleased.
-2. In the next approved APP-012 section, build the operator payment-request surface and bounded webhook-event visibility.
+2. In the next approved APP-012 section, build governed payment exception/manual-override handling and final end-to-end acceptance evidence.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 

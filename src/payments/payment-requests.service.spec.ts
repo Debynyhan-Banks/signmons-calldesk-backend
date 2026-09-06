@@ -32,6 +32,7 @@ describe("PaymentRequestsService", () => {
       create: jest.fn(),
       updateMany: jest.fn(),
     },
+    stripeEvent: { findMany: jest.fn() },
     auditLog: { create: jest.fn() },
     $transaction: jest.fn((callback: (client: typeof transaction) => unknown) =>
       Promise.resolve(callback(transaction)),
@@ -63,6 +64,7 @@ describe("PaymentRequestsService", () => {
       checkoutUrl: "https://checkout.stripe.com/c/pay/test",
       expiresAt,
     });
+    prisma.stripeEvent.findMany.mockResolvedValue([]);
   });
 
   it("creates an idempotent direct-account deposit request from trusted snapshots", async () => {
@@ -282,6 +284,55 @@ describe("PaymentRequestsService", () => {
       requestActive: expect.any(Boolean),
     });
     expect(JSON.stringify(result)).not.toContain("stripe");
+  });
+
+  it("returns bounded tenant-scoped webhook visibility without provider identifiers", async () => {
+    prisma.job.findFirst.mockResolvedValue({ payment: { id: "payment-1" } });
+    prisma.stripeEvent.findMany.mockResolvedValue([
+      {
+        id: "70000000-0000-4000-8000-000000000007",
+        type: "checkout.session.completed",
+        processingStatus: "PROCESSED",
+        receivedAt: updatedAt,
+        processedAt: updatedAt,
+      },
+    ]);
+
+    const result = await service.events(tenantId, jobId);
+
+    expect(prisma.stripeEvent.findMany).toHaveBeenCalledWith({
+      where: {
+        tenantId,
+        payload: { path: ["paymentId"], equals: "payment-1" },
+      },
+      orderBy: { receivedAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        type: true,
+        processingStatus: true,
+        receivedAt: true,
+        processedAt: true,
+      },
+    });
+    expect(result).toEqual([
+      {
+        id: "70000000-0000-4000-8000-000000000007",
+        type: "checkout.session.completed",
+        status: "PROCESSED",
+        receivedAt: updatedAt.toISOString(),
+        processedAt: updatedAt.toISOString(),
+      },
+    ]);
+    expect(JSON.stringify(result)).not.toContain("evt_");
+    expect(JSON.stringify(result)).not.toContain("acct_");
+  });
+
+  it("returns no webhook events before a payment is requested", async () => {
+    prisma.job.findFirst.mockResolvedValue({ payment: null });
+
+    await expect(service.events(tenantId, jobId)).resolves.toEqual([]);
+    expect(prisma.stripeEvent.findMany).not.toHaveBeenCalled();
   });
 
   it("recovers only the existing active connected-account Checkout", async () => {
