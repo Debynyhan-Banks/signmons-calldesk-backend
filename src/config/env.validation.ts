@@ -76,6 +76,7 @@ export const envValidationSchema = Joi.object({
     .uri({ scheme: ["http", "https"] })
     .default("http://localhost:3101/app/technician"),
   STRIPE_SECRET_KEY: Joi.string().allow("").default(""),
+  STRIPE_WEBHOOK_SECRET: Joi.string().allow("").default(""),
   CUSTOMER_PAYMENT_RETURN_URL: Joi.string()
     .uri({ scheme: ["http", "https"] })
     .default("http://localhost:3101/payment/status"),
@@ -167,6 +168,9 @@ export const envValidationSchema = Joi.object({
     values.NODE_ENV === "production" &&
     hasConfiguredString(values.STRIPE_SECRET_KEY)
   ) {
+    if (!hasConfiguredString(values.STRIPE_WEBHOOK_SECRET)) {
+      return helpers.error("any.invalid");
+    }
     const returnUrl = new URL(String(values.CUSTOMER_PAYMENT_RETURN_URL));
     if (
       returnUrl.protocol !== "https:" ||

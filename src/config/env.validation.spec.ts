@@ -96,9 +96,20 @@ describe("environment validation", () => {
     const result = envValidationSchema.validate({
       ...productionEnvironment,
       STRIPE_SECRET_KEY: "sk_live_not-a-real-secret",
+      STRIPE_WEBHOOK_SECRET: "whsec_not-a-real-secret",
       CUSTOMER_PAYMENT_RETURN_URL:
         "https://signmons-calldesk.web.app/payment/status",
     });
     expect(result.error).toBeUndefined();
+  });
+
+  it("rejects a configured production checkout without a webhook secret", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      STRIPE_SECRET_KEY: "sk_live_not-a-real-secret",
+      CUSTOMER_PAYMENT_RETURN_URL:
+        "https://signmons-calldesk.web.app/payment/status",
+    });
+    expect(result.error).toBeDefined();
   });
 });

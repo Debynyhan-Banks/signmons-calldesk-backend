@@ -6,14 +6,17 @@ import { PaymentRequestsController } from "./payment-requests.controller";
 import { PaymentRequestsService } from "./payment-requests.service";
 import { PAYMENT_CHECKOUT_PROVIDER } from "./payments.constants";
 import { StripeCheckoutProvider } from "./stripe-checkout.provider";
+import { StripeWebhooksController } from "./stripe-webhooks.controller";
+import { StripeWebhooksService } from "./stripe-webhooks.service";
 
 @Module({
   imports: [AuthModule],
-  controllers: [PaymentRequestsController],
+  controllers: [PaymentRequestsController, StripeWebhooksController],
   providers: [
     PaymentRequestsService,
     PaymentOperationsAccessGuard,
     TenantGuard,
+    StripeWebhooksService,
     {
       provide: PAYMENT_CHECKOUT_PROVIDER,
       useClass: StripeCheckoutProvider,

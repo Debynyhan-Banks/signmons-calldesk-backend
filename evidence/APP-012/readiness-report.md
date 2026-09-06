@@ -1,15 +1,15 @@
-# APP-012 Payment Gate And Payment Request Checkpoints
+# APP-012 Payment Gate, Request, And Webhook Checkpoints
 
-Date: 2026-09-04
+Date: 2026-09-06
 Branch: `codex/app-012-payment-gate`
 Ticket: `APP-012` payment gate and webhook status workflow
-Checkpoint: bounded payment-before-dispatch gate plus authenticated payment-request API; review-ready, not released
+Checkpoint: bounded payment-before-dispatch gate, authenticated payment-request API, and signed webhook transitions; review-ready, not released
 
 ## Outcome
 
-These checkpoints implement two bounded APP-012 vertical slices. A shared, provider-independent policy derives whether payment is required from the job's tenant-policy snapshot. Required jobs remain locked until canonical payment state `SUCCEEDED`; the backend prevents new assignment and the dispatcher UI explains the lock. An authenticated backend API can now create and track the required contractor-to-customer checkout request without exposing provider identifiers.
+These checkpoints implement three bounded APP-012 vertical slices. A shared, provider-independent policy derives whether payment is required from the job's tenant-policy snapshot. Required jobs remain locked until canonical payment state `SUCCEEDED`; the backend prevents new assignment and the dispatcher UI explains the lock. An authenticated backend API can create and track the required contractor-to-customer checkout request without exposing provider identifiers. A public Stripe webhook boundary now verifies signatures over the exact raw body, binds connected-account events to the tenant, applies idempotent payment transitions, and persists bounded event/audit evidence.
 
-APP-012 remains in `Now`. Stripe webhook verification/processing, operator/customer recovery surfaces, complete payment-event visibility and release work remain later APP-012 sections.
+APP-012 remains in `Now`. Operator/customer recovery surfaces, complete payment-event visibility, endpoint configuration, end-to-end webhook delivery evidence, and release work remain later APP-012 sections.
 
 ## Runtime Contract
 
@@ -33,13 +33,16 @@ APP-012 remains in `Now`. Stripe webhook verification/processing, operator/custo
 - Added `POST /jobs/:jobId/payment-requests` and `GET /jobs/:jobId/payment-request`, protected by verified operator authentication, tenant context, owner/admin/dispatcher roles, throttling and no-store responses.
 - Added the Stripe Checkout adapter as a direct connected-account charge with no application fee. It is fail-closed when the server secret or tenant payment readiness is absent; no real provider call was made in this checkpoint.
 - Added migration `20260904100000_add_payment_request_tracking` for the hashed idempotency key, requested timestamp and checkout expiry. Checkout URLs and provider secrets are not stored.
+- Added `POST /webhooks/stripe` with raw-body HMAC-SHA256 signature verification, a five-minute replay tolerance, connected-account-to-tenant binding, tenant-scoped payment lookup, and duplicate-event suppression through the existing `StripeEvent` model.
+- Added fail-closed amount/currency validation before successful payment transitions. Checkout completion, asynchronous success/failure, expiration, PaymentIntent failure, and full/partial charge refunds map to canonical payment and refund states without allowing a late success event to overwrite a refund.
+- Webhook event storage is bounded to event type, internal payment ID, and Stripe-created timestamp. Customer payloads and provider identifiers are not copied into audit metadata. Production Checkout configuration now also requires `STRIPE_WEBHOOK_SECRET`.
 
 ## Automated Evidence
 
 ### Backend
 
-- Focused new payment-request tests: 2 suites, 12 tests passed; combined payment policy/request tests: 3 suites, 20 tests passed.
-- Full tests: 26 suites and 189 tests passed; 1 suite/3 tests skipped by the existing database-test policy.
+- Focused payment request/webhook tests: 2 suites and 19 tests passed.
+- Full tests: 27 suites and 200 tests passed; 1 suite/3 tests skipped by the existing database-test policy.
 - `npm run -s build`: passed.
 - `npm run -s lint`: passed with no errors.
 - `npm run -s arch:check`: passed.
@@ -59,6 +62,13 @@ Focused coverage proves:
 - exact idempotency replay produces no duplicate success audit;
 - provider failure is persisted as failed and audited with a bounded reason code;
 - operator tracking excludes Checkout session, PaymentIntent, account and request-key values.
+- invalid and stale webhook signatures fail before database access;
+- connected accounts that do not map to a tenant fail closed;
+- paid events with mismatched amount/currency cannot unlock dispatch;
+- duplicate deliveries acknowledge without repeating payment or audit mutations;
+- asynchronous failures, PaymentIntent failures and expired sessions transition only pending payments;
+- full refunds update both payment and refund state, and late success delivery cannot downgrade a refund;
+- stored webhook/audit evidence excludes customer payload fields.
 
 ### Frontend
 
@@ -75,7 +85,7 @@ An isolated `calldesk_test` tenant/job/payment fixture was created after applyin
 - Simulated successful canonical payment state: detail response returned `queue: READY_TO_ASSIGN`, `state: UNLOCKED`, `reasonCode: PAYMENT_SUCCEEDED`, one eligible candidate and a `dispatch-v2` recommendation.
 - The isolated tenant was deleted after verification; cascade cleanup returned the fixture count to `0`.
 
-This proof validates gate consumption only. It does not claim that webhook ingestion is implemented or verified.
+This HTTP proof validates gate consumption. The signed webhook transition behavior is independently covered by the focused automated suite; a deployed Stripe endpoint delivery has not yet been configured or claimed.
 
 The payment-request section was then exercised through the compiled Nest application with an overridden no-network Checkout provider and a disposable PostgreSQL schema:
 
@@ -98,28 +108,27 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 ## Scope and Safety
 
-- No real Stripe API call, secret configuration or webhook request occurred; Checkout behavior used an injected no-network provider during proof.
+- A separate Stripe sandbox-only exercise successfully completed connected-account onboarding and a $100 test Checkout payment. No live-mode payment, production secret configuration, or deployed webhook request occurred. The application HTTP proof still used an injected no-network Checkout provider.
 - No production database migration, deployment, IAM change, billing action, real customer data change or real appointment mutation occurred.
 - The pre-existing deletion of `firebase-debug.log` in the reused worktree remains uncommitted and outside APP-012.
 - The original backend and governance checkouts retain their unrelated local changes; this work was isolated in dedicated APP-012 worktrees.
 
 ## Remaining APP-012 Work and Risk
 
-- Implement signature-verified, idempotent webhook event handling and visible processing results.
 - Add secure customer status/recovery actions and an operator payment-request surface.
-- Persist and audit payment/gate transitions, including failed/expired/refunded/canceled outcomes and any governed manual override.
-- Add full operator webhook-event visibility and end-to-end customer payment status evidence.
-- The current gate trusts the canonical `Payment.status`; until signed webhook ingestion is delivered, APP-012 is not releasable.
+- Add operator webhook-event visibility, governed manual override handling, and end-to-end customer payment status evidence.
+- Configure a sandbox endpoint signing secret and prove Stripe CLI/Dashboard delivery against an isolated local database before any staging or production setup.
+- The webhook transition slice is implemented but not deployed or endpoint-configured; APP-012 remains unreleasable.
 
 ## Review Steps
 
 1. Review the payment request orchestration, privacy-safe projection and audits in `src/payments/payment-requests.service.ts`.
 2. Review the provider boundary in `src/payments/stripe-checkout.provider.ts`: Checkout must remain a direct contractor connected-account charge with no Signmons application fee.
-3. Review the migration and authenticated controller/guard paths, then review the existing gate reducer/UI screenshots under `evidence/APP-012/`.
+3. Review `stripe-webhooks.controller.ts` and `stripe-webhooks.service.ts` for raw-body signature verification, account/tenant binding, idempotency, transition guards, and bounded audit storage.
 4. Run backend gates: `npm run -s build && npm test -- --runInBand && npm run -s lint && npm run -s arch:check && npx prisma validate`.
 5. Confirm APP-012 remains in `Now`; do not merge, apply the migration outside an isolated local schema, configure Stripe or deploy without owner approval.
 
 ## Completion Estimate
 
-- APP-012: approximately 40% complete (payment-request tracking and payment-gate criteria implemented and evidenced; webhook, customer and complete transition-audit criteria remain).
-- Governed CallDesk APP-006 through APP-016 sequence: approximately 58% complete (APP-006 through APP-011 released, plus two bounded APP-012 slices; release acceptance remains the governing measure).
+- APP-012: approximately 55% complete (payment gate, payment requests, and signed/idempotent webhook transitions implemented; recovery/status UI, endpoint delivery proof, and release acceptance remain).
+- Governed CallDesk APP-006 through APP-016 sequence: approximately 60% complete (APP-006 through APP-011 released, plus three bounded APP-012 slices; release acceptance remains the governing measure).
