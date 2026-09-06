@@ -9,6 +9,8 @@ import type {
   CheckoutRequestResult,
   CreateCheckoutRequest,
   PaymentCheckoutProvider,
+  RecoverCheckoutRequest,
+  RecoverCheckoutResult,
 } from "./interfaces/payment-checkout-provider.interface";
 
 @Injectable()
@@ -58,6 +60,60 @@ export class StripeCheckoutProvider implements PaymentCheckoutProvider {
             ? session.payment_intent
             : null,
         checkoutUrl: session.url,
+        expiresAt: new Date(session.expires_at * 1000),
+      };
+    } catch {
+      throw new ServiceUnavailableException(
+        "Secure payment checkout is temporarily unavailable.",
+      );
+    }
+  }
+
+  async recoverCheckout(
+    request: RecoverCheckoutRequest,
+  ): Promise<RecoverCheckoutResult | null> {
+    const secretKey = this.secretKey();
+    try {
+      const response = await fetch(
+        `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(request.sessionId)}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            "Stripe-Account": request.connectedAccountId,
+          },
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!response.ok) throw new Error("Stripe Checkout lookup failed.");
+      const session = (await response.json()) as Record<string, unknown>;
+      if (
+        session.id !== request.sessionId ||
+        typeof session.status !== "string" ||
+        typeof session.payment_status !== "string" ||
+        typeof session.expires_at !== "number"
+      ) {
+        throw new Error("Stripe Checkout returned an invalid response.");
+      }
+      if (
+        session.status !== "open" ||
+        session.payment_status !== "unpaid" ||
+        session.expires_at * 1000 <= Date.now()
+      ) {
+        return null;
+      }
+      if (typeof session.url !== "string") {
+        throw new Error("Stripe Checkout returned an invalid response.");
+      }
+      const checkoutUrl = new URL(session.url);
+      if (
+        checkoutUrl.protocol !== "https:" ||
+        checkoutUrl.hostname !== "checkout.stripe.com"
+      ) {
+        throw new Error("Stripe Checkout returned an invalid URL.");
+      }
+      return {
+        checkoutUrl: checkoutUrl.toString(),
         expiresAt: new Date(session.expires_at * 1000),
       };
     } catch {

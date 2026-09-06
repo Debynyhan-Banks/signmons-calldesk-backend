@@ -3,6 +3,8 @@ import type { ConfigType } from "@nestjs/config";
 import appConfig from "../config/app.config";
 import { StripeCheckoutProvider } from "./stripe-checkout.provider";
 
+const activeExpiresAt = Math.floor(Date.now() / 1000) + 60 * 60;
+
 describe("StripeCheckoutProvider", () => {
   let fetchMock: jest.SpiedFunction<typeof fetch>;
 
@@ -12,8 +14,10 @@ describe("StripeCheckoutProvider", () => {
         JSON.stringify({
           id: "cs_test_private",
           payment_intent: "pi_test_private",
-          url: "https://checkout.stripe.test/session",
-          expires_at: 1_788_527_600,
+          url: "https://checkout.stripe.com/session",
+          expires_at: activeExpiresAt,
+          status: "open",
+          payment_status: "unpaid",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
@@ -62,8 +66,8 @@ describe("StripeCheckoutProvider", () => {
     expect(result).toEqual({
       sessionId: "cs_test_private",
       paymentIntentId: "pi_test_private",
-      checkoutUrl: "https://checkout.stripe.test/session",
-      expiresAt: new Date(1_788_527_600 * 1000),
+      checkoutUrl: "https://checkout.stripe.com/session",
+      expiresAt: new Date(activeExpiresAt * 1000),
     });
   });
 
@@ -105,6 +109,54 @@ describe("StripeCheckoutProvider", () => {
         label: "Required service deposit",
       }),
     ).rejects.toThrow("Secure payment checkout is temporarily unavailable.");
+  });
+
+  it("recovers an existing open Checkout from the same connected account", async () => {
+    const provider = new StripeCheckoutProvider(config({}));
+
+    const result = await provider.recoverCheckout({
+      connectedAccountId: "acct_connected",
+      sessionId: "cs_test_private",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.stripe.com/v1/checkout/sessions/cs_test_private",
+      {
+        method: "GET",
+        headers: {
+          Authorization: "Bearer sk_test_not_real",
+          "Stripe-Account": "acct_connected",
+        },
+        signal: expect.any(AbortSignal),
+      },
+    );
+    expect(result).toEqual({
+      checkoutUrl: "https://checkout.stripe.com/session",
+      expiresAt: new Date(activeExpiresAt * 1000),
+    });
+  });
+
+  it("does not recover a completed Checkout", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "cs_test_private",
+          status: "complete",
+          payment_status: "paid",
+          url: null,
+          expires_at: Math.floor(Date.now() / 1000) + 600,
+        }),
+        { status: 200 },
+      ),
+    );
+    const provider = new StripeCheckoutProvider(config({}));
+
+    await expect(
+      provider.recoverCheckout({
+        connectedAccountId: "acct_connected",
+        sessionId: "cs_test_private",
+      }),
+    ).resolves.toBeNull();
   });
 });
 

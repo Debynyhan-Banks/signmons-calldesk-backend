@@ -59,6 +59,71 @@ export class PaymentRequestsService {
     return this.tracking(job.payment);
   }
 
+  async recover(tenantId: string, jobId: string) {
+    const job = await this.prisma.job.findFirst({
+      where: { tenantId, id: jobId, deletedAt: null },
+      select: {
+        id: true,
+        tenant: {
+          select: { stripeConnectAccountId: true, chargesEnabled: true },
+        },
+        payment: true,
+      },
+    });
+    if (!job) throw new NotFoundException("Job was not found.");
+    const payment = job.payment;
+    if (
+      !payment ||
+      payment.status !== PaymentStatus.PENDING ||
+      !payment.stripeCheckoutSessionId ||
+      !payment.destinationAccountId ||
+      !payment.checkoutExpiresAt ||
+      payment.checkoutExpiresAt.getTime() <= Date.now()
+    ) {
+      throw new ConflictException(
+        "This payment link is no longer active. Contact the service company for a new request.",
+      );
+    }
+    if (
+      !job.tenant.chargesEnabled ||
+      job.tenant.stripeConnectAccountId !== payment.destinationAccountId
+    ) {
+      throw new ServiceUnavailableException(
+        "The contractor payment account is not ready to accept charges.",
+      );
+    }
+    const recovered = await this.checkoutProvider.recoverCheckout({
+      connectedAccountId: payment.destinationAccountId,
+      sessionId: payment.stripeCheckoutSessionId,
+    });
+    if (!recovered) {
+      throw new ConflictException(
+        "This payment link is no longer active. Contact the service company for a new request.",
+      );
+    }
+    await this.prisma.auditLog.create({
+      data: {
+        tenantId,
+        action: "payment.checkout_recovered",
+        actorType: AuditActorType.CUSTOMER,
+        actorId: "secure-link-customer",
+        entityType: "Payment",
+        entityId: payment.id,
+        traceId: randomUUID(),
+        metadata: {
+          jobId: job.id,
+          status: payment.status,
+          checkoutExpiresAt: recovered.expiresAt.toISOString(),
+        },
+      },
+    });
+    return {
+      status: "payment_checkout" as const,
+      checkoutUrl: recovered.checkoutUrl,
+      checkoutExpiresAt: recovered.expiresAt.toISOString(),
+    };
+  }
+
   async create(input: {
     tenantId: string;
     jobId: string;

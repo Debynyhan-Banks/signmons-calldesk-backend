@@ -242,12 +242,48 @@
 }
 
 .activity,
-.actions {
+.actions,
+.paymentAction {
   margin-top: 22px;
   padding: 27px;
   border: 1px solid #d5e0ea;
   border-radius: 18px;
   background: #fff;
+}
+.paymentAction {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-color: #b9cce0;
+  background: #eef5fb;
+}
+.paymentAction h2 {
+  margin-top: 5px;
+  font-size: 1.35rem;
+  letter-spacing: -0.035em;
+}
+.paymentAction p:last-child {
+  max-width: 620px;
+  margin-top: 9px;
+  color: #526780;
+  line-height: 1.5;
+}
+.paymentAction button {
+  min-height: 50px;
+  flex: 0 0 auto;
+  padding: 12px 18px;
+  border: 1px solid #0b294c;
+  border-radius: 11px;
+  background: #0b294c;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+.paymentAction button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 .activity h2,
 .actions h2 {
@@ -435,6 +471,13 @@
   .actions {
     grid-template-columns: 1fr;
   }
+  .paymentAction {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .paymentAction button {
+    width: 100%;
+  }
   .actionButtons {
     align-items: stretch;
     flex-direction: column;
@@ -462,7 +505,8 @@
     display: none;
   }
   .activity,
-  .actions {
+  .actions,
+  .paymentAction {
     padding: 21px;
   }
   .activity li {

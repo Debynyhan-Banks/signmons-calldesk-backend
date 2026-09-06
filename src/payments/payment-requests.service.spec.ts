@@ -32,12 +32,14 @@ describe("PaymentRequestsService", () => {
       create: jest.fn(),
       updateMany: jest.fn(),
     },
+    auditLog: { create: jest.fn() },
     $transaction: jest.fn((callback: (client: typeof transaction) => unknown) =>
       Promise.resolve(callback(transaction)),
     ),
   };
   const provider: jest.Mocked<PaymentCheckoutProvider> = {
     createCheckout: jest.fn(),
+    recoverCheckout: jest.fn(),
   };
   const service = new PaymentRequestsService(
     prisma as unknown as PrismaService,
@@ -55,6 +57,10 @@ describe("PaymentRequestsService", () => {
       sessionId: "cs_test_private",
       paymentIntentId: "pi_test_private",
       checkoutUrl: "https://checkout.stripe.test/session",
+      expiresAt,
+    });
+    provider.recoverCheckout.mockResolvedValue({
+      checkoutUrl: "https://checkout.stripe.com/c/pay/test",
       expiresAt,
     });
   });
@@ -276,6 +282,78 @@ describe("PaymentRequestsService", () => {
       requestActive: expect.any(Boolean),
     });
     expect(JSON.stringify(result)).not.toContain("stripe");
+  });
+
+  it("recovers only the existing active connected-account Checkout", async () => {
+    prisma.job.findFirst.mockResolvedValue({
+      id: jobId,
+      tenant: {
+        stripeConnectAccountId: "acct_connected",
+        chargesEnabled: true,
+      },
+      payment: paymentRecord(),
+    });
+
+    const result = await service.recover(tenantId, jobId);
+
+    expect(provider.recoverCheckout).toHaveBeenCalledWith({
+      connectedAccountId: "acct_connected",
+      sessionId: "cs_test_private",
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId,
+        action: "payment.checkout_recovered",
+        actorType: "CUSTOMER",
+        entityType: "Payment",
+        entityId: "payment-1",
+        metadata: {
+          jobId,
+          status: PaymentStatus.PENDING,
+          checkoutExpiresAt: expiresAt.toISOString(),
+        },
+      }),
+    });
+    expect(result).toEqual({
+      status: "payment_checkout",
+      checkoutUrl: "https://checkout.stripe.com/c/pay/test",
+      checkoutExpiresAt: expiresAt.toISOString(),
+    });
+  });
+
+  it("fails before Stripe access when customer recovery is expired", async () => {
+    prisma.job.findFirst.mockResolvedValue({
+      id: jobId,
+      tenant: {
+        stripeConnectAccountId: "acct_connected",
+        chargesEnabled: true,
+      },
+      payment: paymentRecord({
+        checkoutExpiresAt: new Date(Date.now() - 60_000),
+      }),
+    });
+
+    await expect(service.recover(tenantId, jobId)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(provider.recoverCheckout).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects recovery when the destination no longer matches the tenant", async () => {
+    prisma.job.findFirst.mockResolvedValue({
+      id: jobId,
+      tenant: {
+        stripeConnectAccountId: "acct_other",
+        chargesEnabled: true,
+      },
+      payment: paymentRecord(),
+    });
+
+    await expect(service.recover(tenantId, jobId)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(provider.recoverCheckout).not.toHaveBeenCalled();
   });
 });
 

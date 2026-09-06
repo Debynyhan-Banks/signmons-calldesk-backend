@@ -18,6 +18,7 @@ export default function CustomerBookingPage() {
   const [booking, setBooking] = useState<CustomerBookingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [paymentOpening, setPaymentOpening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
@@ -34,7 +35,9 @@ export default function CustomerBookingPage() {
       return;
     }
     void manageCustomerBooking(managementToken, "view")
-      .then(setBooking)
+      .then((result) => {
+        if (result.status !== "payment_checkout") setBooking(result);
+      })
       .catch((loadError) => setError(errorMessage(loadError)))
       .finally(() => setLoading(false));
   }, []);
@@ -49,6 +52,9 @@ export default function CustomerBookingPage() {
         action,
         action === "request_reschedule" ? note.trim() : undefined,
       );
+      if (result.status === "payment_checkout") {
+        throw new Error("Booking update returned an unexpected response.");
+      }
       setBooking(result);
       setNotice(
         action === "confirm"
@@ -60,6 +66,29 @@ export default function CustomerBookingPage() {
       setError(errorMessage(actionError));
     } finally {
       setActing(false);
+    }
+  };
+
+  const continuePayment = async () => {
+    const checkoutWindow = window.open("about:blank", "_blank");
+    if (!checkoutWindow) {
+      setError("Allow pop-ups for this page, then try opening payment again.");
+      return;
+    }
+    checkoutWindow.opener = null;
+    setPaymentOpening(true);
+    setError(null);
+    try {
+      const result = await manageCustomerBooking(token, "continue_payment");
+      if (result.status !== "payment_checkout") {
+        throw new Error("Payment recovery returned an unexpected response.");
+      }
+      checkoutWindow.location.replace(result.checkoutUrl);
+    } catch (paymentError) {
+      checkoutWindow.close();
+      setError(errorMessage(paymentError));
+    } finally {
+      setPaymentOpening(false);
     }
   };
 
@@ -161,6 +190,26 @@ export default function CustomerBookingPage() {
                 complete={booking.payment.state === "SUCCEEDED"}
               />
             </section>
+
+            {booking.payment.canContinue ? (
+              <section className={styles.paymentAction}>
+                <div>
+                  <p className={styles.eyebrow}>Secure payment</p>
+                  <h2>Complete the requested payment</h2>
+                  <p>
+                    Stripe opens in a new tab. This booking page stays open so
+                    you can return and refresh the verified status.
+                  </p>
+                </div>
+                <button
+                  disabled={paymentOpening}
+                  onClick={() => void continuePayment()}
+                  type="button"
+                >
+                  {paymentOpening ? "Opening Stripe…" : "Continue to payment"}
+                </button>
+              </section>
+            ) : null}
 
             {booking.customerResponse.events.length ? (
               <section className={styles.activity}>

@@ -367,6 +367,16 @@ export interface TechnicianJobList {
 }
 
 export type CustomerBookingAction = "confirm" | "request_reschedule";
+export type CustomerBookingRequestAction =
+  | "view"
+  | CustomerBookingAction
+  | "continue_payment";
+
+export interface CustomerPaymentCheckout {
+  status: "payment_checkout";
+  checkoutUrl: string;
+  checkoutExpiresAt: string;
+}
 
 export interface CustomerBookingStatus {
   status:
@@ -409,6 +419,7 @@ export interface CustomerBookingStatus {
       | "REFUNDED"
       | "CANCELED";
     label: string;
+    canContinue: boolean;
   };
   customerResponse: {
     state: "AWAITING_RESPONSE" | "CONFIRMED" | "RESCHEDULE_REQUESTED";
@@ -835,14 +846,17 @@ export async function updateTechnicianJob(
 
 export async function manageCustomerBooking(
   managementToken: string,
-  action: "view" | CustomerBookingAction,
+  action: CustomerBookingRequestAction,
   note?: string,
-): Promise<CustomerBookingStatus> {
-  return postJson<CustomerBookingStatus>("/appointments/manage", {
-    managementToken,
-    action,
-    ...(note ? { note } : {}),
-  });
+): Promise<CustomerBookingStatus | CustomerPaymentCheckout> {
+  return postJson<CustomerBookingStatus | CustomerPaymentCheckout>(
+    "/appointments/manage",
+    {
+      managementToken,
+      action,
+      ...(note ? { note } : {}),
+    },
+  );
 }
 
 export function getApiBaseUrl(): string {

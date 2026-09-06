@@ -17,6 +17,7 @@ export class ManageAppointmentDto {
     "view",
     "confirm",
     "request_reschedule",
+    "continue_payment",
     "availability",
     "reschedule",
     "cancel",
@@ -25,6 +26,7 @@ export class ManageAppointmentDto {
     | "view"
     | "confirm"
     | "request_reschedule"
+    | "continue_payment"
     | "availability"
     | "reschedule"
     | "cancel";

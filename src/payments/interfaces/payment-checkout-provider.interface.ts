@@ -16,8 +16,21 @@ export type CheckoutRequestResult = {
   expiresAt: Date;
 };
 
+export type RecoverCheckoutRequest = {
+  connectedAccountId: string;
+  sessionId: string;
+};
+
+export type RecoverCheckoutResult = {
+  checkoutUrl: string;
+  expiresAt: Date;
+};
+
 export interface PaymentCheckoutProvider {
   createCheckout(
     request: CreateCheckoutRequest,
   ): Promise<CheckoutRequestResult>;
+  recoverCheckout(
+    request: RecoverCheckoutRequest,
+  ): Promise<RecoverCheckoutResult | null>;
 }

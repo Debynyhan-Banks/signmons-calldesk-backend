@@ -44,6 +44,17 @@ Last Updated: 2026-09-06
 - Stripe CLI then forwarded a genuine signed Connect `checkout.session.completed` event to the compiled local backend on an isolated disposable database. A mismatched amount returned HTTP `422` with no mutation; the aligned event changed `PENDING` to `SUCCEEDED` with exactly one processed event and one bounded webhook audit, while the application fee remained zero.
 - All temporary processes, database/schema fixtures, and ephemeral-secret logs were removed. The shared historical `legacy_2025` archive was preserved after its fixed name blocked the first schema-scoped migration attempt.
 
+## APP-012 Customer Recovery Checkpoint
+
+- Extended the existing signed customer booking-link action boundary with `continue_payment`; the customer needs no separate account, and an ordinary booking-status read never returns the Checkout URL.
+- Recovery returns only the already-created session when the tenant-scoped payment is pending, both local and provider expiry are in the future, the provider reports it open and unpaid, and the stored destination still exactly matches the tenant's enabled connected account.
+- Recovery does not create a new Checkout or charge. Its bounded customer audit excludes the Checkout URL and provider/account identifiers.
+- Added a responsive pending-payment action to `/appointment/manage` and a `/payment/status` success/cancel page. The success page does not claim fulfillment from the redirect; webhook state remains authoritative.
+- Local browser QA passed at desktop and 390px: the pending-payment action is visible and 50px high, the booking page remains available, and there is no horizontal overflow. Success and cancel return states rendered without application console warnings/errors.
+- Final gates pass: backend build/lint/architecture/Prisma validation and 27 suites/206 tests; UI lint/static build and 4 suites/17 tests.
+- This section remains review-only. No live-mode call, persistent Stripe configuration, migration, deployment, or release occurred.
+- APP-012 is approximately 70% complete; APP-006 through APP-016 is approximately 63% complete.
+
 ## APP-011 Implementation
 
 - Added a public, rate-limited `POST /appointments/manage` boundary that treats the HMAC secure-link token as authority and keeps the existing tenant-authenticated webchat endpoint compatible.
@@ -73,7 +84,7 @@ Last Updated: 2026-09-06
 ## Next Actions
 
 1. Review the APP-012 payment-gate and payment-request checkpoints; keep APP-012 in `Now` and unreleased.
-2. In the next approved APP-012 section, build secure customer status/recovery handling and the operator payment-request surface.
+2. In the next approved APP-012 section, build the operator payment-request surface and bounded webhook-event visibility.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 

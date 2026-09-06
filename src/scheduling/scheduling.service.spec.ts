@@ -4,6 +4,7 @@ import type { AppConfig } from "../config/app.config";
 import type { JobNotificationService } from "../jobs/job-notification.service";
 import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
 import type { LoggingService } from "../logging/logging.service";
+import type { PaymentRequestsService } from "../payments/payment-requests.service";
 import type { PrismaService } from "../prisma/prisma.service";
 import { SchedulingService } from "./scheduling.service";
 
@@ -50,6 +51,9 @@ describe("SchedulingService", () => {
   const logger = {
     error: jest.fn(),
   };
+  const paymentRequests = {
+    recover: jest.fn(),
+  };
 
   let service: SchedulingService;
 
@@ -62,10 +66,16 @@ describe("SchedulingService", () => {
     prisma.auditLog.create.mockReset().mockResolvedValue({ id: "audit-1" });
     notifications.enqueueAppointmentRescheduled.mockReset();
     notifications.enqueueAppointmentCancelled.mockReset();
+    paymentRequests.recover.mockReset().mockResolvedValue({
+      status: "payment_checkout",
+      checkoutUrl: "https://checkout.stripe.com/c/pay/test",
+      checkoutExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+    });
     service = new SchedulingService(
       prisma as unknown as PrismaService,
       notifications as unknown as JobNotificationService,
       logger as unknown as LoggingService,
+      paymentRequests as unknown as PaymentRequestsService,
       config,
     );
   });
@@ -149,6 +159,7 @@ describe("SchedulingService", () => {
         payment: {
           state: "NOT_STARTED",
           label: "Payment has not been requested",
+          canContinue: false,
         },
         technician: expect.objectContaining({ state: "UNASSIGNED" }),
       }),
@@ -164,6 +175,30 @@ describe("SchedulingService", () => {
       }),
     ).rejects.toThrow("This appointment link is invalid or has expired.");
     expect(prisma.job.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("authorizes payment recovery with the same signed customer link", async () => {
+    prisma.job.findFirst.mockResolvedValue(
+      appointmentJob({
+        payment: {
+          status: "PENDING",
+          checkoutExpiresAt: new Date(Date.now() + 60_000),
+        },
+      }),
+    );
+
+    const result = await service.manageAppointment({
+      managementToken: managementToken(),
+      action: "continue_payment",
+    });
+
+    expect(paymentRequests.recover).toHaveBeenCalledWith(
+      baseJob.tenantId,
+      baseJob.id,
+    );
+    expect(result).toEqual(
+      expect.objectContaining({ status: "payment_checkout" }),
+    );
   });
 
   it("keeps the legacy lowercase state while exposing the richer booking state", async () => {
