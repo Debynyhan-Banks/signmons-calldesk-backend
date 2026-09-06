@@ -58,4 +58,41 @@ describe("evaluatePaymentGate", () => {
       evaluatePaymentGate({ depositRequired: true }, { status }),
     ).toMatchObject({ state: "LOCKED", paymentStatus: status, reasonCode });
   });
+
+  it("unlocks a configured gate for an active governed exception without changing payment truth", () => {
+    expect(
+      evaluatePaymentGate(
+        {
+          depositRequired: true,
+          paymentGateMode: "manual_override",
+          paymentGateException: {
+            active: true,
+            approvedAt: "2026-09-06T16:00:00.000Z",
+            reason: "Owner approved payment at service completion.",
+          },
+        },
+        { status: "PENDING", amountTotalCents: 10000, currency: "usd" },
+      ),
+    ).toMatchObject({
+      state: "UNLOCKED",
+      paymentStatus: "PENDING",
+      reasonCode: "PAYMENT_EXCEPTION_APPROVED",
+    });
+  });
+
+  it("ignores exception data unless manual override mode is governed", () => {
+    expect(
+      evaluatePaymentGate(
+        {
+          depositRequired: true,
+          paymentGateException: {
+            active: true,
+            approvedAt: "2026-09-06T16:00:00.000Z",
+            reason: "Untrusted exception data must not unlock dispatch.",
+          },
+        },
+        { status: "PENDING" },
+      ),
+    ).toMatchObject({ state: "LOCKED", reasonCode: "PAYMENT_PENDING" });
+  });
 });

@@ -9,7 +9,7 @@ Checkpoint: bounded payment-before-dispatch gate, authenticated payment-request 
 
 These checkpoints implement five bounded APP-012 vertical slices. A shared, provider-independent policy derives whether payment is required from the job's tenant-policy snapshot. Required jobs remain locked until canonical payment state `SUCCEEDED`; the backend prevents new assignment and the dispatcher UI explains the lock. An authenticated backend API and operator surface can create and track the required contractor-to-customer checkout request without exposing provider identifiers. A public Stripe webhook boundary verifies signatures over the exact raw body, binds connected-account events to the tenant, applies idempotent payment transitions, and persists bounded event/audit evidence that operators can now see as a privacy-safe job timeline. The existing signed customer booking link can recover only its current open, unpaid, unexpired Checkout session, while the return page leaves fulfillment authority with the webhook.
 
-APP-012 remains in `Now`. Governed exception/manual-override behavior, persistent environment endpoint configuration, final end-to-end acceptance, and release work remain later APP-012 sections.
+APP-012 remains in `Now`. Persistent environment endpoint configuration, final end-to-end acceptance, and release work remain later APP-012 sections.
 
 ## Runtime Contract
 
@@ -41,13 +41,15 @@ APP-012 remains in `Now`. Governed exception/manual-override behavior, persisten
 - Added `/payment/status` success/cancel copy that treats the redirect as advisory and directs the customer back to the booking page for webhook-confirmed status.
 - Added an authenticated payment operations panel to `/app/dispatch`. It shows trusted amount/currency, request state and expiry, creates a request with a fresh UUID idempotency key, and exposes the temporary Checkout URL only in the immediate authorized response.
 - Added tenant/job-scoped `GET /jobs/:jobId/payment-events`, limited to 20 newest records and projected to internal row ID, bounded event type/status, and timestamps. Stripe event/account/session/payment-intent IDs, payloads and error text are not returned.
+- Added owner/admin-only `POST /jobs/:jobId/payment-exception` for explicit approval or revocation. Approval requires optimistic job concurrency, a governed `manual_override` job policy, an active Growth/Pro/Enterprise subscription period, an unpaid open job, and a normalized 10-500 character reason.
+- An approved exception unlocks dispatch through `PAYMENT_EXCEPTION_APPROVED` without changing the canonical payment status. Approval and revocation update the job's policy snapshot atomically and write a tenant-scoped user audit; revocation remains available even if the advanced entitlement later ends.
 
 ## Automated Evidence
 
 ### Backend
 
-- Focused payment request, provider, recovery, and operator-event tests: 3 suites and 29 tests passed.
-- Full tests: 27 suites and 208 tests passed; 1 suite/3 tests skipped by the existing database-test policy.
+- Focused payment request/recovery/operator-event, gate-exception, and exception-access tests: 3 suites and 35 tests passed.
+- Full tests: 28 suites and 221 tests passed; 1 suite/3 tests skipped by the existing database-test policy.
 - `npm run -s build`: passed.
 - `npm run -s lint`: passed with no errors.
 - `npm run -s arch:check`: passed.
@@ -76,6 +78,8 @@ Focused coverage proves:
 - stored webhook/audit evidence excludes customer payload fields.
 - signed customer recovery cannot cross tenants or connected accounts, cannot revive expired/completed sessions, and creates only a bounded customer audit without copying provider identifiers or URLs.
 - operator webhook visibility resolves the job's internal payment first, filters by both tenant and internal payment ID, returns at most 20 events, and excludes stored payload/provider identifiers.
+- dispatch remains locked for unconfigured exception data, Starter tenants, dispatcher/technician/read-only roles, stale job versions, closed jobs, jobs without a required gate, and already-succeeded payments;
+- governed approval preserves the actual pending/failed/canceled/refunded payment status while using a distinct override reason code, and revocation restores the normal fail-closed gate.
 
 ### Frontend
 
@@ -139,7 +143,7 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 ## Remaining APP-012 Work and Risk
 
-- Add governed manual override/exception handling and final end-to-end customer payment status evidence.
+- Add final end-to-end customer payment status evidence and explicitly approved persistent endpoint configuration.
 - Configure persistent staging/production webhook endpoints and secrets only as part of an explicitly approved release workflow.
 - The webhook transition slice and isolated Stripe CLI delivery proof are complete but not deployed; APP-012 remains unreleasable.
 
@@ -153,5 +157,5 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 ## Completion Estimate
 
-- APP-012: approximately 80% complete (payment gate, payment requests and operator controls, signed/idempotent webhook transitions and bounded visibility, isolated sandbox delivery proof, and customer recovery/status UI complete; governed exceptions, persistent endpoint configuration, final acceptance and release remain).
-- Governed CallDesk APP-006 through APP-016 sequence: approximately 65% complete (APP-006 through APP-011 released, plus five implemented APP-012 slices; release acceptance remains the governing measure).
+- APP-012: approximately 88% complete (payment gate, payment requests/operator controls, signed/idempotent webhook transitions/visibility, sandbox delivery proof, customer recovery/status UI, and governed payment exceptions complete; persistent endpoint configuration, final acceptance and release remain).
+- Governed CallDesk APP-006 through APP-016 sequence: approximately 67% complete (APP-006 through APP-011 released, plus six implemented APP-012 slices; release acceptance remains the governing measure).

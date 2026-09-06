@@ -65,6 +65,17 @@ Last Updated: 2026-09-06
 - Final gates pass: backend build/lint/architecture/Prisma validation and 27 suites/208 tests; UI lint/static build and 4 suites/17 tests.
 - APP-012 is approximately 80% complete; APP-006 through APP-016 is approximately 65% complete.
 
+## APP-012 Governed Payment Exception Checkpoint
+
+- Added owner/admin-only `POST /jobs/:jobId/payment-exception` with approve/revoke actions, normalized 10-500 character reason, throttling, no-store response, tenant scope and optimistic job concurrency.
+- Approval requires the job's trusted policy snapshot to explicitly select `paymentGateMode: manual_override` plus a currently active/trialing Growth, Pro or Enterprise subscription period. Starter and missing/expired entitlements fail closed before mutation.
+- A successful exception uses the distinct `PAYMENT_EXCEPTION_APPROVED` gate reason and leaves canonical payment truth unchanged; pending remains pending rather than being relabeled paid.
+- Approval and revocation atomically update the job policy snapshot and write bounded user audits. Revocation does not require an ongoing advanced entitlement, preventing a downgrade from trapping an unsafe exception open.
+- Focused guard/service/policy tests pass for role denial, entitlement denial, governed unlock, untrusted exception rejection, revocation and stale-write protection. This backend-only section changes no rendered UI.
+- No database schema change, Stripe call/configuration, deployment, merge, or release occurred.
+- Final gates pass: backend build/lint/architecture/Prisma validation and 28 suites/221 tests; unchanged UI lint/static build and 4 suites/17 tests.
+- APP-012 is approximately 88% complete; APP-006 through APP-016 is approximately 67% complete.
+
 ## APP-011 Implementation
 
 - Added a public, rate-limited `POST /appointments/manage` boundary that treats the HMAC secure-link token as authority and keeps the existing tenant-authenticated webchat endpoint compatible.
@@ -94,7 +105,7 @@ Last Updated: 2026-09-06
 ## Next Actions
 
 1. Review the APP-012 payment-gate and payment-request checkpoints; keep APP-012 in `Now` and unreleased.
-2. In the next approved APP-012 section, build governed payment exception/manual-override handling and final end-to-end acceptance evidence.
+2. In the next approved APP-012 section, complete final end-to-end acceptance evidence and prepare the explicitly approval-gated persistent endpoint/release checklist.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 

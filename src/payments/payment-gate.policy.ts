@@ -7,7 +7,8 @@ export type PaymentGateReasonCode =
   | "PAYMENT_FAILED"
   | "PAYMENT_CANCELED"
   | "PAYMENT_REFUNDED"
-  | "PAYMENT_SUCCEEDED";
+  | "PAYMENT_SUCCEEDED"
+  | "PAYMENT_EXCEPTION_APPROVED";
 
 type PaymentGatePayment = {
   status: string;
@@ -79,6 +80,24 @@ export function evaluatePaymentGate(
       currency,
       reasonCode: "PAYMENT_SUCCEEDED",
       label: "Required payment received; dispatch is unlocked",
+    };
+  }
+
+  const exception = record(policy?.paymentGateException);
+  if (
+    policy?.paymentGateMode === "manual_override" &&
+    exception?.active === true &&
+    typeof exception.approvedAt === "string" &&
+    typeof exception.reason === "string"
+  ) {
+    return {
+      required,
+      state: "UNLOCKED",
+      paymentStatus,
+      amountTotalCents,
+      currency,
+      reasonCode: "PAYMENT_EXCEPTION_APPROVED",
+      label: "Authorized payment exception; dispatch is unlocked",
     };
   }
 

@@ -18,6 +18,8 @@ import { RequestAuthGuard } from "../auth/request-auth.guard";
 import { getRequestContext } from "../common/context/request-context";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { CreatePaymentRequestDto } from "./dto/create-payment-request.dto";
+import { PaymentGateExceptionDto } from "./dto/payment-gate-exception.dto";
+import { PaymentExceptionAccessGuard } from "./payment-exception-access.guard";
 import { PaymentOperationsAccessGuard } from "./payment-operations-access.guard";
 import { PaymentRequestsService } from "./payment-requests.service";
 
@@ -43,6 +45,27 @@ export class PaymentRequestsController {
   @Throttle({ default: { limit: 60, ttl: 60 } })
   getPaymentEvents(@Param("jobId", new ParseUUIDPipe()) jobId: string) {
     return this.payments.events(this.operatorContext().tenantId, jobId);
+  }
+
+  @Post(":jobId/payment-exception")
+  @HttpCode(200)
+  @Header("Cache-Control", "private, no-store")
+  @Throttle({ default: { limit: 10, ttl: 60 } })
+  @UseGuards(PaymentExceptionAccessGuard)
+  governPaymentException(
+    @Param("jobId", new ParseUUIDPipe()) jobId: string,
+    @Body() body: PaymentGateExceptionDto,
+  ) {
+    const context = this.operatorContext();
+    return this.payments.governException({
+      tenantId: context.tenantId,
+      jobId,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+      action: body.action,
+      reason: body.reason,
+      expectedJobUpdatedAt: body.expectedJobUpdatedAt,
+    });
   }
 
   @Post(":jobId/payment-requests")

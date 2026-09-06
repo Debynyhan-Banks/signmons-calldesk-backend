@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-012 Payment gate and webhook status workflow (`SCR-APP-006A`, `SCR-APP-006B`, `SCR-APP-006C`, `SCR-APP-023`, `SCR-CUST-002`)
-  - Payment-before-dispatch, authenticated payment-request API/operator controls, signed/idempotent webhook transitions with bounded operator visibility and isolated Stripe CLI proof, and signed customer recovery/status UI are review-ready on `codex/app-012-payment-gate`; APP-012 remains active and unreleased.
+  - Payment-before-dispatch, payment-request API/operator controls, signed/idempotent webhook transitions and visibility, signed customer recovery/status UI, and owner/admin governed Growth+ payment exceptions are review-ready on `codex/app-012-payment-gate`; APP-012 remains active and unreleased.
 
 ## Next
 

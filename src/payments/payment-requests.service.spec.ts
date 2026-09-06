@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import {
   ConflictException,
+  ForbiddenException,
   NotFoundException,
   ServiceUnavailableException,
   UnprocessableEntityException,
@@ -20,6 +21,8 @@ const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
 describe("PaymentRequestsService", () => {
   const transaction = {
+    job: { findFirst: jest.fn(), updateMany: jest.fn() },
+    tenantSubscription: { findFirst: jest.fn() },
     payment: {
       updateMany: jest.fn(),
       findFirst: jest.fn(),
@@ -52,6 +55,10 @@ describe("PaymentRequestsService", () => {
     prisma.payment.create.mockResolvedValue({ id: "payment-1" });
     prisma.payment.updateMany.mockResolvedValue({ count: 1 });
     transaction.payment.updateMany.mockResolvedValue({ count: 1 });
+    transaction.job.updateMany.mockResolvedValue({ count: 1 });
+    transaction.tenantSubscription.findFirst.mockResolvedValue({
+      planId: "growth",
+    });
     transaction.auditLog.create.mockResolvedValue({ id: "audit-1" });
     transaction.payment.findFirst.mockResolvedValue(paymentRecord());
     provider.createCheckout.mockResolvedValue({
@@ -333,6 +340,151 @@ describe("PaymentRequestsService", () => {
 
     await expect(service.events(tenantId, jobId)).resolves.toEqual([]);
     expect(prisma.stripeEvent.findMany).not.toHaveBeenCalled();
+  });
+
+  it("approves a governed Growth payment exception without falsifying payment status", async () => {
+    transaction.job.findFirst.mockResolvedValue(
+      jobRecord({
+        policySnapshot: {
+          depositRequired: true,
+          paymentGateMode: "manual_override",
+        },
+        payment: { status: PaymentStatus.PENDING },
+      }),
+    );
+
+    const result = await service.governException({
+      tenantId,
+      jobId,
+      actorId,
+      traceId,
+      action: "APPROVE",
+      reason: "Owner approved payment when service is complete.",
+      expectedJobUpdatedAt: updatedAt.toISOString(),
+    });
+
+    expect(transaction.tenantSubscription.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ tenantId }) }),
+    );
+    expect(transaction.job.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        tenantId,
+        id: jobId,
+        updatedAt,
+      }),
+      data: {
+        policySnapshot: expect.objectContaining({
+          depositRequired: true,
+          paymentGateMode: "manual_override",
+          paymentGateException: expect.objectContaining({
+            active: true,
+            approvedBy: actorId,
+          }),
+        }),
+      },
+    });
+    expect(transaction.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "payment.gate_exception_approved",
+        actorUserId: actorId,
+        metadata: expect.objectContaining({
+          previousPaymentStatus: PaymentStatus.PENDING,
+        }),
+      }),
+      select: { id: true },
+    });
+    expect(result.exception.active).toBe(true);
+  });
+
+  it("rejects exception approval for Starter without mutating the job", async () => {
+    transaction.job.findFirst.mockResolvedValue(
+      jobRecord({
+        policySnapshot: {
+          depositRequired: true,
+          paymentGateMode: "manual_override",
+        },
+        payment: { status: PaymentStatus.PENDING },
+      }),
+    );
+    transaction.tenantSubscription.findFirst.mockResolvedValue({
+      planId: "starter",
+    });
+
+    await expect(
+      service.governException({
+        tenantId,
+        jobId,
+        actorId,
+        traceId,
+        action: "APPROVE",
+        reason: "Attempted exception without advanced entitlement.",
+        expectedJobUpdatedAt: updatedAt.toISOString(),
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(transaction.job.updateMany).not.toHaveBeenCalled();
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("revokes an active exception even when advanced entitlement is no longer active", async () => {
+    transaction.job.findFirst.mockResolvedValue(
+      jobRecord({
+        policySnapshot: {
+          depositRequired: true,
+          paymentGateMode: "manual_override",
+          paymentGateException: { active: true },
+        },
+        payment: { status: PaymentStatus.PENDING },
+      }),
+    );
+
+    const result = await service.governException({
+      tenantId,
+      jobId,
+      actorId,
+      traceId,
+      action: "REVOKE",
+      reason: "Customer payment is required before dispatch after review.",
+      expectedJobUpdatedAt: updatedAt.toISOString(),
+    });
+
+    expect(transaction.tenantSubscription.findFirst).not.toHaveBeenCalled();
+    expect(transaction.job.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          policySnapshot: expect.objectContaining({
+            paymentGateException: expect.objectContaining({ active: false }),
+          }),
+        },
+      }),
+    );
+    expect(result.exception.active).toBe(false);
+  });
+
+  it("fails closed when the job changes before exception approval", async () => {
+    transaction.job.findFirst.mockResolvedValue(
+      jobRecord({
+        updatedAt: new Date("2026-09-04T12:01:00.000Z"),
+        policySnapshot: {
+          depositRequired: true,
+          paymentGateMode: "manual_override",
+        },
+        payment: { status: PaymentStatus.PENDING },
+      }),
+    );
+
+    await expect(
+      service.governException({
+        tenantId,
+        jobId,
+        actorId,
+        traceId,
+        action: "APPROVE",
+        reason: "Stale approval must not unlock this payment gate.",
+        expectedJobUpdatedAt: updatedAt.toISOString(),
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(transaction.tenantSubscription.findFirst).not.toHaveBeenCalled();
+    expect(transaction.job.updateMany).not.toHaveBeenCalled();
   });
 
   it("recovers only the existing active connected-account Checkout", async () => {

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "crypto";
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -13,6 +14,7 @@ import {
   PaymentStatus,
   Prisma,
   RefundStatus,
+  SubscriptionStatus,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import type { PaymentCheckoutProvider } from "./interfaces/payment-checkout-provider.interface";
@@ -99,6 +101,153 @@ export class PaymentRequestsService {
       receivedAt: event.receivedAt.toISOString(),
       processedAt: event.processedAt?.toISOString() ?? null,
     }));
+  }
+
+  async governException(input: {
+    tenantId: string;
+    jobId: string;
+    actorId: string;
+    traceId: string;
+    action: "APPROVE" | "REVOKE";
+    reason: string;
+    expectedJobUpdatedAt: string;
+  }) {
+    return this.prisma.$transaction(async (transaction) => {
+      const job = await transaction.job.findFirst({
+        where: { tenantId: input.tenantId, id: input.jobId, deletedAt: null },
+        select: {
+          id: true,
+          status: true,
+          updatedAt: true,
+          policySnapshot: true,
+          payment: { select: { status: true } },
+        },
+      });
+      if (!job) throw new NotFoundException("Job was not found.");
+      if (
+        job.status === JobStatus.COMPLETED ||
+        job.status === JobStatus.CANCELLED
+      ) {
+        throw new ConflictException("A closed job cannot be overridden.");
+      }
+      if (
+        job.updatedAt.getTime() !==
+        new Date(input.expectedJobUpdatedAt).getTime()
+      ) {
+        throw new ConflictException(
+          "Job changed after it was loaded. Refresh before changing the payment exception.",
+        );
+      }
+      const snapshot = this.record(job.policySnapshot) ?? {};
+      const existing = this.record(snapshot.paymentGateException);
+      const required =
+        snapshot.depositRequired === true ||
+        snapshot.serviceFeeRequired === true;
+      if (!required) {
+        throw new ConflictException("This job does not have a payment gate.");
+      }
+      if (job.payment?.status === PaymentStatus.SUCCEEDED) {
+        throw new ConflictException(
+          "Verified payment already satisfies this job's payment gate.",
+        );
+      }
+      if (input.action === "APPROVE") {
+        if (snapshot.paymentGateMode !== "manual_override") {
+          throw new ForbiddenException(
+            "This job's governed policy does not allow a manual payment exception.",
+          );
+        }
+        const entitlement = await transaction.tenantSubscription.findFirst({
+          where: {
+            tenantId: input.tenantId,
+            status: {
+              in: [SubscriptionStatus.TRIALING, SubscriptionStatus.ACTIVE],
+            },
+            currentPeriodStart: { lte: new Date() },
+            currentPeriodEnd: { gt: new Date() },
+          },
+          orderBy: { currentPeriodEnd: "desc" },
+          select: { planId: true },
+        });
+        if (!this.advancedPaymentPlan(entitlement?.planId)) {
+          throw new ForbiddenException(
+            "Payment exception approval requires an active Growth or higher entitlement.",
+          );
+        }
+      }
+      const active = input.action === "APPROVE";
+      if (existing?.active === active) {
+        throw new ConflictException(
+          active
+            ? "A payment exception is already active."
+            : "No active payment exception exists.",
+        );
+      }
+      const changedAt = new Date();
+      const updated = await transaction.job.updateMany({
+        where: {
+          tenantId: input.tenantId,
+          id: input.jobId,
+          updatedAt: job.updatedAt,
+          deletedAt: null,
+        },
+        data: {
+          policySnapshot: {
+            ...snapshot,
+            paymentGateException: active
+              ? {
+                  active: true,
+                  reason: input.reason,
+                  approvedAt: changedAt.toISOString(),
+                  approvedBy: input.actorId,
+                }
+              : {
+                  active: false,
+                  reason: input.reason,
+                  revokedAt: changedAt.toISOString(),
+                  revokedBy: input.actorId,
+                },
+          } satisfies Prisma.InputJsonValue,
+        },
+      });
+      if (updated.count !== 1) {
+        throw new ConflictException(
+          "Job changed while the payment exception was being saved.",
+        );
+      }
+      const audit = await transaction.auditLog.create({
+        data: {
+          tenantId: input.tenantId,
+          action: active
+            ? "payment.gate_exception_approved"
+            : "payment.gate_exception_revoked",
+          actorType: AuditActorType.USER,
+          actorUserId: input.actorId,
+          actorUserTenantId: input.tenantId,
+          actorId: input.actorId,
+          entityType: "Job",
+          entityId: input.jobId,
+          traceId: input.traceId,
+          metadata: {
+            reason: input.reason,
+            action: input.action,
+            previousPaymentStatus: job.payment?.status ?? "NOT_REQUESTED",
+            changedAt: changedAt.toISOString(),
+          } satisfies Prisma.InputJsonValue,
+        },
+        select: { id: true },
+      });
+      return {
+        changed: true,
+        jobId: input.jobId,
+        exception: {
+          active,
+          reason: input.reason,
+          changedAt: changedAt.toISOString(),
+          auditId: audit.id,
+        },
+      };
+    });
   }
 
   async recover(tenantId: string, jobId: string) {
@@ -558,6 +707,12 @@ export class PaymentRequestsService {
           amountTotalCents: serviceFeeAmount,
           currency,
         };
+  }
+
+  private advancedPaymentPlan(planId?: string): boolean {
+    return new Set(["growth", "pro", "enterprise"]).has(
+      planId?.trim().toLowerCase() ?? "",
+    );
   }
 
   private money(value: unknown, field: string): number {

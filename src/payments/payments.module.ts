@@ -4,6 +4,7 @@ import { TenantGuard } from "../common/guards/tenant.guard";
 import { PaymentOperationsAccessGuard } from "./payment-operations-access.guard";
 import { PaymentRequestsController } from "./payment-requests.controller";
 import { PaymentRequestsService } from "./payment-requests.service";
+import { PaymentExceptionAccessGuard } from "./payment-exception-access.guard";
 import { PAYMENT_CHECKOUT_PROVIDER } from "./payments.constants";
 import { StripeCheckoutProvider } from "./stripe-checkout.provider";
 import { StripeWebhooksController } from "./stripe-webhooks.controller";
@@ -14,6 +15,7 @@ import { StripeWebhooksService } from "./stripe-webhooks.service";
   controllers: [PaymentRequestsController, StripeWebhooksController],
   providers: [
     PaymentRequestsService,
+    PaymentExceptionAccessGuard,
     PaymentOperationsAccessGuard,
     TenantGuard,
     StripeWebhooksService,
