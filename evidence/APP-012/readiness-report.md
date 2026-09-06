@@ -9,7 +9,7 @@ Checkpoint: bounded payment-before-dispatch gate, authenticated payment-request 
 
 These checkpoints implement three bounded APP-012 vertical slices. A shared, provider-independent policy derives whether payment is required from the job's tenant-policy snapshot. Required jobs remain locked until canonical payment state `SUCCEEDED`; the backend prevents new assignment and the dispatcher UI explains the lock. An authenticated backend API can create and track the required contractor-to-customer checkout request without exposing provider identifiers. A public Stripe webhook boundary now verifies signatures over the exact raw body, binds connected-account events to the tenant, applies idempotent payment transitions, and persists bounded event/audit evidence.
 
-APP-012 remains in `Now`. Operator/customer recovery surfaces, complete payment-event visibility, endpoint configuration, end-to-end webhook delivery evidence, and release work remain later APP-012 sections.
+APP-012 remains in `Now`. Operator/customer recovery surfaces, complete payment-event visibility, persistent environment endpoint configuration, and release work remain later APP-012 sections.
 
 ## Runtime Contract
 
@@ -96,6 +96,20 @@ The payment-request section was then exercised through the compiled Nest applica
 - API responses exposed neither the provider Checkout session nor PaymentIntent identifier.
 - The local fixture was cascade-deleted and the disposable schema `calldesk_app012_20260904a` was dropped after proof.
 
+## Stripe Sandbox Webhook Delivery Proof
+
+The compiled backend was started on port `3202` against a disposable local PostgreSQL database. Stripe CLI listened for Connect `checkout.session.completed` events and forwarded them to `POST /webhooks/stripe` using an ephemeral signing secret that was neither printed nor saved in the repository.
+
+- The disposable tenant was bound to the sandbox `Signmons Test HVAC` connected account; its payment began `PENDING` with zero application fee.
+- A first genuine signed Connect event carried the correct internal payment reference but Stripe CLI's default fixture amount did not match the trusted local amount. The endpoint returned HTTP `422`, the payment stayed `PENDING`, and no Stripe-event or audit record was persisted.
+- After aligning the disposable trusted fixture to Stripe CLI's $30 fixture amount, a new signed Connect event returned success and transitioned the payment to `SUCCEEDED`.
+- Database verification showed exactly one `StripeEvent` in `PROCESSED` state and exactly one `payment.webhook_transitioned` audit with actor type `WEBHOOK`.
+- The stored event payload contained only event type, Stripe-created timestamp, and internal payment ID. The audit contained only bounded transition metadata. Provider event/session/payment-intent/account identifiers and customer fields were not copied into either projection.
+- `applicationFeeAmountCents` remained `0`; a PaymentIntent reference was stored only on the private payment record.
+- The temporary backend/listener were stopped; the disposable database, the initial failed disposable schema, and temporary logs containing the ephemeral signing secret were deleted. Staging and production were untouched.
+
+An initial schema-scoped migration attempt exposed the repository's historical fixed `legacy_2025` archive-schema collision. The proof did not delete or modify that shared archive; it switched to a fully disposable database, where all 11 migrations applied successfully.
+
 ## Browser QA
 
 The local dispatcher page was exercised with the isolated locked fixture.
@@ -117,8 +131,8 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 - Add secure customer status/recovery actions and an operator payment-request surface.
 - Add operator webhook-event visibility, governed manual override handling, and end-to-end customer payment status evidence.
-- Configure a sandbox endpoint signing secret and prove Stripe CLI/Dashboard delivery against an isolated local database before any staging or production setup.
-- The webhook transition slice is implemented but not deployed or endpoint-configured; APP-012 remains unreleasable.
+- Configure persistent staging/production webhook endpoints and secrets only as part of an explicitly approved release workflow.
+- The webhook transition slice and isolated Stripe CLI delivery proof are complete but not deployed; APP-012 remains unreleasable.
 
 ## Review Steps
 
@@ -130,5 +144,5 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 ## Completion Estimate
 
-- APP-012: approximately 55% complete (payment gate, payment requests, and signed/idempotent webhook transitions implemented; recovery/status UI, endpoint delivery proof, and release acceptance remain).
-- Governed CallDesk APP-006 through APP-016 sequence: approximately 60% complete (APP-006 through APP-011 released, plus three bounded APP-012 slices; release acceptance remains the governing measure).
+- APP-012: approximately 60% complete (payment gate, payment requests, signed/idempotent webhook transitions, and isolated sandbox delivery proof complete; recovery/status UI, persistent endpoint configuration, and release acceptance remain).
+- Governed CallDesk APP-006 through APP-016 sequence: approximately 61% complete (APP-006 through APP-011 released, plus three implemented and transport-proven APP-012 slices; release acceptance remains the governing measure).

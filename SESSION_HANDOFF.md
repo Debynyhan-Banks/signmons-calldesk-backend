@@ -30,7 +30,7 @@ Last Updated: 2026-09-06
 - Added request success/failure audits and migration `20260904100000_add_payment_request_tracking`.
 - Backend build/lint, 26 suites and 189 tests, architecture and Prisma validation pass. A disposable local PostgreSQL schema passed all migrations and authenticated POST/replay/GET proof with one success audit, then was removed.
 - No live Stripe request, Stripe/IAM/secret configuration, staging or production migration, deployment, billing or real-data action occurred. No rendered UI changed, so no new visual browser artifact was warranted.
-- APP-012 is approximately 55% complete; APP-006 through APP-016 is approximately 60% complete.
+- APP-012 is approximately 60% complete; APP-006 through APP-016 is approximately 61% complete.
 
 ## APP-012 Webhook Transition Checkpoint
 
@@ -41,6 +41,8 @@ Last Updated: 2026-09-06
 - Production Checkout configuration now fails closed without `STRIPE_WEBHOOK_SECRET`.
 - Backend build/lint, 27 suites and 200 tests, architecture and diff checks pass; 1 suite/3 tests remain skipped by the existing database-test policy.
 - A separate sandbox exercise completed contractor onboarding and a $100 Checkout payment. No live-mode payment, endpoint configuration, production secret change, migration, deployment, or release occurred.
+- Stripe CLI then forwarded a genuine signed Connect `checkout.session.completed` event to the compiled local backend on an isolated disposable database. A mismatched amount returned HTTP `422` with no mutation; the aligned event changed `PENDING` to `SUCCEEDED` with exactly one processed event and one bounded webhook audit, while the application fee remained zero.
+- All temporary processes, database/schema fixtures, and ephemeral-secret logs were removed. The shared historical `legacy_2025` archive was preserved after its fixed name blocked the first schema-scoped migration attempt.
 
 ## APP-011 Implementation
 
@@ -71,7 +73,7 @@ Last Updated: 2026-09-06
 ## Next Actions
 
 1. Review the APP-012 payment-gate and payment-request checkpoints; keep APP-012 in `Now` and unreleased.
-2. In the next approved APP-012 section, configure and prove sandbox webhook delivery against an isolated local database, then build secure customer status/recovery handling.
+2. In the next approved APP-012 section, build secure customer status/recovery handling and the operator payment-request surface.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 
