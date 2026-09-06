@@ -76,6 +76,14 @@ Last Updated: 2026-09-06
 - Final gates pass: backend build/lint/architecture/Prisma validation and 28 suites/221 tests; unchanged UI lint/static build and 4 suites/17 tests.
 - APP-012 is approximately 88% complete; APP-006 through APP-016 is approximately 67% complete.
 
+## APP-012 Final Acceptance Preparation
+
+- Added `evidence/APP-012/release-checklist.md` with a linked acceptance matrix, exact Stripe Connected accounts event set, vault/restricted-key requirements, continuous staging acceptance sequence, negative cases, cleanup, rollback/monitoring and separate live release gate.
+- The linked local lifecycle evidence receives a conditional pass: operator request, signed customer recovery, genuine Stripe CLI Connect transition, canonical dispatch unlock, bounded operator visibility and governed exceptions are proven across isolated evidence.
+- This is not a deployed end-to-end claim. Continuous staging execution requires explicit owner authorization for staging deployment, migration and Stripe sandbox endpoint configuration.
+- No Stripe endpoint, secret, IAM policy, database, deployment, merge, release or live-mode state was changed in this section.
+- APP-012 is approximately 95% complete; APP-006 through APP-016 is approximately 68% complete.
+
 ## APP-011 Implementation
 
 - Added a public, rate-limited `POST /appointments/manage` boundary that treats the HMAC secure-link token as authority and keeps the existing tenant-authenticated webchat endpoint compatible.
@@ -105,7 +113,7 @@ Last Updated: 2026-09-06
 ## Next Actions
 
 1. Review the APP-012 payment-gate and payment-request checkpoints; keep APP-012 in `Now` and unreleased.
-2. In the next approved APP-012 section, complete final end-to-end acceptance evidence and prepare the explicitly approval-gated persistent endpoint/release checklist.
+2. Await explicit approval before executing the continuous staging acceptance and persistent Stripe sandbox endpoint checklist.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 

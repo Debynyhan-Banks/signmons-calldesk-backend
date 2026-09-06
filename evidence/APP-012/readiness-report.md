@@ -9,7 +9,7 @@ Checkpoint: bounded payment-before-dispatch gate, authenticated payment-request 
 
 These checkpoints implement five bounded APP-012 vertical slices. A shared, provider-independent policy derives whether payment is required from the job's tenant-policy snapshot. Required jobs remain locked until canonical payment state `SUCCEEDED`; the backend prevents new assignment and the dispatcher UI explains the lock. An authenticated backend API and operator surface can create and track the required contractor-to-customer checkout request without exposing provider identifiers. A public Stripe webhook boundary verifies signatures over the exact raw body, binds connected-account events to the tenant, applies idempotent payment transitions, and persists bounded event/audit evidence that operators can now see as a privacy-safe job timeline. The existing signed customer booking link can recover only its current open, unpaid, unexpired Checkout session, while the return page leaves fulfillment authority with the webhook.
 
-APP-012 remains in `Now`. Persistent environment endpoint configuration, final end-to-end acceptance, and release work remain later APP-012 sections.
+APP-012 remains in `Now`. The linked local lifecycle evidence has a conditional acceptance pass and the persistent endpoint/release checklist is complete. A continuous deployed staging run, owner acceptance, merge and release remain approval-gated.
 
 ## Runtime Contract
 
@@ -141,10 +141,16 @@ The local dispatcher page was exercised with the isolated locked fixture.
 - The pre-existing deletion of `firebase-debug.log` in the reused worktree remains uncommitted and outside APP-012.
 - The original backend and governance checkouts retain their unrelated local changes; this work was isolated in dedicated APP-012 worktrees.
 
+## Final Acceptance Preparation
+
+- Added `release-checklist.md` with a linked lifecycle matrix, exact Connected accounts event set, secret-vault and restricted-key requirements, continuous staging positive/negative cases, rollback/monitoring steps, and a separate live release gate.
+- The matrix records a conditional local pass because the operator request, signed customer recovery, genuine Stripe CLI webhook transition, canonical dispatch unlock, privacy-safe visibility and governed exception behavior are proven across linked isolated evidence.
+- It deliberately does not claim a single deployed end-to-end run. Persistent staging endpoint/secrets, staging deployment/migration, owner acceptance, merge and live release still require explicit approval.
+
 ## Remaining APP-012 Work and Risk
 
-- Add final end-to-end customer payment status evidence and explicitly approved persistent endpoint configuration.
-- Configure persistent staging/production webhook endpoints and secrets only as part of an explicitly approved release workflow.
+- Run the continuous staging acceptance checklist only after explicit approval for staging deployment, migration and Stripe sandbox endpoint configuration.
+- Configure production endpoint/secrets and release only after a separate live approval.
 - The webhook transition slice and isolated Stripe CLI delivery proof are complete but not deployed; APP-012 remains unreleasable.
 
 ## Review Steps
@@ -157,5 +163,5 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 ## Completion Estimate
 
-- APP-012: approximately 88% complete (payment gate, payment requests/operator controls, signed/idempotent webhook transitions/visibility, sandbox delivery proof, customer recovery/status UI, and governed payment exceptions complete; persistent endpoint configuration, final acceptance and release remain).
-- Governed CallDesk APP-006 through APP-016 sequence: approximately 67% complete (APP-006 through APP-011 released, plus six implemented APP-012 slices; release acceptance remains the governing measure).
+- APP-012: approximately 95% complete (implementation, linked local/sandbox lifecycle evidence, governed exceptions and release checklist complete; continuous deployed staging acceptance, owner sign-off and release remain).
+- Governed CallDesk APP-006 through APP-016 sequence: approximately 68% complete (APP-006 through APP-011 released, APP-012 implementation review-ready with conditional local acceptance; release acceptance remains the governing measure).
