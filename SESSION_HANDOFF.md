@@ -4,10 +4,10 @@ Last Updated: 2026-09-07
 
 ## Current Program Pointer
 
-- Active ticket: `APP-012` payment gate and webhook status workflow.
+- Active ticket: `APP-013` Twilio-backed notification center and transactional customer messaging.
+- APP-012 is owner-approved, merged and released from PR `#14` at `068f4c2`.
 - APP-011 is owner-approved, merged and released from PR `#13` at `28d394f`.
-- Next ticket after APP-012: `APP-013` Twilio-backed notification center and transactional customer messaging.
-- Keep the WIP limit at one and do not start APP-013 until APP-012 is accepted and released.
+- Keep the WIP limit at one; APP-013 implementation has not started.
 
 ## APP-012 Review Checkpoint
 
@@ -101,6 +101,16 @@ Last Updated: 2026-09-07
 - A new post-destination disposable `$100.00 USD` Checkout then delivered automatically from Stripe with HTTP 200. Canonical status became `SUCCEEDED`, fee stayed zero, tenant destination matched, dispatch unlocked and exactly one processed event/transition audit was stored. Workbench resend also returned HTTP 200 with `duplicate: true` while database counts stayed one.
 - Evidence: `evidence/APP-012/release-checklist.md`. APP-012 sandbox implementation and acceptance are 100% complete; APP-006 through APP-016 is approximately 69% complete. Merge, production release, live-mode configuration and a real transaction remain separately approval-gated.
 
+## APP-012 Release (2026-09-07)
+
+- Owner authorized merge and staging release. PR `#14` merged the accepted branch to backend `main` at `068f4c27daf00ee4967fd5d77432e0605fedf044`.
+- Release gates passed before merge: backend build, 224 tests with 3 policy-skipped, architecture and Prisma validation; UI lint/static build and 17 tests.
+- Cloud Build `dd7ca7ec-1777-45b6-8659-fba8998a9b63` produced image `068f4c2` with digest `sha256:838121ce33dc17343ec2182bee83d39118626a68aa702802b13205635d501a33`.
+- Migration execution `signmons-calldesk-migrate-pgr84` completed successfully from that digest. Cloud Run revision `signmons-calldesk-staging-app012release` serves 100 percent of staging traffic.
+- Firebase Hosting published the exact merged build. `/app/dispatch`, `/appointment/manage` and `/payment/status` return HTTP 200; backend liveness/readiness return 200, approved-origin CORS is present and unsigned Stripe webhook traffic fails closed with 400.
+- Temporary build bucket, Artifact Registry and logging grants were removed and `signmons-build` was disabled. The sandbox Stripe destination and vault secret remain staging-only; no live-mode key, production payment or real transaction was authorized.
+- APP-012 is Done. APP-013 is promoted to Now without beginning implementation.
+
 ## APP-011 Implementation
 
 - Added a public, rate-limited `POST /appointments/manage` boundary that treats the HMAC secure-link token as authority and keeps the existing tenant-authenticated webchat endpoint compatible.
@@ -129,10 +139,10 @@ Last Updated: 2026-09-07
 
 ## Next Actions
 
-1. Review the completed APP-012 sandbox acceptance evidence; keep APP-012 in `Now` and unreleased until owner merge/release acceptance.
-2. After explicit owner approval, merge/release the accepted commit through the governed production process; do not reuse sandbox secrets in production.
+1. Reconcile APP-013 with its Twilio transport/compliance prerequisites before implementation.
+2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. Do not begin APP-013, merge, migrate or deploy without owner approval.
+4. Do not begin APP-013 implementation without a bounded plan and owner direction.
 
 ## Restart Commands
 

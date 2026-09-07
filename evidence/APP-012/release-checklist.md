@@ -2,11 +2,13 @@
 
 Date: 2026-09-07
 Branch: `codex/app-012-payment-gate`
-State: sandbox acceptance complete; merge and production release remain unauthorized
+State: sandbox acceptance complete; merged and released to staging; live mode remains unauthorized
 
 ## Acceptance Decision
 
 APP-012 has a **governed sandbox acceptance pass** for Stripe transport, signature verification, automatic post-destination payment transition and Stripe-originated duplicate idempotency. Owner merge acceptance and production release remain separately approval-gated.
+
+The owner authorized merge and staging release on 2026-09-07. PR `#14` merged at `068f4c2`; the exact merged image was migrated and deployed to staging, and the exact merged UI build was published. Stripe live mode and any controlled real transaction remain outside this release.
 
 ## Linked Acceptance Matrix
 
@@ -116,3 +118,15 @@ Do not configure live mode until the continuous staging acceptance run passes an
 - Use a controlled real transaction only with explicit owner approval; verify canonical webhook status before fulfillment.
 - Record commit, image digest, migration job, Cloud Run revision, endpoint configuration metadata, acceptance witness and rollback result.
 - Mark APP-012 `Done` only after the acceptance evidence, governance board and global pointer are updated together.
+
+## Governed Staging Release — 2026-09-07
+
+- PR: `#14`; merge commit `068f4c27daf00ee4967fd5d77432e0605fedf044`.
+- Cloud Build: `dd7ca7ec-1777-45b6-8659-fba8998a9b63`.
+- Image digest: `sha256:838121ce33dc17343ec2182bee83d39118626a68aa702802b13205635d501a33`.
+- Migration execution: `signmons-calldesk-migrate-pgr84`, successful.
+- Cloud Run: `signmons-calldesk-staging-app012release`, 100 percent staging traffic.
+- Firebase Hosting: `/app/dispatch`, `/appointment/manage` and `/payment/status` published and HTTP 200.
+- Runtime checks: liveness 200, readiness 200, approved-origin CORS present and unsigned webhook 400.
+- Cleanup: temporary logging, build-bucket and Artifact Registry grants removed; build service account disabled.
+- Boundary: sandbox destination and secrets only. No live-mode configuration, production payment or real transaction.
