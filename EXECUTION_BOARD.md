@@ -16,10 +16,11 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Now
 
-- [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
+- [ ] BE-008 Twilio communications foundation
 
 ## Next
 
+- [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
 - [ ] APP-018 Brand voice and AI personality configuration (`SCR-APP-027`)
 - [ ] APP-019 Customer profiles and service history (`SCR-APP-028`)

@@ -31,6 +31,17 @@ const requiredFiles = [
   "src/integrations/webchat/webchat-integration.guard.ts",
   "src/integrations/webchat/webchat.controller.ts",
   "src/ai/safety/life-safety.service.ts",
+  "src/communications/communications.module.ts",
+  "src/communications/communications-operations.controller.ts",
+  "src/communications/sms-consent.service.ts",
+  "src/communications/sms-delivery.service.ts",
+  "src/communications/sms-delivery.worker.ts",
+  "src/communications/sms-provider.interface.ts",
+  "src/communications/twilio-sms.provider.ts",
+  "src/communications/twilio-webhook.service.ts",
+  "src/communications/twilio-webhooks.controller.ts",
+  "prisma/migrations/20260907180000_add_sms_consent_records/migration.sql",
+  "prisma/migrations/20260907220000_add_sms_delivery_state/migration.sql",
   "prisma/migrations/20260828000000_canonical_schema_reconciliation/migration.sql",
 ];
 

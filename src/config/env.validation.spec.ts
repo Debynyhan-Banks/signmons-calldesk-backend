@@ -69,6 +69,119 @@ describe("environment validation", () => {
     expect(result.error).toBeDefined();
   });
 
+  it("accepts a unique HTTPS Twilio tenant identity", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      TWILIO_AUTH_TOKEN: "test-only-auth-token",
+      SMS_CONSENT_HASH_KEY: "x".repeat(32),
+      TWILIO_WEBHOOK_BASE_URL: "https://api.example.test",
+      TWILIO_WEBHOOK_ENVIRONMENT: "staging",
+      TWILIO_TENANT_IDENTITIES_JSON: JSON.stringify([
+        {
+          tenantId: "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1",
+          phoneNumber: "+13305550123",
+          environment: "staging",
+          enabled: true,
+          displayName: "Example Contractor",
+          voiceGreeting: "Thank you for calling Example Contractor.",
+          timeZone: "America/New_York",
+          quietHoursStart: 19,
+          quietHoursEnd: 7,
+          supportPhone: "+12165550199",
+        },
+      ]),
+    });
+
+    expect(result.error).toBeUndefined();
+  });
+
+  it("rejects enabled SMS delivery without an account and tenant identity", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      SMS_DELIVERY_ENABLED: "true",
+    });
+
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects duplicate enabled Twilio identities in one environment", () => {
+    const identity = {
+      tenantId: "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1",
+      phoneNumber: "+13305550123",
+      environment: "staging",
+      enabled: true,
+      displayName: "Example Contractor",
+      voiceGreeting: "Thank you for calling Example Contractor.",
+      timeZone: "America/New_York",
+      quietHoursStart: 19,
+      quietHoursEnd: 7,
+      supportPhone: "+12165550199",
+    };
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      TWILIO_AUTH_TOKEN: "test-only-auth-token",
+      SMS_CONSENT_HASH_KEY: "x".repeat(32),
+      TWILIO_WEBHOOK_BASE_URL: "https://api.example.test",
+      TWILIO_WEBHOOK_ENVIRONMENT: "staging",
+      TWILIO_TENANT_IDENTITIES_JSON: JSON.stringify([
+        identity,
+        { ...identity, tenantId: "9a4ee1b2-807c-4caa-a176-4a5dd0a8eb10" },
+      ]),
+    });
+
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects Twilio identities with malformed phone numbers", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      TWILIO_AUTH_TOKEN: "test-only-auth-token",
+      SMS_CONSENT_HASH_KEY: "x".repeat(32),
+      TWILIO_WEBHOOK_BASE_URL: "https://api.example.test",
+      TWILIO_TENANT_IDENTITIES_JSON: JSON.stringify([
+        {
+          tenantId: "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1",
+          phoneNumber: "330-555-0123",
+          environment: "staging",
+          enabled: true,
+          displayName: "Example Contractor",
+          voiceGreeting: "Thank you for calling Example Contractor.",
+          timeZone: "America/New_York",
+          quietHoursStart: 19,
+          quietHoursEnd: 7,
+          supportPhone: "+12165550199",
+        },
+      ]),
+    });
+
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects a Twilio webhook base URL containing a route", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      TWILIO_AUTH_TOKEN: "test-only-auth-token",
+      SMS_CONSENT_HASH_KEY: "x".repeat(32),
+      TWILIO_WEBHOOK_BASE_URL: "https://api.example.test/untrusted-path",
+      TWILIO_TENANT_IDENTITIES_JSON: JSON.stringify([
+        {
+          tenantId: "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1",
+          phoneNumber: "+13305550123",
+          environment: "staging",
+          enabled: true,
+          displayName: "Example Contractor",
+          voiceGreeting: "Thank you for calling Example Contractor.",
+          timeZone: "America/New_York",
+          quietHoursStart: 19,
+          quietHoursEnd: 7,
+          supportPhone: "+12165550199",
+        },
+      ]),
+    });
+
+    expect(result.error).toBeDefined();
+  });
+
   it("rejects production without a conversation encryption key", () => {
     const withoutKey: Record<string, unknown> = { ...productionEnvironment };
     delete withoutKey.CONVERSATION_DATA_ENCRYPTION_KEY;

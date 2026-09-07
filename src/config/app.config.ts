@@ -28,6 +28,11 @@ export interface AppConfig {
   twilioAccountSid: string;
   twilioAuthToken: string;
   twilioPhoneNumber: string;
+  twilioWebhookBaseUrl: string;
+  twilioWebhookEnvironment: TwilioEnvironment;
+  twilioTenantIdentities: TwilioTenantIdentityConfig[];
+  smsConsentHashKey: string;
+  smsDeliveryEnabled: boolean;
   jobNotificationSmsNumbers: string[];
   conversationDataEncryptionKey: string;
   schedulingEnabled: boolean;
@@ -42,6 +47,21 @@ export interface AppConfig {
   stripeWebhookSecret: string;
   stripeWebhookLivemode: boolean;
   customerPaymentReturnUrl: string;
+}
+
+export type TwilioEnvironment = "test" | "staging" | "production";
+
+export interface TwilioTenantIdentityConfig {
+  tenantId: string;
+  phoneNumber: string;
+  environment: TwilioEnvironment;
+  enabled: boolean;
+  displayName: string;
+  voiceGreeting: string;
+  timeZone: string;
+  quietHoursStart: number;
+  quietHoursEnd: number;
+  supportPhone: string;
 }
 
 export interface WebchatIntegrationConfig {
@@ -107,6 +127,15 @@ export default registerAs("app", (): AppConfig => {
     twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
     twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
     twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
+    twilioWebhookBaseUrl: process.env.TWILIO_WEBHOOK_BASE_URL ?? "",
+    twilioWebhookEnvironment:
+      (process.env.TWILIO_WEBHOOK_ENVIRONMENT as TwilioEnvironment) ?? "test",
+    twilioTenantIdentities: parseTwilioTenantIdentities(
+      process.env.TWILIO_TENANT_IDENTITIES_JSON,
+    ),
+    smsConsentHashKey: process.env.SMS_CONSENT_HASH_KEY ?? "",
+    smsDeliveryEnabled:
+      (process.env.SMS_DELIVERY_ENABLED ?? "false").toLowerCase() === "true",
     jobNotificationSmsNumbers: parseCommaSeparated(
       process.env.JOB_NOTIFICATION_SMS_NUMBERS,
     ),
@@ -146,6 +175,34 @@ function parseCommaSeparated(value: string | undefined): string[] {
         .map((entry) => entry.trim())
         .filter(Boolean)
     : [];
+}
+
+function parseTwilioTenantIdentities(
+  value: string | undefined,
+): TwilioTenantIdentityConfig[] {
+  if (!value) return [];
+  const parsed: unknown = JSON.parse(value);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(isTwilioTenantIdentityConfig);
+}
+
+function isTwilioTenantIdentityConfig(
+  value: unknown,
+): value is TwilioTenantIdentityConfig {
+  if (!value || typeof value !== "object") return false;
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.tenantId === "string" &&
+    typeof entry.phoneNumber === "string" &&
+    ["test", "staging", "production"].includes(String(entry.environment)) &&
+    typeof entry.enabled === "boolean" &&
+    typeof entry.displayName === "string" &&
+    typeof entry.voiceGreeting === "string" &&
+    typeof entry.timeZone === "string" &&
+    typeof entry.quietHoursStart === "number" &&
+    typeof entry.quietHoursEnd === "number" &&
+    typeof entry.supportPhone === "string"
+  );
 }
 
 function parseWebchatIntegrations(

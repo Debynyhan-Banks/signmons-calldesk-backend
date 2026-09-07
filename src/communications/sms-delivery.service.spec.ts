@@ -1,0 +1,287 @@
+import { ConflictException } from "@nestjs/common";
+import type { ConfigType } from "@nestjs/config";
+import { CommunicationStatus } from "@prisma/client";
+import appConfig from "../config/app.config";
+import type { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.service";
+import type { PrismaService } from "../prisma/prisma.service";
+import type { SmsConsentService } from "./sms-consent.service";
+import { SmsDeliveryService } from "./sms-delivery.service";
+import { SmsProviderError, type SmsProvider } from "./sms-provider.interface";
+
+describe("SmsDeliveryService", () => {
+  const tenantId = "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1";
+  const eventId = "10000000-0000-4000-8000-000000000001";
+  const to = "+12165550183";
+  const identity = {
+    tenantId,
+    phoneNumber: "+13305550123",
+    environment: "staging" as const,
+    enabled: true,
+    displayName: "Example Contractor",
+    voiceGreeting: "Hello",
+    timeZone: "America/New_York",
+    quietHoursStart: 19,
+    quietHoursEnd: 7,
+    supportPhone: "+12165550199",
+  };
+  const prisma = {
+    communicationEvent: {
+      findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      upsert: jest.fn(),
+      findMany: jest.fn(),
+      updateMany: jest.fn(),
+      update: jest.fn(),
+    },
+    auditLog: { create: jest.fn() },
+    $transaction: jest.fn(),
+  };
+  const consent = { evaluateOutbound: jest.fn() };
+  const cipher = { encrypt: jest.fn(), decrypt: jest.fn() };
+  const provider = { send: jest.fn() };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    consent.evaluateOutbound.mockResolvedValue({ allowed: true });
+    cipher.encrypt.mockReturnValue("encrypted");
+    cipher.decrypt.mockReturnValue(
+      JSON.stringify({ to, body: "Appointment confirmed" }),
+    );
+    prisma.communicationEvent.findUnique.mockResolvedValue(null);
+    prisma.communicationEvent.upsert.mockImplementation(
+      (args: { create: { content: { create: { payload: unknown } } } }) =>
+        Promise.resolve({
+          id: eventId,
+          status: CommunicationStatus.QUEUED,
+          content: { payload: args.create.content.create.payload },
+        }),
+    );
+    prisma.communicationEvent.updateMany.mockResolvedValue({ count: 1 });
+    prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({
+      id: eventId,
+      attemptCount: 1,
+      content: { encryptedRaw: "encrypted" },
+    });
+    prisma.communicationEvent.update.mockResolvedValue({});
+    provider.send.mockResolvedValue({
+      externalId: "SM00000000000000000000000000000001",
+      status: "queued",
+    });
+  });
+
+  it("creates one encrypted, privacy-safe queue record and reuses its idempotency key", async () => {
+    const service = createService();
+    await service.create({
+      tenantId,
+      to,
+      body: "Appointment confirmed",
+      idempotencyKey: "request-1",
+    });
+
+    expect(prisma.communicationEvent.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          status: CommunicationStatus.QUEUED,
+          content: {
+            create: expect.objectContaining({ encryptedRaw: "encrypted" }),
+          },
+        }),
+      }),
+    );
+    expect(
+      JSON.stringify(prisma.communicationEvent.upsert.mock.calls[0]),
+    ).not.toContain(to);
+
+    await expect(
+      service.create({
+        tenantId,
+        to,
+        body: "ignored duplicate",
+        idempotencyKey: "request-1",
+      }),
+    ).resolves.toEqual({ id: eventId, status: CommunicationStatus.QUEUED });
+    expect(prisma.communicationEvent.upsert).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects an idempotency key reused for different content", async () => {
+    prisma.communicationEvent.upsert.mockResolvedValue({
+      id: eventId,
+      status: CommunicationStatus.QUEUED,
+      content: { payload: { requestHash: "different" } },
+    });
+
+    await expect(
+      createService().create({
+        tenantId,
+        to,
+        body: "Different message",
+        idempotencyKey: "request-1",
+      }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it("suppresses before queue creation when consent policy denies delivery", async () => {
+    consent.evaluateOutbound.mockResolvedValue({
+      allowed: false,
+      reason: "quiet_hours",
+    });
+    await expect(
+      createService().create({
+        tenantId,
+        to,
+        body: "Hello",
+        idempotencyKey: "request-2",
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.communicationEvent.upsert).not.toHaveBeenCalled();
+  });
+
+  it("claims and sends once with a signed-callback destination", async () => {
+    await expect(createService().deliver(tenantId, eventId)).resolves.toBe(
+      CommunicationStatus.SENT,
+    );
+    expect(provider.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: identity.phoneNumber,
+        to,
+        statusCallback: "https://api.example.test/webhooks/twilio/sms/status",
+      }),
+    );
+    expect(prisma.communicationEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: CommunicationStatus.SENT }),
+      }),
+    );
+  });
+
+  it("prevents concurrent or duplicate delivery claims", async () => {
+    prisma.communicationEvent.updateMany.mockResolvedValue({ count: 0 });
+    await expect(createService().deliver(tenantId, eventId)).rejects.toThrow(
+      ConflictException,
+    );
+    expect(provider.send).not.toHaveBeenCalled();
+  });
+
+  it("schedules a bounded retry only for an explicit retry-safe rejection", async () => {
+    provider.send.mockRejectedValue(
+      new SmsProviderError("busy", "http_429", true),
+    );
+    await expect(createService().deliver(tenantId, eventId)).resolves.toBe(
+      CommunicationStatus.FAILED,
+    );
+    expect(prisma.communicationEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: CommunicationStatus.FAILED,
+          lastErrorCode: "http_429",
+          nextAttemptAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
+
+  it("dead-letters ambiguous outcomes instead of risking a duplicate send", async () => {
+    provider.send.mockRejectedValue(
+      new SmsProviderError("timeout", "ambiguous_transport", false),
+    );
+    await expect(createService().deliver(tenantId, eventId)).resolves.toBe(
+      CommunicationStatus.DEAD_LETTER,
+    );
+    expect(prisma.communicationEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: CommunicationStatus.DEAD_LETTER,
+          lastErrorCode: "ambiguous_transport",
+        }),
+      }),
+    );
+  });
+
+  it("applies duplicate callbacks idempotently and never regresses delivered", async () => {
+    prisma.communicationEvent.findUnique.mockResolvedValue({
+      id: eventId,
+      status: CommunicationStatus.DELIVERED,
+    });
+    const service = createService();
+    await service.applyStatus({
+      tenantId,
+      externalId: "SM00000000000000000000000000000001",
+      providerStatus: "delivered",
+    });
+    await service.applyStatus({
+      tenantId,
+      externalId: "SM00000000000000000000000000000001",
+      providerStatus: "undelivered",
+      errorCode: "30003",
+    });
+    expect(prisma.communicationEvent.update).not.toHaveBeenCalled();
+  });
+
+  it("does not process queued work while delivery is disabled", async () => {
+    await expect(createService().processDue()).resolves.toBe(0);
+    expect(prisma.communicationEvent.findMany).not.toHaveBeenCalled();
+    expect(provider.send).not.toHaveBeenCalled();
+  });
+
+  it("requires duplicate-risk acknowledgment before dead-letter replay", async () => {
+    prisma.communicationEvent.findUnique.mockResolvedValue({
+      status: CommunicationStatus.DEAD_LETTER,
+      lastErrorCode: "ambiguous_transport",
+    });
+
+    await expect(
+      createService().replayDeadLetter({
+        tenantId,
+        eventId,
+        actorId: "operator-1",
+        acknowledgeDuplicateRisk: false,
+        reason: "Customer requested a controlled replay.",
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns privacy-safe tenant delivery metrics", async () => {
+    prisma.communicationEvent.findMany.mockResolvedValue([
+      {
+        status: CommunicationStatus.DELIVERED,
+        attemptCount: 1,
+        lastErrorCode: null,
+      },
+      {
+        status: CommunicationStatus.DEAD_LETTER,
+        attemptCount: 3,
+        lastErrorCode: "http_429",
+      },
+    ]);
+
+    await expect(createService().metrics(tenantId, 30)).resolves.toEqual(
+      expect.objectContaining({
+        total: 2,
+        attempts: 4,
+        byStatus: { DELIVERED: 1, DEAD_LETTER: 1 },
+        failuresByCode: { http_429: 1 },
+        truncated: false,
+      }),
+    );
+    expect(
+      JSON.stringify(prisma.communicationEvent.findMany.mock.calls[0]),
+    ).not.toContain(to);
+  });
+
+  function createService(): SmsDeliveryService {
+    return new SmsDeliveryService(
+      prisma as unknown as PrismaService,
+      consent as unknown as SmsConsentService,
+      cipher as unknown as ConversationMemoryCipher,
+      provider as unknown as SmsProvider,
+      {
+        twilioWebhookBaseUrl: "https://api.example.test",
+        twilioWebhookEnvironment: "staging",
+        twilioTenantIdentities: [identity],
+        smsConsentHashKey: "x".repeat(32),
+        smsDeliveryEnabled: false,
+      } as ConfigType<typeof appConfig>,
+    );
+  }
+});
