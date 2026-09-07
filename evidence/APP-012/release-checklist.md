@@ -43,6 +43,7 @@ APP-012 has a **conditional local acceptance pass**. The implemented contract an
   - `payment_intent.payment_failed`
   - `charge.refunded`
 - Store the endpoint signing secret in Google Secret Manager as the staging `STRIPE_WEBHOOK_SECRET`. Never paste it into source, tickets, chat, logs or browser code.
+- Set staging `STRIPE_WEBHOOK_LIVEMODE=false`; the application rejects even correctly signed events when their top-level Stripe `livemode` differs from this explicit environment boundary.
 - Prefer a dedicated restricted sandbox key with only the Checkout Session create/read permissions actually exercised by this service. Store it in Secret Manager as the staging `STRIPE_SECRET_KEY`; grant access only to the runtime service account.
 - Keep sandbox and live keys/signing secrets separate. A CLI listener secret cannot be reused for a Workbench endpoint.
 - Record only endpoint name, environment, enabled event types, secret version identifier and approver—not secret values.
@@ -64,7 +65,7 @@ Use a disposable tenant/job/customer fixture and the sandbox connected contracto
 6. Open the request through the signed customer booking link and complete the sandbox Checkout.
 7. Verify one processed signed event, one webhook transition audit, canonical `SUCCEEDED`, operator timeline visibility and dispatch unlock.
 8. Replay the same event and verify no duplicate payment/audit mutation.
-9. Run separate negative fixtures for invalid signature, connected-account mismatch and amount/currency mismatch; each must fail closed.
+9. Run separate negative fixtures for invalid signature, live/test-mode mismatch, connected-account mismatch and amount/currency mismatch; each must fail closed before payment mutation.
 10. Run failed/expired and refund fixtures; assignment must remain or become locked according to canonical state unless a separately governed exception is active.
 11. Confirm success-page navigation alone never changes payment or dispatch state.
 12. Remove disposable customer/job/payment data and record fixture cleanup counts.
@@ -74,6 +75,7 @@ Use a disposable tenant/job/customer fixture and the sandbox connected contracto
 - Search the reviewed commit and build logs for live/test API-key and webhook-secret patterns.
 - Confirm no Checkout URL, secure booking token or Stripe provider ID appears in audit/event projections or application logs.
 - Confirm operator endpoints require verified authentication, tenant scope and permitted roles; exception approval remains owner/admin only.
+- Confirm `STRIPE_WEBHOOK_LIVEMODE` is explicit and agrees with the configured Stripe key mode and intended destination.
 - Confirm CORS allows only the approved frontend origins and no endpoint returns environment variables.
 - Confirm throttling and `Cache-Control: private, no-store` remain active on operator/status boundaries.
 - Verify secret access through runtime identity, then remove any temporary build or operator access used for release.
@@ -90,6 +92,7 @@ Use a disposable tenant/job/customer fixture and the sandbox connected contracto
 Do not configure live mode until the continuous staging acceptance run passes and the owner separately approves live release.
 
 - Create separate live restricted key and live Connected accounts event destination.
+- Set production `STRIPE_WEBHOOK_LIVEMODE=true` and verify a signed test-mode event fails before any database access.
 - Store new live secrets only in the production secret vault and grant least-privilege runtime access.
 - Deploy the exact accepted commit/digest, run migrations, verify readiness, then enable the endpoint.
 - Use a controlled real transaction only with explicit owner approval; verify canonical webhook status before fulfillment.

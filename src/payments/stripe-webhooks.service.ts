@@ -36,6 +36,7 @@ type StripeEvent = {
   id: string;
   type: string;
   account: string;
+  livemode: boolean;
   created: number;
   data: { object: StripeObject };
 };
@@ -60,6 +61,11 @@ export class StripeWebhooksService {
     const event = this.verify(rawBody, signature);
     if (!HANDLED_EVENTS.has(event.type)) {
       return { received: true, handled: false };
+    }
+    if (event.livemode !== this.config.stripeWebhookLivemode) {
+      throw new UnprocessableEntityException(
+        "Stripe webhook mode does not match the configured environment.",
+      );
     }
 
     const tenant = await this.prisma.tenantOrganization.findFirst({
@@ -336,6 +342,7 @@ export class StripeWebhooksService {
         typeof event.type === "string" &&
         typeof event.account === "string" &&
         event.account.startsWith("acct_") &&
+        typeof event.livemode === "boolean" &&
         Number.isSafeInteger(event.created) &&
         data &&
         this.record(data.object),

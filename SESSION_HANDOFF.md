@@ -84,6 +84,14 @@ Last Updated: 2026-09-06
 - No Stripe endpoint, secret, IAM policy, database, deployment, merge, release or live-mode state was changed in this section.
 - APP-012 is approximately 95% complete; APP-006 through APP-016 is approximately 68% complete.
 
+## APP-012 Webhook Mode Boundary Checkpoint (2026-09-07)
+
+- Added explicit `STRIPE_WEBHOOK_LIVEMODE` configuration and rejected handled signed events before database access when their top-level Stripe `livemode` does not match the configured environment.
+- Production validation now requires an explicit webhook mode whenever Stripe Checkout or webhook credentials are configured and rejects recognizable live/test key prefixes that conflict with it.
+- Focused webhook/config validation passed 2 suites and 25 tests. Full backend build/lint, 28 suites and 224 tests, architecture, Prisma validation and the critical audit gate pass; unchanged UI lint/build and 4 suites/17 tests also pass.
+- This server/config-only hardening changes no rendered UI, so the existing September 6 desktop/390px browser evidence remains applicable and no new visual artifact was warranted.
+- No endpoint, credential, IAM policy, database, payment, deployment, merge, release or customer state was changed. APP-012 remains approximately 95% complete and unreleased pending explicit staging acceptance approval.
+
 ## APP-011 Implementation
 
 - Added a public, rate-limited `POST /appointments/manage` boundary that treats the HMAC secure-link token as authority and keeps the existing tenant-authenticated webchat endpoint compatible.

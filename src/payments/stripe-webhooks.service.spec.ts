@@ -35,6 +35,7 @@ describe("StripeWebhooksService", () => {
   };
   const config = {
     stripeWebhookSecret: webhookSecret,
+    stripeWebhookLivemode: false,
   } as ConfigType<typeof appConfig>;
   const service = new StripeWebhooksService(
     prisma as unknown as PrismaService,
@@ -166,6 +167,29 @@ describe("StripeWebhooksService", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it("rejects a signed event from the wrong Stripe mode before database access", async () => {
+    const request = signedRequest(
+      event(
+        "checkout.session.completed",
+        {
+          id: "cs_live_unexpected",
+          payment_status: "paid",
+          amount_total: 10000,
+          currency: "usd",
+          metadata: { paymentRequestId: paymentId },
+        },
+        true,
+      ),
+    );
+
+    await expect(
+      service.receive(request.body, request.header),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(prisma.tenantOrganization.findFirst).not.toHaveBeenCalled();
+    expect(prisma.payment.findFirst).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["checkout.session.async_payment_failed", PaymentStatus.FAILED],
     ["payment_intent.payment_failed", PaymentStatus.FAILED],
@@ -254,11 +278,16 @@ function payment(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function event(type: string, object: Record<string, unknown>) {
+function event(
+  type: string,
+  object: Record<string, unknown>,
+  livemode = false,
+) {
   return {
     id: "evt_test_event",
     type,
     account: accountId,
+    livemode,
     created: timestamp,
     data: { object },
   };

@@ -34,6 +34,7 @@ APP-012 remains in `Now`. The linked local lifecycle evidence has a conditional 
 - Added the Stripe Checkout adapter as a direct connected-account charge with no application fee. It is fail-closed when the server secret or tenant payment readiness is absent; no real provider call was made in this checkpoint.
 - Added migration `20260904100000_add_payment_request_tracking` for the hashed idempotency key, requested timestamp and checkout expiry. Checkout URLs and provider secrets are not stored.
 - Added `POST /webhooks/stripe` with raw-body HMAC-SHA256 signature verification, a five-minute replay tolerance, connected-account-to-tenant binding, tenant-scoped payment lookup, and duplicate-event suppression through the existing `StripeEvent` model.
+- Added an explicit expected Stripe event mode. Handled Connect events must include a boolean top-level `livemode` matching `STRIPE_WEBHOOK_LIVEMODE`; mismatches fail before tenant/payment lookup or transaction work.
 - Added fail-closed amount/currency validation before successful payment transitions. Checkout completion, asynchronous success/failure, expiration, PaymentIntent failure, and full/partial charge refunds map to canonical payment and refund states without allowing a late success event to overwrite a refund.
 - Webhook event storage is bounded to event type, internal payment ID, and Stripe-created timestamp. Customer payloads and provider identifiers are not copied into audit metadata. Production Checkout configuration now also requires `STRIPE_WEBHOOK_SECRET`.
 - Extended the signed `/appointments/manage` boundary with `continue_payment`. Ordinary status reads expose only `canContinue`; the Checkout URL is returned only after this authorized action.
@@ -48,8 +49,8 @@ APP-012 remains in `Now`. The linked local lifecycle evidence has a conditional 
 
 ### Backend
 
-- Focused payment request/recovery/operator-event, gate-exception, and exception-access tests: 3 suites and 35 tests passed.
-- Full tests: 28 suites and 221 tests passed; 1 suite/3 tests skipped by the existing database-test policy.
+- Focused webhook/config mode-boundary tests: 2 suites and 25 tests passed.
+- Full tests: 28 suites and 224 tests passed; 1 suite/3 tests skipped by the existing database-test policy.
 - `npm run -s build`: passed.
 - `npm run -s lint`: passed with no errors.
 - `npm run -s arch:check`: passed.
@@ -70,6 +71,7 @@ Focused coverage proves:
 - provider failure is persisted as failed and audited with a bounded reason code;
 - operator tracking excludes Checkout session, PaymentIntent, account and request-key values.
 - invalid and stale webhook signatures fail before database access;
+- signed webhook events whose live/test mode differs from explicit environment configuration fail before database access;
 - connected accounts that do not map to a tenant fail closed;
 - paid events with mismatched amount/currency cannot unlock dispatch;
 - duplicate deliveries acknowledge without repeating payment or audit mutations;
@@ -147,6 +149,13 @@ The local dispatcher page was exercised with the isolated locked fixture.
 - The matrix records a conditional local pass because the operator request, signed customer recovery, genuine Stripe CLI webhook transition, canonical dispatch unlock, privacy-safe visibility and governed exception behavior are proven across linked isolated evidence.
 - It deliberately does not claim a single deployed end-to-end run. Persistent staging endpoint/secrets, staging deployment/migration, owner acceptance, merge and live release still require explicit approval.
 
+## Webhook Mode Boundary Hardening
+
+- Stripe Connect documentation notes that live webhook destinations can receive both live- and test-mode events and identifies the event's top-level `livemode` as the required discriminator.
+- `STRIPE_WEBHOOK_LIVEMODE` makes the accepted mode explicit. Production startup validation requires the setting whenever Stripe credentials are configured and rejects recognizable key prefixes that conflict with the chosen mode.
+- A correctly signed wrong-mode event returns a fail-closed response before any tenant, payment, event or audit lookup/write. This section used only local automated tests and did not contact Stripe.
+- The change is server/config-only; existing September 6 desktop/390px browser evidence remains current.
+
 ## Remaining APP-012 Work and Risk
 
 - Run the continuous staging acceptance checklist only after explicit approval for staging deployment, migration and Stripe sandbox endpoint configuration.
@@ -157,7 +166,7 @@ The local dispatcher page was exercised with the isolated locked fixture.
 
 1. Review payment request and signed customer recovery orchestration, privacy-safe projections and audits in `src/payments/payment-requests.service.ts` and `src/scheduling/scheduling.service.ts`.
 2. Review the provider boundary in `src/payments/stripe-checkout.provider.ts`: Checkout must remain a direct contractor connected-account charge with no Signmons application fee.
-3. Review `stripe-webhooks.controller.ts` and `stripe-webhooks.service.ts` for raw-body signature verification, account/tenant binding, idempotency, transition guards, and bounded audit storage.
+3. Review `stripe-webhooks.controller.ts` and `stripe-webhooks.service.ts` for raw-body signature verification, configured live/test mode enforcement, account/tenant binding, idempotency, transition guards, and bounded audit storage.
 4. Run backend gates: `npm run -s build && npm test -- --runInBand && npm run -s lint && npm run -s arch:check && npx prisma validate`.
 5. Confirm APP-012 remains in `Now`; do not merge, apply the migration outside an isolated local schema, configure Stripe or deploy without owner approval.
 

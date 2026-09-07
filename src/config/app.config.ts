@@ -40,6 +40,7 @@ export interface AppConfig {
   technicianAppBaseUrl: string;
   stripeSecretKey: string;
   stripeWebhookSecret: string;
+  stripeWebhookLivemode: boolean;
   customerPaymentReturnUrl: string;
 }
 
@@ -130,6 +131,8 @@ export default registerAs("app", (): AppConfig => {
       "http://localhost:3101/app/technician",
     stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+    stripeWebhookLivemode:
+      (process.env.STRIPE_WEBHOOK_LIVEMODE ?? "false").toLowerCase() === "true",
     customerPaymentReturnUrl:
       process.env.CUSTOMER_PAYMENT_RETURN_URL ??
       "http://localhost:3101/payment/status",

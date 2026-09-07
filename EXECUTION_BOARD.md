@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-012 Payment gate and webhook status workflow (`SCR-APP-006A`, `SCR-APP-006B`, `SCR-APP-006C`, `SCR-APP-023`, `SCR-CUST-002`)
-  - Payment implementation and linked local/sandbox lifecycle evidence are review-ready with a conditional acceptance pass on `codex/app-012-payment-gate`; the approval-gated endpoint/release checklist is complete, but continuous staging acceptance and release remain pending.
+  - Payment implementation and linked local/sandbox lifecycle evidence are review-ready with a conditional acceptance pass on `codex/app-012-payment-gate`; signed Connect events now fail closed when their `livemode` differs from explicit environment configuration. The approval-gated endpoint/release checklist is complete, but continuous staging acceptance and release remain pending.
 
 ## Next
 

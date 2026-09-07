@@ -77,6 +77,7 @@ export const envValidationSchema = Joi.object({
     .default("http://localhost:3101/app/technician"),
   STRIPE_SECRET_KEY: Joi.string().allow("").default(""),
   STRIPE_WEBHOOK_SECRET: Joi.string().allow("").default(""),
+  STRIPE_WEBHOOK_LIVEMODE: Joi.string().valid("true", "false", "TRUE", "FALSE"),
   CUSTOMER_PAYMENT_RETURN_URL: Joi.string()
     .uri({ scheme: ["http", "https"] })
     .default("http://localhost:3101/payment/status"),
@@ -175,6 +176,30 @@ export const envValidationSchema = Joi.object({
     if (
       returnUrl.protocol !== "https:" ||
       ["localhost", "127.0.0.1", "::1"].includes(returnUrl.hostname)
+    ) {
+      return helpers.error("any.invalid");
+    }
+  }
+  if (
+    values.NODE_ENV === "production" &&
+    (hasConfiguredString(values.STRIPE_SECRET_KEY) ||
+      hasConfiguredString(values.STRIPE_WEBHOOK_SECRET)) &&
+    !hasConfiguredString(values.STRIPE_WEBHOOK_LIVEMODE)
+  ) {
+    return helpers.error("any.invalid");
+  }
+  if (
+    values.NODE_ENV === "production" &&
+    hasConfiguredString(values.STRIPE_SECRET_KEY)
+  ) {
+    const stripeKey = String(values.STRIPE_SECRET_KEY);
+    const expectsLiveEvents =
+      String(values.STRIPE_WEBHOOK_LIVEMODE).toLowerCase() === "true";
+    if (
+      ((stripeKey.startsWith("sk_live_") || stripeKey.startsWith("rk_live_")) &&
+        !expectsLiveEvents) ||
+      ((stripeKey.startsWith("sk_test_") || stripeKey.startsWith("rk_test_")) &&
+        expectsLiveEvents)
     ) {
       return helpers.error("any.invalid");
     }
