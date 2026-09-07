@@ -30,5 +30,9 @@ Date: 2026-09-07
 
 ## Release disposition
 
-- Configuration correction is active in staging using the previously approved image.
-- The permanent naming and compatibility change is review-only until separately authorized for merge and deployment.
+- PR `#18` merged at `b6f1d13fb798e115eb7e8365a416a8fe07fe6123`.
+- Cloud Build `a3f8fa04-5753-443d-b3e8-c4ba3b151536` produced immutable image digest `sha256:37286933d882466b8592120f48eb69c34e14cdb5a23c1f37480e39a1e6ff933a`.
+- Cloud Run revision `signmons-calldesk-staging-app013bounds` passed zero-traffic liveness, readiness, unsigned voice rejection, unsigned SMS rejection, and outbound-specific configuration checks before promotion.
+- The revision now serves 100 percent of staging traffic; routed liveness and readiness return HTTP 200, and the Twilio voice/SMS webhook URLs still match exactly.
+- Inbound voice and SMS remain available 24/7. The separate outbound quiet window is 9 PM to 8 AM recipient-local, and outbound SMS remains disabled.
+- The temporary build service account was disabled after release and retains zero project, Artifact Registry repository, and Cloud Build bucket roles.
