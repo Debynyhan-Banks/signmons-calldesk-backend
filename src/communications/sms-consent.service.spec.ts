@@ -35,8 +35,8 @@ describe("SmsConsentService", () => {
     displayName: "Example Contractor",
     voiceGreeting: "Thank you for calling Example Contractor.",
     timeZone: "America/New_York",
-    quietHoursStart: 19,
-    quietHoursEnd: 7,
+    outboundQuietHoursStart: 21,
+    outboundQuietHoursEnd: 8,
     supportPhone: "+12165550199",
   };
 
@@ -261,6 +261,26 @@ describe("SmsConsentService", () => {
         phoneNumber,
         identity,
         new Date("2026-09-07T16:00:00.000Z"),
+      ),
+    ).resolves.toEqual({ allowed: true });
+  });
+
+  it("treats equal outbound bounds as no suppression without changing inbound availability", async () => {
+    prisma.smsConsentRecord.findUnique.mockResolvedValue({
+      status: SmsConsentStatus.OPTED_IN,
+    });
+    const service = createService();
+
+    await expect(
+      service.evaluateOutbound(
+        tenantId,
+        phoneNumber,
+        {
+          ...identity,
+          outboundQuietHoursStart: 0,
+          outboundQuietHoursEnd: 0,
+        },
+        new Date("2026-09-08T03:00:00.000Z"),
       ),
     ).resolves.toEqual({ allowed: true });
   });

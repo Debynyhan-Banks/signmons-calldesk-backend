@@ -20,8 +20,8 @@ describe("SmsDeliveryService", () => {
     displayName: "Example Contractor",
     voiceGreeting: "Hello",
     timeZone: "America/New_York",
-    quietHoursStart: 19,
-    quietHoursEnd: 7,
+    outboundQuietHoursStart: 21,
+    outboundQuietHoursEnd: 8,
     supportPhone: "+12165550199",
   };
   const prisma = {

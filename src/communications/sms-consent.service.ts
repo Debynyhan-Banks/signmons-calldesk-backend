@@ -142,7 +142,13 @@ export class SmsConsentService {
       return { allowed: false, reason: "opted_out" };
     }
     const hour = localHour(at, identity.timeZone);
-    if (isQuietHour(hour, identity.quietHoursStart, identity.quietHoursEnd)) {
+    if (
+      isQuietHour(
+        hour,
+        identity.outboundQuietHoursStart,
+        identity.outboundQuietHoursEnd,
+      )
+    ) {
       return { allowed: false, reason: "quiet_hours" };
     }
     return { allowed: true };
