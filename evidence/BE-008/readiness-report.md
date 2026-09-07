@@ -53,4 +53,16 @@ Deferred to the next BE-008 checkpoint:
 - No credential values or provider payloads are committed.
 - No Twilio Account, Messaging Service, Campaign, Brand, phone-number, call, or message identifiers are returned by the webhook API.
 - Recording and transcript capture remain disabled.
-- This checkpoint is review-ready only; merge, environment configuration, staging release, and live traffic remain separately approval-gated.
+- The reviewed code and additive migrations are released to staging with delivery disabled; Twilio credentials, provider configuration, sandbox traffic, and live activation remain separately approval-gated.
+
+## Governed staging release - 2026-09-07
+
+- Primary PR `#15` merged at `c94b8dcfc5c33ebbeca17353e33faa111eab10f7`.
+- The first zero-traffic candidate exposed a missing `AuthModule` import for the communications operator controller. It never received traffic. The correction added explicit authentication wiring plus an architecture regression check; PR `#16` merged at `fd6828a5b13d07e09b7c69edf435959e0882ae5d` after all 277 tests and required gates passed.
+- Cloud Build `650b6172-b608-435c-89ea-9a3d9a61adfc` produced the corrected merge image with digest `sha256:f95c830f956710caa2f9d6f7418f8ba6da5d68eb38feb3e4f6e4fc580ef0edf6`.
+- Migration execution `signmons-calldesk-migrate-jrq7h` completed successfully against the exact corrected image.
+- Cloud Run revision `signmons-calldesk-staging-be008release` became healthy and now serves 100 percent of staging traffic.
+- Candidate and routed checks returned HTTP 200 for liveness/readiness. The unauthenticated metrics endpoint returned 401. The unsigned, unconfigured Twilio voice webhook failed closed with 503.
+- `SMS_DELIVERY_ENABLED=false` is explicit on the released revision. No Twilio credential was accessed, no webhook identity was configured, and no call or SMS was initiated.
+- Temporary build access was removed after release: the dedicated build service account is disabled and has zero project, Cloud Build bucket, and Artifact Registry repository bindings.
+- This is a code and migration staging release, not Twilio sandbox acceptance. Signed sandbox voice/SMS callbacks, consented outbound delivery, STOP/START, status callback, dead-letter/replay, and cleanup evidence remain required before BE-008 is complete.
