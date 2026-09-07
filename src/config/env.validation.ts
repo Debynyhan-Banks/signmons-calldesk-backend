@@ -47,6 +47,15 @@ export const envValidationSchema = Joi.object({
   TWILIO_ACCOUNT_SID: Joi.string().allow("").default(""),
   TWILIO_AUTH_TOKEN: Joi.string().allow("").default(""),
   TWILIO_PHONE_NUMBER: Joi.string().allow("").default(""),
+  TWILIO_WEBHOOK_BASE_URL: Joi.string().allow("").default(""),
+  TWILIO_WEBHOOK_ENVIRONMENT: Joi.string()
+    .valid("test", "staging", "production")
+    .default("test"),
+  TWILIO_TENANT_IDENTITIES_JSON: Joi.string().default("[]"),
+  SMS_CONSENT_HASH_KEY: Joi.string().allow("").default(""),
+  SMS_DELIVERY_ENABLED: Joi.string()
+    .valid("true", "false", "TRUE", "FALSE")
+    .default("false"),
   JOB_NOTIFICATION_SMS_NUMBERS: Joi.string().allow("").default(""),
   CONVERSATION_DATA_ENCRYPTION_KEY: Joi.when("NODE_ENV", {
     is: "production",
@@ -98,12 +107,59 @@ export const envValidationSchema = Joi.object({
   const notificationSmsNumbers = parseConfiguredList(
     values.JOB_NOTIFICATION_SMS_NUMBERS,
   );
+  const twilioIdentities = parseTwilioIdentities(
+    values.TWILIO_TENANT_IDENTITIES_JSON,
+  );
+  if (!twilioIdentities) return helpers.error("any.invalid");
+  if (
+    String(values.SMS_DELIVERY_ENABLED).toLowerCase() === "true" &&
+    (twilioIdentities.length === 0 ||
+      !hasConfiguredString(values.TWILIO_ACCOUNT_SID))
+  ) {
+    return helpers.error("any.invalid");
+  }
   if (
     notificationEmails.length > 0 &&
     (!hasConfiguredString(values.RESEND_API_KEY) ||
       !hasConfiguredString(values.RESEND_FROM_EMAIL))
   ) {
     return helpers.error("any.invalid");
+  }
+  if (twilioIdentities.length > 0) {
+    if (
+      !hasConfiguredString(values.TWILIO_AUTH_TOKEN) ||
+      !hasConfiguredString(values.TWILIO_WEBHOOK_BASE_URL) ||
+      !hasConfiguredString(values.SMS_CONSENT_HASH_KEY) ||
+      String(values.SMS_CONSENT_HASH_KEY).length < 32
+    ) {
+      return helpers.error("any.invalid");
+    }
+    let webhookBaseUrl: URL;
+    try {
+      webhookBaseUrl = new URL(String(values.TWILIO_WEBHOOK_BASE_URL));
+    } catch {
+      return helpers.error("any.invalid");
+    }
+    if (
+      values.NODE_ENV === "production" &&
+      webhookBaseUrl.protocol !== "https:"
+    ) {
+      return helpers.error("any.invalid");
+    }
+    if (
+      webhookBaseUrl.pathname !== "/" ||
+      webhookBaseUrl.search ||
+      webhookBaseUrl.hash
+    ) {
+      return helpers.error("any.invalid");
+    }
+    const enabledKeys = new Set<string>();
+    for (const identity of twilioIdentities) {
+      if (!identity.enabled) continue;
+      const key = `${identity.environment}:${identity.phoneNumber}`;
+      if (enabledKeys.has(key)) return helpers.error("any.invalid");
+      enabledKeys.add(key);
+    }
   }
   if (
     notificationSmsNumbers.length > 0 &&
@@ -218,4 +274,76 @@ function parseConfiguredList(value: unknown): string[] {
 
 function hasConfiguredString(value: unknown): boolean {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function parseTwilioIdentities(value: unknown): Array<{
+  tenantId: string;
+  phoneNumber: string;
+  environment: string;
+  enabled: boolean;
+  timeZone: string;
+  quietHoursStart: number;
+  quietHoursEnd: number;
+}> | null {
+  if (typeof value !== "string") return null;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!Array.isArray(parsed)) return null;
+    const identities = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") return null;
+      const entry = item as Record<string, unknown>;
+      if (
+        typeof entry.tenantId !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          entry.tenantId,
+        ) ||
+        typeof entry.phoneNumber !== "string" ||
+        !/^\+[1-9]\d{7,14}$/.test(entry.phoneNumber) ||
+        !["test", "staging", "production"].includes(
+          String(entry.environment),
+        ) ||
+        typeof entry.enabled !== "boolean" ||
+        typeof entry.displayName !== "string" ||
+        !entry.displayName.trim() ||
+        typeof entry.voiceGreeting !== "string" ||
+        !entry.voiceGreeting.trim() ||
+        typeof entry.timeZone !== "string" ||
+        !isTimeZone(entry.timeZone) ||
+        typeof entry.quietHoursStart !== "number" ||
+        !Number.isInteger(entry.quietHoursStart) ||
+        entry.quietHoursStart < 0 ||
+        entry.quietHoursStart > 23 ||
+        typeof entry.quietHoursEnd !== "number" ||
+        !Number.isInteger(entry.quietHoursEnd) ||
+        entry.quietHoursEnd < 0 ||
+        entry.quietHoursEnd > 23 ||
+        typeof entry.supportPhone !== "string" ||
+        !/^\+[1-9]\d{7,14}$/.test(entry.supportPhone)
+      ) {
+        return null;
+      }
+      identities.push({
+        tenantId: entry.tenantId,
+        phoneNumber: entry.phoneNumber,
+        environment: String(entry.environment),
+        enabled: entry.enabled,
+        timeZone: entry.timeZone,
+        quietHoursStart: entry.quietHoursStart,
+        quietHoursEnd: entry.quietHoursEnd,
+      });
+    }
+    return identities;
+  } catch {
+    return null;
+  }
+}
+
+function isTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value }).format();
+    return true;
+  } catch {
+    return false;
+  }
 }

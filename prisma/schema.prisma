@@ -45,6 +45,7 @@ model TenantOrganization {
   coverageChecks          CustomerCoverageCheck[]
   communicationEvents     CommunicationEvent[]
   communicationContents   CommunicationContent[]
+  smsConsentRecords       SmsConsentRecord[]
   conversationJobLinks    ConversationJobLink[]
   jobOffers               JobOffer[]
   userAvailabilityBlocks  UserAvailabilityBlock[]
@@ -607,7 +608,12 @@ model CommunicationEvent {
   direction      CommunicationDirection
   provider       CommunicationProvider
   externalId     String?
+  idempotencyKeyHash String?
   status         CommunicationStatus
+  attemptCount   Int @default(0)
+  nextAttemptAt  DateTime?
+  lastErrorCode  String?
+  terminalAt     DateTime?
   redactionLevel RedactionLevel @default(PARTIAL)
 
   occurredAt     DateTime @default(now())
@@ -616,7 +622,10 @@ model CommunicationEvent {
   content CommunicationContent?
 
   @@unique([id, tenantId])
+  @@unique([tenantId, idempotencyKeyHash])
+  @@unique([tenantId, provider, externalId])
   @@index([tenantId, occurredAt])
+  @@index([status, nextAttemptAt])
   @@index([conversationId, conversationTenantId, occurredAt])
   @@index([jobId, jobTenantId, occurredAt])
 }
@@ -639,6 +648,23 @@ model CommunicationContent {
   @@unique([communicationEventId, communicationEventTenantId])
   @@unique([id, tenantId])
   @@index([tenantId])
+}
+
+model SmsConsentRecord {
+  id       String             @id @default(uuid()) @db.Uuid
+  tenantId String             @db.Uuid
+  tenant   TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  phoneHash         String
+  status            SmsConsentStatus
+  source            SmsConsentSource
+  disclosureVersion String
+  evidenceAt        DateTime
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@unique([tenantId, phoneHash])
+  @@index([tenantId, status])
 }
 
 
@@ -864,11 +890,23 @@ enum CommunicationProvider {
   OTHER
 }
 
+enum SmsConsentStatus {
+  OPTED_IN
+  OPTED_OUT
+}
+
+enum SmsConsentSource {
+  VERBAL
+  KEYWORD
+}
+
 enum CommunicationStatus {
   QUEUED
+  SENDING
   SENT
   DELIVERED
   FAILED
+  DEAD_LETTER
   RECEIVED
 }
 
