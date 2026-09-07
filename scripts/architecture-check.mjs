@@ -45,6 +45,21 @@ const requiredFiles = [
   "prisma/migrations/20260828000000_canonical_schema_reconciliation/migration.sql",
 ];
 
+const communicationsModule = readFileSync(
+  join(root, "src/communications/communications.module.ts"),
+  "utf8",
+);
+if (
+  !/import\s+\{\s*AuthModule\s*\}\s+from\s+["']\.\.\/auth\/auth\.module["']/.test(
+    communicationsModule,
+  ) ||
+  !/imports:\s*\[AuthModule\]/.test(communicationsModule)
+) {
+  violations.push(
+    "communications module must import AuthModule for RequestAuthGuard dependencies",
+  );
+}
+
 for (const relativePath of requiredFiles) {
   if (!existsSync(join(root, relativePath))) {
     violations.push(`missing required boundary: ${relativePath}`);

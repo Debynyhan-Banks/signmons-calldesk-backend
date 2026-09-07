@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "../auth/auth.module";
+import { TenantGuard } from "../common/guards/tenant.guard";
 import { TwilioWebhooksController } from "./twilio-webhooks.controller";
 import { TwilioWebhookService } from "./twilio-webhook.service";
 import { SmsConsentService } from "./sms-consent.service";
@@ -11,6 +13,7 @@ import { CommunicationsOperationsAccessGuard } from "./communications-operations
 import { CommunicationsReplayAccessGuard } from "./communications-replay-access.guard";
 
 @Module({
+  imports: [AuthModule],
   controllers: [TwilioWebhooksController, CommunicationsOperationsController],
   providers: [
     TwilioWebhookService,
@@ -19,6 +22,7 @@ import { CommunicationsReplayAccessGuard } from "./communications-replay-access.
     SmsDeliveryWorker,
     CommunicationsOperationsAccessGuard,
     CommunicationsReplayAccessGuard,
+    TenantGuard,
     TwilioSmsProvider,
     { provide: SMS_PROVIDER, useExisting: TwilioSmsProvider },
   ],
