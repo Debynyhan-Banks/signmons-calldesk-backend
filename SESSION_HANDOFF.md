@@ -1,6 +1,6 @@
 # Backend Session Handoff
 
-Last Updated: 2026-09-06
+Last Updated: 2026-09-07
 
 ## Current Program Pointer
 
@@ -92,6 +92,14 @@ Last Updated: 2026-09-06
 - This server/config-only hardening changes no rendered UI, so the existing September 6 desktop/390px browser evidence remains applicable and no new visual artifact was warranted.
 - No endpoint, credential, IAM policy, database, payment, deployment, merge, release or customer state was changed. APP-012 remains approximately 95% complete and unreleased pending explicit staging acceptance approval.
 
+## APP-012 Governed Staging Acceptance (2026-09-07)
+
+- Owner-authorized sandbox work deployed reviewed commit `27d595da21406704b6bc66804ba03d2e90643b23` as Cloud Run revision `signmons-calldesk-staging-app012correct`, now serving 100 percent of staging traffic with explicit test webhook mode.
+- The active Stripe `Signmons LLC` test destination receives the six approved Connected accounts events at the staging `/webhooks/stripe` endpoint. Signing material is held in Secret Manager version 5 and is not recorded in source or evidence.
+- A genuine Stripe CLI event reached the deployed endpoint with a valid signature and failed closed as an unrecognized generic payment. The exact owner-submitted `$100.00 USD` paid Checkout event then returned 200 through a secure deployed replay and changed canonical state from `PENDING` to `SUCCEEDED` with zero application fee, tenant destination match, one processed event, one bounded transition audit and dispatch unlock.
+- Duplicate replay returned 200 without adding a second event or transition audit. The disposable tenant and Identity Platform operator were deleted; temporary secret/event files and temporary IAM grants were removed.
+- Evidence: `evidence/APP-012/release-checklist.md`. APP-012 is approximately 97% complete; APP-006 through APP-016 is approximately 69% complete. Merge, production release, live-mode configuration and a real transaction remain separately approval-gated.
+
 ## APP-011 Implementation
 
 - Added a public, rate-limited `POST /appointments/manage` boundary that treats the HMAC secure-link token as authority and keeps the existing tenant-authenticated webchat endpoint compatible.
@@ -120,8 +128,8 @@ Last Updated: 2026-09-06
 
 ## Next Actions
 
-1. Review the APP-012 payment-gate and payment-request checkpoints; keep APP-012 in `Now` and unreleased.
-2. Await explicit approval before executing the continuous staging acceptance and persistent Stripe sandbox endpoint checklist.
+1. Review the APP-012 staging acceptance evidence; keep APP-012 in `Now` and unreleased until owner merge/release acceptance.
+2. If required for final release acceptance, run one new disposable Checkout created after the active destination and verify Stripe records the automatic 2xx delivery.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 

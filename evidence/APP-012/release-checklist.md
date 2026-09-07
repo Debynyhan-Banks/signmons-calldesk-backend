@@ -1,12 +1,12 @@
 # APP-012 Stripe Endpoint And Release Checklist
 
-Date: 2026-09-06
+Date: 2026-09-07
 Branch: `codex/app-012-payment-gate`
-State: review-ready checklist; no endpoint configured and no release authorized
+State: staging endpoint and paid-event acceptance verified; release remains unauthorized
 
 ## Acceptance Decision
 
-APP-012 has a **conditional local acceptance pass**. The implemented contract and sandbox evidence cover the full payment lifecycle in linked, isolated proofs. This is not a claim that one deployed staging transaction has completed the entire path. Staging configuration, a continuous end-to-end staging run, owner acceptance, merge and release remain approval-gated.
+APP-012 has a **governed staging acceptance pass** for Stripe transport, signature verification, the submitted paid-event transition and duplicate idempotency. Because that Checkout was completed before the destination became active, the paid transition used a secure deployed replay rather than an automatic historical Stripe delivery. One new post-destination Checkout, owner merge acceptance and production release remain separately approval-gated.
 
 ## Linked Acceptance Matrix
 
@@ -21,7 +21,10 @@ APP-012 has a **conditional local acceptance pass**. The implemented contract an
 | Dispatch consumes canonical truth | Isolated compiled HTTP proof showed pending locked assignment and succeeded unlocked recommendation | Pass |
 | Operator sees bounded status | Dispatch UI shows request state and privacy-safe signed-event history without provider identifiers | Pass |
 | Governed exception | Owner/admin plus manual policy plus active Growth+ entitlement can unlock with a distinct audited exception; payment status remains unchanged | Pass |
-| Continuous deployed staging flow | Requires persistent endpoint/secrets and an approved staging deployment | Pending approval |
+| Deployed staging transport | A connected-account destination delivered a genuine Stripe CLI event to the reviewed staging revision; its valid signature passed verification and the unrelated fixture failed closed as unrecognized | Pass |
+| Paid-event staging transition | The submitted $100 USD Checkout event was securely replayed against the deployed endpoint after destination creation; it returned 200, transitioned `PENDING` to `SUCCEEDED`, wrote one processed event and one transition audit, and unlocked dispatch | Pass |
+| Duplicate staging delivery | Replaying the same signed paid event again returned 200 while event and transition-audit counts remained one | Pass |
+| Fully automatic post-destination Checkout | Requires one new disposable Checkout created and paid after the destination is active | Pending release acceptance |
 
 ## Required Approval Before Staging Changes
 
@@ -69,6 +72,18 @@ Use a disposable tenant/job/customer fixture and the sandbox connected contracto
 10. Run failed/expired and refund fixtures; assignment must remain or become locked according to canonical state unless a separately governed exception is active.
 11. Confirm success-page navigation alone never changes payment or dispatch state.
 12. Remove disposable customer/job/payment data and record fixture cleanup counts.
+
+## Staging Acceptance Evidence — 2026-09-07
+
+- Reviewed commit: `27d595da21406704b6bc66804ba03d2e90643b23`.
+- Cloud Build `1d5602ee-dda1-4010-ae0b-2e98230a064d` produced image tag `27d595d`.
+- Cloud Run revision `signmons-calldesk-staging-app012correct` serves 100 percent of staging traffic with `STRIPE_WEBHOOK_LIVEMODE=false`.
+- Stripe test-mode connected-account destination `Signmons StBox sandbox connected payments` is active at the staging `/webhooks/stripe` URL and listens to the six approved event types. Its signing secret is stored only in Google Secret Manager version 5; no secret value is recorded here.
+- A genuine Stripe CLI connected-account event reached the deployed endpoint with a valid signature. The application returned 404 because the generic fixture had no recognized internal payment, proving the endpoint fails closed after transport and signature verification.
+- The owner-submitted `$100.00 USD` Checkout was paid before the destination became active, so Stripe showed no historical delivery for it. The exact Stripe event was retrieved and securely signed with the active vault secret for a deployed replay. The endpoint returned 200 and staging verified: `SUCCEEDED`, amount `10000`, currency `usd`, application fee `0`, destination matched the tenant, dispatch unlocked, one processed event and audits `payment.request_created` plus `payment.webhook_transitioned`.
+- A second replay returned 200 with the event count and transition-audit count still one, proving deployed idempotency.
+- The disposable tenant and Identity Platform operator were deleted after verification (one each). Temporary secret/event files were removed; temporary build and token-signing permissions remain revoked.
+- This is a staging acceptance pass for transport, signature verification, canonical paid transition and duplicate handling. It is not a live-mode release and does not replace the separate owner gate for merge, production deployment or a controlled real transaction.
 
 ## Security And Privacy Review
 
