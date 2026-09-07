@@ -10,6 +10,13 @@ Date: 2026-09-07
 4. Complete one consented sandbox delivery, STOP suppression, START restoration, simulated provider rejection, and dead-letter/replay exercise.
 5. Enable delivery only after owner review of the redacted evidence.
 
+## Availability boundaries
+
+- Inbound Signmons voice and SMS webhooks remain available 24/7. Tenant business hours describe human availability and escalation expectations; they never disable automated intake.
+- `outboundQuietHoursStart` and `outboundQuietHoursEnd` apply only to Signmons-initiated SMS in the recipient's configured local timezone. They are not tenant office hours.
+- Keep an outbound quiet-hours policy even when automated intake is available 24/7. Setting both values equal means no outbound suppression and requires an explicit compliance review before activation.
+- Legacy `quietHoursStart` and `quietHoursEnd` identity values remain readable during migration, but new configuration must use the outbound-specific names.
+
 ## Monitoring and ownership
 
 - Dispatcher, admin, and owner roles may inspect `GET /communications/sms/metrics` and `GET /communications/sms/dead-letters`.

@@ -282,8 +282,8 @@ function parseTwilioIdentities(value: unknown): Array<{
   environment: string;
   enabled: boolean;
   timeZone: string;
-  quietHoursStart: number;
-  quietHoursEnd: number;
+  outboundQuietHoursStart: number;
+  outboundQuietHoursEnd: number;
 }> | null {
   if (typeof value !== "string") return null;
   try {
@@ -293,6 +293,10 @@ function parseTwilioIdentities(value: unknown): Array<{
     for (const item of parsed) {
       if (!item || typeof item !== "object") return null;
       const entry = item as Record<string, unknown>;
+      const outboundQuietHoursStart =
+        entry.outboundQuietHoursStart ?? entry.quietHoursStart;
+      const outboundQuietHoursEnd =
+        entry.outboundQuietHoursEnd ?? entry.quietHoursEnd;
       if (
         typeof entry.tenantId !== "string" ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -310,14 +314,14 @@ function parseTwilioIdentities(value: unknown): Array<{
         !entry.voiceGreeting.trim() ||
         typeof entry.timeZone !== "string" ||
         !isTimeZone(entry.timeZone) ||
-        typeof entry.quietHoursStart !== "number" ||
-        !Number.isInteger(entry.quietHoursStart) ||
-        entry.quietHoursStart < 0 ||
-        entry.quietHoursStart > 23 ||
-        typeof entry.quietHoursEnd !== "number" ||
-        !Number.isInteger(entry.quietHoursEnd) ||
-        entry.quietHoursEnd < 0 ||
-        entry.quietHoursEnd > 23 ||
+        typeof outboundQuietHoursStart !== "number" ||
+        !Number.isInteger(outboundQuietHoursStart) ||
+        outboundQuietHoursStart < 0 ||
+        outboundQuietHoursStart > 23 ||
+        typeof outboundQuietHoursEnd !== "number" ||
+        !Number.isInteger(outboundQuietHoursEnd) ||
+        outboundQuietHoursEnd < 0 ||
+        outboundQuietHoursEnd > 23 ||
         typeof entry.supportPhone !== "string" ||
         !/^\+[1-9]\d{7,14}$/.test(entry.supportPhone)
       ) {
@@ -329,8 +333,8 @@ function parseTwilioIdentities(value: unknown): Array<{
         environment: String(entry.environment),
         enabled: entry.enabled,
         timeZone: entry.timeZone,
-        quietHoursStart: entry.quietHoursStart,
-        quietHoursEnd: entry.quietHoursEnd,
+        outboundQuietHoursStart,
+        outboundQuietHoursEnd,
       });
     }
     return identities;

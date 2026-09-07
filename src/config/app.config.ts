@@ -59,8 +59,8 @@ export interface TwilioTenantIdentityConfig {
   displayName: string;
   voiceGreeting: string;
   timeZone: string;
-  quietHoursStart: number;
-  quietHoursEnd: number;
+  outboundQuietHoursStart: number;
+  outboundQuietHoursEnd: number;
   supportPhone: string;
 }
 
@@ -183,26 +183,47 @@ function parseTwilioTenantIdentities(
   if (!value) return [];
   const parsed: unknown = JSON.parse(value);
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter(isTwilioTenantIdentityConfig);
+  return parsed
+    .map(normalizeTwilioTenantIdentityConfig)
+    .filter((entry): entry is TwilioTenantIdentityConfig => entry !== null);
 }
 
-function isTwilioTenantIdentityConfig(
+function normalizeTwilioTenantIdentityConfig(
   value: unknown,
-): value is TwilioTenantIdentityConfig {
-  if (!value || typeof value !== "object") return false;
+): TwilioTenantIdentityConfig | null {
+  if (!value || typeof value !== "object") return null;
   const entry = value as Record<string, unknown>;
-  return (
-    typeof entry.tenantId === "string" &&
-    typeof entry.phoneNumber === "string" &&
-    ["test", "staging", "production"].includes(String(entry.environment)) &&
-    typeof entry.enabled === "boolean" &&
-    typeof entry.displayName === "string" &&
-    typeof entry.voiceGreeting === "string" &&
-    typeof entry.timeZone === "string" &&
-    typeof entry.quietHoursStart === "number" &&
-    typeof entry.quietHoursEnd === "number" &&
-    typeof entry.supportPhone === "string"
-  );
+  const outboundQuietHoursStart =
+    entry.outboundQuietHoursStart ?? entry.quietHoursStart;
+  const outboundQuietHoursEnd =
+    entry.outboundQuietHoursEnd ?? entry.quietHoursEnd;
+  if (
+    !(
+      typeof entry.tenantId === "string" &&
+      typeof entry.phoneNumber === "string" &&
+      ["test", "staging", "production"].includes(String(entry.environment)) &&
+      typeof entry.enabled === "boolean" &&
+      typeof entry.displayName === "string" &&
+      typeof entry.voiceGreeting === "string" &&
+      typeof entry.timeZone === "string" &&
+      typeof outboundQuietHoursStart === "number" &&
+      typeof outboundQuietHoursEnd === "number" &&
+      typeof entry.supportPhone === "string"
+    )
+  )
+    return null;
+  return {
+    tenantId: entry.tenantId,
+    phoneNumber: entry.phoneNumber,
+    environment: entry.environment as TwilioEnvironment,
+    enabled: entry.enabled,
+    displayName: entry.displayName,
+    voiceGreeting: entry.voiceGreeting,
+    timeZone: entry.timeZone,
+    outboundQuietHoursStart,
+    outboundQuietHoursEnd,
+    supportPhone: entry.supportPhone,
+  };
 }
 
 function parseWebchatIntegrations(

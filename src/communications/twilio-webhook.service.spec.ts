@@ -23,8 +23,8 @@ describe("TwilioWebhookService", () => {
     voiceGreeting:
       "Thank you for calling Signmons on behalf of Eternity Mechanical. This call may be handled by an automated assistant. How may we help you today?",
     timeZone: "America/New_York",
-    quietHoursStart: 19,
-    quietHoursEnd: 7,
+    outboundQuietHoursStart: 21,
+    outboundQuietHoursEnd: 8,
     supportPhone: "+12165550199",
   };
 
@@ -41,6 +41,19 @@ describe("TwilioWebhookService", () => {
     expect(result).toContain("Thank you for calling Signmons");
     expect(result).toContain("automated assistant");
     expect(result).toMatch(/^<Response><Say>.*<\/Say><\/Response>$/);
+  });
+
+  it("keeps inbound voice available during outbound quiet hours", () => {
+    const service = createService();
+    const body = {
+      CallSid: "CA00000000000000000000000000000002",
+      From: "+12165550183",
+      To: destination,
+    };
+
+    expect(service.receiveVoice(body, signature("voice", body))).toContain(
+      "Thank you for calling Signmons",
+    );
   });
 
   it("escapes configured voice greetings before emitting TwiML", () => {
