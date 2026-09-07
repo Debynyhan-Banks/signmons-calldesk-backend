@@ -7,6 +7,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { evaluatePaymentGate } from "../payments/payment-gate.policy";
 
 const UNKNOWN_VALUES = new Set(["", "unknown", "unknown address"]);
 
@@ -168,7 +169,8 @@ export class IntakeReadinessService {
       job.policySnapshot,
       "depositRequired",
     );
-    const paymentStatus = job.payment?.status ?? "NOT_REQUESTED";
+    const paymentGate = evaluatePaymentGate(job.policySnapshot, job.payment);
+    const paymentStatus = paymentGate.paymentStatus;
     const missingFields: IntakeMissingField[] = [];
 
     if (!customerName || customerName.toLowerCase() === "unknown caller")
@@ -180,8 +182,7 @@ export class IntakeReadinessService {
     if (!issueSummary) missingFields.push("issueSummary");
     if (!job.urgency) missingFields.push("urgency");
     if (!preferredWindow) missingFields.push("preferredWindow");
-    if (depositRequired && paymentStatus !== PaymentStatus.SUCCEEDED)
-      missingFields.push("paymentStatus");
+    if (paymentGate.state === "LOCKED") missingFields.push("paymentStatus");
 
     const priority = this.priority(job);
     return {

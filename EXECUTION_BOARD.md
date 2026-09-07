@@ -17,6 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-012 Payment gate and webhook status workflow (`SCR-APP-006A`, `SCR-APP-006B`, `SCR-APP-006C`, `SCR-APP-023`, `SCR-CUST-002`)
+  - Sandbox implementation and acceptance are complete on `codex/app-012-payment-gate`: a new post-destination `$100.00 USD` Checkout delivered automatically from Stripe with HTTP 200, canonical paid transition, zero application fee, tenant destination match, dispatch unlock and Stripe-originated duplicate idempotency. Owner merge/release acceptance remains pending; no live-mode or production release is authorized.
 
 ## Next
 

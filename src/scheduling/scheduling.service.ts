@@ -18,6 +18,7 @@ import appConfig from "../config/app.config";
 import { JobNotificationService } from "../jobs/job-notification.service";
 import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
 import { LoggingService } from "../logging/logging.service";
+import { PaymentRequestsService } from "../payments/payment-requests.service";
 import { PrismaService } from "../prisma/prisma.service";
 
 export interface AppointmentSlot {
@@ -62,6 +63,7 @@ type AppointmentJob = Prisma.JobGetPayload<{
     payment: {
       select: {
         status: true;
+        checkoutExpiresAt: true;
       };
     };
   };
@@ -94,6 +96,7 @@ export class SchedulingService {
     private readonly prisma: PrismaService,
     private readonly notifications: JobNotificationService,
     private readonly loggingService: LoggingService,
+    private readonly paymentRequests: PaymentRequestsService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {}
@@ -297,6 +300,7 @@ export class SchedulingService {
       | "view"
       | "confirm"
       | "request_reschedule"
+      | "continue_payment"
       | "availability"
       | "reschedule"
       | "cancel";
@@ -321,6 +325,10 @@ export class SchedulingService {
 
     if (input.action === "request_reschedule") {
       return this.requestAppointmentReschedule(job, record, input.note);
+    }
+
+    if (input.action === "continue_payment") {
+      return this.paymentRequests.recover(job.tenantId, job.id);
     }
 
     if (input.action === "cancel") {
@@ -382,7 +390,10 @@ export class SchedulingService {
             : "UNASSIGNED",
         ),
       },
-      payment: this.paymentSummary(job.payment?.status),
+      payment: this.paymentSummary(
+        job.payment?.status,
+        job.payment?.checkoutExpiresAt,
+      ),
       customerResponse: customerActivity,
       availableActions: this.customerActions(job, customerActivity.state),
     };
@@ -506,7 +517,10 @@ export class SchedulingService {
     return labels[status] ?? "Technician status is being updated";
   }
 
-  private paymentSummary(status?: PaymentStatus) {
+  private paymentSummary(
+    status?: PaymentStatus,
+    checkoutExpiresAt?: Date | null,
+  ) {
     const states: Record<PaymentStatus, string> = {
       PENDING: "Payment is pending",
       SUCCEEDED: "Payment received",
@@ -515,10 +529,19 @@ export class SchedulingService {
       CANCELED: "Payment was cancelled",
     };
     return status
-      ? { state: status, label: states[status] }
+      ? {
+          state: status,
+          label: states[status],
+          canContinue:
+            status === PaymentStatus.PENDING &&
+            Boolean(
+              checkoutExpiresAt && checkoutExpiresAt.getTime() > Date.now(),
+            ),
+        }
       : {
           state: "NOT_STARTED" as const,
           label: "Payment has not been requested",
+          canContinue: false,
         };
   }
 
@@ -1020,6 +1043,7 @@ export class SchedulingService {
         payment: {
           select: {
             status: true,
+            checkoutExpiresAt: true,
           },
         },
       },

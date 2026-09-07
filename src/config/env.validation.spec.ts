@@ -82,4 +82,58 @@ describe("environment validation", () => {
     const result = envValidationSchema.validate(withoutKey);
     expect(result.error).toBeDefined();
   });
+
+  it("rejects a configured production checkout with a local return URL", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      STRIPE_SECRET_KEY: "sk_live_not-a-real-secret",
+      CUSTOMER_PAYMENT_RETURN_URL: "http://localhost:3101/payment/status",
+    });
+    expect(result.error).toBeDefined();
+  });
+
+  it("accepts a configured production checkout with an HTTPS return URL", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      STRIPE_SECRET_KEY: "sk_live_not-a-real-secret",
+      STRIPE_WEBHOOK_SECRET: "whsec_not-a-real-secret",
+      STRIPE_WEBHOOK_LIVEMODE: "true",
+      CUSTOMER_PAYMENT_RETURN_URL:
+        "https://signmons-calldesk.web.app/payment/status",
+    });
+    expect(result.error).toBeUndefined();
+  });
+
+  it("rejects a configured production checkout without a webhook secret", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      STRIPE_SECRET_KEY: "sk_live_not-a-real-secret",
+      CUSTOMER_PAYMENT_RETURN_URL:
+        "https://signmons-calldesk.web.app/payment/status",
+    });
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects configured production webhooks without an explicit event mode", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      STRIPE_SECRET_KEY: "sk_live_not-a-real-secret",
+      STRIPE_WEBHOOK_SECRET: "whsec_not-a-real-secret",
+      CUSTOMER_PAYMENT_RETURN_URL:
+        "https://signmons-calldesk.web.app/payment/status",
+    });
+    expect(result.error).toBeDefined();
+  });
+
+  it("rejects a Stripe key whose mode differs from the webhook mode", () => {
+    const result = envValidationSchema.validate({
+      ...productionEnvironment,
+      STRIPE_SECRET_KEY: "rk_live_not-a-real-secret",
+      STRIPE_WEBHOOK_SECRET: "whsec_not-a-real-secret",
+      STRIPE_WEBHOOK_LIVEMODE: "false",
+      CUSTOMER_PAYMENT_RETURN_URL:
+        "https://signmons-calldesk.web.app/payment/status",
+    });
+    expect(result.error).toBeDefined();
+  });
 });

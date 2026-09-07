@@ -16,6 +16,10 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  evaluatePaymentGate,
+  type PaymentGateDecision,
+} from "../payments/payment-gate.policy";
 import { RoutingEvaluation, RoutingService } from "./routing.service";
 
 export type DispatchQueue =
@@ -32,6 +36,13 @@ type DispatchJob = Prisma.JobGetPayload<{
       };
     };
     serviceCategory: true;
+    payment: {
+      select: {
+        status: true;
+        amountTotalCents: true;
+        currency: true;
+      };
+    };
     assignedUser: {
       select: {
         id: true;
@@ -97,6 +108,9 @@ export class DispatchBoardService {
       include: {
         tenant: { select: { timezone: true } },
         serviceCategory: true,
+        payment: {
+          select: { status: true, amountTotalCents: true, currency: true },
+        },
         assignedUser: {
           select: {
             id: true,
@@ -187,6 +201,9 @@ export class DispatchBoardService {
         include: {
           tenant: { select: { timezone: true } },
           serviceCategory: true,
+          payment: {
+            select: { status: true, amountTotalCents: true, currency: true },
+          },
           assignedUser: {
             select: {
               id: true,
@@ -213,6 +230,13 @@ export class DispatchBoardService {
         };
       }
 
+      const paymentGate = evaluatePaymentGate(job.policySnapshot, job.payment);
+      if (paymentGate.state === "LOCKED") {
+        throw new ConflictException(
+          "Required payment must succeed before this job can be assigned.",
+        );
+      }
+
       const routing = this.routingService
         ? await this.routingService.evaluateJob(
             input.tenantId,
@@ -225,6 +249,7 @@ export class DispatchBoardService {
         job,
         transaction,
         routing,
+        paymentGate,
       );
       const selected = candidates.find(
         (candidate) => candidate.userId === input.technicianId,
@@ -382,6 +407,9 @@ export class DispatchBoardService {
       include: {
         tenant: { select: { timezone: true } },
         serviceCategory: true,
+        payment: {
+          select: { status: true, amountTotalCents: true, currency: true },
+        },
         assignedUser: {
           select: {
             id: true,
@@ -416,6 +444,10 @@ export class DispatchBoardService {
     job: DispatchJob,
     client: Prisma.TransactionClient | PrismaService = this.prisma,
     routing: RoutingEvaluation = this.defaultRouting(job.id),
+    paymentGate: PaymentGateDecision = evaluatePaymentGate(
+      job.policySnapshot,
+      job.payment,
+    ),
   ): Promise<Candidate[]> {
     const users = await client.user.findMany({
       where: {
@@ -495,6 +527,9 @@ export class DispatchBoardService {
         if (!unavailable) reasonCodes.push("NO_SCHEDULE_CONFLICT");
         else reasonCodes.push("SCHEDULE_CONFLICT");
         if (user._count.jobs <= 2) reasonCodes.push("LOW_ACTIVE_WORKLOAD");
+        if (paymentGate.state === "LOCKED") {
+          reasonCodes.push("PAYMENT_GATE_LOCKED");
+        }
         const proficiencyScore =
           capability?.proficiency === ProficiencyLevel.EXPERT
             ? 30
@@ -521,7 +556,8 @@ export class DispatchBoardService {
               routing.covered &&
               (!routing.requirements.requireAvailable ||
                 (available && !unavailable)) &&
-              (!routing.requirements.requireOnCall || user.isOnCall),
+              (!routing.requirements.requireOnCall || user.isOnCall) &&
+              paymentGate.state !== "LOCKED",
           ),
           reasonCodes,
           score:
@@ -546,10 +582,11 @@ export class DispatchBoardService {
   }
 
   private toSummary(job: DispatchJob, escalated: boolean) {
+    const paymentGate = evaluatePaymentGate(job.policySnapshot, job.payment);
     return {
       jobId: job.id,
       reference: job.id.replace(/-/g, "").slice(0, 8).toUpperCase(),
-      queue: this.queue(job, escalated),
+      queue: this.queue(job, escalated, paymentGate),
       serviceCategory: job.serviceCategory.name,
       urgency: job.urgency,
       status: job.status,
@@ -566,14 +603,20 @@ export class DispatchBoardService {
             role: job.assignedUser.role,
           }
         : null,
+      paymentGate,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
     };
   }
 
-  private queue(job: DispatchJob, escalated: boolean): DispatchQueue {
+  private queue(
+    job: DispatchJob,
+    escalated: boolean,
+    paymentGate: PaymentGateDecision,
+  ): DispatchQueue {
     if (job.assignedUserId) return "ASSIGNED";
     if (escalated) return "ESCALATED";
+    if (paymentGate.state === "LOCKED") return "NEW_REQUEST";
     if (
       job.serviceWindowStart ||
       job.status === JobStatus.OFFERED ||
@@ -696,6 +739,7 @@ export class DispatchBoardService {
       NOT_ON_CALL: "Routing rule requires an on-call technician",
       SERVICE_AREA_ALLOWED: "Job is inside the applicable service area",
       SERVICE_AREA_BLOCKED: "Job is outside the applicable service area",
+      PAYMENT_GATE_LOCKED: "Required payment must clear before assignment",
     };
     return labels[code] ?? "Operational factor recorded";
   }

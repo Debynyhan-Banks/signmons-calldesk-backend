@@ -16,6 +16,7 @@ import { HealthController } from "./health/health.controller";
 import { HealthService } from "./health/health.service";
 import { WebchatModule } from "./integrations/webchat/webchat.module";
 import { ReportingModule } from "./reporting/reporting.module";
+import { PaymentsModule } from "./payments/payments.module";
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { ReportingModule } from "./reporting/reporting.module";
     AiModule,
     WebchatModule,
     ReportingModule,
+    PaymentsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [

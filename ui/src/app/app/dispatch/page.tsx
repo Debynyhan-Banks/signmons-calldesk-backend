@@ -6,12 +6,17 @@ import {
   DispatchBoardDetail,
   DispatchBoardSummary,
   DispatchQueue,
+  PaymentRequestTracking,
+  PaymentWebhookEvent,
   RequestAuth,
   assignDispatchJob,
   cancelDispatchAssignment,
   createTechnicianLink,
+  createPaymentRequest,
   escalateJobUrgency,
   getDispatchJob,
+  getPaymentEvents,
+  getPaymentRequest,
   evaluateJobRouting,
   listDispatchBoard,
 } from "@/lib/api";
@@ -47,6 +52,11 @@ export default function DispatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [technicianLink, setTechnicianLink] = useState<string | null>(null);
+  const [payment, setPayment] = useState<PaymentRequestTracking | null>(null);
+  const [paymentEvents, setPaymentEvents] = useState<PaymentWebhookEvent[]>([]);
+  const [paymentCheckoutUrl, setPaymentCheckoutUrl] = useState<string | null>(
+    null,
+  );
 
   const auth = useMemo<RequestAuth>(() => {
     if (authMode === "firebase") return { bearerToken };
@@ -69,12 +79,22 @@ export default function DispatchPage() {
     async (jobId: string) => {
       setSelectedId(jobId);
       setTechnicianLink(null);
+      setPaymentCheckoutUrl(null);
       setError(null);
       try {
-        setDetail(await getDispatchJob(jobId, auth, tenantId));
+        const [nextDetail, nextPayment, nextEvents] = await Promise.all([
+          getDispatchJob(jobId, auth, tenantId),
+          getPaymentRequest(jobId, auth, tenantId),
+          getPaymentEvents(jobId, auth, tenantId),
+        ]);
+        setDetail(nextDetail);
+        setPayment(nextPayment);
+        setPaymentEvents(nextEvents);
       } catch (loadError) {
         setError(errorMessage(loadError));
         setDetail(null);
+        setPayment(null);
+        setPaymentEvents([]);
       }
     },
     [auth, tenantId],
@@ -114,12 +134,41 @@ export default function DispatchPage() {
 
   const refreshSelected = async () => {
     if (!selectedId) return;
-    const [nextDetail, nextItems] = await Promise.all([
+    const [nextDetail, nextItems, nextPayment, nextEvents] = await Promise.all([
       getDispatchJob(selectedId, auth, tenantId),
       listDispatchBoard(auth, tenantId),
+      getPaymentRequest(selectedId, auth, tenantId),
+      getPaymentEvents(selectedId, auth, tenantId),
     ]);
     setDetail(nextDetail);
     setItems(nextItems);
+    setPayment(nextPayment);
+    setPaymentEvents(nextEvents);
+  };
+
+  const requestPayment = async () => {
+    if (!detail) return;
+    setActing(true);
+    setError(null);
+    setNotice(null);
+    setPaymentCheckoutUrl(null);
+    try {
+      const result = await createPaymentRequest(
+        detail.jobId,
+        detail.updatedAt,
+        auth,
+        tenantId,
+      );
+      setPayment(result);
+      setPaymentCheckoutUrl(result.checkoutUrl);
+      setNotice(
+        "Secure customer payment request created. Copy or open the temporary link below.",
+      );
+    } catch (actionError) {
+      setError(errorMessage(actionError));
+    } finally {
+      setActing(false);
+    }
   };
 
   const assign = async (technicianId: string, reason?: string) => {
@@ -424,6 +473,10 @@ export default function DispatchPage() {
                 onEscalate={() => void escalate()}
                 onIssueLink={() => void issueTechnicianLink()}
                 onEvaluateRouting={() => void evaluateRouting()}
+                onRequestPayment={() => void requestPayment()}
+                payment={payment}
+                paymentCheckoutUrl={paymentCheckoutUrl}
+                paymentEvents={paymentEvents}
                 technicianLink={technicianLink}
               />
             ) : (
@@ -482,6 +535,10 @@ function DispatchDetail({
   onEscalate,
   onIssueLink,
   onEvaluateRouting,
+  onRequestPayment,
+  payment,
+  paymentCheckoutUrl,
+  paymentEvents,
   technicianLink,
 }: {
   acting: boolean;
@@ -491,6 +548,10 @@ function DispatchDetail({
   onEscalate: () => void;
   onIssueLink: () => void;
   onEvaluateRouting: () => void;
+  onRequestPayment: () => void;
+  payment: PaymentRequestTracking | null;
+  paymentCheckoutUrl: string | null;
+  paymentEvents: PaymentWebhookEvent[];
   technicianLink: string | null;
 }) {
   const recommendedId = detail.recommendation?.technicianId ?? "";
@@ -574,6 +635,100 @@ function DispatchDetail({
         ) : null}
       </section>
 
+      <section className={styles.paymentOperations}>
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={base.eyebrow}>Customer payment request</p>
+            <h3>{paymentStatusLabel(payment?.status ?? "NOT_REQUESTED")}</h3>
+          </div>
+          <span>
+            {formatMoney(payment?.amountTotalCents, payment?.currency)}
+          </span>
+        </div>
+        <p>
+          Amount and currency come from this job’s approved pricing snapshot.
+          Signmons does not add an application fee.
+        </p>
+        {payment?.requestedAt ? (
+          <small>
+            Requested {formatDispatchDate(payment.requestedAt, detail.timezone)}
+            {payment.checkoutExpiresAt
+              ? ` · Expires ${formatDispatchDate(payment.checkoutExpiresAt, detail.timezone)}`
+              : ""}
+          </small>
+        ) : null}
+        {detail.paymentGate.required && payment?.status !== "SUCCEEDED" ? (
+          <button
+            disabled={acting || Boolean(payment?.requestActive)}
+            onClick={onRequestPayment}
+            type="button"
+          >
+            {acting
+              ? "Creating secure request…"
+              : payment?.requestActive
+                ? "Active payment request exists"
+                : payment?.paymentRequestId
+                  ? "Create replacement request"
+                  : "Create payment request"}
+          </button>
+        ) : null}
+        {paymentCheckoutUrl ? (
+          <div className={styles.checkoutActions}>
+            <a href={paymentCheckoutUrl} rel="noreferrer" target="_blank">
+              Open test checkout
+            </a>
+            <button
+              onClick={() =>
+                void navigator.clipboard.writeText(paymentCheckoutUrl)
+              }
+              type="button"
+            >
+              Copy customer payment link
+            </button>
+            <small>
+              This temporary URL is shown only after this authorized request.
+            </small>
+          </div>
+        ) : null}
+        <div className={styles.webhookEvents}>
+          <strong>Verified payment updates</strong>
+          {paymentEvents.length ? (
+            <ol>
+              {paymentEvents.map((event) => (
+                <li key={event.id}>
+                  <span>{paymentEventLabel(event.type)}</span>
+                  <time>
+                    {formatDispatchDate(event.receivedAt, detail.timezone)}
+                  </time>
+                  <small>{event.status.toLowerCase()}</small>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p>No signed Stripe updates have been recorded for this payment.</p>
+          )}
+        </div>
+      </section>
+
+      <section
+        className={`${styles.paymentGate} ${
+          detail.paymentGate.state === "LOCKED"
+            ? styles.paymentGateLocked
+            : styles.paymentGateOpen
+        }`}
+      >
+        <div>
+          <p className={base.eyebrow}>Payment gate</p>
+          <h3>{detail.paymentGate.label}</h3>
+        </div>
+        <span>{detail.paymentGate.paymentStatus.replace(/_/g, " ")}</span>
+        <small>
+          {detail.paymentGate.state === "LOCKED"
+            ? "Assignment is disabled until a verified payment update unlocks this job."
+            : "This job currently satisfies its payment-before-dispatch policy."}
+        </small>
+      </section>
+
       <section
         className={`${styles.customerBooking} ${
           detail.customerBooking.state === "RESCHEDULE_REQUESTED"
@@ -626,6 +781,11 @@ function DispatchDetail({
               <li key={reasonLabel}>{reasonLabel}</li>
             ))}
           </ul>
+        ) : detail.paymentGate.state === "LOCKED" ? (
+          <p>
+            Dispatch recommendations are paused while the required payment gate
+            is locked.
+          </p>
         ) : (
           <p>
             No technician currently meets both service capability and
@@ -674,6 +834,7 @@ function DispatchDetail({
         <label>
           Technician
           <select
+            disabled={detail.paymentGate.state === "LOCKED"}
             value={technicianId}
             onChange={(event) => setTechnicianId(event.target.value)}
           >
@@ -715,6 +876,7 @@ function DispatchDetail({
         <button
           className={styles.assignButton}
           disabled={
+            detail.paymentGate.state === "LOCKED" ||
             !technicianId ||
             acting ||
             (reasonRequired && reason.trim().length < 10)
@@ -722,11 +884,13 @@ function DispatchDetail({
           onClick={() => onAssign(technicianId, reason.trim() || undefined)}
           type="button"
         >
-          {acting
-            ? "Saving…"
-            : detail.assignedTechnician
-              ? "Save reassignment"
-              : "Confirm assignment"}
+          {detail.paymentGate.state === "LOCKED"
+            ? "Payment required before assignment"
+            : acting
+              ? "Saving…"
+              : detail.assignedTechnician
+                ? "Save reassignment"
+                : "Confirm assignment"}
         </button>
       </section>
 
@@ -838,6 +1002,43 @@ function customerBookingStateLabel(
   if (state === "CONFIRMED") return "Confirmed";
   if (state === "RESCHEDULE_REQUESTED") return "Action needed";
   return "Awaiting response";
+}
+
+function paymentStatusLabel(status: PaymentRequestTracking["status"]) {
+  if (status === "NOT_REQUESTED") return "No payment request yet";
+  if (status === "PENDING") return "Payment request pending";
+  if (status === "SUCCEEDED") return "Payment verified";
+  if (status === "FAILED") return "Payment attempt failed";
+  if (status === "REFUNDED") return "Payment refunded";
+  return "Payment request canceled";
+}
+
+function paymentEventLabel(type: string) {
+  const labels: Record<string, string> = {
+    "checkout.session.completed": "Checkout completed",
+    "checkout.session.async_payment_succeeded": "Delayed payment succeeded",
+    "checkout.session.async_payment_failed": "Delayed payment failed",
+    "checkout.session.expired": "Checkout expired",
+    "payment_intent.payment_failed": "Payment failed",
+    "charge.refunded": "Payment refunded",
+  };
+  return labels[type] ?? "Payment status updated";
+}
+
+function formatMoney(
+  amount: number | null | undefined,
+  currency: string | null | undefined,
+) {
+  if (amount === null || amount === undefined || !currency)
+    return "Not requested";
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+    }).format(amount / 100);
+  } catch {
+    return `${amount} ${currency.toUpperCase()}`;
+  }
 }
 
 function errorMessage(error: unknown) {

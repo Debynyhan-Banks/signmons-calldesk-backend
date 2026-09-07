@@ -497,11 +497,11 @@ export class RoutingService {
       const item = components.find((value) => {
         if (!value || typeof value !== "object" || Array.isArray(value))
           return false;
-        const types = (value as Prisma.JsonObject).types;
+        const types = value.types;
         return Array.isArray(types) && types.includes("postal_code");
       });
       if (item && typeof item === "object" && !Array.isArray(item)) {
-        const record = item as Prisma.JsonObject;
+        const record = item;
         const value =
           record.long_name ??
           record.longName ??
@@ -510,7 +510,7 @@ export class RoutingService {
         if (typeof value === "string") return value.slice(0, 5);
       }
     } else if (components && typeof components === "object") {
-      const record = components as Prisma.JsonObject;
+      const record = components;
       const value = record.postalCode ?? record.postal_code ?? record.zip;
       if (typeof value === "string") return value.slice(0, 5);
     }
@@ -537,10 +537,13 @@ export class RoutingService {
       Array.isArray(area.definition)
     )
       return false;
-    const values = (area.definition as Prisma.JsonObject).postalCodes;
+    const values = area.definition.postalCodes;
     return (
       Array.isArray(values) &&
-      values.some((value) => String(value).slice(0, 5) === postalCode)
+      values.some(
+        (value) =>
+          typeof value === "string" && value.slice(0, 5) === postalCode,
+      )
     );
   }
 

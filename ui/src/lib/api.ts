@@ -176,6 +176,21 @@ export interface DispatchBoardSummary {
   serviceWindowEnd: string | null;
   timezone: string;
   assignedTechnician: AssignedTechnician | null;
+  paymentGate: {
+    required: boolean;
+    state: "NOT_REQUIRED" | "LOCKED" | "UNLOCKED";
+    paymentStatus:
+      | "NOT_REQUESTED"
+      | "PENDING"
+      | "SUCCEEDED"
+      | "FAILED"
+      | "REFUNDED"
+      | "CANCELED";
+    amountTotalCents: number | null;
+    currency: string | null;
+    reasonCode: string;
+    label: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -235,6 +250,30 @@ export interface DispatchBoardDetail extends DispatchBoardSummary {
       createdAt: string;
     }>;
   };
+}
+
+export interface PaymentRequestTracking {
+  paymentRequestId: string | null;
+  status:
+    | "NOT_REQUESTED"
+    | "PENDING"
+    | "SUCCEEDED"
+    | "FAILED"
+    | "REFUNDED"
+    | "CANCELED";
+  amountTotalCents: number | null;
+  currency: string | null;
+  requestedAt: string | null;
+  checkoutExpiresAt: string | null;
+  requestActive: boolean;
+}
+
+export interface PaymentWebhookEvent {
+  id: string;
+  type: string;
+  status: string;
+  receivedAt: string;
+  processedAt: string | null;
 }
 
 export type RoutingTimeScope = "ANY" | "BUSINESS_HOURS" | "AFTER_HOURS";
@@ -352,6 +391,16 @@ export interface TechnicianJobList {
 }
 
 export type CustomerBookingAction = "confirm" | "request_reschedule";
+export type CustomerBookingRequestAction =
+  | "view"
+  | CustomerBookingAction
+  | "continue_payment";
+
+export interface CustomerPaymentCheckout {
+  status: "payment_checkout";
+  checkoutUrl: string;
+  checkoutExpiresAt: string;
+}
 
 export interface CustomerBookingStatus {
   status:
@@ -394,6 +443,7 @@ export interface CustomerBookingStatus {
       | "REFUNDED"
       | "CANCELED";
     label: string;
+    canContinue: boolean;
   };
   customerResponse: {
     state: "AWAITING_RESPONSE" | "CONFIRMED" | "RESCHEDULE_REQUESTED";
@@ -637,6 +687,44 @@ export async function getDispatchJob(
   );
 }
 
+export async function getPaymentRequest(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<PaymentRequestTracking> {
+  return getJson(
+    `/jobs/${encodeURIComponent(jobId)}/payment-request`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function getPaymentEvents(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<PaymentWebhookEvent[]> {
+  return getJson(
+    `/jobs/${encodeURIComponent(jobId)}/payment-events`,
+    buildAuthHeaders(auth, tenantId),
+  );
+}
+
+export async function createPaymentRequest(
+  jobId: string,
+  expectedJobUpdatedAt: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<PaymentRequestTracking & { checkoutUrl: string }> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/payment-requests`,
+    { expectedJobUpdatedAt },
+    {
+      ...buildAuthHeaders(auth, tenantId),
+      "Idempotency-Key": crypto.randomUUID(),
+    },
+  );
+}
+
 export async function assignDispatchJob(
   jobId: string,
   input: {
@@ -820,14 +908,17 @@ export async function updateTechnicianJob(
 
 export async function manageCustomerBooking(
   managementToken: string,
-  action: "view" | CustomerBookingAction,
+  action: CustomerBookingRequestAction,
   note?: string,
-): Promise<CustomerBookingStatus> {
-  return postJson<CustomerBookingStatus>("/appointments/manage", {
-    managementToken,
-    action,
-    ...(note ? { note } : {}),
-  });
+): Promise<CustomerBookingStatus | CustomerPaymentCheckout> {
+  return postJson<CustomerBookingStatus | CustomerPaymentCheckout>(
+    "/appointments/manage",
+    {
+      managementToken,
+      action,
+      ...(note ? { note } : {}),
+    },
+  );
 }
 
 export function getApiBaseUrl(): string {

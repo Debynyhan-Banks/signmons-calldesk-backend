@@ -153,6 +153,22 @@ describe("IntakeReadinessService", () => {
     );
   });
 
+  it("uses the shared fail-closed gate for a required service fee", async () => {
+    const { prisma, service } = createHarness();
+    prisma.job.findMany.mockResolvedValue([
+      {
+        ...baseJob,
+        policySnapshot: { serviceFeeRequired: true },
+        payment: null,
+      },
+    ]);
+
+    const [result] = await service.list(tenantId);
+
+    expect(result.paymentStatus).toBe("NOT_REQUESTED");
+    expect(result.readiness.missingFields).toContain("paymentStatus");
+  });
+
   it("returns the linked session trace and prior readiness reviews", async () => {
     const { prisma, service } = createHarness();
     prisma.job.findFirst.mockResolvedValue(baseJob);
