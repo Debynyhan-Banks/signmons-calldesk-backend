@@ -2,11 +2,11 @@
 
 Date: 2026-09-07
 Branch: `codex/app-012-payment-gate`
-State: staging endpoint and paid-event acceptance verified; release remains unauthorized
+State: sandbox acceptance complete; merge and production release remain unauthorized
 
 ## Acceptance Decision
 
-APP-012 has a **governed staging acceptance pass** for Stripe transport, signature verification, the submitted paid-event transition and duplicate idempotency. Because that Checkout was completed before the destination became active, the paid transition used a secure deployed replay rather than an automatic historical Stripe delivery. One new post-destination Checkout, owner merge acceptance and production release remain separately approval-gated.
+APP-012 has a **governed sandbox acceptance pass** for Stripe transport, signature verification, automatic post-destination payment transition and Stripe-originated duplicate idempotency. Owner merge acceptance and production release remain separately approval-gated.
 
 ## Linked Acceptance Matrix
 
@@ -24,7 +24,7 @@ APP-012 has a **governed staging acceptance pass** for Stripe transport, signatu
 | Deployed staging transport | A connected-account destination delivered a genuine Stripe CLI event to the reviewed staging revision; its valid signature passed verification and the unrelated fixture failed closed as unrecognized | Pass |
 | Paid-event staging transition | The submitted $100 USD Checkout event was securely replayed against the deployed endpoint after destination creation; it returned 200, transitioned `PENDING` to `SUCCEEDED`, wrote one processed event and one transition audit, and unlocked dispatch | Pass |
 | Duplicate staging delivery | Replaying the same signed paid event again returned 200 while event and transition-audit counts remained one | Pass |
-| Fully automatic post-destination Checkout | Requires one new disposable Checkout created and paid after the destination is active | Pending release acceptance |
+| Fully automatic post-destination Checkout | A new disposable $100 USD Checkout automatically delivered from Stripe with HTTP 200, canonical `SUCCEEDED`, one processed event, one transition audit and dispatch unlock | Pass |
 
 ## Required Approval Before Staging Changes
 
@@ -84,6 +84,9 @@ Use a disposable tenant/job/customer fixture and the sandbox connected contracto
 - A second replay returned 200 with the event count and transition-audit count still one, proving deployed idempotency.
 - The disposable tenant and Identity Platform operator were deleted after verification (one each). Temporary secret/event files were removed; temporary build and token-signing permissions remain revoked.
 - This is a staging acceptance pass for transport, signature verification, canonical paid transition and duplicate handling. It is not a live-mode release and does not replace the separate owner gate for merge, production deployment or a controlled real transaction.
+- After the destination was active, a second disposable `$100.00 USD` Checkout automatically delivered `checkout.session.completed` from Stripe to staging. Stripe Workbench recorded HTTP 200 and the application returned `received: true`, `handled: true`, `duplicate: false`.
+- Staging independently verified `SUCCEEDED`, amount `10000`, currency `usd`, application fee `0`, destination matched the tenant, dispatch unlocked, one processed event and exactly the request/transition audits. A Workbench manual resend then recorded HTTP 200 with `duplicate: true`; database event and audit counts remained one.
+- The second disposable tenant and Identity Platform operator were deleted (one each). The temporary token-signing grant was revoked immediately after fixture creation, staging liveness/readiness remained HTTP 200, and no live-mode or production state was changed.
 
 ## Security And Privacy Review
 

@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-012 Payment gate and webhook status workflow (`SCR-APP-006A`, `SCR-APP-006B`, `SCR-APP-006C`, `SCR-APP-023`, `SCR-CUST-002`)
-  - Governed staging acceptance passed for the active Connected accounts destination, signature verification, the submitted `$100.00 USD` canonical paid transition, dispatch unlock and duplicate idempotency on `codex/app-012-payment-gate`. The paid event required a secure deployed replay because payment preceded destination activation; one new automatic post-destination Checkout plus owner merge/release acceptance remain pending. No live-mode or production release is authorized.
+  - Sandbox implementation and acceptance are complete on `codex/app-012-payment-gate`: a new post-destination `$100.00 USD` Checkout delivered automatically from Stripe with HTTP 200, canonical paid transition, zero application fee, tenant destination match, dispatch unlock and Stripe-originated duplicate idempotency. Owner merge/release acceptance remains pending; no live-mode or production release is authorized.
 
 ## Next
 

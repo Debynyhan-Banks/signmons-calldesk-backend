@@ -98,7 +98,8 @@ Last Updated: 2026-09-07
 - The active Stripe `Signmons LLC` test destination receives the six approved Connected accounts events at the staging `/webhooks/stripe` endpoint. Signing material is held in Secret Manager version 5 and is not recorded in source or evidence.
 - A genuine Stripe CLI event reached the deployed endpoint with a valid signature and failed closed as an unrecognized generic payment. The exact owner-submitted `$100.00 USD` paid Checkout event then returned 200 through a secure deployed replay and changed canonical state from `PENDING` to `SUCCEEDED` with zero application fee, tenant destination match, one processed event, one bounded transition audit and dispatch unlock.
 - Duplicate replay returned 200 without adding a second event or transition audit. The disposable tenant and Identity Platform operator were deleted; temporary secret/event files and temporary IAM grants were removed.
-- Evidence: `evidence/APP-012/release-checklist.md`. APP-012 is approximately 97% complete; APP-006 through APP-016 is approximately 69% complete. Merge, production release, live-mode configuration and a real transaction remain separately approval-gated.
+- A new post-destination disposable `$100.00 USD` Checkout then delivered automatically from Stripe with HTTP 200. Canonical status became `SUCCEEDED`, fee stayed zero, tenant destination matched, dispatch unlocked and exactly one processed event/transition audit was stored. Workbench resend also returned HTTP 200 with `duplicate: true` while database counts stayed one.
+- Evidence: `evidence/APP-012/release-checklist.md`. APP-012 sandbox implementation and acceptance are 100% complete; APP-006 through APP-016 is approximately 69% complete. Merge, production release, live-mode configuration and a real transaction remain separately approval-gated.
 
 ## APP-011 Implementation
 
@@ -128,8 +129,8 @@ Last Updated: 2026-09-07
 
 ## Next Actions
 
-1. Review the APP-012 staging acceptance evidence; keep APP-012 in `Now` and unreleased until owner merge/release acceptance.
-2. If required for final release acceptance, run one new disposable Checkout created after the active destination and verify Stripe records the automatic 2xx delivery.
+1. Review the completed APP-012 sandbox acceptance evidence; keep APP-012 in `Now` and unreleased until owner merge/release acceptance.
+2. After explicit owner approval, merge/release the accepted commit through the governed production process; do not reuse sandbox secrets in production.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. Do not begin APP-013, merge, migrate or deploy without owner approval.
 
