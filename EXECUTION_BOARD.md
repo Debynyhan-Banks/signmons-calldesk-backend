@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Scoped Google/UUID remediation is review-ready on PR #21: uuid 11.1.1 through three exact-parent overrides, one lock entry and fourteen native checks integrated into Jest. Backend and UI full/omit-dev audits now pass with zero findings. Override/in-place-API limitations, future upload gates, authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery and acceptance stay open; no activation or deployment.
+  - Initial CREATE uncertainty safeguard is review-ready on PR #21: unknown insert failures retain the reservation, omit raw errors and require office review; 630 backend tests and three new PostgreSQL failure cases pass. Backend/UI audits remain clean. Authorized journal orchestration/recovery ownership, legacy visibility/repair, reschedule/cancel and SENDING recovery, external-state races, override limitations and acceptance remain open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

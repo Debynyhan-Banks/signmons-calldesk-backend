@@ -337,6 +337,145 @@ describe("SchedulingService", () => {
     },
   );
 
+  describe("unknown initial Calendar insert outcomes", () => {
+    const cases = [
+      "timeout",
+      "connection-loss",
+      "provider-500",
+      "provider-400",
+      "malformed-json",
+      "missing-id",
+      "credential-failure",
+    ];
+    it.each(
+      cases.flatMap((outcome) =>
+        [false, true].map((loggerFails) => ({ outcome, loggerFails })),
+      ),
+    )(
+      "holds the reservation for $outcome (logger fails: $loggerFails)",
+      async ({ outcome, loggerFails }) => {
+        const start = new Date("2099-09-10T15:00:00Z");
+        const end = new Date("2099-09-10T18:00:00Z");
+        prisma.job.findFirst.mockResolvedValue(
+          appointmentJob({
+            status: "CREATED",
+            calendarEventId: null,
+            serviceWindowStart: null,
+            serviceWindowEnd: null,
+          }),
+        );
+        const client = jest
+          .spyOn(GoogleAuth.prototype, "getClient")
+          .mockResolvedValue({
+            getRequestHeaders: jest
+              .fn()
+              .mockResolvedValue(
+                new Headers({ authorization: "Bearer synthetic" }),
+              ),
+          } as never);
+        const fetchMock = jest.spyOn(global, "fetch").mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              calendars: { "dispatch@example.com": { busy: [] } },
+            }),
+          ),
+        );
+        if (outcome === "credential-failure") {
+          client
+            .mockResolvedValueOnce({
+              getRequestHeaders: jest.fn().mockResolvedValue(new Headers()),
+            } as never)
+            .mockRejectedValueOnce(new Error("PRIVATE_CREDENTIAL_ERROR"));
+        } else if (outcome === "timeout" || outcome === "connection-loss") {
+          fetchMock.mockRejectedValueOnce(
+            outcome === "timeout"
+              ? new DOMException("PRIVATE_PROVIDER_ERROR", "TimeoutError")
+              : new Error("PRIVATE_PROVIDER_ERROR"),
+          );
+        } else {
+          const status =
+            outcome === "provider-500"
+              ? 500
+              : outcome === "provider-400"
+                ? 400
+                : 200;
+          const body =
+            outcome === "malformed-json"
+              ? "PRIVATE_INVALID_JSON"
+              : JSON.stringify({ private: "PRIVATE_PROVIDER_BODY" });
+          fetchMock.mockResolvedValueOnce(new Response(body, { status }));
+        }
+        if (loggerFails)
+          logger.error.mockImplementation(() => {
+            throw new Error("PRIVATE_LOG_ERROR");
+          });
+        await expect(
+          service.confirmAppointment({
+            tenantId: baseJob.tenantId,
+            jobId: baseJob.id,
+            sessionId: "session-1",
+            slotToken: signedSlot(start, end),
+          }),
+        ).rejects.toMatchObject({
+          status: 503,
+          message:
+            "The calendar reservation needs confirmation by the office. Please contact the office before booking again.",
+        });
+        expect(prisma.job.updateMany).toHaveBeenCalledTimes(1);
+        expect(prisma.job.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              tenantId: baseJob.tenantId,
+              calendarEventId: null,
+            }),
+            data: expect.objectContaining({
+              status: "ACCEPTED",
+              serviceWindowStart: start,
+              serviceWindowEnd: end,
+            }),
+          }),
+        );
+        expect(confirmation.finalize).not.toHaveBeenCalled();
+        expect(
+          notifications.enqueueAppointmentConfirmed,
+        ).not.toHaveBeenCalled();
+        expect(prisma.auditLog.create).not.toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledTimes(
+          outcome === "credential-failure" ? 1 : 2,
+        );
+        expect(JSON.stringify(logger.error.mock.calls)).not.toContain(
+          "PRIVATE_",
+        );
+      },
+    );
+
+    it("does not reserve or insert when availability preflight fails", async () => {
+      prisma.job.findFirst.mockResolvedValue(
+        appointmentJob({
+          status: "CREATED",
+          calendarEventId: null,
+          serviceWindowStart: null,
+          serviceWindowEnd: null,
+        }),
+      );
+      jest
+        .spyOn(GoogleAuth.prototype, "getClient")
+        .mockRejectedValue(new Error("preflight unavailable"));
+      const fetchMock = jest.spyOn(global, "fetch");
+      await expect(
+        service.confirmAppointment({
+          tenantId: baseJob.tenantId,
+          jobId: baseJob.id,
+          sessionId: "session-1",
+          slotToken: signedSlot(new Date("2099-01-01"), new Date("2099-01-02")),
+        }),
+      ).rejects.toThrow();
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(confirmation.finalize).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
   it("keeps a finalized booking successful when operations notification and logging fail", async () => {
     const start = new Date("2026-09-10T15:00:00Z");
     const end = new Date("2026-09-10T18:00:00Z");

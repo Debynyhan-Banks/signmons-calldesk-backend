@@ -291,28 +291,22 @@ export class SchedulingService {
     let calendarEventId: string;
     try {
       calendarEventId = await this.insertCalendarEvent(record, start, end);
-    } catch (error) {
-      await this.prisma.job.updateMany({
-        where: {
-          id: job.id,
-          tenantId: job.tenantId,
-          calendarEventId: null,
-          calendarOperations: noUnfinishedCalendarOperations,
-        },
-        data: {
-          status: JobStatus.CREATED,
-          serviceWindowStart: null,
-          serviceWindowEnd: null,
-          preferredTimeText: null,
-        },
-      });
-      this.loggingService.error(
-        `Calendar reservation failed for job ${job.id}.`,
-        error instanceof Error ? error : undefined,
-        SchedulingService.name,
-      );
+    } catch {
+      // A timeout, rejected response or malformed acknowledgment cannot prove
+      // that Calendar did not insert. Keep the local reservation, including any
+      // newer concurrent state; never compensate or authorize another insert.
+      // Legacy attempts have no durable event ID and require office review.
+      try {
+        this.loggingService.error(
+          `appointment_calendar_insert_review_required tenant=${job.tenantId} job=${job.id}`,
+          undefined,
+          SchedulingService.name,
+        );
+      } catch {
+        /* Logging must not replace the safe, non-retry booking response. */
+      }
       throw new ServiceUnavailableException(
-        "We could not reserve that time. Please try another appointment.",
+        "The calendar reservation needs confirmation by the office. Please contact the office before booking again.",
       );
     }
 

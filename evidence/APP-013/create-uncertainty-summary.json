@@ -1,0 +1,124 @@
+{
+  "date": "2026-09-08",
+  "baselineBackend": "606a803b3153e160d4f45e3a88d154bd9c0330cd",
+  "baselineGovernance": "48b7521aa3e30a114fdd2702cb7f1466bb0a76bc",
+  "scope": "Legacy initial CREATE unknown-insert outcome: retain reservation, no compensation, sanitized office-review response",
+  "verification": {
+    "backendSuites": 55,
+    "backendTests": 630,
+    "addedUnitCases": 15,
+    "existingSkippedTests": 3,
+    "unitOutcomes": [
+      "timeout",
+      "connection-loss",
+      "provider-500",
+      "provider-400",
+      "malformed-json",
+      "missing-id",
+      "credential-failure"
+    ],
+    "unitVariants": "Each insert outcome with healthy/failing logger; one availability-preflight failure before any reservation",
+    "localMigrations": 15,
+    "newDatabaseFailureCases": [
+      "before-insert",
+      "synthetic-event-lost-ack",
+      "newer-office-edit"
+    ],
+    "databaseAssertions": [
+      "Exact post-reservation/newer job row survives failure",
+      "No new success audit, SMS intent or communication event",
+      "Fresh service instance rejects same signed-window replay before reinsert",
+      "Different signed-window replay cannot claim held job or insert",
+      "Synthetic event count remains zero for pre-insert failure and one after simulated insert"
+    ],
+    "existingProcessCrashCases": 11,
+    "newProcessCrashCases": 0,
+    "realProviderCalls": 0,
+    "fixtureDatabaseAbsenceIndependentlyVerified": true,
+    "uiTests": 60,
+    "staticPages": 14,
+    "browser": {
+      "harnesses": 5,
+      "routeChecks": 22,
+      "homeNavigations": 12,
+      "mockedRequests": [
+        14,
+        14,
+        8,
+        92
+      ],
+      "viewports": [
+        1440,
+        390
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "visualReview": [
+        "framework-missing-link-mobile.png",
+        "reschedule-intents-desktop.png"
+      ],
+      "temporaryEvidence": "/private/tmp/signmons-create-hold-regression.zNPtOZ/evidence/APP-013"
+    }
+  },
+  "audits": {
+    "backend": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "backendOmitDev": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "ui": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "uiOmitDev": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    }
+  },
+  "limits": [
+    "Source-only checkpoint; dependency manifests/locks, schema, module registrations, provider adapters and payment policy unchanged.",
+    "Conservative holding may retain slots even when no Calendar insert occurred. Office review required; no operator control or repair authorization added.",
+    "Legacy attempts lack a durable event ID/journal and automatic recovery; this prevents only the former compensation/reinsert path, not all concurrent mutation or provider races.",
+    "Fresh-service replay proof is not a new process-crash test; eleven prior real process-crash cases remain passing.",
+    "Browser regression covers unchanged local app surfaces with synthetic APIs, not an external webchat UI or live Calendar acceptance.",
+    "CREATE authorized orchestration/reader-worker ownership, legacy visibility/repair, reschedule/cancel and SENDING recovery, override limitations and acceptance remain open.",
+    "No production action, real data, migration outside disposable fixtures, provider configuration, merge, deployment or activation."
+  ],
+  "estimates": {
+    "app013": 85,
+    "governedApp006ThroughApp016": 81,
+    "basis": "Unchanged planning estimates, not release readiness"
+  },
+  "riskAcceptance": false
+}

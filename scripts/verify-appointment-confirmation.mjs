@@ -226,7 +226,107 @@ export async function verifyAppointmentConfirmation({
       .calendarEventId,
     null,
   );
+  // Legacy CREATE has no durable event ID. Unknown insert outcomes must retain
+  // the real reservation and never roll back a newer concurrent job change.
+  for (const [index, mode] of [
+    "before-insert",
+    "lost-ack",
+    "newer-edit",
+  ].entries()) {
+    const fixture = await makeInput(index + 10);
+    const attempts = makeScheduling(intents);
+    let insertAttempts = 0;
+    const syntheticCalendarEvents = new Set();
+    let observedAfterReservation;
+    attempts.insertCalendarEvent = async () => {
+      insertAttempts++;
+      if (mode !== "before-insert") syntheticCalendarEvents.add(fixture.job.id);
+      if (mode === "newer-edit") {
+        await prisma.job.update({
+          where: { id: fixture.job.id },
+          data: {
+            preferredTimeText: "Newer office-owned change",
+            updatedAt: new Date(Date.now() + 1000),
+          },
+        });
+      }
+      observedAfterReservation = await prisma.job.findUniqueOrThrow({
+        where: { id: fixture.job.id },
+      });
+      // lost-ack represents a synthetic provider side effect before throwing;
+      // no real Calendar event is written by any fixture.
+      throw new Error(`PRIVATE_SYNTHETIC_${mode}`);
+    };
+    await assert.rejects(
+      () => attempts.confirmAppointment(fixture.input),
+      /needs confirmation by the office/,
+    );
+    const held = await prisma.job.findUniqueOrThrow({
+      where: { id: fixture.job.id },
+    });
+    assert.deepEqual(held, observedAfterReservation);
+    assert.equal(held.status, "ACCEPTED");
+    assert.equal(held.calendarEventId, null);
+    assert.equal(held.serviceWindowStart.getTime(), fixture.start.getTime());
+    assert.equal(held.serviceWindowEnd.getTime(), fixture.end.getTime());
+    assert.equal(
+      await prisma.smsEnqueueIntent.count({ where: { jobId: fixture.job.id } }),
+      0,
+    );
+    assert.equal(
+      await prisma.communicationEvent.count({
+        where: { jobId: fixture.job.id },
+      }),
+      0,
+    );
+    assert.equal(
+      await prisma.auditLog.count({ where: { entityId: fixture.job.id } }),
+      0,
+    );
+    // A restarted caller and the same signed choice cannot create a second event.
+    const restarted = makeScheduling(intents);
+    restarted.insertCalendarEvent = async () => {
+      assert.fail("held booking must not insert again");
+    };
+    await assert.rejects(
+      () => restarted.confirmAppointment(fixture.input),
+      /awaiting finalization/,
+    );
+    // Nor can a different valid signed window bypass the held reservation.
+    const payload = Buffer.from(
+      JSON.stringify({
+        tenantId: fixture.job.tenantId,
+        jobId: fixture.job.id,
+        start: new Date(fixture.start.getTime() + 3600000).toISOString(),
+        end: new Date(fixture.end.getTime() + 3600000).toISOString(),
+        expiresAt: Date.now() + 60000,
+      }),
+    ).toString("base64url");
+    const signature = createHmac("sha256", config.conversationDataEncryptionKey)
+      .update(payload)
+      .digest("base64url");
+    await assert.rejects(
+      () =>
+        restarted.confirmAppointment({
+          ...fixture.input,
+          slotToken: `${payload}.${signature}`,
+        }),
+      /already has an appointment selection/,
+    );
+    assert.equal(insertAttempts, 1);
+    assert.equal(
+      syntheticCalendarEvents.size,
+      mode === "before-insert" ? 0 : 1,
+    );
+    assert.deepEqual(
+      await prisma.job.findUniqueOrThrow({ where: { id: fixture.job.id } }),
+      held,
+    );
+  }
   return [
+    "unknown legacy CREATE outcome retains actual reservation without success intent/audit/message",
+    "failed CREATE cannot overwrite a newer office change",
+    "restarted same/different signed choice cannot reinsert held CREATE",
     "initial confirmation reference/audit/intent atomicity",
     "missed post-commit recovery",
     "confirmation replay and ack-loss deduplication",
