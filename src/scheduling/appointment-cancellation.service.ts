@@ -3,6 +3,7 @@ import { AuditActorType, Job, JobStatus } from "@prisma/client";
 import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
 import { LoggingService } from "../logging/logging.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { noUnfinishedCalendarOperations } from "./calendar-operation-guard";
 
 // Calendar deletion is outside these local transactions. No intent is recorded
 // until the caller has received its acknowledgment.
@@ -19,6 +20,7 @@ export class AppointmentCancellationService {
       const changed = await tx.job.updateMany({
         where: {
           id: job.id,
+          calendarOperations: noUnfinishedCalendarOperations,
           tenantId: job.tenantId,
           deletedAt: null,
           status: JobStatus.ACCEPTED,
@@ -49,6 +51,7 @@ export class AppointmentCancellationService {
     return this.prisma.job.updateMany({
       where: {
         id: claim.id,
+        calendarOperations: noUnfinishedCalendarOperations,
         tenantId: claim.tenantId,
         deletedAt: null,
         status: JobStatus.CANCELLED,
@@ -87,6 +90,7 @@ export class AppointmentCancellationService {
       const changed = await tx.job.updateMany({
         where: {
           id: claim.id,
+          calendarOperations: noUnfinishedCalendarOperations,
           tenantId: claim.tenantId,
           deletedAt: null,
           status: JobStatus.CANCELLED,

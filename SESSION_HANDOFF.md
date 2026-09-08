@@ -11,7 +11,16 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: inactive CREATE Calendar read-back reconciliation
+### Latest: unfinished Calendar consumer guards
+
+- Owner reviewed CREATE read-back checkpoint and said proceed; fetched/reconciled backend `f30760a` / governance `b2dcec5`. APP-013 remains sole Now; original saved-checkout changes preserved.
+- Existence-only unfinished-journal guards now hold signed customer views/actions, initial confirmation, dispatch eligibility/assignment changes and notification admission/delivery. Customer HTTP 409 hides provisional details and clears stale cards; dispatch uses explicit ESCALATED/provisional hold and no override. Conditional tenant/version/no-unfinished writes protect customer audit and legacy scheduling/dispatch mutations.
+- Pending notifications wait 60 seconds without consuming enqueue/delivery retries or becoming stale solely due to the unfinished operation. Delivery hold happens before decrypt/provider access and cannot release another claim. Current-state hashes, consent, deduplication and unknown-send safety remain.
+- Passed backend lint/build, 47 suites/535 tests (3 existing skips), architecture/Prisma and 15-migration disposable local proof including 12 new action/status guard combinations plus prior nine process crashes. UI lint/29 tests/static build, 14-request new desktop/390px guard QA and 92-request notification regression passed; four new screenshots inspected. Zero provider calls, fixture removed.
+- Existing pg warning and backend 5 high/10 moderate, UI 10 high/1 moderate audit risks remain; 0 critical. Consumer queries require the previously gated journal migration. No new schema/dependency/module registration or external/release action. Journal writer/reconciler/worker remain inactive; legacy unjournaled crashes, post-check provider races and SENDING crash recovery are not solved here.
+- Review this section, then separately scope guarded CREATE integration, including competing technician/job entry points, before bounded recovery-worker/review controls. No new ticket, live activation, deployment or migration authorization. Planning estimates APP-013 ~79%, governed APP-006 through APP-016 ~80%. Exact review commands and risks: `evidence/APP-013/readiness-report.md`.
+
+### Earlier: inactive CREATE Calendar read-back reconciliation
 
 - Owner reviewed journal foundation and said proceed. Fetched/reconciled backend `cbdddc9` / governance `c0f47d8`; APP-013 remains sole Now. Added only the journal-to-read-back-to-local-finalization section, with no SchedulingModule/route/worker registration.
 - Read-only Google Calendar adapter uses the saved encoded target and returns allowlisted evidence. CREATE reconciler verifies tenant/job/operation markers, event ID, confirmed single blocking event, exact future window and current local claim version. Missing/conflicting/past-window evidence stays held for review; unavailable reads/persistence stay pending. No blind recreate, rollback, legacy adoption or Calendar write.
@@ -247,10 +256,10 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest inactive APP-013 CREATE read-back reconciliation and atomic finalization on `codex/app-013-transactional-messaging` (PR #21), including three new process-crash cases; prior messaging/journal checkpoints remain intact.
+1. Review the latest APP-013 unfinished Calendar consumer guards on `codex/app-013-transactional-messaging` (PR #21), including 12 real action/status cases and customer/dispatch browser holds; prior messaging/journal/reconciliation checkpoints remain intact.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. After review, add journal-aware pending-state guards to customer views/actions, dispatch eligibility and notification admission/delivery in one bounded APP-013 section. Guarded CREATE integration/recovery worker and dependency remediation follow separately. Migration, provider configuration, live acceptance, release and external sends require their own approval.
+4. After review, separately scope guarded CREATE integration using saved identity/operation markers and audit competing mutation entry points, then bounded recovery-worker ownership/retry/review controls. Do not activate journal/reconciler alone. Reschedule/cancel reconciliation and dependency remediation remain open. Migration, provider configuration, live acceptance, release and external sends require their own approval.
 
 ## Restart Commands
 

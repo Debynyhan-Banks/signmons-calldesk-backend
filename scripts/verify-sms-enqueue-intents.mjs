@@ -11,6 +11,7 @@ import { verifyAppointmentCancellation } from "./verify-appointment-cancellation
 import { verifyAppointmentRescheduling } from "./verify-appointment-rescheduling.mjs";
 import { verifyCalendarOperationJournal } from "./verify-calendar-operation-journal.mjs";
 import { verifyCalendarCreateReconciliation } from "./verify-calendar-create-reconciliation.mjs";
+import { verifyCalendarOperationGuards } from "./verify-calendar-operation-guards.mjs";
 const require = createRequire(import.meta.url);
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
@@ -359,6 +360,13 @@ try {
       otherTenantId: other.id,
     },
   );
+  const guardChecks = await verifyCalendarOperationGuards({
+    prisma,
+    intents,
+    messaging,
+    jobData,
+    otherTenantId: other.id,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -366,6 +374,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...guardChecks,
         ...calendarReconciliationChecks,
         ...calendarJournalChecks,
         ...confirmationChecks,

@@ -400,7 +400,11 @@ export default function NotificationsPage() {
                   </div>
                   <div>
                     <dt>Failure code</dt>
-                    <dd>{item.lastErrorCode ?? "None recorded"}</dd>
+                    <dd>
+                      {item.lastErrorCode === "calendar_sync_pending"
+                        ? "On hold for Calendar review"
+                        : (item.lastErrorCode ?? "None recorded")}
+                    </dd>
                   </div>
                 </dl>
                 <p className={styles.eventId}>Event {item.id}</p>

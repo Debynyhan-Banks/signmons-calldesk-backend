@@ -3,6 +3,7 @@ import { AuditActorType, Job, JobStatus } from "@prisma/client";
 import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
 import { LoggingService } from "../logging/logging.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { noUnfinishedCalendarOperations } from "./calendar-operation-guard";
 
 // Local reservation and post-Calendar finalization only; never calls Calendar.
 @Injectable()
@@ -18,6 +19,7 @@ export class AppointmentReschedulingService {
       const changed = await tx.job.updateMany({
         where: {
           id: job.id,
+          calendarOperations: noUnfinishedCalendarOperations,
           tenantId: job.tenantId,
           deletedAt: null,
           status: JobStatus.ACCEPTED,
@@ -128,6 +130,7 @@ export class AppointmentReschedulingService {
 
   private claimWhere(claim: Job) {
     return {
+      calendarOperations: noUnfinishedCalendarOperations,
       id: claim.id,
       tenantId: claim.tenantId,
       deletedAt: null,

@@ -13,6 +13,7 @@ const item = (
   queue: DispatchQueue,
   reference: string,
 ): DispatchBoardSummary => ({
+  calendarSyncPending: false,
   jobId: reference,
   reference,
   queue,

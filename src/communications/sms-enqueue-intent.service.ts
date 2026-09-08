@@ -3,6 +3,7 @@ import type { ConfigType } from "@nestjs/config";
 import { Prisma, SmsEnqueueIntentStatus } from "@prisma/client";
 import appConfig from "../config/app.config";
 import { PrismaService } from "../prisma/prisma.service";
+import { CalendarOperationPendingError } from "../scheduling/calendar-operation-guard";
 import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
 import {
   evaluateTransactionalMessageState,
@@ -170,6 +171,16 @@ export class SmsEnqueueIntentService {
         },
       });
     } catch (error) {
+      if (error instanceof CalendarOperationPendingError) {
+        await this.prisma.smsEnqueueIntent.updateMany({
+          where: ownership,
+          data: {
+            lastErrorCode: "calendar_sync_pending",
+            nextAttemptAt: lease,
+          },
+        });
+        return;
+      }
       const stale = error instanceof StaleMessageIntentError;
       const failures = Math.min(
         intent.attemptCount + 1,

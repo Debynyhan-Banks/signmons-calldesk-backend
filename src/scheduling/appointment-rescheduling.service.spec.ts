@@ -51,6 +51,7 @@ describe("AppointmentReschedulingService", () => {
     id: "job",
     tenantId: "tenant",
     deletedAt: null,
+    calendarOperations: { none: { finishedAt: null } },
     status: "ACCEPTED",
     calendarEventId: "event",
     serviceWindowStart: new Date(1),

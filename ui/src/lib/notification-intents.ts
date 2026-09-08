@@ -69,5 +69,6 @@ export function intentFailureLabel(code: string | null) {
   if (code === null) return "None recorded";
   if (code === "stale_lifecycle_state") return "Lifecycle state changed";
   if (code === "enqueue_failed") return "Enqueue failed";
+  if (code === "calendar_sync_pending") return "On hold for Calendar review";
   return "Unrecognized failure code";
 }

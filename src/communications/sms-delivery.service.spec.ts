@@ -51,6 +51,7 @@ describe("SmsDeliveryService", () => {
     calendarEventId: "calendar-1",
     serviceWindowStart: new Date("2026-09-09T14:00:00.000Z"),
     serviceWindowEnd: new Date("2026-09-09T16:00:00.000Z"),
+    calendarOperations: [],
     tenant: { name: "Example Contractor", timezone: "America/New_York" },
     customer: { phone: to },
     assignedUser: {
@@ -172,6 +173,68 @@ describe("SmsDeliveryService", () => {
         data: expect.objectContaining({ status: CommunicationStatus.SENT }),
       }),
     );
+  });
+
+  it.each([1, 3])(
+    "holds an unsent message at attempt %s without decrypting or contacting a provider",
+    async (attemptCount) => {
+      prisma.job.findUnique.mockResolvedValue({
+        ...lifecycleJob,
+        calendarOperations: [{ id: "pending" }],
+      });
+      prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        jobId: lifecycleJob.id,
+        attemptCount,
+        content: {
+          encryptedRaw: "encrypted",
+          payload: {
+            kind: "transactional_sms",
+            templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+            lifecycleStateHash: "f".repeat(64),
+          },
+        },
+      });
+      expect(await createService().deliver(tenantId, eventId)).toBe("QUEUED");
+      expect(prisma.communicationEvent.updateMany).toHaveBeenLastCalledWith({
+        where: { id: eventId, tenantId, status: "SENDING", attemptCount },
+        data: {
+          status: "QUEUED",
+          attemptCount: { decrement: 1 },
+          lastErrorCode: "calendar_sync_pending",
+          nextAttemptAt: expect.any(Date),
+        },
+      });
+      expect(cipher.decrypt).not.toHaveBeenCalled();
+      expect(provider.send).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not report a released hold or send when claim ownership changes", async () => {
+    prisma.job.findUnique.mockResolvedValue({
+      ...lifecycleJob,
+      calendarOperations: [{ id: "pending" }],
+    });
+    prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({
+      tenantId,
+      jobId: lifecycleJob.id,
+      attemptCount: 1,
+      content: {
+        payload: {
+          kind: "transactional_sms",
+          templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+          lifecycleStateHash: "f".repeat(64),
+        },
+      },
+    });
+    prisma.communicationEvent.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+    await expect(createService().deliver(tenantId, eventId)).rejects.toThrow(
+      "claim changed while on hold",
+    );
+    expect(provider.send).not.toHaveBeenCalled();
   });
 
   it("revalidates a transactional lifecycle snapshot immediately before send", async () => {

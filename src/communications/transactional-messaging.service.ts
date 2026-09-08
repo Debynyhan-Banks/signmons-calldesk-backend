@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { CalendarOperationPendingError } from "../scheduling/calendar-operation-guard";
 import { SmsDeliveryService } from "./sms-delivery.service";
 import {
   TransactionalMessageTemplateKey,
@@ -47,6 +48,12 @@ export class TransactionalMessagingService {
         throw error;
       },
     );
+    if (
+      evaluateTransactionalMessageState(input.templateKey, job) ===
+      "CALENDAR_PENDING"
+    ) {
+      throw new CalendarOperationPendingError();
+    }
     const stateHash = transactionalMessageStateHash(input.templateKey, job);
     if (
       input.expectedStateHash &&

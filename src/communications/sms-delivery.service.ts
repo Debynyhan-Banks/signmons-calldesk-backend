@@ -335,6 +335,7 @@ export class SmsDeliveryService {
           in: [CommunicationStatus.QUEUED, CommunicationStatus.FAILED],
         },
         attemptCount: { lt: MAX_ATTEMPTS },
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }],
       },
       data: {
         status: CommunicationStatus.SENDING,
@@ -349,6 +350,28 @@ export class SmsDeliveryService {
       include: { content: true },
     });
     const lifecycleError = await this.lifecycleError(event);
+    if (lifecycleError === "calendar_sync_pending") {
+      // No provider attempt occurred. Release only our claim without spending a retry.
+      const released = await this.prisma.communicationEvent.updateMany({
+        where: {
+          id: eventId,
+          tenantId,
+          status: CommunicationStatus.SENDING,
+          attemptCount: event.attemptCount,
+        },
+        data: {
+          status: CommunicationStatus.QUEUED,
+          attemptCount: { decrement: 1 },
+          lastErrorCode: lifecycleError,
+          nextAttemptAt: new Date(Date.now() + 60_000),
+        },
+      });
+      if (released.count !== 1)
+        throw new ConflictException(
+          "SMS delivery claim changed while on hold.",
+        );
+      return CommunicationStatus.QUEUED;
+    }
     if (lifecycleError) {
       return this.deadLetter(tenantId, eventId, lifecycleError);
     }
@@ -488,6 +511,10 @@ export class SmsDeliveryService {
       },
       select: transactionalMessageJobSelect,
     });
+    if (
+      evaluateTransactionalMessageState(templateKey, job) === "CALENDAR_PENDING"
+    )
+      return "calendar_sync_pending";
     return job &&
       evaluateTransactionalMessageState(templateKey, job) === "AVAILABLE" &&
       transactionalMessageStateHash(templateKey, job) === expectedHash

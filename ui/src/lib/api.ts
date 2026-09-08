@@ -159,6 +159,7 @@ export interface AssignedTechnician {
 }
 
 export interface DispatchBoardSummary {
+  calendarSyncPending: boolean;
   jobId: string;
   reference: string;
   queue: DispatchQueue;

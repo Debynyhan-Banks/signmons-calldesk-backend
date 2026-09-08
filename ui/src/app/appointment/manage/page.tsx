@@ -63,6 +63,8 @@ export default function CustomerBookingPage() {
       );
       if (action === "request_reschedule") setRescheduleOpen(false);
     } catch (actionError) {
+      if (actionError instanceof ApiError && actionError.status === 409)
+        setBooking(null);
       setError(errorMessage(actionError));
     } finally {
       setActing(false);
@@ -86,6 +88,8 @@ export default function CustomerBookingPage() {
       checkoutWindow.location.replace(result.checkoutUrl);
     } catch (paymentError) {
       checkoutWindow.close();
+      if (paymentError instanceof ApiError && paymentError.status === 409)
+        setBooking(null);
       setError(errorMessage(paymentError));
     } finally {
       setPaymentOpening(false);
@@ -358,7 +362,9 @@ function ErrorPanel({ message }: { message: string }) {
       <span>!</span>
       <h1>We could not open this booking</h1>
       <p>{message}</p>
-      <small>Ask the service company to resend your secure booking link.</small>
+      <small>
+        Contact the service company for help before making plans or changes.
+      </small>
     </div>
   );
 }

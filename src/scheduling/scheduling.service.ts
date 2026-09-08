@@ -23,6 +23,11 @@ import { PaymentRequestsService } from "../payments/payment-requests.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { AppointmentConfirmationService } from "./appointment-confirmation.service";
 import { AppointmentCancellationService } from "./appointment-cancellation.service";
+import {
+  unfinishedCalendarOperations,
+  noUnfinishedCalendarOperations,
+  requireCalendarOperationSettled,
+} from "./calendar-operation-guard";
 
 export interface AppointmentSlot {
   token: string;
@@ -54,6 +59,7 @@ interface BusyPeriod {
 
 type AppointmentJob = Prisma.JobGetPayload<{
   include: {
+    calendarOperations: typeof unfinishedCalendarOperations;
     customer: true;
     propertyAddress: true;
     serviceCategory: true;
@@ -192,12 +198,14 @@ export class SchedulingService {
         intakeSessionId: input.sessionId,
       },
       include: {
+        calendarOperations: unfinishedCalendarOperations,
         customer: true,
         propertyAddress: true,
         serviceCategory: true,
       },
     });
     if (!job) throw new BadRequestException("Service request not found.");
+    requireCalendarOperationSettled(job);
     if (
       job.deletedAt ||
       job.status === JobStatus.CANCELLED ||
@@ -249,6 +257,8 @@ export class SchedulingService {
           id: job.id,
           tenantId: job.tenantId,
           status: job.status,
+          updatedAt: job.updatedAt,
+          calendarOperations: noUnfinishedCalendarOperations,
           deletedAt: null,
           calendarEventId: null,
           serviceWindowStart: null,
@@ -283,7 +293,12 @@ export class SchedulingService {
       calendarEventId = await this.insertCalendarEvent(record, start, end);
     } catch (error) {
       await this.prisma.job.updateMany({
-        where: { id: job.id, tenantId: job.tenantId, calendarEventId: null },
+        where: {
+          id: job.id,
+          tenantId: job.tenantId,
+          calendarEventId: null,
+          calendarOperations: noUnfinishedCalendarOperations,
+        },
         data: {
           status: JobStatus.CREATED,
           serviceWindowStart: null,
@@ -362,6 +377,7 @@ export class SchedulingService {
       input.expectedTenantId,
     );
     const job = await this.loadAppointment(authority.tenantId, authority.jobId);
+    requireCalendarOperationSettled(job);
     const record = this.mapJob(job);
 
     if (input.action === "view") {
@@ -669,16 +685,36 @@ export class SchedulingService {
     action: (typeof CUSTOMER_APPOINTMENT_ACTIONS)[number],
     metadata: Prisma.InputJsonObject,
   ): Promise<void> {
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: job.tenantId,
-        action,
-        actorType: AuditActorType.CUSTOMER,
-        actorId: `customer:${job.customerId}`,
-        entityType: "Job",
-        entityId: job.id,
-        metadata,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.job.updateMany({
+        where: {
+          id: job.id,
+          tenantId: job.tenantId,
+          deletedAt: null,
+          updatedAt: job.updatedAt,
+          calendarOperations: noUnfinishedCalendarOperations,
+        },
+        data: {
+          updatedAt: new Date(
+            Math.max(Date.now(), job.updatedAt.getTime() + 1),
+          ),
+        },
+      });
+      if (claimed.count !== 1)
+        throw new ConflictException(
+          "Appointment changed. Refresh before responding.",
+        );
+      await tx.auditLog.create({
+        data: {
+          tenantId: job.tenantId,
+          action,
+          actorType: AuditActorType.CUSTOMER,
+          actorId: `customer:${job.customerId}`,
+          entityType: "Job",
+          entityId: job.id,
+          metadata,
+        },
+      });
     });
   }
 
@@ -1025,6 +1061,7 @@ export class SchedulingService {
     const job = await this.prisma.job.findFirst({
       where: { id: jobId, tenantId },
       include: {
+        calendarOperations: unfinishedCalendarOperations,
         customer: true,
         propertyAddress: true,
         serviceCategory: true,

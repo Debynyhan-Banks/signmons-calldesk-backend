@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { JobStatus, TechnicianJobStatus } from "@prisma/client";
 import type { PrismaService } from "../prisma/prisma.service";
+import { CalendarOperationPendingError } from "../scheduling/calendar-operation-guard";
 import type { SmsDeliveryService } from "./sms-delivery.service";
 import {
   TransactionalMessageTemplateKey,
@@ -28,6 +29,7 @@ describe("TransactionalMessagingService", () => {
       calendarEventId: "calendar-fixture",
       serviceWindowStart: new Date("2026-09-09T14:00:00.000Z"),
       serviceWindowEnd: new Date("2026-09-09T16:00:00.000Z"),
+      calendarOperations: [],
       tenant: { name: "Eternity Mechanical", timezone: "America/New_York" },
       customer: { phone: "+12165550183" },
       assignedUser: {
@@ -37,6 +39,28 @@ describe("TransactionalMessagingService", () => {
     });
     delivery.create.mockResolvedValue({ id: "event-1", status: "QUEUED" });
   });
+
+  it.each(Object.values(TransactionalMessageTemplateKey))(
+    "rejects manual %s and defers stale-looking recovery while Calendar is pending",
+    async (templateKey) => {
+      const job = await prisma.job.findUnique();
+      prisma.job.findUnique.mockResolvedValue({
+        ...job,
+        calendarOperations: [{ id: "pending" }],
+      });
+      const input = { tenantId, jobId, templateKey, idempotencyKey: "fixture" };
+      await expect(createService().queue(input)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      await expect(
+        createService().queueLifecycle({
+          ...input,
+          expectedStateHash: "f".repeat(64),
+        }),
+      ).rejects.toBeInstanceOf(CalendarOperationPendingError);
+      expect(delivery.create).not.toHaveBeenCalled();
+    },
+  );
 
   it("loads the job inside the tenant boundary and queues encrypted delivery", async () => {
     const service = createService();

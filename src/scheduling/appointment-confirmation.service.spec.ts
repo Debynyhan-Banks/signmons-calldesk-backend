@@ -55,6 +55,7 @@ describe("AppointmentConfirmationService", () => {
         tenantId: input.tenantId,
         status: "ACCEPTED",
         deletedAt: null,
+        calendarOperations: { none: { finishedAt: null } },
         calendarEventId: null,
         serviceWindowStart: input.start,
         serviceWindowEnd: input.end,

@@ -23,6 +23,7 @@ describe("SmsEnqueueRecoveryService", () => {
     calendarEventId: "calendar-1",
     serviceWindowStart: now,
     serviceWindowEnd: new Date(now.getTime() + 60_000),
+    calendarOperations: [],
     tenant: { name: "Fixture", timezone: "UTC" },
     customer: { phone: "+15555550123" },
     assignedUser: null,
@@ -59,6 +60,17 @@ describe("SmsEnqueueRecoveryService", () => {
       service: new SmsEnqueueRecoveryService(prisma as never),
     };
   }
+  it("does not allow owner recovery to bypass pending Calendar work", async () => {
+    const { transaction, service } = harness();
+    transaction.job.findUnique.mockResolvedValue({
+      ...job,
+      calendarOperations: [{ id: "pending" }],
+    } as never);
+    await expect(service.retry(input)).rejects.toThrow();
+    expect(transaction.smsEnqueueIntent.updateMany).not.toHaveBeenCalled();
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+  });
+
   it("re-arms exhausted work and audits the same transaction without transport access", async () => {
     const { transaction, service } = harness();
     await expect(service.retry(input)).resolves.toEqual({ status: "pending" });

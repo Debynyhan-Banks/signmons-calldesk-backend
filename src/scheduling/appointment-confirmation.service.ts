@@ -3,6 +3,7 @@ import { AuditActorType, JobStatus } from "@prisma/client";
 import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
 import { LoggingService } from "../logging/logging.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { noUnfinishedCalendarOperations } from "./calendar-operation-guard";
 
 // Finalizes local booking evidence after the calendar has acknowledged insertion.
 // The external calendar operation is deliberately outside the database transaction.
@@ -25,6 +26,7 @@ export class AppointmentConfirmationService {
       async (transaction) => {
         const updated = await transaction.job.updateMany({
           where: {
+            calendarOperations: noUnfinishedCalendarOperations,
             id: input.jobId,
             tenantId: input.tenantId,
             status: JobStatus.ACCEPTED,

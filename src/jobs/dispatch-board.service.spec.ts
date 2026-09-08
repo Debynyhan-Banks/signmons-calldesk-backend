@@ -19,6 +19,7 @@ describe("DispatchBoardService", () => {
   const techId = "2f2ecce7-6bb1-4aaa-a946-a660c80bb6c5";
   const now = new Date("2026-08-31T15:00:00.000Z");
   const baseJob = {
+    calendarOperations: [],
     id: jobId,
     tenantId,
     customerId: "customer-1",
@@ -333,6 +334,7 @@ describe("DispatchBoardService", () => {
       .mockResolvedValueOnce({
         id: jobId,
         assignedUserId: techId,
+        calendarOperations: [],
         updatedAt: now,
       })
       .mockResolvedValueOnce({
@@ -366,6 +368,49 @@ describe("DispatchBoardService", () => {
         }),
       }),
     );
+  });
+
+  it("holds recommendations and overrides, including same-technician replay", async () => {
+    const { prisma, service } = createHarness();
+    const job = {
+      ...baseJob,
+      assignedUserId: techId,
+      calendarOperations: [{ id: "pending" }],
+    };
+    prisma.job.findFirst.mockResolvedValue(job);
+    prisma.user.findMany.mockResolvedValue([qualifiedTech]);
+    prisma.auditLog.findMany.mockResolvedValue([]);
+    const result = await service.get(tenantId, jobId);
+    expect(result).toMatchObject({
+      queue: "ESCALATED",
+      calendarSyncPending: true,
+      recommendation: null,
+    });
+    expect(result.candidates[0]).toMatchObject({
+      eligible: false,
+      reasonCodes: expect.arrayContaining(["CALENDAR_SYNC_PENDING"]),
+    });
+    await expect(
+      service.assign({
+        tenantId,
+        jobId,
+        technicianId: techId,
+        expectedUpdatedAt: now.toISOString(),
+        actorId: "fixture",
+        reason: "An override cannot bypass this hold",
+      }),
+    ).rejects.toThrow("Calendar synchronization is unfinished");
+    await expect(
+      service.cancelAssignment({
+        tenantId,
+        jobId,
+        expectedUpdatedAt: now.toISOString(),
+        actorId: "fixture",
+        reason: "Fixture cancellation",
+      }),
+    ).rejects.toThrow("Calendar synchronization is unfinished");
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
   });
 
   it("uses the same not-found boundary for cross-tenant jobs", async () => {

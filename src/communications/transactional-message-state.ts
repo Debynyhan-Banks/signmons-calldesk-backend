@@ -1,8 +1,13 @@
 import { createHash } from "node:crypto";
+import {
+  calendarOperationPending,
+  unfinishedCalendarOperations,
+} from "../scheduling/calendar-operation-guard";
 import { JobStatus, Prisma, TechnicianJobStatus } from "@prisma/client";
 import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
 
 export const transactionalMessageJobSelect = {
+  calendarOperations: unfinishedCalendarOperations,
   id: true,
   status: true,
   deletedAt: true,
@@ -23,6 +28,7 @@ export type TransactionalMessageJob = Prisma.JobGetPayload<{
 export type TransactionalMessageState =
   | "AVAILABLE"
   | "MISSING"
+  | "CALENDAR_PENDING"
   | "INCOMPATIBLE";
 
 export function evaluateTransactionalMessageState(
@@ -30,6 +36,7 @@ export function evaluateTransactionalMessageState(
   job: TransactionalMessageJob | null,
 ): TransactionalMessageState {
   if (!job || job.deletedAt) return "MISSING";
+  if (calendarOperationPending(job)) return "CALENDAR_PENDING";
 
   const cancellation =
     templateKey === TransactionalMessageTemplateKey.APPOINTMENT_CANCELLED;

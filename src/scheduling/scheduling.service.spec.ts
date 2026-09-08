@@ -36,6 +36,7 @@ describe("SchedulingService", () => {
     updatedAt: new Date(),
   };
   const prisma = {
+    $transaction: jest.fn(),
     job: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
@@ -78,9 +79,12 @@ describe("SchedulingService", () => {
 
   beforeEach(() => {
     jest.restoreAllMocks();
+    prisma.$transaction.mockImplementation(
+      (fn: (tx: typeof prisma) => Promise<unknown>) => fn(prisma),
+    );
     prisma.job.findMany.mockResolvedValue([]);
     prisma.job.findFirst.mockReset();
-    prisma.job.updateMany.mockReset();
+    prisma.job.updateMany.mockReset().mockResolvedValue({ count: 1 });
     prisma.job.update.mockReset();
     prisma.auditLog.findMany.mockReset().mockResolvedValue([]);
     prisma.auditLog.create.mockReset().mockResolvedValue({ id: "audit-1" });
@@ -785,6 +789,69 @@ describe("SchedulingService", () => {
     expect(notifications.enqueueAppointmentCancelled).not.toHaveBeenCalled();
   });
 
+  it.each([
+    "view",
+    "confirm",
+    "request_reschedule",
+    "continue_payment",
+    "availability",
+    "reschedule",
+    "cancel",
+  ] as const)(
+    "holds customer %s before exposing provisional details or taking action",
+    async (action) => {
+      prisma.job.findFirst.mockResolvedValue(
+        appointmentJob({ calendarOperations: [{ id: "pending" }] }),
+      );
+      await expect(
+        service.manageAppointment({
+          managementToken: managementToken(),
+          action,
+        }),
+      ).rejects.toThrow("Calendar synchronization is unfinished");
+      expect(prisma.auditLog.findMany).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(paymentRequests.recover).not.toHaveBeenCalled();
+      expect(cancellation.claim).not.toHaveBeenCalled();
+      expect(rescheduling.claim).not.toHaveBeenCalled();
+    },
+  );
+
+  it("holds initial confirmation replay before Calendar access", async () => {
+    const job = appointmentJob({ calendarOperations: [{ id: "pending" }] });
+    prisma.job.findFirst.mockResolvedValue(job);
+    await expect(
+      service.confirmAppointment({
+        tenantId: baseJob.tenantId,
+        jobId: baseJob.id,
+        sessionId: "fixture",
+        slotToken: signedSlot(new Date(), new Date(Date.now() + 3600000)),
+      }),
+    ).rejects.toThrow("Calendar synchronization is unfinished");
+    expect(confirmation.finalize).not.toHaveBeenCalled();
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("does not audit a customer response after losing the job-version claim", async () => {
+    prisma.job.findFirst.mockResolvedValue(appointmentJob());
+    prisma.job.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      service.manageAppointment({
+        managementToken: managementToken(),
+        action: "confirm",
+      }),
+    ).rejects.toThrow("Appointment changed");
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+    expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          calendarOperations: { none: { finishedAt: null } },
+        }),
+      }),
+    );
+  });
+
   function managementToken(): string {
     return sign({
       version: 1,
@@ -815,6 +882,7 @@ describe("SchedulingService", () => {
 
   function appointmentJob(overrides: Record<string, unknown> = {}) {
     return {
+      calendarOperations: [],
       id: baseJob.id,
       tenantId: baseJob.tenantId,
       customerId: "33333333-3333-4333-8333-333333333333",
