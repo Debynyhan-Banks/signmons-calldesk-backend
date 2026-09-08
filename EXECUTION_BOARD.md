@@ -17,6 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
+  - Transactional SMS templates, operator queue/history and stored job-state validation are review-ready on PR #21. Lifecycle integration, send-time revalidation, email, preferences, UI and acceptance remain open.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

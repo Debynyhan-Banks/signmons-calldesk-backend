@@ -2,6 +2,23 @@
 
 Date: 2026-09-08
 
+## Message state validation checkpoint (2026-09-08)
+
+- Continued the existing transactional-messaging branch from `9eb1b3a` after fetching both remotes. Canonical governance `af8a340` confirms APP-012 and BE-008 are accepted and APP-013 is the sole Now ticket.
+- Reproduced by code inspection: the operator endpoint could select cancellation for an active job or technician-on-the-way before the stored technician status was EN_ROUTE.
+- Added queue-admission checks: soft-deleted jobs return the same 404 as missing/cross-tenant jobs; cancellation requires CANCELLED; other templates reject CANCELLED/COMPLETED; on-the-way requires an assignee in EN_ROUTE; confirmation/reschedule require a persisted calendar reference and complete, ordered service window.
+- Invalid states produce HTTP 409 before rendering or delivery queue access. Valid state continues through the existing consent, encryption and idempotency boundary without changing message copy or provider delivery.
+- Focused service suite: 16 tests passed, including 14 new regression cases. Full backend: 36 suites / 302 tests passed, with 1 suite / 3 existing policy skips; build, lint, Prettier, architecture and Prisma validation passed.
+- The first parallel test run overlapped Prisma generation in prebuild and failed loading a temporarily missing generated client. Repeating the full suite after build finished passed; run generation/build before tests in this checkout.
+- Critical dependency audit passed with 0 critical; 4 high and 9 moderate existing transitive findings remain. No dependency version was changed.
+- UI regression checks passed: lint, 4 suites / 17 tests and Next build (13 static pages). Installed the lockfile-defined UI dependencies locally; no manifest or lockfile changed.
+- No rendered UI changed; no new browser screenshot is applicable. Existing APP-013 application screens and end-to-end messaging browser QA remain future work.
+- This is snapshot validation at queue admission, not an atomic lifecycle/send guarantee. Concurrent job changes, calendar operations in progress, proof of a completed reschedule event, and stale queued messages require lifecycle integration before release.
+- No external message, credential change, migration, merge or deployment occurred. APP-013 remains active and unreleased.
+- Estimate: APP-013 roughly 20%; APP-006 through APP-016 roughly 70%. These are planning estimates, not release acceptance scores.
+
+Review: inspect the service and its regression matrix, run `npm run -s build` followed by `npm test -- --runInBand`, and verify invalid state never calls the delivery queue. Review alongside the existing foundation in PR #21; lifecycle triggers and send-time revalidation remain the next bounded work.
+
 ## Transactional messaging foundation checkpoint
 
 - Added four fixed, versioned customer SMS templates: appointment confirmed, appointment rescheduled, appointment cancelled, and technician on the way.

@@ -1,6 +1,6 @@
 # Backend Session Handoff
 
-Last Updated: 2026-09-07
+Last Updated: 2026-09-08
 
 ## Current Program Pointer
 
@@ -10,6 +10,9 @@ Last Updated: 2026-09-07
 - Keep the WIP limit at one; APP-013 is active on the focused transactional-messaging branch.
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
+
+- Continuation hardening now checks stored job/technician state before operator queue admission. Deleted jobs are unavailable; cancellation requires CANCELLED; confirmation/reschedule require a stored calendar reference/window; en-route copy requires an assigned EN_ROUTE technician; closed-job contradictions return 409.
+- Regression evidence: 302 backend tests pass (3 existing skipped), build/lint/architecture/Prisma pass. See `evidence/APP-013/readiness-report.md` for the exact scope and remaining concurrency/send-time limitations. APP-013 is roughly 20%; governed APP-006 through APP-016 roughly 70%.
 
 - Added four fixed/versioned contractor-branded customer SMS templates for confirmation, reschedule, cancellation, and technician-on-the-way events.
 - Added an authenticated operator queue boundary that accepts no arbitrary recipient or message content; tenant, customer, schedule, and technician data are loaded server-side from the tenant-scoped job.
@@ -148,10 +151,10 @@ Last Updated: 2026-09-07
 
 ## Next Actions
 
-1. Reconcile APP-013 with its Twilio transport/compliance prerequisites before implementation.
+1. Review the APP-013 transactional messaging foundation and queue state checks on `codex/app-013-transactional-messaging` (PR #21); BE-008 is accepted.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. Do not begin APP-013 implementation without a bounded plan and owner direction.
+4. Continue with one bounded APP-013 lifecycle integration section, including canonical event identity and stale-message revalidation before enabling delivery. Release and external sends require their own approval.
 
 ## Restart Commands
 
