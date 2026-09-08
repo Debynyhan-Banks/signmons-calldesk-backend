@@ -90,7 +90,7 @@ const intents = ["PENDING", "QUEUED", "STALE", "FAILED", "PENDING"].map(
       index === 0
         ? "APPOINTMENT_CONFIRMED"
         : index === 3
-          ? "APPOINTMENT_CANCELLED"
+          ? "APPOINTMENT_RESCHEDULED"
           : "TECHNICIAN_ON_THE_WAY",
     status,
     attemptCount: status === "FAILED" ? 5 : status === "STALE" ? 1 : 0,
@@ -274,7 +274,7 @@ try {
     false,
   );
   await page.screenshot({
-    path: `${evidence}cancellation-intents-desktop.png`,
+    path: `${evidence}reschedule-intents-desktop.png`,
     fullPage: true,
   });
   await page
@@ -290,7 +290,7 @@ try {
     .selectOption("attention");
   assert.equal(await intentPanel.locator("li").count(), 2);
   await page.screenshot({
-    path: `${evidence}cancellation-intents-mobile.png`,
+    path: `${evidence}reschedule-intents-mobile.png`,
     fullPage: true,
   });
   assert.equal(
@@ -450,7 +450,7 @@ try {
         await page
           .getByRole("region", { name: "Review enqueue retry" })
           .innerText()
-      ).includes("Appointment cancelled"),
+      ).includes("Appointment rescheduled"),
     );
     assert.equal(
       await page
@@ -472,11 +472,11 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page
     .getByRole("region", { name: "Review enqueue retry" })
-    .screenshot({ path: `${evidence}cancellation-retry-desktop.png` });
+    .screenshot({ path: `${evidence}reschedule-retry-desktop.png` });
   await page.setViewportSize({ width: 390, height: 844 });
   await page
     .getByRole("region", { name: "Review enqueue retry" })
-    .screenshot({ path: `${evidence}cancellation-retry-mobile.png` });
+    .screenshot({ path: `${evidence}reschedule-retry-mobile.png` });
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -648,10 +648,10 @@ try {
           "late POST after token edit, job edit and session clear",
         ],
         screenshots: [
-          "cancellation-intents-desktop.png",
-          "cancellation-intents-mobile.png",
-          "cancellation-retry-desktop.png",
-          "cancellation-retry-mobile.png",
+          "reschedule-intents-desktop.png",
+          "reschedule-intents-mobile.png",
+          "reschedule-retry-desktop.png",
+          "reschedule-retry-mobile.png",
         ],
       },
       null,

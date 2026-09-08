@@ -61,6 +61,17 @@ export class SmsEnqueueIntentService {
     );
   }
 
+  recordReschedule(
+    transaction: Prisma.TransactionClient,
+    input: { tenantId: string; jobId: string },
+  ) {
+    return this.record(
+      transaction,
+      input,
+      TransactionalMessageTemplateKey.APPOINTMENT_RESCHEDULED,
+    );
+  }
+
   private async record(
     transaction: Prisma.TransactionClient,
     input: { tenantId: string; jobId: string },

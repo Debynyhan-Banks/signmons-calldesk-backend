@@ -53,7 +53,7 @@ export async function verifyAppointmentCancellation({
       },
       logger,
       {},
-      messaging,
+      {}, // Rescheduling is outside this cancellation-only fixture.
       {},
       cancellation,
       config,

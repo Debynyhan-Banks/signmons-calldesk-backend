@@ -40,7 +40,7 @@ export async function verifyAppointmentConfirmation({
       { enqueueAppointmentConfirmed: () => {} },
       logger,
       {},
-      messaging,
+      {}, // Rescheduling is outside this confirmation-only fixture.
       finalizer,
       {}, // Cancellation is not exercised by this confirmation-only fixture.
       config,

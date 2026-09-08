@@ -6,8 +6,7 @@ import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
 import type { LoggingService } from "../logging/logging.service";
 import type { PaymentRequestsService } from "../payments/payment-requests.service";
 import type { PrismaService } from "../prisma/prisma.service";
-import type { TransactionalMessagingService } from "../communications/transactional-messaging.service";
-import { TransactionalMessageTemplateKey } from "../communications/transactional-message-template.service";
+import type { AppointmentReschedulingService } from "./appointment-rescheduling.service";
 import { SchedulingService } from "./scheduling.service";
 import type { AppointmentConfirmationService } from "./appointment-confirmation.service";
 import type { AppointmentCancellationService } from "./appointment-cancellation.service";
@@ -59,8 +58,12 @@ describe("SchedulingService", () => {
   const paymentRequests = {
     recover: jest.fn(),
   };
-  const transactionalMessaging = {
-    queueLifecycle: jest.fn(),
+  const rescheduling = {
+    claim: jest.fn(),
+    finalize: jest.fn(),
+    restore: jest.fn(),
+    assertFinalized: jest.fn(),
+    logDeferred: jest.fn(),
   };
   const confirmation = { finalize: jest.fn() };
   const cancellation = {
@@ -95,10 +98,15 @@ describe("SchedulingService", () => {
     cancellation.assertFinalized.mockReset().mockResolvedValue(undefined);
     cancellation.logDeferred.mockReset();
     notifications.enqueueAppointmentCancelled.mockReset();
-    transactionalMessaging.queueLifecycle.mockReset().mockResolvedValue({
-      id: "communication-1",
-      status: "QUEUED",
+    rescheduling.finalize.mockReset().mockResolvedValue(undefined);
+    rescheduling.claim.mockReset().mockResolvedValue({
+      id: baseJob.id,
+      tenantId: baseJob.tenantId,
+      updatedAt: new Date(),
     });
+    rescheduling.restore.mockReset().mockResolvedValue({ count: 1 });
+    rescheduling.assertFinalized.mockReset().mockResolvedValue(undefined);
+    rescheduling.logDeferred.mockReset();
     paymentRequests.recover.mockReset().mockResolvedValue({
       status: "payment_checkout",
       checkoutUrl: "https://checkout.stripe.com/c/pay/test",
@@ -109,7 +117,7 @@ describe("SchedulingService", () => {
       notifications as unknown as JobNotificationService,
       logger as unknown as LoggingService,
       paymentRequests as unknown as PaymentRequestsService,
-      transactionalMessaging as unknown as TransactionalMessagingService,
+      rescheduling as unknown as AppointmentReschedulingService,
       confirmation as unknown as AppointmentConfirmationService,
       cancellation as unknown as AppointmentCancellationService,
       config,
@@ -232,7 +240,7 @@ describe("SchedulingService", () => {
       start,
       end,
     });
-    expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
+    expect(rescheduling.finalize).not.toHaveBeenCalled();
   });
 
   it("does not claim a reservation without a calendar reference is confirmed", async () => {
@@ -282,7 +290,7 @@ describe("SchedulingService", () => {
       expect.objectContaining({ status: "appointment_confirmed" }),
     );
     expect(confirmation.finalize).not.toHaveBeenCalled();
-    expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
+    expect(rescheduling.finalize).not.toHaveBeenCalled();
   });
 
   it.each([false, true])(
@@ -317,7 +325,7 @@ describe("SchedulingService", () => {
       ).rejects.toThrow("needs confirmation by the office");
       expect(prisma.job.updateMany).toHaveBeenCalledTimes(1);
       expect(notifications.enqueueAppointmentConfirmed).not.toHaveBeenCalled();
-      expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
+      expect(rescheduling.finalize).not.toHaveBeenCalled();
       expect(JSON.stringify(logger.error.mock.calls)).not.toContain(
         "PRIVATE_DATABASE_ERROR",
       );
@@ -577,11 +585,79 @@ describe("SchedulingService", () => {
     expect(notifications.enqueueAppointmentRescheduled).toHaveBeenCalledTimes(
       1,
     );
-    expect(transactionalMessaging.queueLifecycle).toHaveBeenCalledWith({
-      tenantId: baseJob.tenantId,
-      jobId: baseJob.id,
-      templateKey: TransactionalMessageTemplateKey.APPOINTMENT_RESCHEDULED,
-    });
+    expect(rescheduling.finalize).toHaveBeenCalledWith(
+      expect.objectContaining({ id: baseJob.id }),
+      expect.any(String),
+      expect.any(String),
+    );
+    expect(rescheduling.finalize.mock.invocationCallOrder[0]).toBeGreaterThan(
+      fetchMock.mock.invocationCallOrder[1],
+    );
+  });
+
+  it.each(["finalization", "operations", "calendar"])(
+    "isolates reschedule %s failure at its correct phase",
+    async (failure) => {
+      prisma.job.findFirst.mockResolvedValue(appointmentJob());
+      jest
+        .spyOn(service as never, "fetchBusy" as never)
+        .mockResolvedValue([] as never);
+      const patch = jest
+        .spyOn(service as never, "updateCalendarEvent" as never)
+        .mockResolvedValue(undefined as never);
+      if (failure === "calendar")
+        patch.mockRejectedValue(new Error("unknown outcome") as never);
+      if (failure === "finalization")
+        rescheduling.finalize.mockRejectedValue(new Error("commit failed"));
+      if (failure === "operations")
+        notifications.enqueueAppointmentRescheduled.mockImplementation(() => {
+          throw new Error("notification failed");
+        });
+      const result = service.manageAppointment({
+        managementToken: managementToken(),
+        action: "reschedule",
+        slotToken: signedSlot(
+          new Date("2026-09-03T15:00:00Z"),
+          new Date("2026-09-03T18:00:00Z"),
+        ),
+      });
+      if (failure === "operations")
+        await expect(result).resolves.toEqual(
+          expect.objectContaining({ status: "appointment_rescheduled" }),
+        );
+      else
+        await expect(result).rejects.toThrow(
+          failure === "calendar"
+            ? "could not be confirmed"
+            : "needs confirmation by the office",
+        );
+      expect(patch).toHaveBeenCalledTimes(1);
+      if (failure === "calendar") {
+        expect(rescheduling.restore).toHaveBeenCalledTimes(1);
+        expect(rescheduling.finalize).not.toHaveBeenCalled();
+      } else expect(rescheduling.restore).not.toHaveBeenCalled();
+    },
+  );
+
+  it("requires finalization proof for a same-window reschedule replay", async () => {
+    const job = appointmentJob();
+    prisma.job.findFirst.mockResolvedValue(job);
+    const input = {
+      managementToken: managementToken(),
+      action: "reschedule" as const,
+      slotToken: signedSlot(job.serviceWindowStart, job.serviceWindowEnd),
+    };
+    rescheduling.assertFinalized.mockRejectedValue(new Error("office review"));
+    await expect(service.manageAppointment(input)).rejects.toThrow(
+      "office review",
+    );
+    rescheduling.assertFinalized.mockResolvedValue(undefined);
+    await expect(service.manageAppointment(input)).resolves.toEqual(
+      expect.objectContaining({ status: "appointment_rescheduled" }),
+    );
+    expect(rescheduling.claim).not.toHaveBeenCalled();
+    expect(rescheduling.finalize).not.toHaveBeenCalled();
+    expect(notifications.enqueueAppointmentRescheduled).not.toHaveBeenCalled();
   });
 
   it("cancels the job, deletes the calendar event and notifies operations once", async () => {
@@ -621,7 +697,7 @@ describe("SchedulingService", () => {
     expect(cancellation.finalize.mock.invocationCallOrder[0]).toBeGreaterThan(
       fetchMock.mock.invocationCallOrder[0],
     );
-    expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
+    expect(rescheduling.finalize).not.toHaveBeenCalled();
   });
 
   it("keeps a finalized cancellation successful when operations notification fails", async () => {
@@ -630,9 +706,6 @@ describe("SchedulingService", () => {
     notifications.enqueueAppointmentCancelled.mockImplementation(() => {
       throw new Error("operations unavailable");
     });
-    transactionalMessaging.queueLifecycle.mockRejectedValue(
-      new Error("delivery unavailable"),
-    );
     jest.spyOn(GoogleAuth.prototype, "getClient").mockResolvedValue({
       getRequestHeaders: jest
         .fn()
@@ -668,7 +741,7 @@ describe("SchedulingService", () => {
     ).rejects.toThrow("needs confirmation by the office");
     expect(cancellation.restore).not.toHaveBeenCalled();
     expect(notifications.enqueueAppointmentCancelled).not.toHaveBeenCalled();
-    expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
+    expect(rescheduling.finalize).not.toHaveBeenCalled();
   });
 
   it("compensates only the claimed version when calendar deletion fails and never finalizes", async () => {

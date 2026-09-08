@@ -5,6 +5,7 @@ import { PaymentsModule } from "../payments/payments.module";
 import { AppointmentController } from "./appointment.controller";
 import { AppointmentConfirmationService } from "./appointment-confirmation.service";
 import { AppointmentCancellationService } from "./appointment-cancellation.service";
+import { AppointmentReschedulingService } from "./appointment-rescheduling.service";
 import { SchedulingService } from "./scheduling.service";
 
 @Module({
@@ -14,6 +15,7 @@ import { SchedulingService } from "./scheduling.service";
     SchedulingService,
     AppointmentConfirmationService,
     AppointmentCancellationService,
+    AppointmentReschedulingService,
   ],
   exports: [SchedulingService],
 })

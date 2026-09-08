@@ -22,6 +22,13 @@ describe("notification enqueue intents", () => {
     assert.equal(canReviewIntentRetry(retryable, true), true);
     assert.equal(
       canReviewIntentRetry(
+        { ...retryable, templateKey: "APPOINTMENT_RESCHEDULED" },
+        true,
+      ),
+      true,
+    );
+    assert.equal(
+      canReviewIntentRetry(
         { ...retryable, templateKey: "APPOINTMENT_CANCELLED" },
         true,
       ),
@@ -46,7 +53,7 @@ describe("notification enqueue intents", () => {
       { attemptCount: 4 },
       { attemptCount: 6 },
       { communicationEventId: "event" },
-      { templateKey: "APPOINTMENT_RESCHEDULED" },
+      { templateKey: "unknown" },
       { updatedAt: undefined },
       { updatedAt: "invalid" },
       { updatedAt: "2026-02-30T12:00:00.000Z" },

@@ -93,43 +93,52 @@ describe("SmsEnqueueIntentService", () => {
     ).rejects.toThrow();
     expect(prisma.smsEnqueueIntent.upsert).not.toHaveBeenCalled();
   });
-  it("captures the confirmation digest only after a complete calendar reference exists", async () => {
-    const { prisma, service } = harness();
-    const job = {
-      id: intent.jobId,
-      status: "ACCEPTED",
-      deletedAt: null,
-      customer: { phone: "+15555550123" },
-      tenant: { name: "Fixture", timezone: "UTC" },
-      calendarEventId: "calendar-1",
-      serviceWindowStart: now,
-      serviceWindowEnd: new Date(now.getTime() + 60_000),
-    };
-    prisma.job.findUnique.mockResolvedValue({ ...job, calendarEventId: null });
-    await expect(
-      service.recordConfirmation(prisma as never, {
-        tenantId: intent.tenantId,
-        jobId: intent.jobId,
-      }),
-    ).rejects.toThrow();
-    expect(prisma.smsEnqueueIntent.upsert).not.toHaveBeenCalled();
-    prisma.job.findUnique.mockResolvedValue(job);
-    await service.recordConfirmation(prisma as never, {
-      tenantId: intent.tenantId,
-      jobId: intent.jobId,
-    });
-    expect(prisma.smsEnqueueIntent.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: {
+  it.each(["recordConfirmation", "recordReschedule"] as const)(
+    "%s requires a complete calendar reference and captures the current digest",
+    async (method) => {
+      const { prisma, service } = harness();
+      const job = {
+        id: intent.jobId,
+        status: "ACCEPTED",
+        deletedAt: null,
+        customer: { phone: "+15555550123" },
+        tenant: { name: "Fixture", timezone: "UTC" },
+        calendarEventId: "calendar-1",
+        serviceWindowStart: now,
+        serviceWindowEnd: new Date(now.getTime() + 60_000),
+      };
+      prisma.job.findUnique.mockResolvedValue({
+        ...job,
+        calendarEventId: null,
+      });
+      await expect(
+        service[method](prisma as never, {
           tenantId: intent.tenantId,
           jobId: intent.jobId,
-          templateKey: "APPOINTMENT_CONFIRMED",
-          stateHash: expect.stringMatching(/^[0-9a-f]{64}$/),
-        },
-        update: {},
-      }),
-    );
-  });
+        }),
+      ).rejects.toThrow();
+      expect(prisma.smsEnqueueIntent.upsert).not.toHaveBeenCalled();
+      prisma.job.findUnique.mockResolvedValue(job);
+      await service[method](prisma as never, {
+        tenantId: intent.tenantId,
+        jobId: intent.jobId,
+      });
+      expect(prisma.smsEnqueueIntent.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: {
+            tenantId: intent.tenantId,
+            jobId: intent.jobId,
+            templateKey:
+              method === "recordConfirmation"
+                ? "APPOINTMENT_CONFIRMED"
+                : "APPOINTMENT_RESCHEDULED",
+            stateHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+          },
+          update: {},
+        }),
+      );
+    },
+  );
   it("recovers the fixed confirmation template with its recorded digest", async () => {
     const { prisma, service, messaging } = harness();
     prisma.smsEnqueueIntent.findUnique.mockResolvedValue({
@@ -189,7 +198,7 @@ describe("SmsEnqueueIntentService", () => {
       expectedStateHash: intent.stateHash,
     });
   });
-  it.each(["APPOINTMENT_RESCHEDULED", "unknown"])(
+  it.each(["__proto__", "unknown"])(
     "stops unsupported intent template %s without queue access",
     async (templateKey) => {
       const { prisma, service, messaging } = harness();

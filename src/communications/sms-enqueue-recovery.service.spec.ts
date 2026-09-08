@@ -168,7 +168,7 @@ describe("SmsEnqueueRecoveryService", () => {
     const { service, transaction } = harness();
     transaction.smsEnqueueIntent.findUnique.mockResolvedValue({
       ...record,
-      templateKey: "APPOINTMENT_RESCHEDULED",
+      templateKey: "unknown",
     });
     await expect(service.retry(input)).rejects.toThrow("no longer matches");
     expect(transaction.smsEnqueueIntent.updateMany).not.toHaveBeenCalled();
