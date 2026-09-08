@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Backend lint-tool dependency remediation is review-ready on PR #21: four dev-only lock entries and five native Node checks integrated into Jest. Backend audit improves to 4 high/8 moderate, still unaccepted; full/omit-dev UI audits remain clean. Authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery, backend dependencies and acceptance stay open; no activation or deployment.
+  - Scoped Prisma/mysql2 remediation is review-ready on PR #21: mysql2 3.24.4 and ten native protocol checks integrated into Jest. Final backend full audit is 9 high/8 moderate (omit-dev 8 high/8 moderate), still unaccepted; mysql2 findings absent and UI audits clean. New Multer/Nest findings, Prisma/Firebase dependencies, authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery and acceptance stay open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

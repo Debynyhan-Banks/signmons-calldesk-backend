@@ -83,6 +83,9 @@
     "testEnvironment": "node"
   },
   "overrides": {
-    "diff": "^8.0.3"
+    "diff": "^8.0.3",
+    "prisma@^7.10.0": {
+      "mysql2": "3.24.4"
+    }
   }
 }

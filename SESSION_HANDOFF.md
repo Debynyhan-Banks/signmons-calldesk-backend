@@ -11,7 +11,20 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: Backend lint-tool dependency remediation
+### Latest: Scoped Prisma/mysql2 dependency remediation
+
+- Owner requested continued risk remediation; fetched/reconciled backend `9eb43e5` / governance `dc1d318`, APP-013 sole Now. Explicitly selected one bounded Prisma/mysql2 compatibility section on existing focused branches; unrelated saved-checkout changes preserved.
+- Scoped `prisma@^7.10.0 -> mysql2: 3.24.4` override replaces Prisma 7.10.0's 3.15.3 pin. Exactly six lock entries change: mysql2 and required lru.min update, sql-escaper added, superseded sqlstring/denque/seq-queue removed. Prisma/client/adapter versions, PostgreSQL schema, application source, UI and all other resolutions remain unchanged; no broad audit fix or major downgrade.
+- Ten native Node protocol tests, automatically wrapped by Jest, verify installed/locked resolution, default cleartext-auth refusal before writes, explicit opt-in compatibility, prototype-name refusal, valid/malformed packets, synchronous/asynchronous inflate size bounds and async/uncompressed ordering, plus public SQL formatting. Fixtures are in-memory, at most 18 KB, with fictional data; no sockets, real credentials or MySQL server. No old-version negative reproduction or live MySQL/Studio acceptance claimed.
+- Clean install, backend lint/build, 52 suites/612 tests (3 existing skipped tests), architecture/Prisma and disposable 15-migration suite pass, including 11 prior actual process-crash cases. Zero real provider calls; fixture database dropped and absence independently verified.
+- UI unchanged: lint/type check, 60 tests, 14-page build and all five desktop/390px browser harnesses pass: 22 framework route checks/12 home navigations/static manifest and 14/14/8/92 mocked requests. Zero external requests/page errors; temporary missing-link mobile and notification desktop screenshots visually reviewed.
+- mysql2 is absent from post-update audits. Fresh pre-change full audit was already 9 high/8 moderate due newly reported Multer/Nest findings, superseding the previous checkpoint's 4 high/8 moderate. Post-install audit was 8 high/8 moderate; final post-validation full audit is 9 high/8 moderate, omit-dev 8 high/8 moderate, with existing deepmerge risk also propagated to @prisma/client's optional Prisma peer. Counts/metadata changed during this run: no net overall count-reduction claim. UI full/omit-dev remain zero, critical-only backend gate passes; full backend findings remain unaccepted.
+- APP-013 owns this temporary override. Re-review at the next Prisma change; the test intentionally requires current Prisma 7.10.0. Remove only when native resolution selects a reviewed patched mysql2 and protocol/PostgreSQL/application/browser gates pass. Explicit cleartext opt-in and custom/legacy plugin escapes remain possible; this patch is not universal TLS enforcement. No such configuration is enabled.
+- Remaining risks: Multer/Nest, Prisma/deepmerge-ts and Firebase/Google/uuid; authorized CREATE orchestration/recovery ownership, external-state races, reschedule/cancel and SENDING recovery, and acceptance. No multipart handlers were found in application source, but that is not complete reachability proof or risk acceptance.
+- No schema/new migration, real data, external sends, provider/secrets/IAM/billing configuration, charges, merge, deployment or activation. Estimates unchanged APP-013 ~85%; governed APP-006 through APP-016 ~81%, planning only. Stop review-ready; no automatic ticket transition.
+- Exact review commands, sources and audit timing: `evidence/APP-013/readiness-report.md`; objective evidence: `evidence/APP-013/mysql2-audit-summary.json`.
+
+### Earlier: Backend lint-tool dependency remediation
 
 - Owner requested continued remediation; fetched/reconciled backend `d12ba7c` / governance `494e908`, APP-013 sole Now. Explicitly selected one bounded backend lint-tool dependency section on existing focused branches; unrelated saved-checkout changes preserved.
 - Backend lock changes exactly four dev-only entries: @humanfs/node 0.16.7 -> 0.16.8, required @humanfs/core 0.19.1 -> 0.19.2, added @humanfs/types 0.15.0, and brace-expansion 1.1.12 -> 1.1.18. Existing dependency ranges, manifests, runtime application source, UI and all other resolutions are unchanged. No override, forced audit fix or SDK downgrade.
@@ -340,7 +353,7 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 backend lint-tool dependency remediation on `codex/app-013-transactional-messaging` (PR #21): four dev-only lock entries, five native tests integrated into Jest, 4 high/8 moderate backend audit findings and clean UI audits. Remaining findings are unaccepted; prior Calendar guards and inactive execution remain intact. No activation.
+1. Review the latest APP-013 scoped Prisma/mysql2 remediation on `codex/app-013-transactional-messaging` (PR #21): scoped override, six lock entries and ten native tests integrated into Jest. mysql2 findings are absent; final backend full audit 9 high/8 moderate and omit-dev 8 high/8 moderate remain unaccepted. UI audits clean; no activation. Review the override retirement condition and newly reported Multer/Nest findings.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
