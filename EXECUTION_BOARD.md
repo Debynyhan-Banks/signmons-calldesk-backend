@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Transactional SMS lifecycle/state checks, durable initial-confirmation/technician intents and read-only history/intent visibility are review-ready on PR #21. Reschedule/cancellation durability, calendar reconciliation, recovery actions/policy, remaining events, template/preferences controls, technician notifications, email and live acceptance remain open.
+  - Transactional SMS lifecycle/state checks, durable initial-confirmation/technician intents, read-only visibility and owner/admin exhausted-intent retry API are review-ready on PR #21. Recovery UI/acceptance, reschedule/cancellation durability, calendar reconciliation, remaining events, template/preferences controls, technician notifications, email and live acceptance remain open.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

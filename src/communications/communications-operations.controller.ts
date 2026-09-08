@@ -24,6 +24,8 @@ import { ReplaySmsDto } from "./dto/replay-sms.dto";
 import { SmsDeliveryService } from "./sms-delivery.service";
 import { TransactionalMessagingService } from "./transactional-messaging.service";
 import { SmsEnqueueIntentService } from "./sms-enqueue-intent.service";
+import { SmsEnqueueRecoveryService } from "./sms-enqueue-recovery.service";
+import { RetryEnqueueIntentDto } from "./dto/retry-enqueue-intent.dto";
 
 @Controller("communications/sms")
 @UseGuards(RequestAuthGuard, TenantGuard, CommunicationsOperationsAccessGuard)
@@ -32,6 +34,7 @@ export class CommunicationsOperationsController {
     private readonly delivery: SmsDeliveryService,
     private readonly transactional: TransactionalMessagingService,
     private readonly intents: SmsEnqueueIntentService,
+    private readonly recovery: SmsEnqueueRecoveryService,
   ) {}
 
   @Post("transactional")
@@ -84,6 +87,26 @@ export class CommunicationsOperationsController {
   @Throttle({ default: { limit: 30, ttl: 60 } })
   listDeadLetters() {
     return this.delivery.listDeadLetters(this.context().tenantId);
+  }
+
+  @Post("enqueue-intents/:intentId/retry")
+  @HttpCode(202)
+  @Header("Cache-Control", "private, no-store")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(CommunicationsReplayAccessGuard)
+  retryEnqueueIntent(
+    @Param("intentId", new ParseUUIDPipe()) intentId: string,
+    @Body() body: RetryEnqueueIntentDto,
+  ): Promise<{ status: "pending" }> {
+    const context = this.context();
+    return this.recovery.retry({
+      tenantId: context.tenantId,
+      actorId: context.userId,
+      intentId,
+      acknowledgeRetry: body.acknowledgeRetry,
+      reasonCode: body.reasonCode,
+      expectedUpdatedAt: body.expectedUpdatedAt,
+    });
   }
 
   @Get("metrics")

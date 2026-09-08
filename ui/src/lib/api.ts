@@ -968,6 +968,7 @@ export interface SmsEnqueueIntentItem {
   nextAttemptAt: string;
   communicationEventId: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 export function listSmsEnqueueIntents(

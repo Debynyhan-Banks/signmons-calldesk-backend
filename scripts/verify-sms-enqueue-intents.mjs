@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
 import { verifyAppointmentConfirmation } from "./verify-appointment-confirmation.mjs";
+import { verifyEnqueueRecovery } from "./verify-enqueue-recovery.mjs";
 const require = createRequire(import.meta.url);
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
@@ -321,6 +322,12 @@ try {
     disabled,
     jobData,
   });
+  const recoveryChecks = await verifyEnqueueRecovery({
+    prisma,
+    intents,
+    disabled,
+    jobData,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -329,6 +336,7 @@ try {
       migrations: directories.length,
       checks: [
         ...confirmationChecks,
+        ...recoveryChecks,
         "isolated local database",
         "atomic status/audit/intent",
         "rollback on intent persistence failure",

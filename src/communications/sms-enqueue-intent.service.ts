@@ -6,7 +6,6 @@ import { PrismaService } from "../prisma/prisma.service";
 import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
 import {
   evaluateTransactionalMessageState,
-  parseTransactionalMessageTemplateKey,
   transactionalMessageJobSelect,
   transactionalMessageStateHash,
 } from "./transactional-message-state";
@@ -14,12 +13,10 @@ import {
   StaleMessageIntentError,
   TransactionalMessagingService,
 } from "./transactional-messaging.service";
-
-const SUPPORTED_TEMPLATES = new Set([
-  TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
-  TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
-]);
-const MAX_FAILURES = 5;
+import {
+  parseEnqueueIntentTemplate,
+  SMS_ENQUEUE_MAX_FAILURES,
+} from "./sms-enqueue-intent-policy";
 const LEASE_MS = 60_000;
 
 @Injectable()
@@ -134,11 +131,8 @@ export class SmsEnqueueIntentService {
       nextAttemptAt: lease,
     };
     try {
-      const templateKey = parseTransactionalMessageTemplateKey(
-        intent.templateKey,
-      );
-      if (!templateKey || !SUPPORTED_TEMPLATES.has(templateKey))
-        throw new StaleMessageIntentError();
+      const templateKey = parseEnqueueIntentTemplate(intent.templateKey);
+      if (!templateKey) throw new StaleMessageIntentError();
       const event = await this.messaging.queueLifecycle({
         tenantId: intent.tenantId,
         jobId: intent.jobId,
@@ -155,13 +149,16 @@ export class SmsEnqueueIntentService {
       });
     } catch (error) {
       const stale = error instanceof StaleMessageIntentError;
-      const failures = Math.min(intent.attemptCount + 1, MAX_FAILURES);
+      const failures = Math.min(
+        intent.attemptCount + 1,
+        SMS_ENQUEUE_MAX_FAILURES,
+      );
       await this.prisma.smsEnqueueIntent.updateMany({
         where: ownership,
         data: {
           status: stale
             ? SmsEnqueueIntentStatus.STALE
-            : failures >= MAX_FAILURES
+            : failures >= SMS_ENQUEUE_MAX_FAILURES
               ? SmsEnqueueIntentStatus.FAILED
               : SmsEnqueueIntentStatus.PENDING,
           attemptCount: failures,
@@ -187,6 +184,7 @@ export class SmsEnqueueIntentService {
         nextAttemptAt: true,
         communicationEventId: true,
         createdAt: true,
+        updatedAt: true,
       },
     });
   }

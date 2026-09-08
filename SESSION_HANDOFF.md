@@ -11,7 +11,14 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: initial confirmation intent durability
+### Latest: owner/admin exhausted-intent retry API
+
+- Owner reviewed initial confirmation durability and approved continuation. Added API-only `POST /communications/sms/enqueue-intents/:intentId/retry`, owner/admin only, with acknowledgment, fixed reason code and exact `expectedUpdatedAt` from the additive intent-list timestamp. Only exhausted FAILED/unacknowledged/current-state intents qualify; stale/missing/unsupported/currently processing/queued states cannot reset.
+- Conditional reset and privacy-safe user audit are atomic. Concurrent submissions allow one reset/audit; old/repeated requests conflict. The endpoint never processes or sends; existing disabled delivery, state/consent/quiet-hour checks, canonical queue identity and five-failure bound remain authoritative. UI is unchanged/read-only; each retry cycle requires fresh review.
+- Passed backend build/lint, 403 tests (3 existing skips), architecture/Prisma; UI lint/27 tests/build and 18-GET desktop/390px fixture regression. Real HTTP guards/validation/rate-limit tests use synthetic Firebase verification. Disposable local database proof verified concurrent retry, no queueing from reset, disabled processing, changed-state refusal and audit rollback; all 14 existing migrations passed, fixture removed and absence verified.
+- No production/provider/configuration, merge, deploy or real-data action. Prior intent migration remains release-gated. Remaining recovery UI/acceptance, reschedule/cancellation durability, calendar reconciliation, events/templates/preferences/technician notifications/email/live acceptance stay open. Planning estimates: APP-013 roughly 65%; APP-006 through APP-016 roughly 77%. Stop review-ready; exact commands/limitations in APP-013 evidence.
+
+### Earlier: initial confirmation intent durability
 
 - Owner reviewed intent visibility and approved continuation. Initial booking finalization now atomically records the calendar reference, fixed confirmation SMS intent and customer audit. State/tenant guards prevent stale finalization; worker recovery supports confirmation plus technician departure only. Post-commit enqueue, operations-notification and logging failure cannot undo the booking.
 - After acknowledged Calendar insertion, failed/ambiguous finalization retains the reservation and returns an office-review-required error; a retry without a calendar reference cannot claim confirmation. Calendar/database cross-system crash reconciliation remains manual and is not solved by this section. Reschedule/cancellation triggers retain their post-commit gap.

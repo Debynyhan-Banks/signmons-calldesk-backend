@@ -8,6 +8,8 @@ import type { SmsDeliveryService } from "./sms-delivery.service";
 import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
 import type { TransactionalMessagingService } from "./transactional-messaging.service";
 import type { SmsEnqueueIntentService } from "./sms-enqueue-intent.service";
+import type { SmsEnqueueRecoveryService } from "./sms-enqueue-recovery.service";
+import { EnqueueRetryReason } from "./sms-enqueue-intent-policy";
 
 describe("CommunicationsOperationsController", () => {
   const delivery = {
@@ -18,13 +20,35 @@ describe("CommunicationsOperationsController", () => {
   };
   const transactional = { queue: jest.fn() };
   const intents = { list: jest.fn() };
+  const recovery = { retry: jest.fn() };
   const controller = new CommunicationsOperationsController(
     delivery as unknown as SmsDeliveryService,
     transactional as unknown as TransactionalMessagingService,
     intents as unknown as SmsEnqueueIntentService,
+    recovery as unknown as SmsEnqueueRecoveryService,
   );
 
   beforeEach(() => jest.clearAllMocks());
+
+  it("uses authenticated actor and tenant when requesting intent retry", async () => {
+    recovery.retry.mockResolvedValue({ status: "pending" });
+    const body = {
+      acknowledgeRetry: true,
+      reasonCode: EnqueueRetryReason.CONFIGURATION_REVIEWED,
+      expectedUpdatedAt: "2026-09-08T12:00:00.000Z",
+    };
+    await withContext(async () => {
+      await expect(
+        controller.retryEnqueueIntent("intent-1", body),
+      ).resolves.toEqual({ status: "pending" });
+    });
+    expect(recovery.retry).toHaveBeenCalledWith({
+      ...body,
+      intentId: "intent-1",
+      tenantId: "tenant-1",
+      actorId: "user-1",
+    });
+  });
 
   it("lists enqueue intent status only for the authenticated tenant", async () => {
     intents.list.mockResolvedValue([]);
