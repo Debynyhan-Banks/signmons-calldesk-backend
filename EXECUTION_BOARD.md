@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - UI development-tool dependency remediation is review-ready on PR #21: eight compatible lockfile updates, 16 new tests and zero full/omit-dev UI audit findings. Backend 5 high/9 moderate remains unaccepted. Authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery, backend dependencies and acceptance stay open; no activation or deployment.
+  - Backend lint-tool dependency remediation is review-ready on PR #21: four dev-only lock entries and five native Node checks integrated into Jest. Backend audit improves to 4 high/8 moderate, still unaccepted; full/omit-dev UI audits remain clean. Authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery, backend dependencies and acceptance stay open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

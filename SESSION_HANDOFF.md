@@ -11,7 +11,19 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: UI development-tool dependency remediation
+### Latest: Backend lint-tool dependency remediation
+
+- Owner requested continued remediation; fetched/reconciled backend `d12ba7c` / governance `494e908`, APP-013 sole Now. Explicitly selected one bounded backend lint-tool dependency section on existing focused branches; unrelated saved-checkout changes preserved.
+- Backend lock changes exactly four dev-only entries: @humanfs/node 0.16.7 -> 0.16.8, required @humanfs/core 0.19.1 -> 0.19.2, added @humanfs/types 0.15.0, and brace-expansion 1.1.12 -> 1.1.18. Existing dependency ranges, manifests, runtime application source, UI and all other resolutions are unchanged. No override, forced audit fix or SDK downgrade.
+- Clean install and five native Node tests verify reviewed resolution/lock agreement, direct file symlink and contained file/directory symlink preservation, ordinary copying and bounded ESLint brace/minimatch compatibility. A new Jest wrapper runs them automatically. Synthetic temporary files only; no old-version negative reproduction, top-level directory-symlink/race proof, large-input stress test or blanket path-containment claim.
+- Backend lint/build, 51 suites/611 tests (3 existing skipped tests), architecture/Prisma and disposable 15-migration suite pass, including 11 prior actual process-crash cases. Zero real provider calls; fixture database dropped and absence independently verified.
+- UI unchanged: lint/type check, 60 tests and 14-page build pass. All five desktop/390px browser harnesses pass: framework 22 route checks/12 home navigations/static manifest; customer/dispatch, technician, policy and notifications 14/14/8/92 mocked requests. Zero external requests/page errors; temporary missing-link mobile and notification desktop screenshots visually reviewed.
+- Backend full audit improves 5 high/9 moderate -> 4 high/8 moderate (14 -> 12 affected packages); omit-dev remains 4 high/8 moderate. UI full/omit-dev audits remain zero. Zero critical; critical-only gate passes, but remaining backend findings are unaccepted and full audits still fail. Audit counts are affected packages, not unique vulnerabilities or verified public exploits.
+- Remaining dependency work is Prisma/deepmerge-ts/mysql2 and Firebase/Google/uuid. Current audit suggests major downgrades to prisma 6.19.3 and firebase-admin 10.3.0; neither is applied. These require separately scoped compatibility work. Calendar authorized CREATE orchestration/recovery ownership, external-state races, reschedule/cancel and SENDING recovery and acceptance remain open.
+- No schema/new migration, real data, external sends, provider/secrets/IAM/billing configuration, charges, merge, deployment or activation. Estimates unchanged APP-013 ~85%; governed APP-006 through APP-016 ~81%, planning only. Stop review-ready; no automatic ticket transition.
+- Exact commands, source discrepancy and boundaries: `evidence/APP-013/readiness-report.md`; objective audit snapshot: `evidence/APP-013/backend-toolchain-audit-summary.json`.
+
+### Earlier: UI development-tool dependency remediation
 
 - Owner requested continued risk remediation; fetched/reconciled backend `6c467a1` / governance `ddd92e4`, APP-013 sole Now. Explicitly selected one bounded UI development-tool dependency section. Existing focused branches only; unrelated saved-checkout edits preserved.
 - Updated only eight UI lockfile entries across six dependency families within existing major versions: ajv 6.15.0, brace-expansion 1.1.18/2.1.4, flatted 3.4.4, js-yaml 4.3.2, minimatch 3.1.5/9.0.9 and picomatch 4.0.7. All eight entries are dev dependencies. Manifest, Next/React, PostCSS override, other package resolutions, backend dependencies and application source are unchanged; no forced audit fix.
@@ -328,7 +340,7 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 UI development-tool dependency remediation on `codex/app-013-transactional-messaging` (PR #21): eight compatible lockfile updates, 16 new tests, clean full/omit-dev UI audits and unchanged application behavior. Backend findings remain unaccepted; prior Calendar guards and inactive execution remain intact. No activation.
+1. Review the latest APP-013 backend lint-tool dependency remediation on `codex/app-013-transactional-messaging` (PR #21): four dev-only lock entries, five native tests integrated into Jest, 4 high/8 moderate backend audit findings and clean UI audits. Remaining findings are unaccepted; prior Calendar guards and inactive execution remain intact. No activation.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
