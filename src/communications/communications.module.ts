@@ -30,6 +30,11 @@ import { TransactionalMessagingService } from "./transactional-messaging.service
     TwilioSmsProvider,
     { provide: SMS_PROVIDER, useExisting: TwilioSmsProvider },
   ],
-  exports: [TwilioWebhookService, SmsConsentService, SmsDeliveryService],
+  exports: [
+    TwilioWebhookService,
+    SmsConsentService,
+    SmsDeliveryService,
+    TransactionalMessagingService,
+  ],
 })
 export class CommunicationsModule {}

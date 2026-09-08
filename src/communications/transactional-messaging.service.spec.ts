@@ -26,7 +26,10 @@ describe("TransactionalMessagingService", () => {
       serviceWindowEnd: new Date("2026-09-09T16:00:00.000Z"),
       tenant: { name: "Eternity Mechanical", timezone: "America/New_York" },
       customer: { phone: "+12165550183" },
-      assignedUser: { fullName: "Jordan" },
+      assignedUser: {
+        id: "20000000-0000-4000-8000-000000000002",
+        fullName: "Jordan",
+      },
     });
     delivery.create.mockResolvedValue({ id: "event-1", status: "QUEUED" });
   });
@@ -53,6 +56,23 @@ describe("TransactionalMessagingService", () => {
         jobId,
         to: "+12165550183",
         templateId: "transactional_sms:appointment_confirmed:v1",
+        lifecycleStateHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      }),
+    );
+  });
+
+  it("derives one canonical idempotency identity from the committed lifecycle state", async () => {
+    await createService().queueLifecycle({
+      tenantId,
+      jobId,
+      templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+    });
+
+    expect(delivery.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: expect.stringMatching(
+          /^lifecycle:APPOINTMENT_CONFIRMED:[0-9a-f]{64}$/,
+        ),
       }),
     );
   });

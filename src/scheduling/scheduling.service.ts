@@ -15,6 +15,8 @@ import {
   Prisma,
 } from "@prisma/client";
 import appConfig from "../config/app.config";
+import { TransactionalMessageTemplateKey } from "../communications/transactional-message-template.service";
+import { TransactionalMessagingService } from "../communications/transactional-messaging.service";
 import { JobNotificationService } from "../jobs/job-notification.service";
 import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
 import { LoggingService } from "../logging/logging.service";
@@ -97,6 +99,7 @@ export class SchedulingService {
     private readonly notifications: JobNotificationService,
     private readonly loggingService: LoggingService,
     private readonly paymentRequests: PaymentRequestsService,
+    private readonly transactionalMessaging: TransactionalMessagingService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {}
@@ -272,6 +275,10 @@ export class SchedulingService {
       });
       const confirmedRecord = this.mapJob(confirmed);
       this.notifications.enqueueAppointmentConfirmed(confirmedRecord);
+      await this.enqueueTransactionalMessage(
+        confirmedRecord,
+        TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+      );
       return this.confirmedResponse(confirmedRecord);
     } catch (error) {
       await this.prisma.job.updateMany({
@@ -721,6 +728,10 @@ export class SchedulingService {
         appointmentLabel: this.formatWindow(start, end),
       });
       this.notifications.enqueueAppointmentRescheduled(updatedRecord);
+      await this.enqueueTransactionalMessage(
+        updatedRecord,
+        TransactionalMessageTemplateKey.APPOINTMENT_RESCHEDULED,
+      );
       return {
         status: "appointment_rescheduled" as const,
         reference: this.reference(job.id),
@@ -837,6 +848,10 @@ export class SchedulingService {
         preferredTimeText: originalTimeText,
         updatedAt: new Date(),
       });
+      await this.enqueueTransactionalMessage(
+        this.mapJob(job),
+        TransactionalMessageTemplateKey.APPOINTMENT_CANCELLED,
+      );
       return {
         status: "appointment_cancelled" as const,
         reference: this.reference(job.id),
@@ -865,6 +880,29 @@ export class SchedulingService {
       throw new ServiceUnavailableException(
         "We could not cancel that appointment. It remains scheduled; please call Eternity.",
       );
+    }
+  }
+
+  private async enqueueTransactionalMessage(
+    job: Pick<JobRecord, "id" | "tenantId">,
+    templateKey: TransactionalMessageTemplateKey,
+  ): Promise<void> {
+    try {
+      await this.transactionalMessaging.queueLifecycle({
+        tenantId: job.tenantId,
+        jobId: job.id,
+        templateKey,
+      });
+    } catch (error) {
+      try {
+        this.loggingService.error(
+          `Transactional SMS queueing failed for job ${job.id}.`,
+          error instanceof Error ? error : undefined,
+          SchedulingService.name,
+        );
+      } catch {
+        // Appointment state remains authoritative even if failure logging fails.
+      }
     }
   }
 

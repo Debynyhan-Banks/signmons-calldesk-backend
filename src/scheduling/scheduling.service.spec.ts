@@ -6,6 +6,8 @@ import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
 import type { LoggingService } from "../logging/logging.service";
 import type { PaymentRequestsService } from "../payments/payment-requests.service";
 import type { PrismaService } from "../prisma/prisma.service";
+import type { TransactionalMessagingService } from "../communications/transactional-messaging.service";
+import { TransactionalMessageTemplateKey } from "../communications/transactional-message-template.service";
 import { SchedulingService } from "./scheduling.service";
 
 describe("SchedulingService", () => {
@@ -37,6 +39,7 @@ describe("SchedulingService", () => {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
       updateMany: jest.fn(),
+      update: jest.fn(),
     },
     auditLog: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -54,6 +57,9 @@ describe("SchedulingService", () => {
   const paymentRequests = {
     recover: jest.fn(),
   };
+  const transactionalMessaging = {
+    queueLifecycle: jest.fn(),
+  };
 
   let service: SchedulingService;
 
@@ -62,10 +68,15 @@ describe("SchedulingService", () => {
     prisma.job.findMany.mockResolvedValue([]);
     prisma.job.findFirst.mockReset();
     prisma.job.updateMany.mockReset();
+    prisma.job.update.mockReset();
     prisma.auditLog.findMany.mockReset().mockResolvedValue([]);
     prisma.auditLog.create.mockReset().mockResolvedValue({ id: "audit-1" });
     notifications.enqueueAppointmentRescheduled.mockReset();
     notifications.enqueueAppointmentCancelled.mockReset();
+    transactionalMessaging.queueLifecycle.mockReset().mockResolvedValue({
+      id: "communication-1",
+      status: "QUEUED",
+    });
     paymentRequests.recover.mockReset().mockResolvedValue({
       status: "payment_checkout",
       checkoutUrl: "https://checkout.stripe.com/c/pay/test",
@@ -76,6 +87,7 @@ describe("SchedulingService", () => {
       notifications as unknown as JobNotificationService,
       logger as unknown as LoggingService,
       paymentRequests as unknown as PaymentRequestsService,
+      transactionalMessaging as unknown as TransactionalMessagingService,
       config,
     );
   });
@@ -139,6 +151,61 @@ describe("SchedulingService", () => {
       "https://www.googleapis.com/calendar/v3/freeBusy",
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("queues one canonical confirmation after the calendar appointment commits", async () => {
+    const start = new Date("2026-09-10T15:00:00.000Z");
+    const end = new Date("2026-09-10T18:00:00.000Z");
+    const pending = appointmentJob({
+      status: "CREATED",
+      calendarEventId: null,
+      serviceWindowStart: null,
+      serviceWindowEnd: null,
+    });
+    const confirmed = appointmentJob({
+      serviceWindowStart: start,
+      serviceWindowEnd: end,
+      calendarEventId: "event-confirmed",
+    });
+    prisma.job.findFirst.mockResolvedValue(pending);
+    prisma.job.updateMany.mockResolvedValue({ count: 1 });
+    prisma.job.update.mockResolvedValue(confirmed);
+    jest.spyOn(GoogleAuth.prototype, "getClient").mockResolvedValue({
+      getRequestHeaders: jest
+        .fn()
+        .mockResolvedValue(new Headers({ authorization: "Bearer test" })),
+    } as never);
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            calendars: { "dispatch@example.com": { busy: [] } },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "event-confirmed" }), {
+          status: 200,
+        }),
+      );
+
+    await expect(
+      service.confirmAppointment({
+        tenantId: baseJob.tenantId,
+        sessionId: "session-1",
+        jobId: baseJob.id,
+        slotToken: signedSlot(start, end),
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({ status: "appointment_confirmed" }),
+    );
+    expect(transactionalMessaging.queueLifecycle).toHaveBeenCalledWith({
+      tenantId: baseJob.tenantId,
+      jobId: baseJob.id,
+      templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+    });
   });
 
   it("opens a confirmed appointment through a signed management link", async () => {
@@ -335,6 +402,11 @@ describe("SchedulingService", () => {
     expect(notifications.enqueueAppointmentRescheduled).toHaveBeenCalledTimes(
       1,
     );
+    expect(transactionalMessaging.queueLifecycle).toHaveBeenCalledWith({
+      tenantId: baseJob.tenantId,
+      jobId: baseJob.id,
+      templateKey: TransactionalMessageTemplateKey.APPOINTMENT_RESCHEDULED,
+    });
   });
 
   it("cancels the job, deletes the calendar event and notifies operations once", async () => {
@@ -370,6 +442,41 @@ describe("SchedulingService", () => {
       expect.objectContaining({ method: "DELETE" }),
     );
     expect(notifications.enqueueAppointmentCancelled).toHaveBeenCalledTimes(1);
+    expect(transactionalMessaging.queueLifecycle).toHaveBeenCalledWith({
+      tenantId: baseJob.tenantId,
+      jobId: baseJob.id,
+      templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CANCELLED,
+    });
+  });
+
+  it("keeps a committed cancellation successful when SMS queueing fails", async () => {
+    prisma.job.findFirst.mockResolvedValue(appointmentJob());
+    prisma.job.updateMany.mockResolvedValue({ count: 1 });
+    transactionalMessaging.queueLifecycle.mockRejectedValue(
+      new Error("delivery unavailable"),
+    );
+    jest.spyOn(GoogleAuth.prototype, "getClient").mockResolvedValue({
+      getRequestHeaders: jest
+        .fn()
+        .mockResolvedValue(new Headers({ authorization: "Bearer test" })),
+    } as never);
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+
+    await expect(
+      service.manageAppointment({
+        managementToken: managementToken(),
+        action: "cancel",
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({ status: "appointment_cancelled" }),
+    );
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining(baseJob.id),
+      expect.any(Error),
+      SchedulingService.name,
+    );
   });
 
   function managementToken(): string {

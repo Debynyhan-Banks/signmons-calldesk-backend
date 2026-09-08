@@ -2,6 +2,20 @@
 
 Date: 2026-09-08
 
+## Appointment lifecycle identity and send-time revalidation (2026-09-08)
+
+- Added automatic fixed-template SMS queueing after a successful initial appointment confirmation, completed reschedule and completed cancellation. The trigger runs after the authoritative job/calendar operation; queue or identity failure is logged without undoing the appointment.
+- Lifecycle events use `lifecycle:<template-key>:<state-digest>` as the internal idempotency source. Only its existing tenant-keyed HMAC is persisted as the queue key. The SHA-256 lifecycle digest covers template-relevant canonical job status, recipient, tenant brand/timezone, schedule or technician state without storing those raw values in history output.
+- Manual operator queueing records the same digest. Immediately before provider access, all transactional SMS reload the composite tenant/job record and compare its current digest. Missing/deleted, contradictory or changed state becomes `DEAD_LETTER` with `stale_lifecycle_state`; earlier transactional events without verifiable state metadata fail closed as `lifecycle_state_unavailable`.
+- Focused scheduling, transactional-message and delivery suites passed: 3 suites / 44 tests. Regression cases prove each appointment trigger, deterministic lifecycle identity, a current-state send, stale/unverifiable-message rejection before provider access, and successful cancellation despite queue failure.
+- Full backend gates passed sequentially: build, lint, 36 suites / 308 tests (1 suite / 3 existing policy skips), architecture check and Prisma validation. `npm audit --omit=dev --audit-level=critical` passed with zero critical findings; 4 high and 9 moderate existing transitive Prisma/Firebase findings remain because full remediation requires breaking upgrades.
+- Unchanged UI regression gates passed: lint, 4 suites / 17 tests and production build with 13 static pages. No rendered UI changed, so the existing browser evidence remains applicable and no new screenshot is claimed.
+- Outbound delivery stayed disabled. No provider message, credential/configuration change, migration, merge, deployment, billing action or real customer/job mutation occurred.
+- Residual boundary: revalidation happens immediately before provider access but cannot make an external send atomic with a later concurrent job mutation. Automatic assignment/technician/payment/dispatcher triggers, email, preferences, UI and staging acceptance remain open.
+- Estimate: APP-013 roughly 35%; APP-006 through APP-016 roughly 72%. These are planning estimates, not release acceptance scores.
+
+Review: inspect the lifecycle digest and pre-send validator, run build before tests, and verify a changed appointment dead-letters without calling the provider. Review the three post-commit scheduling triggers and the regression proving queue failure cannot roll back a committed cancellation.
+
 ## Message state validation checkpoint (2026-09-08)
 
 - Continued the existing transactional-messaging branch from `9eb1b3a` after fetching both remotes. Canonical governance `af8a340` confirms APP-012 and BE-008 are accepted and APP-013 is the sole Now ticket.

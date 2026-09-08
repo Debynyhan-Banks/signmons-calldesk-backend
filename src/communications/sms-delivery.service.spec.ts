@@ -7,6 +7,8 @@ import type { PrismaService } from "../prisma/prisma.service";
 import type { SmsConsentService } from "./sms-consent.service";
 import { SmsDeliveryService } from "./sms-delivery.service";
 import { SmsProviderError, type SmsProvider } from "./sms-provider.interface";
+import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
+import { transactionalMessageStateHash } from "./transactional-message-state";
 
 describe("SmsDeliveryService", () => {
   const tenantId = "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1";
@@ -25,6 +27,7 @@ describe("SmsDeliveryService", () => {
     supportPhone: "+12165550199",
   };
   const prisma = {
+    job: { findUnique: jest.fn() },
     communicationEvent: {
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
@@ -39,6 +42,21 @@ describe("SmsDeliveryService", () => {
   const consent = { evaluateOutbound: jest.fn() };
   const cipher = { encrypt: jest.fn(), decrypt: jest.fn() };
   const provider = { send: jest.fn() };
+  const lifecycleJob = {
+    id: "20000000-0000-4000-8000-000000000002",
+    status: "ACCEPTED" as const,
+    deletedAt: null,
+    technicianStatus: "ACCEPTED" as const,
+    calendarEventId: "calendar-1",
+    serviceWindowStart: new Date("2026-09-09T14:00:00.000Z"),
+    serviceWindowEnd: new Date("2026-09-09T16:00:00.000Z"),
+    tenant: { name: "Example Contractor", timezone: "America/New_York" },
+    customer: { phone: to },
+    assignedUser: {
+      id: "30000000-0000-4000-8000-000000000003",
+      fullName: "Jordan",
+    },
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -63,6 +81,7 @@ describe("SmsDeliveryService", () => {
       content: { encryptedRaw: "encrypted" },
     });
     prisma.communicationEvent.update.mockResolvedValue({});
+    prisma.job.findUnique.mockResolvedValue(lifecycleJob);
     provider.send.mockResolvedValue({
       externalId: "SM00000000000000000000000000000001",
       status: "queued",
@@ -152,6 +171,97 @@ describe("SmsDeliveryService", () => {
         data: expect.objectContaining({ status: CommunicationStatus.SENT }),
       }),
     );
+  });
+
+  it("revalidates a transactional lifecycle snapshot immediately before send", async () => {
+    prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({
+      id: eventId,
+      tenantId,
+      jobId: lifecycleJob.id,
+      attemptCount: 1,
+      content: {
+        encryptedRaw: "encrypted",
+        payload: {
+          kind: "transactional_sms",
+          templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+          lifecycleStateHash: transactionalMessageStateHash(
+            TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+            lifecycleJob,
+          ),
+        },
+      },
+    });
+
+    await expect(createService().deliver(tenantId, eventId)).resolves.toBe(
+      CommunicationStatus.SENT,
+    );
+    expect(prisma.job.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id_tenantId: { id: lifecycleJob.id, tenantId },
+        },
+      }),
+    );
+    expect(provider.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("dead-letters stale transactional copy before provider access", async () => {
+    prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({
+      id: eventId,
+      tenantId,
+      jobId: lifecycleJob.id,
+      attemptCount: 1,
+      content: {
+        encryptedRaw: "encrypted",
+        payload: {
+          kind: "transactional_sms",
+          templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+          lifecycleStateHash: "0".repeat(64),
+        },
+      },
+    });
+
+    await expect(createService().deliver(tenantId, eventId)).resolves.toBe(
+      CommunicationStatus.DEAD_LETTER,
+    );
+    expect(prisma.communicationEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: CommunicationStatus.DEAD_LETTER,
+          lastErrorCode: "stale_lifecycle_state",
+        }),
+      }),
+    );
+    expect(provider.send).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for earlier transactional records without a state digest", async () => {
+    prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({
+      id: eventId,
+      tenantId,
+      jobId: lifecycleJob.id,
+      attemptCount: 1,
+      content: {
+        encryptedRaw: "encrypted",
+        payload: {
+          kind: "transactional_sms",
+          templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+        },
+      },
+    });
+
+    await expect(createService().deliver(tenantId, eventId)).resolves.toBe(
+      CommunicationStatus.DEAD_LETTER,
+    );
+    expect(prisma.communicationEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          lastErrorCode: "lifecycle_state_unavailable",
+        }),
+      }),
+    );
+    expect(prisma.job.findUnique).not.toHaveBeenCalled();
+    expect(provider.send).not.toHaveBeenCalled();
   });
 
   it("prevents concurrent or duplicate delivery claims", async () => {

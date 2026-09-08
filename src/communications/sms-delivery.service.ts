@@ -22,6 +22,12 @@ import {
   SmsProviderError,
   type SmsProvider,
 } from "./sms-provider.interface";
+import {
+  evaluateTransactionalMessageState,
+  parseTransactionalMessageTemplateKey,
+  transactionalMessageJobSelect,
+  transactionalMessageStateHash,
+} from "./transactional-message-state";
 
 const MAX_ATTEMPTS = 3;
 
@@ -45,6 +51,7 @@ export class SmsDeliveryService {
     templateId?: string;
     templateKey?: string;
     templateVersion?: number;
+    lifecycleStateHash?: string;
   }): Promise<{ id: string; status: CommunicationStatus }> {
     if (
       !input.body.trim() ||
@@ -71,6 +78,7 @@ export class SmsDeliveryService {
         templateId: input.templateId,
         templateKey: input.templateKey,
         templateVersion: input.templateVersion,
+        lifecycleStateHash: input.lifecycleStateHash,
       }),
     );
     const event = await this.prisma.communicationEvent.upsert({
@@ -101,6 +109,9 @@ export class SmsDeliveryService {
               ...(input.templateKey ? { templateKey: input.templateKey } : {}),
               ...(input.templateVersion
                 ? { templateVersion: input.templateVersion }
+                : {}),
+              ...(input.lifecycleStateHash
+                ? { lifecycleStateHash: input.lifecycleStateHash }
                 : {}),
             },
             encryptedRaw: this.cipher.encrypt(
@@ -337,6 +348,10 @@ export class SmsDeliveryService {
       where: { id_tenantId: { id: eventId, tenantId } },
       include: { content: true },
     });
+    const lifecycleError = await this.lifecycleError(event);
+    if (lifecycleError) {
+      return this.deadLetter(tenantId, eventId, lifecycleError);
+    }
     const raw = event.content?.encryptedRaw
       ? this.cipher.decrypt(event.content.encryptedRaw)
       : null;
@@ -446,6 +461,38 @@ export class SmsDeliveryService {
       },
     });
     return CommunicationStatus.DEAD_LETTER;
+  }
+
+  private async lifecycleError(event: {
+    tenantId: string;
+    jobId: string | null;
+    content: { payload: unknown } | null;
+  }): Promise<string | null> {
+    const payload = this.asPayload(event.content?.payload);
+    if (payload?.kind !== "transactional_sms") return null;
+    const templateKey = parseTransactionalMessageTemplateKey(
+      payload.templateKey,
+    );
+    const expectedHash = payload.lifecycleStateHash;
+    if (
+      !event.jobId ||
+      !templateKey ||
+      typeof expectedHash !== "string" ||
+      !/^[0-9a-f]{64}$/i.test(expectedHash)
+    ) {
+      return "lifecycle_state_unavailable";
+    }
+    const job = await this.prisma.job.findUnique({
+      where: {
+        id_tenantId: { id: event.jobId, tenantId: event.tenantId },
+      },
+      select: transactionalMessageJobSelect,
+    });
+    return job &&
+      evaluateTransactionalMessageState(templateKey, job) === "AVAILABLE" &&
+      transactionalMessageStateHash(templateKey, job) === expectedHash
+      ? null
+      : "stale_lifecycle_state";
   }
 
   private identity(tenantId: string) {
