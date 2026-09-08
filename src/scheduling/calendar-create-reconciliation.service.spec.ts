@@ -1,0 +1,305 @@
+import { CalendarOperation, CalendarOperationStatus } from "@prisma/client";
+import { CalendarCreateReconciliationService } from "./calendar-create-reconciliation.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
+import { CalendarEventSnapshot } from "./calendar-event-reader";
+
+describe("CREATE Calendar read-back reconciliation", () => {
+  const date = new Date("2026-09-08T18:00:00Z");
+  let operation: CalendarOperation;
+  let event: CalendarEventSnapshot;
+  let prisma: {
+    calendarOperation: { findUnique: jest.Mock; updateMany: jest.Mock };
+    job: { findFirst: jest.Mock; updateMany: jest.Mock };
+    auditLog: { create: jest.Mock };
+    $transaction: jest.Mock;
+  };
+  let reader: { read: jest.Mock };
+  let intents: { recordConfirmation: jest.Mock; processOne: jest.Mock };
+  let service: CalendarCreateReconciliationService;
+  const input = { tenantId: "tenant", operationId: "operation" };
+  beforeEach(() => {
+    jest.spyOn(Date, "now").mockReturnValue(date.getTime() - 1000);
+    operation = {
+      id: "operation",
+      tenantId: "tenant",
+      jobId: "job",
+      action: "CREATE",
+      status: "PENDING",
+      calendarId: "saved-calendar",
+      calendarEventId: "a".repeat(32),
+      timeZone: "UTC",
+      expectedUpdatedAt: new Date(date.getTime() - 1),
+      claimedUpdatedAt: date,
+      previousStatus: "CREATED",
+      previousCalendarEventId: null,
+      previousWindowStart: null,
+      previousWindowEnd: null,
+      previousTimeText: null,
+      desiredWindowStart: date,
+      desiredWindowEnd: new Date(date.getTime() + 3600000),
+      desiredTimeText: "Arrival",
+      finishedAt: null,
+      createdAt: date,
+      updatedAt: date,
+    };
+    event = {
+      id: operation.calendarEventId,
+      etag: '"private-etag"',
+      status: "confirmed",
+      start: date.toISOString(),
+      end: operation.desiredWindowEnd!.toISOString(),
+      tenantId: "tenant",
+      jobId: "job",
+      operationId: "operation",
+      blockingSingleEvent: true,
+    };
+    prisma = {
+      calendarOperation: {
+        findUnique: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve(operation)),
+        updateMany: jest.fn().mockImplementation(({ data }) => {
+          operation = { ...operation, ...data };
+          return Promise.resolve({ count: 1 });
+        }),
+      },
+      job: {
+        findFirst: jest.fn().mockResolvedValue({ id: "job" }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      auditLog: { create: jest.fn().mockResolvedValue({ id: "audit" }) },
+      $transaction: jest
+        .fn()
+        .mockImplementation(
+          async (callback: (tx: typeof prisma) => Promise<unknown>) => {
+            const original = operation;
+            try {
+              return await callback(prisma);
+            } catch (error) {
+              operation = original;
+              throw error;
+            }
+          },
+        ),
+    };
+    reader = {
+      read: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve({ outcome: "found", event })),
+    };
+    intents = {
+      recordConfirmation: jest.fn().mockResolvedValue({ id: "intent" }),
+      processOne: jest.fn(),
+    };
+    service = new CalendarCreateReconciliationService(
+      prisma as unknown as PrismaService,
+      reader,
+      intents as unknown as SmsEnqueueIntentService,
+    );
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it("atomically finalizes a matching observation without processing messages", async () => {
+    await expect(service.reconcile(input)).resolves.toEqual({
+      status: "finalized",
+    });
+    expect(reader.read).toHaveBeenCalledWith("saved-calendar", "a".repeat(32));
+    expect(prisma.calendarOperation.findUnique).toHaveBeenCalledWith({
+      where: { id_tenantId: { id: "operation", tenantId: "tenant" } },
+    });
+    expect(prisma.calendarOperation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "tenant",
+          updatedAt: date,
+          finishedAt: null,
+        }),
+        data: expect.objectContaining({
+          status: "FINALIZED",
+          updatedAt: new Date(date.getTime() + 1),
+        }),
+      }),
+    );
+    expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId: "tenant",
+          updatedAt: date,
+          calendarEventId: null,
+        }),
+        data: expect.objectContaining({
+          calendarEventId: operation.calendarEventId,
+        }),
+      }),
+    );
+    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorType: "SYSTEM_AI",
+          metadata: {
+            calendarEvidence: "MATCHED_CREATE_READBACK",
+            calendarOperationId: "operation",
+            notificationIntentId: "intent",
+            observedEventEtagHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+          },
+        }),
+      }),
+    );
+    expect(JSON.stringify(prisma.auditLog.create.mock.calls)).not.toContain(
+      "private-etag",
+    );
+    expect(intents.processOne).not.toHaveBeenCalled();
+  });
+  it("holds an already-started window without a Calendar request", async () => {
+    jest.mocked(Date.now).mockReturnValue(date.getTime());
+    await expect(service.reconcile(input)).resolves.toEqual({
+      status: "needs_review",
+    });
+    expect(reader.read).not.toHaveBeenCalled();
+  });
+  it("rechecks time when the window starts during the Calendar read", async () => {
+    reader.read.mockImplementation(() => {
+      jest.mocked(Date.now).mockReturnValue(date.getTime());
+      return Promise.resolve({ outcome: "found", event });
+    });
+    await expect(service.reconcile(input)).resolves.toEqual({
+      status: "needs_review",
+    });
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+    expect(intents.recordConfirmation).not.toHaveBeenCalled();
+  });
+  it("accepts equivalent explicit timezone offsets", async () => {
+    event.start = "2026-09-08T14:00:00-04:00";
+    await expect(service.reconcile(input)).resolves.toEqual({
+      status: "finalized",
+    });
+  });
+  it.each([
+    "id",
+    "tenantId",
+    "jobId",
+    "operationId",
+    "status",
+    "start",
+    "end",
+    "etag",
+  ] as const)("does not adopt mismatched %s", async (key) => {
+    event[key] = key === "etag" ? "" : "mismatched";
+    await service.reconcile(input);
+    expect(prisma.calendarOperation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "NEEDS_REVIEW" }),
+      }),
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(intents.recordConfirmation).not.toHaveBeenCalled();
+  });
+  it("rejects nonblocking/recurring/all-day evidence", async () => {
+    event.blockingSingleEvent = false;
+    await service.reconcile(input);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it("rejects offset-free timestamps", async () => {
+    event.start = "2026-09-08T18:00:00";
+    await service.reconcile(input);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it("hides missing/cross-tenant records and never reads Calendar", async () => {
+    prisma.calendarOperation.findUnique.mockResolvedValue(null);
+    await expect(service.reconcile(input)).rejects.toThrow("was not found");
+    expect(reader.read).not.toHaveBeenCalled();
+  });
+  it.each(["RESCHEDULE", "CANCEL"] as const)(
+    "does not reconcile unsupported %s",
+    async (action) => {
+      operation.action = action;
+      await expect(service.reconcile(input)).rejects.toThrow(
+        "Only initial booking",
+      );
+      expect(reader.read).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["NEEDS_REVIEW", "ABORTED", "FINALIZED"] as const)(
+    "never retries held/terminal %s",
+    async (status) => {
+      operation.status = status;
+      operation.finishedAt = status === "NEEDS_REVIEW" ? null : date;
+      await expect(service.reconcile(input)).resolves.toEqual({
+        status: status === "FINALIZED" ? "already_finalized" : "needs_review",
+      });
+      expect(reader.read).not.toHaveBeenCalled();
+    },
+  );
+  it("holds a changed/deleted local reservation before external access", async () => {
+    prisma.job.findFirst.mockResolvedValue(null);
+    await service.reconcile(input);
+    expect(reader.read).not.toHaveBeenCalled();
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+  });
+  it.each(["unverified", "unavailable"] as const)(
+    "does not finalize %s provider outcomes",
+    async (outcome) => {
+      reader.read.mockResolvedValue({ outcome });
+      await service.reconcile(input);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.calendarOperation.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: outcome === "unavailable" ? "UNCERTAIN" : "NEEDS_REVIEW",
+          }),
+        }),
+      );
+    },
+  );
+  it("isolates thrown provider errors", async () => {
+    reader.read.mockRejectedValue(new Error("private token"));
+    await expect(service.reconcile(input)).resolves.toEqual({
+      status: "pending",
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it.each(["journal", "job", "intent", "audit"])(
+    "rolls back finalization on %s failure",
+    async (target) => {
+      if (target === "journal")
+        prisma.calendarOperation.updateMany.mockResolvedValueOnce({ count: 0 });
+      if (target === "job")
+        prisma.job.updateMany.mockResolvedValueOnce({ count: 0 });
+      if (target === "intent")
+        intents.recordConfirmation.mockRejectedValue(new Error("failed"));
+      if (target === "audit")
+        prisma.auditLog.create.mockRejectedValue(new Error("failed"));
+      await expect(service.reconcile(input)).resolves.toEqual({
+        status: ["journal", "job"].includes(target)
+          ? "needs_review"
+          : "pending",
+      });
+      expect(prisma.calendarOperation.updateMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: ["journal", "job"].includes(target)
+              ? "NEEDS_REVIEW"
+              : "UNCERTAIN",
+          }),
+        }),
+      );
+      expect(intents.processOne).not.toHaveBeenCalled();
+    },
+  );
+  it("recognizes a committed receipt after lost commit acknowledgment", async () => {
+    prisma.$transaction.mockImplementation(() => {
+      operation = {
+        ...operation,
+        status: CalendarOperationStatus.FINALIZED,
+        finishedAt: date,
+      };
+      return Promise.reject(new Error("lost acknowledgment"));
+    });
+    prisma.calendarOperation.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.reconcile(input)).resolves.toEqual({
+      status: "already_finalized",
+    });
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+  });
+});

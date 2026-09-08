@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Calendar journal/reservation persistence foundation and six local process-crash cases are review-ready on backend PR #21, alongside the prior SMS/finalization/recovery UI. The journal has no live consumer yet. Journal-aware scheduling/reconciliation, dependency remediation, owner/live acceptance, remaining events/template controls, technician notifications and email remain open; no release or migration is authorized.
+  - Inactive CREATE Calendar read-back reconciliation and atomic journal/job/intent/audit finalization are review-ready on backend PR #21, with nine total local process-crash cases. Consumer pending-state guards, guarded CREATE integration/recovery worker, reschedule/cancel reconciliation, dependency remediation and remaining messaging/acceptance work stay open; no live activation or release.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
