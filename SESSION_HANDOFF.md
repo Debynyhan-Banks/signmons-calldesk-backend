@@ -7,7 +7,16 @@ Last Updated: 2026-09-07
 - Active ticket: `APP-013` Twilio-backed notification center and transactional customer messaging.
 - APP-012 is owner-approved, merged and released from PR `#14` at `068f4c2`.
 - APP-011 is owner-approved, merged and released from PR `#13` at `28d394f`.
-- Keep the WIP limit at one; APP-013 implementation has not started.
+- Keep the WIP limit at one; APP-013 is active on the focused transactional-messaging branch.
+
+## APP-013 Transactional Messaging Foundation (2026-09-08)
+
+- Added four fixed/versioned contractor-branded customer SMS templates for confirmation, reschedule, cancellation, and technician-on-the-way events.
+- Added an authenticated operator queue boundary that accepts no arbitrary recipient or message content; tenant, customer, schedule, and technician data are loaded server-side from the tenant-scoped job.
+- Added privacy-safe, tenant-scoped communication history with job filtering and a 100-record bound.
+- Reused the accepted BE-008 encrypted content, consent, quiet-hours, idempotency, callback, retry, dead-letter, and delivery-disable controls.
+- No lifecycle automation, operator UI, migration, provider call, configuration, merge, or deployment is part of this checkpoint.
+- Evidence: `evidence/APP-013/readiness-report.md`.
 
 ## APP-012 Review Checkpoint
 

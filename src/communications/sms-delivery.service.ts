@@ -42,6 +42,9 @@ export class SmsDeliveryService {
     body: string;
     idempotencyKey: string;
     jobId?: string;
+    templateId?: string;
+    templateKey?: string;
+    templateVersion?: number;
   }): Promise<{ id: string; status: CommunicationStatus }> {
     if (
       !input.body.trim() ||
@@ -61,7 +64,14 @@ export class SmsDeliveryService {
     const keyHash = this.hash(input.tenantId, input.idempotencyKey);
     const requestHash = this.hash(
       input.tenantId,
-      JSON.stringify({ to: input.to, body: input.body, jobId: input.jobId }),
+      JSON.stringify({
+        to: input.to,
+        body: input.body,
+        jobId: input.jobId,
+        templateId: input.templateId,
+        templateKey: input.templateKey,
+        templateVersion: input.templateVersion,
+      }),
     );
     const event = await this.prisma.communicationEvent.upsert({
       where: {
@@ -83,10 +93,15 @@ export class SmsDeliveryService {
         content: {
           create: {
             tenantId: input.tenantId,
+            templateId: input.templateId,
             payload: {
               kind: "transactional_sms",
               recipientHash: this.hash(input.tenantId, input.to),
               requestHash,
+              ...(input.templateKey ? { templateKey: input.templateKey } : {}),
+              ...(input.templateVersion
+                ? { templateVersion: input.templateVersion }
+                : {}),
             },
             encryptedRaw: this.cipher.encrypt(
               JSON.stringify({ to: input.to, body: input.body }),
@@ -113,6 +128,54 @@ export class SmsDeliveryService {
       );
     }
     return { id: event.id, status: event.status };
+  }
+
+  async listHistory(input: {
+    tenantId: string;
+    jobId?: string;
+    limit: number;
+  }) {
+    const events = await this.prisma.communicationEvent.findMany({
+      where: {
+        tenantId: input.tenantId,
+        channel: CommunicationChannel.SMS,
+        ...(input.jobId ? { jobId: input.jobId } : {}),
+      },
+      orderBy: { occurredAt: "desc" },
+      take: input.limit,
+      select: {
+        id: true,
+        jobId: true,
+        direction: true,
+        status: true,
+        attemptCount: true,
+        lastErrorCode: true,
+        occurredAt: true,
+        terminalAt: true,
+        content: { select: { templateId: true, payload: true } },
+      },
+    });
+
+    return events.map((event) => {
+      const payload = this.asPayload(event.content?.payload);
+      return {
+        id: event.id,
+        jobId: event.jobId,
+        direction: event.direction,
+        status: event.status,
+        attemptCount: event.attemptCount,
+        lastErrorCode: event.lastErrorCode,
+        occurredAt: event.occurredAt,
+        terminalAt: event.terminalAt,
+        templateId: event.content?.templateId ?? null,
+        templateKey:
+          typeof payload?.templateKey === "string" ? payload.templateKey : null,
+        templateVersion:
+          typeof payload?.templateVersion === "number"
+            ? payload.templateVersion
+            : null,
+      };
+    });
   }
 
   async processDue(limit = 25): Promise<number> {
@@ -395,6 +458,12 @@ export class SmsDeliveryService {
     if (matches.length !== 1)
       throw new BadRequestException("Tenant SMS identity is unavailable.");
     return matches[0];
+  }
+
+  private asPayload(value: unknown): Record<string, unknown> | null {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   }
 
   private hash(tenantId: string, value: string): string {

@@ -1,6 +1,33 @@
 # APP-013 Review Checkpoint - Communication Availability Boundaries
 
-Date: 2026-09-07
+Date: 2026-09-08
+
+## Transactional messaging foundation checkpoint
+
+- Added four fixed, versioned customer SMS templates: appointment confirmed, appointment rescheduled, appointment cancelled, and technician on the way.
+- Templates use the contractor tenant name, tenant-local appointment time, and assigned technician name when available. Every message includes STOP and HELP instructions.
+- Added authenticated owner/admin/dispatcher `POST /communications/sms/transactional`. It accepts only a tenant-scoped job UUID, an approved template key, and an idempotency key; callers cannot submit arbitrary message text or recipient phone numbers.
+- Job, customer, contractor branding, timezone, appointment time, and technician identity are loaded server-side through the existing composite tenant boundary.
+- Rendered recipient and message content use the existing encrypted communication-content path. The durable event records template ID, template key, template version, job linkage, delivery state, attempt count, and bounded failure information.
+- Added authenticated, no-store `GET /communications/sms/history`, optionally filtered by tenant-scoped job. Results are capped at 100 and exclude message text, phone number, recipient hash, provider identifiers, and encrypted content.
+- Queue creation continues to fail closed through the existing consent, tenant identity, recipient-local quiet-hours, idempotency, retry, and global delivery-enable controls.
+- This checkpoint does not automatically trigger lifecycle messages, add the operator UI, send a provider message, change configuration, or alter staging/production state.
+
+### Checkpoint validation
+
+- Focused communications tests: 4 suites and 21 tests passed.
+- Full test suite: 36 suites passed, 1 existing policy-skipped suite; 288 tests passed and 3 existing tests skipped.
+- Build: passed.
+- Lint: passed.
+- Architecture check: passed.
+- Prisma validation: passed.
+- Diff check: passed.
+
+### Review disposition
+
+- APP-013 remains `Now`; this is the first review-ready application checkpoint on top of the accepted BE-008 transport.
+- Remaining APP-013 work includes lifecycle trigger integration, dispatcher alerts, customer/technician notification preferences, operator UI, rendered browser QA, monitoring/cost presentation, and staging acceptance.
+- No migration, merge, deployment, credential access, Twilio configuration, billed provider action, or real customer message was performed.
 
 ## Bounded scope
 

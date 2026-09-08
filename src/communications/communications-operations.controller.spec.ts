@@ -5,15 +5,20 @@ import {
 } from "../common/context/request-context";
 import { CommunicationsOperationsController } from "./communications-operations.controller";
 import type { SmsDeliveryService } from "./sms-delivery.service";
+import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
+import type { TransactionalMessagingService } from "./transactional-messaging.service";
 
 describe("CommunicationsOperationsController", () => {
   const delivery = {
     listDeadLetters: jest.fn(),
     metrics: jest.fn(),
     replayDeadLetter: jest.fn(),
+    listHistory: jest.fn(),
   };
+  const transactional = { queue: jest.fn() };
   const controller = new CommunicationsOperationsController(
     delivery as unknown as SmsDeliveryService,
+    transactional as unknown as TransactionalMessagingService,
   );
 
   beforeEach(() => jest.clearAllMocks());
@@ -42,6 +47,34 @@ describe("CommunicationsOperationsController", () => {
       actorId: "user-1",
       acknowledgeDuplicateRisk: true,
       reason: "Provider history was reconciled by the owner.",
+    });
+  });
+
+  it("queues a template only inside the authenticated tenant", async () => {
+    transactional.queue.mockResolvedValue({ id: "event-1", status: "QUEUED" });
+    await withContext(async () => {
+      await expect(
+        controller.queueTransactional({
+          jobId: "10000000-0000-4000-8000-000000000001",
+          templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+          idempotencyKey: "appointment-confirmed:1",
+        }),
+      ).resolves.toEqual({ id: "event-1", status: "QUEUED" });
+    });
+    expect(transactional.queue).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "tenant-1" }),
+    );
+  });
+
+  it("returns tenant-scoped history with a bounded limit", async () => {
+    delivery.listHistory.mockResolvedValue([]);
+    await withContext(async () => {
+      await expect(controller.history(undefined, 25)).resolves.toEqual([]);
+    });
+    expect(delivery.listHistory).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      jobId: undefined,
+      limit: 25,
     });
   });
 });

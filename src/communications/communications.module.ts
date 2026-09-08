@@ -11,6 +11,8 @@ import { SmsDeliveryWorker } from "./sms-delivery.worker";
 import { CommunicationsOperationsController } from "./communications-operations.controller";
 import { CommunicationsOperationsAccessGuard } from "./communications-operations-access.guard";
 import { CommunicationsReplayAccessGuard } from "./communications-replay-access.guard";
+import { TransactionalMessageTemplateService } from "./transactional-message-template.service";
+import { TransactionalMessagingService } from "./transactional-messaging.service";
 
 @Module({
   imports: [AuthModule],
@@ -22,6 +24,8 @@ import { CommunicationsReplayAccessGuard } from "./communications-replay-access.
     SmsDeliveryWorker,
     CommunicationsOperationsAccessGuard,
     CommunicationsReplayAccessGuard,
+    TransactionalMessageTemplateService,
+    TransactionalMessagingService,
     TenantGuard,
     TwilioSmsProvider,
     { provide: SMS_PROVIDER, useExisting: TwilioSmsProvider },

@@ -269,6 +269,42 @@ describe("SmsDeliveryService", () => {
     ).not.toContain(to);
   });
 
+  it("returns tenant-scoped template history without message content", async () => {
+    prisma.communicationEvent.findMany.mockResolvedValue([
+      {
+        id: eventId,
+        jobId: "20000000-0000-4000-8000-000000000002",
+        direction: "OUTBOUND",
+        status: CommunicationStatus.DELIVERED,
+        attemptCount: 1,
+        lastErrorCode: null,
+        occurredAt: new Date("2026-09-08T10:00:00.000Z"),
+        terminalAt: new Date("2026-09-08T10:00:02.000Z"),
+        content: {
+          templateId: "transactional_sms:appointment_confirmed:v1",
+          payload: {
+            templateKey: "APPOINTMENT_CONFIRMED",
+            templateVersion: 1,
+            recipientHash: "private-hash",
+          },
+        },
+      },
+    ]);
+
+    const history = await createService().listHistory({
+      tenantId,
+      limit: 50,
+    });
+    expect(history[0]).toEqual(
+      expect.objectContaining({
+        templateKey: "APPOINTMENT_CONFIRMED",
+        templateVersion: 1,
+      }),
+    );
+    expect(JSON.stringify(history)).not.toContain("private-hash");
+    expect(JSON.stringify(history)).not.toContain(to);
+  });
+
   function createService(): SmsDeliveryService {
     return new SmsDeliveryService(
       prisma as unknown as PrismaService,
