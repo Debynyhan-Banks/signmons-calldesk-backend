@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   ApiError,
@@ -99,13 +100,13 @@ export default function CustomerBookingPage() {
   return (
     <main className={styles.page}>
       <header className={styles.brandBar}>
-        <a href="/" aria-label="Signmons CallDesk home">
+        <Link href="/" aria-label="Signmons CallDesk home" prefetch={false}>
           <span className={styles.brandMark}>S</span>
           <span>
             <strong>Signmons</strong>
             <small>CallDesk</small>
           </span>
-        </a>
+        </Link>
         <span className={styles.secureLabel} aria-label="Secure booking link">
           <span className={styles.secureFull}>Secure booking link</span>
           <span className={styles.secureShort} aria-hidden="true">

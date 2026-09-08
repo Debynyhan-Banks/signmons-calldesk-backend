@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+// Next 15 route handlers are dynamic by default; hosting serves only ui/out.
+export const dynamic = "force-static";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Signmons CallDesk Field",

@@ -1,0 +1,1311 @@
+{
+  "date": "2026-09-08",
+  "scope": "APP-013 UI framework security upgrade; branch only, no deployment",
+  "baselineBackendCommit": "1955200c01a02c8c043c0d4322b2e3e54b601c89",
+  "baselineGovernanceCommit": "e0953213a3eaae0c2b5f56fafb7f440ed891adfe",
+  "commands": [
+    "npm audit --json (backend and ui)",
+    "npm audit --omit=dev --json (backend and ui)"
+  ],
+  "countsMeaning": "npm affected-package counts, not unique advisories or confirmed exploitable application paths",
+  "uiBefore": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 9,
+      "critical": 1,
+      "total": 11
+    },
+    "findings": [
+      {
+        "name": "@next/eslint-plugin-next",
+        "severity": "high",
+        "isDirect": false,
+        "range": "14.0.5-canary.0 - 15.0.0-rc.1",
+        "nodes": [
+          "node_modules/@next/eslint-plugin-next"
+        ],
+        "via": [
+          "glob"
+        ],
+        "fixAvailable": {
+          "name": "eslint-config-next",
+          "version": "16.3.4",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "ajv",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "<6.14.0",
+        "nodes": [
+          "node_modules/ajv"
+        ],
+        "via": [
+          {
+            "title": "ajv has ReDoS when using `$data` option",
+            "url": "https://github.com/advisories/GHSA-2g4f-4pwh-qvx6",
+            "severity": "moderate",
+            "range": "<6.14.0"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "brace-expansion",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=1.1.17 || 2.0.0 - 2.1.3",
+        "nodes": [
+          "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "node_modules/brace-expansion",
+          "node_modules/glob/node_modules/brace-expansion"
+        ],
+        "via": [
+          {
+            "title": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+            "url": "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+            "severity": "moderate",
+            "range": "<1.1.13"
+          },
+          {
+            "title": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+            "url": "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+            "severity": "moderate",
+            "range": ">=2.0.0 <2.0.3"
+          },
+          {
+            "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+            "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+            "severity": "high",
+            "range": ">=2.0.0 <2.1.2"
+          },
+          {
+            "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+            "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+            "severity": "high",
+            "range": "<1.1.16"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+            "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+            "severity": "high",
+            "range": "<1.1.17"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+            "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+            "severity": "high",
+            "range": ">=2.0.0 <2.1.3"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+            "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+            "severity": "high",
+            "range": ">=2.0.0 <2.1.4"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+            "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+            "severity": "high",
+            "range": "<1.1.18"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "eslint-config-next",
+        "severity": "high",
+        "isDirect": true,
+        "range": "14.0.5-canary.0 - 15.0.0-rc.1",
+        "nodes": [
+          "node_modules/eslint-config-next"
+        ],
+        "via": [
+          "@next/eslint-plugin-next"
+        ],
+        "fixAvailable": {
+          "name": "eslint-config-next",
+          "version": "16.3.4",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "flatted",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=3.4.1",
+        "nodes": [
+          "node_modules/flatted"
+        ],
+        "via": [
+          {
+            "title": "flatted vulnerable to unbounded recursion DoS in parse() revive phase",
+            "url": "https://github.com/advisories/GHSA-25h7-pfq9-p65f",
+            "severity": "high",
+            "range": "<3.4.0"
+          },
+          {
+            "title": "Prototype Pollution via parse() in NodeJS flatted",
+            "url": "https://github.com/advisories/GHSA-rf6f-7fwh-wjgh",
+            "severity": "high",
+            "range": "<=3.4.1"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "glob",
+        "severity": "high",
+        "isDirect": false,
+        "range": "10.2.0 - 10.4.5",
+        "nodes": [
+          "node_modules/glob"
+        ],
+        "via": [
+          {
+            "title": "glob CLI: Command injection via -c/--cmd executes matches with shell:true",
+            "url": "https://github.com/advisories/GHSA-5j98-mcp5-4vw2",
+            "severity": "high",
+            "range": ">=10.2.0 <10.5.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "eslint-config-next",
+          "version": "16.3.4",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "js-yaml",
+        "severity": "high",
+        "isDirect": false,
+        "range": "4.0.0 - 4.3.0",
+        "nodes": [
+          "node_modules/js-yaml"
+        ],
+        "via": [
+          {
+            "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+            "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+            "severity": "moderate",
+            "range": ">=4.0.0 <=4.1.1"
+          },
+          {
+            "title": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
+            "url": "https://github.com/advisories/GHSA-52cp-r559-cp3m",
+            "severity": "high",
+            "range": ">=4.0.0 <4.3.0"
+          },
+          {
+            "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+            "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+            "severity": "high",
+            "range": ">=4.0.0 <4.3.1"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "minimatch",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=3.1.3 || 9.0.0 - 9.0.6",
+        "nodes": [
+          "node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch",
+          "node_modules/glob/node_modules/minimatch",
+          "node_modules/minimatch"
+        ],
+        "via": [
+          {
+            "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+            "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+            "severity": "high",
+            "range": "<3.1.3"
+          },
+          {
+            "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+            "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+            "severity": "high",
+            "range": ">=9.0.0 <9.0.6"
+          },
+          {
+            "title": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
+            "url": "https://github.com/advisories/GHSA-7r86-cg39-jmmj",
+            "severity": "high",
+            "range": "<3.1.3"
+          },
+          {
+            "title": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
+            "url": "https://github.com/advisories/GHSA-7r86-cg39-jmmj",
+            "severity": "high",
+            "range": ">=9.0.0 <9.0.7"
+          },
+          {
+            "title": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
+            "url": "https://github.com/advisories/GHSA-23c5-xmqv-rm74",
+            "severity": "high",
+            "range": "<3.1.4"
+          },
+          {
+            "title": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
+            "url": "https://github.com/advisories/GHSA-23c5-xmqv-rm74",
+            "severity": "high",
+            "range": ">=9.0.0 <9.0.7"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "next",
+        "severity": "critical",
+        "isDirect": true,
+        "range": "9.3.4-canary.0 - 16.3.0-preview.10",
+        "nodes": [
+          "node_modules/next"
+        ],
+        "via": [
+          {
+            "title": "Next Vulnerable to Denial of Service with Server Components",
+            "url": "https://github.com/advisories/GHSA-mwv6-3258-q52c",
+            "severity": "high",
+            "range": ">=13.3.0 <14.2.34"
+          },
+          {
+            "title": "Next has a Denial of Service with Server Components - Incomplete Fix Follow-Up",
+            "url": "https://github.com/advisories/GHSA-5j59-xgg2-r9c4",
+            "severity": "high",
+            "range": ">=13.3.1-canary.0 <14.2.35"
+          },
+          {
+            "title": "Next.js self-hosted applications vulnerable to DoS via Image Optimizer remotePatterns configuration",
+            "url": "https://github.com/advisories/GHSA-9g9p-9gw9-jx7f",
+            "severity": "moderate",
+            "range": ">=10.0.0 <15.5.10"
+          },
+          {
+            "title": "Next.js HTTP request deserialization can lead to DoS when using insecure React Server Components",
+            "url": "https://github.com/advisories/GHSA-h25m-26qc-wcjf",
+            "severity": "high",
+            "range": ">=13.0.0 <15.0.8"
+          },
+          {
+            "title": "Next.js: HTTP request smuggling in rewrites",
+            "url": "https://github.com/advisories/GHSA-ggv3-7p47-pfv8",
+            "severity": "moderate",
+            "range": ">=9.5.0 <15.5.13"
+          },
+          {
+            "title": "Next.js: Unbounded next/image disk cache growth can exhaust storage",
+            "url": "https://github.com/advisories/GHSA-3x4c-7xq6-9pq8",
+            "severity": "moderate",
+            "range": ">=10.0.0 <15.5.14"
+          },
+          {
+            "title": "Next.js has a Denial of Service with Server Components",
+            "url": "https://github.com/advisories/GHSA-q4gf-8mx6-v5v3",
+            "severity": "high",
+            "range": ">=13.0.0 <15.5.15"
+          },
+          {
+            "title": "Next.js Vulnerable to Denial of Service with Server Components",
+            "url": "https://github.com/advisories/GHSA-8h8q-6873-q5fj",
+            "severity": "high",
+            "range": ">=13.0.0 <15.5.16"
+          },
+          {
+            "title": "Next.js's Middleware / Proxy redirects can be cache-poisoned",
+            "url": "https://github.com/advisories/GHSA-3g8h-86w9-wvmq",
+            "severity": "low",
+            "range": ">=12.2.0 <15.5.16"
+          },
+          {
+            "title": "Next.js vulnerable to cross-site scripting in App Router applications using CSP nonces",
+            "url": "https://github.com/advisories/GHSA-ffhc-5mcf-pf4q",
+            "severity": "moderate",
+            "range": ">=13.4.0 <15.5.16"
+          },
+          {
+            "title": "Next.js vulnerable to cache poisoning via collisions in React Server Component cache-busting",
+            "url": "https://github.com/advisories/GHSA-vfv6-92ff-j949",
+            "severity": "low",
+            "range": ">=13.4.6 <15.5.16"
+          },
+          {
+            "title": "Next.js has cross-site scripting in beforeInteractive scripts with untrusted input",
+            "url": "https://github.com/advisories/GHSA-gx5p-jg67-6x7h",
+            "severity": "moderate",
+            "range": ">=13.0.0 <15.5.16"
+          },
+          {
+            "title": "Next.js has a Denial of Service in the Image Optimization API",
+            "url": "https://github.com/advisories/GHSA-h64f-5h5j-jqjh",
+            "severity": "moderate",
+            "range": ">=10.0.0 <15.5.16"
+          },
+          {
+            "title": "Next.js vulnerable to server-side request forgery in applications using WebSocket upgrades",
+            "url": "https://github.com/advisories/GHSA-c4j6-fc7j-m34r",
+            "severity": "high",
+            "range": ">=13.4.13 <15.5.16"
+          },
+          {
+            "title": "Next.js vulnerable to cache poisoning in React Server Component responses",
+            "url": "https://github.com/advisories/GHSA-wfc6-r584-vfw7",
+            "severity": "moderate",
+            "range": ">=14.2.0 <15.5.16"
+          },
+          {
+            "title": "Next.js has a Middleware / Proxy bypass in Pages Router applications using i18n",
+            "url": "https://github.com/advisories/GHSA-36qx-fr4f-26g5",
+            "severity": "high",
+            "range": ">=12.2.0 <15.5.16"
+          },
+          {
+            "title": "Next.js: Denial of Service in App Router using Server Actions",
+            "url": "https://github.com/advisories/GHSA-m99w-x7hq-7vfj",
+            "severity": "high",
+            "range": ">=13.0.0 <15.5.21"
+          },
+          {
+            "title": "Next.js: Server-Side Request Forgery in Server Actions on custom servers",
+            "url": "https://github.com/advisories/GHSA-89xv-2m56-2m9x",
+            "severity": "high",
+            "range": ">=14.1.1 <15.5.21"
+          },
+          {
+            "title": "Next.js: Cache confusion of response bodies for requests with bodies",
+            "url": "https://github.com/advisories/GHSA-68g3-v927-f742",
+            "severity": "moderate",
+            "range": ">=13.0.0 <15.5.21"
+          },
+          {
+            "title": "Next.js: Cache confusion of response bodies for requests with bodies containing invalid UTF-8 byte sequences",
+            "url": "https://github.com/advisories/GHSA-4633-3j49-mh5q",
+            "severity": "moderate",
+            "range": ">=13.0.0 <15.5.21"
+          },
+          {
+            "title": "Next.js: Unbounded Server Action payload in Edge runtime",
+            "url": "https://github.com/advisories/GHSA-4c39-4ccg-62r3",
+            "severity": "moderate",
+            "range": ">=13.0.0 <15.5.21"
+          },
+          {
+            "title": "Next.js: Server-Side Request Forgery in rewrites via attacker-controlled destination hostname",
+            "url": "https://github.com/advisories/GHSA-p9j2-gv94-2wf4",
+            "severity": "high",
+            "range": ">=12.0.0 <15.5.21"
+          },
+          {
+            "title": "Next.js: Unauthenticated disclosure of internal Server Function endpoints",
+            "url": "https://github.com/advisories/GHSA-955p-x3mx-jcvp",
+            "severity": "moderate",
+            "range": ">=13.0.0 <15.5.21"
+          },
+          {
+            "title": "Next.js: Unauthenticated Remote Code Execution on windows-hosted servers",
+            "url": "https://github.com/advisories/GHSA-p293-qw3h-jr36",
+            "severity": "critical",
+            "range": ">=13.4.0 <15.5.24"
+          },
+          "postcss"
+        ],
+        "fixAvailable": {
+          "name": "next",
+          "version": "16.3.4",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "picomatch",
+        "severity": "high",
+        "isDirect": false,
+        "range": "4.0.0 - 4.0.3",
+        "nodes": [
+          "node_modules/picomatch"
+        ],
+        "via": [
+          {
+            "title": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+            "url": "https://github.com/advisories/GHSA-3v7f-55p6-f55p",
+            "severity": "moderate",
+            "range": ">=4.0.0 <4.0.4"
+          },
+          {
+            "title": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
+            "url": "https://github.com/advisories/GHSA-c2c7-rcm5-vvqj",
+            "severity": "high",
+            "range": ">=4.0.0 <4.0.4"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "postcss",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=8.5.22",
+        "nodes": [
+          "node_modules/postcss"
+        ],
+        "via": [
+          {
+            "title": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
+            "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+            "severity": "moderate",
+            "range": "<8.5.10"
+          },
+          {
+            "title": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
+            "url": "https://github.com/advisories/GHSA-6g55-p6wh-862q",
+            "severity": "high",
+            "range": "<=8.5.11"
+          },
+          {
+            "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+            "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+            "severity": "moderate",
+            "range": "<=8.5.22"
+          },
+          {
+            "title": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+            "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+            "severity": "high",
+            "range": "<=8.5.17"
+          }
+        ],
+        "fixAvailable": {
+          "name": "next",
+          "version": "16.3.4",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "uiAfter": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 2,
+      "high": 6,
+      "critical": 0,
+      "total": 8
+    },
+    "findings": [
+      {
+        "name": "ajv",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "<6.14.0",
+        "nodes": [
+          "node_modules/ajv"
+        ],
+        "via": [
+          {
+            "title": "ajv has ReDoS when using `$data` option",
+            "url": "https://github.com/advisories/GHSA-2g4f-4pwh-qvx6",
+            "severity": "moderate",
+            "range": "<6.14.0"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "brace-expansion",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=1.1.17 || 2.0.0 - 2.1.3",
+        "nodes": [
+          "node_modules/@typescript-eslint/typescript-estree/node_modules/brace-expansion",
+          "node_modules/brace-expansion"
+        ],
+        "via": [
+          {
+            "title": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+            "url": "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+            "severity": "moderate",
+            "range": "<1.1.13"
+          },
+          {
+            "title": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+            "url": "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+            "severity": "moderate",
+            "range": ">=2.0.0 <2.0.3"
+          },
+          {
+            "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+            "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+            "severity": "high",
+            "range": ">=2.0.0 <2.1.2"
+          },
+          {
+            "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+            "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+            "severity": "high",
+            "range": "<1.1.16"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+            "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+            "severity": "high",
+            "range": "<1.1.17"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+            "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+            "severity": "high",
+            "range": ">=2.0.0 <2.1.3"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+            "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+            "severity": "high",
+            "range": ">=2.0.0 <2.1.4"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+            "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+            "severity": "high",
+            "range": "<1.1.18"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "flatted",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=3.4.1",
+        "nodes": [
+          "node_modules/flatted"
+        ],
+        "via": [
+          {
+            "title": "flatted vulnerable to unbounded recursion DoS in parse() revive phase",
+            "url": "https://github.com/advisories/GHSA-25h7-pfq9-p65f",
+            "severity": "high",
+            "range": "<3.4.0"
+          },
+          {
+            "title": "Prototype Pollution via parse() in NodeJS flatted",
+            "url": "https://github.com/advisories/GHSA-rf6f-7fwh-wjgh",
+            "severity": "high",
+            "range": "<=3.4.1"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "js-yaml",
+        "severity": "high",
+        "isDirect": false,
+        "range": "4.0.0 - 4.3.0",
+        "nodes": [
+          "node_modules/js-yaml"
+        ],
+        "via": [
+          {
+            "title": "JS-YAML: Quadratic-complexity DoS in merge key handling via repeated aliases",
+            "url": "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+            "severity": "moderate",
+            "range": ">=4.0.0 <=4.1.1"
+          },
+          {
+            "title": "js-yaml: YAML merge-key chains can force quadratic CPU consumption",
+            "url": "https://github.com/advisories/GHSA-52cp-r559-cp3m",
+            "severity": "high",
+            "range": ">=4.0.0 <4.3.0"
+          },
+          {
+            "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+            "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+            "severity": "high",
+            "range": ">=4.0.0 <4.3.1"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "minimatch",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=3.1.3 || 9.0.0 - 9.0.6",
+        "nodes": [
+          "node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch",
+          "node_modules/minimatch"
+        ],
+        "via": [
+          {
+            "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+            "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+            "severity": "high",
+            "range": "<3.1.3"
+          },
+          {
+            "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+            "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+            "severity": "high",
+            "range": ">=9.0.0 <9.0.6"
+          },
+          {
+            "title": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
+            "url": "https://github.com/advisories/GHSA-7r86-cg39-jmmj",
+            "severity": "high",
+            "range": "<3.1.3"
+          },
+          {
+            "title": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
+            "url": "https://github.com/advisories/GHSA-7r86-cg39-jmmj",
+            "severity": "high",
+            "range": ">=9.0.0 <9.0.7"
+          },
+          {
+            "title": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
+            "url": "https://github.com/advisories/GHSA-23c5-xmqv-rm74",
+            "severity": "high",
+            "range": "<3.1.4"
+          },
+          {
+            "title": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
+            "url": "https://github.com/advisories/GHSA-23c5-xmqv-rm74",
+            "severity": "high",
+            "range": ">=9.0.0 <9.0.7"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "next",
+        "severity": "moderate",
+        "isDirect": true,
+        "range": "9.3.4-canary.0 - 16.3.0-preview.10",
+        "nodes": [
+          "node_modules/next"
+        ],
+        "via": [
+          "postcss"
+        ],
+        "fixAvailable": {
+          "name": "next",
+          "version": "16.3.4",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "picomatch",
+        "severity": "high",
+        "isDirect": false,
+        "range": "4.0.0 - 4.0.3",
+        "nodes": [
+          "node_modules/picomatch"
+        ],
+        "via": [
+          {
+            "title": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+            "url": "https://github.com/advisories/GHSA-3v7f-55p6-f55p",
+            "severity": "moderate",
+            "range": ">=4.0.0 <4.0.4"
+          },
+          {
+            "title": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
+            "url": "https://github.com/advisories/GHSA-c2c7-rcm5-vvqj",
+            "severity": "high",
+            "range": ">=4.0.0 <4.0.4"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "postcss",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=8.5.22",
+        "nodes": [
+          "node_modules/postcss"
+        ],
+        "via": [
+          {
+            "title": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
+            "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+            "severity": "moderate",
+            "range": "<8.5.10"
+          },
+          {
+            "title": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
+            "url": "https://github.com/advisories/GHSA-6g55-p6wh-862q",
+            "severity": "high",
+            "range": "<=8.5.11"
+          },
+          {
+            "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+            "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+            "severity": "moderate",
+            "range": "<=8.5.22"
+          },
+          {
+            "title": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+            "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+            "severity": "high",
+            "range": "<=8.5.17"
+          }
+        ],
+        "fixAvailable": {
+          "name": "next",
+          "version": "16.3.4",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "backendUnchanged": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 9,
+      "high": 5,
+      "critical": 0,
+      "total": 14
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "7.5.0-pre.0 || 7.6.0 - 7.11.6",
+        "nodes": [
+          "node_modules/@google-cloud/firestore"
+        ],
+        "via": [
+          "google-gax"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "2.2.0 - 2.5.0 || 5.19.0 - 8.0.0",
+        "nodes": [
+          "node_modules/@google-cloud/storage"
+        ],
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@humanfs/node",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "<0.16.8",
+        "nodes": [
+          "node_modules/@humanfs/node"
+        ],
+        "via": [
+          {
+            "title": "humanfs: Recursive copy follows symlinked files and copies data from outside the source tree",
+            "url": "https://github.com/advisories/GHSA-p498-v437-472g",
+            "severity": "moderate",
+            "range": "<0.16.8"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "isDirect": false,
+        "range": "6.13.0-dev.1 - 8.1.0-dev.4",
+        "nodes": [
+          "node_modules/@prisma/config"
+        ],
+        "via": [
+          "deepmerge-ts"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "brace-expansion",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=1.1.17",
+        "nodes": [
+          "node_modules/brace-expansion"
+        ],
+        "via": [
+          {
+            "title": "brace-expansion: Zero-step sequence causes process hang and memory exhaustion",
+            "url": "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+            "severity": "moderate",
+            "range": "<1.1.13"
+          },
+          {
+            "title": "brace-expansion: DoS via exponential-time expansion of consecutive non-expanding {} groups",
+            "url": "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+            "severity": "high",
+            "range": "<1.1.16"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+            "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+            "severity": "high",
+            "range": "<1.1.17"
+          },
+          {
+            "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+            "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+            "severity": "high",
+            "range": "<1.1.18"
+          }
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<8.0.0",
+        "nodes": [
+          "node_modules/deepmerge-ts"
+        ],
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "severity": "high",
+            "range": "<8.0.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "isDirect": true,
+        "range": "7.0.0 - 8.2.0 || >=11.0.0",
+        "nodes": [
+          "node_modules/firebase-admin"
+        ],
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "6.4.0 - 6.7.1",
+        "nodes": [
+          "node_modules/gaxios"
+        ],
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "4.0.5-experimental - 4.6.1",
+        "nodes": [
+          "node_modules/google-gax"
+        ],
+        "via": [
+          "retry-request",
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "mysql2",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=3.23.0",
+        "nodes": [
+          "node_modules/mysql2"
+        ],
+        "via": [
+          {
+            "title": "MySQL2: Auth Plugin Downgrade to mysql_clear_password Leaks Plaintext Credentials",
+            "url": "https://github.com/advisories/GHSA-3f6p-5ww8-9rcr",
+            "severity": "high",
+            "range": "<3.22.0"
+          },
+          {
+            "title": "MySQL2: Unbounded zlib inflate in compressed MySQL protocol handler allows decompression-bomb DoS",
+            "url": "https://github.com/advisories/GHSA-rgwj-5xj2-c3m3",
+            "severity": "moderate",
+            "range": "<=3.23.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "isDirect": true,
+        "range": ">=6.13.0-dev.1",
+        "nodes": [
+          "node_modules/prisma"
+        ],
+        "via": [
+          "@prisma/config",
+          "mysql2"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "7.0.0 - 7.0.2",
+        "nodes": [
+          "node_modules/retry-request"
+        ],
+        "via": [
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "3.9.1 - 9.0.0",
+        "nodes": [
+          "node_modules/teeny-request"
+        ],
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "<11.1.1",
+        "nodes": [
+          "node_modules/uuid"
+        ],
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "severity": "moderate",
+            "range": "<11.1.1"
+          }
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "backendOmitDev": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 4,
+      "critical": 0,
+      "total": 12
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "7.5.0-pre.0 || 7.6.0 - 7.11.6",
+        "nodes": [
+          "node_modules/@google-cloud/firestore"
+        ],
+        "via": [
+          "google-gax"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "2.2.0 - 2.5.0 || 5.19.0 - 8.0.0",
+        "nodes": [
+          "node_modules/@google-cloud/storage"
+        ],
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "isDirect": false,
+        "range": "6.13.0-dev.1 - 8.1.0-dev.4",
+        "nodes": [
+          "node_modules/@prisma/config"
+        ],
+        "via": [
+          "deepmerge-ts"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<8.0.0",
+        "nodes": [
+          "node_modules/deepmerge-ts"
+        ],
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "severity": "high",
+            "range": "<8.0.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "isDirect": true,
+        "range": "7.0.0 - 8.2.0 || >=11.0.0",
+        "nodes": [
+          "node_modules/firebase-admin"
+        ],
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "6.4.0 - 6.7.1",
+        "nodes": [
+          "node_modules/gaxios"
+        ],
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "4.0.5-experimental - 4.6.1",
+        "nodes": [
+          "node_modules/google-gax"
+        ],
+        "via": [
+          "retry-request",
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "mysql2",
+        "severity": "high",
+        "isDirect": false,
+        "range": "<=3.23.0",
+        "nodes": [
+          "node_modules/mysql2"
+        ],
+        "via": [
+          {
+            "title": "MySQL2: Auth Plugin Downgrade to mysql_clear_password Leaks Plaintext Credentials",
+            "url": "https://github.com/advisories/GHSA-3f6p-5ww8-9rcr",
+            "severity": "high",
+            "range": "<3.22.0"
+          },
+          {
+            "title": "MySQL2: Unbounded zlib inflate in compressed MySQL protocol handler allows decompression-bomb DoS",
+            "url": "https://github.com/advisories/GHSA-rgwj-5xj2-c3m3",
+            "severity": "moderate",
+            "range": "<=3.23.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "isDirect": true,
+        "range": ">=6.13.0-dev.1",
+        "nodes": [
+          "node_modules/prisma"
+        ],
+        "via": [
+          "@prisma/config",
+          "mysql2"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "7.0.0 - 7.0.2",
+        "nodes": [
+          "node_modules/retry-request"
+        ],
+        "via": [
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "3.9.1 - 9.0.0",
+        "nodes": [
+          "node_modules/teeny-request"
+        ],
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "isDirect": false,
+        "range": "<11.1.1",
+        "nodes": [
+          "node_modules/uuid"
+        ],
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "severity": "moderate",
+            "range": "<11.1.1"
+          }
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "uiOmitDev": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 1,
+      "critical": 0,
+      "total": 2
+    },
+    "packages": [
+      "next",
+      "postcss"
+    ]
+  },
+  "criticalAdvisory": {
+    "url": "https://github.com/vercel/next.js/security/advisories/GHSA-p293-qw3h-jr36",
+    "fixedBy": "next 15.5.25 (advisory patched range starts at 15.5.24)",
+    "exposure": "Advisory describes Windows-hosted Next servers. Checked-in Firebase hosting serves ui/out static files with no Next rewrite. No deployed architecture inspection or production exploit verification performed."
+  },
+  "riskAcceptance": false
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApiError,
@@ -291,13 +292,13 @@ export default function DispatchPage() {
   return (
     <main className={base.shell}>
       <aside className={base.nav}>
-        <a className={base.brand} href="/">
+        <Link className={base.brand} href="/" prefetch={false}>
           <span className={base.mark}>S</span>
           <span>
             <strong>Signmons</strong>
             <small>CallDesk</small>
           </span>
-        </a>
+        </Link>
         <nav aria-label="CallDesk">
           <a className={base.disabledNav} href="/app/notifications">
             <span aria-hidden="true">05</span> Notification center

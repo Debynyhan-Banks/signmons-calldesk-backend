@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApiError,
@@ -137,13 +138,13 @@ export default function IntakeReviewPage() {
   return (
     <main className={styles.shell}>
       <aside className={styles.nav}>
-        <a className={styles.brand} href="/">
+        <Link className={styles.brand} href="/" prefetch={false}>
           <span className={styles.mark}>S</span>
           <span>
             <strong>Signmons</strong>
             <small>CallDesk</small>
           </span>
-        </a>
+        </Link>
         <nav aria-label="CallDesk">
           <a className={styles.activeNav} href="/app/intake-review">
             <span aria-hidden="true">01</span> Intake review

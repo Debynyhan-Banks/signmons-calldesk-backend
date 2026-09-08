@@ -4,6 +4,7 @@ const result = spawnSync(
   process.execPath,
   [
     "--test",
+    "scripts/framework-contract.test.mjs",
     "src/lib/intake-review.test.ts",
     "src/lib/urgency-review.test.ts",
     "src/lib/dispatch-board.test.ts",

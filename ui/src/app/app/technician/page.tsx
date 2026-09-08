@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApiError,
@@ -174,13 +175,18 @@ export default function TechnicianPage() {
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
-        <a className={styles.brand} href="/" aria-label="Signmons CallDesk">
+        <Link
+          className={styles.brand}
+          href="/"
+          aria-label="Signmons CallDesk"
+          prefetch={false}
+        >
           <span className={styles.mark}>S</span>
           <span>
             <strong>Signmons</strong>
             <small>CallDesk field</small>
           </span>
-        </a>
+        </Link>
         {data && (
           <div className={styles.identity}>
             <span className={styles.secureDot} />

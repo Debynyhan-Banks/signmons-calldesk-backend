@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Narrow qs 6.16.0 dependency remediation is review-ready on PR #21: 12 regression tests and backend audit reduced to 5 high/9 moderate; no runtime application code or activation change. Authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery, remaining dependencies and acceptance stay open.
+  - UI framework security upgrade is review-ready on PR #21: Next 15.5.25/React 19.2.8, static hosting compatibility and browser regressions; UI audit now 0 critical/6 high/2 moderate, still unaccepted. Backend unchanged 5 high/9 moderate. Authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery, remaining dependencies and acceptance stay open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

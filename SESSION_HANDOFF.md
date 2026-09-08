@@ -11,7 +11,18 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: qs dependency remediation
+### Latest: UI framework security upgrade
+
+- Owner requested continued risk resolution; fetched/reconciled backend `1955200` / governance `e095321`, APP-013 sole Now. Explicitly selected one bounded UI framework security upgrade within the approved risk plan. Existing focused branches only; unrelated saved-checkout edits preserved.
+- Next/eslint-config-next 14.2.33 -> 15.5.25; React/React DOM 18.3.1 -> 19.2.8 with aligned React 19 types. Clean install and installed/manifest/lock agreement verified. Chose the patched 15 maintenance line to limit this checkpoint to one Next major upgrade; no forced dependency overrides or backend dependency changes.
+- Preserved static `ui/out` hosting. Manifest explicitly uses force-static; six home anchors use Next Link with prefetch disabled to satisfy the newer lint rule. Browser verifies navigation. No API, auth, payment, Calendar, SMS or provider behavior changed.
+- UI lint/type check/14-page build and 36 tests pass. New desktop/390px browser smoke passes 22 route checks, 12 home navigations, missing-link fail-closed states, payment return copy and static manifest; zero external requests, console/page errors or failed resources. Existing customer/dispatch, technician, policy and notification regressions pass (14/14/8/92 mocked requests). New missing-link screenshots visually reviewed.
+- Backend lint/build, 50 suites/610 tests (3 existing skips), architecture/Prisma and disposable 15-migration suite pass, including 11 prior real process-crash cases. Zero real provider calls; fixture database dropped and absence verified.
+- Fresh UI audit before this change was 1 critical/9 high/1 moderate, superseding the previous checkpoint snapshot. After: 0 critical/6 high/2 moderate (11 -> 8 affected packages). Omit-dev: 1 high/1 moderate via PostCSS/Next. Backend unchanged 5 high/9 moderate; omit-dev 4 high/8 moderate. Both critical-only commands pass; full audits fail and remaining findings are unaccepted.
+- No schema/new migration, real data, external messages, provider/secrets/IAM/billing configuration, charges, merge, deployment or executor/worker activation. Branch-only remediation, not a deployed fix. APP-013 ~85%; governed APP-006 through APP-016 ~81%, planning only. Authorized CREATE orchestration/recovery ownership, external-state races, reschedule/cancel and SENDING recovery, remaining dependency debt and acceptance stay open.
+- Critical GHSA-p293-qw3h-jr36 is removed from the audit; its Windows Next-server condition does not match the checked-in static hosting architecture, but deployed exposure was not tested. Exact scope, source links, audit artifact and commands: `evidence/APP-013/readiness-report.md` and `framework-audit-summary.json`.
+
+### Earlier: qs dependency remediation
 
 - Owner requested continued risk remediation; fetched/reconciled backend `bcee134` / governance `1b2061b`, APP-013 sole Now. Explicitly selected and announced one narrow compatible dependency fix from the approved risk plan before returning to functional orchestration. Existing focused branches only; unrelated saved edits preserved.
 - Only backend lockfile qs changes 6.15.3 -> 6.16.0. No manifest/override/framework/provider SDK/UI dependency or runtime application code changed. Small bounded old-version fixtures reproduced the two maintainer-reported defects; clean install and 12 new tests verify patched consumer resolution, limits, serialization and Nest raw-body/form compatibility.
@@ -294,7 +305,7 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 qs dependency remediation on `codex/app-013-transactional-messaging` (PR #21): single 6.16.0 lockfile entry, 12 regression tests and audit delta. Prior Calendar policy guards and inactive execution remain intact; no activation.
+1. Review the latest APP-013 UI framework security upgrade on `codex/app-013-transactional-messaging` (PR #21): Next 15.5.25/React 19.2.8, static manifest/home-link compatibility, six new tests, browser smoke and audit delta. Prior Calendar policy guards and inactive execution remain intact; no activation. Critical findings now zero; full audits still fail/unaccepted.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
