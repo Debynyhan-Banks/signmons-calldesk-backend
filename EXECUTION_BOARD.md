@@ -30,6 +30,8 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 
 ## Done
 
+- [x] BE-008 Twilio communications foundation
+  - Backend PRs `#15` and `#16`; staging revision `signmons-calldesk-staging-app013bounds`; signed inbound voice/SMS, STOP/START consent, one consented outbound delivery and terminal callback, simulated rejection, dead-letter visibility, acknowledgment-gated replay, environment separation, and rollback controls accepted September 7, 2026. Evidence: `evidence/BE-008/readiness-report.md`.
 - [x] APP-012 Payment gate and webhook status workflow (`SCR-APP-006A`, `SCR-APP-006B`, `SCR-APP-006C`, `SCR-APP-023`, `SCR-CUST-002`)
   - Backend PR `#14` merged at `068f4c2`; Cloud Build `dd7ca7ec-1777-45b6-8659-fba8998a9b63`; migration execution `signmons-calldesk-migrate-pgr84`; Cloud Run revision `signmons-calldesk-staging-app012release`; Firebase routes `/app/dispatch`, `/appointment/manage` and `/payment/status`; sandbox Stripe automatic delivery and duplicate retry passed. Live-mode Stripe remains separately approval-gated.
 - [x] APP-011 Customer booking status and confirmation flow (`SCR-CUST-001`, `SCR-CUST-003`)
