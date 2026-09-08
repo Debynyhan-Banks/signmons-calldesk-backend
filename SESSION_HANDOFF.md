@@ -11,7 +11,16 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: owner/admin exhausted-intent retry API
+### Latest: guarded owner/admin exhausted-intent retry UI
+
+- Owner reviewed the retry API and said proceed. Resumed clean focused backend `aab434b` and governance `5f3127a`; canonical pointer and handoffs still name APP-013 as sole Now. Completed only the notification-center retry review section on the existing feature branches; original saved-checkout changes remain untouched.
+- New private/no-store capability read derives owner/admin permission from verified claims using the same policy as the POST guard. Dispatcher stays read-only; failed/late capability reads cannot grant access. Review requires a supported FAILED/five-attempt/unlinked snapshot, explicit fixed reason and acknowledgment. POST sends the exact listed timestamp; the existing server state/tenant/audit/concurrency checks remain authoritative.
+- One in-flight submission per page, 15-second request timeout, no automatic retry, and snapshot clearing after every submission. Success means pending only; ambiguous outcomes warn that the server may already have accepted. All outcomes require manual reload before another review. Token/job/session edits suppress late responses without claiming to cancel an accepted request.
+- Backend lint/build, 411 tests (3 existing skips), architecture/Prisma passed; UI lint, 29 tests/build passed. Synthetic Chrome desktop/390px QA covers access, review/acknowledgment, duplicate clicks, rejected/uncertain requests and late-response clearing. Disposable local database proof passed all 14 existing migrations and recovery invariants with zero provider calls; fixture removed and absence verified. See current evidence for exact QA counts and commands.
+- No schema/dependency/provider/configuration, merge/deploy or real-data changes. Critical audit gates pass; current dependency counts and pre-existing tool warnings are recorded in evidence, not treated as release acceptance. Prior intent migration remains release-gated.
+- Remaining owner/live acceptance, reschedule/cancellation durability, calendar reconciliation, events/templates/preferences/technician notifications/email. Planning estimates: APP-013 roughly 68%; governed APP-006 through APP-016 roughly 78%, not acceptance scores. Stop review-ready; do not start another section until reviewed.
+
+### Earlier: owner/admin exhausted-intent retry API
 
 - Owner reviewed initial confirmation durability and approved continuation. Added API-only `POST /communications/sms/enqueue-intents/:intentId/retry`, owner/admin only, with acknowledgment, fixed reason code and exact `expectedUpdatedAt` from the additive intent-list timestamp. Only exhausted FAILED/unacknowledged/current-state intents qualify; stale/missing/unsupported/currently processing/queued states cannot reset.
 - Conditional reset and privacy-safe user audit are atomic. Concurrent submissions allow one reset/audit; old/repeated requests conflict. The endpoint never processes or sends; existing disabled delivery, state/consent/quiet-hour checks, canonical queue identity and five-failure bound remain authoritative. UI is unchanged/read-only; each retry cycle requires fresh review.

@@ -508,6 +508,7 @@ async function postJson<T>(
   path: string,
   body: object,
   headers: Record<string, string> = {},
+  signal?: AbortSignal,
 ): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, {
     method: "POST",
@@ -517,6 +518,7 @@ async function postJson<T>(
     },
     cache: "no-store",
     body: JSON.stringify(body),
+    signal,
   });
 
   const isJson = response.headers
@@ -956,6 +958,38 @@ export function listSmsHistory(
     `/communications/sms/history?${query}`,
     buildAuthHeaders({ bearerToken }),
   );
+}
+
+export type SmsRetryReason =
+  | "CONFIGURATION_REVIEWED"
+  | "CONSENT_POLICY_REVIEWED"
+  | "TRANSIENT_FAILURE_REVIEWED";
+
+export function getSmsCapabilities(
+  token: string,
+): Promise<{ canRetryEnqueueIntent: boolean }> {
+  return getJson(
+    "/communications/sms/capabilities",
+    buildAuthHeaders({ bearerToken: token }),
+  );
+}
+
+export async function retrySmsEnqueueIntent(
+  token: string,
+  intentId: string,
+  input: {
+    acknowledgeRetry: true;
+    reasonCode: SmsRetryReason;
+    expectedUpdatedAt: string;
+  },
+): Promise<void> {
+  const result = await postJson<{ status: string }>(
+    `/communications/sms/enqueue-intents/${encodeURIComponent(intentId)}/retry`,
+    input,
+    buildAuthHeaders({ bearerToken: token }),
+    AbortSignal.timeout(15_000),
+  );
+  if (result?.status !== "pending") throw new Error("Unexpected retry outcome");
 }
 
 export interface SmsEnqueueIntentItem {

@@ -3,11 +3,67 @@ import { describe, it } from "node:test";
 import type { SmsEnqueueIntentItem } from "./api";
 import {
   filterIntents,
+  canReviewIntentRetry,
+  retryOutcomeMessage,
   intentFailureLabel,
   intentStatusLabel,
 } from "./notification-intents.ts";
 
 describe("notification enqueue intents", () => {
+  const retryable = {
+    id: "intent",
+    status: "FAILED",
+    attemptCount: 5,
+    communicationEventId: null,
+    templateKey: "APPOINTMENT_CONFIRMED",
+    updatedAt: "2026-09-08T12:00:00.000Z",
+  } as SmsEnqueueIntentItem;
+  it("offers review only for verified access and a canonical exhausted snapshot", () => {
+    assert.equal(canReviewIntentRetry(retryable, true), true);
+    assert.equal(
+      canReviewIntentRetry(
+        { ...retryable, templateKey: "TECHNICIAN_ON_THE_WAY" },
+        true,
+      ),
+      true,
+    );
+    assert.equal(canReviewIntentRetry(retryable, false), false);
+    assert.equal(
+      canReviewIntentRetry(retryable, "true" as unknown as boolean),
+      false,
+    );
+    for (const patch of [
+      { status: "PENDING" },
+      { status: "STALE" },
+      { status: "QUEUED" },
+      { attemptCount: 4 },
+      { attemptCount: 6 },
+      { communicationEventId: "event" },
+      { templateKey: "APPOINTMENT_CANCELLED" },
+      { updatedAt: undefined },
+      { updatedAt: "invalid" },
+      { updatedAt: "2026-02-30T12:00:00.000Z" },
+      { updatedAt: "2026-09-08T12:00:00Z" },
+    ])
+      assert.equal(
+        canReviewIntentRetry(
+          { ...retryable, ...patch } as SmsEnqueueIntentItem,
+          true,
+        ),
+        false,
+      );
+  });
+  it("requires refresh after rejected requests and treats transport/server errors as uncertain", () => {
+    for (const status of [400, 401, 403, 404, 409, 429])
+      assert.match(retryOutcomeMessage(status), /load history/i);
+    for (const status of [undefined, 500, 502])
+      assert.match(
+        retryOutcomeMessage(status),
+        /outcome uncertain.*may have accepted/,
+      );
+    assert.match(retryOutcomeMessage(409), /changed/);
+    assert.match(retryOutcomeMessage(429), /Wait a minute/);
+  });
   const items = ["PENDING", "QUEUED", "STALE", "FAILED"].map(
     (status, index) =>
       ({

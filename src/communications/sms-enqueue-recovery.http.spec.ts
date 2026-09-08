@@ -90,6 +90,38 @@ describe("enqueue retry HTTP boundary (synthetic Firebase verification only)", (
     verify.mockClear();
   });
 
+  it.each([
+    ["owner", true],
+    ["admin", true],
+    ["dispatcher", false],
+  ] as const)(
+    "reports verified retry capability for %s without mutation",
+    async (role, canRetryEnqueueIntent) => {
+      const result = await request(app.getHttpServer() as Server)
+        .get("/communications/sms/capabilities")
+        .set("Authorization", `Bearer ${role}`)
+        .expect(200);
+      expect(result.body).toEqual({ canRetryEnqueueIntent });
+      expect(result.headers["cache-control"]).toBe("private, no-store");
+      expect(verify).toHaveBeenCalledWith(role, true);
+      expect(recovery.retry).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    ["technician", 403],
+    ["viewer", 403],
+    ["bad", 401],
+    ["missing-tenant", 401],
+    ["", 401],
+  ] as const)("rejects capability access for %s", async (role, status) => {
+    const req = request(app.getHttpServer() as Server).get(
+      "/communications/sms/capabilities",
+    );
+    if (role) req.set("Authorization", `Bearer ${role}`);
+    await req.expect(status);
+    expect(recovery.retry).not.toHaveBeenCalled();
+  });
+
   it.each(["owner", "admin"])(
     "allows %s and derives tenant/actor from verified claims",
     async (role) => {

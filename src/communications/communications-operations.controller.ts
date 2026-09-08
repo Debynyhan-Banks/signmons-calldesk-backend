@@ -18,7 +18,10 @@ import { RequestAuthGuard } from "../auth/request-auth.guard";
 import { getRequestContext } from "../common/context/request-context";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { CommunicationsOperationsAccessGuard } from "./communications-operations-access.guard";
-import { CommunicationsReplayAccessGuard } from "./communications-replay-access.guard";
+import {
+  canReplayCommunications,
+  CommunicationsReplayAccessGuard,
+} from "./communications-replay-access.guard";
 import { QueueTransactionalMessageDto } from "./dto/queue-transactional-message.dto";
 import { ReplaySmsDto } from "./dto/replay-sms.dto";
 import { SmsDeliveryService } from "./sms-delivery.service";
@@ -73,6 +76,16 @@ export class CommunicationsOperationsController {
       jobId,
       limit,
     });
+  }
+
+  @Get("capabilities")
+  @Header("Cache-Control", "private, no-store")
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  capabilities() {
+    this.context();
+    return {
+      canRetryEnqueueIntent: canReplayCommunications(getRequestContext()?.role),
+    };
   }
 
   @Get("enqueue-intents")

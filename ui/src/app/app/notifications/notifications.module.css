@@ -272,6 +272,33 @@
   padding: 18px 2px;
   max-width: 900px;
 }
+.retryReview {
+  margin: 16px 22px;
+  padding: 20px;
+  border: 1px solid #c67b49;
+  border-radius: 12px;
+  background: #fff8f2;
+  display: grid;
+  gap: 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.retryReview .acknowledgment {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+.acknowledgment input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.retryActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
 @media (max-width: 1050px) {
   .shell {
     grid-template-columns: 190px minmax(0, 1fr);

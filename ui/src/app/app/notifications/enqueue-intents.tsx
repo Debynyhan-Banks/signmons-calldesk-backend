@@ -1,7 +1,9 @@
 import type { SmsEnqueueIntentItem } from "@/lib/api";
+import type { ReactNode } from "react";
 import { historyTime, messageLabel } from "@/lib/notification-history";
 import {
   filterIntents,
+  canReviewIntentRetry,
   intentFailureLabel,
   intentStatusLabel,
   type IntentFilter,
@@ -15,6 +17,9 @@ export function EnqueueIntents({
   filter,
   jobId,
   onFilter,
+  canRetry,
+  onReview,
+  recovery,
 }: {
   items: SmsEnqueueIntentItem[];
   state: "idle" | "loading" | "ready" | "error";
@@ -22,6 +27,9 @@ export function EnqueueIntents({
   filter: IntentFilter;
   jobId: string;
   onFilter: (filter: IntentFilter) => void;
+  canRetry: boolean;
+  onReview: (item: SmsEnqueueIntentItem) => void;
+  recovery: ReactNode;
 }) {
   const matching = filterIntents(items, "all", jobId);
   const visible = filterIntents(items, filter, jobId);
@@ -56,9 +64,11 @@ export function EnqueueIntents({
       <p className={styles.status}>
         Pending is not proof of active retry: delivery may be disabled, or a
         claim/backoff may be in effect. The scheduled time is not a promised
-        send time. Stopped intents require operator review; no retry action is
-        available here.
+        send time. Only server-verified owners and admins can review a retry of
+        an exhausted, unlinked intent. The server checks current job state
+        again.
       </p>
+      {recovery}
       {error && (
         <p role="alert" className={styles.error}>
           {error}
@@ -132,6 +142,11 @@ export function EnqueueIntents({
               </div>
             </dl>
             <p className={styles.eventId}>Intent {item.id}</p>
+            {canReviewIntentRetry(item, canRetry) && (
+              <button type="button" onClick={() => onReview(item)}>
+                Review retry
+              </button>
+            )}
           </li>
         ))}
       </ol>

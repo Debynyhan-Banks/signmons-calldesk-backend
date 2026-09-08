@@ -5,11 +5,19 @@ import {
   ApiError,
   listSmsHistory,
   listSmsEnqueueIntents,
+  getSmsCapabilities,
+  retrySmsEnqueueIntent,
+  type SmsRetryReason,
   type SmsHistoryItem,
   type SmsEnqueueIntentItem,
 } from "@/lib/api";
-import { type IntentFilter } from "@/lib/notification-intents";
+import {
+  canReviewIntentRetry,
+  retryOutcomeMessage,
+  type IntentFilter,
+} from "@/lib/notification-intents";
 import { EnqueueIntents } from "./enqueue-intents";
+import { IntentRetryReview } from "./intent-retry-review";
 import {
   filterHistory,
   historyTime,
@@ -36,6 +44,12 @@ export default function NotificationsPage() {
   const [intentError, setIntentError] = useState("");
   const [intentFilter, setIntentFilter] = useState<IntentFilter>("all");
   const generation = useRef(0);
+  const [canRetry, setCanRetry] = useState(false);
+  const [capabilityNote, setCapabilityNote] = useState("");
+  const [review, setReview] = useState<SmsEnqueueIntentItem | null>(null);
+  const [retryNote, setRetryNote] = useState("");
+  const [retryBusy, setRetryBusy] = useState(false);
+  const retryInFlight = useRef(false);
   useEffect(
     () => () => {
       generation.current += 1;
@@ -51,10 +65,59 @@ export default function NotificationsPage() {
     setIntents([]);
     setIntentState("idle");
     setIntentError("");
+    setCanRetry(false);
+    setCapabilityNote("");
+    setReview(null);
+    setRetryNote("");
+  }
+
+  async function submitRetry(reasonCode: SmsRetryReason) {
+    if (
+      retryInFlight.current ||
+      !review ||
+      !canReviewIntentRetry(review, canRetry)
+    )
+      return;
+    const item = review;
+    const request = generation.current;
+    retryInFlight.current = true;
+    setRetryBusy(true);
+    setReview(null);
+    setIntents([]);
+    setIntentState("idle");
+    setCanRetry(false);
+    setCapabilityNote("");
+    setRetryNote("");
+    try {
+      await retrySmsEnqueueIntent(token, item.id, {
+        acknowledgeRetry: true,
+        reasonCode,
+        expectedUpdatedAt: item.updatedAt,
+      });
+      if (request === generation.current)
+        setRetryNote(
+          "Retry requested. Pending is not queued, sent or delivered. Load history to refresh before any further review.",
+        );
+    } catch (failure) {
+      if (request === generation.current)
+        setRetryNote(
+          retryOutcomeMessage(
+            failure instanceof ApiError ? failure.status : undefined,
+          ),
+        );
+    } finally {
+      retryInFlight.current = false;
+      setRetryBusy(false);
+    }
   }
 
   async function load() {
-    if (!token.trim() || !validHistoryJobId(jobId.trim())) return;
+    if (
+      retryInFlight.current ||
+      !token.trim() ||
+      !validHistoryJobId(jobId.trim())
+    )
+      return;
     const request = ++generation.current;
     setItems([]);
     setError("");
@@ -62,6 +125,28 @@ export default function NotificationsPage() {
     setIntents([]);
     setIntentError("");
     setIntentState("loading");
+    setCanRetry(false);
+    setReview(null);
+    setRetryNote("");
+    setCapabilityNote("Checking retry access…");
+    void getSmsCapabilities(token)
+      .then((result) => {
+        if (request !== generation.current) return;
+        const allowed = result?.canRetryEnqueueIntent === true;
+        setCanRetry(allowed);
+        setCapabilityNote(
+          allowed
+            ? "Owner/admin retry access verified for this snapshot."
+            : "Read-only access: retry requires an owner or admin.",
+        );
+      })
+      .catch(() => {
+        if (request !== generation.current) return;
+        setCanRetry(false);
+        setCapabilityNote(
+          "Retry access could not be verified. Recovery controls remain unavailable; load history to check again.",
+        );
+      });
     void listSmsEnqueueIntents(token)
       .then((result) => {
         if (request !== generation.current) return;
@@ -121,7 +206,7 @@ export default function NotificationsPage() {
           <p className={styles.eyebrow}>Operations / Communications</p>
           <h1>Notification center</h1>
           <p>Track customer SMS without exposing message content.</p>
-          <span className={styles.readOnly}>Read-only checkpoint</span>
+          <span className={styles.readOnly}>Guarded recovery checkpoint</span>
         </header>
         <form
           className={styles.connection}
@@ -164,6 +249,7 @@ export default function NotificationsPage() {
             disabled={
               !token.trim() ||
               !validJob ||
+              retryBusy ||
               state === "loading" ||
               intentState === "loading"
             }
@@ -329,13 +415,46 @@ export default function NotificationsPage() {
           filter={intentFilter}
           jobId={jobId.trim()}
           onFilter={setIntentFilter}
+          canRetry={canRetry && !retryBusy && !review}
+          onReview={setReview}
+          recovery={
+            <>
+              {capabilityNote && (
+                <p role="status" className={styles.status}>
+                  {capabilityNote}
+                </p>
+              )}
+              {retryBusy && (
+                <p role="status" className={styles.status}>
+                  Submitting retry… Clearing the session does not undo a request
+                  already accepted by the server.
+                </p>
+              )}
+              {retryNote && (
+                <p role="status" className={styles.status}>
+                  {retryNote}
+                </p>
+              )}
+              {review && (
+                <IntentRetryReview
+                  key={review.id}
+                  item={review}
+                  onCancel={() => setReview(null)}
+                  onConfirm={(reason) => {
+                    void submitRetry(reason);
+                  }}
+                />
+              )}
+            </>
+          }
         />
         <p className={styles.footnote}>
           History and intents are separate snapshots, not a complete
           notification audit. Queue acknowledgment and sent status are not proof
           of delivery. Message bodies, phone numbers and provider IDs are
-          withheld. Sending, replay, template editing and email are not
-          available in this screen.
+          withheld. Direct sending, dead-letter replay, template editing and
+          email are not available in this screen. Intent retry requires
+          owner/admin review.
         </p>
       </section>
     </main>
