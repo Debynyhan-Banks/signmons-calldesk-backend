@@ -11,7 +11,14 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: read-only enqueue intent visibility
+### Latest: initial confirmation intent durability
+
+- Owner reviewed intent visibility and approved continuation. Initial booking finalization now atomically records the calendar reference, fixed confirmation SMS intent and customer audit. State/tenant guards prevent stale finalization; worker recovery supports confirmation plus technician departure only. Post-commit enqueue, operations-notification and logging failure cannot undo the booking.
+- After acknowledged Calendar insertion, failed/ambiguous finalization retains the reservation and returns an office-review-required error; a retry without a calendar reference cannot claim confirmation. Calendar/database cross-system crash reconciliation remains manual and is not solved by this section. Reschedule/cancellation triggers retain their post-commit gap.
+- Passed 362 backend tests (3 existing skips), build/lint/architecture/Prisma; UI lint/27 tests/build and desktop/390px fixture QA. Disposable local database proof used real scheduling/finalization/intent services with calendar/notification/delivery doubles; all 14 existing migrations passed, fixture removed and absence verified. No external sends or staging/production actions.
+- Evidence and exact review commands: `evidence/APP-013/readiness-report.md`. Prior intent migration remains release-gated; remaining calendar reconciliation, reschedule/cancellation durability, recovery actions/policy, events/templates/preferences/email/live acceptance stay open. Planning estimates: APP-013 roughly 62%; APP-006 through APP-016 roughly 76%. Stop review-ready.
+
+### Earlier: read-only enqueue intent visibility
 
 - Owner reviewed the durable technician checkpoint and approved continuation. Added the read-only intent panel to `/app/notifications`: pending/stopped/acknowledged queue state, safe failure labels, claim/backoff timing, queue-event references and client-side filters over latest 100 tenant records. Acknowledgment is not delivery; no recovery action or provider control exists.
 - History and intent reads fail independently; token/job edits and session clear invalidate both result sets and late responses. Fixture Chrome desktop/390px QA passed 18 GET-only requests including partial failures, filtering, credential clearing and private-field omission; new screenshots and exact rerun steps are in APP-013 evidence.

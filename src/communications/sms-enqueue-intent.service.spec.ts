@@ -93,6 +93,74 @@ describe("SmsEnqueueIntentService", () => {
     ).rejects.toThrow();
     expect(prisma.smsEnqueueIntent.upsert).not.toHaveBeenCalled();
   });
+  it("captures the confirmation digest only after a complete calendar reference exists", async () => {
+    const { prisma, service } = harness();
+    const job = {
+      id: intent.jobId,
+      status: "ACCEPTED",
+      deletedAt: null,
+      customer: { phone: "+15555550123" },
+      tenant: { name: "Fixture", timezone: "UTC" },
+      calendarEventId: "calendar-1",
+      serviceWindowStart: now,
+      serviceWindowEnd: new Date(now.getTime() + 60_000),
+    };
+    prisma.job.findUnique.mockResolvedValue({ ...job, calendarEventId: null });
+    await expect(
+      service.recordConfirmation(prisma as never, {
+        tenantId: intent.tenantId,
+        jobId: intent.jobId,
+      }),
+    ).rejects.toThrow();
+    expect(prisma.smsEnqueueIntent.upsert).not.toHaveBeenCalled();
+    prisma.job.findUnique.mockResolvedValue(job);
+    await service.recordConfirmation(prisma as never, {
+      tenantId: intent.tenantId,
+      jobId: intent.jobId,
+    });
+    expect(prisma.smsEnqueueIntent.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: {
+          tenantId: intent.tenantId,
+          jobId: intent.jobId,
+          templateKey: "APPOINTMENT_CONFIRMED",
+          stateHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+        },
+        update: {},
+      }),
+    );
+  });
+  it("recovers the fixed confirmation template with its recorded digest", async () => {
+    const { prisma, service, messaging } = harness();
+    prisma.smsEnqueueIntent.findUnique.mockResolvedValue({
+      ...intent,
+      templateKey: "APPOINTMENT_CONFIRMED",
+    });
+    await service.processDue();
+    expect(messaging.queueLifecycle).toHaveBeenCalledWith({
+      tenantId: intent.tenantId,
+      jobId: intent.jobId,
+      templateKey: "APPOINTMENT_CONFIRMED",
+      expectedStateHash: intent.stateHash,
+    });
+  });
+  it.each(["APPOINTMENT_RESCHEDULED", "APPOINTMENT_CANCELLED", "unknown"])(
+    "stops unsupported intent template %s without queue access",
+    async (templateKey) => {
+      const { prisma, service, messaging } = harness();
+      prisma.smsEnqueueIntent.findUnique.mockResolvedValue({
+        ...intent,
+        templateKey,
+      });
+      await service.processDue();
+      expect(messaging.queueLifecycle).not.toHaveBeenCalled();
+      expect(prisma.smsEnqueueIntent.updateMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "STALE" }),
+        }),
+      );
+    },
+  );
   it("claims a due record and queues only the recorded state", async () => {
     const { prisma, messaging, service } = harness();
     expect(await service.processDue()).toBe(1);

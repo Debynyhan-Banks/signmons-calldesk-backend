@@ -5,6 +5,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
+import { verifyAppointmentConfirmation } from "./verify-appointment-confirmation.mjs";
 const require = createRequire(import.meta.url);
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
@@ -313,6 +314,13 @@ try {
     Object.hasOwn((await intents.list(tenant.id))[0], "stateHash"),
     false,
   );
+  const confirmationChecks = await verifyAppointmentConfirmation({
+    prisma,
+    intents,
+    messaging,
+    disabled,
+    jobData,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -320,6 +328,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...confirmationChecks,
         "isolated local database",
         "atomic status/audit/intent",
         "rollback on intent persistence failure",

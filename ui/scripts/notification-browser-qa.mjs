@@ -82,7 +82,8 @@ const intents = ["PENDING", "QUEUED", "STALE", "FAILED", "PENDING"].map(
   (status, index) => ({
     id: `30000000-0000-4000-8000-00000000000${index}`,
     jobId: index === 4 ? "10000000-0000-4000-8000-000000000002" : jobId,
-    templateKey: "TECHNICIAN_ON_THE_WAY",
+    templateKey:
+      index === 0 ? "APPOINTMENT_CONFIRMED" : "TECHNICIAN_ON_THE_WAY",
     status,
     attemptCount: status === "FAILED" ? 5 : status === "STALE" ? 1 : 0,
     lastErrorCode:
@@ -217,7 +218,7 @@ try {
     false,
   );
   await page.screenshot({
-    path: `${evidence}notification-intents-desktop.png`,
+    path: `${evidence}confirmation-intents-desktop.png`,
     fullPage: true,
   });
   await page
@@ -233,7 +234,7 @@ try {
     .selectOption("attention");
   assert.equal(await intentPanel.locator("li").count(), 2);
   await page.screenshot({
-    path: `${evidence}notification-intents-mobile.png`,
+    path: `${evidence}confirmation-intents-mobile.png`,
     fullPage: true,
   });
   assert.equal(
@@ -378,8 +379,8 @@ try {
           "no page errors",
         ],
         screenshots: [
-          "notification-intents-desktop.png",
-          "notification-intents-mobile.png",
+          "confirmation-intents-desktop.png",
+          "confirmation-intents-mobile.png",
         ],
       },
       null,

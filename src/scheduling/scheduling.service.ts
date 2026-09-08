@@ -22,6 +22,7 @@ import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
 import { LoggingService } from "../logging/logging.service";
 import { PaymentRequestsService } from "../payments/payment-requests.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { AppointmentConfirmationService } from "./appointment-confirmation.service";
 
 export interface AppointmentSlot {
   token: string;
@@ -100,6 +101,7 @@ export class SchedulingService {
     private readonly loggingService: LoggingService,
     private readonly paymentRequests: PaymentRequestsService,
     private readonly transactionalMessaging: TransactionalMessagingService,
+    private readonly confirmation: AppointmentConfirmationService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {}
@@ -195,6 +197,15 @@ export class SchedulingService {
       },
     });
     if (!job) throw new BadRequestException("Service request not found.");
+    if (
+      job.deletedAt ||
+      job.status === JobStatus.CANCELLED ||
+      job.status === JobStatus.COMPLETED
+    ) {
+      throw new ConflictException(
+        "This request is no longer available for appointment confirmation.",
+      );
+    }
     const record = this.mapJob(job);
     if (!this.isInstantBookingEligible(record)) {
       throw new BadRequestException(
@@ -216,6 +227,11 @@ export class SchedulingService {
       job.serviceWindowStart?.getTime() === start.getTime() &&
       job.serviceWindowEnd?.getTime() === end.getTime()
     ) {
+      if (!job.calendarEventId) {
+        throw new ConflictException(
+          "This reservation is awaiting finalization. Please contact the office before booking again.",
+        );
+      }
       return this.confirmedResponse(this.mapJob(job));
     }
 
@@ -231,6 +247,9 @@ export class SchedulingService {
         where: {
           id: job.id,
           tenantId: job.tenantId,
+          status: job.status,
+          deletedAt: null,
+          calendarEventId: null,
           serviceWindowStart: null,
           serviceWindowEnd: null,
         },
@@ -258,28 +277,9 @@ export class SchedulingService {
       throw error;
     }
 
+    let calendarEventId: string;
     try {
-      const calendarEventId = await this.insertCalendarEvent(
-        record,
-        start,
-        end,
-      );
-      const confirmed = await this.prisma.job.update({
-        where: { id: job.id },
-        data: { calendarEventId },
-        include: {
-          customer: true,
-          propertyAddress: true,
-          serviceCategory: true,
-        },
-      });
-      const confirmedRecord = this.mapJob(confirmed);
-      this.notifications.enqueueAppointmentConfirmed(confirmedRecord);
-      await this.enqueueTransactionalMessage(
-        confirmedRecord,
-        TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
-      );
-      return this.confirmedResponse(confirmedRecord);
+      calendarEventId = await this.insertCalendarEvent(record, start, end);
     } catch (error) {
       await this.prisma.job.updateMany({
         where: { id: job.id, tenantId: job.tenantId, calendarEventId: null },
@@ -299,6 +299,47 @@ export class SchedulingService {
         "We could not reserve that time. Please try another appointment.",
       );
     }
+
+    // Once the calendar acknowledges insertion, do not release this reservation
+    // on a failed/ambiguous database commit. Calendar reconciliation is required.
+    let confirmedRecord: JobRecord;
+    try {
+      const confirmed = await this.confirmation.finalize({
+        tenantId: job.tenantId,
+        jobId: job.id,
+        start,
+        end,
+        calendarEventId,
+      });
+      confirmedRecord = this.mapJob(confirmed);
+    } catch {
+      try {
+        this.loggingService.error(
+          `appointment_finalization_review_required tenant=${job.tenantId} job=${job.id}`,
+          undefined,
+          SchedulingService.name,
+        );
+      } catch {
+        /* Preserve the reservation even when logging is unavailable. */
+      }
+      throw new ServiceUnavailableException(
+        "The calendar reservation needs confirmation by the office. Please contact the office before booking again.",
+      );
+    }
+    try {
+      this.notifications.enqueueAppointmentConfirmed(confirmedRecord);
+    } catch {
+      try {
+        this.loggingService.error(
+          `appointment_operations_notification_failed tenant=${job.tenantId} job=${job.id}`,
+          undefined,
+          SchedulingService.name,
+        );
+      } catch {
+        /* Notification logging must not undo a finalized booking. */
+      }
+    }
+    return this.confirmedResponse(confirmedRecord);
   }
 
   async manageAppointment(input: {

@@ -37,6 +37,7 @@ const requiredFiles = [
   "src/communications/sms-delivery.service.ts",
   "src/communications/sms-delivery.worker.ts",
   "src/communications/sms-enqueue-intent.service.ts",
+  "src/scheduling/appointment-confirmation.service.ts",
   "prisma/migrations/20260908120000_add_sms_enqueue_intents/migration.sql",
   "src/communications/sms-provider.interface.ts",
   "src/communications/twilio-sms.provider.ts",

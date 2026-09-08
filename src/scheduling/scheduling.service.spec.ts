@@ -9,6 +9,7 @@ import type { PrismaService } from "../prisma/prisma.service";
 import type { TransactionalMessagingService } from "../communications/transactional-messaging.service";
 import { TransactionalMessageTemplateKey } from "../communications/transactional-message-template.service";
 import { SchedulingService } from "./scheduling.service";
+import type { AppointmentConfirmationService } from "./appointment-confirmation.service";
 
 describe("SchedulingService", () => {
   const config = {
@@ -60,6 +61,7 @@ describe("SchedulingService", () => {
   const transactionalMessaging = {
     queueLifecycle: jest.fn(),
   };
+  const confirmation = { finalize: jest.fn() };
 
   let service: SchedulingService;
 
@@ -72,6 +74,9 @@ describe("SchedulingService", () => {
     prisma.auditLog.findMany.mockReset().mockResolvedValue([]);
     prisma.auditLog.create.mockReset().mockResolvedValue({ id: "audit-1" });
     notifications.enqueueAppointmentRescheduled.mockReset();
+    notifications.enqueueAppointmentConfirmed.mockReset();
+    logger.error.mockReset();
+    confirmation.finalize.mockReset();
     notifications.enqueueAppointmentCancelled.mockReset();
     transactionalMessaging.queueLifecycle.mockReset().mockResolvedValue({
       id: "communication-1",
@@ -88,6 +93,7 @@ describe("SchedulingService", () => {
       logger as unknown as LoggingService,
       paymentRequests as unknown as PaymentRequestsService,
       transactionalMessaging as unknown as TransactionalMessagingService,
+      confirmation as unknown as AppointmentConfirmationService,
       config,
     );
   });
@@ -169,7 +175,7 @@ describe("SchedulingService", () => {
     });
     prisma.job.findFirst.mockResolvedValue(pending);
     prisma.job.updateMany.mockResolvedValue({ count: 1 });
-    prisma.job.update.mockResolvedValue(confirmed);
+    confirmation.finalize.mockResolvedValue(confirmed);
     jest.spyOn(GoogleAuth.prototype, "getClient").mockResolvedValue({
       getRequestHeaders: jest
         .fn()
@@ -201,12 +207,163 @@ describe("SchedulingService", () => {
     ).resolves.toEqual(
       expect.objectContaining({ status: "appointment_confirmed" }),
     );
-    expect(transactionalMessaging.queueLifecycle).toHaveBeenCalledWith({
+    expect(confirmation.finalize).toHaveBeenCalledWith({
       tenantId: baseJob.tenantId,
       jobId: baseJob.id,
-      templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+      calendarEventId: "event-confirmed",
+      start,
+      end,
     });
+    expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
   });
+
+  it("does not claim a reservation without a calendar reference is confirmed", async () => {
+    const job = appointmentJob({ calendarEventId: null });
+    prisma.job.findFirst.mockResolvedValue(job);
+    await expect(
+      service.confirmAppointment({
+        tenantId: baseJob.tenantId,
+        sessionId: "session-1",
+        jobId: baseJob.id,
+        slotToken: signedSlot(job.serviceWindowStart, job.serviceWindowEnd),
+      }),
+    ).rejects.toThrow("awaiting finalization");
+    expect(confirmation.finalize).not.toHaveBeenCalled();
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+  });
+  it.each([
+    { status: "CANCELLED" },
+    { status: "COMPLETED" },
+    { deletedAt: new Date() },
+  ])("does not reopen a closed/deleted booking: %j", async (overrides) => {
+    const job = appointmentJob(overrides);
+    prisma.job.findFirst.mockResolvedValue(job);
+    await expect(
+      service.confirmAppointment({
+        tenantId: baseJob.tenantId,
+        sessionId: "session-1",
+        jobId: baseJob.id,
+        slotToken: signedSlot(job.serviceWindowStart, job.serviceWindowEnd),
+      }),
+    ).rejects.toThrow("no longer available");
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+    expect(confirmation.finalize).not.toHaveBeenCalled();
+  });
+
+  it("replays a finalized booking without recapturing or requeueing", async () => {
+    const job = appointmentJob();
+    prisma.job.findFirst.mockResolvedValue(job);
+    await expect(
+      service.confirmAppointment({
+        tenantId: baseJob.tenantId,
+        sessionId: "session-1",
+        jobId: baseJob.id,
+        slotToken: signedSlot(job.serviceWindowStart, job.serviceWindowEnd),
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({ status: "appointment_confirmed" }),
+    );
+    expect(confirmation.finalize).not.toHaveBeenCalled();
+    expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    "retains an acknowledged calendar reservation when finalization fails (logger fails: %s)",
+    async (loggerFails) => {
+      const start = new Date("2026-09-10T15:00:00Z");
+      const end = new Date("2026-09-10T18:00:00Z");
+      prisma.job.findFirst.mockResolvedValue(
+        appointmentJob({
+          status: "CREATED",
+          calendarEventId: null,
+          serviceWindowStart: null,
+          serviceWindowEnd: null,
+        }),
+      );
+      prisma.job.updateMany.mockResolvedValue({ count: 1 });
+      confirmation.finalize.mockRejectedValue(
+        new Error("PRIVATE_DATABASE_ERROR"),
+      );
+      if (loggerFails)
+        logger.error.mockImplementation(() => {
+          throw new Error("logging failed");
+        });
+      mockCalendarInsert();
+      await expect(
+        service.confirmAppointment({
+          tenantId: baseJob.tenantId,
+          sessionId: "session-1",
+          jobId: baseJob.id,
+          slotToken: signedSlot(start, end),
+        }),
+      ).rejects.toThrow("needs confirmation by the office");
+      expect(prisma.job.updateMany).toHaveBeenCalledTimes(1);
+      expect(notifications.enqueueAppointmentConfirmed).not.toHaveBeenCalled();
+      expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
+      expect(JSON.stringify(logger.error.mock.calls)).not.toContain(
+        "PRIVATE_DATABASE_ERROR",
+      );
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("keeps a finalized booking successful when operations notification and logging fail", async () => {
+    const start = new Date("2026-09-10T15:00:00Z");
+    const end = new Date("2026-09-10T18:00:00Z");
+    prisma.job.findFirst.mockResolvedValue(
+      appointmentJob({
+        status: "CREATED",
+        calendarEventId: null,
+        serviceWindowStart: null,
+        serviceWindowEnd: null,
+      }),
+    );
+    prisma.job.updateMany.mockResolvedValue({ count: 1 });
+    confirmation.finalize.mockResolvedValue(
+      appointmentJob({ serviceWindowStart: start, serviceWindowEnd: end }),
+    );
+    notifications.enqueueAppointmentConfirmed.mockImplementation(() => {
+      throw new Error("notification failed");
+    });
+    logger.error.mockImplementation(() => {
+      throw new Error("logging failed");
+    });
+    mockCalendarInsert();
+    await expect(
+      service.confirmAppointment({
+        tenantId: baseJob.tenantId,
+        sessionId: "session-1",
+        jobId: baseJob.id,
+        slotToken: signedSlot(start, end),
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({ status: "appointment_confirmed" }),
+    );
+    expect(prisma.job.updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  function mockCalendarInsert() {
+    jest.spyOn(GoogleAuth.prototype, "getClient").mockResolvedValue({
+      getRequestHeaders: jest
+        .fn()
+        .mockResolvedValue(new Headers({ authorization: "Bearer test" })),
+    } as never);
+    jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            calendars: { "dispatch@example.com": { busy: [] } },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "event-confirmed" }), {
+          status: 200,
+        }),
+      );
+  }
 
   it("opens a confirmed appointment through a signed management link", async () => {
     prisma.job.findFirst.mockResolvedValue(appointmentJob());

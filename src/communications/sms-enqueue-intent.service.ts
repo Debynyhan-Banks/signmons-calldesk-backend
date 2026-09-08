@@ -6,6 +6,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
 import {
   evaluateTransactionalMessageState,
+  parseTransactionalMessageTemplateKey,
   transactionalMessageJobSelect,
   transactionalMessageStateHash,
 } from "./transactional-message-state";
@@ -14,7 +15,10 @@ import {
   TransactionalMessagingService,
 } from "./transactional-messaging.service";
 
-const TEMPLATE = TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY;
+const SUPPORTED_TEMPLATES = new Set([
+  TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
+  TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+]);
 const MAX_FAILURES = 5;
 const LEASE_MS = 60_000;
 
@@ -27,9 +31,32 @@ export class SmsEnqueueIntentService {
     private readonly config: ConfigType<typeof appConfig>,
   ) {}
 
-  async recordDeparture(
+  recordDeparture(
     transaction: Prisma.TransactionClient,
     input: { tenantId: string; jobId: string },
+  ) {
+    return this.record(
+      transaction,
+      input,
+      TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
+    );
+  }
+
+  recordConfirmation(
+    transaction: Prisma.TransactionClient,
+    input: { tenantId: string; jobId: string },
+  ) {
+    return this.record(
+      transaction,
+      input,
+      TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+    );
+  }
+
+  private async record(
+    transaction: Prisma.TransactionClient,
+    input: { tenantId: string; jobId: string },
+    templateKey: TransactionalMessageTemplateKey,
   ) {
     const job = await transaction.job.findUnique({
       where: { id_tenantId: { id: input.jobId, tenantId: input.tenantId } },
@@ -37,15 +64,15 @@ export class SmsEnqueueIntentService {
     });
     if (
       !job ||
-      evaluateTransactionalMessageState(TEMPLATE, job) !== "AVAILABLE"
+      evaluateTransactionalMessageState(templateKey, job) !== "AVAILABLE"
     )
       throw new ConflictException(
-        "Departure notification intent requires a current assigned EN_ROUTE job.",
+        "Notification intent requires a current compatible job state.",
       );
     const key = {
       ...input,
-      templateKey: TEMPLATE,
-      stateHash: transactionalMessageStateHash(TEMPLATE, job),
+      templateKey,
+      stateHash: transactionalMessageStateHash(templateKey, job),
     };
     return transaction.smsEnqueueIntent.upsert({
       where: { tenantId_jobId_templateKey_stateHash: key },
@@ -107,12 +134,15 @@ export class SmsEnqueueIntentService {
       nextAttemptAt: lease,
     };
     try {
-      if (intent.templateKey !== String(TEMPLATE))
+      const templateKey = parseTransactionalMessageTemplateKey(
+        intent.templateKey,
+      );
+      if (!templateKey || !SUPPORTED_TEMPLATES.has(templateKey))
         throw new StaleMessageIntentError();
       const event = await this.messaging.queueLifecycle({
         tenantId: intent.tenantId,
         jobId: intent.jobId,
-        templateKey: TEMPLATE,
+        templateKey,
         expectedStateHash: intent.stateHash,
       });
       await this.prisma.smsEnqueueIntent.updateMany({

@@ -35,8 +35,8 @@ export function EnqueueIntents({
         <div>
           <h2>Before the message queue</h2>
           <p>
-            Technician departure intents only · latest 100 tenant records · job
-            and status filters apply to this loaded subset
+            Initial confirmation and technician departure intents · latest 100
+            tenant records · job and status filters apply to this loaded subset
           </p>
         </div>
         <label>
@@ -78,7 +78,8 @@ export function EnqueueIntents({
           <h3>No enqueue intents match</h3>
           <p>
             This limited view cannot prove every job has a notification.
-            Appointment intents and historical backfill are not implemented.
+            Reschedule/cancellation intents and historical backfill are not
+            implemented.
           </p>
         </div>
       )}
