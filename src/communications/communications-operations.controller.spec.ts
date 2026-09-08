@@ -7,6 +7,7 @@ import { CommunicationsOperationsController } from "./communications-operations.
 import type { SmsDeliveryService } from "./sms-delivery.service";
 import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
 import type { TransactionalMessagingService } from "./transactional-messaging.service";
+import type { SmsEnqueueIntentService } from "./sms-enqueue-intent.service";
 
 describe("CommunicationsOperationsController", () => {
   const delivery = {
@@ -16,12 +17,22 @@ describe("CommunicationsOperationsController", () => {
     listHistory: jest.fn(),
   };
   const transactional = { queue: jest.fn() };
+  const intents = { list: jest.fn() };
   const controller = new CommunicationsOperationsController(
     delivery as unknown as SmsDeliveryService,
     transactional as unknown as TransactionalMessagingService,
+    intents as unknown as SmsEnqueueIntentService,
   );
 
   beforeEach(() => jest.clearAllMocks());
+
+  it("lists enqueue intent status only for the authenticated tenant", async () => {
+    intents.list.mockResolvedValue([]);
+    await withContext(async () => {
+      await expect(controller.enqueueIntents()).resolves.toEqual([]);
+    });
+    expect(intents.list).toHaveBeenCalledWith("tenant-1");
+  });
 
   it("scopes privacy-safe metrics to the authenticated tenant", async () => {
     delivery.metrics.mockResolvedValue({ total: 0 });

@@ -11,7 +11,14 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: read-only notification center
+### Latest: durable technician enqueue intents
+
+- Technician departure intent now commits atomically with status/audit; disabled-by-default recovery uses conditional leases, recorded-state validation and existing queue idempotency. Stale state stops; queue failures stop after five attempts. Appointment intent capture remains separate unfinished work.
+- Read-only `/communications/sms/enqueue-intents` gives tenant-bound operational visibility without state hashes or private message fields. No UI/reset/replay control is added.
+- Passed backend build/lint, 343 tests (3 existing skips), architecture/Prisma; UI lint/23 tests/build and fixture browser regression. A disposable local database applied all 14 migrations and verified real rollback, concurrency, ack-loss and tenant boundaries; it was removed. No provider or production action occurred.
+- New migration `20260908120000_add_sms_enqueue_intents` requires separate release approval before deploying this code. Operator recovery UI/policy, appointment durability, remaining events/templates/preferences/email and live acceptance remain open. APP-013 roughly 55%; APP-006 through APP-016 roughly 75%, planning estimates.
+
+### Earlier: read-only notification center
 
 - `/app/notifications` now presents the latest 100 tenant-bound SMS history records with optional job UUID and status filters; counts are loaded-record counts only. Added dispatch navigation. No send/replay/template/email control exists.
 - Token/job edits and clear-session invalidate pending reads and clear records. Token stays in memory; generic errors and explicit metadata rendering avoid private payload exposure. Sent remains delivery-unconfirmed.
@@ -173,10 +180,10 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the APP-013 read-only notification center and screenshots alongside lifecycle/state checks on `codex/app-013-transactional-messaging` (PR #21); BE-008 is accepted.
+1. Review the APP-013 durable technician intent checkpoint and local migration proof alongside history UI/lifecycle checks on `codex/app-013-transactional-messaging` (PR #21); BE-008 is accepted.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. Continue with one bounded APP-013 section for durable enqueue recovery, remaining events, email, template/preferences controls or technician notification UI. Live acceptance, release and external sends require their own approval.
+4. Continue with one bounded APP-013 section for appointment durable intents, operator recovery policy/UI, remaining events, email, template/preferences controls or technician notifications. Migration, live acceptance, release and external sends require their own approval.
 
 ## Restart Commands
 

@@ -38,9 +38,24 @@ export class TransactionalMessagingService {
     tenantId: string;
     jobId: string;
     templateKey: TransactionalMessageTemplateKey;
+    expectedStateHash?: string;
   }) {
-    const job = await this.loadJob(input.tenantId, input.jobId);
+    const job = await this.loadJob(input.tenantId, input.jobId).catch(
+      (error: unknown) => {
+        if (input.expectedStateHash && error instanceof NotFoundException)
+          throw new StaleMessageIntentError();
+        throw error;
+      },
+    );
     const stateHash = transactionalMessageStateHash(input.templateKey, job);
+    if (
+      input.expectedStateHash &&
+      (stateHash !== input.expectedStateHash ||
+        evaluateTransactionalMessageState(input.templateKey, job) !==
+          "AVAILABLE")
+    ) {
+      throw new StaleMessageIntentError();
+    }
     return this.create({
       ...input,
       job,
@@ -101,3 +116,5 @@ export class TransactionalMessagingService {
     });
   }
 }
+
+export class StaleMessageIntentError extends Error {}

@@ -6,7 +6,6 @@ import {
   UserRole,
 } from "@prisma/client";
 import { TechnicianWorkflowService } from "./technician-workflow.service";
-import { TransactionalMessageTemplateKey } from "../communications/transactional-message-template.service";
 
 describe("TechnicianWorkflowService", () => {
   const tenantId = "059c4950-171c-4ff5-a963-20bf6b9d59a6";
@@ -79,7 +78,8 @@ describe("TechnicianWorkflowService", () => {
     );
     const links = { verify: jest.fn().mockReturnValue(access) };
     const messaging = {
-      queueLifecycle: jest.fn().mockResolvedValue({ id: "sms-1" }),
+      recordDeparture: jest.fn().mockResolvedValue({ id: "intent-1" }),
+      processOne: jest.fn().mockResolvedValue(undefined),
     };
     const logging = { warn: jest.fn() };
     return {
@@ -280,7 +280,11 @@ describe("TechnicianWorkflowService", () => {
     prisma.$transaction.mockImplementation(
       async (callback: (transaction: typeof prisma) => Promise<unknown>) => {
         const result = await callback(prisma);
-        expect(messaging.queueLifecycle).not.toHaveBeenCalled();
+        expect(messaging.processOne).not.toHaveBeenCalled();
+        expect(messaging.recordDeparture).toHaveBeenCalledWith(prisma, {
+          tenantId,
+          jobId,
+        });
         committed = true;
         return result;
       },
@@ -289,20 +293,19 @@ describe("TechnicianWorkflowService", () => {
       .mockResolvedValueOnce(acceptedJob)
       .mockResolvedValueOnce(enRouteJob);
     prisma.job.updateMany.mockResolvedValue({ count: 1 });
-    messaging.queueLifecycle.mockImplementation(() => {
+    messaging.processOne.mockImplementation(() => {
       expect(committed).toBe(true);
       expect(prisma.auditLog.create).toHaveBeenCalledTimes(1);
-      return Promise.resolve({ id: "sms-1" });
+      return Promise.resolve();
     });
     await expect(service.update(onMyWay)).resolves.toMatchObject({
       changed: true,
       technicianStatus: "EN_ROUTE",
     });
-    expect(messaging.queueLifecycle).toHaveBeenCalledTimes(1);
-    expect(messaging.queueLifecycle).toHaveBeenCalledWith({
+    expect(messaging.processOne).toHaveBeenCalledTimes(1);
+    expect(messaging.processOne).toHaveBeenCalledWith({
       tenantId,
-      jobId,
-      templateKey: TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
+      intentId: "intent-1",
     });
   });
 
@@ -313,7 +316,8 @@ describe("TechnicianWorkflowService", () => {
       changed: false,
     });
     expect(prisma.job.updateMany).not.toHaveBeenCalled();
-    expect(messaging.queueLifecycle).not.toHaveBeenCalled();
+    expect(messaging.processOne).not.toHaveBeenCalled();
+    expect(messaging.recordDeparture).not.toHaveBeenCalled();
   });
 
   it.each(["missing", "invalid", "stale", "audit", "commit"])(
@@ -344,7 +348,7 @@ describe("TechnicianWorkflowService", () => {
           },
         );
       await expect(service.update(onMyWay)).rejects.toThrow();
-      expect(messaging.queueLifecycle).not.toHaveBeenCalled();
+      expect(messaging.processOne).not.toHaveBeenCalled();
     },
   );
 
@@ -356,7 +360,7 @@ describe("TechnicianWorkflowService", () => {
         .mockResolvedValueOnce(acceptedJob)
         .mockResolvedValueOnce(enRouteJob);
       prisma.job.updateMany.mockResolvedValue({ count: 1 });
-      messaging.queueLifecycle.mockRejectedValue(
+      messaging.processOne.mockRejectedValue(
         new Error("sensitive provider payload"),
       );
       if (loggerFails)
@@ -389,6 +393,22 @@ describe("TechnicianWorkflowService", () => {
       });
     prisma.job.updateMany.mockResolvedValue({ count: 1 });
     await service.update({ ...onMyWay, action: "in_progress" });
-    expect(messaging.queueLifecycle).not.toHaveBeenCalled();
+    expect(messaging.processOne).not.toHaveBeenCalled();
+    expect(messaging.recordDeparture).not.toHaveBeenCalled();
+  });
+
+  it("fails the transaction if its durable intent cannot be recorded", async () => {
+    const { prisma, messaging, service } = createHarness();
+    prisma.job.findFirst
+      .mockResolvedValueOnce(acceptedJob)
+      .mockResolvedValueOnce(enRouteJob);
+    prisma.job.updateMany.mockResolvedValue({ count: 1 });
+    messaging.recordDeparture.mockRejectedValue(
+      new Error("intent persistence failed"),
+    );
+    await expect(service.update(onMyWay)).rejects.toThrow(
+      "intent persistence failed",
+    );
+    expect(messaging.processOne).not.toHaveBeenCalled();
   });
 });

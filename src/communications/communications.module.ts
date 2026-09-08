@@ -13,6 +13,7 @@ import { CommunicationsOperationsAccessGuard } from "./communications-operations
 import { CommunicationsReplayAccessGuard } from "./communications-replay-access.guard";
 import { TransactionalMessageTemplateService } from "./transactional-message-template.service";
 import { TransactionalMessagingService } from "./transactional-messaging.service";
+import { SmsEnqueueIntentService } from "./sms-enqueue-intent.service";
 
 @Module({
   imports: [AuthModule],
@@ -26,6 +27,7 @@ import { TransactionalMessagingService } from "./transactional-messaging.service
     CommunicationsReplayAccessGuard,
     TransactionalMessageTemplateService,
     TransactionalMessagingService,
+    SmsEnqueueIntentService,
     TenantGuard,
     TwilioSmsProvider,
     { provide: SMS_PROVIDER, useExisting: TwilioSmsProvider },
@@ -35,6 +37,7 @@ import { TransactionalMessagingService } from "./transactional-messaging.service
     SmsConsentService,
     SmsDeliveryService,
     TransactionalMessagingService,
+    SmsEnqueueIntentService,
   ],
 })
 export class CommunicationsModule {}

@@ -23,6 +23,7 @@ import { QueueTransactionalMessageDto } from "./dto/queue-transactional-message.
 import { ReplaySmsDto } from "./dto/replay-sms.dto";
 import { SmsDeliveryService } from "./sms-delivery.service";
 import { TransactionalMessagingService } from "./transactional-messaging.service";
+import { SmsEnqueueIntentService } from "./sms-enqueue-intent.service";
 
 @Controller("communications/sms")
 @UseGuards(RequestAuthGuard, TenantGuard, CommunicationsOperationsAccessGuard)
@@ -30,6 +31,7 @@ export class CommunicationsOperationsController {
   constructor(
     private readonly delivery: SmsDeliveryService,
     private readonly transactional: TransactionalMessagingService,
+    private readonly intents: SmsEnqueueIntentService,
   ) {}
 
   @Post("transactional")
@@ -68,6 +70,13 @@ export class CommunicationsOperationsController {
       jobId,
       limit,
     });
+  }
+
+  @Get("enqueue-intents")
+  @Header("Cache-Control", "private, no-store")
+  @Throttle({ default: { limit: 30, ttl: 60 } })
+  enqueueIntents() {
+    return this.intents.list(this.context().tenantId);
   }
 
   @Get("dead-letters")

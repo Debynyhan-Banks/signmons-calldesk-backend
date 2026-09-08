@@ -14,8 +14,7 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { LoggingService } from "../logging/logging.service";
-import { TransactionalMessagingService } from "../communications/transactional-messaging.service";
-import { TransactionalMessageTemplateKey } from "../communications/transactional-message-template.service";
+import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
 import { TechnicianJobAction } from "./dto/update-technician-job.dto";
 import {
   TechnicianLinkService,
@@ -56,7 +55,7 @@ export class TechnicianWorkflowService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly links: TechnicianLinkService,
-    private readonly messaging: TransactionalMessagingService,
+    private readonly messaging: SmsEnqueueIntentService,
     private readonly logging: LoggingService,
   ) {}
 
@@ -132,6 +131,7 @@ export class TechnicianWorkflowService {
     const access = this.links.verify(input.rawToken);
     await this.activeTechnician(access);
     const expectedUpdatedAt = new Date(input.expectedUpdatedAt);
+    let intentId: string | undefined;
 
     const result = await this.prisma.$transaction(async (transaction) => {
       const job = await transaction.job.findFirst({
@@ -250,15 +250,21 @@ export class TechnicianWorkflowService {
       if (!changed) {
         throw new ConflictException("Updated job could not be reloaded.");
       }
+      if (input.action === "on_my_way") {
+        const intent = await this.messaging.recordDeparture(transaction, {
+          tenantId: access.tenantId,
+          jobId: job.id,
+        });
+        intentId = intent.id;
+      }
       return { ...this.toDetail(changed), changed: true };
     });
 
-    if (result.changed && input.action === "on_my_way") {
+    if (intentId) {
       try {
-        await this.messaging.queueLifecycle({
+        await this.messaging.processOne({
           tenantId: access.tenantId,
-          jobId: input.jobId,
-          templateKey: TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
+          intentId,
         });
       } catch {
         try {

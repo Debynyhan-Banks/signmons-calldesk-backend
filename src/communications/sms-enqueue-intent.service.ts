@@ -1,0 +1,163 @@
+import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import type { ConfigType } from "@nestjs/config";
+import { Prisma, SmsEnqueueIntentStatus } from "@prisma/client";
+import appConfig from "../config/app.config";
+import { PrismaService } from "../prisma/prisma.service";
+import { TransactionalMessageTemplateKey } from "./transactional-message-template.service";
+import {
+  evaluateTransactionalMessageState,
+  transactionalMessageJobSelect,
+  transactionalMessageStateHash,
+} from "./transactional-message-state";
+import {
+  StaleMessageIntentError,
+  TransactionalMessagingService,
+} from "./transactional-messaging.service";
+
+const TEMPLATE = TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY;
+const MAX_FAILURES = 5;
+const LEASE_MS = 60_000;
+
+@Injectable()
+export class SmsEnqueueIntentService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly messaging: TransactionalMessagingService,
+    @Inject(appConfig.KEY)
+    private readonly config: ConfigType<typeof appConfig>,
+  ) {}
+
+  async recordDeparture(
+    transaction: Prisma.TransactionClient,
+    input: { tenantId: string; jobId: string },
+  ) {
+    const job = await transaction.job.findUnique({
+      where: { id_tenantId: { id: input.jobId, tenantId: input.tenantId } },
+      select: transactionalMessageJobSelect,
+    });
+    if (
+      !job ||
+      evaluateTransactionalMessageState(TEMPLATE, job) !== "AVAILABLE"
+    )
+      throw new ConflictException(
+        "Departure notification intent requires a current assigned EN_ROUTE job.",
+      );
+    const key = {
+      ...input,
+      templateKey: TEMPLATE,
+      stateHash: transactionalMessageStateHash(TEMPLATE, job),
+    };
+    return transaction.smsEnqueueIntent.upsert({
+      where: { tenantId_jobId_templateKey_stateHash: key },
+      create: key,
+      update: {},
+      select: { id: true },
+    });
+  }
+
+  async processDue(): Promise<number> {
+    if (!this.config.smsDeliveryEnabled) return 0;
+    const due = await this.prisma.smsEnqueueIntent.findMany({
+      where: {
+        status: SmsEnqueueIntentStatus.PENDING,
+        nextAttemptAt: { lte: new Date() },
+      },
+      orderBy: { nextAttemptAt: "asc" },
+      take: 25,
+      select: { id: true, tenantId: true },
+    });
+    await Promise.allSettled(
+      due.map((intent) =>
+        this.processOne({ tenantId: intent.tenantId, intentId: intent.id }),
+      ),
+    );
+    return due.length;
+  }
+
+  async processOne(input: {
+    tenantId: string;
+    intentId: string;
+  }): Promise<void> {
+    if (!this.config.smsDeliveryEnabled) return;
+    const now = new Date();
+    const intent = await this.prisma.smsEnqueueIntent.findUnique({
+      where: { id_tenantId: { id: input.intentId, tenantId: input.tenantId } },
+    });
+    if (
+      !intent ||
+      intent.status !== SmsEnqueueIntentStatus.PENDING ||
+      intent.nextAttemptAt > now
+    )
+      return;
+    const lease = new Date(now.getTime() + LEASE_MS);
+    const claimed = await this.prisma.smsEnqueueIntent.updateMany({
+      where: {
+        id: intent.id,
+        tenantId: input.tenantId,
+        status: SmsEnqueueIntentStatus.PENDING,
+        nextAttemptAt: { lte: now },
+      },
+      data: { nextAttemptAt: lease },
+    });
+    if (claimed.count !== 1) return;
+    const ownership = {
+      id: intent.id,
+      tenantId: input.tenantId,
+      status: SmsEnqueueIntentStatus.PENDING,
+      nextAttemptAt: lease,
+    };
+    try {
+      if (intent.templateKey !== String(TEMPLATE))
+        throw new StaleMessageIntentError();
+      const event = await this.messaging.queueLifecycle({
+        tenantId: intent.tenantId,
+        jobId: intent.jobId,
+        templateKey: TEMPLATE,
+        expectedStateHash: intent.stateHash,
+      });
+      await this.prisma.smsEnqueueIntent.updateMany({
+        where: ownership,
+        data: {
+          status: SmsEnqueueIntentStatus.QUEUED,
+          communicationEventId: event.id,
+          lastErrorCode: null,
+        },
+      });
+    } catch (error) {
+      const stale = error instanceof StaleMessageIntentError;
+      const failures = Math.min(intent.attemptCount + 1, MAX_FAILURES);
+      await this.prisma.smsEnqueueIntent.updateMany({
+        where: ownership,
+        data: {
+          status: stale
+            ? SmsEnqueueIntentStatus.STALE
+            : failures >= MAX_FAILURES
+              ? SmsEnqueueIntentStatus.FAILED
+              : SmsEnqueueIntentStatus.PENDING,
+          attemptCount: failures,
+          lastErrorCode: stale ? "stale_lifecycle_state" : "enqueue_failed",
+          nextAttemptAt: new Date(now.getTime() + LEASE_MS * 2 ** failures),
+        },
+      });
+    }
+  }
+
+  list(tenantId: string) {
+    return this.prisma.smsEnqueueIntent.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        jobId: true,
+        templateKey: true,
+        status: true,
+        attemptCount: true,
+        lastErrorCode: true,
+        nextAttemptAt: true,
+        communicationEventId: true,
+        createdAt: true,
+      },
+    });
+  }
+}

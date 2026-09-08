@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Transactional SMS templates, operator queue/history, committed lifecycle triggers, state revalidation and read-only `/app/notifications` are review-ready on PR #21. Durable enqueue recovery, remaining events, template/preferences UI, technician notifications, email and live acceptance remain open.
+  - Transactional SMS lifecycle/state checks, read-only history UI and durable technician enqueue recovery are review-ready on PR #21. Appointment durable intents, operator recovery policy/UI, remaining events, template/preferences controls, technician notifications, email and live acceptance remain open.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

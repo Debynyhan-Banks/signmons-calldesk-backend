@@ -2,6 +2,28 @@
 
 Date: 2026-09-08
 
+## Durable technician enqueue intent checkpoint (2026-09-08)
+
+- Refreshed both remotes; continued backend `3330c7b` / governance `b100a3e`. APP-013 remains the sole Now ticket. This section covers technician departure notifications only, not appointment outbox integration.
+- Added `SmsEnqueueIntent` with tenant/job composite foreign keys, optional same-tenant communication-event linkage, unique tenant/job/template/state identity, bounded failure count and indexed due work. It stores a state digest, not message text, phone or credentials.
+- A changed `on_my_way` writes its intent inside the existing job/audit transaction. If intent persistence fails, that transaction fails without committing status or audit. This is a durable-write failure, distinct from post-commit queue/provider failure, which cannot undo committed field status.
+- Both immediate processing and periodic recovery retain the existing `smsDeliveryEnabled` gate. While disabled, intents persist but no recovery reads/queueing or sends occur. A conditional 60-second lease coordinates workers; expired claims are recoverable without counting a crash as a queue failure.
+- Recovery passes the recorded digest to transactional queueing. Changed/deleted/incompatible state stops as `STALE`; policy/configuration/queue failures back off exponentially and stop as `FAILED` after five failures. Existing consent, encryption and pre-send stale-state controls remain authoritative.
+- Queue insertion still uses the canonical lifecycle idempotency identity. A crash after insertion but before intent acknowledgment reuses the same queue record. `QUEUED` means enqueue was acknowledged, not delivered. Recovery-scan/logging failure does not block previously queued delivery work.
+- Added read-only, no-store `GET /communications/sms/enqueue-intents` under existing verified owner/admin/dispatcher tenant guards, capped at the latest 100 records. It exposes operational status and event linkage but no state hash or private payload. No reset/replay control or UI change is included.
+- Migration: `20260908120000_add_sms_enqueue_intents`. It must be applied through a separately approved release before this code runs against staging/production, otherwise the new transactional intent write cannot succeed. No staging/production migration was run.
+- Gates passed: backend build/lint, 38 suites / 343 tests (1 suite / 3 existing policy skips), architecture and Prisma validation; UI lint, 5 suites / 23 tests/build (14 static pages), and the unchanged synthetic desktop/390px notification-browser QA. Prettier/diff checks passed. No new rendered UI is claimed.
+- `node scripts/verify-sms-enqueue-intents.mjs` applied all 14 migration files to a newly created local-only fixture database. Real Prisma transactions proved atomic status/audit/intent, rollback on intent-write failure, disabled recovery, concurrent claims, ack-loss/expired-lease recovery with one queue record, stale-state rejection, tenant-scoped listing, cross-tenant job/event FK rejection and tenant cleanup. Delivery was a database-backed double, never a provider. The temporary database was dropped and absence verified; existing databases were untouched.
+- Critical audit passed: 0 critical, unchanged 4 high / 9 moderate transitive findings. The local PrismaPg concurrency test emits a nonblocking pg deprecation warning; no dependency version changed. One initial enum-comparison lint issue was corrected before the final clean run.
+- Remaining: appointment durable intents, operator recovery UI and policy for exhausted/suppressed intents, other events, template/preferences controls, technician notification UI, email and live acceptance. Existing pre-check/provider race remains. No historical intent backfill is attempted. Planning estimate: APP-013 roughly 55%; APP-006 through APP-016 roughly 75%, not release acceptance scores.
+
+### Review this recovery section
+
+1. Review schema/migration, `sms-enqueue-intent.service.ts`, technician transaction integration, expected-digest check and worker wiring in PR #21.
+2. Run `npm run -s build`, `npm test -- --runInBand`, `npm run -s lint`, `npm run -s arch:check`, and `npx prisma validate`.
+3. On this workstation run `node scripts/verify-sms-enqueue-intents.mjs`. It uses the local PostgreSQL Unix socket and current OS user, requires local CREATE DATABASE permission, creates a random prefixed fixture database, and drops only that database in cleanup. It never reads deployment database credentials.
+4. Verify the disabled gate, no duplicate queue after acknowledgment loss, stale-state rejection and explicit pending/failed visibility. No migration, enablement, external send or release follows from this review checkpoint.
+
 ## Read-only notification center checkpoint (2026-09-08)
 
 - Refreshed both remotes and continued backend `477048a` / governance `f9eb359`. APP-013 remains the sole approved Now ticket; no previous lifecycle work was repeated.

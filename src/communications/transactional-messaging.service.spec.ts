@@ -6,7 +6,10 @@ import {
   TransactionalMessageTemplateKey,
   TransactionalMessageTemplateService,
 } from "./transactional-message-template.service";
-import { TransactionalMessagingService } from "./transactional-messaging.service";
+import {
+  StaleMessageIntentError,
+  TransactionalMessagingService,
+} from "./transactional-messaging.service";
 
 describe("TransactionalMessagingService", () => {
   const tenantId = "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1";
@@ -98,6 +101,31 @@ describe("TransactionalMessagingService", () => {
       delivery as unknown as SmsDeliveryService,
     );
   }
+
+  it("rejects recovery when the recorded state no longer matches", async () => {
+    await expect(
+      createService().queueLifecycle({
+        tenantId,
+        jobId,
+        templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+        expectedStateHash: "0".repeat(64),
+      }),
+    ).rejects.toBeInstanceOf(StaleMessageIntentError);
+    expect(delivery.create).not.toHaveBeenCalled();
+  });
+
+  it("treats missing jobs as stale during intent recovery", async () => {
+    prisma.job.findUnique.mockResolvedValue(null);
+    await expect(
+      createService().queueLifecycle({
+        tenantId,
+        jobId,
+        templateKey: TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
+        expectedStateHash: "0".repeat(64),
+      }),
+    ).rejects.toBeInstanceOf(StaleMessageIntentError);
+    expect(delivery.create).not.toHaveBeenCalled();
+  });
 
   it("treats soft-deleted jobs as missing without queue access", async () => {
     const job = await prisma.job.findUnique();
