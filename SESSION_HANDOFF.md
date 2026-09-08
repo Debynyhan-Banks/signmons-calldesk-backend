@@ -11,7 +11,16 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: policy-update Calendar guards
+### Latest: qs dependency remediation
+
+- Owner requested continued risk remediation; fetched/reconciled backend `bcee134` / governance `1b2061b`, APP-013 sole Now. Explicitly selected and announced one narrow compatible dependency fix from the approved risk plan before returning to functional orchestration. Existing focused branches only; unrelated saved edits preserved.
+- Only backend lockfile qs changes 6.15.3 -> 6.16.0. No manifest/override/framework/provider SDK/UI dependency or runtime application code changed. Small bounded old-version fixtures reproduced the two maintainer-reported defects; clean install and 12 new tests verify patched consumer resolution, limits, serialization and Nest raw-body/form compatibility.
+- Runtime package presence verified, but no complete exploitable CallDesk path established. Not a confirmed production exploit or live remediation claim.
+- Passed backend lint/build, 50 suites/610 tests (3 existing skips), architecture/Prisma; disposable 15-migration suite and prior 11 crash cases with zero real provider calls; database dropped/absence verified. UI lint/30 tests/14-page build and existing desktop/390px synthetic browser regressions pass.
+- Full backend audit improved 5 high/10 moderate -> 5 high/9 moderate; qs advisories removed. Omit-dev still 4 high/8 moderate. UI unchanged 10 high/1 moderate. Zero critical; remaining findings unaccepted.
+- No migration outside local fixtures, schema, provider/secrets/IAM/billing, real data, merge, deploy or activation. Functional recovery risks remain; authorized CREATE orchestration is still pending. Estimates unchanged APP-013 ~85%, governed APP-006 through APP-016 ~81%, planning only. Review commands and limits: `evidence/APP-013/readiness-report.md`; audit snapshot: `evidence/APP-013/qs-audit-summary.json`.
+
+### Earlier: policy-update Calendar guards
 
 - Owner approved the remaining-risk plan and item 1; fetched/reconciled backend `a048d3e` / governance `7f58671`, APP-013 sole Now. Completed only urgency/payment-exception job-policy guards; original saved changes preserved.
 - Unfinished Calendar work blocks urgency replay/override and payment exception approve/revoke. Both use tenant/job/deletion/version/no-unfinished conditional writes and monotonic updatedAt; payment retains client expected version and current status. Winning policy JSON and atomic audits are preserved.
@@ -285,7 +294,7 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 urgency/payment-exception Calendar policy guards on `codex/app-013-transactional-messaging` (PR #21), including competing-snapshot/race/rollback proof and desktop/390px conflict handling; prior inactive CREATE execution remains intact.
+1. Review the latest APP-013 qs dependency remediation on `codex/app-013-transactional-messaging` (PR #21): single 6.16.0 lockfile entry, 12 regression tests and audit delta. Prior Calendar policy guards and inactive execution remain intact; no activation.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.

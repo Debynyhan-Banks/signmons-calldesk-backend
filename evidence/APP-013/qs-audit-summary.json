@@ -1,0 +1,58 @@
+{
+  "checkpoint": "APP-013 qs dependency remediation",
+  "date": "2026-09-08",
+  "scope": "Backend package-lock.json qs entry only; no manifest, UI dependency, provider SDK or application runtime source changes",
+  "before": {
+    "version": "6.15.3",
+    "audit": {
+      "high": 5,
+      "moderate": 10,
+      "critical": 0,
+      "total": 15
+    },
+    "boundedReproduction": {
+      "hostileConstructorRoundTrip": "TypeError: obj.constructor.isBuffer is not a function",
+      "bracketCommaArrayLimit": "Four elements accepted with limit three"
+    }
+  },
+  "after": {
+    "version": "6.16.0",
+    "integrity": "sha512-h6fhOIaRrID2CbEY2fqs+7t+UXZo+MLAnU5gRIq85uFtdiUPCdsApMlHhXogKVM4HM2DVbIjGNTTYH2OcmP1vA==",
+    "audit": {
+      "high": 5,
+      "moderate": 9,
+      "critical": 0,
+      "total": 14
+    },
+    "omitDevAudit": {
+      "high": 4,
+      "moderate": 8,
+      "critical": 0,
+      "total": 12
+    },
+    "qsFindings": [],
+    "consumerResolution": [
+      "express",
+      "body-parser",
+      "twilio",
+      "superagent"
+    ],
+    "regressionTests": 12
+  },
+  "unchangedUiAudit": {
+    "high": 10,
+    "moderate": 1,
+    "critical": 0,
+    "total": 11
+  },
+  "advisories": [
+    "https://github.com/ljharb/qs/security/advisories/GHSA-4mjr-xmp4-gh2g",
+    "https://github.com/ljharb/qs/security/advisories/GHSA-x5fp-wj9c-mxmx"
+  ],
+  "limits": [
+    "Dependency presence and bounded library defects verified; no complete exploitable CallDesk request path established",
+    "Parser compatibility uses loopback synthetic HTTP only; no real callback/provider acceptance",
+    "Full and omit-dev audits remain nonzero; no residual risk acceptance",
+    "Branch-only change, not deployed"
+  ]
+}

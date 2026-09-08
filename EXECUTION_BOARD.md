@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Urgency/payment-exception Calendar policy guards are review-ready on PR #21, with conditional snapshot writes, monotonic versions and race/rollback proof. Inactive CREATE execution remains unregistered. Authorized orchestration/worker ownership, other payment/entitlement state, reschedule/cancel and SENDING recovery, dependencies and acceptance remain open; no activation or release.
+  - Narrow qs 6.16.0 dependency remediation is review-ready on PR #21: 12 regression tests and backend audit reduced to 5 high/9 moderate; no runtime application code or activation change. Authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery, remaining dependencies and acceptance stay open.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

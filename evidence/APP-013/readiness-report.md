@@ -2,7 +2,32 @@
 
 Date: 2026-09-08
 
-## Policy-update Calendar guards (2026-09-08, review-ready)
+## qs dependency remediation (2026-09-08, review-ready)
+
+- Owner requested continued risk remediation. Fetched/reconciled backend `bcee134` and governance `1b2061b`; APP-013 remains sole Now. Selected one narrow dependency section from the already-approved risk plan, explicitly announced before edits; authorized CREATE orchestration remains the next functional section, not implemented or activated here. Existing focused branches only; unrelated saved-checkout changes preserved.
+- Backend lockfile upgrades only the `node_modules/qs` entry from **6.15.3 to 6.16.0** (version, registry URL and integrity). No manifest/override, framework/provider SDK, UI dependency, runtime application source, API, payment or scheduling behavior change. All current consumer version ranges admit this release.
+- Maintainer advisories identify 6.16.0 as patched for [hostile constructor/isBuffer serialization](https://github.com/ljharb/qs/security/advisories/GHSA-4mjr-xmp4-gh2g) and [bracket/comma array-limit bypass](https://github.com/ljharb/qs/security/advisories/GHSA-x5fp-wj9c-mxmx). Small synthetic inputs reproduced both old-library defects: a caught TypeError and four array elements accepted with a configured limit of three. No large allocation, worker-crash payload or real endpoint attack was used.
+- Runtime dependency presence is verified through Nest/Express/body-parser and Twilio; superagent also resolves it for tests. Nest uses extended form parsing and preserves raw bodies. **A complete exploitable CallDesk input-to-sink path was not established**: presence is not proof of exploitability; comma parsing is not enabled in the observed Nest parser. This is removal of a known vulnerable component, not a claimed confirmed production exploit.
+- Initial lockfile update/install left stale local package files despite npm tree output; a clean `npm ci --package-lock-only=false --ignore-scripts --no-audit --no-fund` corrected the installed tree. Direct package-version and consumer-resolution checks then confirmed actual 6.16.0 files. Explicit build regenerated Prisma afterward.
+
+### Validation and audit delta
+
+- **12 new tests** in `src/common/qs-dependency.spec.ts`: four consumer-resolution checks, two bounded hostile-constructor round-trips, plain/bracket comma limits, ordinary encoding, and loopback Nest parser compatibility for exact URL-encoded/JSON raw bytes and nested forms. The tests exercise installed code rather than relying on the lockfile version alone.
+- Backend lint/build, **50 suites / 610 tests** passed (1 suite / 3 existing skips), architecture and Prisma validation passed. Disposable PostgreSQL suite passed all **15 existing migrations**, policy/lifecycle races, recovery/intent proofs and **11 existing actual process-crash cases**. Zero real provider calls; random local fixture database dropped and absence independently verified.
+- Backend full audit changed from **5 high / 10 moderate (15 packages)** to **5 high / 9 moderate (14 packages)**; both qs advisories are absent. These are npm affected-package counts, not unique vulnerability counts. Current omit-dev audit remains **4 high / 8 moderate (12 packages)**, so remaining findings must not be dismissed as development-only. Objective snapshot: `evidence/APP-013/qs-audit-summary.json`.
+- UI unchanged: lint, **30 tests / 6 suites**, type check and **14-page static build** passed. Desktop/390px customer/dispatch, technician, urgency-policy and notification browser regressions run against the rebuilt UI using temporary evidence copies; no new rendered surface or live acceptance claimed.
+- Both critical-only audit commands pass with **0 critical**. UI full audit stays **10 high / 1 moderate**. Full audits remain nonzero/unaccepted; no security waiver. Existing package deprecation, pg concurrent-query and stale Browserslist warnings remain.
+
+### Review and remaining work
+
+1. Review the incremental diff after `bcee134` on [PR #21](https://github.com/Debynyhan-Banks/signmons-calldesk-backend/pull/21): the single lockfile entry, new dependency test and evidence. Verify no unrelated package versions, manifest or runtime application files changed.
+2. In the focused backend run `npm ci --package-lock-only=false --ignore-scripts --no-audit --no-fund && npm run -s build && npm run -s lint && npm test -- --runInBand && npm run -s arch:check && npx prisma validate`, then `node scripts/verify-sms-enqueue-intents.mjs`. Run `npm ls qs --all` and `node -p 'require("qs/package.json").version'`; expect 6.16.0.
+3. Run `npm audit --json` and `npm audit --omit=dev --json`; qs should be absent while remaining findings still fail. In UI run lint/test/build and the existing synthetic browser harnesses. In governance run `node scripts/docs-consistency-check.mjs`.
+4. Stop review-ready. Next after review: bounded authorized CREATE orchestration with upstream guards and explicit recovery ownership, or another explicitly selected dependency remediation section. Calendar/unknown-send recovery, external-state races, reschedule/cancel reconciliation, remaining dependencies and acceptance stay open. No executor/worker activation.
+- No schema/new migration, provider configuration/credentials/IAM/billing, charges, real customer/appointment data, external messages, staging/production operation, merge or deployment. The fix is pushed branch code only, not a deployed remediation.
+- Planning estimates remain **APP-013 ~85%; governed CallDesk APP-006 through APP-016 ~81%**. This reduces security debt without adding feature completion; not release readiness.
+
+## Earlier: Policy-update Calendar guards (2026-09-08, review-ready)
 
 - Owner agreed to the remaining-risk recommendation and approved proceeding with item 1, one bounded policy-update section. Fetched/reconciled backend `a048d3e` and governance `7f58671`; canonical pointer/boards/handoffs/ticket/contracts/evidence still name APP-013 as sole Now. Existing focused branches only; original saved-checkout changes preserved.
 - Urgency override now rejects unfinished Calendar work before same-value replay. It replaces the direct JSON snapshot write with tenant/job/deletion/observed-updatedAt/no-unfinished-operation compare-and-set, advances updatedAt monotonically, and creates its audit only after a successful claim in the same transaction. A competing policy edit cannot be overwritten using an older snapshot.
