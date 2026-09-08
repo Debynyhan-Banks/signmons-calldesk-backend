@@ -1,0 +1,140 @@
+{
+  "date": "2026-09-08",
+  "baselineBackend": "d05eb9a82355359a8cfa9ee48bf4cd10bb1a5c72",
+  "baselineGovernance": "bb7bcde2b4791cedae5517b905f1fdc5cbd1485e",
+  "scope": "Three exact-parent UUID 11.1.1 major transitive compatibility overrides; one lock entry",
+  "before": {
+    "command": "npm audit --json",
+    "exitCode": 1,
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 0,
+      "critical": 0,
+      "total": 8
+    },
+    "findings": [
+      "@google-cloud/firestore",
+      "@google-cloud/storage",
+      "firebase-admin",
+      "gaxios",
+      "google-gax",
+      "retry-request",
+      "teeny-request",
+      "uuid"
+    ],
+    "advisory": "https://github.com/uuidjs/uuid/security/advisories/GHSA-w5hq-g745-h8pq"
+  },
+  "after": {
+    "exitCode": 0,
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "findings": []
+  },
+  "omitDevAfter": {
+    "exitCode": 0,
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "findings": []
+  },
+  "uiFull": {
+    "exitCode": 0,
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "findings": []
+  },
+  "uiOmitDev": {
+    "exitCode": 0,
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "findings": []
+  },
+  "lockChanges": [
+    {
+      "package": "uuid",
+      "from": "9.0.1",
+      "to": "11.1.1"
+    }
+  ],
+  "overrides": {
+    "gaxios@6.7.1": "uuid@11.1.1",
+    "google-gax@4.6.1": "uuid@11.1.1",
+    "teeny-request@9.0.0": "uuid@11.1.1"
+  },
+  "verification": {
+    "runtime": "Node 24.12.0; Node 22 not separately executed",
+    "cleanInstall": true,
+    "baselineReproduction": "Installed uuid 9.0.1 v3/v5 silently partially overwrote bytes 4-7 in an eight-byte Uint8Array initialized to 170; no exception. No v6 baseline claimed.",
+    "nativeTests": 14,
+    "jestAutomaticWrapper": true,
+    "backendSuites": 55,
+    "backendTests": 615,
+    "existingSkippedTests": 3,
+    "uiTests": 60,
+    "staticPages": 14,
+    "localMigrations": 15,
+    "existingProcessCrashCases": 11,
+    "realProviderCalls": 0,
+    "fixtureDatabaseAbsenceIndependentlyVerified": true,
+    "browser": {
+      "routeChecks": 22,
+      "homeNavigations": 12,
+      "mockedRequests": [
+        14,
+        14,
+        8,
+        92
+      ],
+      "viewports": [
+        1440,
+        390
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "visualReview": [
+        "framework-missing-link-mobile.png",
+        "reschedule-intents-desktop.png"
+      ],
+      "temporaryEvidence": "/private/tmp/signmons-google-uuid-regression.0yQwju/evidence/APP-013"
+    }
+  },
+  "compatibility": {
+    "actualConsumerCalls": "All three inspected UUID imports call zero-argument v4. Real gax helper and gaxios/teeny multipart paths verified with synthetic transports; sockets forbidden.",
+    "firebaseSmoke": "Unchanged SDK 13.10.0 initializes named synthetic app and rejects malformed token, without obtaining credentials. No valid-token or real provider acceptance.",
+    "majorChanges": "v11 timestamp options/state and types/packaging changes are not assumed universally compatible. Both installed CJS/ESM exports tested. Integer bounds fixtures are not exhaustive arbitrary-input proof.",
+    "retirement": "APP-013 owns exact-parent overrides; re-review any parent/Firebase change or new UUID usage; remove once native patched resolution and bounds/consumer/application/PostgreSQL/browser gates pass."
+  },
+  "limits": [
+    "Zero findings means current npm advisory coverage, not comprehensive security or release acceptance.",
+    "No exploitable CallDesk route established for the affected buffer APIs.",
+    "Prior Prisma in-place aliasing and future Multer limits/error mappings remain open.",
+    "Authorized CREATE orchestration/reader-worker ownership, external-state races, reschedule/cancel and SENDING recovery and acceptance remain open.",
+    "No new migration, real data, provider configuration, merge, deployment or activation."
+  ],
+  "riskAcceptance": false
+}

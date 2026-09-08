@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Scoped Prisma merge remediation is review-ready on PR #21: deepmerge-ts 8.0.2, one lock entry and twelve native checks integrated into Jest. Backend full/omit-dev audits now 0 high/8 moderate, unaccepted; UI audits clean. Firebase/Google/uuid, override/in-place-API limitations, future upload gates, authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery and acceptance stay open; no activation or deployment.
+  - Scoped Google/UUID remediation is review-ready on PR #21: uuid 11.1.1 through three exact-parent overrides, one lock entry and fourteen native checks integrated into Jest. Backend and UI full/omit-dev audits now pass with zero findings. Override/in-place-API limitations, future upload gates, authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery and acceptance stay open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

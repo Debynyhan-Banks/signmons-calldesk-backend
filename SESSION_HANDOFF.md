@@ -11,7 +11,19 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: Scoped Prisma merge-dependency remediation
+### Latest: Scoped Google/UUID dependency remediation
+
+- Owner requested continued remediation; fetched/reconciled backend `d05eb9a` / governance `bb7bcde`, APP-013 sole Now. Explicitly selected one bounded Google/UUID dependency section on the existing focused branches; unrelated saved changes preserved.
+- Exact-parent overrides for `gaxios@6.7.1`, `google-gax@4.6.1` and `teeny-request@9.0.0` select `uuid: 11.1.1` instead of 9.0.1. Exactly one lock entry changes. Firebase Admin 13.10.0, Google clients, Prisma/Nest, prior overrides, runtime application source, UI and schema remain unchanged. This is a reviewed major transitive-library exception, not a Firebase upgrade.
+- Installed 9.0.1 reproduced silent partial writes with tiny v3/v5 output buffers. Fourteen new native checks run automatically through Jest: exact CJS/ESM consumer resolution, v4 IDs, v3/v5/v6 integer bounds before writes and exact-boundary success, actual google-gax request-ID helper, gaxios/teeny multipart formatting via synthetic transports, and unchanged Firebase initialization/malformed-token refusal without credentials. Socket creation is forbidden in this fixture.
+- Clean install, backend lint/build, 55 suites/615 tests (3 existing skipped tests), architecture/Prisma and disposable 15-migration suite pass, including 11 prior actual process-crash cases. Zero real provider calls; temporary database dropped and absence independently verified.
+- UI unchanged: lint/type check, 60 tests, 14-page build and five desktop/390px synthetic browser harnesses pass: 22 framework route checks/12 home navigations/static manifest; customer/dispatch, technician, policy and notifications 14/14/8/92 mocked requests. Zero external requests/page errors; temporary missing-link mobile and notification desktop screenshots visually reviewed.
+- Fresh post-build backend full/omit-dev audits now both pass with zero findings (baseline full audit 0 high/8 moderate); UI full/omit-dev also zero. The previously open audited Firebase/Google/uuid findings are absent. This clears the current dependency-audit failure, not comprehensive security acceptance, deployed remediation or APP-013 completion.
+- APP-013 owns all three exact-parent exceptions. Re-review on any parent/Firebase change; remove once native dependency resolution is patched and consumer/bounds/application/PostgreSQL/browser gates pass. The inspected consumers use zero-argument v4 only. UUID v11 changes timestamp-options state semantics/types and packaging; those APIs are not assumed universally compatible. No upstream Google endorsement of this override, valid-token provider acceptance or exhaustive numeric-input/resource-safety claim.
+- Remaining risks: override maintenance, known unused Prisma in-place aliasing and future upload limits/error mappings; authorized CREATE orchestration and explicit reader/worker ownership, external-state races, reschedule/cancel and SENDING recovery, and acceptance. No new migration, real data, external sends, provider/secrets/IAM/billing configuration, charges, merge, deployment or activation. Estimates remain APP-013 ~85%; governed APP-006 through APP-016 ~81%, planning only. Stop review-ready.
+- Exact commands, compatibility limits and audit snapshot: `evidence/APP-013/readiness-report.md` and `google-uuid-audit-summary.json`.
+
+### Earlier: Scoped Prisma merge-dependency remediation
 
 - Owner requested continued fixing; fetched/reconciled backend `ace10ff` / governance `1c68cc9`, APP-013 sole Now. Explicitly selected one bounded Prisma merge-dependency section on existing focused branches; unrelated saved changes preserved.
 - Scoped `@prisma/config@7.10.0 -> deepmerge-ts: 8.0.2` override replaces 7.1.5; exactly one lock entry changes. This is an intentional major library exception, not a Prisma upgrade. Prisma/client/adapter, Nest/Express, prior overrides, runtime application source, UI, schema and other resolutions remain unchanged.
@@ -379,10 +391,10 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 scoped Prisma merge remediation on `codex/app-013-transactional-messaging` (PR #21): major library override, one lock entry and twelve native checks. Backend full/omit-dev 0 high/8 moderate, still unaccepted; UI audits clean. Review exact consumer compatibility, changed Map/in-place behavior and override retirement; no activation.
+1. Review the latest APP-013 scoped Google/UUID remediation on `codex/app-013-transactional-messaging` (PR #21): three exact-parent major library overrides, one lock entry and fourteen native checks. Backend/UI full/omit-dev audits pass with zero findings. Review actual consumer compatibility and override retirement; no activation or ticket acceptance.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
+4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency-override maintenance stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
 
 ## Restart Commands
 
