@@ -1,0 +1,338 @@
+{
+  "date": "2026-09-08",
+  "baselineBackend": "ace10ff7ed892c49ee1824ebd988ee1dcf3d01f8",
+  "baselineGovernance": "1c68cc9c8fb4c72c6240222c653dafbb6652063d",
+  "scope": "@prisma/config@7.10.0 scoped deepmerge-ts 8.0.2 major-version compatibility/security exception",
+  "before": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 4,
+      "critical": 0,
+      "total": 12
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ]
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "@prisma/client",
+        "severity": "high",
+        "via": [
+          "prisma"
+        ]
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "via": [
+          "deepmerge-ts"
+        ]
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "range": "<8.0.0"
+          }
+        ]
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ]
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ]
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "via": [
+          "@prisma/config"
+        ]
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ]
+      }
+    ]
+  },
+  "after": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 0,
+      "critical": 0,
+      "total": 8
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ]
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ]
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ]
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ]
+      }
+    ]
+  },
+  "omitDevAfter": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 0,
+      "critical": 0,
+      "total": 8
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ]
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ]
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ]
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ]
+      }
+    ]
+  },
+  "uiFull": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "uiOmitDev": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "lockChanges": [
+    {
+      "package": "deepmerge-ts",
+      "from": "7.1.5",
+      "to": "8.0.2"
+    }
+  ],
+  "verification": {
+    "cleanInstall": true,
+    "baselineReproduction": "Installed 7.1.5 deepmerge on two same-path self-referencing objects throws RangeError: Maximum call stack size exceeded; small synthetic objects, error caught.",
+    "nativeTests": 12,
+    "jestAutomaticWrapper": true,
+    "backendSuites": 54,
+    "backendTests": 614,
+    "existingSkippedTests": 3,
+    "uiTests": 60,
+    "staticPages": 14,
+    "localMigrations": 15,
+    "existingProcessCrashCases": 11,
+    "realProviderCalls": 0,
+    "fixtureDatabaseAbsenceIndependentlyVerified": true,
+    "highAuditGate": "PASS",
+    "browser": {
+      "routeChecks": 22,
+      "homeNavigations": 12,
+      "mockedRequests": [
+        14,
+        14,
+        8,
+        92
+      ],
+      "viewports": [
+        1440,
+        390
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "visualReview": [
+        "framework-missing-link-mobile.png",
+        "reschedule-intents-desktop.png"
+      ],
+      "temporaryEvidence": "/private/tmp/signmons-prisma-merge-regression.MfzHqs/evidence/APP-013"
+    }
+  },
+  "compatibility": {
+    "usedConsumer": "Prisma config dynamically imports deepmerge as c12 merger; test asserts it does not switch to deepmergeInto or unsafe entrypoints.",
+    "majorChanges": "Map values now deep-merge; custom type names changed; in-place behavior differs. Inspected CallDesk config is plain records/strings and does not use Maps or custom merging.",
+    "observedLimitation": "Exploratory deepmergeInto immutability test failed: a prior merge into an empty target retains source references and later in-place merging can mutate the source. Retained explicit aliasing test and passing ordinary-deepmerge immutability test; no blanket in-place mutation-safety claim.",
+    "overrideRetirement": "APP-013 owns exact @prisma/config@7.10.0 exception. Re-review on any Prisma/config change; remove when native resolution is patched and cycle/config/PostgreSQL/application/browser gates pass."
+  },
+  "limits": [
+    "No public exploitable CallDesk route established. Plain JSON does not create same-path recursive graphs.",
+    "No real DB connection/configuration changes in loader tests; only synthetic config files, no seed execution.",
+    "Cycle reproduction does not establish safety for every graph, depth or resource budget.",
+    "No parent-endorsed Prisma dependency upgrade claim; this is a narrowly reviewed major library override.",
+    "Eight moderate Firebase/Google/uuid findings remain unaccepted; full backend audit fails.",
+    "No migration outside disposable fixtures, real data, provider configuration, merge, deployment or activation."
+  ],
+  "riskAcceptance": false
+}

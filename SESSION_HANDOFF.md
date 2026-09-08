@@ -11,7 +11,20 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: Scoped Nest/Multer dependency remediation
+### Latest: Scoped Prisma merge-dependency remediation
+
+- Owner requested continued fixing; fetched/reconciled backend `ace10ff` / governance `1c68cc9`, APP-013 sole Now. Explicitly selected one bounded Prisma merge-dependency section on existing focused branches; unrelated saved changes preserved.
+- Scoped `@prisma/config@7.10.0 -> deepmerge-ts: 8.0.2` override replaces 7.1.5; exactly one lock entry changes. This is an intentional major library exception, not a Prisma upgrade. Prisma/client/adapter, Nest/Express, prior overrides, runtime application source, UI, schema and other resolutions remain unchanged.
+- Before update, two tiny same-path self-referencing objects reproduced the installed 7.1.5 deepmerge RangeError. Twelve new native tests, automatically wrapped by Jest, verify patched cycles, actual Prisma consumer/module resolution, ordinary records/arrays and non-mutating merge behavior, changed Map semantics, known in-place aliasing limits, real CJS/ESM config loading/path/datasource preservation, invalid config rejection and missing-config refusal. Synthetic objects/config files only; no DB connection or seed execution in these fixtures.
+- Clean install, backend lint/build, 54 suites/614 tests (3 existing skipped tests), architecture/Prisma and disposable 15-migration suite pass, including 11 prior actual process-crash cases. Zero real provider calls; fixture database dropped and absence independently verified.
+- UI unchanged: lint/type check, 60 tests, 14-page build and five desktop/390px browser harnesses pass: 22 framework route checks/12 home navigations/static manifest; customer/dispatch, technician, policy and notifications 14/14/8/92 mocked requests. Zero external requests/page errors; temporary missing-link mobile and notification desktop screenshots visually reviewed.
+- Backend full/omit-dev audits improve 4 high/8 moderate -> 0 high/8 moderate; deepmerge-ts and related Prisma findings are absent. UI full/omit-dev remain zero. High-severity gate now passes, but full backend audit still fails on Firebase/Google/uuid and remains unaccepted. Counts describe affected packages/current advisory metadata, not unique vulnerabilities or a comprehensive security guarantee.
+- APP-013 owns this exact-parent override. Re-review on any Prisma/config change; remove when native resolution is patched and cycle/config/PostgreSQL/application/browser gates pass. Tests assert the inspected loader imports ordinary deepmerge as c12's merger, not deepmergeInto or unsafe entrypoints. Config uses plain records/strings, not custom merge callbacks or Map values.
+- An exploratory in-place immutability test failed: deepmergeInto can preserve source aliases and a later in-place merge can mutate them. Retained an explicit aliasing limitation test and passing ordinary-deepmerge immutability test. The inspected Prisma path does not use that API; no blanket mutation-safety claim. v8 Map merging and custom type changes are documented, not assumed backward-compatible.
+- Remaining risks: Firebase/Google/uuid dependencies; override maintenance and future upload limits/error mappings; authorized CREATE orchestration/recovery ownership, external-state races, reschedule/cancel and SENDING recovery, and acceptance. No schema/new migration, real data, external sends, provider/secrets/IAM/billing configuration, charges, merge, deployment or activation. Estimates unchanged APP-013 ~85%; governed APP-006 through APP-016 ~81%, planning only. Stop review-ready.
+- Exact commands, limitations and override retirement: `evidence/APP-013/readiness-report.md`; audit snapshot: `evidence/APP-013/prisma-merge-audit-summary.json`.
+
+### Earlier: Scoped Nest/Multer dependency remediation
 
 - Owner continued the recommended Multer/Nest checkpoint; fetched/reconciled backend `54b613f` / governance `ed21a09`, APP-013 sole Now. Completed only this bounded dependency section on existing focused branches; unrelated saved changes preserved.
 - Scoped `@nestjs/platform-express@^11.2.3 -> multer: 2.3.0` override replaces the 2.2.0 pin. Exactly one lock entry changes. Nest/Express, Prisma/client/adapter, prior mysql2/PostCSS overrides, application source, UI, schema and all other resolutions are unchanged; no major framework upgrade or forced audit fix.
@@ -366,7 +379,7 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 scoped Nest/Multer remediation on `codex/app-013-transactional-messaging` (PR #21): scoped override, one lock entry and twelve native tests integrated into Jest. Multer/Nest findings absent; backend full/omit-dev 4 high/8 moderate remain unaccepted; UI audits clean. Review override retirement and future upload limits/HTTP error-mapping gates; no activation.
+1. Review the latest APP-013 scoped Prisma merge remediation on `codex/app-013-transactional-messaging` (PR #21): major library override, one lock entry and twelve native checks. Backend full/omit-dev 0 high/8 moderate, still unaccepted; UI audits clean. Review exact consumer compatibility, changed Map/in-place behavior and override retirement; no activation.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
