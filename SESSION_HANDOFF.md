@@ -11,7 +11,20 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: Scoped Prisma/mysql2 dependency remediation
+### Latest: Scoped Nest/Multer dependency remediation
+
+- Owner continued the recommended Multer/Nest checkpoint; fetched/reconciled backend `54b613f` / governance `ed21a09`, APP-013 sole Now. Completed only this bounded dependency section on existing focused branches; unrelated saved changes preserved.
+- Scoped `@nestjs/platform-express@^11.2.3 -> multer: 2.3.0` override replaces the 2.2.0 pin. Exactly one lock entry changes. Nest/Express, Prisma/client/adapter, prior mysql2/PostCSS overrides, application source, UI, schema and all other resolutions are unchanged; no major framework upgrade or forced audit fix.
+- Twelve native checks run automatically through one new Jest wrapper: reviewed Nest consumer/lock resolution; ordinary field compatibility; explicit array-index bounds; invalid sparse append routed to callback; async file-size rejection across single/array/fields/any; exact-limit acceptance; real diskStorage stream error, descriptor close and partial-file unlink; Nest success/413/400 compatibility; and the new array-index error's missing HTTP mapping. Synthetic streams/files only, no sockets or upload endpoint.
+- Clean install, backend lint/build, 53 suites/613 tests (3 existing skipped tests), architecture/Prisma and disposable 15-migration suite pass, including 11 prior actual process-crash cases. Zero real provider calls; fixture database dropped and absence independently verified.
+- UI unchanged: lint/type check, 60 tests, 14-page build and five desktop/390px browser harnesses pass: 22 framework route checks/12 home navigations/static manifest; customer/dispatch, technician, policy and notifications 14/14/8/92 mocked requests. Zero external requests/page errors. Temporary missing-link mobile and notification desktop screenshots visually reviewed.
+- Backend full audit improves 9 high/8 moderate -> 4 high/8 moderate; final omit-dev also 4 high/8 moderate. Multer and its related Nest findings are absent. UI full/omit-dev remain zero, critical-only gate passes. Remaining full backend audit failure is unaccepted and blocks ticket/security acceptance; these are affected-package counts, not unique vulnerabilities or deployed fixes.
+- APP-013 owns the temporary override. Re-review on every Nest change; the test intentionally requires Nest platform-express 11.2.3. Remove when native resolution is patched and multipart/application/browser gates pass. Prior override retirement conditions remain intact.
+- No multipart handlers were found in application source. Future uploads remain gated on explicit array-index/size/count/depth limits and HTTP mappings for new Multer errors: Nest 11 leaves LIMIT_FIELD_ARRAY_INDEX as a plain Error rather than a mapped 4xx. Array-index protection is opt-in, not guaranteed by the version alone. No upload route, global middleware or upload configuration is enabled.
+- Remaining risks: Prisma/deepmerge-ts and Firebase/Google/uuid; authorized CREATE orchestration/recovery ownership, external-state races, reschedule/cancel and SENDING recovery, and remaining acceptance. No schema/new migration, real data, external sends, provider/secrets/IAM/billing configuration, charges, merge, deployment or activation. Estimates unchanged APP-013 ~85%; governed APP-006 through APP-016 ~81%, planning only. Stop review-ready.
+- Exact review commands and limits: `evidence/APP-013/readiness-report.md`; objective audit snapshot: `evidence/APP-013/multer-audit-summary.json`.
+
+### Earlier: Scoped Prisma/mysql2 dependency remediation
 
 - Owner requested continued risk remediation; fetched/reconciled backend `9eb43e5` / governance `dc1d318`, APP-013 sole Now. Explicitly selected one bounded Prisma/mysql2 compatibility section on existing focused branches; unrelated saved-checkout changes preserved.
 - Scoped `prisma@^7.10.0 -> mysql2: 3.24.4` override replaces Prisma 7.10.0's 3.15.3 pin. Exactly six lock entries change: mysql2 and required lru.min update, sql-escaper added, superseded sqlstring/denque/seq-queue removed. Prisma/client/adapter versions, PostgreSQL schema, application source, UI and all other resolutions remain unchanged; no broad audit fix or major downgrade.
@@ -353,7 +366,7 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 scoped Prisma/mysql2 remediation on `codex/app-013-transactional-messaging` (PR #21): scoped override, six lock entries and ten native tests integrated into Jest. mysql2 findings are absent; final backend full audit 9 high/8 moderate and omit-dev 8 high/8 moderate remain unaccepted. UI audits clean; no activation. Review the override retirement condition and newly reported Multer/Nest findings.
+1. Review the latest APP-013 scoped Nest/Multer remediation on `codex/app-013-transactional-messaging` (PR #21): scoped override, one lock entry and twelve native tests integrated into Jest. Multer/Nest findings absent; backend full/omit-dev 4 high/8 moderate remain unaccepted; UI audits clean. Review override retirement and future upload limits/HTTP error-mapping gates; no activation.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.

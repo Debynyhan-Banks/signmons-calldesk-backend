@@ -84,6 +84,9 @@
   },
   "overrides": {
     "diff": "^8.0.3",
+    "@nestjs/platform-express@^11.2.3": {
+      "multer": "2.3.0"
+    },
     "prisma@^7.10.0": {
       "mysql2": "3.24.4"
     }
