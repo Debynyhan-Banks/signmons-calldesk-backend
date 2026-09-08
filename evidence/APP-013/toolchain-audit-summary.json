@@ -1,0 +1,488 @@
+{
+  "date": "2026-09-08",
+  "baselineBackendCommit": "6c467a12eb0dabc651addb9784c7e7c9aaa0795d",
+  "baselineGovernanceCommit": "ddd92e46bf306c7634873d6f00c6b42d0abfc24e",
+  "scope": "Six UI development-tool dependency families; eight lockfile entries, same existing majors",
+  "commands": [
+    "npm update ajv brace-expansion flatted js-yaml minimatch picomatch --package-lock-only --ignore-scripts --no-audit --no-fund",
+    "npm ci --package-lock-only=false --ignore-scripts --no-audit --no-fund",
+    "npm audit --json (UI full and backend full)",
+    "npm audit --omit=dev --json (UI and backend)"
+  ],
+  "uiBefore": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 5,
+      "critical": 0,
+      "total": 6
+    },
+    "findings": [
+      {
+        "name": "ajv",
+        "severity": "moderate",
+        "advisories": [
+          "https://github.com/advisories/GHSA-2g4f-4pwh-qvx6"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "brace-expansion",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+          "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+          "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+          "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+          "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+          "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+          "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+          "https://github.com/advisories/GHSA-rgw5-rvv9-x895"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "flatted",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-25h7-pfq9-p65f",
+          "https://github.com/advisories/GHSA-rf6f-7fwh-wjgh"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "js-yaml",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-h67p-54hq-rp68",
+          "https://github.com/advisories/GHSA-52cp-r559-cp3m",
+          "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+          "https://github.com/advisories/GHSA-2883-xcg3-v3hh"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "minimatch",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+          "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+          "https://github.com/advisories/GHSA-7r86-cg39-jmmj",
+          "https://github.com/advisories/GHSA-7r86-cg39-jmmj",
+          "https://github.com/advisories/GHSA-23c5-xmqv-rm74",
+          "https://github.com/advisories/GHSA-23c5-xmqv-rm74"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "picomatch",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-3v7f-55p6-f55p",
+          "https://github.com/advisories/GHSA-c2c7-rcm5-vvqj"
+        ],
+        "fixAvailable": true
+      }
+    ]
+  },
+  "uiAfter": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "findings": []
+  },
+  "uiOmitDevAfter": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "findings": []
+  },
+  "backendUnchanged": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 9,
+      "high": 5,
+      "critical": 0,
+      "total": 14
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "advisories": [
+          "google-gax"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "advisories": [
+          "retry-request",
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@humanfs/node",
+        "severity": "moderate",
+        "advisories": [
+          "https://github.com/advisories/GHSA-p498-v437-472g"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "advisories": [
+          "deepmerge-ts"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "brace-expansion",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-f886-m6hf-6m8v",
+          "https://github.com/advisories/GHSA-3jxr-9vmj-r5cp",
+          "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+          "https://github.com/advisories/GHSA-rgw5-rvv9-x895"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-ggr8-5vv4-36mx"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "advisories": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "advisories": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "advisories": [
+          "retry-request",
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "mysql2",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-3f6p-5ww8-9rcr",
+          "https://github.com/advisories/GHSA-rgwj-5xj2-c3m3"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "advisories": [
+          "@prisma/config",
+          "mysql2"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "advisories": [
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "advisories": [
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "advisories": [
+          "https://github.com/advisories/GHSA-w5hq-g745-h8pq"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "backendOmitDev": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 4,
+      "critical": 0,
+      "total": 12
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "advisories": [
+          "google-gax"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "advisories": [
+          "retry-request",
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "advisories": [
+          "deepmerge-ts"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-ggr8-5vv4-36mx"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "advisories": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "advisories": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "advisories": [
+          "retry-request",
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "mysql2",
+        "severity": "high",
+        "advisories": [
+          "https://github.com/advisories/GHSA-3f6p-5ww8-9rcr",
+          "https://github.com/advisories/GHSA-rgwj-5xj2-c3m3"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "advisories": [
+          "@prisma/config",
+          "mysql2"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "advisories": [
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "advisories": [
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "advisories": [
+          "https://github.com/advisories/GHSA-w5hq-g745-h8pq"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "updates": [
+    [
+      "ajv",
+      "6.12.6",
+      "6.15.0"
+    ],
+    [
+      "brace-expansion",
+      "1.1.12",
+      "1.1.18"
+    ],
+    [
+      "brace-expansion",
+      "2.0.2",
+      "2.1.4"
+    ],
+    [
+      "flatted",
+      "3.3.3",
+      "3.4.4"
+    ],
+    [
+      "js-yaml",
+      "4.1.1",
+      "4.3.2"
+    ],
+    [
+      "minimatch",
+      "3.1.2",
+      "3.1.5"
+    ],
+    [
+      "minimatch",
+      "9.0.5",
+      "9.0.9"
+    ],
+    [
+      "picomatch",
+      "4.0.3",
+      "4.0.7"
+    ]
+  ],
+  "limits": "Counts are affected packages, not unique vulnerabilities. UI clean audit is current advisory-database evidence, not a guarantee of security or deployed remediation. No application exploitability established; backend findings remain unaccepted.",
+  "remainingRiskAcceptance": false
+}

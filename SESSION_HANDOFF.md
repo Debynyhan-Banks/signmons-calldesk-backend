@@ -11,7 +11,18 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: PostCSS security remediation
+### Latest: UI development-tool dependency remediation
+
+- Owner requested continued risk remediation; fetched/reconciled backend `6c467a1` / governance `ddd92e4`, APP-013 sole Now. Explicitly selected one bounded UI development-tool dependency section. Existing focused branches only; unrelated saved-checkout edits preserved.
+- Updated only eight UI lockfile entries across six dependency families within existing major versions: ajv 6.15.0, brace-expansion 1.1.18/2.1.4, flatted 3.4.4, js-yaml 4.3.2, minimatch 3.1.5/9.0.9 and picomatch 4.0.7. All eight entries are dev dependencies. Manifest, Next/React, PostCSS override, other package resolutions, backend dependencies and application source are unchanged; no forced audit fix.
+- Clean npm ci and 16 new tests verify all eight installed copies through actual toolchain consumers and lockfile agreement, Ajv validation, YAML aliases/round-trip, cyclic cache serialization, flatted prototype-reference refusal, both brace/minimatch generations, file discovery and an ESLint negative control. No dangerous large-input performance payload or real-data exploit tested.
+- UI lint/type check, 60 tests and 14-page build pass. All five desktop/390px browser harnesses pass: framework 22 route checks/12 home navigations/static manifest; customer/dispatch, technician, policy and notifications 14/14/8/92 mocked requests, zero external requests/page errors. Temporary screenshots preserve committed evidence; missing-link mobile and notification desktop visually reviewed.
+- Backend lint/build, 50 suites/610 tests (3 existing skips), architecture/Prisma and disposable 15-migration suite pass, including 11 prior actual process-crash cases. Zero real provider calls; fixture database dropped and absence independently verified.
+- UI full audit improves 5 high/1 moderate -> zero findings, exit 0; omit-dev remains zero. Backend unchanged 5 high/9 moderate, omit-dev 4 high/8 moderate; critical-only gate passes with zero critical. Backend findings remain unaccepted. A clean UI audit is current advisory-database evidence, not an overall security guarantee or deployed remediation.
+- No schema/new migration, real data, external sends, provider/secrets/IAM/billing configuration, charges, merge, deployment or activation. Calendar orchestration/recovery ownership, external-state races, reschedule/cancel and SENDING recovery, backend dependency remediation and remaining acceptance stay open. Planning estimates unchanged APP-013 ~85%; governed APP-006 through APP-016 ~81%, not release readiness.
+- Exact scope, warnings, commands and sources: `evidence/APP-013/readiness-report.md`; audit snapshot: `toolchain-audit-summary.json`.
+
+### Earlier: PostCSS security remediation
 
 - Owner requested continued risk remediation; fetched/reconciled backend `5ac324c` / governance `430daf6`, APP-013 sole Now. Explicitly selected one bounded PostCSS security section. Existing focused branches only; unrelated saved-checkout edits preserved.
 - UI manifest adds only `next@15.5.25 -> postcss: 8.5.28` override; lockfile changes only PostCSS 8.4.31 -> 8.5.28 and its dependency-range metadata. Next/React, other resolved packages, backend dependencies and application source are unchanged. Clean npm ci and resolution through Next's actual CSS build consumer verified the installed patch.
@@ -317,7 +328,7 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 PostCSS security remediation on `codex/app-013-transactional-messaging` (PR #21): scoped PostCSS 8.5.28 override, eight regression tests, clean UI omit-dev audit and unchanged application behavior. Full UI/backend audits still fail/unaccepted; prior Calendar guards and inactive execution remain intact. No activation.
+1. Review the latest APP-013 UI development-tool dependency remediation on `codex/app-013-transactional-messaging` (PR #21): eight compatible lockfile updates, 16 new tests, clean full/omit-dev UI audits and unchanged application behavior. Backend findings remain unaccepted; prior Calendar guards and inactive execution remain intact. No activation.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
