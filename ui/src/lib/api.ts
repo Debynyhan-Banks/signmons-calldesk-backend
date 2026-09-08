@@ -351,6 +351,7 @@ export type TechnicianJobAction =
   | "cannot_take";
 
 export interface TechnicianJobSummary {
+  calendarSyncPending: boolean;
   jobId: string;
   reference: string;
   serviceCategory: string;

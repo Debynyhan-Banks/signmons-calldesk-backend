@@ -135,7 +135,7 @@ export default function TechnicianPage() {
   };
 
   const takeAction = async (action: TechnicianJobAction) => {
-    if (!detail || !token) return;
+    if (!detail || !token || detail.calendarSyncPending) return;
     if (
       ["decline", "cannot_take", "complete"].includes(action) &&
       !window.confirm(`${technicianActionLabel(action)}?`)
@@ -160,6 +160,8 @@ export default function TechnicianPage() {
       setGroup((current) => technicianGroupAfterAction(current, action));
       await load(token, keepSelected);
     } catch (actionError) {
+      if (actionError instanceof ApiError && actionError.status === 409)
+        setDetail(null);
       setError(messageFor(actionError));
     } finally {
       setActing(false);
@@ -260,7 +262,9 @@ export default function TechnicianPage() {
                     <span className={styles.cardTop}>
                       <strong>{job.serviceCategory}</strong>
                       <span className={styles.status}>
-                        {technicianStatusLabel(job.technicianStatus)}
+                        {job.calendarSyncPending
+                          ? "Calendar hold"
+                          : technicianStatusLabel(job.technicianStatus)}
                       </span>
                     </span>
                     <span className={styles.window}>
@@ -296,8 +300,19 @@ export default function TechnicianPage() {
                       </span>
                     </div>
 
+                    {detail.calendarSyncPending && (
+                      <p className={styles.calendarHold} role="status">
+                        Calendar synchronization is unfinished. This reservation
+                        is provisional. Do not travel, start work, or change job
+                        status until the office reviews it.
+                      </p>
+                    )}
                     <div className={styles.callout}>
-                      <span>Scheduled</span>
+                      <span>
+                        {detail.calendarSyncPending
+                          ? "Provisional reservation"
+                          : "Scheduled"}
+                      </span>
                       <strong>
                         {formatWindow(
                           detail.serviceWindowStart,

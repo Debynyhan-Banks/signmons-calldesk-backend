@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Inactive one-shot CREATE executor/adapter and two new crash cases are review-ready on PR #21. Durable attempt latch prevents blind reinsertion; read-back alone finalizes. Competing lifecycle/technician/policy entry-point safety, authorized orchestration/worker ownership, reschedule/cancel reconciliation, dependency remediation and acceptance remain open; no activation or release.
+  - Lifecycle/technician Calendar mutation guards and provisional-hold UI are review-ready on PR #21, with exact-version/no-unfinished claims and deterministic race/rollback proof. Inactive CREATE execution remains unregistered. Policy-version coordination, authorized orchestration/worker ownership, reschedule/cancel reconciliation, dependencies and acceptance remain open; no activation or release.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

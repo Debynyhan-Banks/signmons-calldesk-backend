@@ -2,7 +2,35 @@
 
 Date: 2026-09-08
 
-## Inactive one-shot CREATE execution (2026-09-08, review-ready)
+## Lifecycle and technician Calendar mutation guards (2026-09-08, review-ready)
+
+- Owner reviewed the inactive one-shot CREATE checkpoint and said proceed. Fetched/reconciled backend `df9143a` and governance `abed80c`, canonical pointer, boards, handoffs, active ticket, contracts and evidence. APP-013 remains sole Now; only the current focused feature branches changed, preserving unrelated saved-checkout edits.
+- Completion and all six technician actions reject any unfinished Calendar operation before mutation or idempotent replay. The existence-only relation does not expose Calendar IDs or metadata. Completion now claims the observed job version; technician writes retain the client expected version and add current status/no-unfinished-operation predicates. Both advance updatedAt monotonically, retaining transactional audit and departure-intent behavior.
+- Technician list/detail add `calendarSyncPending`; held cancellations remain visible within the existing tenant/assignee/deletion/200-record boundaries. Held or terminal jobs return no available actions. The field UI labels the reservation provisional, says not to travel/start/change status, hides mutation buttons even for inconsistent stale action arrays, and discards old detail after a 409. Existing authorized customer contact visibility is unchanged.
+- No payment/urgency policy semantics, public completion request shape, schema, provider adapter or module registration changed. The prior journal table is still a runtime prerequisite for these relation queries; deployment/migration remains separately approval-gated.
+
+### Validation and objective evidence
+
+- Backend lint/build, **49 suites / 588 tests** passed (1 suite / 3 existing skips), architecture check and Prisma validation passed. Eighteen new unit cases cover pending actions/replays, completion fallback, exact-version claims and held visibility.
+- Disposable Unix-socket PostgreSQL fixture passed **15 existing migrations**, all **12 CREATE/RESCHEDULE/CANCEL × PENDING/UNCERTAIN/APPLIED/NEEDS_REVIEW combinations**, all six technician mutations, tenant/active-technician boundaries, unchanged held job/audit/intent state, terminal behavior and departure-intent regression. Deterministic reservation-between-read-and-update tests reject both completion and technician writes; opposite ordering rejects the stale journal reservation. A real audit insertion failure rolls back completion and its version. Prior **11 actual process-crash cases** and all intent/consumer/reconciliation/execution proofs still pass. **Zero real provider calls**; temporary fixture database dropped and absence independently checked.
+- UI lint, **30 tests / 6 suites**, type checking and static build (**14 pages**) passed. New desktop **1440px** and mobile **390px** synthetic browser QA passed: **14 mocked requests**, two intentional stale-action 409 POSTs, zero mutation requests from initially held pages, zero external requests/page errors/overflow. Rebuilt screenshots visually reviewed: `calendar-hold-technician-desktop.png` and `calendar-hold-technician-mobile.png`. A CSS grouping issue found during review was corrected and the final build/browser run repeated.
+- Customer/dispatch Calendar-hold and notification browser regressions run against the new static build using temporary evidence copies, preserving previous committed screenshots.
+- Both critical audit gates pass with **0 critical**. Full audits remain nonzero/unaccepted: backend **5 high / 10 moderate**, UI **10 high / 1 moderate**. Dependencies/lockfiles unchanged; existing pg concurrent-query and stale Browserslist warnings persist. This is not a dependency remediation or ticket acceptance claim.
+
+### Remaining gates and estimate
+
+- Inactive CREATE executor/creator/journal/reconciler remain unregistered. Legacy live scheduling is still unjournaled; no recovery worker or production robustness claim. Urgency/payment-policy mutation coordination, post-preflight/provider races, bounded ownership/retry/review controls, reschedule/cancel reconciliation, SENDING crash recovery and remaining messaging/acceptance stay open.
+- No external messages, real customers/appointments, IAM/secrets/provider/billing configuration, charges, new schema/migration, staging/production operation, merge or deployment. Prior journal migration, retention policy and any activation require separate approval.
+- Stop review-ready. Planning estimates: **APP-013 ~83%; governed CallDesk APP-006 through APP-016 ~81%**, not release readiness. Next after owner review: scope the next authorized scheduling-orchestration section only after resolving outstanding policy-version coordination and reader/worker ownership; do not activate the executor alone or advance tickets.
+
+### Exact review steps
+
+1. Review the incremental backend diff after `df9143a` on [PR #21](https://github.com/Debynyhan-Banks/signmons-calldesk-backend/pull/21): both job services/tests, `scripts/verify-lifecycle-calendar-guards.mjs`, technician UI/API/helper changes and the new browser harness/screenshots. Verify guard-before-replay, version/no-unfinished predicates and unchanged financial policy.
+2. In the focused backend run `npm run -s lint && npm test -- --runInBand && npm run -s build && npm run -s arch:check && npx prisma validate && npm audit --audit-level=critical`, then `node scripts/verify-sms-enqueue-intents.mjs`. This fixture creates/drops only its own random local PostgreSQL database.
+3. In `ui`, run `npm run -s lint && npm test && npm run -s build && npm audit --audit-level=critical`, then `PLAYWRIGHT_MODULE=/Users/debynyhanbanks/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs node scripts/technician-calendar-guard-browser-qa.mjs`. Inspect both screenshots and confirm hold/no actions, then synthetic settled-to-409 detail removal.
+4. Run `node scripts/docs-consistency-check.mjs` in focused governance. Review updated lifecycle/technician contract and next-action gates. Full `npm audit` still fails at high/moderate severity; checkpoint review does not waive those findings or authorize release.
+
+## Earlier: Inactive one-shot CREATE execution (2026-09-08, review-ready)
 
 - Owner reviewed the consumer guard checkpoint and said proceed. Fetched/reconciled backend `3c159b9` and governance `abac6af`, canonical pointer/boards/handoffs/ticket/contracts/evidence; APP-013 remains sole Now. Existing focused branches only, original saved-checkout changes preserved.
 - Added narrow `CalendarEventCreator`, unregistered `GoogleCalendarEventCreator`, and unregistered `CalendarCreateExecutionService`. This is one internal execution section for an already-authorized, persisted CREATE reservation, not a replacement public scheduling flow, activation flag or recovery worker.

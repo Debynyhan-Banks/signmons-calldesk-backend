@@ -38,6 +38,7 @@ export function technicianActionLabel(action: TechnicianJobAction): string {
 export function primaryTechnicianAction(
   job: TechnicianJobSummary,
 ): TechnicianJobAction | null {
+  if (job.calendarSyncPending) return null;
   const order: TechnicianJobAction[] = [
     "accept",
     "on_my_way",
@@ -50,11 +51,11 @@ export function primaryTechnicianAction(
 export function secondaryTechnicianActions(
   job: TechnicianJobSummary,
 ): TechnicianJobAction[] {
+  if (job.calendarSyncPending) return [];
   const primary = primaryTechnicianAction(job);
   const hasCannotTake = job.availableActions.includes("cannot_take");
   return job.availableActions.filter(
-    (action) =>
-      action !== primary && !(action === "decline" && hasCannotTake),
+    (action) => action !== primary && !(action === "decline" && hasCannotTake),
   );
 }
 

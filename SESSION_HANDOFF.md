@@ -11,7 +11,17 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: inactive one-shot CREATE execution
+### Latest: lifecycle and technician Calendar mutation guards
+
+- Owner reviewed inactive CREATE execution and said proceed; fetched/reconciled backend `df9143a` / governance `abed80c`, APP-013 sole Now. Completed only lifecycle/technician guards on existing focused branches; unrelated saved changes preserved.
+- Unfinished Calendar work rejects completion and all six technician actions before replay/write. Exact-version/current-state/no-unfinished claims and monotonic updatedAt protect both mutation paths. Tenant, assignee, transactional audit, departure intent and payment semantics remain intact.
+- Technician API exposes only calendarSyncPending; held cancellations remain visible, actions hidden, provisional/no-travel notice shown, stale detail cleared after 409. Desktop/390px screenshots visually reviewed.
+- Passed backend lint/build, 49 suites/588 tests (3 existing skips), architecture/Prisma; disposable 15-migration fixture including 12 action/status combinations, both deterministic read/update races, opposite-order stale reservations and rollback; prior 11 actual crash cases pass. UI lint/30 tests/14-page build; new 14-request synthetic browser test plus existing regressions. Zero real provider calls; local database dropped and absence verified.
+- Critical audits pass with zero critical; backend 5 high/10 moderate and UI 10 high/1 moderate remain unaccepted. No dependencies/schema/configuration/financial policy changes or executor activation.
+- Legacy unjournaled scheduling, policy-version coordination, reader/worker ownership, post-preflight/provider races, reschedule/cancel reconciliation and SENDING crash risks remain. No migration, real data, provider/secrets/IAM/billing, merge or deployment.
+- Stop review-ready: APP-013 ~83%; governed APP-006 through APP-016 ~81%, planning only. Review evidence and guards before scoping authorized orchestration with remaining policy/ownership protections; no activation alone.
+
+### Earlier: inactive one-shot CREATE execution
 
 - Owner reviewed consumer guards and said proceed; fetched/reconciled backend `3c159b9` / governance `abac6af`, APP-013 sole Now. Added only the internal persisted-reservation executor/creator seam and proof; original saved changes preserved.
 - PENDING -> UNCERTAIN attempt latch and exact unassigned job-version advance commit before one saved-ID/operation-marker insert. Concurrent callers/restarts never reinsert. Unknown DB acknowledgment never dispatches. Newer observed job/review changes hold; only matching read-back atomically finalizes journal/job/intent/audit. No compensation or direct message.
@@ -265,10 +275,10 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest inactive APP-013 one-shot CREATE execution on `codex/app-013-transactional-messaging` (PR #21), including two new process exits and competing-entry-point audit; prior consumer/journal/reconciliation checkpoints remain intact.
+1. Review the latest APP-013 lifecycle/technician Calendar mutation guards on `codex/app-013-transactional-messaging` (PR #21), including deterministic race/rollback proof and desktop/390px provisional-hold UI; prior inactive CREATE execution remains intact.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. After review, complete one bounded lifecycle/technician mutation-guard section, preserving payment-policy semantics. Then review authorized scheduling orchestration and bounded reader/worker ownership/retry/review controls before activation. Reschedule/cancel reconciliation and dependency remediation stay open. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
+4. After review, scope the next bounded authorized scheduling-orchestration section with remaining policy-version coordination and reader/worker ownership/retry/review controls resolved before activation. Preserve payment semantics; do not activate the executor alone. Reschedule/cancel reconciliation and dependency remediation stay open. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
 
 ## Restart Commands
 

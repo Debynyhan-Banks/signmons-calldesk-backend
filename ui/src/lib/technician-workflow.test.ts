@@ -15,6 +15,21 @@ const job = (availableActions: TechnicianJobSummary["availableActions"]) =>
   ({ availableActions }) as TechnicianJobSummary;
 
 describe("technician workflow helpers", () => {
+  it("hides every action while Calendar is pending even if stale actions are supplied", () => {
+    const pending = {
+      ...job([
+        "accept",
+        "on_my_way",
+        "in_progress",
+        "complete",
+        "decline",
+        "cannot_take",
+      ]),
+      calendarSyncPending: true,
+    };
+    assert.equal(primaryTechnicianAction(pending), null);
+    assert.deepEqual(secondaryTechnicianActions(pending), []);
+  });
   it("reads and decodes only the URL fragment token", () => {
     assert.equal(technicianTokenFromHash("#abc.def"), "abc.def");
     assert.equal(technicianTokenFromHash("#abc%2Edef"), "abc.def");

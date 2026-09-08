@@ -5,6 +5,11 @@ import {
 } from "@nestjs/common";
 import { AuditActorType, JobStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  unfinishedCalendarOperations,
+  noUnfinishedCalendarOperations,
+  requireCalendarOperationSettled,
+} from "../scheduling/calendar-operation-guard";
 
 export interface CompleteJobRequest {
   tenantId: string;
@@ -36,12 +41,15 @@ export class JobLifecycleService {
           id: true,
           status: true,
           completedAt: true,
+          updatedAt: true,
+          calendarOperations: unfinishedCalendarOperations,
         },
       });
 
       if (!job) {
         throw new NotFoundException("Job was not found.");
       }
+      requireCalendarOperationSettled(job);
 
       if (job.status === JobStatus.COMPLETED) {
         if (!job.completedAt) {
@@ -65,10 +73,15 @@ export class JobLifecycleService {
           tenantId: request.tenantId,
           deletedAt: null,
           status: job.status,
+          updatedAt: job.updatedAt,
+          calendarOperations: noUnfinishedCalendarOperations,
         },
         data: {
           status: JobStatus.COMPLETED,
           completedAt,
+          updatedAt: new Date(
+            Math.max(completedAt.getTime(), job.updatedAt.getTime() + 1),
+          ),
         },
       });
 
@@ -83,9 +96,11 @@ export class JobLifecycleService {
             id: true,
             status: true,
             completedAt: true,
+            calendarOperations: unfinishedCalendarOperations,
           },
         });
         if (current?.status === JobStatus.COMPLETED && current.completedAt) {
+          requireCalendarOperationSettled(current);
           return this.toResult(current.id, current.completedAt, false);
         }
         throw new ConflictException("Job status changed before completion.");

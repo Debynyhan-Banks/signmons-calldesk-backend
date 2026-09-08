@@ -20,6 +20,7 @@ describe("TechnicianWorkflowService", () => {
     tenant: { timezone: "America/New_York" },
   };
   const baseJob = {
+    calendarOperations: [],
     id: jobId,
     tenantId,
     customerId: "customer-1",
@@ -98,6 +99,120 @@ describe("TechnicianWorkflowService", () => {
 
   beforeEach(() => jest.useFakeTimers().setSystemTime(now));
   afterEach(() => jest.useRealTimers());
+
+  it.each([
+    "accept",
+    "decline",
+    "cannot_take",
+    "on_my_way",
+    "in_progress",
+    "complete",
+  ] as const)(
+    "holds %s before transition checks, writes or departure notification",
+    async (action) => {
+      const { prisma, service, messaging } = createHarness();
+      prisma.job.findFirst.mockResolvedValue({
+        ...baseJob,
+        calendarOperations: [{ id: "pending" }],
+      });
+      await expect(
+        service.update({
+          rawToken: "signed-link",
+          jobId,
+          action,
+          expectedUpdatedAt: now.toISOString(),
+        }),
+      ).rejects.toThrow("Calendar synchronization is unfinished");
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+      expect(messaging.recordDeparture).not.toHaveBeenCalled();
+      expect(messaging.processOne).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["accept", "ACCEPTED"],
+    ["on_my_way", "EN_ROUTE"],
+    ["in_progress", "IN_PROGRESS"],
+    ["complete", "COMPLETED"],
+  ] as const)(
+    "does not replay %s through a Calendar hold",
+    async (action, technicianStatus) => {
+      const { prisma, service } = createHarness();
+      prisma.job.findFirst.mockResolvedValue({
+        ...baseJob,
+        technicianStatus,
+        calendarOperations: [{ id: "pending" }],
+      });
+      await expect(
+        service.update({
+          rawToken: "signed-link",
+          jobId,
+          action,
+          expectedUpdatedAt: now.toISOString(),
+        }),
+      ).rejects.toThrow("Calendar synchronization is unfinished");
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it("shows a held cancellation in the assigned list without available actions or journal IDs", async () => {
+    const { prisma, service } = createHarness();
+    prisma.job.findMany.mockResolvedValue([
+      {
+        ...baseJob,
+        status: "CANCELLED",
+        serviceWindowStart: null,
+        serviceWindowEnd: null,
+        calendarOperations: [{ id: "private-operation" }],
+      },
+    ]);
+    const result = await service.list("signed-link");
+    expect(result.groups.upcoming[0]).toMatchObject({
+      calendarSyncPending: true,
+      availableActions: [],
+    });
+    expect(JSON.stringify(result)).not.toContain("private-operation");
+    expect(prisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tenantId,
+          assignedUserId: technicianId,
+          assignedUserTenantId: tenantId,
+          OR: expect.arrayContaining([
+            { calendarOperations: { some: { finishedAt: null } } },
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("advances same-millisecond versions and guards the mutation against a newly reserved journal", async () => {
+    const { prisma, service } = createHarness();
+    prisma.job.findFirst.mockResolvedValue(baseJob);
+    prisma.job.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      service.update({
+        rawToken: "signed-link",
+        jobId,
+        action: "accept",
+        expectedUpdatedAt: now.toISOString(),
+      }),
+    ).rejects.toThrow("changed after it was loaded");
+    expect(prisma.job.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          calendarOperations: { none: { finishedAt: null } },
+          updatedAt: now,
+          status: baseJob.status,
+        }),
+        data: expect.objectContaining({
+          updatedAt: new Date(now.getTime() + 1),
+        }),
+      }),
+    );
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
 
   it("lists only the linked technician's tenant-scoped assignments", async () => {
     const { prisma, service } = createHarness();
