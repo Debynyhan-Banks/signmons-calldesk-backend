@@ -52,8 +52,7 @@ const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 const requests = [];
 let mode = "ready";
-let unblock;
-let slowStarted;
+let unblocks = [];
 const jobId = "10000000-0000-4000-8000-000000000001";
 const records = ["DELIVERED", "SENT", "QUEUED", "FAILED", "DEAD_LETTER"].map(
   (status, index) => ({
@@ -79,6 +78,27 @@ const records = ["DELIVERED", "SENT", "QUEUED", "FAILED", "DEAD_LETTER"].map(
     providerId: "DO_NOT_RENDER_PROVIDER_ID",
   }),
 );
+const intents = ["PENDING", "QUEUED", "STALE", "FAILED", "PENDING"].map(
+  (status, index) => ({
+    id: `30000000-0000-4000-8000-00000000000${index}`,
+    jobId: index === 4 ? "10000000-0000-4000-8000-000000000002" : jobId,
+    templateKey: "TECHNICIAN_ON_THE_WAY",
+    status,
+    attemptCount: status === "FAILED" ? 5 : status === "STALE" ? 1 : 0,
+    lastErrorCode:
+      status === "FAILED"
+        ? "enqueue_failed"
+        : status === "STALE"
+          ? "stale_lifecycle_state"
+          : null,
+    nextAttemptAt: "2026-09-08T14:02:00.000Z",
+    createdAt: "2026-09-08T14:00:00.000Z",
+    communicationEventId: status === "QUEUED" ? records[2].id : null,
+    stateHash: "DO_NOT_RENDER_STATE_HASH",
+    phone: "DO_NOT_RENDER_PHONE",
+    body: "DO_NOT_RENDER_BODY",
+  }),
+);
 await page.route("**/communications/sms/**", async (route) => {
   const request = route.request();
   if (request.method() === "OPTIONS") {
@@ -93,12 +113,28 @@ await page.route("**/communications/sms/**", async (route) => {
   }
   requests.push({ method: request.method(), url: request.url() });
   assert.equal(request.method(), "GET");
-  assert.equal(new URL(request.url()).pathname, "/communications/sms/history");
-  const responseMode = mode;
+  const pathname = new URL(request.url()).pathname;
+  assert.ok(
+    [
+      "/communications/sms/history",
+      "/communications/sms/enqueue-intents",
+    ].includes(pathname),
+  );
+  assert.ok(request.headers().authorization?.startsWith("Bearer synthetic-"));
+  const isIntent = pathname.endsWith("enqueue-intents");
+  const responseMode =
+    mode === "intent-failure"
+      ? isIntent
+        ? "failure"
+        : "ready"
+      : mode === "history-failure"
+        ? isIntent
+          ? "ready"
+          : "failure"
+        : mode;
   if (responseMode === "slow") {
-    slowStarted?.();
     await new Promise((done) => {
-      unblock = done;
+      unblocks.push(done);
     });
   }
   await route.fulfill({
@@ -111,7 +147,9 @@ await page.route("**/communications/sms/**", async (route) => {
         ? { message: "DO_NOT_RENDER_SERVER_PAYLOAD" }
         : responseMode === "empty"
           ? []
-          : records,
+          : isIntent
+            ? intents
+            : records,
     ),
   });
 });
@@ -137,14 +175,49 @@ try {
     .getByRole("status")
     .filter({ hasText: "5 records shown" })
     .waitFor();
-  assert.equal(new URL(requests[0].url).searchParams.get("jobId"), jobId);
-  assert.equal(new URL(requests[0].url).searchParams.get("limit"), "100");
+  await page
+    .getByRole("status")
+    .filter({ hasText: "4 intents shown" })
+    .waitFor();
+  const historyRequest = requests.find((request) =>
+    request.url.includes("/history"),
+  );
+  assert.equal(new URL(historyRequest.url).searchParams.get("jobId"), jobId);
+  assert.equal(new URL(historyRequest.url).searchParams.get("limit"), "100");
+  const intentRequest = requests.find((request) =>
+    request.url.includes("enqueue-intents"),
+  );
+  assert.equal(new URL(intentRequest.url).search, "");
+  const intentPanel = page.getByRole("region", { name: "SMS enqueue intents" });
+  assert.equal(await intentPanel.locator("li").count(), 4);
+  assert.ok(
+    (await intentPanel.innerText()).includes(
+      "Queue acknowledged · not delivery",
+    ),
+  );
+  await page
+    .getByRole("combobox", { name: "Intent status" })
+    .selectOption("pending");
+  assert.equal(await intentPanel.locator("li").count(), 1);
+  await page
+    .getByRole("combobox", { name: "Intent status" })
+    .selectOption("queued");
+  assert.equal(await intentPanel.locator("li").count(), 1);
+  await page
+    .getByRole("combobox", { name: "Intent status" })
+    .selectOption("all");
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    true,
+  );
   assert.equal(
     (await page.locator("body").innerText()).includes("DO_NOT_RENDER"),
     false,
   );
   await page.screenshot({
-    path: `${evidence}notifications-desktop.png`,
+    path: `${evidence}notification-intents-desktop.png`,
     fullPage: true,
   });
   await page
@@ -155,8 +228,12 @@ try {
     .filter({ hasText: "2 records shown" })
     .waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole("combobox", { name: "Intent status" })
+    .selectOption("attention");
+  assert.equal(await intentPanel.locator("li").count(), 2);
   await page.screenshot({
-    path: `${evidence}notifications-mobile.png`,
+    path: `${evidence}notification-intents-mobile.png`,
     fullPage: true,
   });
   assert.equal(
@@ -173,39 +250,92 @@ try {
   await page
     .getByRole("heading", { name: "No message activity found" })
     .waitFor();
+  await page
+    .getByRole("heading", { name: "No enqueue intents match" })
+    .waitFor();
   mode = "denied";
   await page.getByRole("button", { name: "Load history" }).click();
-  await page.getByRole("alert").filter({ hasText: "Access denied" }).waitFor();
+  await page
+    .getByRole("region", { name: "SMS history", exact: true })
+    .getByRole("alert")
+    .filter({ hasText: "Access denied" })
+    .waitFor();
+  await intentPanel
+    .getByRole("alert")
+    .filter({ hasText: "access denied" })
+    .waitFor();
   mode = "failure";
   await page.getByRole("button", { name: "Load history" }).click();
   await page
+    .getByRole("region", { name: "SMS history", exact: true })
     .getByRole("alert")
     .filter({ hasText: "could not be loaded" })
     .waitFor();
-  mode = "slow";
-  const started = new Promise((done) => {
-    slowStarted = done;
-  });
+  await intentPanel.getByRole("alert").waitFor();
+  mode = "intent-failure";
   await page.getByRole("button", { name: "Load history" }).click();
-  await started;
   await page
     .getByRole("status")
-    .filter({ hasText: "Loading message" })
+    .filter({ hasText: "5 records shown" })
     .waitFor();
-  await page.getByRole("button", { name: "Clear session" }).click();
-  const lateResponse = page.waitForResponse((response) =>
-    response.url().includes("/communications/sms/history"),
-  );
-  unblock();
-  await lateResponse;
-  // Wait for the response body and React's next paint before checking stale data.
-  await page.evaluate(
-    () =>
-      new Promise((done) =>
-        requestAnimationFrame(() => requestAnimationFrame(done)),
+  await intentPanel.getByRole("alert").waitFor();
+  mode = "history-failure";
+  await page.getByRole("button", { name: "Load history" }).click();
+  await intentPanel
+    .getByRole("status")
+    .filter({ hasText: "2 intents shown" })
+    .waitFor();
+  await page
+    .getByRole("region", { name: "SMS history", exact: true })
+    .getByRole("alert")
+    .waitFor();
+  for (const change of ["token", "job", "clear"]) {
+    mode = "slow";
+    unblocks = [];
+    await page.getByRole("button", { name: "Load history" }).click();
+    await page
+      .getByRole("status")
+      .filter({ hasText: "Loading message" })
+      .waitFor();
+    await intentPanel
+      .getByRole("status")
+      .filter({ hasText: "Loading enqueue" })
+      .waitFor();
+    // Wait for both intercepted requests to reach the held-response barrier.
+    await new Promise((done, reject) => {
+      const deadline = Date.now() + 10_000;
+      const check = () =>
+        unblocks.length === 2
+          ? done()
+          : Date.now() > deadline
+            ? reject(
+                new Error("Both read requests did not reach fixture barrier"),
+              )
+            : setTimeout(check, 10);
+      check();
+    });
+    if (change === "token")
+      await page.getByLabel("Operator ID token").fill("synthetic-edited-token");
+    else if (change === "job") await page.getByLabel("Job ID").fill("");
+    else await page.getByRole("button", { name: "Clear session" }).click();
+    const responses = Promise.all(
+      ["history", "enqueue-intents"].map((endpoint) =>
+        page.waitForResponse((response) =>
+          response.url().includes(`/communications/sms/${endpoint}`),
+        ),
       ),
-  );
-  assert.equal(await page.locator("ol li").count(), 0);
+    );
+    unblocks.forEach((done) => done());
+    await responses;
+    // Wait for the response body and React's next paint before checking stale data.
+    await page.evaluate(
+      () =>
+        new Promise((done) =>
+          requestAnimationFrame(() => requestAnimationFrame(done)),
+        ),
+    );
+    assert.equal(await page.locator("ol li").count(), 0);
+  }
   assert.equal(await page.getByLabel("Operator ID token").inputValue(), "");
   assert.equal(
     await page.evaluate(() => localStorage.length + sessionStorage.length),
@@ -239,20 +369,25 @@ try {
           "403",
           "500",
           "loading",
-          "late response after session clear",
+          "independent partial failures",
+          "intent status and loaded-subset job filters",
+          "late responses after token edit, job edit and session clear",
           "no credential storage",
           "PII omission",
           "keyboard order",
           "no page errors",
         ],
-        screenshots: ["notifications-desktop.png", "notifications-mobile.png"],
+        screenshots: [
+          "notification-intents-desktop.png",
+          "notification-intents-mobile.png",
+        ],
       },
       null,
       2,
     ),
   );
 } finally {
-  unblock?.();
+  unblocks.forEach((done) => done());
   await browser.close();
   await new Promise((done) => server.close(done));
 }

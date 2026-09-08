@@ -957,3 +957,24 @@ export function listSmsHistory(
     buildAuthHeaders({ bearerToken }),
   );
 }
+
+export interface SmsEnqueueIntentItem {
+  id: string;
+  jobId: string;
+  templateKey: string;
+  status: "PENDING" | "QUEUED" | "STALE" | "FAILED";
+  attemptCount: number;
+  lastErrorCode: string | null;
+  nextAttemptAt: string;
+  communicationEventId: string | null;
+  createdAt: string;
+}
+
+export function listSmsEnqueueIntents(
+  bearerToken: string,
+): Promise<SmsEnqueueIntentItem[]> {
+  return getJson(
+    "/communications/sms/enqueue-intents",
+    buildAuthHeaders({ bearerToken }),
+  );
+}

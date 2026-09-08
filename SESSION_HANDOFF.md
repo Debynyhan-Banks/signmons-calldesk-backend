@@ -11,7 +11,14 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: durable technician enqueue intents
+### Latest: read-only enqueue intent visibility
+
+- Owner reviewed the durable technician checkpoint and approved continuation. Added the read-only intent panel to `/app/notifications`: pending/stopped/acknowledged queue state, safe failure labels, claim/backoff timing, queue-event references and client-side filters over latest 100 tenant records. Acknowledgment is not delivery; no recovery action or provider control exists.
+- History and intent reads fail independently; token/job edits and session clear invalidate both result sets and late responses. Fixture Chrome desktop/390px QA passed 18 GET-only requests including partial failures, filtering, credential clearing and private-field omission; new screenshots and exact rerun steps are in APP-013 evidence.
+- Passed backend build/lint, 343 tests (3 existing skips), architecture/Prisma; UI lint, 27 tests/build. Critical audit 0 critical, unchanged 4 high/9 moderate; existing Browserslist warning. No database, provider/configuration, merge, deployment or real-data action.
+- Appointment durability, recovery actions/policy, remaining events/templates/preferences/technician-recipient notifications/email and live acceptance remain open. Prior intent migration still requires separate release approval. Planning estimates: APP-013 roughly 58%; APP-006 through APP-016 roughly 75%. Stop review-ready.
+
+### Earlier: durable technician enqueue intents
 
 - Technician departure intent now commits atomically with status/audit; disabled-by-default recovery uses conditional leases, recorded-state validation and existing queue idempotency. Stale state stops; queue failures stop after five attempts. Appointment intent capture remains separate unfinished work.
 - Read-only `/communications/sms/enqueue-intents` gives tenant-bound operational visibility without state hashes or private message fields. No UI/reset/replay control is added.

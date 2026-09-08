@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ApiError, listSmsHistory, type SmsHistoryItem } from "@/lib/api";
+import {
+  ApiError,
+  listSmsHistory,
+  listSmsEnqueueIntents,
+  type SmsHistoryItem,
+  type SmsEnqueueIntentItem,
+} from "@/lib/api";
+import { type IntentFilter } from "@/lib/notification-intents";
+import { EnqueueIntents } from "./enqueue-intents";
 import {
   filterHistory,
   historyTime,
@@ -21,6 +29,12 @@ export default function NotificationsPage() {
     "idle",
   );
   const [error, setError] = useState("");
+  const [intents, setIntents] = useState<SmsEnqueueIntentItem[]>([]);
+  const [intentState, setIntentState] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+  const [intentError, setIntentError] = useState("");
+  const [intentFilter, setIntentFilter] = useState<IntentFilter>("all");
   const generation = useRef(0);
   useEffect(
     () => () => {
@@ -34,6 +48,9 @@ export default function NotificationsPage() {
     setItems([]);
     setState("idle");
     setError("");
+    setIntents([]);
+    setIntentState("idle");
+    setIntentError("");
   }
 
   async function load() {
@@ -42,6 +59,24 @@ export default function NotificationsPage() {
     setItems([]);
     setError("");
     setState("loading");
+    setIntents([]);
+    setIntentError("");
+    setIntentState("loading");
+    void listSmsEnqueueIntents(token)
+      .then((result) => {
+        if (request !== generation.current) return;
+        setIntents(result);
+        setIntentState("ready");
+      })
+      .catch((failure: unknown) => {
+        if (request !== generation.current) return;
+        setIntentError(
+          failure instanceof ApiError && [401, 403].includes(failure.status)
+            ? "Enqueue intent access denied. Use a current owner, admin or dispatcher token for this tenant."
+            : "Enqueue intents could not be loaded. Check the connection and try again.",
+        );
+        setIntentState("error");
+      });
     try {
       const result = await listSmsHistory(token, jobId.trim());
       if (request !== generation.current) return;
@@ -126,10 +161,17 @@ export default function NotificationsPage() {
             />
           </label>
           <button
-            disabled={!token.trim() || !validJob || state === "loading"}
+            disabled={
+              !token.trim() ||
+              !validJob ||
+              state === "loading" ||
+              intentState === "loading"
+            }
             type="submit"
           >
-            {state === "loading" ? "Loading…" : "Load history"}
+            {state === "loading" || intentState === "loading"
+              ? "Loading…"
+              : "Load history"}
           </button>
           <button
             type="button"
@@ -280,11 +322,20 @@ export default function NotificationsPage() {
             ))}
           </ol>
         </section>
+        <EnqueueIntents
+          items={intents}
+          state={intentState}
+          error={intentError}
+          filter={intentFilter}
+          jobId={jobId.trim()}
+          onFilter={setIntentFilter}
+        />
         <p className={styles.footnote}>
-          History shows persisted communication records, not missing enqueue
-          attempts. Sent is not proof of delivery. Message bodies, phone numbers
-          and provider IDs are withheld. Sending, replay, template editing and
-          email are not available in this screen.
+          History and intents are separate snapshots, not a complete
+          notification audit. Queue acknowledgment and sent status are not proof
+          of delivery. Message bodies, phone numbers and provider IDs are
+          withheld. Sending, replay, template editing and email are not
+          available in this screen.
         </p>
       </section>
     </main>

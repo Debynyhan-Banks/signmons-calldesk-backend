@@ -10,6 +10,7 @@ const result = spawnSync(
     "src/lib/technician-workflow.test.ts",
     "src/lib/customer-booking.test.ts",
     "src/lib/notification-history.test.ts",
+    "src/lib/notification-intents.test.ts",
   ],
   { stdio: "inherit" },
 );

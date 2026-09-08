@@ -2,6 +2,26 @@
 
 Date: 2026-09-08
 
+## Read-only enqueue intent visibility checkpoint (2026-09-08)
+
+- Owner reviewed the preceding durable technician section and said proceed. Fetched both remotes; backend `fab7fa6` and governance `4b61ce2` remain the latest focused checkpoint, and canonical governance main still names APP-013 as sole Now. Completed exactly one bounded UI section; appointment durability and recovery actions are not included.
+- `/app/notifications` now reads existing SMS history and enqueue-intent APIs independently. The new "Before the message queue" panel shows technician departure intent status, failed enqueue attempts, bounded failure reason, claim/backoff timestamp, job/intent IDs and acknowledged queue-event ID. It does not fetch or display message content, recipient, state digest or provider identifiers.
+- Pending does not promise active retry or a send time: disabled delivery, claims and backoff can all leave intent pending. Queue acknowledgment is explicitly not delivery. STALE and FAILED are stopped for review, without any send/reset/replay control.
+- Intent filtering is client-side within the latest 100 tenant records, unlike history's server-side job query. Copy and counts explicitly identify this loaded subset; an empty result does not establish that no older intent exists or every job was notified. Only technician departures have durable capture; appointment intent capture and historical backfill remain absent.
+- Each panel has independent loading/error/empty state. A failed history read does not hide successful intent reads, and vice versa. Token/job edits and session clearing clear both result sets and invalidate late responses. Credentials remain memory-only. No API/backend/schema/provider behavior changed.
+- Validation passed: backend build/lint, 38 suites / 343 tests (1 suite / 3 existing policy skips), architecture and Prisma validation; UI lint, 6 suites / 27 tests and Next build (14 static pages); Prettier and diff checks. The explicit UI test runner now includes the four new intent helper tests.
+- Synthetic local Chrome QA passed desktop and 390px no overflow, all intent status filters, loaded-subset job filtering, invalid UUID, empty/403/500/loading states, partial failure in either panel, late responses after token edit/job edit/session clear, no credential storage, private-field omission, keyboard order and no page runtime errors. All 18 fixture API requests were GET. Initial ambiguous alert test selector was scoped to its panel before the successful rerun. Browser/server closed after QA.
+- Screenshots: `notification-intents-desktop.png`, `notification-intents-mobile.png` (visually inspected). Earlier history-only screenshots are retained as historical evidence. This is fixture browser evidence, not live authenticated backend/provider acceptance.
+- Critical audit passed (0 critical; unchanged 4 high / 9 moderate transitive findings). Existing outdated Browserslist-data warning remains. No dependencies changed, database accessed/migrated, external send, configuration, merge, deployment, billing or real customer action occurred. Previous migration `20260908120000_add_sms_enqueue_intents` still requires separately approved release sequencing.
+- Remaining: appointment durability, reviewed recovery actions/policy for exhausted or suppressed intents, other triggers, template/preferences controls, technician-recipient notifications, email and live acceptance. Planning estimates: APP-013 roughly 58%; governed APP-006 through APP-016 roughly 75%, not release acceptance scores.
+
+### Review this visibility section
+
+1. Review PR #21's new `enqueue-intents.tsx`, API read adapter, intent helpers/tests, page state handling and browser harness. Compare both new screenshots and check pending versus acknowledged versus delivered copy.
+2. In `ui`, run `npm run -s lint && npm test -- --runInBand && npm run -s build`.
+3. In `ui` on this workstation run `PLAYWRIGHT_MODULE=/Users/debynyhanbanks/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs node scripts/notification-browser-qa.mjs`. The loopback harness uses synthetic data only and closes its browser/server. Supply an installed Playwright module and optional `CHROME_PATH` elsewhere.
+4. Verify failed intent reads leave history usable, both views clear on credential/job changes, and no recovery or sending action exists. Review intent job-filter limits: latest 100 tenant records only. No live send or deployment is authorized by this checkpoint.
+
 ## Durable technician enqueue intent checkpoint (2026-09-08)
 
 - Refreshed both remotes; continued backend `3330c7b` / governance `b100a3e`. APP-013 remains the sole Now ticket. This section covers technician departure notifications only, not appointment outbox integration.
