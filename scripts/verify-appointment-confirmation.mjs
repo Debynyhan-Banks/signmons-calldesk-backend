@@ -42,6 +42,7 @@ export async function verifyAppointmentConfirmation({
       {},
       messaging,
       finalizer,
+      {}, // Cancellation is not exercised by this confirmation-only fixture.
       config,
     );
     scheduling.fetchBusy = async () => [];

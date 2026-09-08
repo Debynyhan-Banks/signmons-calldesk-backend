@@ -144,7 +144,52 @@ describe("SmsEnqueueIntentService", () => {
       expectedStateHash: intent.stateHash,
     });
   });
-  it.each(["APPOINTMENT_RESCHEDULED", "APPOINTMENT_CANCELLED", "unknown"])(
+  it("captures and recovers cancellation using the canonical cancelled digest", async () => {
+    const { prisma, service, messaging } = harness();
+    const job = {
+      id: intent.jobId,
+      status: "CANCELLED",
+      deletedAt: null,
+      customer: { phone: "+15555550123" },
+      tenant: { name: "Fixture", timezone: "UTC" },
+    };
+    prisma.job.findUnique.mockResolvedValue({ ...job, status: "ACCEPTED" });
+    await expect(
+      service.recordCancellation(prisma as never, {
+        tenantId: intent.tenantId,
+        jobId: intent.jobId,
+      }),
+    ).rejects.toThrow("compatible");
+    expect(prisma.smsEnqueueIntent.upsert).not.toHaveBeenCalled();
+    prisma.job.findUnique.mockResolvedValue(job);
+    await service.recordCancellation(prisma as never, {
+      tenantId: intent.tenantId,
+      jobId: intent.jobId,
+    });
+    expect(prisma.smsEnqueueIntent.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: {
+          tenantId: intent.tenantId,
+          jobId: intent.jobId,
+          templateKey: "APPOINTMENT_CANCELLED",
+          stateHash: expect.stringMatching(/^[0-9a-f]{64}$/),
+        },
+        update: {},
+      }),
+    );
+    prisma.smsEnqueueIntent.findUnique.mockResolvedValue({
+      ...intent,
+      templateKey: "APPOINTMENT_CANCELLED",
+    });
+    await service.processDue();
+    expect(messaging.queueLifecycle).toHaveBeenCalledWith({
+      tenantId: intent.tenantId,
+      jobId: intent.jobId,
+      templateKey: "APPOINTMENT_CANCELLED",
+      expectedStateHash: intent.stateHash,
+    });
+  });
+  it.each(["APPOINTMENT_RESCHEDULED", "unknown"])(
     "stops unsupported intent template %s without queue access",
     async (templateKey) => {
       const { prisma, service, messaging } = harness();

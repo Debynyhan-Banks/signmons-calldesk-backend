@@ -87,7 +87,11 @@ const intents = ["PENDING", "QUEUED", "STALE", "FAILED", "PENDING"].map(
     id: `30000000-0000-4000-8000-00000000000${index}`,
     jobId: index === 4 ? "10000000-0000-4000-8000-000000000002" : jobId,
     templateKey:
-      index === 0 ? "APPOINTMENT_CONFIRMED" : "TECHNICIAN_ON_THE_WAY",
+      index === 0
+        ? "APPOINTMENT_CONFIRMED"
+        : index === 3
+          ? "APPOINTMENT_CANCELLED"
+          : "TECHNICIAN_ON_THE_WAY",
     status,
     attemptCount: status === "FAILED" ? 5 : status === "STALE" ? 1 : 0,
     lastErrorCode:
@@ -270,7 +274,7 @@ try {
     false,
   );
   await page.screenshot({
-    path: `${evidence}retry-history-desktop.png`,
+    path: `${evidence}cancellation-intents-desktop.png`,
     fullPage: true,
   });
   await page
@@ -286,7 +290,7 @@ try {
     .selectOption("attention");
   assert.equal(await intentPanel.locator("li").count(), 2);
   await page.screenshot({
-    path: `${evidence}retry-history-mobile.png`,
+    path: `${evidence}cancellation-intents-mobile.png`,
     fullPage: true,
   });
   assert.equal(
@@ -441,6 +445,13 @@ try {
     assert.equal(await button.count(), 1);
     await button.click();
     await page.getByRole("region", { name: "Review enqueue retry" }).waitFor();
+    assert.ok(
+      (
+        await page
+          .getByRole("region", { name: "Review enqueue retry" })
+          .innerText()
+      ).includes("Appointment cancelled"),
+    );
     assert.equal(
       await page
         .getByLabel("Reviewed reason")
@@ -461,11 +472,11 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page
     .getByRole("region", { name: "Review enqueue retry" })
-    .screenshot({ path: `${evidence}retry-review-desktop.png` });
+    .screenshot({ path: `${evidence}cancellation-retry-desktop.png` });
   await page.setViewportSize({ width: 390, height: 844 });
   await page
     .getByRole("region", { name: "Review enqueue retry" })
-    .screenshot({ path: `${evidence}retry-review-mobile.png` });
+    .screenshot({ path: `${evidence}cancellation-retry-mobile.png` });
   assert.equal(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -637,10 +648,10 @@ try {
           "late POST after token edit, job edit and session clear",
         ],
         screenshots: [
-          "retry-history-desktop.png",
-          "retry-history-mobile.png",
-          "retry-review-desktop.png",
-          "retry-review-mobile.png",
+          "cancellation-intents-desktop.png",
+          "cancellation-intents-mobile.png",
+          "cancellation-retry-desktop.png",
+          "cancellation-retry-mobile.png",
         ],
       },
       null,

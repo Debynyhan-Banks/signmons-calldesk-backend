@@ -12,6 +12,7 @@ export enum EnqueueRetryReason {
 const supported = new Set([
   TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
   TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED,
+  TransactionalMessageTemplateKey.APPOINTMENT_CANCELLED,
 ]);
 
 export function parseEnqueueIntentTemplate(value: unknown) {

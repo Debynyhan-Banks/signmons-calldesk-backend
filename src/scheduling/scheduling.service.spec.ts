@@ -10,6 +10,7 @@ import type { TransactionalMessagingService } from "../communications/transactio
 import { TransactionalMessageTemplateKey } from "../communications/transactional-message-template.service";
 import { SchedulingService } from "./scheduling.service";
 import type { AppointmentConfirmationService } from "./appointment-confirmation.service";
+import type { AppointmentCancellationService } from "./appointment-cancellation.service";
 
 describe("SchedulingService", () => {
   const config = {
@@ -62,6 +63,13 @@ describe("SchedulingService", () => {
     queueLifecycle: jest.fn(),
   };
   const confirmation = { finalize: jest.fn() };
+  const cancellation = {
+    claim: jest.fn(),
+    finalize: jest.fn(),
+    restore: jest.fn(),
+    assertFinalized: jest.fn(),
+    logDeferred: jest.fn(),
+  };
 
   let service: SchedulingService;
 
@@ -77,6 +85,15 @@ describe("SchedulingService", () => {
     notifications.enqueueAppointmentConfirmed.mockReset();
     logger.error.mockReset();
     confirmation.finalize.mockReset();
+    cancellation.claim.mockReset().mockResolvedValue({
+      id: baseJob.id,
+      tenantId: baseJob.tenantId,
+      updatedAt: new Date(),
+    });
+    cancellation.finalize.mockReset().mockResolvedValue(undefined);
+    cancellation.restore.mockReset().mockResolvedValue({ count: 1 });
+    cancellation.assertFinalized.mockReset().mockResolvedValue(undefined);
+    cancellation.logDeferred.mockReset();
     notifications.enqueueAppointmentCancelled.mockReset();
     transactionalMessaging.queueLifecycle.mockReset().mockResolvedValue({
       id: "communication-1",
@@ -94,6 +111,7 @@ describe("SchedulingService", () => {
       paymentRequests as unknown as PaymentRequestsService,
       transactionalMessaging as unknown as TransactionalMessagingService,
       confirmation as unknown as AppointmentConfirmationService,
+      cancellation as unknown as AppointmentCancellationService,
       config,
     );
   });
@@ -599,16 +617,19 @@ describe("SchedulingService", () => {
       expect.objectContaining({ method: "DELETE" }),
     );
     expect(notifications.enqueueAppointmentCancelled).toHaveBeenCalledTimes(1);
-    expect(transactionalMessaging.queueLifecycle).toHaveBeenCalledWith({
-      tenantId: baseJob.tenantId,
-      jobId: baseJob.id,
-      templateKey: TransactionalMessageTemplateKey.APPOINTMENT_CANCELLED,
-    });
+    expect(cancellation.finalize).toHaveBeenCalledTimes(1);
+    expect(cancellation.finalize.mock.invocationCallOrder[0]).toBeGreaterThan(
+      fetchMock.mock.invocationCallOrder[0],
+    );
+    expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
   });
 
-  it("keeps a committed cancellation successful when SMS queueing fails", async () => {
+  it("keeps a finalized cancellation successful when operations notification fails", async () => {
     prisma.job.findFirst.mockResolvedValue(appointmentJob());
     prisma.job.updateMany.mockResolvedValue({ count: 1 });
+    notifications.enqueueAppointmentCancelled.mockImplementation(() => {
+      throw new Error("operations unavailable");
+    });
     transactionalMessaging.queueLifecycle.mockRejectedValue(
       new Error("delivery unavailable"),
     );
@@ -629,11 +650,66 @@ describe("SchedulingService", () => {
     ).resolves.toEqual(
       expect.objectContaining({ status: "appointment_cancelled" }),
     );
-    expect(logger.error).toHaveBeenCalledWith(
-      expect.stringContaining(baseJob.id),
-      expect.any(Error),
-      SchedulingService.name,
+    expect(cancellation.logDeferred).toHaveBeenCalledWith(baseJob.id);
+    expect(cancellation.restore).not.toHaveBeenCalled();
+  });
+
+  it("does not restore or notify after acknowledged deletion and failed finalization", async () => {
+    prisma.job.findFirst.mockResolvedValue(appointmentJob());
+    cancellation.finalize.mockRejectedValue(new Error("transaction failed"));
+    jest
+      .spyOn(service as never, "deleteCalendarEvent" as never)
+      .mockResolvedValue(undefined as never);
+    await expect(
+      service.manageAppointment({
+        managementToken: managementToken(),
+        action: "cancel",
+      }),
+    ).rejects.toThrow("needs confirmation by the office");
+    expect(cancellation.restore).not.toHaveBeenCalled();
+    expect(notifications.enqueueAppointmentCancelled).not.toHaveBeenCalled();
+    expect(transactionalMessaging.queueLifecycle).not.toHaveBeenCalled();
+  });
+
+  it("compensates only the claimed version when calendar deletion fails and never finalizes", async () => {
+    prisma.job.findFirst.mockResolvedValue(appointmentJob());
+    jest
+      .spyOn(service as never, "deleteCalendarEvent" as never)
+      .mockRejectedValue(new Error("unknown outcome") as never);
+    await expect(
+      service.manageAppointment({
+        managementToken: managementToken(),
+        action: "cancel",
+      }),
+    ).rejects.toThrow("could not be confirmed");
+    expect(cancellation.restore).toHaveBeenCalledTimes(1);
+    expect(cancellation.finalize).not.toHaveBeenCalled();
+    expect(notifications.enqueueAppointmentCancelled).not.toHaveBeenCalled();
+  });
+
+  it("requires local finalization proof for an already cancelled replay", async () => {
+    prisma.job.findFirst.mockResolvedValue(
+      appointmentJob({ status: "CANCELLED" }),
     );
+    cancellation.assertFinalized.mockRejectedValue(new Error("office review"));
+    await expect(
+      service.manageAppointment({
+        managementToken: managementToken(),
+        action: "cancel",
+      }),
+    ).rejects.toThrow("office review");
+    expect(cancellation.claim).not.toHaveBeenCalled();
+    expect(cancellation.finalize).not.toHaveBeenCalled();
+    cancellation.assertFinalized.mockResolvedValue(undefined);
+    await expect(
+      service.manageAppointment({
+        managementToken: managementToken(),
+        action: "cancel",
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({ status: "appointment_cancelled" }),
+    );
+    expect(notifications.enqueueAppointmentCancelled).not.toHaveBeenCalled();
   });
 
   function managementToken(): string {

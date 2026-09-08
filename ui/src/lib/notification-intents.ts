@@ -12,9 +12,11 @@ export function canReviewIntentRetry(
     item.status === "FAILED" &&
     item.attemptCount === 5 &&
     item.communicationEventId === null &&
-    ["APPOINTMENT_CONFIRMED", "TECHNICIAN_ON_THE_WAY"].includes(
-      item.templateKey,
-    ) &&
+    [
+      "APPOINTMENT_CONFIRMED",
+      "TECHNICIAN_ON_THE_WAY",
+      "APPOINTMENT_CANCELLED",
+    ].includes(item.templateKey) &&
     typeof item.updatedAt === "string" &&
     Number.isFinite(Date.parse(item.updatedAt)) &&
     new Date(item.updatedAt).toISOString() === item.updatedAt

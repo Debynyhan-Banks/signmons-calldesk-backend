@@ -23,6 +23,7 @@ import { LoggingService } from "../logging/logging.service";
 import { PaymentRequestsService } from "../payments/payment-requests.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { AppointmentConfirmationService } from "./appointment-confirmation.service";
+import { AppointmentCancellationService } from "./appointment-cancellation.service";
 
 export interface AppointmentSlot {
   token: string;
@@ -102,6 +103,7 @@ export class SchedulingService {
     private readonly paymentRequests: PaymentRequestsService,
     private readonly transactionalMessaging: TransactionalMessagingService,
     private readonly confirmation: AppointmentConfirmationService,
+    private readonly cancellation: AppointmentCancellationService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {}
@@ -834,6 +836,7 @@ export class SchedulingService {
 
   private async cancelAppointment(job: AppointmentJob) {
     if (job.status === JobStatus.CANCELLED) {
+      await this.cancellation.assertFinalized(job);
       return {
         status: "appointment_cancelled" as const,
         reference: this.reference(job.id),
@@ -855,31 +858,31 @@ export class SchedulingService {
     const originalEnd = job.serviceWindowEnd;
     const originalTimeText =
       job.preferredTimeText ?? this.formatWindow(originalStart, originalEnd);
-    const cancellation = await this.prisma.job.updateMany({
-      where: {
-        id: job.id,
-        tenantId: job.tenantId,
-        status: JobStatus.ACCEPTED,
-        calendarEventId: eventId,
-        serviceWindowStart: originalStart,
-        serviceWindowEnd: originalEnd,
-      },
-      data: {
-        status: JobStatus.CANCELLED,
-        calendarEventId: null,
-        serviceWindowStart: null,
-        serviceWindowEnd: null,
-        preferredTimeText: originalTimeText,
-      },
-    });
-    if (cancellation.count !== 1) {
-      throw new ConflictException(
-        "This appointment changed while you were viewing it. Please refresh.",
-      );
-    }
+    const claim = await this.cancellation.claim(job, originalTimeText);
 
     try {
       await this.deleteCalendarEvent(eventId);
+    } catch {
+      // Preserve the existing pre-acknowledgment compensation, version-bound.
+      // A failed/unknown calendar result is not evidence the event still exists.
+      try {
+        await this.cancellation.restore(claim, job);
+      } catch {
+        this.cancellation.logDeferred(job.id);
+      }
+      throw new ServiceUnavailableException(
+        "Cancellation could not be confirmed. Please contact the office before trying again.",
+      );
+    }
+    try {
+      await this.cancellation.finalize(claim);
+    } catch {
+      this.cancellation.logDeferred(job.id);
+      throw new ServiceUnavailableException(
+        "Cancellation needs confirmation by the office. Please contact the office before trying again.",
+      );
+    }
+    try {
       this.notifications.enqueueAppointmentCancelled({
         ...this.mapJob(job),
         status: "CANCELLED",
@@ -889,39 +892,13 @@ export class SchedulingService {
         preferredTimeText: originalTimeText,
         updatedAt: new Date(),
       });
-      await this.enqueueTransactionalMessage(
-        this.mapJob(job),
-        TransactionalMessageTemplateKey.APPOINTMENT_CANCELLED,
-      );
-      return {
-        status: "appointment_cancelled" as const,
-        reference: this.reference(job.id),
-      };
-    } catch (error) {
-      await this.prisma.job.updateMany({
-        where: {
-          id: job.id,
-          tenantId: job.tenantId,
-          status: JobStatus.CANCELLED,
-          calendarEventId: null,
-        },
-        data: {
-          status: JobStatus.ACCEPTED,
-          calendarEventId: eventId,
-          serviceWindowStart: originalStart,
-          serviceWindowEnd: originalEnd,
-          preferredTimeText: originalTimeText,
-        },
-      });
-      this.loggingService.error(
-        `Appointment cancellation failed for job ${job.id}.`,
-        error instanceof Error ? error : undefined,
-        SchedulingService.name,
-      );
-      throw new ServiceUnavailableException(
-        "We could not cancel that appointment. It remains scheduled; please call Eternity.",
-      );
+    } catch {
+      this.cancellation.logDeferred(job.id);
     }
+    return {
+      status: "appointment_cancelled" as const,
+      reference: this.reference(job.id),
+    };
   }
 
   private async enqueueTransactionalMessage(
