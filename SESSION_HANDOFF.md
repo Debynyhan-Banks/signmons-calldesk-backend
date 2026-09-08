@@ -11,7 +11,17 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: lifecycle and technician Calendar mutation guards
+### Latest: policy-update Calendar guards
+
+- Owner approved the remaining-risk plan and item 1; fetched/reconciled backend `a048d3e` / governance `7f58671`, APP-013 sole Now. Completed only urgency/payment-exception job-policy guards; original saved changes preserved.
+- Unfinished Calendar work blocks urgency replay/override and payment exception approve/revoke. Both use tenant/job/deletion/version/no-unfinished conditional writes and monotonic updatedAt; payment retains client expected version and current status. Winning policy JSON and atomic audits are preserved.
+- Existing financial rules, verified-payment handling, Checkout/webhooks, entitlements and operations escalation remain unchanged. Urgency API retains server-observed concurrency control, not a new client-version field. No Stripe/provider/SDK/configuration action.
+- Passed backend lint/build, 49 suites/598 tests (3 existing skips), architecture/Prisma; local 15-migration fixture covers 12 action/status holds, both race orders, competing policy snapshots, tenant/deletion boundaries and audit rollback. Prior 11 process crashes pass; zero real provider calls; test database removed and absence verified.
+- UI code unchanged: lint/30 tests/14-page build; new desktop/390px urgency conflict QA (8 requests, 4 synthetic POSTs), visually reviewed screenshots and prior 14/14/92-request regressions pass.
+- Full audits still unaccepted: backend 5 high/10 moderate, UI 10 high/1 moderate, 0 critical. No dependency/schema changes, migration outside disposable test DB, real data, merge, deploy or activation.
+- Review-ready: APP-013 ~85%; governed APP-006 through APP-016 ~81%, planning only. Next after review is one bounded authorized CREATE orchestration section with upstream guards and explicit reader/worker ownership; activation stays gated. Other payment/entitlement state, post-preflight/provider races, reschedule/cancel and SENDING recovery, dependencies and remaining messaging/acceptance stay open. Exact commands: `evidence/APP-013/readiness-report.md`.
+
+### Earlier: lifecycle and technician Calendar mutation guards
 
 - Owner reviewed inactive CREATE execution and said proceed; fetched/reconciled backend `df9143a` / governance `abed80c`, APP-013 sole Now. Completed only lifecycle/technician guards on existing focused branches; unrelated saved changes preserved.
 - Unfinished Calendar work rejects completion and all six technician actions before replay/write. Exact-version/current-state/no-unfinished claims and monotonic updatedAt protect both mutation paths. Tenant, assignee, transactional audit, departure intent and payment semantics remain intact.
@@ -275,10 +285,10 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 lifecycle/technician Calendar mutation guards on `codex/app-013-transactional-messaging` (PR #21), including deterministic race/rollback proof and desktop/390px provisional-hold UI; prior inactive CREATE execution remains intact.
+1. Review the latest APP-013 urgency/payment-exception Calendar policy guards on `codex/app-013-transactional-messaging` (PR #21), including competing-snapshot/race/rollback proof and desktop/390px conflict handling; prior inactive CREATE execution remains intact.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. After review, scope the next bounded authorized scheduling-orchestration section with remaining policy-version coordination and reader/worker ownership/retry/review controls resolved before activation. Preserve payment semantics; do not activate the executor alone. Reschedule/cancel reconciliation and dependency remediation stay open. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
+4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.
 
 ## Restart Commands
 

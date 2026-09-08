@@ -1,6 +1,15 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { AuditActorType, JobUrgency, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  unfinishedCalendarOperations,
+  noUnfinishedCalendarOperations,
+  requireCalendarOperationSettled,
+} from "../scheduling/calendar-operation-guard";
 import {
   JobNotificationService,
   NotificationDeliveryOutcome,
@@ -72,9 +81,16 @@ export class UrgencyReviewService {
     return this.prisma.$transaction(async (transaction) => {
       const job = await transaction.job.findFirst({
         where: { id: input.jobId, tenantId: input.tenantId, deletedAt: null },
-        select: { id: true, urgency: true, policySnapshot: true },
+        select: {
+          id: true,
+          urgency: true,
+          policySnapshot: true,
+          updatedAt: true,
+          calendarOperations: unfinishedCalendarOperations,
+        },
       });
       if (!job) throw new NotFoundException("Urgency review was not found.");
+      requireCalendarOperationSettled(job);
 
       if (job.urgency === input.urgency) {
         return {
@@ -86,11 +102,20 @@ export class UrgencyReviewService {
         };
       }
 
-      const changedAt = new Date();
+      const changedAt = new Date(
+        Math.max(Date.now(), job.updatedAt.getTime() + 1),
+      );
       const snapshot = this.record(job.policySnapshot) ?? {};
-      await transaction.job.update({
-        where: { id_tenantId: { id: job.id, tenantId: input.tenantId } },
+      const updated = await transaction.job.updateMany({
+        where: {
+          id: job.id,
+          tenantId: input.tenantId,
+          deletedAt: null,
+          updatedAt: job.updatedAt,
+          calendarOperations: noUnfinishedCalendarOperations,
+        },
         data: {
+          updatedAt: changedAt,
           urgency: input.urgency as JobUrgency,
           policySnapshot: {
             ...snapshot,
@@ -103,6 +128,11 @@ export class UrgencyReviewService {
           } satisfies Prisma.InputJsonValue,
         },
       });
+      if (updated.count !== 1) {
+        throw new ConflictException(
+          "Job changed while urgency was being saved. Refresh before trying again.",
+        );
+      }
       const audit = await transaction.auditLog.create({
         data: {
           tenantId: input.tenantId,
