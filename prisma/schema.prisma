@@ -47,6 +47,7 @@ model TenantOrganization {
   communicationContents   CommunicationContent[]
   smsConsentRecords       SmsConsentRecord[]
   smsEnqueueIntents        SmsEnqueueIntent[]
+  calendarOperations      CalendarOperation[]
   conversationJobLinks    ConversationJobLink[]
   jobOffers               JobOffer[]
   userAvailabilityBlocks  UserAvailabilityBlock[]
@@ -365,6 +366,7 @@ model Job {
   communicationEvents CommunicationEvent[]
   conversationLinks   ConversationJobLink[]
   smsEnqueueIntents    SmsEnqueueIntent[]
+  calendarOperations  CalendarOperation[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, intakeSessionId])
@@ -631,6 +633,53 @@ model CommunicationEvent {
   @@index([status, nextAttemptAt])
   @@index([conversationId, conversationTenantId, occurredAt])
   @@index([jobId, jobTenantId, occurredAt])
+}
+
+enum CalendarOperationAction {
+  CREATE
+  RESCHEDULE
+  CANCEL
+}
+
+enum CalendarOperationStatus {
+  PENDING
+  UNCERTAIN
+  APPLIED
+  NEEDS_REVIEW
+  FINALIZED
+  ABORTED
+}
+
+// Persistence foundation only. The migration also owns CHECK constraints and
+// a partial unique index permitting only one unfinished operation per job.
+model CalendarOperation {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  jobId String @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  action CalendarOperationAction
+  status CalendarOperationStatus @default(PENDING)
+  calendarId String @db.VarChar(1024)
+  calendarEventId String @db.VarChar(256)
+  timeZone String @db.VarChar(128)
+  expectedUpdatedAt DateTime
+  claimedUpdatedAt DateTime
+  previousStatus JobStatus
+  previousCalendarEventId String? @db.VarChar(256)
+  previousWindowStart DateTime?
+  previousWindowEnd DateTime?
+  previousTimeText String? @db.VarChar(160)
+  desiredWindowStart DateTime?
+  desiredWindowEnd DateTime?
+  desiredTimeText String? @db.VarChar(160)
+  finishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, tenantId])
+  @@index([tenantId, createdAt])
+  @@index([status, createdAt])
 }
 
 enum SmsEnqueueIntentStatus {

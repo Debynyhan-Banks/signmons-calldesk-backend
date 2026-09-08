@@ -11,7 +11,15 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: post-Calendar reschedule intent finalization
+### Latest: Calendar operation journal foundation
+
+- Owner approved the robust Calendar/crash-recovery recommendation. Resumed fetched backend `f7d5e1e` / governance `82fc1fb`; APP-013 remains sole Now. Added only the local journal/reservation persistence foundation and tests, with no production consumer or SchedulingModule registration.
+- Atomic version-bound CREATE/RESCHEDULE/CANCEL reservation plus PENDING journal; stable create event identity, retained original deletion target/window/label, tenant composite FK, one unfinished operation per job and SQL invariants. Hard deletion of referenced jobs/tenants is restricted pending an explicit archival policy. No external call, successful-appointment audit, SMS intent, worker or completion transition is added.
+- Local proof passed 15 migrations and six actual process exits before/after commit, concurrent claims, real post-insert rollback, restart persistence, tenant/version/deletion/SQL guards and no premature messages. Fixture removed, absence verified; zero provider calls. Backend lint/build, 464 tests (3 existing skips), architecture/Prisma; UI lint/29 tests/static build and 92-request desktop/390px synthetic browser QA passed; four screenshots inspected. Initial concurrent full-test process exit 139 did not recur on two full reruns; root cause unestablished. Existing pg warning and backend 5 high/10 moderate, UI 10 high/1 moderate audits remain open.
+- This is NOT live crash recovery: existing scheduling, finalization and UI paths remain unchanged. Next after review: journal-aware scheduling integration and bounded reconciliation with provider read/version checks, recovery ownership and atomic journal/appointment/audit/intent finalization. Preserve all existing auth/payment/availability guards. Do not activate this journal alone.
+- Migration `20260908180000_add_calendar_operation_journal` is disposable-local-tested only. No staging/production, real data, provider/configuration, billing/secrets/IAM, merge/deploy or dependency changes. APP-013 approximately 75%; APP-006 through APP-016 approximately 80%, planning estimates. Exact validation/review steps and browser limits: `evidence/APP-013/readiness-report.md`. Stop review-ready.
+
+### Earlier: post-Calendar reschedule intent finalization
 
 - Owner reviewed cancellation finalization and said proceed. Fetched/reconciled backend `df97aa8` / governance `50c3db7`; APP-013 remains sole Now. Completed reschedule finalization only on the existing focused branches, preserving original saved-checkout changes.
 - Added `AppointmentReschedulingService`: original version/tenant/window-bound reservation claim, exact-version pre-acknowledgment compensation, and post-Calendar finalization that atomically advances the job version, captures `APPOINTMENT_RESCHEDULED` intent and records customer activity audit. Existing labels are preserved; intent ID and exact finalized timestamp are additive audit metadata. Claim/finalization/compensation advance versions even within one clock millisecond.
@@ -230,10 +238,10 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the APP-013 durable technician intent checkpoint and local migration proof alongside history UI/lifecycle checks on `codex/app-013-transactional-messaging` (PR #21); BE-008 is accepted.
+1. Review the latest inactive APP-013 Calendar journal/reservation foundation and six local process-crash cases on `codex/app-013-transactional-messaging` (PR #21); earlier messaging/finalization checkpoints remain intact and BE-008 is accepted.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. Continue with one bounded APP-013 section for appointment durable intents, operator recovery policy/UI, remaining events, email, template/preferences controls or technician notifications. Migration, live acceptance, release and external sends require their own approval.
+4. After review, continue one bounded APP-013 journal-aware integration/reconciliation section; dependency remediation remains a separate approved direction. Do not activate the journal alone: customer views, dispatch and notification admission must respect unfinished state. Migration, live acceptance, release and external sends require their own approval.
 
 ## Restart Commands
 

@@ -9,6 +9,7 @@ import { verifyAppointmentConfirmation } from "./verify-appointment-confirmation
 import { verifyEnqueueRecovery } from "./verify-enqueue-recovery.mjs";
 import { verifyAppointmentCancellation } from "./verify-appointment-cancellation.mjs";
 import { verifyAppointmentRescheduling } from "./verify-appointment-rescheduling.mjs";
+import { verifyCalendarOperationJournal } from "./verify-calendar-operation-journal.mjs";
 const require = createRequire(import.meta.url);
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
@@ -343,6 +344,11 @@ try {
     disabled,
     jobData,
   });
+  const calendarJournalChecks = await verifyCalendarOperationJournal({
+    prisma,
+    jobData,
+    otherTenantId: other.id,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -350,6 +356,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...calendarJournalChecks,
         ...confirmationChecks,
         ...cancellationChecks,
         ...reschedulingChecks,
