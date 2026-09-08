@@ -65,4 +65,18 @@ Deferred to the next BE-008 checkpoint:
 - Candidate and routed checks returned HTTP 200 for liveness/readiness. The unauthenticated metrics endpoint returned 401. The unsigned, unconfigured Twilio voice webhook failed closed with 503.
 - `SMS_DELIVERY_ENABLED=false` is explicit on the released revision. No Twilio credential was accessed, no webhook identity was configured, and no call or SMS was initiated.
 - Temporary build access was removed after release: the dedicated build service account is disabled and has zero project, Cloud Build bucket, and Artifact Registry repository bindings.
-- This is a code and migration staging release, not Twilio sandbox acceptance. Signed sandbox voice/SMS callbacks, consented outbound delivery, STOP/START, status callback, dead-letter/replay, and cleanup evidence remain required before BE-008 is complete.
+- At this release checkpoint, Twilio sandbox acceptance was still pending; the subsequent acceptance section records its completion.
+
+## Staging acceptance - 2026-09-07
+
+- Twilio credentials are referenced from Google Secret Manager; values were not committed or written to evidence.
+- The Signmons number is attached to the verified Signmons Dispatch messaging service. Voice and SMS POST webhooks resolve the staging tenant and reject unsigned requests.
+- An authorized inbound call completed and returned the tenant-specific automated-assistant greeting. Inbound voice and SMS remain available 24/7; tenant business hours describe human availability only.
+- STOP created one tenant-scoped `OPTED_OUT` record and audit event. START created one restoration audit event and left the final consent state `OPTED_IN`.
+- One explicitly authorized transactional staging SMS was queued through `SmsDeliveryService`, claimed once, received on the test phone, and advanced to `DELIVERED` through the signed per-message Twilio status callback. No duplicate was created.
+- A simulated provider rejection produced `DEAD_LETTER` without contacting Twilio. The record appeared in the privacy-safe dead-letter list; replay without duplicate-risk acknowledgment was rejected; acknowledged replay created one audit record and the simulated second attempt dead-lettered again.
+- The broad messaging-service status callback was removed so Twilio-managed keyword replies do not enter the application delivery ledger. Application-created messages retain their per-message `/webhooks/twilio/sms/status` callback.
+- The temporary quiet-hour bypass was removed immediately after the single delivery. Staging returned to recipient-local outbound quiet hours of 9 PM to 8 AM, `SMS_DELIVERY_ENABLED=false`, an empty queued/sending set, healthy liveness/readiness, and 100 percent traffic on `signmons-calldesk-staging-app013bounds`.
+- Permanent availability-boundary naming shipped through PR `#18`: `outboundQuietHoursStart` and `outboundQuietHoursEnd` cannot be confused with contractor business hours, while legacy values remain readable during migration.
+- Required code gates passed before release: build, lint, architecture, diff, 55 focused communications/configuration tests, and 280 full-suite tests; 3 existing tests remained skipped.
+- BE-008 acceptance is complete. APP-013 remains active for transactional templates, notification-center UI, event selection, and operator delivery visibility.
