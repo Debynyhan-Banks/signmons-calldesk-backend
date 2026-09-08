@@ -11,7 +11,19 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: UI framework security upgrade
+### Latest: PostCSS security remediation
+
+- Owner requested continued risk remediation; fetched/reconciled backend `5ac324c` / governance `430daf6`, APP-013 sole Now. Explicitly selected one bounded PostCSS security section. Existing focused branches only; unrelated saved-checkout edits preserved.
+- UI manifest adds only `next@15.5.25 -> postcss: 8.5.28` override; lockfile changes only PostCSS 8.4.31 -> 8.5.28 and its dependency-range metadata. Next/React, other resolved packages, backend dependencies and application source are unchanged. Clean npm ci and resolution through Next's actual CSS build consumer verified the installed patch.
+- Eight new tests cover exact override/installed/lock agreement, three source-map disclosure boundaries, adjacent/inline/explicit-map compatibility, plugin transformation and closing-style serialization escaping. The three disclosure cases first failed on 8.4.31 with small synthetic files, then passed on 8.5.28. No real secrets/customer files or live endpoint tested; library reproduction is not proof of an exploitable CallDesk route.
+- UI lint/type check, 44 tests and 14-page build pass. All five desktop/390px browser harnesses pass: framework smoke 22 route checks/12 home navigations/static manifest; customer/dispatch, technician, policy and notifications 14/14/8/92 mocked requests. Zero external requests/page errors. Temporary screenshots preserve committed evidence; missing-link mobile and notification desktop visually reviewed.
+- Backend lint/build, 50 suites/610 tests (3 existing skips), architecture/Prisma and disposable 15-migration suite pass, including 11 prior process-crash cases. Zero real provider calls; fixture database dropped and absence independently verified.
+- UI full audit improves 6 high/2 moderate -> 5 high/1 moderate (8 -> 6 affected packages); PostCSS and Next findings absent. UI omit-dev now zero findings, exit 0. Backend unchanged 5 high/9 moderate; omit-dev 4 high/8 moderate. Both critical-only gates pass; remaining full-audit findings are not accepted.
+- Override ownership/removal stays in APP-013: re-review on the next framework update; remove only when Next natively resolves a reviewed patched PostCSS version and these tests/build/browser gates pass. This exact-version exception is not a permanent global override or permission for another major upgrade.
+- No schema/new migration, real data, external sends, provider/secrets/IAM/billing configuration, charges, merge, deployment or activation. Functional Calendar/unknown-send recovery and acceptance remain open. Planning estimates unchanged APP-013 ~85%; governed APP-006 through APP-016 ~81%, not release readiness.
+- Exact review commands, source links and scope: `evidence/APP-013/readiness-report.md`; objective snapshot: `postcss-audit-summary.json`.
+
+### Earlier: UI framework security upgrade
 
 - Owner requested continued risk resolution; fetched/reconciled backend `1955200` / governance `e095321`, APP-013 sole Now. Explicitly selected one bounded UI framework security upgrade within the approved risk plan. Existing focused branches only; unrelated saved-checkout edits preserved.
 - Next/eslint-config-next 14.2.33 -> 15.5.25; React/React DOM 18.3.1 -> 19.2.8 with aligned React 19 types. Clean install and installed/manifest/lock agreement verified. Chose the patched 15 maintenance line to limit this checkpoint to one Next major upgrade; no forced dependency overrides or backend dependency changes.
@@ -305,7 +317,7 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the latest APP-013 UI framework security upgrade on `codex/app-013-transactional-messaging` (PR #21): Next 15.5.25/React 19.2.8, static manifest/home-link compatibility, six new tests, browser smoke and audit delta. Prior Calendar policy guards and inactive execution remain intact; no activation. Critical findings now zero; full audits still fail/unaccepted.
+1. Review the latest APP-013 PostCSS security remediation on `codex/app-013-transactional-messaging` (PR #21): scoped PostCSS 8.5.28 override, eight regression tests, clean UI omit-dev audit and unchanged application behavior. Full UI/backend audits still fail/unaccepted; prior Calendar guards and inactive execution remain intact. No activation.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
 4. After review, complete one bounded authorized CREATE scheduling-orchestration section preserving upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Do not activate the executor alone. Other payment/entitlement state and post-preflight races, reschedule/cancel and SENDING recovery, and dependency remediation stay open; confirmed reachable security issues take priority. Migration, retention/provider configuration, live acceptance, release and external sends require separate approval.

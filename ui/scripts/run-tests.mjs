@@ -5,6 +5,7 @@ const result = spawnSync(
   [
     "--test",
     "scripts/framework-contract.test.mjs",
+    "scripts/postcss-security.test.mjs",
     "src/lib/intake-review.test.ts",
     "src/lib/urgency-review.test.ts",
     "src/lib/dispatch-board.test.ts",

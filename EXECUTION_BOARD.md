@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - UI framework security upgrade is review-ready on PR #21: Next 15.5.25/React 19.2.8, static hosting compatibility and browser regressions; UI audit now 0 critical/6 high/2 moderate, still unaccepted. Backend unchanged 5 high/9 moderate. Authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery, remaining dependencies and acceptance stay open; no activation or deployment.
+  - Scoped PostCSS 8.5.28 security remediation is review-ready on PR #21: eight regression tests; UI omit-dev audit clean, full UI 5 high/1 moderate and backend 5 high/9 moderate remain unaccepted. Authorized CREATE orchestration/worker ownership, external-state races, reschedule/cancel and SENDING recovery, remaining dependencies and acceptance stay open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

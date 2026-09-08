@@ -2,7 +2,35 @@
 
 Date: 2026-09-08
 
-## UI framework security upgrade (2026-09-08, review-ready)
+## PostCSS security remediation (2026-09-08, review-ready)
+
+- Owner requested continued risk remediation; fetched/reconciled backend `5ac324c` / governance `430daf6`, APP-013 sole Now. Explicitly selected one bounded PostCSS security section. Existing focused branches only; unrelated saved-checkout edits preserved.
+- UI manifest adds only `next@15.5.25 -> postcss: 8.5.28` override; lockfile changes only PostCSS 8.4.31 -> 8.5.28 and its dependency-range metadata. Next/React, other resolved packages, backend dependencies and application source are unchanged. Clean npm ci and resolution through Next's actual CSS build consumer verified the installed patch.
+- Eight new tests cover exact override/installed/lock agreement, three source-map disclosure boundaries, adjacent/inline/explicit-map compatibility, plugin transformation and closing-style serialization escaping. The three disclosure cases first failed on 8.4.31 with small synthetic files, then passed on 8.5.28. No real secrets/customer files or live endpoint tested; library reproduction is not proof of an exploitable CallDesk route.
+- UI lint/type check, 44 tests and 14-page build pass. All five desktop/390px browser harnesses pass: framework smoke 22 route checks/12 home navigations/static manifest; customer/dispatch, technician, policy and notifications 14/14/8/92 mocked requests. Zero external requests/page errors. Temporary screenshots preserve committed evidence; missing-link mobile and notification desktop visually reviewed.
+- Backend lint/build, 50 suites/610 tests (3 existing skips), architecture/Prisma and disposable 15-migration suite pass, including 11 prior process-crash cases. Zero real provider calls; fixture database dropped and absence independently verified.
+- UI full audit improves 6 high/2 moderate -> 5 high/1 moderate (8 -> 6 affected packages); PostCSS and Next findings absent. UI omit-dev now zero findings, exit 0. Backend unchanged 5 high/9 moderate; omit-dev 4 high/8 moderate. Both critical-only gates pass; remaining full-audit findings are not accepted.
+- Override ownership/removal stays in APP-013: re-review on the next framework update; remove only when Next natively resolves a reviewed patched PostCSS version and these tests/build/browser gates pass. This exact-version exception is not a permanent global override or permission for another major upgrade.
+- No schema/new migration, real data, external sends, provider/secrets/IAM/billing configuration, charges, merge, deployment or activation. Functional Calendar/unknown-send recovery and acceptance remain open. Planning estimates unchanged APP-013 ~85%; governed APP-006 through APP-016 ~81%, not release readiness.
+
+### Scope, sources and limitations
+
+- Next's CSS build explicitly requires PostCSS, but checked-in CallDesk styles are local source files and hosting serves static `ui/out`. No public CSS-processing endpoint or untrusted customer CSS path was established. Dependency remediation does not assert deployed exploitation or deployed remediation.
+- Maintainer guidance documents [source-map disclosure without a base file](https://github.com/postcss/postcss/security/advisories/GHSA-fxqj-rqcc-2cmp) fixed in 8.5.23 and [style-tag serialization](https://github.com/postcss/postcss/security/advisories/GHSA-qx2v-qp2m-jg93) fixed in 8.5.10. Chosen [8.5.28 release](https://github.com/postcss/postcss/releases/tag/8.5.28) clears all four audited PostCSS advisories, including traversal variants. No broad `npm audit fix --force`, Next 16 migration or production action.
+- Source-map fixtures force the plugin parse path; a no-plugin fast path did not exercise disclosure. Tests use only uniquely named temporary maps with synthetic content and clean them in finally. Patched adjacent, inline and explicitly supplied maps remain supported. Tests deliberately omit from for two cases, producing the expected PostCSS warning; existing next-lint/workspace-root and package/pg deprecations remain.
+- Remaining UI findings: ajv, brace-expansion, flatted, js-yaml, minimatch, picomatch. A clean omit-dev audit is limited to that package graph and current advisory database; development/build-chain risks still count and are not waived. Backend dependency and functional recovery risks remain unchanged.
+- Objective snapshot: `evidence/APP-013/postcss-audit-summary.json`. Browser screenshots this run are temporary in `/private/tmp/signmons-postcss-regression.Teavds/evidence/APP-013`; prior committed screenshots are untouched. No new UI surface, authenticated/live provider acceptance or release-readiness claim.
+
+### Exact review steps
+
+1. Review incremental changes after `5ac324c` on [PR #21](https://github.com/Debynyhan-Banks/signmons-calldesk-backend/pull/21): `ui/package.json`, the single PostCSS lock entry, `ui/scripts/postcss-security.test.mjs`, runner, evidence and handoff. Confirm no backend lockfile or application-source changes. Review the override retirement condition above.
+2. From `ui`: `npm ci --package-lock-only=false --ignore-scripts --no-audit --no-fund && npm ls postcss --all && npm run -s lint && npm test && npm run -s build`. Expect Next 15.5.25 resolving overridden PostCSS 8.5.28 and all 44 tests passing.
+3. Run `npm audit --omit=dev --json` (zero as of this checkpoint), `npm audit --json` (remaining 5 high/1 moderate) and `npm audit --audit-level=critical`. No full-audit waiver.
+4. Run the five UI scripts `framework-browser-qa.mjs`, `calendar-guard-browser-qa.mjs`, `technician-calendar-guard-browser-qa.mjs`, `policy-calendar-guard-browser-qa.mjs`, `notification-browser-qa.mjs` with `PLAYWRIGHT_MODULE=/Users/debynyhanbanks/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs`. Use temporary copies with a link to `ui/out` to avoid replacing prior screenshot evidence. All are local/static with intercepted synthetic APIs.
+5. Backend: `npm run -s build && npm run -s lint && npm test -- --runInBand && npm run -s arch:check && npx prisma validate && node scripts/verify-sms-enqueue-intents.mjs`. Only the fixture-owned random local database is authorized. Governance: `node scripts/docs-consistency-check.mjs`.
+6. Stop for review. Next functional work remains bounded authorized CREATE orchestration with upstream tenant/auth/payment/availability guards and explicit reader/worker ownership. Further dependency remediation must be explicitly selected within the risk plan. No activation alone; migration, retention, external use/acceptance and release remain separately gated.
+
+## Earlier: UI framework security upgrade (2026-09-08, review-ready)
 
 - Owner requested continued risk resolution; fetched/reconciled backend `1955200` / governance `e095321`, APP-013 sole Now. Explicitly selected one bounded UI framework security upgrade within the approved risk plan. Existing focused branches only; unrelated saved-checkout edits preserved.
 - Next/eslint-config-next 14.2.33 -> 15.5.25; React/React DOM 18.3.1 -> 19.2.8 with aligned React 19 types. Clean install and installed/manifest/lock agreement verified. Chose the patched 15 maintenance line to limit this checkpoint to one Next major upgrade; no forced dependency overrides or backend dependency changes.
