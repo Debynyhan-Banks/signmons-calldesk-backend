@@ -11,6 +11,15 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
+### Latest: technician on-the-way trigger
+
+- A changed `on_my_way` queues the fixed customer SMS after the job/audit transaction commits; no-op retries and failed writes do not queue. Queue/logging failures cannot undo status and log no raw payload.
+- The on-the-way digest includes the technician status timestamp so a later departure is distinct; obsolete departure/assignment state fails send-time validation. Earlier on-the-way digests fail closed.
+- Final gates: build/lint, 323 backend tests (3 existing skips), architecture/Prisma; UI lint, 17 tests/build; critical audit passes with existing high/moderate findings. No rendered UI changed or external send occurred.
+- APP-013 roughly 40%; APP-006 through APP-016 roughly 73%, planning estimates. Post-commit queueing still lacks durable outbox/reconciliation; a missed enqueue needs operator review, not a claim of guaranteed delivery. Other triggers, email, preferences, UI and acceptance remain open.
+
+### Earlier: appointment lifecycle
+
 - Confirmation, completed reschedule and completed cancellation now enqueue their fixed SMS template only after the calendar/job operation commits. Queue/identity failure is recorded without rolling back the appointment.
 - Lifecycle-created events derive their idempotency identity from a SHA-256 digest of template-relevant canonical state instead of a caller-supplied request key. Manual operator queueing records the same state digest.
 - Immediately before provider access, transactional events reload the tenant-scoped job and compare current lifecycle, schedule, recipient, brand and technician data to the queued digest. Invalid or changed state is dead-lettered with a bounded code; events from the earlier checkpoint without a digest fail closed.
@@ -157,10 +166,10 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the APP-013 transactional messaging foundation, appointment lifecycle triggers and send-time stale-message rejection on `codex/app-013-transactional-messaging` (PR #21); BE-008 is accepted.
+1. Review the APP-013 transactional messaging foundation, appointment and technician-on-the-way triggers and send-time stale-message rejection on `codex/app-013-transactional-messaging` (PR #21); BE-008 is accepted.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. Continue with one bounded APP-013 section for remaining assignment/technician/payment/dispatcher events, email, preferences or operator UI. Release and external sends require their own approval.
+4. Continue with one bounded APP-013 section for durable enqueue recovery, remaining assignment/other-technician/payment/dispatcher events, email, preferences or operator UI. Release and external sends require their own approval.
 
 ## Restart Commands
 

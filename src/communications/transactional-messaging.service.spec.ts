@@ -21,6 +21,7 @@ describe("TransactionalMessagingService", () => {
       status: JobStatus.ACCEPTED,
       deletedAt: null,
       technicianStatus: TechnicianJobStatus.ACCEPTED,
+      technicianStatusUpdatedAt: new Date("2026-09-09T13:00:00.000Z"),
       calendarEventId: "calendar-fixture",
       serviceWindowStart: new Date("2026-09-09T14:00:00.000Z"),
       serviceWindowEnd: new Date("2026-09-09T16:00:00.000Z"),
@@ -197,4 +198,29 @@ describe("TransactionalMessagingService", () => {
       idempotencyKey: "state-check:1",
     });
   }
+
+  it("deduplicates one en-route episode but distinguishes a later departure by the same technician", async () => {
+    const job = await prisma.job.findUnique();
+    const enRoute = { ...job, technicianStatus: TechnicianJobStatus.EN_ROUTE };
+    prisma.job.findUnique.mockResolvedValue(enRoute);
+    const input = {
+      tenantId,
+      jobId,
+      templateKey: TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
+    };
+    await createService().queueLifecycle(input);
+    await createService().queueLifecycle(input);
+    const calls = delivery.create.mock.calls as [
+      Parameters<SmsDeliveryService["create"]>[0],
+    ][];
+    const first = calls[0][0];
+    expect(calls[1][0].idempotencyKey).toBe(first.idempotencyKey);
+    prisma.job.findUnique.mockResolvedValue({
+      ...enRoute,
+      technicianStatusUpdatedAt: new Date("2026-09-09T15:00:00.000Z"),
+    });
+    await createService().queueLifecycle(input);
+    expect(calls[2][0].idempotencyKey).not.toBe(first.idempotencyKey);
+    expect(calls[2][0].lifecycleStateHash).not.toBe(first.lifecycleStateHash);
+  });
 });

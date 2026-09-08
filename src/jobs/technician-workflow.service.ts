@@ -13,6 +13,9 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { LoggingService } from "../logging/logging.service";
+import { TransactionalMessagingService } from "../communications/transactional-messaging.service";
+import { TransactionalMessageTemplateKey } from "../communications/transactional-message-template.service";
 import { TechnicianJobAction } from "./dto/update-technician-job.dto";
 import {
   TechnicianLinkService,
@@ -53,6 +56,8 @@ export class TechnicianWorkflowService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly links: TechnicianLinkService,
+    private readonly messaging: TransactionalMessagingService,
+    private readonly logging: LoggingService,
   ) {}
 
   async list(rawToken: string | undefined) {
@@ -128,7 +133,7 @@ export class TechnicianWorkflowService {
     await this.activeTechnician(access);
     const expectedUpdatedAt = new Date(input.expectedUpdatedAt);
 
-    return this.prisma.$transaction(async (transaction) => {
+    const result = await this.prisma.$transaction(async (transaction) => {
       const job = await transaction.job.findFirst({
         where: {
           id: input.jobId,
@@ -247,6 +252,30 @@ export class TechnicianWorkflowService {
       }
       return { ...this.toDetail(changed), changed: true };
     });
+
+    if (result.changed && input.action === "on_my_way") {
+      try {
+        await this.messaging.queueLifecycle({
+          tenantId: access.tenantId,
+          jobId: input.jobId,
+          templateKey: TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY,
+        });
+      } catch {
+        try {
+          this.logging.warn(
+            {
+              event: "technician_on_the_way_queue_failed",
+              tenantId: access.tenantId,
+              jobId: input.jobId,
+            },
+            TechnicianWorkflowService.name,
+          );
+        } catch {
+          // A notification or logging failure cannot undo committed field status.
+        }
+      }
+    }
+    return result;
   }
 
   private async activeTechnician(access: VerifiedTechnicianLink) {

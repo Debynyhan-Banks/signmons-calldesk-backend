@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { CommunicationsModule } from "../communications/communications.module";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { JOB_REPOSITORY } from "./jobs.constants";
 import { JobsService } from "./jobs.service";
@@ -20,7 +21,7 @@ import { TechnicianWorkflowService } from "./technician-workflow.service";
 import { RoutingService } from "./routing.service";
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, CommunicationsModule],
   controllers: [JobsController, TechnicianController],
   providers: [
     JobsService,

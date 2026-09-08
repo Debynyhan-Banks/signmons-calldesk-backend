@@ -47,6 +47,7 @@ describe("SmsDeliveryService", () => {
     status: "ACCEPTED" as const,
     deletedAt: null,
     technicianStatus: "ACCEPTED" as const,
+    technicianStatusUpdatedAt: new Date("2026-09-09T13:00:00.000Z"),
     calendarEventId: "calendar-1",
     serviceWindowStart: new Date("2026-09-09T14:00:00.000Z"),
     serviceWindowEnd: new Date("2026-09-09T16:00:00.000Z"),
@@ -234,6 +235,61 @@ describe("SmsDeliveryService", () => {
     );
     expect(provider.send).not.toHaveBeenCalled();
   });
+
+  it.each(["current", "later_departure", "reassigned", "started"])(
+    "revalidates on-the-way delivery for %s state",
+    async (state) => {
+      const templateKey = TransactionalMessageTemplateKey.TECHNICIAN_ON_THE_WAY;
+      const queuedJob = {
+        ...lifecycleJob,
+        technicianStatus: "EN_ROUTE" as const,
+      };
+      const currentJob = {
+        ...queuedJob,
+        ...(state === "later_departure"
+          ? { technicianStatusUpdatedAt: new Date("2026-09-09T15:00:00.000Z") }
+          : {}),
+        ...(state === "reassigned"
+          ? { assignedUser: { id: "other-technician", fullName: "Morgan" } }
+          : {}),
+        ...(state === "started"
+          ? { technicianStatus: "IN_PROGRESS" as const }
+          : {}),
+      };
+      prisma.job.findUnique.mockResolvedValue(currentJob);
+      prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        jobId: lifecycleJob.id,
+        attemptCount: 1,
+        content: {
+          encryptedRaw: "encrypted",
+          payload: {
+            kind: "transactional_sms",
+            templateKey,
+            lifecycleStateHash: transactionalMessageStateHash(
+              templateKey,
+              queuedJob,
+            ),
+          },
+        },
+      });
+      await expect(createService().deliver(tenantId, eventId)).resolves.toBe(
+        state === "current"
+          ? CommunicationStatus.SENT
+          : CommunicationStatus.DEAD_LETTER,
+      );
+      expect(provider.send).toHaveBeenCalledTimes(state === "current" ? 1 : 0);
+      if (state !== "current")
+        expect(prisma.communicationEvent.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              lastErrorCode: "stale_lifecycle_state",
+            }),
+          }),
+        );
+    },
+  );
 
   it("fails closed for earlier transactional records without a state digest", async () => {
     prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({

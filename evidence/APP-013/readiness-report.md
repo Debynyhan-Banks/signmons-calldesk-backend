@@ -2,6 +2,26 @@
 
 Date: 2026-09-08
 
+## Technician on-the-way trigger checkpoint (2026-09-08)
+
+- Refreshed both remotes and resumed backend `4937330` plus governance evidence `27cb56d`; canonical governance main `af8a340` still has APP-013 as its sole Now ticket. No completed payment or appointment-trigger work was repeated.
+- The existing authenticated technician status workflow now queues the fixed customer `TECHNICIAN_ON_THE_WAY` SMS only after a changed `on_my_way` action commits its job write and audit transaction. Replays with `changed: false`, rejected/stale writes and failed commits never queue a message.
+- JobsModule imports the public CommunicationsModule export; the workflow does not access provider transport. Existing consent, quiet-hour, encryption, idempotency and send-time checks remain authoritative.
+- On-the-way identity now includes `technicianStatusUpdatedAt`, distinguishing a later departure by the same technician from retries within one departure. Earlier queued on-the-way digests fail closed after this change; appointment message identities are unchanged.
+- Queue failure emits only a bounded event code, tenant ID and job ID (no raw error, phone, token or message body). Queue and logging failure cannot reverse committed technician status.
+- Validation: backend build/lint, 36 suites / 323 tests (1 suite / 3 existing policy skips), architecture check and Prisma validation passed. Fifteen new regression cases cover post-commit ordering, no-op retry, invalid/missing/stale/audit/commit failures, queue/logging failure isolation, unrelated transitions, departure identity, and current versus obsolete delivery through a provider double. Initial test-double typing lint errors were corrected before the final clean run.
+- Focused technician, transactional-message and delivery suites: 3 suites / 54 tests passed. Prettier and diff checks passed.
+- Unchanged UI lint, 4 suites / 17 tests and build (13 static pages) passed. No UI or route changed; no new browser screenshot or rendered APP-013 acceptance is claimed.
+- Critical audit passed: zero critical, 4 high and 9 moderate existing transitive findings. No dependency, schema, provider configuration, credential, deployment or real customer/job data was changed; no external message was sent.
+- Remaining limitations: post-commit enqueue is not a durable outbox. A process crash or queue failure can leave committed status without a message; status replay does not auto-repair it. Operators must inspect queue history and current state before any separately authorized recovery. The pre-send check-to-provider race also remains. Assignment/payment/dispatcher and other technician events, email, preferences, UI and acceptance remain open.
+- Planning estimate: APP-013 roughly 40%; governed APP-006 through APP-016 roughly 73%. These are not release acceptance scores.
+
+### Review steps
+
+1. In PR #21 review `technician-workflow.service.ts`, JobsModule wiring and the departure timestamp in `transactional-message-state.ts`.
+2. Run `npm run -s build`, then `npm test -- --runInBand src/jobs/technician-workflow.service.spec.ts src/communications/transactional-messaging.service.spec.ts src/communications/sms-delivery.service.spec.ts`.
+3. Confirm failed commits and unchanged retries never call the queue, queue failures preserve EN_ROUTE, and obsolete departure/assignment state never reaches the provider double. Review the outbox/recovery limitations before enabling any acceptance send.
+
 ## Appointment lifecycle identity and send-time revalidation (2026-09-08)
 
 - Added automatic fixed-template SMS queueing after a successful initial appointment confirmation, completed reschedule and completed cancellation. The trigger runs after the authoritative job/calendar operation; queue or identity failure is logged without undoing the appointment.

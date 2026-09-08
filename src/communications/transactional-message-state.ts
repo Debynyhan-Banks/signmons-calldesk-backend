@@ -7,6 +7,7 @@ export const transactionalMessageJobSelect = {
   status: true,
   deletedAt: true,
   technicianStatus: true,
+  technicianStatusUpdatedAt: true,
   calendarEventId: true,
   serviceWindowStart: true,
   serviceWindowEnd: true,
@@ -81,6 +82,8 @@ export function transactionalMessageStateHash(
             assignedUserId: job.assignedUser?.id ?? null,
             technicianName: job.assignedUser?.fullName ?? null,
             technicianStatus: job.technicianStatus,
+            technicianStatusUpdatedAt:
+              job.technicianStatusUpdatedAt?.toISOString() ?? null,
           }
         : {
             ...common,
