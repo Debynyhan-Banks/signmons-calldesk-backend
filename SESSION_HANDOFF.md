@@ -11,7 +11,14 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: technician on-the-way trigger
+### Latest: read-only notification center
+
+- `/app/notifications` now presents the latest 100 tenant-bound SMS history records with optional job UUID and status filters; counts are loaded-record counts only. Added dispatch navigation. No send/replay/template/email control exists.
+- Token/job edits and clear-session invalidate pending reads and clear records. Token stays in memory; generic errors and explicit metadata rendering avoid private payload exposure. Sent remains delivery-unconfirmed.
+- Passed backend build/lint, 323 tests (3 existing skips), architecture/Prisma; UI lint, 23 tests/build; fixture Chrome desktop/390px QA, error/empty/loading and late-response clearing. See APP-013 evidence and screenshots; no live backend/provider acceptance is claimed.
+- APP-013 roughly 50%; APP-006 through APP-016 roughly 74%, planning estimates. Durable enqueue recovery, other events, template/preferences UI, technician notifications, email and acceptance remain open. No external send or release occurred.
+
+### Earlier: technician on-the-way trigger
 
 - A changed `on_my_way` queues the fixed customer SMS after the job/audit transaction commits; no-op retries and failed writes do not queue. Queue/logging failures cannot undo status and log no raw payload.
 - The on-the-way digest includes the technician status timestamp so a later departure is distinct; obsolete departure/assignment state fails send-time validation. Earlier on-the-way digests fail closed.
@@ -166,10 +173,10 @@ Last Updated: 2026-09-08
 
 ## Next Actions
 
-1. Review the APP-013 transactional messaging foundation, appointment and technician-on-the-way triggers and send-time stale-message rejection on `codex/app-013-transactional-messaging` (PR #21); BE-008 is accepted.
+1. Review the APP-013 read-only notification center and screenshots alongside lifecycle/state checks on `codex/app-013-transactional-messaging` (PR #21); BE-008 is accepted.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
 3. Keep Stripe secrets server-side and maintain the contractor-to-customer payment boundary; Signmons tenant pricing remains subscription-only.
-4. Continue with one bounded APP-013 section for durable enqueue recovery, remaining assignment/other-technician/payment/dispatcher events, email, preferences or operator UI. Release and external sends require their own approval.
+4. Continue with one bounded APP-013 section for durable enqueue recovery, remaining events, email, template/preferences controls or technician notification UI. Live acceptance, release and external sends require their own approval.
 
 ## Restart Commands
 

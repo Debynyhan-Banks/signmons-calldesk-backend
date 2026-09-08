@@ -2,6 +2,26 @@
 
 Date: 2026-09-08
 
+## Read-only notification center checkpoint (2026-09-08)
+
+- Refreshed both remotes and continued backend `477048a` / governance `f9eb359`. APP-013 remains the sole approved Now ticket; no previous lifecycle work was repeated.
+- Added `/app/notifications` (`SCR-APP-021`) and dispatch navigation. The screen consumes only the existing owner/admin/dispatcher SMS history endpoint: latest 100 records with optional UUID job filter, client-side status filters and counts explicitly limited to loaded records.
+- Shows template label/version, job/event IDs, direction, timestamp (explicit UTC), attempts, status and bounded failure code. Sent is not labeled delivered. Failed and dead-letter records are grouped for attention; this screen has no send, replay, template-edit or email controls.
+- Tokens are password-masked and held only in page memory. Editing token/job or clearing the session removes displayed records and invalidates earlier requests. Raw server errors, message bodies, phone numbers and provider identifiers are not rendered. Server tenant/role guards are unchanged.
+- Backend regression gates passed: build/lint, 36 suites / 323 tests (1 suite / 3 existing policy skips), architecture and Prisma validation. UI lint, 5 suites / 23 tests and build (14 static pages) passed. Six new helper tests cover status semantics, filters, template fallback, job validation and time formatting.
+- Synthetic Chrome browser QA passed against a local static export: desktop 1440px, mobile 390px without horizontal overflow, job/status filters, invalid UUID, empty/error/loading states, 403 and 500 responses, late response after session clearing, no token storage, omission of injected private fields, keyboard order and no page runtime errors. All five mocked API requests were GETs. This is fixture UI evidence, not live authenticated backend or provider acceptance.
+- First browser pass exposed an ambiguous select accessible name; an explicit label corrected it. Initial CSS compatibility warnings were fixed. The existing stale Browserslist-data warning remains nonblocking.
+- Screenshots: `notifications-desktop.png`, `notifications-mobile.png`. QA harness: `ui/scripts/notification-browser-qa.mjs`; it starts a loopback static server, intercepts SMS-history requests with synthetic data, then closes the browser/server. No customer database or provider call is used.
+- Critical audit passed (0 critical; unchanged 4 high and 9 moderate transitive findings). No dependencies, provider settings, schemas, credentials, migrations, merges, deployments or customer data were changed. No message was sent.
+- Remaining: durable enqueue recovery (history cannot reveal missing records), other event triggers, template/preferences UI, technician notifications, email and live acceptance. Planning estimate: APP-013 roughly 50%; governed APP-006 through APP-016 roughly 74%, not release scores.
+
+### Review this UI section
+
+1. Review the new notification page/styles/helpers, API read adapter, dispatch navigation and QA harness in PR #21. Compare both screenshots with the read-only contract.
+2. In `ui`, run `npm run -s lint && npm test -- --runInBand && npm run -s build`.
+3. Run `PLAYWRIGHT_MODULE=/Users/debynyhanbanks/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright/index.mjs node scripts/notification-browser-qa.mjs` in this workstation's `ui` directory. On another workstation supply its installed Playwright module and optional `CHROME_PATH`. Only synthetic API responses are used.
+4. Verify empty history is not presented as proof of successful notification, and that no sending/replay control exists. Live operator acceptance and release require separate approval.
+
 ## Technician on-the-way trigger checkpoint (2026-09-08)
 
 - Refreshed both remotes and resumed backend `4937330` plus governance evidence `27cb56d`; canonical governance main `af8a340` still has APP-013 as its sole Now ticket. No completed payment or appointment-trigger work was repeated.

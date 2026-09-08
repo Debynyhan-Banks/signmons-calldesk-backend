@@ -299,6 +299,9 @@ export default function DispatchPage() {
           </span>
         </a>
         <nav aria-label="CallDesk">
+          <a className={base.disabledNav} href="/app/notifications">
+            <span aria-hidden="true">05</span> Notification center
+          </a>
           <a className={base.disabledNav} href="/app/intake-review">
             <span aria-hidden="true">01</span> Intake review
           </a>
@@ -322,6 +325,9 @@ export default function DispatchPage() {
           <div>
             <p className={base.eyebrow}>Operations / Dispatch</p>
             <h1>Assignment board</h1>
+            <a className={styles.notificationsLink} href="/app/notifications">
+              View notification center →
+            </a>
             <p>
               Match qualified technicians, explain overrides and keep control.
             </p>

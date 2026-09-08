@@ -924,3 +924,36 @@ export async function manageCustomerBooking(
 export function getApiBaseUrl(): string {
   return apiBase;
 }
+
+export interface SmsHistoryItem {
+  id: string;
+  jobId: string | null;
+  direction: "INBOUND" | "OUTBOUND";
+  status:
+    | "QUEUED"
+    | "SENDING"
+    | "SENT"
+    | "DELIVERED"
+    | "FAILED"
+    | "DEAD_LETTER"
+    | "RECEIVED";
+  attemptCount: number;
+  lastErrorCode: string | null;
+  occurredAt: string;
+  terminalAt: string | null;
+  templateId: string | null;
+  templateKey: string | null;
+  templateVersion: number | null;
+}
+
+export function listSmsHistory(
+  bearerToken: string,
+  jobId?: string,
+): Promise<SmsHistoryItem[]> {
+  const query = new URLSearchParams({ limit: "100" });
+  if (jobId) query.set("jobId", jobId);
+  return getJson(
+    `/communications/sms/history?${query}`,
+    buildAuthHeaders({ bearerToken }),
+  );
+}

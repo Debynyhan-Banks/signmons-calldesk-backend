@@ -513,3 +513,10 @@
     flex-direction: column;
   }
 }
+.notificationsLink {
+  display: inline-block;
+  color: #08294f;
+  text-decoration: underline;
+  padding: 12px 0;
+  font-weight: 700;
+}
