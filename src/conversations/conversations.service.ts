@@ -9,6 +9,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { SanitizationService } from "../sanitization/sanitization.service";
 import { lockConversationSession } from "./conversation-session-lock";
+import { refuseProtectedCustomerSession } from "./protected-customer-session";
 
 @Injectable()
 export class ConversationsService {
@@ -35,6 +36,7 @@ export class ConversationsService {
         throw new ConflictException("Conversation needs administrator review.");
       const existing = matches[0];
       if (existing) {
+        refuseProtectedCustomerSession(existing.collectedData);
         if (existing.deletedAt)
           throw new ConflictException("Conversation is unavailable.");
         return existing;

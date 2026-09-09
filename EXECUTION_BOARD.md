@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Local customer-session credential and exact mailbox/prompt-bound consent model are review-ready; security boundaries in APP013_CUSTOMER_SESSION_SECURITY_PLAN.md. 1305 backend/170 UI tests, 18 new session checks and existing database/crash/browser regressions pass; four audits clean. No live keys, production route, collection activation, verification, event grant binding, expiry admission, credentials/queue/sending. Next proposed: protect intake/session mutations and define secure bootstrap/expired-session recovery, still inactive. Coverage 50%, acceptance 0/12; 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now; CALLDESK_MVP_PLAN.md remains approved pilot scope.
+  - Protected customer intake isolation is review-ready: server-owned session marker, legacy triage/capture refusal and inactive credential-bound encrypted capture with atomic audit/replay/expiry rollback. 1331 backend/170 UI tests, ten new database checks and desktop/mobile expiry/loss proof; existing regressions and four clean audits. Production transport/full protected AI intake remain unfinished; no live key, collection, verification, event admission, queue or sending. Next proposed: local bootstrap origin/CSRF/request-limit/private-response protections. Coverage 50%, acceptance 0/12; 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now.
 
 ## Next
 

@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createServer } from "node:http";
+import { verifyProtectedIntake } from "./verify-protected-customer-intake.mjs";
 const require = createRequire(import.meta.url);
 const {
   CustomerConsentCredentials: Credentials,
@@ -20,8 +21,8 @@ const {
   ConversationMemoryCipher: Cipher,
 } = require("../dist/logging/conversation-memory-cipher.service.js");
 const {
-  ConversationEmailService: Capture,
-} = require("../dist/conversations/conversation-email.service.js");
+  CustomerConsentCaptureService: Capture,
+} = require("../dist/communications/customer-consent-capture.service.js");
 const {
   WebchatIntegrationGuard: Guard,
 } = require("../dist/integrations/webchat/webchat-integration.guard.js");
@@ -58,7 +59,7 @@ export async function verifyCustomerConsentSession({
   };
   const evidence = new Evidence(cipher, fingerprint),
     service = new Responses(prisma, cipher, credentials, evidence),
-    capture = new Capture(prisma, cipher);
+    capture = new Capture(prisma, cipher, credentials);
   const integrationSecret = "LOCAL-FICTIONAL-INTEGRATION-CREDENTIAL-ONLY";
   const guard = new Guard({
     webchatIntegrations: [
@@ -84,18 +85,15 @@ export async function verifyCustomerConsentSession({
         }
       });
     });
-  const make = async () => {
+  const make = async (withEmail = true) => {
     const result = await asIntegration(() => service.start()),
       claims = credentials.verifySession(result.sessionToken);
     created.push(claims);
-    await capture.observe(
-      {
-        tenantId,
-        conversationId: claims.conversationId,
-        sessionId: claims.sessionId,
-      },
-      "Session+Case@example.invalid",
-    );
+    if (withEmail)
+      await capture.capture({
+        sessionToken: result.sessionToken,
+        email: "Session+Case@example.invalid",
+      });
     return { ...result, claims };
   };
   const count = () =>
@@ -223,6 +221,7 @@ export async function verifyCustomerConsentSession({
     data: {
       collectedData: {
         sessionId: stale.claims.sessionId,
+        customerSessionVersion: 1,
         intakeEmail: {
           version: 1,
           status: "captured",
@@ -411,6 +410,18 @@ export async function verifyCustomerConsentSession({
         !JSON.stringify(audit).includes(a.sessionToken),
     );
   check("ordinary audit contains no mailbox or bearer credential");
+  await verifyProtectedIntake({
+    prisma,
+    make,
+    service,
+    capture,
+    credentials,
+    cipher,
+    keys,
+    tenantId,
+    otherTenantId,
+    asIntegration,
+  });
   const out =
     process.env.CUSTOMER_CONSENT_EVIDENCE_DIR ??
     join(process.cwd(), "evidence/APP-013/customer-consent-session");

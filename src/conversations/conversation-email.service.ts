@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -9,6 +10,7 @@ import { isEmail } from "class-validator";
 import { PrismaService } from "../prisma/prisma.service";
 import { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.service";
 import { lockConversationSession } from "./conversation-session-lock";
+import { refuseProtectedCustomerSession } from "./protected-customer-session";
 
 export const EMAIL_QUESTION =
   "If you’d like us to keep an email address with this request, what is it? You can say skip. This does not send an email.";
@@ -85,6 +87,7 @@ export class ConversationEmailService {
         });
         if (!conversation)
           throw new NotFoundException("Conversation is unavailable.");
+        refuseProtectedCustomerSession(conversation.collectedData);
         const root = object(conversation.collectedData);
         if (!root)
           throw new ConflictException("Conversation email state needs review.");
@@ -179,6 +182,7 @@ export class ConversationEmailService {
     } catch (error) {
       if (
         error instanceof ConflictException ||
+        error instanceof ForbiddenException ||
         error instanceof NotFoundException
       )
         throw error;

@@ -175,7 +175,7 @@ describe("inactive customer consent response boundary", () => {
       },
     );
     await expect(service().prompt({ sessionToken: token() })).rejects.toThrow(
-      "state changed",
+      "unavailable",
     );
     expect((transaction.mock.calls as unknown[][])[0][1]).toEqual({
       maxWait: 2000,

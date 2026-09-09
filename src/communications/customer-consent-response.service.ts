@@ -11,6 +11,9 @@ import { getRequestContext } from "../common/context/request-context";
 import { extractIntakeEmail } from "../conversations/conversation-email.service";
 import { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { lockConversationSession } from "../conversations/conversation-session-lock";
+import { CUSTOMER_SESSION_MARKER } from "../conversations/protected-customer-session";
+import { lockCustomerConsentSession } from "./customer-consent-session-lock";
 import {
   AppointmentEmailConsentEvidenceStore,
   EMAIL_CONSENT_PROMPT_VERSION,
@@ -45,7 +48,7 @@ function object(v: unknown): Record<string, unknown> | null {
 }
 /** Local-only model: deliberately unregistered. No controller or live caller.
  * Before activation: review HTTPS/BFF delivery, origin/CSRF/abuse controls,
- * legacy triage session ownership, key lifecycle and retention integration.
+ * full credential-bound AI intake, key lifecycle and retention integration.
  */
 export class CustomerConsentResponseService {
   constructor(
@@ -75,12 +78,13 @@ export class CustomerConsentResponseService {
     return this.prisma
       .$transaction(
         async (tx) => {
+          // Never adopt a caller's ID; use the shared lock order before creation.
+          const sessionId = randomUUID();
+          await lockConversationSession(tx, tenantId, sessionId);
           const rows = await tx.$queryRaw(
             Prisma.sql`SELECT id FROM "TenantOrganization" WHERE id=${tenantId}::uuid AND status='ACTIVE' FOR SHARE`,
           );
           if (!Array.isArray(rows) || rows.length !== 1) throw conflict();
-          // Bootstrap always creates a new random session; never adopt a caller's ID.
-          const sessionId = randomUUID();
           const customer = await tx.customer.create({
             data: {
               tenantId,
@@ -96,7 +100,11 @@ export class CustomerConsentResponseService {
               channel: "WEBCHAT",
               status: "ONGOING",
               currentFSMState: "TRIAGE",
-              collectedData: { sessionId, source: "WEBCHAT" },
+              collectedData: {
+                sessionId,
+                source: "WEBCHAT",
+                [CUSTOMER_SESSION_MARKER]: 1,
+              },
             },
           });
           const token = this.credentials.issueSession({
@@ -284,7 +292,7 @@ export class CustomerConsentResponseService {
     )
       return error;
     return new ServiceUnavailableException(
-      "Customer consent outcome is unconfirmed. Reload before retrying.",
+      "Customer consent outcome is unconfirmed. Retry with the same unexpired session; if it is lost, start a new request.",
     );
   }
 
@@ -292,25 +300,9 @@ export class CustomerConsentResponseService {
     tx: Prisma.TransactionClient,
     session: ConsentSessionClaims,
   ) {
-    if (getRequestContext()?.impersonatedTenantId)
-      throw new ForbiddenException(
-        "Impersonation cannot grant customer permission.",
-      );
-    const tenants = await tx.$queryRaw(
-      Prisma.sql`SELECT id FROM "TenantOrganization" WHERE id=${session.tenantId}::uuid AND status='ACTIVE' FOR SHARE`,
+    const capture = object(
+      (await lockCustomerConsentSession(tx, session)).capture,
     );
-    if (!Array.isArray(tenants) || tenants.length !== 1) throw conflict();
-    const rows = await tx.$queryRaw<
-      { sessionId: unknown; capture: unknown }[]
-    >(Prisma.sql`
-   SELECT c."collectedData" -> 'sessionId' AS "sessionId",c."collectedData" -> 'intakeEmail' AS capture FROM "Conversation" c
-   JOIN "Customer" customer ON customer.id=c."customerId" AND customer."tenantId"=c."customerTenantId"
-    AND customer."tenantId"=c."tenantId" AND customer."deletedAt" IS NULL
-   WHERE c.id=${session.conversationId}::uuid AND c."tenantId"=${session.tenantId}::uuid AND c.channel='WEBCHAT'
-    AND c."deletedAt" IS NULL FOR UPDATE OF c FOR SHARE OF customer`);
-    if (rows.length !== 1 || rows[0].sessionId !== session.sessionId)
-      throw conflict();
-    const capture = object(rows[0].capture);
     if (
       !capture ||
       capture.version !== 1 ||
