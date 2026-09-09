@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { createHash } from "node:crypto";
-import { recordAppointmentEmailConfirmation } from "./appointment-email-intent";
+import {
+  recordAppointmentEmailConfirmation,
+  recordAppointmentEmailReschedule,
+  recordAppointmentEmailCancellation,
+} from "./appointment-email-intent";
 describe("transaction-local initial confirmation email event", () => {
   const tenantId = "11111111-1111-4111-8111-111111111111",
     jobId = "22222222-2222-4222-8222-222222222222",
@@ -43,6 +47,7 @@ describe("transaction-local initial confirmation email event", () => {
     expect(db.appointmentEmailIntent.createMany).toHaveBeenCalledWith({
       skipDuplicates: true,
       data: {
+        kind: "APPOINTMENT_CONFIRMED",
         tenantId,
         jobId,
         customerId: row().customerId,
@@ -189,5 +194,67 @@ describe("transaction-local initial confirmation email event", () => {
       "synthetic-storage-failure",
     );
     expect(db.appointmentEmailIntent.findUnique).not.toHaveBeenCalled();
+  });
+  describe.each([
+    ["APPOINTMENT_RESCHEDULED", recordAppointmentEmailReschedule],
+    ["APPOINTMENT_CANCELLED", recordAppointmentEmailCancellation],
+  ] as const)("%s", (kind, recorder) => {
+    it.each([false, true])(
+      "captures only its own preference (%s)",
+      async (permitted) => {
+        db.$queryRaw.mockResolvedValue([
+          {
+            ...row(),
+            calendarEventHash: "a".repeat(64),
+            policyPresent: true,
+            emailPolicy: {
+              version: 1,
+              events: {
+                APPOINTMENT_CONFIRMED: !permitted,
+                APPOINTMENT_RESCHEDULED: !permitted,
+                APPOINTMENT_CANCELLED: !permitted,
+                [kind]: permitted,
+              },
+            },
+          },
+        ]);
+        await recorder(tx, input);
+        expect(db.appointmentEmailIntent.createMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              kind,
+              preference: permitted ? "PERMITTED" : "BLOCKED",
+              calendarEventHash:
+                kind === "APPOINTMENT_CANCELLED"
+                  ? "a".repeat(64)
+                  : createHash("sha256")
+                      .update(row().calendarEventId)
+                      .digest("hex"),
+            }),
+          }),
+        );
+        const sql = (db.$queryRaw.mock.calls as [Prisma.Sql][])[0][0];
+        for (const clause of [
+          "a.xmin = pg_current_xact_id()::xid",
+          '"AppointmentCancellationSnapshot"',
+          "claimedUpdatedAt",
+          "finalizedUpdatedAt",
+          'snap."intakeSessionId" IS NOT DISTINCT FROM j."intakeSessionId"',
+          'j."updatedAt" > snap."claimedUpdatedAt"',
+        ])
+          expect(sql.sql).toContain(clause);
+        expect(sql.values).toContain(kind);
+        expect(sql.values).toContain(
+          kind === "APPOINTMENT_CANCELLED"
+            ? "appointment.customer_cancelled"
+            : "appointment.customer_rescheduled",
+        );
+      },
+    );
+    it("refuses unbound or historical receipts without persistence", async () => {
+      db.$queryRaw.mockResolvedValue([]);
+      await expect(recorder(tx, input)).rejects.toThrow("current finalized");
+      expect(db.appointmentEmailIntent.createMany).not.toHaveBeenCalled();
+    });
   });
 });

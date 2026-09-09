@@ -1,4 +1,12 @@
 import { AppointmentCancellationService } from "./appointment-cancellation.service";
+import { captureCancellationSnapshot } from "./appointment-cancellation-snapshot";
+import { recordAppointmentEmailCancellation } from "../communications/appointment-email-intent";
+jest.mock("./appointment-cancellation-snapshot", () => ({
+  captureCancellationSnapshot: jest.fn(),
+}));
+jest.mock("../communications/appointment-email-intent", () => ({
+  recordAppointmentEmailCancellation: jest.fn(),
+}));
 
 describe("AppointmentCancellationService", () => {
   const claim = {
@@ -9,6 +17,8 @@ describe("AppointmentCancellationService", () => {
     calendarEventId: null,
   };
   function harness() {
+    jest.mocked(captureCancellationSnapshot).mockReset();
+    jest.mocked(recordAppointmentEmailCancellation).mockReset();
     let committed = false;
     const tx = {
       job: {
@@ -16,7 +26,7 @@ describe("AppointmentCancellationService", () => {
         findUniqueOrThrow: jest.fn().mockResolvedValue(claim),
       },
       auditLog: {
-        create: jest.fn().mockResolvedValue({}),
+        create: jest.fn().mockResolvedValue({ id: "audit" }),
         findFirst: jest.fn().mockResolvedValue({ id: "audit" }),
       },
     };
@@ -74,6 +84,7 @@ describe("AppointmentCancellationService", () => {
         serviceWindowStart: null,
         serviceWindowEnd: null,
         preferredTimeText: "window",
+        updatedAt: expect.any(Date),
       },
     });
     expect(intents.recordCancellation).not.toHaveBeenCalled();
@@ -108,28 +119,43 @@ describe("AppointmentCancellationService", () => {
         actorId: "customer:customer",
         entityType: "Job",
         entityId: "job",
-        metadata: { notificationIntentId: "intent" },
+        metadata: {
+          notificationIntentId: "intent",
+          finalizedUpdatedAt: expect.any(String),
+          claimedUpdatedAt: claim.updatedAt.toISOString(),
+        },
       },
     });
+    expect(recordAppointmentEmailCancellation).toHaveBeenCalledWith(tx, {
+      tenantId: "tenant",
+      jobId: "job",
+      sourceAuditId: "audit",
+    });
   });
-  it("advances the version even within one clock millisecond", async () => {
-    const { service, tx } = harness();
-    const clock = jest
-      .spyOn(Date, "now")
-      .mockReturnValue(claim.updatedAt.getTime());
-    try {
-      await service.finalize(claim as never);
-      expect(tx.job.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            updatedAt: new Date(claim.updatedAt.getTime() + 1),
+  it.each(["claim", "finalize", "restore"] as const)(
+    "advances %s version even within one clock millisecond",
+    async (method) => {
+      const { service, tx } = harness();
+      const clock = jest
+        .spyOn(Date, "now")
+        .mockReturnValue(claim.updatedAt.getTime());
+      try {
+        if (method === "claim") await service.claim(claim as never, "window");
+        else if (method === "restore")
+          await service.restore(claim as never, claim as never);
+        else await service.finalize(claim as never);
+        expect(tx.job.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              updatedAt: new Date(claim.updatedAt.getTime() + 1),
+            }),
           }),
-        }),
-      );
-    } finally {
-      clock.mockRestore();
-    }
-  });
+        );
+      } finally {
+        clock.mockRestore();
+      }
+    },
+  );
   it.each(["claim", "finalize"] as const)(
     "refuses stale/changed/cross-tenant %s without notification",
     async (method) => {
@@ -199,6 +225,7 @@ describe("AppointmentCancellationService", () => {
         serviceWindowStart: new Date(1),
         serviceWindowEnd: new Date(2),
         preferredTimeText: "window",
+        updatedAt: expect.any(Date),
       },
     });
   });
@@ -214,6 +241,10 @@ describe("AppointmentCancellationService", () => {
         entityId: "job",
         action: "appointment.customer_cancelled",
         actorType: "CUSTOMER",
+        metadata: {
+          path: ["finalizedUpdatedAt"],
+          equals: claim.updatedAt.toISOString(),
+        },
       },
       select: { id: true },
     });
@@ -221,5 +252,25 @@ describe("AppointmentCancellationService", () => {
     await expect(service.assertFinalized(claim as never)).rejects.toThrow(
       "office",
     );
+  });
+  it("aborts before clearing the window if snapshot persistence fails", async () => {
+    const { service, tx } = harness();
+    jest
+      .mocked(captureCancellationSnapshot)
+      .mockRejectedValue(new Error("snapshot failure"));
+    await expect(service.claim(claim as never, "window")).rejects.toThrow(
+      "snapshot failure",
+    );
+    expect(tx.job.updateMany).not.toHaveBeenCalled();
+  });
+  it("does not process when email persistence fails", async () => {
+    const { service, intents } = harness();
+    jest
+      .mocked(recordAppointmentEmailCancellation)
+      .mockRejectedValue(new Error("email failure"));
+    await expect(service.finalize(claim as never)).rejects.toThrow(
+      "email failure",
+    );
+    expect(intents.processOne).not.toHaveBeenCalled();
   });
 });

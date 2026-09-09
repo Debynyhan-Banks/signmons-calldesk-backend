@@ -127,7 +127,20 @@ export async function verifyAppointmentCancellation({
   const audit = await prisma.auditLog.findFirstOrThrow({
     where: auditWhere(job),
   });
-  assert.deepEqual(audit.metadata, { notificationIntentId: intent.id });
+  assert.equal(audit.metadata.notificationIntentId, intent.id);
+  assert.equal(
+    audit.metadata.finalizedUpdatedAt,
+    (await current(job)).updatedAt.toISOString(),
+  );
+  const snapshot =
+    await prisma.appointmentCancellationSnapshot.findFirstOrThrow({
+      where: jobWhere(job),
+    });
+  assert.equal(
+    audit.metadata.claimedUpdatedAt,
+    snapshot.claimedUpdatedAt.toISOString(),
+  );
+  assert.deepEqual(snapshot.windowStart, job.serviceWindowStart);
   assert.equal(audit.actorType, "CUSTOMER");
   assert.equal((await invoke(scheduling, job)).status, "appointment_cancelled");
   assert.equal(deletions, 1);

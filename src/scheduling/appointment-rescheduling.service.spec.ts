@@ -1,4 +1,8 @@
 import { AppointmentReschedulingService } from "./appointment-rescheduling.service";
+import { recordAppointmentEmailReschedule } from "../communications/appointment-email-intent";
+jest.mock("../communications/appointment-email-intent", () => ({
+  recordAppointmentEmailReschedule: jest.fn(),
+}));
 
 describe("AppointmentReschedulingService", () => {
   const claim = {
@@ -11,6 +15,7 @@ describe("AppointmentReschedulingService", () => {
     serviceWindowEnd: new Date(2),
   };
   function harness() {
+    jest.mocked(recordAppointmentEmailReschedule).mockReset();
     let committed = false;
     const tx = {
       job: {
@@ -18,7 +23,7 @@ describe("AppointmentReschedulingService", () => {
         findUniqueOrThrow: jest.fn().mockResolvedValue(claim),
       },
       auditLog: {
-        create: jest.fn().mockResolvedValue({}),
+        create: jest.fn().mockResolvedValue({ id: "audit" }),
         findFirst: jest.fn().mockResolvedValue({ id: "audit" }),
       },
     };
@@ -83,6 +88,11 @@ describe("AppointmentReschedulingService", () => {
     expect(intents.recordReschedule).toHaveBeenCalledWith(tx, {
       tenantId: "tenant",
       jobId: "job",
+    });
+    expect(recordAppointmentEmailReschedule).toHaveBeenCalledWith(tx, {
+      tenantId: "tenant",
+      jobId: "job",
+      sourceAuditId: "audit",
     });
     expect(tx.auditLog.create).toHaveBeenCalledWith({
       data: {
@@ -213,5 +223,15 @@ describe("AppointmentReschedulingService", () => {
     await expect(service.assertFinalized(claim as never)).rejects.toThrow(
       "office",
     );
+  });
+  it("does not process when email persistence fails", async () => {
+    const { service, intents } = harness();
+    jest
+      .mocked(recordAppointmentEmailReschedule)
+      .mockRejectedValue(new Error("email failure"));
+    await expect(
+      service.finalize(claim as never, "old", "new"),
+    ).rejects.toThrow("email failure");
+    expect(intents.processOne).not.toHaveBeenCalled();
   });
 });

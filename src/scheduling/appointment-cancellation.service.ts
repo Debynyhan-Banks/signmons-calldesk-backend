@@ -4,6 +4,8 @@ import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.se
 import { LoggingService } from "../logging/logging.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { noUnfinishedCalendarOperations } from "./calendar-operation-guard";
+import { captureCancellationSnapshot } from "./appointment-cancellation-snapshot";
+import { recordAppointmentEmailCancellation } from "../communications/appointment-email-intent";
 
 // Calendar deletion is outside these local transactions. No intent is recorded
 // until the caller has received its acknowledgment.
@@ -17,6 +19,10 @@ export class AppointmentCancellationService {
 
   claim(job: Job, preferredTimeText: string) {
     return this.prisma.$transaction(async (tx) => {
+      const claimedUpdatedAt = new Date(
+        Math.max(Date.now(), job.updatedAt.getTime() + 1),
+      );
+      await captureCancellationSnapshot(tx, job, claimedUpdatedAt);
       const changed = await tx.job.updateMany({
         where: {
           id: job.id,
@@ -35,6 +41,7 @@ export class AppointmentCancellationService {
           serviceWindowStart: null,
           serviceWindowEnd: null,
           preferredTimeText,
+          updatedAt: claimedUpdatedAt,
         },
       });
       if (changed.count !== 1)
@@ -64,6 +71,9 @@ export class AppointmentCancellationService {
         serviceWindowStart: original.serviceWindowStart,
         serviceWindowEnd: original.serviceWindowEnd,
         preferredTimeText: original.preferredTimeText,
+        updatedAt: new Date(
+          Math.max(Date.now(), claim.updatedAt.getTime() + 1),
+        ),
       },
     });
   }
@@ -76,6 +86,10 @@ export class AppointmentCancellationService {
         entityId: job.id,
         action: "appointment.customer_cancelled",
         actorType: AuditActorType.CUSTOMER,
+        metadata: {
+          path: ["finalizedUpdatedAt"],
+          equals: job.updatedAt.toISOString(),
+        },
       },
       select: { id: true },
     });
@@ -86,6 +100,9 @@ export class AppointmentCancellationService {
   }
 
   async finalize(claim: Job) {
+    const finalizedUpdatedAt = new Date(
+      Math.max(Date.now(), claim.updatedAt.getTime() + 1),
+    );
     const intent = await this.prisma.$transaction(async (tx) => {
       const changed = await tx.job.updateMany({
         where: {
@@ -102,9 +119,7 @@ export class AppointmentCancellationService {
         // Advance even when claim/finalization share one clock millisecond.
         data: {
           status: JobStatus.CANCELLED,
-          updatedAt: new Date(
-            Math.max(Date.now(), claim.updatedAt.getTime() + 1),
-          ),
+          updatedAt: finalizedUpdatedAt,
         },
       });
       if (changed.count !== 1)
@@ -115,7 +130,7 @@ export class AppointmentCancellationService {
         tenantId: claim.tenantId,
         jobId: claim.id,
       });
-      await tx.auditLog.create({
+      const audit = await tx.auditLog.create({
         data: {
           tenantId: claim.tenantId,
           action: "appointment.customer_cancelled",
@@ -123,8 +138,17 @@ export class AppointmentCancellationService {
           actorId: `customer:${claim.customerId}`,
           entityType: "Job",
           entityId: claim.id,
-          metadata: { notificationIntentId: intent.id },
+          metadata: {
+            notificationIntentId: intent.id,
+            finalizedUpdatedAt: finalizedUpdatedAt.toISOString(),
+            claimedUpdatedAt: claim.updatedAt.toISOString(),
+          },
         },
+      });
+      await recordAppointmentEmailCancellation(tx, {
+        tenantId: claim.tenantId,
+        jobId: claim.id,
+        sourceAuditId: audit.id,
       });
       return intent;
     });

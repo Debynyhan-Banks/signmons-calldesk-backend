@@ -48,6 +48,7 @@ model TenantOrganization {
   smsConsentRecords       SmsConsentRecord[]
   smsEnqueueIntents        SmsEnqueueIntent[]
   appointmentEmailIntents AppointmentEmailIntent[]
+  appointmentCancellationSnapshots AppointmentCancellationSnapshot[]
   calendarOperations      CalendarOperation[]
   conversationJobLinks    ConversationJobLink[]
   jobOffers               JobOffer[]
@@ -368,6 +369,7 @@ model Job {
   conversationLinks   ConversationJobLink[]
   smsEnqueueIntents    SmsEnqueueIntent[]
   appointmentEmailIntents AppointmentEmailIntent[]
+  appointmentCancellationSnapshots AppointmentCancellationSnapshot[]
   calendarOperations  CalendarOperation[]
 
   @@unique([id, tenantId])
@@ -758,6 +760,24 @@ model SmsConsentRecord {
 // =====================================================
 // AUDIT
 // =====================================================
+
+// A claim snapshot is not a finalized event or a delivery instruction.
+model AppointmentCancellationSnapshot {
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId String @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  claimedUpdatedAt DateTime
+  previousUpdatedAt DateTime
+  customerId String @db.Uuid
+  intakeSessionId String? @db.VarChar(64)
+  windowStart DateTime
+  windowEnd DateTime
+  calendarEventHash String @db.Char(64)
+  createdAt DateTime @default(now())
+
+  @@id([tenantId, jobId, claimedUpdatedAt])
+}
 
 model AppointmentEmailIntent {
   id String @id @default(uuid()) @db.Uuid

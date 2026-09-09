@@ -1,0 +1,23 @@
+{
+  "result": "PASS",
+  "scope": "Reschedule/cancellation immutable events and pre-clear cancellation claims; no delivery admission",
+  "preferenceCases": 6,
+  "freshProcessReads": 12,
+  "newProcessCrashes": 6,
+  "providerCalls": 0,
+  "checks": [
+    "Pre-clear snapshot survives restart without a final event",
+    "Exact new reschedule and prior cancellation windows/hash/version",
+    "Six independent preference cases",
+    "Immutable snapshot/event updates and cross-tenant snapshot FK refused",
+    "Historical receipt, missing snapshot, changed session/version refused",
+    "Ten real SQL actor/action/receipt-version/SMS/tenant provenance refusals",
+    "Failed claim CAS rolls back snapshot; concurrent claims retain one snapshot",
+    "Snapshot failure preserves active job; event failure rolls back finalization",
+    "Concurrent finalization single winner for both kinds",
+    "Restore/reclaim retains distinct immutable snapshots; old claim cannot finalize",
+    "Cancellation replay requires exact current finalized version",
+    "Six process exits around claim and both finalization commits",
+    "No credentials, email consumer or external transport"
+  ]
+}

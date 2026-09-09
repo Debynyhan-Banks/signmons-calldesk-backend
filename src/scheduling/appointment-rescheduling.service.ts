@@ -4,6 +4,7 @@ import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.se
 import { LoggingService } from "../logging/logging.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { noUnfinishedCalendarOperations } from "./calendar-operation-guard";
+import { recordAppointmentEmailReschedule } from "../communications/appointment-email-intent";
 
 // Local reservation and post-Calendar finalization only; never calls Calendar.
 @Injectable()
@@ -100,7 +101,7 @@ export class AppointmentReschedulingService {
         tenantId: claim.tenantId,
         jobId: claim.id,
       });
-      await tx.auditLog.create({
+      const audit = await tx.auditLog.create({
         data: {
           tenantId: claim.tenantId,
           action: "appointment.customer_rescheduled",
@@ -115,6 +116,11 @@ export class AppointmentReschedulingService {
             finalizedUpdatedAt: finalizedUpdatedAt.toISOString(),
           },
         },
+      });
+      await recordAppointmentEmailReschedule(tx, {
+        tenantId: claim.tenantId,
+        jobId: claim.id,
+        sourceAuditId: audit.id,
       });
       return intent;
     });
