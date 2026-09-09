@@ -51,6 +51,7 @@ model TenantOrganization {
   appointmentCancellationSnapshots AppointmentCancellationSnapshot[]
   calendarOperations      CalendarOperation[]
   conversationJobLinks    ConversationJobLink[]
+  emailConsentScopes      AppointmentEmailConsentScope[]
   jobOffers               JobOffer[]
   userAvailabilityBlocks  UserAvailabilityBlock[]
   userServiceCapabilities UserServiceCapability[]
@@ -283,6 +284,7 @@ model Conversation {
 
   communicationEvents CommunicationEvent[]
   jobLinks            ConversationJobLink[]
+  emailConsentScopes  AppointmentEmailConsentScope[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -367,6 +369,7 @@ model Job {
   ledgerEntries       LedgerEntry[]
   communicationEvents CommunicationEvent[]
   conversationLinks   ConversationJobLink[]
+  emailConsentBinding AppointmentEmailConsentBinding?
   smsEnqueueIntents    SmsEnqueueIntent[]
   appointmentEmailIntents AppointmentEmailIntent[]
   appointmentCancellationSnapshots AppointmentCancellationSnapshot[]
@@ -779,6 +782,59 @@ model AppointmentCancellationSnapshot {
   @@id([tenantId, jobId, claimedUpdatedAt])
 }
 
+// Inactive evidence foundation. No customer collection, verification or delivery.
+model AppointmentEmailConsentScope {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversationId String @db.Uuid
+  conversation Conversation @relation(fields: [conversationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  sessionId String @db.VarChar(64)
+  intakeCustomerId String @db.Uuid
+  createdAt DateTime @default(now())
+  evidence AppointmentEmailConsentEvidence[]
+  binding AppointmentEmailConsentBinding?
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, conversationId])
+  @@unique([tenantId, sessionId])
+}
+
+model AppointmentEmailConsentEvidence {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  scopeId String @db.Uuid
+  scope AppointmentEmailConsentScope @relation(fields: [scopeId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  sourceAuditId String @db.Uuid
+  sourceAudit AuditLog @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  revision Int
+  decision String @db.VarChar(16)
+  purpose String @default("APPOINTMENT_UPDATES_V1") @db.VarChar(32)
+  promptVersion String @db.VarChar(32)
+  interactionId String @db.Uuid
+  encryptedEmail String
+  mailboxFingerprint String @db.Char(64)
+  fingerprintKeyVersion String @db.VarChar(32)
+  createdAt DateTime @default(now())
+
+  @@unique([scopeId, revision])
+  @@unique([sourceAuditId, tenantId])
+  @@unique([tenantId, interactionId])
+}
+
+model AppointmentEmailConsentBinding {
+  scopeId String @id @db.Uuid
+  tenantId String @db.Uuid
+  scope AppointmentEmailConsentScope @relation(fields: [scopeId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  jobId String @unique @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  jobCustomerId String @db.Uuid
+  originLinkId String @db.Uuid
+  createdAt DateTime @default(now())
+  @@unique([scopeId, tenantId])
+  @@unique([jobId, tenantId])
+}
+
 model AppointmentEmailIntent {
   id String @id @default(uuid()) @db.Uuid
   tenantId String @db.Uuid
@@ -825,6 +881,7 @@ model AuditLog {
   traceId     String?
   appointmentEmailIntents AppointmentEmailIntent[]
   createdAt   DateTime @default(now())
+  emailConsentEvidence AppointmentEmailConsentEvidence[]
 
   @@unique([id, tenantId])
   @@index([tenantId])

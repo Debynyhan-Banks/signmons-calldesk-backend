@@ -8,6 +8,7 @@ import { verifyCustomerEmailSettings } from "./verify-customer-email-settings.mj
 import { verifyAppointmentEmailIntents } from "./verify-appointment-email-intents.mjs";
 import { verifyAppointmentEmailChanges } from "./verify-appointment-email-changes.mjs";
 import { verifyAppointmentEmailEligibility } from "./verify-appointment-email-eligibility.mjs";
+import { verifyAppointmentEmailConsent } from "./verify-appointment-email-consent.mjs";
 import { randomBytes, createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -493,6 +494,11 @@ try {
     jobData,
     otherTenantId: other.id,
   });
+  const emailConsentChecks = await verifyAppointmentEmailConsent({
+    prisma,
+    jobData,
+    otherTenantId: other.id,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.appointmentCancellationSnapshot.count(), 0);
   assert.equal(await prisma.appointmentEmailIntent.count(), 0);
@@ -502,6 +508,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...emailConsentChecks,
         ...emailEligibilityChecks,
         ...emailChangeChecks,
         ...emailIntentChecks,

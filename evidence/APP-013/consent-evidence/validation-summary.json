@@ -1,0 +1,76 @@
+{
+  "result": "PASS",
+  "date": "2026-09-09",
+  "scope": "Inactive consent evidence persistence and one-time job binding",
+  "baseBackendCommit": "9597ef1fcc9fbbe1976a7ace26cab6a93b3b2fb3",
+  "baseGovernanceCommit": "e26798f767c75e67360f963181402829806d9d8d",
+  "checks": {
+    "backendTests": 1261,
+    "backendPassingSuites": 73,
+    "priorSkippedTests": 3,
+    "priorSkippedSuites": 1,
+    "newUnitTests": 29,
+    "backendLint": "PASS",
+    "backendBuild": "PASS",
+    "architecture": "PASS",
+    "prismaValidation": "PASS",
+    "scriptSyntaxAndFormat": "PASS",
+    "uiLint": "PASS",
+    "uiTests": 170,
+    "uiBuildStaticPages": 15,
+    "dependencyAuditsWithZeroFindings": 4,
+    "localMigrations": 19,
+    "newConsentDatabaseChecks": 24,
+    "existingProcessCrashCases": 19,
+    "newConsentProcessCrashCases": 0,
+    "existingEligibilityInvariantReads": 23,
+    "fixtureCleanupQuery": "no matching databases",
+    "governancePlacementTests": 4,
+    "governanceConsistency": "PASS",
+    "diffCheck": "PASS"
+  },
+  "browser": {
+    "settingsAndInbox": "PASS; real local browser/API/disposable database, synthetic authentication verifier",
+    "emailComposition": "PASS; 15 GETs, 1440/390 widths, fictional content",
+    "mobileScreenshot": "/private/tmp/signmons-consent-settings/settings-390.png",
+    "mobileScreenshotVisuallyInspected": true,
+    "unrelatedStaticBrowserScriptsRerun": 0,
+    "newConsentUiClaimed": false
+  },
+  "noActivation": {
+    "productionCaller": false,
+    "productionFingerprintAdapter": false,
+    "productionKeyChanges": false,
+    "customerCollection": false,
+    "mailboxVerification": false,
+    "eventTimeGrantBinding": false,
+    "expiryEnforcement": false,
+    "positiveEligibility": false,
+    "queueAdmission": false,
+    "credentials": false,
+    "sending": false,
+    "productionActions": 0
+  },
+  "limits": [
+    "Synthetic structured audit linkage is not remote customer authentication",
+    "New retention RESTRICT references require deletion ordering and legal-hold compatibility review before activation",
+    "No new consent process-crash tests; rollback/replay/concurrency covered",
+    "Existing Calendar uncertainty, pre-finalization/release compatibility and dependency override maintenance remain",
+    "Next.js lint deprecation/root-lockfile and pg concurrency deprecation warnings remain non-fatal"
+  ],
+  "completion": {
+    "app013ScopeCoveragePercent": 50,
+    "formalAcceptance": "0/12",
+    "app013RemainingSections": "7-12 unequal sections, low confidence",
+    "pilotRemainingSections": "20-35 unequal sections, low confidence",
+    "overallMvpPercentage": null
+  },
+  "sourceSha256": {
+    "src/communications/appointment-email-consent-evidence.ts": "f65053be947c3fd2f9ed28c2e970af03162f6aef6a69736f8168b9c89c0c09b8",
+    "src/communications/appointment-email-consent-evidence.spec.ts": "8989f57f8ede43dd6e6fc383c166681031482b79cdadf5e8f6c5a720f6bd9dfa",
+    "prisma/schema.prisma": "c6a3eb0d09f64f94a86e0cbc7035017c212db0325feaae5a1c1ed4f43d85611d",
+    "prisma/migrations/20260909210000_add_appointment_email_consent_evidence/migration.sql": "25b40ae381facbd65d31edce6577a5bedb220d5d62136e254fd28c31a95fbe22",
+    "scripts/verify-appointment-email-consent.mjs": "7c94b9dd3de6778736ae1c93c5377c83252a04f09c8b6f246ad3de9f7c8a1cef",
+    "scripts/verify-sms-enqueue-intents.mjs": "9761e5559bd4f3b86b433079c9137f466f39fbffc82ac9eb62d35c82e6fcc8f8"
+  }
+}
