@@ -7,7 +7,12 @@ import { operationLabel, validReference } from "./contract.ts";
 import type { ReviewResource } from "./contract.ts";
 import styles from "./review-panel.module.css";
 
-type Props = { sessionKey: string; role: string | null; read: ReviewReader };
+type Props = {
+  sessionKey: string;
+  role: string | null;
+  read: ReviewReader;
+  onClearSession?: () => void;
+};
 
 /** Unlinked component contract. Parent identity is a display gate, not authority.
  * sessionKey is a non-secret generation marker, never a bearer token.
@@ -22,7 +27,7 @@ export function CalendarReviewPanel(props: Props) {
   );
 }
 
-function ReviewWorkspace({ sessionKey, role, read }: Props) {
+function ReviewWorkspace({ sessionKey, role, read, onClearSession }: Props) {
   const client = useMemo(() => new CalendarReviewClient(read), [read]);
   const state = useSyncExternalStore(
     client.subscribe,
@@ -89,6 +94,7 @@ function ReviewWorkspace({ sessionKey, role, read }: Props) {
                 setJobId("");
                 setOperationId("");
                 client.clear();
+                onClearSession?.();
               }}
             >
               Clear review session
