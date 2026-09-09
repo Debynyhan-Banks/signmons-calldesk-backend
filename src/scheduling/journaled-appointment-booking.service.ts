@@ -16,7 +16,7 @@ import { CalendarCreateExecutionService } from "./calendar-create-execution.serv
 /** Inactive request-to-CREATE composition. NOT registered, routed or scheduled.
  * The requesting caller owns only its acknowledged new reservation/execution.
  * Existing unfinished work is office/recovery-owned: requests never resume it.
- * Results describe internal/historical processing, not a public booking receipt.
+ * Confirmation requires a fresh request-scoped receipt, never execution status alone.
  */
 @Injectable()
 export class JournaledAppointmentBookingService {
@@ -24,7 +24,7 @@ export class JournaledAppointmentBookingService {
     @Inject(SchedulingService)
     private readonly admission: Pick<
       SchedulingService,
-      "prepareInitialConfirmation"
+      "prepareInitialConfirmation" | "readInitialConfirmationReceipt"
     >,
     @Inject(CalendarOperationJournalService)
     private readonly journal: Pick<CalendarOperationJournalService, "reserve">,
@@ -41,8 +41,16 @@ export class JournaledAppointmentBookingService {
     // Reuse the exact signed tenant/job/session/lifecycle/eligibility/payment/
     // availability path. No caller can submit a pre-authorized job or journal ID.
     const prepared = await this.admission.prepareInitialConfirmation(input);
-    if (prepared.kind === "replay")
-      return { status: "already_confirmed" as const };
+    if (prepared.kind === "replay") {
+      try {
+        return await this.admission.readInitialConfirmationReceipt(input, {
+          calendarEventId: prepared.response.job.calendarEventId ?? "",
+          expectedUpdatedAt: prepared.response.job.updatedAt,
+        });
+      } catch {
+        throw this.reviewRequired();
+      }
+    }
 
     let operation: Awaited<
       ReturnType<CalendarOperationJournalService["reserve"]>
@@ -70,16 +78,17 @@ export class JournaledAppointmentBookingService {
         tenantId: operation.tenantId,
         operationId: operation.id,
       });
-      // Only read-back finalization can report a finalized outcome. Everything
-      // else retains the durable hold for separately authorized recovery/review.
+      // A historical executor receipt alone cannot authorize current customer
+      // confirmation. Recheck the exact settled job and journal in a fresh read.
       if (
         result.status === "finalized" ||
         result.status === "already_finalized"
       )
-        return { status: "finalized" as const };
-      if (result.status === "needs_review")
-        return { status: "needs_review" as const };
-      return { status: "pending" as const };
+        return await this.admission.readInitialConfirmationReceipt(input, {
+          operationId: operation.id,
+          calendarEventId: operation.calendarEventId,
+        });
+      throw this.reviewRequired();
     } catch {
       throw this.reviewRequired();
     }

@@ -54,6 +54,7 @@ export async function verifyJournaledAppointmentBooking({
     afterAvailability,
     reservation = journal,
     enabled = true,
+    beforeReceipt,
   } = {}) => {
     const admission = new SchedulingService(
       prisma,
@@ -66,6 +67,12 @@ export async function verifyJournaledAppointmentBooking({
       { ...config, schedulingEnabled: enabled },
     );
     admission.insertCalendarEvent = forbidden;
+    const readReceipt =
+      admission.readInitialConfirmationReceipt.bind(admission);
+    admission.readInitialConfirmationReceipt = async (input, proof) => {
+      if (beforeReceipt) await beforeReceipt(input, proof);
+      return readReceipt(input, proof);
+    };
     admission.fetchBusy = async (start, end) => {
       availability++;
       if (afterAvailability) await afterAvailability();
@@ -253,10 +260,29 @@ export async function verifyJournaledAppointmentBooking({
       const f = await make({ depositRequired: true }, "SUCCEEDED");
       const service = makeServices({ mode });
       const before = inserts;
-      assert.deepEqual(await service.book(f.input), { status: "finalized" });
-      assert.deepEqual(await service.book(f.input), {
-        status: "already_confirmed",
-      });
+      const receipt = await service.book(f.input);
+      const replay = await service.book(f.input);
+      assert.equal(receipt.status, "appointment_confirmed");
+      assert.equal(replay.status, "appointment_confirmed");
+      assert.deepEqual(replay.job, receipt.job);
+      assert.deepEqual(replay.appointment, receipt.appointment);
+      const token = JSON.parse(
+        Buffer.from(
+          receipt.managementToken.split(".")[0],
+          "base64url",
+        ).toString(),
+      );
+      assert.equal(token.tenantId, f.job.tenantId);
+      assert.equal(token.jobId, f.job.id);
+      assert.equal(token.purpose, "appointment-management");
+      for (const field of [
+        "calendarOperations",
+        "policySnapshot",
+        "payment",
+        "operationId",
+        "calendarId",
+      ])
+        assert.equal(Object.hasOwn(receipt.job, field), false);
       assert.equal(inserts, before + 1);
       assert.equal((await operations(f)).length, 1);
       assert.equal((await operations(f))[0].status, "FINALIZED");
@@ -279,9 +305,7 @@ export async function verifyJournaledAppointmentBooking({
       const f = await make(),
         before = inserts;
       const service = makeServices({ mode });
-      assert.deepEqual(await service.book(f.input), {
-        status: mode === "absent" ? "needs_review" : "pending",
-      });
+      await assert.rejects(service.book(f.input), /confirmation by the office/);
       const held = await readJob(f),
         saved = await operations(f);
       await assert.rejects(
@@ -325,7 +349,9 @@ export async function verifyJournaledAppointmentBooking({
     ]);
     assert.ok(
       results.some(
-        (r) => r.status === "fulfilled" && r.value.status === "finalized",
+        (r) =>
+          r.status === "fulfilled" &&
+          r.value.status === "appointment_confirmed",
       ),
     );
     assert.equal(inserts, beforeRace + 1);
@@ -343,8 +369,136 @@ export async function verifyJournaledAppointmentBooking({
       }),
       1,
     );
+    // A finalized executor result cannot authorize a stale customer receipt.
+    // These are committed synthetic changes between finalization and receipt read.
+    for (const change of [
+      "event",
+      "window",
+      "cancelled",
+      "deleted",
+      "session",
+      "journal-hold",
+      "journal-window",
+    ]) {
+      const f = await make(),
+        before = inserts;
+      let winner, saved;
+      const service = makeServices({
+        beforeReceipt: async (input, proof) => {
+          const current = await readJob(f);
+          const data =
+            change === "event"
+              ? { calendarEventId: "replacement-event" }
+              : change === "window"
+                ? {
+                    serviceWindowEnd: new Date(
+                      current.serviceWindowEnd.getTime() + 3600000,
+                    ),
+                  }
+                : change === "cancelled"
+                  ? { status: "CANCELLED" }
+                  : change === "deleted"
+                    ? { deletedAt: new Date() }
+                    : change === "session"
+                      ? { intakeSessionId: randomUUID() }
+                      : null;
+          if (data)
+            await prisma.job.update({ where: { id: input.jobId }, data });
+          if (change === "journal-hold")
+            await prisma.calendarOperation.update({
+              where: { id: proof.operationId },
+              data: { status: "NEEDS_REVIEW", finishedAt: null },
+            });
+          if (change === "journal-window")
+            await prisma.calendarOperation.update({
+              where: { id: proof.operationId },
+              data: {
+                desiredWindowEnd: new Date(
+                  current.serviceWindowEnd.getTime() + 3600000,
+                ),
+              },
+            });
+          winner = await readJob(f);
+          saved = await operations(f);
+        },
+      });
+      await assert.rejects(service.book(f.input), /confirmation by the office/);
+      assert.deepEqual(await readJob(f), winner);
+      assert.deepEqual(await operations(f), saved);
+      assert.equal(inserts, before + 1);
+      assert.equal(
+        await prisma.smsEnqueueIntent.count({ where: { jobId: f.job.id } }),
+        1,
+      );
+      assert.equal(
+        await prisma.auditLog.count({
+          where: {
+            entityId: f.job.id,
+            action: "appointment.initial_confirmed",
+          },
+        }),
+        1,
+      );
+    }
+    const replayRace = await make();
+    await makeServices().book(replayRace.input);
+    const replayBefore = inserts,
+      availabilityBefore = availability;
+    let replayWinner;
+    await assert.rejects(
+      makeServices({
+        beforeReceipt: async () => {
+          const current = await readJob(replayRace);
+          replayWinner = await prisma.job.update({
+            where: { id: current.id },
+            data: { updatedAt: new Date(current.updatedAt.getTime() + 1000) },
+          });
+        },
+      }).book(replayRace.input),
+      /confirmation by the office/,
+    );
+    assert.deepEqual(await readJob(replayRace), replayWinner);
+    assert.equal(inserts, replayBefore);
+    assert.equal(availability, availabilityBefore);
+
+    const receiptReader = new SchedulingService(
+      prisma,
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      config,
+    );
+    const [replayJournal] = await operations(replayRace);
+    const proof = {
+      operationId: replayJournal.id,
+      calendarEventId: replayJournal.calendarEventId,
+    };
+    const receiptJob = await readJob(replayRace),
+      receiptOperations = await operations(replayRace);
+    for (const request of [
+      { ...replayRace.input, sessionId: randomUUID() },
+      { ...replayRace.input, tenantId: randomUUID() },
+      { ...replayRace.input, slotToken: "invalid" },
+    ])
+      await assert.rejects(
+        receiptReader.readInitialConfirmationReceipt(request, proof),
+      );
+    await assert.rejects(
+      receiptReader.readInitialConfirmationReceipt(replayRace.input, {
+        ...proof,
+        operationId: randomUUID(),
+      }),
+    );
+    assert.deepEqual(await readJob(replayRace), receiptJob);
+    assert.deepEqual(await operations(replayRace), receiptOperations);
     assert.equal(await prisma.communicationEvent.count(), messages);
     return [
+      "fresh scoped receipts return existing confirmation shape/private management token only for settled matching bookings",
+      "seven committed post-finalization job/journal changes refuse stale receipts without undoing successful intent/audit",
+      "settled replay version race refuses receipt without new availability/insert; independent receipt authority/proof refusals are read-only",
       "composed signed booking refuses invalid tenant/session/token, disabled, unpaid, busy, deleted and closed before journaling",
       "payment revoked during availability fails canonical journal admission without insertion",
       "real admission/journal/executor/readback produce one intent/audit with finalized replay; thrown insert acknowledgment still needs readback",

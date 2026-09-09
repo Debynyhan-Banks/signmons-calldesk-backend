@@ -33,8 +33,10 @@ describe("Inactive journaled booking composition", () => {
   const operation = {
     id: "durable-id",
     tenantId: "canonical-tenant",
+    calendarEventId: "durable-event",
   } as CalendarOperation;
   const admission = {
+    readInitialConfirmationReceipt: jest.fn(),
     prepareInitialConfirmation: jest.fn<
       Promise<Preparation>,
       [InitialConfirmationInput]
@@ -45,9 +47,14 @@ describe("Inactive journaled booking composition", () => {
     execute: jest.fn().mockResolvedValue({ status: "finalized" }),
   };
   let service: JournaledAppointmentBookingService;
+  const receipt = {
+    status: "appointment_confirmed",
+    managementToken: "fresh-token",
+  };
   beforeEach(() => {
     jest.resetAllMocks();
     admission.prepareInitialConfirmation.mockResolvedValue(ready);
+    admission.readInitialConfirmationReceipt.mockResolvedValue(receipt);
     journal.reserve.mockResolvedValue(operation);
     executor.execute.mockResolvedValue({ status: "finalized" });
     service = new JournaledAppointmentBookingService(
@@ -67,7 +74,14 @@ describe("Inactive journaled booking composition", () => {
       operationId: "attacker",
       paid: true,
     };
-    expect(await service.book(untrusted)).toEqual({ status: "finalized" });
+    expect(await service.book(untrusted)).toEqual(receipt);
+    expect(admission.readInitialConfirmationReceipt).toHaveBeenCalledWith(
+      untrusted,
+      {
+        operationId: "durable-id",
+        calendarEventId: "durable-event",
+      },
+    );
     expect(admission.prepareInitialConfirmation).toHaveBeenCalledWith(
       untrusted,
     );
@@ -92,12 +106,19 @@ describe("Inactive journaled booking composition", () => {
     expect(journal.reserve).toHaveBeenCalledTimes(1);
     expect(executor.execute).toHaveBeenCalledTimes(1);
   });
-  it("returns a minimal historical replay without reserving or executing", async () => {
+  it("revalidates the observed settled replay before returning a fresh receipt", async () => {
     admission.prepareInitialConfirmation.mockResolvedValue({
       kind: "replay",
-      response: { private: "never serialize" },
+      response: {
+        private: "never serialize",
+        job: { calendarEventId: "existing", updatedAt: now },
+      },
     } as unknown as Preparation);
-    expect(await service.book(input)).toEqual({ status: "already_confirmed" });
+    expect(await service.book(input)).toEqual(receipt);
+    expect(admission.readInitialConfirmationReceipt).toHaveBeenCalledWith(
+      input,
+      { calendarEventId: "existing", expectedUpdatedAt: now },
+    );
     expect(journal.reserve).not.toHaveBeenCalled();
     expect(executor.execute).not.toHaveBeenCalled();
   });
@@ -138,13 +159,17 @@ describe("Inactive journaled booking composition", () => {
         status,
         privateProviderPayload: "never expose",
       });
-      expect(await service.book(input)).toEqual({
-        status: ["finalized", "already_finalized"].includes(status)
-          ? "finalized"
-          : status === "needs_review"
-            ? "needs_review"
-            : "pending",
-      });
+      if (["finalized", "already_finalized"].includes(status)) {
+        expect(await service.book(input)).toEqual(receipt);
+        expect(admission.readInitialConfirmationReceipt).toHaveBeenCalledTimes(
+          1,
+        );
+      } else {
+        await expect(service.book(input)).rejects.toThrow(
+          "confirmation by the office",
+        );
+        expect(admission.readInitialConfirmationReceipt).not.toHaveBeenCalled();
+      }
       expect(executor.execute).toHaveBeenCalledTimes(1);
       expect(journal.reserve).toHaveBeenCalledTimes(1);
     },
@@ -159,6 +184,27 @@ describe("Inactive journaled booking composition", () => {
     expect(executor.execute).toHaveBeenCalledTimes(1);
     expect(journal.reserve).toHaveBeenCalledTimes(1);
   });
+  it.each(["ready", "replay"])(
+    "receipt failure after %s never returns stale confirmation",
+    async (kind) => {
+      if (kind === "replay")
+        admission.prepareInitialConfirmation.mockResolvedValue({
+          kind: "replay",
+          response: {
+            job: { calendarEventId: "existing", updatedAt: now },
+            managementToken: "stale-token",
+          },
+        } as unknown as Preparation);
+      admission.readInitialConfirmationReceipt.mockRejectedValue(
+        new Error("private changed state"),
+      );
+      await expect(service.book(input)).rejects.toThrow(
+        "confirmation by the office",
+      );
+      expect(journal.reserve).toHaveBeenCalledTimes(kind === "replay" ? 0 : 1);
+      expect(executor.execute).toHaveBeenCalledTimes(kind === "replay" ? 0 : 1);
+    },
+  );
   it("keeps the composition and journal services absent from live module wiring", () => {
     const module = readFileSync(
       join(__dirname, "scheduling.module.ts"),

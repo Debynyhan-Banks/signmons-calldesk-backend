@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Guarded CREATE composition is review-ready on PR #21: shared signed request admission feeds canonical journal claim and one-shot read-back execution in an inactive internal service. Unknown reservation outcomes never execute/fall back; existing unfinished requests remain held. 742 backend tests, real composed success/uncertainty/payment/concurrent proof, 15 migrations/11 prior crashes, five browser suites and four clean audits pass. Public receipts, recovery/office-review ownership, customer handoff and acceptance remain open; no activation/deployment.
+  - Guarded CREATE fresh-receipt boundary is review-ready on PR #21: inactive path returns confirmation only after fresh signed/session-scoped settled-job and finalized-journal or exact replay-version proof. Pending/review/failed receipt returns office guidance without fallback or compensation. 754 backend tests, seven committed changed-state receipt refusals/one replay race, 15 migrations/11 prior crashes, five browser suites and four clean audits pass. Recovery ownership, customer handoff and acceptance remain open; no activation/deployment.
 
 ## Next
 

@@ -1314,6 +1314,123 @@ describe("SchedulingService", () => {
     );
   });
 
+  describe("fresh initial confirmation receipt", () => {
+    const start = new Date("2039-01-01T14:00:00Z"),
+      end = new Date("2039-01-01T15:00:00Z");
+    const input = () => ({
+      tenantId: baseJob.tenantId,
+      jobId: baseJob.id,
+      sessionId: "session",
+      slotToken: signedSlot(start, end),
+    });
+    const proof = { operationId: "operation", calendarEventId: "event-1" };
+    it("requires the current settled job and exact finalized CREATE journal before minting a receipt", async () => {
+      prisma.job.findFirst.mockResolvedValue(
+        appointmentJob({ serviceWindowStart: start, serviceWindowEnd: end }),
+      );
+      const response = await service.readInitialConfirmationReceipt(
+        input(),
+        proof,
+      );
+      expect(response.status).toBe("appointment_confirmed");
+      expect(response.managementToken).toEqual(expect.any(String));
+      expect(response.job).not.toHaveProperty("calendarOperations");
+      expect(response.job).not.toHaveProperty("policySnapshot");
+      expect(prisma.job.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: baseJob.id,
+          tenantId: baseJob.tenantId,
+          intakeSessionId: "session",
+          deletedAt: null,
+          status: "ACCEPTED",
+          calendarEventId: "event-1",
+          serviceWindowStart: start,
+          serviceWindowEnd: end,
+          updatedAt: undefined,
+          AND: [
+            { calendarOperations: { none: { finishedAt: null } } },
+            {
+              calendarOperations: {
+                some: {
+                  id: "operation",
+                  tenantId: baseJob.tenantId,
+                  action: "CREATE",
+                  status: "FINALIZED",
+                  finishedAt: { not: null },
+                  calendarEventId: "event-1",
+                  desiredWindowStart: start,
+                  desiredWindowEnd: end,
+                },
+              },
+            },
+          ],
+        },
+        include: {
+          customer: true,
+          propertyAddress: true,
+          serviceCategory: true,
+        },
+      });
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(confirmation.finalize).not.toHaveBeenCalled();
+    });
+    it("uses exact observed version and event for a settled legacy-compatible replay", async () => {
+      const job = appointmentJob();
+      prisma.job.findFirst.mockResolvedValue(job);
+      await service.readInitialConfirmationReceipt(input(), {
+        calendarEventId: "event-1",
+        expectedUpdatedAt: job.updatedAt,
+      });
+      expect(prisma.job.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            updatedAt: job.updatedAt,
+            calendarEventId: "event-1",
+            AND: [{ calendarOperations: { none: { finishedAt: null } } }],
+          }),
+        }),
+      );
+    });
+    it("refuses an absent or no-longer-matching settled snapshot without writes", async () => {
+      prisma.job.findFirst.mockResolvedValue(null);
+      await expect(
+        service.readInitialConfirmationReceipt(input(), proof),
+      ).rejects.toThrow("office review");
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+    });
+    it.each(["signature", "tenant", "job", "expired"])(
+      "refuses %s authority before lookup",
+      async (kind) => {
+        const request = input();
+        if (kind === "signature") request.slotToken = "invalid";
+        if (kind === "tenant") request.tenantId = "wrong";
+        if (kind === "job") request.jobId = "wrong";
+        if (kind === "expired")
+          request.slotToken = sign({
+            tenantId: baseJob.tenantId,
+            jobId: baseJob.id,
+            start: start.toISOString(),
+            end: end.toISOString(),
+            expiresAt: 0,
+          });
+        await expect(
+          service.readInitialConfirmationReceipt(request, proof),
+        ).rejects.toThrow();
+        expect(prisma.job.findFirst).not.toHaveBeenCalled();
+      },
+    );
+    it.each([
+      { calendarEventId: " ", operationId: "operation" },
+      { calendarEventId: "event-1", operationId: " " },
+      { calendarEventId: "event-1", expectedUpdatedAt: new Date(NaN) },
+    ])("rejects malformed server proof before lookup: %p", async (invalid) => {
+      await expect(
+        service.readInitialConfirmationReceipt(input(), invalid),
+      ).rejects.toThrow("office review");
+      expect(prisma.job.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
   function managementToken(): string {
     return sign({
       version: 1,

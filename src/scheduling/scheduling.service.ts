@@ -44,6 +44,13 @@ export interface InitialConfirmationInput {
   slotToken: string;
 }
 
+// Server-derived only. A new execution needs its exact finalized journal;
+// an existing settled replay must still match the just-observed job version.
+export type InitialConfirmationReceiptProof = { calendarEventId: string } & (
+  | { operationId: string; expectedUpdatedAt?: never }
+  | { expectedUpdatedAt: Date; operationId?: never }
+);
+
 interface SignedSlot {
   tenantId: string;
   jobId: string;
@@ -479,6 +486,77 @@ export class SchedulingService {
       throw new BadRequestException("Choose a new appointment time.");
     }
     return this.rescheduleAppointment(job, record, input.slotToken);
+  }
+
+  /** Read-only receipt boundary for the inactive journaled booking path.
+   * Revalidate request authority and current local settlement before minting a
+   * management token. Never call availability, reserve, execute or recover here.
+   */
+  async readInitialConfirmationReceipt(
+    input: InitialConfirmationInput,
+    proof: InitialConfirmationReceiptProof,
+  ) {
+    const slot = this.verifySlot(input.slotToken);
+    const start = new Date(slot.start),
+      end = new Date(slot.end);
+    if (
+      slot.tenantId !== input.tenantId ||
+      slot.jobId !== input.jobId ||
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start >= end
+    )
+      throw new BadRequestException("This appointment choice is invalid.");
+    if (
+      !proof.calendarEventId?.trim() ||
+      (proof.operationId !== undefined
+        ? !proof.operationId.trim()
+        : !(proof.expectedUpdatedAt instanceof Date) ||
+          !Number.isFinite(proof.expectedUpdatedAt.getTime()))
+    )
+      throw new ConflictException(
+        "Appointment confirmation needs office review.",
+      );
+    const job = await this.prisma.job.findFirst({
+      where: {
+        id: input.jobId,
+        tenantId: input.tenantId,
+        intakeSessionId: input.sessionId,
+        deletedAt: null,
+        status: JobStatus.ACCEPTED,
+        calendarEventId: proof.calendarEventId,
+        serviceWindowStart: start,
+        serviceWindowEnd: end,
+        updatedAt: proof.expectedUpdatedAt,
+        AND: [
+          { calendarOperations: noUnfinishedCalendarOperations },
+          ...(proof.operationId !== undefined
+            ? [
+                {
+                  calendarOperations: {
+                    some: {
+                      id: proof.operationId,
+                      tenantId: input.tenantId,
+                      action: "CREATE" as const,
+                      status: "FINALIZED" as const,
+                      finishedAt: { not: null },
+                      calendarEventId: proof.calendarEventId,
+                      desiredWindowStart: start,
+                      desiredWindowEnd: end,
+                    },
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+      include: { customer: true, propertyAddress: true, serviceCategory: true },
+    });
+    if (!job)
+      throw new ConflictException(
+        "Appointment confirmation needs office review.",
+      );
+    return this.confirmedResponse(this.mapJob(job));
   }
 
   private confirmedResponse(job: JobRecord) {
