@@ -135,6 +135,7 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 1000 } });
     page.on("pageerror", (error) => errors.push(error.message));
     let customerMode = "pending";
+    let dispatchDetail = detail;
     await page.route("**/*", async (route) => {
       const req = route.request(),
         url = new URL(req.url());
@@ -177,8 +178,8 @@ try {
         unexpected.push(path);
         return route.abort();
       }
-      if (path.endsWith("/jobs/dispatch-board")) return reply([detail]);
-      if (path.endsWith(`/jobs/dispatch-board/${jobId}`)) return reply(detail);
+      if (path.endsWith("/jobs/dispatch-board")) return reply([dispatchDetail]);
+      if (path.endsWith(`/jobs/dispatch-board/${jobId}`)) return reply(dispatchDetail);
       if (path.endsWith("/payment-request"))
         return reply({ status: "NOT_REQUESTED" });
       if (path.endsWith("/payment-events")) return reply([]);
@@ -362,6 +363,30 @@ try {
       path: `${evidence}calendar-hold-dispatch-${name}.png`,
       fullPage: true,
     });
+    for (const assigned of [true, false]) {
+      dispatchDetail = {
+        ...detail, reference: assigned ? "LEGACYASSIGNED" : "LEGACYUNASSIGNED",
+        status: "ACCEPTED",
+        serviceWindowStart: "2026-10-10T12:00:00Z",
+        serviceWindowEnd: assigned ? "2026-10-10T14:00:00Z" : null,
+        assignedTechnician: assigned ? detail.assignedTechnician : null,
+        technicianStatus: assigned ? "ASSIGNED" : null,
+      };
+      await page.getByRole("button", { name: "Refresh", exact: true }).click();
+      await page.getByText(`Job #${dispatchDetail.reference}`, { exact: true }).waitFor();
+      assert.equal(await assignment.isDisabled(), true);
+      assert.equal(await page.getByRole("combobox").isDisabled(), true);
+      const cancel = page.getByRole("button", { name: "Cancel assignment", exact: true });
+      if (assigned) assert.equal(await cancel.isDisabled(), true);
+      else assert.equal(await cancel.count(), 0);
+      assert.ok((await page.getByRole("status").innerText()).includes("reservation is provisional"));
+      assert.equal(await page.getByRole("button", { name: "Escalate to operations", exact: true }).isEnabled(), true);
+      await overflow();
+      await page.screenshot({
+        path: `${evidence}legacy-dispatch-${assigned ? "assigned" : "unassigned"}-${name}.png`,
+        fullPage: true,
+      });
+    }
     await page.close();
   }
   assert.deepEqual(errors, []);
