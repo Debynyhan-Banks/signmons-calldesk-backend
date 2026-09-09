@@ -1,0 +1,56 @@
+{
+  "result": "PASS",
+  "date": "2026-09-09",
+  "scope": "Documentation-only recording of explicit owner approval; no implementation or activation",
+  "baseBackendCommit": "abf262cb25f1870e240e15be5e5a0412b698c59a",
+  "baseGovernanceCommit": "f5ccbae852f19a139f33732747822ed943108b78",
+  "canonicalContract": "signmons-governance/APP013_EMAIL_CONSENT_EXPIRY_PROPOSAL.md",
+  "status": "APPROVED DESIGN — NOT IMPLEMENTED",
+  "approval": {
+    "userReply": "i approve",
+    "context": "Response to explicit question asking approval of D1-D4",
+    "approvedDecisions": [
+      "D1 job-scoped opt-in",
+      "D2 separate mailbox verification",
+      "D3 24-hour original-event deadline with active-window cutoff",
+      "D4 grant termination and 90-day post-close evidence retention subject to retention/hold compatibility"
+    ],
+    "amendments": []
+  },
+  "currentValidation": {
+    "governancePlacementTests": 4,
+    "docsConsistency": "PASS",
+    "contractRelativeLinks": 4,
+    "decisionMarkers": 4,
+    "backendArchitecture": "PASS",
+    "diffCheck": "PASS",
+    "runtimeFilesChanged": 0
+  },
+  "notRerun": [
+    "backend and UI tests/lint/build",
+    "browser QA",
+    "database fixture and crash suite",
+    "dependency audits"
+  ],
+  "notRerunReason": "Only documentation and approval evidence changed; prior runtime results remain historical",
+  "runtimeBaselineCommit": "aa4c5470a0bdea64524cf1d2c65c0f8ee15e8cae",
+  "eligible": false,
+  "deliveryAuthorized": false,
+  "runtimeChanges": false,
+  "productionActions": 0,
+  "nextProposedSection": "Consent-evidence schema and transaction-local one-time job binding with synthetic tests; not started or activated here",
+  "remainingGates": [
+    "Separately bounded implementation review",
+    "Verification challenge and transport design/acceptance",
+    "Retention/security/legal-hold compatibility before purge or release",
+    "No customer collection, credentials, queue admission, sending or release authority"
+  ],
+  "completion": {
+    "app013ScopeCoveragePercent": 50,
+    "formalAcceptedCriteria": 0,
+    "totalCriteria": 12,
+    "app013SectionAllowance": "7-12, low confidence",
+    "pilotSectionAllowance": "20-35, low confidence; verification/retention sizing may increase these",
+    "overallMvpPercentage": null
+  }
+}
