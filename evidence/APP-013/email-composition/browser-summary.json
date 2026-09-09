@@ -1,0 +1,40 @@
+{
+  "result": "PASS",
+  "scope": "fictional local HTML/plain-text/calendar composition only",
+  "viewports": [
+    1440,
+    390
+  ],
+  "cases": [
+    "confirmed",
+    "rescheduled",
+    "cancelled"
+  ],
+  "checks": [
+    "escaped fixed HTML",
+    "private/no-store/referrer headers",
+    "active-only management link",
+    "cancellation without actions",
+    "credential-free operator previews",
+    "Eastern windows",
+    "keyboard link focus",
+    "200 percent text without horizontal overflow",
+    "empty cookies/local/session storage",
+    "actual fictional calendar download",
+    "cancelled calendar 404"
+  ],
+  "counts": {
+    "GET": 15,
+    "HEAD": 0,
+    "refused": 0
+  },
+  "errors": [],
+  "external": [],
+  "mutations": [],
+  "providerCalls": 0,
+  "limitations": [
+    "No email client compatibility or live delivery proof",
+    "No Calendar import/synchronization proof",
+    "No identity, recipient, credential or canonical-state authority proof"
+  ]
+}

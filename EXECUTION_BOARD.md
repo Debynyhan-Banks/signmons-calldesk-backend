@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Owner approved the supervised CallDesk MVP boundary and completion audit in governance CALLDESK_MVP_PLAN.md: one approved business, English, online access and human supervision; required launch capabilities are not current availability claims. APP-013 remains sole Now. Next bounded continuation is fixed appointment-email composition with local previews/tests only; not implemented in this documentation checkpoint. No delivery/provider or production/release authorization.
+  - Fixed appointment-email composition is review-ready and inactive: confirmation/reschedule/cancellation HTML/text, safe private action/calendar copy and credential-free operator previews. 1075 backend/159 UI tests and local browser/database/audit regressions pass. APP-013 scope coverage 50%, formal acceptance 0/12; not launch readiness. Next proposed after review: tenant-scoped email eligibility/recipient snapshot, no credential issuance or sending. Approved supervised pilot boundary remains CALLDESK_MVP_PLAN.md.
 
 ## Next
 
