@@ -91,10 +91,14 @@ try {
     const page = await browser.newPage({ viewport: { width, height: 1000 } });
     page.on("pageerror", (error) => errors.push(error.message));
     let pending = true;
+    let legacyStatus = null;
     const detail = () => ({
       ...fixture,
+      reference: legacyStatus ? `LEGACY${legacyStatus}` : fixture.reference,
       calendarSyncPending: pending,
-      jobStatus: pending ? "CANCELLED" : "ACCEPTED",
+      jobStatus: pending && !legacyStatus ? "CANCELLED" : "ACCEPTED",
+      technicianStatus: legacyStatus ?? fixture.technicianStatus,
+      serviceWindowEnd: legacyStatus === "COMPLETED" ? null : fixture.serviceWindowEnd,
       availableActions: pending
         ? actions
         : ["accept", "decline", "cannot_take"],
@@ -178,6 +182,21 @@ try {
       path: `${evidence}calendar-hold-technician-${name}.png`,
       fullPage: true,
     });
+    for (const status of ["ASSIGNED", "IN_PROGRESS", "COMPLETED"]) {
+      legacyStatus = status;
+      await page.getByRole("button", { name: "Refresh", exact: true }).click();
+      await page.getByText(`Job LEGACY${status}`, { exact: true }).waitFor();
+      await hold.waitFor();
+      await page.getByText("Provisional reservation", { exact: true }).waitFor();
+      await noActions();
+      await noOverflow();
+      await hold.scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: `${evidence}legacy-field-hold-${status.toLowerCase()}-${name}.png`,
+        fullPage: true,
+      });
+    }
+    legacyStatus = null;
     // A formerly settled detail must disappear when the server reports a new hold.
     pending = false;
     await page.getByRole("button", { name: "Refresh", exact: true }).click();
@@ -218,6 +237,7 @@ try {
       requests: requests.length,
       syntheticConflictPosts: 2,
       initialHeldMutationPosts: 0,
+      legacyHeldStates: ["ASSIGNED", "IN_PROGRESS", "COMPLETED"],
       pageErrors: errors,
       externalRequests: 0,
     }),

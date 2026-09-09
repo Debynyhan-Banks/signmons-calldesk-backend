@@ -8,8 +8,11 @@ import { PrismaService } from "../prisma/prisma.service";
 import {
   unfinishedCalendarOperations,
   noUnfinishedCalendarOperations,
-  requireCalendarOperationSettled,
 } from "../scheduling/calendar-operation-guard";
+import {
+  jobReservationSnapshot,
+  requireJobCalendarSettled,
+} from "./job-calendar-guard";
 
 export interface CompleteJobRequest {
   tenantId: string;
@@ -42,6 +45,9 @@ export class JobLifecycleService {
           status: true,
           completedAt: true,
           updatedAt: true,
+          calendarEventId: true,
+          serviceWindowStart: true,
+          serviceWindowEnd: true,
           calendarOperations: unfinishedCalendarOperations,
         },
       });
@@ -49,7 +55,7 @@ export class JobLifecycleService {
       if (!job) {
         throw new NotFoundException("Job was not found.");
       }
-      requireCalendarOperationSettled(job);
+      requireJobCalendarSettled(job);
 
       if (job.status === JobStatus.COMPLETED) {
         if (!job.completedAt) {
@@ -72,7 +78,7 @@ export class JobLifecycleService {
           id: job.id,
           tenantId: request.tenantId,
           deletedAt: null,
-          status: job.status,
+          ...jobReservationSnapshot(job),
           updatedAt: job.updatedAt,
           calendarOperations: noUnfinishedCalendarOperations,
         },
@@ -96,11 +102,14 @@ export class JobLifecycleService {
             id: true,
             status: true,
             completedAt: true,
+            calendarEventId: true,
+            serviceWindowStart: true,
+            serviceWindowEnd: true,
             calendarOperations: unfinishedCalendarOperations,
           },
         });
         if (current?.status === JobStatus.COMPLETED && current.completedAt) {
-          requireCalendarOperationSettled(current);
+          requireJobCalendarSettled(current);
           return this.toResult(current.id, current.completedAt, false);
         }
         throw new ConflictException("Job status changed before completion.");

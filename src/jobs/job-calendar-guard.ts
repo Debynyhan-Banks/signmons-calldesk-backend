@@ -6,14 +6,12 @@ type Reservation = Pick<
   Job,
   "status" | "calendarEventId" | "serviceWindowStart" | "serviceWindowEnd"
 >;
-type DispatchCalendarSnapshot = Reservation & {
+type JobCalendarSnapshot = Reservation & {
   calendarOperations: ReadonlyArray<{ id: string }>;
 };
 
-// Scope is dispatch consumption, not Calendar reconciliation or job repair.
-export function dispatchCalendarPending(
-  job: DispatchCalendarSnapshot,
-): boolean {
+// Scope is job/field consumption, not Calendar reconciliation or job repair.
+export function jobCalendarPending(job: JobCalendarSnapshot): boolean {
   return (
     calendarOperationPending(job) ||
     Boolean(
@@ -24,10 +22,8 @@ export function dispatchCalendarPending(
   );
 }
 
-export function requireDispatchCalendarSettled(
-  job: DispatchCalendarSnapshot,
-): void {
-  if (dispatchCalendarPending(job)) {
+export function requireJobCalendarSettled(job: JobCalendarSnapshot): void {
+  if (jobCalendarPending(job)) {
     throw new ConflictException(
       "Calendar synchronization is unfinished. Appointment details and actions are on hold; please contact the office before making plans or changes.",
     );
@@ -36,7 +32,7 @@ export function requireDispatchCalendarSettled(
 
 // Compare exact observed fields on write: the request's version alone does not
 // prove that the reservation checked above is the reservation being mutated.
-export function dispatchReservationSnapshot(job: Reservation): Reservation {
+export function jobReservationSnapshot(job: Reservation): Reservation {
   return {
     status: job.status,
     calendarEventId: job.calendarEventId,

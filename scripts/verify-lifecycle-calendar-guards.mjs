@@ -161,7 +161,7 @@ export async function verifyLifecycleCalendarGuards({
           /access is no longer active/,
         );
       }
-      // Terminal evidence removes this guard only; existing lifecycle rules remain.
+      // Terminal history removes only the journal hold, not an unconfirmed CREATE.
       await prisma.calendarOperation.update({
         where: { id: operation.id },
         data: { status: "ABORTED", finishedAt: new Date() },
@@ -169,7 +169,20 @@ export async function verifyLifecycleCalendarGuards({
       const job = await prisma.job.findUniqueOrThrow({
         where: { id: fixture.job.id },
       });
-      if (action === "CANCEL")
+      if (action === "CREATE") {
+        await assert.rejects(
+          technician.update(update(job)),
+          /Calendar synchronization is unfinished/,
+        );
+        await assert.rejects(
+          lifecycle.completeJob(request(job)),
+          /Calendar synchronization is unfinished/,
+        );
+        assert.deepEqual(
+          await prisma.job.findUniqueOrThrow({ where: { id: job.id } }),
+          job,
+        );
+      } else if (action === "CANCEL")
         await assert.rejects(technician.update(update(job)), /Cancelled jobs/);
       else {
         const accepted = await technician.update(update(job));
@@ -294,7 +307,7 @@ export async function verifyLifecycleCalendarGuards({
       "deterministic reservation-between-read-and-CAS blocks both mutation paths",
       "committed mutations invalidate stale journal reservations",
       "completion audit failure rolls back version and state",
-      "terminal guards preserve ordinary completion/replay and departure intent capture",
+      "terminal journal retains unconfirmed CREATE hold; ordinary settled completion/replay and departure intent capture preserved",
     ];
   } finally {
     await prisma.calendarOperation.deleteMany({

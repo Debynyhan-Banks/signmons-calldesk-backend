@@ -14,11 +14,14 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
-  calendarOperationPending,
   unfinishedCalendarOperations,
   noUnfinishedCalendarOperations,
-  requireCalendarOperationSettled,
 } from "../scheduling/calendar-operation-guard";
+import {
+  jobCalendarPending,
+  jobReservationSnapshot,
+  requireJobCalendarSettled,
+} from "./job-calendar-guard";
 import { LoggingService } from "../logging/logging.service";
 import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
 import { TechnicianJobAction } from "./dto/update-technician-job.dto";
@@ -153,7 +156,7 @@ export class TechnicianWorkflowService {
         include: JOB_INCLUDE,
       });
       if (!job) throw new NotFoundException("Assigned job was not found.");
-      requireCalendarOperationSettled(job);
+      requireJobCalendarSettled(job);
       if (job.status === JobStatus.CANCELLED) {
         throw new ConflictException("Cancelled jobs cannot be updated.");
       }
@@ -214,7 +217,8 @@ export class TechnicianWorkflowService {
           assignedUserId: access.technicianId,
           assignedUserTenantId: access.tenantId,
           updatedAt: expectedUpdatedAt,
-          status: job.status,
+          AND: [{ updatedAt: job.updatedAt }],
+          ...jobReservationSnapshot(job),
           calendarOperations: noUnfinishedCalendarOperations,
           deletedAt: null,
         },
@@ -343,7 +347,7 @@ export class TechnicianWorkflowService {
 
   private toSummary(job: TechnicianJob) {
     const technicianStatus = this.currentTechnicianStatus(job);
-    const calendarSyncPending = calendarOperationPending(job);
+    const calendarSyncPending = jobCalendarPending(job);
     return {
       jobId: job.id,
       reference: job.id.replace(/-/g, "").slice(0, 8).toUpperCase(),

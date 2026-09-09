@@ -31,6 +31,33 @@ describe("JobLifecycleService", () => {
     traceId: "request-1",
   };
 
+  it.each([null, "", " \t "])(
+    "refuses legacy completion with reference %j and full or partial windows",
+    async (calendarEventId) => {
+      for (const window of [
+        { serviceWindowStart: completedAt, serviceWindowEnd: completedAt },
+        { serviceWindowStart: completedAt, serviceWindowEnd: null },
+        { serviceWindowStart: null, serviceWindowEnd: completedAt },
+      ]) {
+        const { service, transaction } = createHarness();
+        transaction.job.findFirst.mockResolvedValue({
+          id: request.jobId,
+          status: JobStatus.ACCEPTED,
+          completedAt: null,
+          updatedAt: completedAt,
+          calendarOperations: [],
+          calendarEventId,
+          ...window,
+        });
+        await expect(service.completeJob(request)).rejects.toThrow(
+          "Calendar synchronization is unfinished",
+        );
+        expect(transaction.job.updateMany).not.toHaveBeenCalled();
+        expect(transaction.auditLog.create).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it.each([
     JobStatus.ACCEPTED,
     JobStatus.IN_PROGRESS,
@@ -110,6 +137,9 @@ describe("JobLifecycleService", () => {
         id: request.jobId,
         status,
         completedAt: null,
+        calendarEventId: null,
+        serviceWindowStart: null,
+        serviceWindowEnd: null,
       });
       transaction.job.updateMany.mockResolvedValue({ count: 1 });
       transaction.auditLog.create.mockResolvedValue({ id: "audit-1" });
@@ -133,6 +163,9 @@ describe("JobLifecycleService", () => {
           status: true,
           completedAt: true,
           updatedAt: true,
+          calendarEventId: true,
+          serviceWindowStart: true,
+          serviceWindowEnd: true,
           calendarOperations: {
             where: { finishedAt: null },
             select: { id: true },
@@ -146,6 +179,9 @@ describe("JobLifecycleService", () => {
           tenantId: request.tenantId,
           deletedAt: null,
           status,
+          calendarEventId: null,
+          serviceWindowStart: null,
+          serviceWindowEnd: null,
           updatedAt: completedAt,
           calendarOperations: { none: { finishedAt: null } },
         },

@@ -21,10 +21,10 @@ import {
   noUnfinishedCalendarOperations,
 } from "../scheduling/calendar-operation-guard";
 import {
-  dispatchCalendarPending,
-  dispatchReservationSnapshot,
-  requireDispatchCalendarSettled,
-} from "./dispatch-calendar-guard";
+  jobCalendarPending,
+  jobReservationSnapshot,
+  requireJobCalendarSettled,
+} from "./job-calendar-guard";
 import {
   evaluatePaymentGate,
   type PaymentGateDecision,
@@ -230,7 +230,7 @@ export class DispatchBoardService {
         },
       });
       if (!job) throw new NotFoundException("Dispatch job was not found.");
-      requireDispatchCalendarSettled(job);
+      requireJobCalendarSettled(job);
       if (
         job.status === JobStatus.COMPLETED ||
         job.status === JobStatus.CANCELLED
@@ -295,7 +295,7 @@ export class DispatchBoardService {
           tenantId: input.tenantId,
           updatedAt: expectedUpdatedAt,
           AND: [{ updatedAt: job.updatedAt }],
-          ...dispatchReservationSnapshot(job),
+          ...jobReservationSnapshot(job),
           calendarOperations: noUnfinishedCalendarOperations,
           deletedAt: null,
         },
@@ -374,7 +374,7 @@ export class DispatchBoardService {
         },
       });
       if (!job) throw new NotFoundException("Dispatch job was not found.");
-      requireDispatchCalendarSettled(job);
+      requireJobCalendarSettled(job);
       if (!job.assignedUserId) {
         return {
           changed: false,
@@ -389,7 +389,7 @@ export class DispatchBoardService {
           tenantId: input.tenantId,
           updatedAt: expectedUpdatedAt,
           AND: [{ updatedAt: job.updatedAt }],
-          ...dispatchReservationSnapshot(job),
+          ...jobReservationSnapshot(job),
           calendarOperations: noUnfinishedCalendarOperations,
           deletedAt: null,
         },
@@ -563,8 +563,7 @@ export class DispatchBoardService {
         if (paymentGate.state === "LOCKED") {
           reasonCodes.push("PAYMENT_GATE_LOCKED");
         }
-        if (dispatchCalendarPending(job))
-          reasonCodes.push("CALENDAR_SYNC_PENDING");
+        if (jobCalendarPending(job)) reasonCodes.push("CALENDAR_SYNC_PENDING");
         const proficiencyScore =
           capability?.proficiency === ProficiencyLevel.EXPERT
             ? 30
@@ -593,7 +592,7 @@ export class DispatchBoardService {
                 (available && !unavailable)) &&
               (!routing.requirements.requireOnCall || user.isOnCall) &&
               paymentGate.state !== "LOCKED" &&
-              !dispatchCalendarPending(job),
+              !jobCalendarPending(job),
           ),
           reasonCodes,
           score:
@@ -622,7 +621,7 @@ export class DispatchBoardService {
     return {
       jobId: job.id,
       reference: job.id.replace(/-/g, "").slice(0, 8).toUpperCase(),
-      calendarSyncPending: dispatchCalendarPending(job),
+      calendarSyncPending: jobCalendarPending(job),
       queue: this.queue(job, escalated, paymentGate),
       serviceCategory: job.serviceCategory.name,
       urgency: job.urgency,
@@ -651,7 +650,7 @@ export class DispatchBoardService {
     escalated: boolean,
     paymentGate: PaymentGateDecision,
   ): DispatchQueue {
-    if (dispatchCalendarPending(job)) return "ESCALATED";
+    if (jobCalendarPending(job)) return "ESCALATED";
     if (job.assignedUserId) return "ASSIGNED";
     if (escalated) return "ESCALATED";
     if (paymentGate.state === "LOCKED") return "NEW_REQUEST";

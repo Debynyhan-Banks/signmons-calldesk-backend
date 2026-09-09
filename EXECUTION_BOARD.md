@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Legacy CREATE dispatch safeguard is review-ready on PR #21: unconfirmed reservations are provisional/ESCALATED with no recommendation, assignment/override/cancellation or no-op bypass; mutations compare observed booking fields/version. 674 backend tests, 54 held database mutations, two competing-write cases and extended browser checks pass; four audits clean. Legacy technician/lifecycle guards and repair, authorized CREATE orchestration/recovery ownership, external races, reschedule/cancel and SENDING recovery and acceptance remain open; no activation or deployment.
+  - Legacy CREATE technician/lifecycle safeguard is review-ready on PR #21: provisional field list/detail, all six actions/no-op and direct-completion holds, observed reservation/version write checks; reviewed dispatch behavior retained through shared helper. 684 backend tests, 279 database refusals and two competing-write cases, five browser suites and four clean audits pass. Legacy inventory/repair, authorized CREATE orchestration/recovery ownership, external races, reschedule/cancel and SENDING recovery and acceptance remain open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

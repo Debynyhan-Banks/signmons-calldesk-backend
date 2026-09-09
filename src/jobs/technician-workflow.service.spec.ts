@@ -108,6 +108,76 @@ describe("TechnicianWorkflowService", () => {
     "in_progress",
     "complete",
   ] as const)(
+    "holds legacy %s before transitions and no-op replay across all technician states",
+    async (action) => {
+      for (const calendarEventId of [null, "", " \t "]) {
+        for (const window of [
+          {
+            serviceWindowStart: baseJob.serviceWindowStart,
+            serviceWindowEnd: baseJob.serviceWindowEnd,
+          },
+          {
+            serviceWindowStart: baseJob.serviceWindowStart,
+            serviceWindowEnd: null,
+          },
+          {
+            serviceWindowStart: null,
+            serviceWindowEnd: baseJob.serviceWindowEnd,
+          },
+        ]) {
+          for (const technicianStatus of Object.values(TechnicianJobStatus)) {
+            const { prisma, service, messaging } = createHarness();
+            prisma.job.findFirst.mockResolvedValue({
+              ...baseJob,
+              ...window,
+              calendarEventId,
+              technicianStatus,
+            });
+            await expect(
+              service.update({
+                rawToken: "signed-link",
+                jobId,
+                action,
+                expectedUpdatedAt: now.toISOString(),
+              }),
+            ).rejects.toThrow("Calendar synchronization is unfinished");
+            expect(prisma.job.updateMany).not.toHaveBeenCalled();
+            expect(prisma.auditLog.create).not.toHaveBeenCalled();
+            expect(messaging.recordDeparture).not.toHaveBeenCalled();
+            expect(messaging.processOne).not.toHaveBeenCalled();
+          }
+        }
+      }
+    },
+  );
+
+  it("labels legacy list/detail provisional without actions or private Calendar metadata", async () => {
+    const { prisma, service } = createHarness();
+    const job = { ...baseJob, calendarEventId: null };
+    prisma.job.findMany.mockResolvedValue([job]);
+    prisma.job.findFirst.mockResolvedValue(job);
+    const list = await service.list("signed-link");
+    const detail = await service.get("signed-link", jobId);
+    expect(list.groups.today[0]).toMatchObject({
+      calendarSyncPending: true,
+      availableActions: [],
+    });
+    expect(detail).toMatchObject({
+      calendarSyncPending: true,
+      availableActions: [],
+    });
+    expect(JSON.stringify(detail)).not.toContain("calendarEventId");
+    expect(JSON.stringify(detail)).not.toContain("calendarOperations");
+  });
+
+  it.each([
+    "accept",
+    "decline",
+    "cannot_take",
+    "on_my_way",
+    "in_progress",
+    "complete",
+  ] as const)(
     "holds %s before transition checks, writes or departure notification",
     async (action) => {
       const { prisma, service, messaging } = createHarness();
@@ -204,7 +274,11 @@ describe("TechnicianWorkflowService", () => {
         where: expect.objectContaining({
           calendarOperations: { none: { finishedAt: null } },
           updatedAt: now,
+          AND: [{ updatedAt: now }],
           status: baseJob.status,
+          calendarEventId: baseJob.calendarEventId,
+          serviceWindowStart: baseJob.serviceWindowStart,
+          serviceWindowEnd: baseJob.serviceWindowEnd,
         }),
         data: expect.objectContaining({
           updatedAt: new Date(now.getTime() + 1),
