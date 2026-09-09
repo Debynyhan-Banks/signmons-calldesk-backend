@@ -20,6 +20,7 @@ import { JobNotificationService } from "../jobs/job-notification.service";
 import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
 import { LoggingService } from "../logging/logging.service";
 import { PaymentRequestsService } from "../payments/payment-requests.service";
+import { evaluatePaymentGate } from "../payments/payment-gate.policy";
 import { PrismaService } from "../prisma/prisma.service";
 import { AppointmentConfirmationService } from "./appointment-confirmation.service";
 import { AppointmentCancellationService } from "./appointment-cancellation.service";
@@ -202,6 +203,7 @@ export class SchedulingService {
         customer: true,
         propertyAddress: true,
         serviceCategory: true,
+        payment: { select: { id: true, status: true, updatedAt: true } },
       },
     });
     if (!job) throw new BadRequestException("Service request not found.");
@@ -244,6 +246,15 @@ export class SchedulingService {
       return this.confirmedResponse(this.mapJob(job));
     }
 
+    // Replays above create no reservation. New bookings must satisfy the same
+    // persisted payment policy used for dispatch, never a browser return value.
+    const paymentGate = evaluatePaymentGate(job.policySnapshot, job.payment);
+    if (paymentGate.state === "LOCKED") {
+      throw new ConflictException(
+        "Required payment must be completed or an authorized exception approved before booking. Please contact the office.",
+      );
+    }
+
     const busy = await this.fetchBusy(start, end);
     if (this.overlapsBusy(start, end, busy)) {
       throw new ConflictException(
@@ -263,6 +274,19 @@ export class SchedulingService {
           calendarEventId: null,
           serviceWindowStart: null,
           serviceWindowEnd: null,
+          // A refund/replacement during availability lookup invalidates the
+          // observed payment evidence. This is a snapshot CAS, not a provider lock.
+          payment:
+            paymentGate.reasonCode === "PAYMENT_SUCCEEDED"
+              ? {
+                  is: {
+                    id: job.payment!.id,
+                    tenantId: job.tenantId,
+                    status: PaymentStatus.SUCCEEDED,
+                    updatedAt: job.payment!.updatedAt,
+                  },
+                }
+              : undefined,
         },
         data: {
           status: JobStatus.ACCEPTED,

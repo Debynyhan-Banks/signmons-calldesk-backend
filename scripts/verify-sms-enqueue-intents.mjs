@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
 import { verifyAppointmentConfirmation } from "./verify-appointment-confirmation.mjs";
+import { verifyInitialBookingPayment } from "./verify-initial-booking-payment.mjs";
 import { verifyEnqueueRecovery } from "./verify-enqueue-recovery.mjs";
 import { verifyAppointmentCancellation } from "./verify-appointment-cancellation.mjs";
 import { verifyAppointmentRescheduling } from "./verify-appointment-rescheduling.mjs";
@@ -407,6 +408,11 @@ try {
     jobData,
     otherTenantId: other.id,
   });
+  const initialPaymentChecks = await verifyInitialBookingPayment({
+    prisma,
+    intents,
+    jobData,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -414,6 +420,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...initialPaymentChecks,
         ...legacyFieldChecks,
         ...legacyDispatchChecks,
         ...legacyMessageChecks,

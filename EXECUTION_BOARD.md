@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - CREATE persisted-deadline safeguard is review-ready on PR #21: executor and adapter share the persisted eight-second deadline, database/auth delay cannot refresh it, expired work stays held without insertion. 703 backend tests, two clock-advanced real database delay cases, 15 migrations/11 prior crashes, five browser suites and four clean audits pass. Guarded CREATE integration, clock assumptions, provider uncertainty, legacy repair and acceptance remain open; no activation or deployment.
+  - Initial CREATE payment-admission safeguard is review-ready on PR #21: required unpaid bookings stop before Calendar; shared approved exceptions/no-requirement and finalized replay remain compatible. Reservation matches observed successful payment ID/status/version. 711 backend tests, ten real refusals/three allowed replays/three payment races, 15 migrations/11 prior crashes, five browser suites and four clean audits pass. Guarded integration, customer payment handoff, post-claim races, legacy repair and acceptance remain open; no activation or deployment.
 
 ## Next
 

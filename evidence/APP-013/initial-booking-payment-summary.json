@@ -1,0 +1,150 @@
+{
+  "checkpoint": "APP-013 initial CREATE payment-admission safeguard",
+  "baseline": {
+    "backend": "3238c40",
+    "governance": "ed0882d"
+  },
+  "runtimeFiles": [
+    "src/scheduling/scheduling.service.ts"
+  ],
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 711,
+      "suites": 56,
+      "skippedTests": 3,
+      "focusedPatternTests": 98,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "lintTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14
+    },
+    "database": {
+      "migrations": 15,
+      "priorProcessCrashCases": 11,
+      "newCrashCases": 0,
+      "unpaidRefusals": 10,
+      "allowedAndReplayCases": 3,
+      "committedPaymentRaceCases": 3,
+      "providerCalls": 0,
+      "cleanupVerified": true
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "viewports": [
+      1440,
+      390
+    ],
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 46,
+    "technicianRequests": 26,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "artifacts": "/private/tmp/signmons-booking-payment-regression.P7QzS2/evidence/APP-013",
+    "uiChanged": false,
+    "initialWebchatAcceptance": false
+  },
+  "audits": {
+    "bookingPaymentBackendFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "bookingPaymentBackendProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "bookingPaymentUiFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    },
+    "bookingPaymentUiProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    }
+  },
+  "limits": [
+    "Shared payment defaults and exception semantics unchanged",
+    "Snapshot CAS is not serialization of payment changes after statement snapshot/claim",
+    "No new checkout UI, Stripe configuration, charge, journal activation or release",
+    "Payment row mutations/deletion/replacement occurred only in fictional disposable fixtures"
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

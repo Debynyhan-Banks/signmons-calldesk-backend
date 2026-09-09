@@ -261,6 +261,167 @@ describe("SchedulingService", () => {
     expect(confirmation.finalize).not.toHaveBeenCalled();
     expect(prisma.job.updateMany).not.toHaveBeenCalled();
   });
+  describe("payment before new initial booking", () => {
+    const start = new Date("2036-09-10T15:00:00Z");
+    const end = new Date("2036-09-10T18:00:00Z");
+    const input = () => ({
+      tenantId: baseJob.tenantId,
+      sessionId: "session-1",
+      jobId: baseJob.id,
+      slotToken: signedSlot(start, end),
+    });
+    const unreserved = (policy = {}, payment: unknown = null) =>
+      appointmentJob({
+        status: "CREATED",
+        calendarEventId: null,
+        serviceWindowStart: null,
+        serviceWindowEnd: null,
+        payment,
+        policySnapshot: {
+          propertyType: "RESIDENTIAL",
+          serviceIntent: "DIAGNOSTIC",
+          ...policy,
+        },
+      });
+    it.each(["depositRequired", "serviceFeeRequired"])(
+      "blocks every unpaid state before Calendar when %s",
+      async (flag) => {
+        mockCalendarInsert();
+        for (const status of [
+          null,
+          "PENDING",
+          "FAILED",
+          "REFUNDED",
+          "CANCELED",
+          "UNKNOWN",
+        ]) {
+          prisma.job.findFirst.mockResolvedValue(
+            unreserved({ [flag]: true }, status ? { status } : null),
+          );
+          await expect(service.confirmAppointment(input())).rejects.toThrow(
+            "Required payment must be completed",
+          );
+        }
+        expect(global.fetch).not.toHaveBeenCalled();
+        expect(prisma.job.updateMany).not.toHaveBeenCalled();
+        expect(confirmation.finalize).not.toHaveBeenCalled();
+        expect(
+          notifications.enqueueAppointmentConfirmed,
+        ).not.toHaveBeenCalled();
+        expect(paymentRequests.recover).not.toHaveBeenCalled();
+      },
+    );
+    it("requires exact observed successful payment at the reservation write", async () => {
+      const payment = {
+        id: "payment",
+        status: "SUCCEEDED",
+        updatedAt: new Date(),
+      };
+      prisma.job.findFirst.mockResolvedValue(
+        unreserved({ depositRequired: true }, payment),
+      );
+      confirmation.finalize.mockResolvedValue(appointmentJob());
+      mockCalendarInsert();
+      await service.confirmAppointment(input());
+      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            payment: {
+              is: {
+                id: payment.id,
+                tenantId: baseJob.tenantId,
+                status: "SUCCEEDED",
+                updatedAt: payment.updatedAt,
+              },
+            },
+          }),
+        }),
+      );
+    });
+    it.each([false, true])(
+      "retains no-payment and approved-exception eligibility (exception: %s)",
+      async (exception) => {
+        const policy = exception
+          ? {
+              depositRequired: true,
+              paymentGateMode: "manual_override",
+              paymentGateException: {
+                active: true,
+                approvedAt: "2026-09-09T12:00:00Z",
+                reason: "Reviewed exception",
+              },
+            }
+          : {};
+        prisma.job.findFirst.mockResolvedValue(
+          unreserved(policy, { status: "FAILED" }),
+        );
+        confirmation.finalize.mockResolvedValue(appointmentJob());
+        mockCalendarInsert();
+        await expect(service.confirmAppointment(input())).resolves.toEqual(
+          expect.objectContaining({ status: "appointment_confirmed" }),
+        );
+        expect(prisma.job.updateMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ payment: undefined }),
+          }),
+        );
+      },
+    );
+    it("does not turn a revoked exception into booking authority", async () => {
+      prisma.job.findFirst.mockResolvedValue(
+        unreserved({
+          serviceFeeRequired: true,
+          paymentGateMode: "manual_override",
+          paymentGateException: {
+            active: false,
+            approvedAt: "2026-09-09T12:00:00Z",
+            reason: "Revoked",
+          },
+        }),
+      );
+      mockCalendarInsert();
+      await expect(service.confirmAppointment(input())).rejects.toThrow(
+        "Required payment",
+      );
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+    it("retains finalized replay without retroactively charging or changing it", async () => {
+      prisma.job.findFirst.mockResolvedValue(
+        appointmentJob({
+          serviceWindowStart: start,
+          serviceWindowEnd: end,
+          policySnapshot: {
+            propertyType: "RESIDENTIAL",
+            serviceIntent: "DIAGNOSTIC",
+            depositRequired: true,
+          },
+          payment: { status: "REFUNDED" },
+        }),
+      );
+      mockCalendarInsert();
+      await expect(service.confirmAppointment(input())).resolves.toEqual(
+        expect.objectContaining({ status: "appointment_confirmed" }),
+      );
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(paymentRequests.recover).not.toHaveBeenCalled();
+    });
+    it("does not insert when payment evidence loses the reservation CAS", async () => {
+      prisma.job.findFirst.mockResolvedValue(
+        unreserved(
+          { depositRequired: true },
+          { id: "payment", status: "SUCCEEDED", updatedAt: new Date() },
+        ),
+      );
+      prisma.job.updateMany.mockResolvedValue({ count: 0 });
+      mockCalendarInsert();
+      await expect(service.confirmAppointment(input())).rejects.toThrow(
+        "appointment selection",
+      );
+      expect(global.fetch).toHaveBeenCalledTimes(1); // availability only
+      expect(confirmation.finalize).not.toHaveBeenCalled();
+    });
+  });
   it.each([
     { status: "CANCELLED" },
     { status: "COMPLETED" },
