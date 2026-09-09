@@ -10,6 +10,9 @@ const {
   CalendarPendingReviewService,
 } = require("../dist/scheduling/calendar-pending-review.service.js");
 const {
+  CalendarUncertainRecoveryService,
+} = require("../dist/scheduling/calendar-uncertain-recovery.service.js");
+const {
   CalendarOperationJournalService,
 } = require("../dist/scheduling/calendar-operation-journal.service.js");
 const {
@@ -95,6 +98,8 @@ export async function verifyCalendarReviewState({
     "updatedAt",
     "finishedAt",
     "pendingHoldReviewCandidate",
+    "recoveryReviewCandidate",
+    "recoveryReadbackNotBefore",
   ].sort();
   try {
     const current = await make();
@@ -130,7 +135,98 @@ export async function verifyCalendarReviewState({
       finishedAt: new Date("2040-01-01T00:00:00.000Z"),
     }));
     await prisma.calendarOperation.createMany({ data: history });
+    const requestActions = [
+      "appointment.applied_create_readback_requested",
+      "appointment.uncertain_create_readback_requested",
+    ];
+    const auditBase = {
+      tenantId: jobData.tenantId,
+      actorType: "USER",
+      actorId: "private-fixture-reviewer",
+      entityType: "CalendarOperation",
+      entityId: current.operation.id,
+      action: requestActions[0],
+      metadata: {
+        privateCustomer: "fictional private text",
+        token: "fixture-not-a-token",
+      },
+      traceId: "private-trace",
+      createdAt: new Date("2040-01-01T00:00:00.000Z"),
+    };
+    const requestRows = Array.from({ length: 101 }, (_, i) => ({
+      ...auditBase,
+      id: randomUUID(),
+      action: requestActions[i % 2],
+    }));
+    await prisma.auditLog.createMany({
+      data: [
+        ...requestRows,
+        { ...auditBase, id: randomUUID(), tenantId: otherTenantId },
+        {
+          ...auditBase,
+          id: randomUUID(),
+          entityId: variants[0].f.operation.id,
+        },
+        { ...auditBase, id: randomUUID(), entityType: "Job" },
+        { ...auditBase, id: randomUUID(), actorType: "SYSTEM_AI" },
+        {
+          ...auditBase,
+          id: randomUUID(),
+          action: "appointment.initial_confirmed",
+        },
+      ],
+    });
     const before = await snapshot();
+    await assert.rejects(
+      state.listRecoveryRequests({ operationId: current.operation.id }),
+      (e) => e.getStatus() === 401,
+    );
+    for (const role of ["dispatcher", "tech", "read_only", null])
+      await assert.rejects(
+        asActor(
+          () =>
+            state.listRecoveryRequests({ operationId: current.operation.id }),
+          role,
+        ),
+        (e) => e.getStatus() === 403,
+      );
+    await assert.rejects(
+      asActor(
+        () => state.listRecoveryRequests({ operationId: current.operation.id }),
+        "admin",
+        otherTenantId,
+      ),
+      (e) => e.getStatus() === 404,
+    );
+    await assert.rejects(
+      asActor(() => state.listRecoveryRequests({ operationId: randomUUID() })),
+      (e) => e.getStatus() === 404,
+    );
+    for (const role of ["owner", "admin"]) {
+      const requests = await asActor(
+        () => state.listRecoveryRequests({ operationId: current.operation.id }),
+        role,
+      );
+      assert.equal(requests.snapshotOnly, true);
+      assert.equal(requests.requestOnly, true);
+      assert.equal(requests.hasMore, true);
+      assert.equal(requests.items.length, 100);
+      assert.deepEqual(
+        requests.items.map((r) => r.requestId),
+        requestRows
+          .map((r) => r.id)
+          .sort()
+          .reverse()
+          .slice(0, 100),
+      );
+      for (const item of requests.items)
+        assert.deepEqual(
+          Object.keys(item).sort(),
+          ["requestId", "kind", "requestedAt"].sort(),
+        );
+      assert.ok(!JSON.stringify(requests).includes("private"));
+      assert.ok(!JSON.stringify(requests).includes("fixture-not-a-token"));
+    }
     await assert.rejects(
       state.listForJob({ jobId: current.job.id }),
       (e) => e.getStatus() === 401,
@@ -248,7 +344,82 @@ export async function verifyCalendarReviewState({
     );
     assert.equal((await read(racing)).pendingHoldReviewCandidate, false);
     assert.deepEqual(await snapshot(), winner);
+    // Readiness is a fresh timing hint; it cannot authorize a mutation. Use a
+    // real reviewed-admission transaction with lost acknowledgment to demonstrate
+    // request visibility without claiming recovery completion.
+    const uncertain = await make();
+    const notBefore = new Date(Date.now() + 60_000);
+    await prisma.calendarOperation.update({
+      where: { id: uncertain.operation.id },
+      data: { status: "UNCERTAIN", readbackNotBefore: notBefore },
+    });
+    const timingSnapshot = await snapshot();
+    assert.deepEqual(
+      await asActor(() =>
+        state.listRecoveryRequests({ operationId: uncertain.operation.id }),
+      ),
+      { snapshotOnly: true, requestOnly: true, items: [], hasMore: false },
+    );
+    const realNow = Date.now;
+    let shown;
+    try {
+      Date.now = () => notBefore.getTime() - 1;
+      const waiting = await read(uncertain);
+      assert.equal(waiting.recoveryReviewCandidate, null);
+      assert.equal(waiting.recoveryReadbackNotBefore, notBefore.toISOString());
+      Date.now = () => notBefore.getTime();
+      shown = await read(uncertain);
+      assert.equal(shown.recoveryReviewCandidate, "uncertain_create");
+      Date.now = () => notBefore.getTime() - 1;
+      assert.equal((await read(uncertain)).recoveryReviewCandidate, null);
+      assert.deepEqual(await snapshot(), timingSnapshot);
+      Date.now = () => notBefore.getTime();
+      let recoveryCalls = 0;
+      const unknown = new CalendarUncertainRecoveryService(
+        {
+          $transaction: async (fn) => {
+            await prisma.$transaction(fn);
+            throw new Error("synthetic lost admission acknowledgment");
+          },
+        },
+        {
+          reconcile: async () => {
+            recoveryCalls++;
+            return { status: "pending" };
+          },
+        },
+      );
+      await assert.rejects(
+        asActor(() =>
+          unknown.recover({
+            operationId: shown.operationId,
+            expectedUpdatedAt: shown.updatedAt,
+            acknowledgeReadback: true,
+          }),
+        ),
+        (e) => e.getStatus() === 503,
+      );
+      assert.equal(recoveryCalls, 0);
+      const admitted = await snapshot();
+      const requests = await asActor(() =>
+        state.listRecoveryRequests({ operationId: uncertain.operation.id }),
+      );
+      assert.equal(requests.requestOnly, true);
+      assert.equal(requests.items.length, 1);
+      assert.equal(requests.items[0].kind, "uncertain_create");
+      const fresh = await read(uncertain);
+      assert.equal(fresh.status, "UNCERTAIN");
+      assert.notEqual(fresh.updatedAt, shown.updatedAt);
+      assert.equal(fresh.recoveryReadbackNotBefore, notBefore.toISOString());
+      assert.equal(fresh.recoveryReviewCandidate, "uncertain_create");
+      assert.deepEqual(await snapshot(), admitted);
+    } finally {
+      Date.now = realNow;
+    }
     return [
+      "recovery request history isolates tenant/operation/action/entity/actor type, omits private payloads and caps 101 persisted rows at 100",
+      "readiness hints cross the persisted deadline and reverse on clock rollback without any database writes",
+      "actual lost admission acknowledgment exposes one request-only audit with UNCERTAIN state and no recovery call; refresh preserves deadline",
       "read-only owner/admin tenant-scoped job history and exact refresh; missing/cross-tenant boundaries",
       "101 persisted rows prove 100-item truncation, stable UUID tie ordering and exact lookup outside history cap",
       "all actions/statuses project allowlisted metadata only; exact job/journal/audit/intent/message snapshots unchanged by reads",

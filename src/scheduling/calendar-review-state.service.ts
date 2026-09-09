@@ -9,6 +9,10 @@ import {
 import { Prisma } from "@prisma/client";
 import { getRequestContext } from "../common/context/request-context";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  calendarReadbackNotBefore,
+  calendarReadbackReady,
+} from "./calendar-readback-deadline";
 
 // Deliberately exclude provider targets, windows/text, claimed job versions,
 // tenant identity, and all related job/customer/payment records.
@@ -20,11 +24,16 @@ const reviewSelect = {
   createdAt: true,
   updatedAt: true,
   finishedAt: true,
+  readbackNotBefore: true,
 } satisfies Prisma.CalendarOperationSelect;
 type ReviewRow = Prisma.CalendarOperationGetPayload<{
   select: typeof reviewSelect;
 }>;
 const HISTORY_LIMIT = 100;
+const recoveryRequestActions = [
+  "appointment.applied_create_readback_requested",
+  "appointment.uncertain_create_readback_requested",
+];
 
 /** Inactive internal projection. Future callers require RequestAuthGuard and
  * TenantGuard. Never register a public route or infer provider truth from this
@@ -70,7 +79,64 @@ export class CalendarReviewStateService {
     }
   }
 
+  async listRecoveryRequests(input: { operationId: string }) {
+    const tenantId = this.reviewTenant();
+    this.requireId(input.operationId);
+    try {
+      const operation = await this.prisma.calendarOperation.findUnique({
+        where: { id_tenantId: { id: input.operationId, tenantId } },
+        select: { id: true },
+      });
+      if (!operation) this.missing();
+      const rows = await this.prisma.auditLog.findMany({
+        where: {
+          tenantId,
+          entityType: "CalendarOperation",
+          entityId: input.operationId,
+          actorType: "USER",
+          action: { in: recoveryRequestActions },
+        },
+        select: { id: true, action: true, createdAt: true },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: HISTORY_LIMIT + 1,
+      });
+      return {
+        snapshotOnly: true as const,
+        requestOnly: true as const,
+        items: rows.slice(0, HISTORY_LIMIT).map((row) => {
+          const kind =
+            row.action === recoveryRequestActions[0]
+              ? ("applied_create" as const)
+              : row.action === recoveryRequestActions[1]
+                ? ("uncertain_create" as const)
+                : null;
+          if (!kind) throw new Error("Unsupported recovery request");
+          return {
+            requestId: row.id,
+            kind,
+            requestedAt: row.createdAt.toISOString(),
+          };
+        }),
+        hasMore: rows.length > HISTORY_LIMIT,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw this.unavailable();
+    }
+  }
+
   private project(row: ReviewRow) {
+    const unfinishedCreate = row.action === "CREATE" && row.finishedAt === null;
+    const notBefore =
+      unfinishedCreate && row.status === "UNCERTAIN"
+        ? calendarReadbackNotBefore(row)
+        : null;
+    const recoveryReviewCandidate =
+      unfinishedCreate && row.status === "APPLIED"
+        ? ("applied_create" as const)
+        : notBefore && calendarReadbackReady(notBefore)
+          ? ("uncertain_create" as const)
+          : null;
     return {
       snapshotOnly: true as const,
       operationId: row.id,
@@ -80,6 +146,12 @@ export class CalendarReviewStateService {
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
       finishedAt: row.finishedAt?.toISOString() ?? null,
+      // A local timing hint, not current job/provider truth or permission.
+      recoveryReviewCandidate,
+      recoveryReadbackNotBefore:
+        notBefore && Number.isFinite(notBefore.getTime())
+          ? notBefore.toISOString()
+          : null,
       // A point-in-time hint, NOT permission, crash proof or a booking receipt.
       // The hold service must independently recheck role, ack, status and CAS.
       pendingHoldReviewCandidate:

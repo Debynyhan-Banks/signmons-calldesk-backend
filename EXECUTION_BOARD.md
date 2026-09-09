@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Reviewed UNCERTAIN CREATE recovery is review-ready on PR #21: inactive owner/admin exact-version audit and persisted read-back boundary; admission cannot reset its wait, legacy rows keep timestamp grace, clock rollback blocks reads. 42 new cases/887 total, real boundary/backoff/rollback/lost-ack/ownership proof, 16 local migrations/11 prior crashes, five browser suites/four clean audits pass. Readiness/audit visibility, clock assumptions, protected review UI/API and acceptance remain open; no production migration or activation.
+  - Privacy-safe recovery readiness/request history is review-ready on PR #21: inactive owner/admin snapshot-only candidate/deadline hints plus capped exact-operation request-only history, without actor/metadata/trace payloads. 30 new cases/917 total, real 101-row cap/decoy isolation, timing/rollback and lost-ack request visibility with unchanged reads pass; 16 local migrations/11 prior crashes, five browser suites/four clean audits pass. Protected read-only API/UI, timing/provider assumptions and acceptance remain open; no activation/production action.
 
 ## Next
 

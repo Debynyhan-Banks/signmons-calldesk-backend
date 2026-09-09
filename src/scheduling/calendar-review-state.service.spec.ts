@@ -31,6 +31,7 @@ describe("Inactive privacy-safe Calendar review state", () => {
     createdAt: true,
     updatedAt: true,
     finishedAt: true,
+    readbackNotBefore: true,
   };
   const prisma = {
     calendarOperation: { findMany: jest.fn(), findUnique: jest.fn() },
@@ -50,6 +51,69 @@ describe("Inactive privacy-safe Calendar review state", () => {
     );
   });
   afterEach(() => jest.restoreAllMocks());
+  it.each([
+    ["APPLIED", null, "applied_create", null],
+    [
+      "UNCERTAIN",
+      new Date(now.getTime() + 1),
+      null,
+      new Date(now.getTime() + 1).toISOString(),
+    ],
+    ["UNCERTAIN", now, "uncertain_create", now.toISOString()],
+    ["UNCERTAIN", null, null, new Date(now.getTime() + 10_000).toISOString()],
+    ["UNCERTAIN", new Date("invalid"), null, null],
+    ["NEEDS_REVIEW", now, null, null],
+    ["FINALIZED", now, null, null],
+  ])(
+    "projects readiness for %s boundary %p",
+    async (status, readbackNotBefore, candidate, boundary) => {
+      jest.spyOn(Date, "now").mockReturnValue(now.getTime());
+      prisma.calendarOperation.findUnique.mockResolvedValue({
+        ...row,
+        status,
+        readbackNotBefore,
+      });
+      expect(await service.read({ operationId: id })).toMatchObject({
+        snapshotOnly: true,
+        recoveryReviewCandidate: candidate,
+        recoveryReadbackNotBefore: boundary,
+      });
+    },
+  );
+  it.each([
+    { action: "RESCHEDULE" },
+    { action: "CANCEL" },
+    { finishedAt: now },
+  ])("never offers recovery for unsupported or finished %p", async (change) => {
+    prisma.calendarOperation.findUnique.mockResolvedValue({
+      ...row,
+      status: "APPLIED",
+      ...change,
+    });
+    expect(await service.read({ operationId: id })).toMatchObject({
+      recoveryReviewCandidate: null,
+      recoveryReadbackNotBefore: null,
+    });
+  });
+  it("recomputes readiness on fresh reads after boundary crossing and clock rollback", async () => {
+    prisma.calendarOperation.findUnique.mockResolvedValue({
+      ...row,
+      status: "UNCERTAIN",
+      readbackNotBefore: now,
+    });
+    const clock = jest.spyOn(Date, "now").mockReturnValue(now.getTime() - 1);
+    expect(
+      (await service.read({ operationId: id })).recoveryReviewCandidate,
+    ).toBeNull();
+    clock.mockReturnValue(now.getTime());
+    expect(
+      (await service.read({ operationId: id })).recoveryReviewCandidate,
+    ).toBe("uncertain_create");
+    clock.mockReturnValue(now.getTime() - 1);
+    expect(
+      (await service.read({ operationId: id })).recoveryReviewCandidate,
+    ).toBeNull();
+  });
 
   it.each(["owner", " ADMIN "])(
     "allows %s with trusted tenant and explicit allowlist",
@@ -92,6 +156,8 @@ describe("Inactive privacy-safe Calendar review state", () => {
         updatedAt: now.toISOString(),
         finishedAt: null,
         pendingHoldReviewCandidate: true,
+        recoveryReviewCandidate: null,
+        recoveryReadbackNotBefore: null,
       });
       expect(JSON.stringify(list)).not.toContain("private-");
     },
