@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Inactive consent evidence/schema and one-time job binding are review-ready under approved D1-D4. 1261 backend/170 UI tests, 19 local migrations, 24 consent checks, existing crash/eligibility/browser regressions and four clean audits pass. No production customer authority, fingerprint key adapter, collection, verification, event grant binding, expiry enforcement, positive admission, credentials, queue or sends. Retention RESTRICT compatibility remains gated. Next proposed: authenticated structured customer-response/mailbox binding with fingerprint key-lifecycle review. Coverage 50%, acceptance 0/12; 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now; CALLDESK_MVP_PLAN.md remains the approved pilot boundary.
+  - Local customer-session credential and exact mailbox/prompt-bound consent model are review-ready; security boundaries in APP013_CUSTOMER_SESSION_SECURITY_PLAN.md. 1305 backend/170 UI tests, 18 new session checks and existing database/crash/browser regressions pass; four audits clean. No live keys, production route, collection activation, verification, event grant binding, expiry admission, credentials/queue/sending. Next proposed: protect intake/session mutations and define secure bootstrap/expired-session recovery, still inactive. Coverage 50%, acceptance 0/12; 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now; CALLDESK_MVP_PLAN.md remains approved pilot scope.
 
 ## Next
 

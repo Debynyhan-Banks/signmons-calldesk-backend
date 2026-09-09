@@ -1,0 +1,93 @@
+{
+  "result": "PASS",
+  "date": "2026-09-09",
+  "scope": "Local customer-session credential model and exact mailbox/prompt-bound consent response; no production activation",
+  "baseBackendCommit": "a39a23037b98ef066933d6255c71766d8478cd60",
+  "baseGovernanceCommit": "f2a51e4bfc178e94da8657ab08e412b04c3fddf9",
+  "approval": "Owner answered yes to local implementation/testing; live keys, collection activation and sending remain disabled",
+  "validation": {
+    "backendTests": 1305,
+    "backendPassingSuites": 75,
+    "priorSkippedTests": 3,
+    "priorSkippedSuites": 1,
+    "newUnitTests": 44,
+    "backendLint": "PASS",
+    "backendBuild": "PASS",
+    "architecture": "PASS",
+    "prismaValidation": "PASS",
+    "changedScriptSyntax": "PASS",
+    "changedSourceFormat": "PASS",
+    "uiLint": "PASS",
+    "uiTests": 170,
+    "uiBuildPages": 15,
+    "dependencyAuditsWithZeroFindings": 4,
+    "localMigrations": 19,
+    "newMigrations": 0,
+    "newSessionDatabaseChecks": 18,
+    "priorConsentChecks": 24,
+    "existingProcessCrashCases": 19,
+    "newSessionProcessCrashCases": 0,
+    "existingEligibilityInvariantReads": 23,
+    "fixtureCleanup": "No remaining calldesk_app013_intents databases",
+    "governancePlacementTests": 4,
+    "docsConsistency": "PASS",
+    "diffCheck": "PASS"
+  },
+  "browser": {
+    "newLocalFixture": "PASS: 1440/390, explicit address confirmation plus grant/decline, two GET/six POST",
+    "screenshotInspected": "prompt-390.png",
+    "existingSettingsInboxRegression": "PASS",
+    "externalRequests": 0,
+    "cookieAndWebStorageWrites": 0,
+    "providerCalls": 0,
+    "productionTransportAcceptance": false,
+    "unrelatedStaticBrowserScriptsRerun": false,
+    "emailCompositionRerun": false
+  },
+  "localParameters": {
+    "sessionLifetimeMinutes": 15,
+    "promptLifetimeMinutes": 5,
+    "promptCappedAtOriginalSessionExpiry": true,
+    "slidingRenewal": false,
+    "signingKeyBytes": 32,
+    "maxKeyVersions": 2
+  },
+  "notActivated": [
+    "Production route/module registration",
+    "Live signing-key configuration/loading/generation",
+    "Production mailbox fingerprint adapter",
+    "Existing intake/session ownership retrofit",
+    "Customer collection",
+    "Mailbox verification transport",
+    "Event grant binding and event expiry admission",
+    "Appointment credentials, delivery queue or sending"
+  ],
+  "remainingRisks": [
+    "Legacy caller-supplied sessionId path must be protected before any activation",
+    "Secure bootstrap delivery, origin/CSRF/abuse controls and expired/lost-session recovery unfinished",
+    "Production session/fingerprint key lifecycle needs review and separate configuration approval",
+    "Consent suppression/regrant, mailbox verification and retention/hold compatibility unfinished",
+    "Existing Calendar uncertainty, pre-finalization/release compatibility and dependency override maintenance remain"
+  ],
+  "warnings": [
+    "Existing Next lint deprecation/multiple-lockfile root warning",
+    "Existing pg concurrent-query deprecation",
+    "Prisma release-candidate update notice ignored; no dependency changes"
+  ],
+  "productionActions": 0,
+  "completion": {
+    "app013ScopeCoveragePercent": 50,
+    "formalAcceptance": "0/12",
+    "app013RemainingSections": "7-12 unequal, low confidence",
+    "pilotRemainingSections": "20-35 unequal, low confidence",
+    "overallMvpPercentage": null
+  },
+  "sourceSha256": {
+    "src/communications/customer-consent-credentials.ts": "2938dc3be77a697a861c121432e776575453bf903ed6d427303a664ea8b02351",
+    "src/communications/customer-consent-credentials.spec.ts": "dc5b0c75acf87f6d731974d920425ad5a6b854819a0dd96051246f81d2acf10c",
+    "src/communications/customer-consent-response.service.ts": "dd99372e2ee4364ea012cbd3c33cf11cc54906b5c9389025530b35126ace0198",
+    "src/communications/customer-consent-response.service.spec.ts": "6618da2f74a0589f0bc4d7096683d454ba377a89703f34822b0c0d56dcf7357b",
+    "scripts/verify-customer-consent-session.mjs": "31ab00e3b2f1c47b756cc1399a8879694abb17e625a472e496c9829cbea140da",
+    "scripts/verify-sms-enqueue-intents.mjs": "adf96b55f2692a797b63c0cd53fd9702731855153988a64cd781eb3246d0cd19"
+  }
+}
