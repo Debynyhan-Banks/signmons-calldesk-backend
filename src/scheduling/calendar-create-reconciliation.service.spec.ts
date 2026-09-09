@@ -40,6 +40,7 @@ describe("CREATE Calendar read-back reconciliation", () => {
       desiredWindowEnd: new Date(date.getTime() + 3600000),
       desiredTimeText: "Arrival",
       finishedAt: null,
+      readbackNotBefore: null,
       createdAt: date,
       updatedAt: new Date(date.getTime() - 20_000),
     };
@@ -99,6 +100,35 @@ describe("CREATE Calendar read-back reconciliation", () => {
     );
   });
   afterEach(() => jest.restoreAllMocks());
+  it("uses persisted read-back deadline rather than the newly admitted version", async () => {
+    operation.readbackNotBefore = new Date(Date.now());
+    operation.updatedAt = new Date(Date.now());
+    expect(
+      await service.reconcile({
+        ...input,
+        expectedUpdatedAt: operation.updatedAt,
+      }),
+    ).toEqual({ status: "finalized" });
+    expect(reader.read).toHaveBeenCalledTimes(1);
+  });
+  it.each([1, 10_000])(
+    "refuses reads %i ms before the persisted deadline despite an old version",
+    async (remaining) => {
+      operation.readbackNotBefore = new Date(Date.now() + remaining);
+      expect(await service.reconcile(input)).toEqual({ status: "pending" });
+      expect(reader.read).not.toHaveBeenCalled();
+      expect(prisma.job.findFirst).not.toHaveBeenCalled();
+      expect(prisma.calendarOperation.updateMany).not.toHaveBeenCalled();
+    },
+  );
+  it("persists a new read-failure backoff after reviewed UNCERTAIN unavailability", async () => {
+    operation.readbackNotBefore = new Date(Date.now() - 1);
+    reader.read.mockResolvedValue({ outcome: "unavailable" });
+    expect(await service.reconcile(input)).toEqual({ status: "pending" });
+    expect(operation.readbackNotBefore?.getTime()).toBe(
+      operation.updatedAt.getTime() + 10_000,
+    );
+  });
 
   it("rejects a stale reviewed admission before job/provider access or any write", async () => {
     await expect(

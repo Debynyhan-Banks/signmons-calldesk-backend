@@ -17,6 +17,10 @@ import {
   CalendarReadResult,
 } from "./calendar-event-reader";
 import { CALENDAR_CREATE_READER_GRACE_MS } from "./calendar-event-creator";
+import {
+  calendarReadbackNotBefore,
+  calendarReadbackReady,
+} from "./calendar-readback-deadline";
 import { createHash } from "node:crypto";
 
 type Result = {
@@ -75,8 +79,7 @@ export class CalendarCreateReconciliationService {
     // APPLIED handoff is eligible immediately. Neither path can reinsert.
     if (
       operation.status === "UNCERTAIN" &&
-      Date.now() <
-        operation.updatedAt.getTime() + CALENDAR_CREATE_READER_GRACE_MS
+      !calendarReadbackReady(calendarReadbackNotBefore(operation))
     )
       return { status: "pending" };
     if (!futureWindow(operation)) return this.hold(operation, "NEEDS_REVIEW");
@@ -187,9 +190,22 @@ export class CalendarCreateReconciliationService {
     operation: CalendarOperation,
     status: "UNCERTAIN" | "NEEDS_REVIEW",
   ): Promise<Result> {
+    const updatedAt = advance(operation.updatedAt);
     await this.prisma.calendarOperation.updateMany({
       where: this.operationWhere(operation),
-      data: { status, updatedAt: advance(operation.updatedAt) },
+      data: {
+        status,
+        updatedAt,
+        // Preserve the existing unavailable-read backoff for reviewed rows too.
+        // Admission itself never moves this boundary.
+        ...(status === "UNCERTAIN" && operation.readbackNotBefore != null
+          ? {
+              readbackNotBefore: new Date(
+                updatedAt.getTime() + CALENDAR_CREATE_READER_GRACE_MS,
+              ),
+            }
+          : {}),
+      },
     });
     const latest = await this.prisma.calendarOperation.findUnique({
       where: {

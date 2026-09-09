@@ -673,6 +673,9 @@ model CalendarOperation {
   desiredWindowStart DateTime?
   desiredWindowEnd DateTime?
   desiredTimeText String? @db.VarChar(160)
+  // Frozen when reviewed UNCERTAIN admission advances updatedAt. Null legacy
+  // rows retain the updatedAt + grace fallback; never a provider-write lease.
+  readbackNotBefore DateTime?
   finishedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

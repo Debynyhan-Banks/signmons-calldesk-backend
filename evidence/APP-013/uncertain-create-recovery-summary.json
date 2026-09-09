@@ -1,0 +1,205 @@
+{
+  "ticket": "APP-013",
+  "date": "2026-09-09",
+  "section": "Reviewed UNCERTAIN CREATE recovery with independent read-back boundary",
+  "status": "review-ready; inactive",
+  "baselines": {
+    "backend": "52e3e25fbe6749a694d78f29e8af2f7b361c0360",
+    "governance": "7c56ef049b7f4ebe73b5af2f94a67a1f14e7ecab"
+  },
+  "files": [
+    "prisma/schema.prisma",
+    "prisma/migrations/20260909190000_add_calendar_readback_deadline/migration.sql",
+    "src/scheduling/calendar-readback-deadline.ts",
+    "src/scheduling/calendar-uncertain-recovery.service.ts",
+    "src/scheduling/calendar-uncertain-recovery.service.spec.ts",
+    "src/scheduling/calendar-create-reconciliation.service.ts",
+    "src/scheduling/calendar-create-reconciliation.service.spec.ts",
+    "scripts/verify-calendar-uncertain-recovery.mjs",
+    "scripts/verify-sms-enqueue-intents.mjs"
+  ],
+  "contract": {
+    "field": "CalendarOperation.readbackNotBefore nullable DateTime",
+    "migration": "Additive nullable column, no backfill; disposable local database only",
+    "fallback": "Null field uses persisted updatedAt + 10000ms; executor and 8000ms write deadline unchanged",
+    "admission": "Trusted owner/admin context + UUID/exact canonical reviewed version/acknowledgeReadback; only elapsed finite UNCERTAIN CREATE unfinished state",
+    "changes": "Atomically advance updatedAt, persist/preserve prior read boundary, create USER request audit; no job/status/target/window/claimed version/finishedAt changes",
+    "audit": {
+      "action": "appointment.uncertain_create_readback_requested",
+      "metadata": [
+        "jobId",
+        "reasonCode",
+        "acknowledged",
+        "reviewedUpdatedAt",
+        "admittedUpdatedAt",
+        "readbackNotBefore"
+      ],
+      "reason": "UNCERTAIN_CREATE_REVIEWED",
+      "meaning": "Request, not completion"
+    },
+    "readback": "Only acknowledged exact admission version reaches reconciler; deadline rechecked before job/provider read",
+    "backoff": "Unavailable reads renew read-failure backoff; admission never renews active-attempt wait",
+    "activeWiring": false,
+    "providerWrites": false,
+    "automaticRetry": false
+  },
+  "validation": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 887,
+      "passingSuites": 61,
+      "existingSkippedTests": 3,
+      "existingSkippedSuites": 1,
+      "newTests": 42,
+      "newWrapperTests": 38,
+      "newReconcilerTests": 4,
+      "focusedTests": 79,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "database": {
+      "result": "PASS",
+      "migrations": 16,
+      "priorActualProcessCrashes": 11,
+      "newActualProcessCrashes": 0,
+      "checks": [
+        "Legacy null field rejects 1ms before grace and admits exactly at boundary",
+        "Future persisted boundary overrides an old version",
+        "Clock rollback after admission returns pending with zero provider reads",
+        "Original boundary survives audited version change and lost admission acknowledgment",
+        "Fresh explicit review using a fresh service does not restart wait",
+        "Unavailable read persists new backoff and immediate reviewed retry rejects",
+        "Tenant/role/ack/version/state refusals, audit rollback and single same-version admission",
+        "Newer hold or explicit review supersedes stale read without duplicate confirmation/intent"
+      ],
+      "providerCalls": 0,
+      "cleanup": "Parent-owned random Unix-socket DB removed; independent calldesk_app013_intents_% query returned no rows"
+    },
+    "ui": {
+      "changed": false,
+      "lintAndTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "build": "PASS"
+    },
+    "browser": {
+      "result": "PASS",
+      "kind": "Unchanged synthetic static-export regression; not new review UI or Firebase/HTTP/live acceptance",
+      "viewports": [
+        1440,
+        390
+      ],
+      "artifacts": "/private/tmp/signmons-uncertain-recovery-qa.5got0d/evidence/APP-013",
+      "framework": {
+        "routes": 22,
+        "navigations": 12,
+        "staticManifest": true,
+        "externalRequests": 0,
+        "errors": 0,
+        "failedResources": 0
+      },
+      "customerDispatch": {
+        "requests": 46,
+        "syntheticPosts": 22,
+        "dispatchWrites": 0,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "technician": {
+        "requests": 26,
+        "syntheticConflictPosts": 2,
+        "initialHeldMutationPosts": 0,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "policy": {
+        "requests": 8,
+        "syntheticConflictPosts": 4,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "notifications": {
+        "requests": 95,
+        "syntheticPosts": 14,
+        "result": "PASS"
+      },
+      "visualScreenshotInspection": false
+    },
+    "audits": {
+      "backendFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "backendProd": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiProd": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    }
+  },
+  "limits": [
+    "No production migration/backfill or release; schema migration ordering/approval remains required",
+    "Forward clock jumps, cross-host skew and delayed provider completion assumptions remain open",
+    "Version ownership, not exclusive provider-read lease",
+    "No automatic retry, recovery takeover, provider writer, reservation clear or public booking receipt",
+    "New field absent from existing review-state/public DTOs",
+    "Synthetic authenticated context/Calendar seams; no new process-crash or Firebase/HTTP/live-owner acceptance"
+  ],
+  "remainingRisks": [
+    "Privacy-safe recovery readiness and request-audit visibility",
+    "Protected review API/UI and live acceptance",
+    "Forward-clock/cross-host skew and delayed provider completion",
+    "Current public receipt and customer payment handoff",
+    "Post-read/payment/provider races",
+    "Legacy inventory/repair/retention",
+    "RESCHEDULE/CANCEL and SENDING recovery",
+    "Dependency overrides and migration/release approval"
+  ],
+  "planningEstimates": {
+    "app013Percent": 85,
+    "app006ThroughApp016Percent": 81,
+    "note": "Unchanged planning estimates, not release readiness"
+  },
+  "warnings": [
+    "Existing pg concurrent-query deprecation",
+    "Existing Next lint/workspace-root warnings",
+    "Intentional PostCSS fixture warning"
+  ],
+  "reviewInstructions": "evidence/APP-013/readiness-report.md"
+}
