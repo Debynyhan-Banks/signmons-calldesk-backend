@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Journal CREATE payment-admission safeguard is review-ready on PR #21: inactive transaction enforces canonical required-payment policy and exact successful-payment identity/status/version at claim; RESCHEDULE/CANCEL unchanged. 728 backend tests, ten real unpaid refusals/three allowed reservations/four payment-policy races/paid rollback, 15 migrations/11 prior crashes, five browser suites and four clean audits pass. Guarded integration, customer handoff, post-claim/provider risks, legacy repair and acceptance remain open; no activation or deployment.
+  - Guarded CREATE composition is review-ready on PR #21: shared signed request admission feeds canonical journal claim and one-shot read-back execution in an inactive internal service. Unknown reservation outcomes never execute/fall back; existing unfinished requests remain held. 742 backend tests, real composed success/uncertainty/payment/concurrent proof, 15 migrations/11 prior crashes, five browser suites and four clean audits pass. Public receipts, recovery/office-review ownership, customer handoff and acceptance remain open; no activation/deployment.
 
 ## Next
 

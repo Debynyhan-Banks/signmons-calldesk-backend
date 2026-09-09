@@ -37,6 +37,13 @@ export interface AppointmentSlot {
   label: string;
 }
 
+export interface InitialConfirmationInput {
+  tenantId: string;
+  sessionId: string;
+  jobId: string;
+  slotToken: string;
+}
+
 interface SignedSlot {
   tenantId: string;
   jobId: string;
@@ -176,12 +183,11 @@ export class SchedulingService {
       }));
   }
 
-  async confirmAppointment(input: {
-    tenantId: string;
-    sessionId: string;
-    jobId: string;
-    slotToken: string;
-  }) {
+  /** Internal admission shared by legacy booking and inactive journal composition.
+   * Contains private canonical records; never expose this result from a route.
+   * Admission is a snapshot, not a reservation or reusable authorization token.
+   */
+  async prepareInitialConfirmation(input: InitialConfirmationInput) {
     if (!this.config.schedulingEnabled) {
       throw new ServiceUnavailableException(
         "Instant appointment booking is temporarily unavailable.",
@@ -243,7 +249,10 @@ export class SchedulingService {
           "This reservation is awaiting finalization. Please contact the office before booking again.",
         );
       }
-      return this.confirmedResponse(this.mapJob(job));
+      return {
+        kind: "replay" as const,
+        response: this.confirmedResponse(this.mapJob(job)),
+      };
     }
 
     // Replays above create no reservation. New bookings must satisfy the same
@@ -261,6 +270,22 @@ export class SchedulingService {
         "That appointment was just taken. Please choose another time.",
       );
     }
+
+    return {
+      kind: "ready" as const,
+      job,
+      record,
+      start,
+      end,
+      paymentGate,
+      label: this.formatWindow(start, end),
+    };
+  }
+
+  async confirmAppointment(input: InitialConfirmationInput) {
+    const prepared = await this.prepareInitialConfirmation(input);
+    if (prepared.kind === "replay") return prepared.response;
+    const { job, record, start, end, paymentGate, label } = prepared;
 
     try {
       const reservation = await this.prisma.job.updateMany({
@@ -292,7 +317,7 @@ export class SchedulingService {
           status: JobStatus.ACCEPTED,
           serviceWindowStart: start,
           serviceWindowEnd: end,
-          preferredTimeText: this.formatWindow(start, end),
+          preferredTimeText: label,
         },
       });
       if (reservation.count !== 1) {
