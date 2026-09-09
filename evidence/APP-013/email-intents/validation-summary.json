@@ -1,0 +1,76 @@
+{
+  "date": "2026-09-09",
+  "scope": "Initial confirmation event recording only, including CREATE read-back; no delivery admission",
+  "baseBackendCommit": "244cf7f93ededfacc9ecb0510331ed8960543d35",
+  "baseGovernanceCommit": "12edcbf23933095d5419ca8a0a5494c31493d653",
+  "backend": {
+    "newRecorderTests": 17,
+    "passedTests": 1174,
+    "passedSuites": 70,
+    "existingSkippedTests": 3,
+    "existingSkippedSuites": 1,
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "prisma": "PASS"
+  },
+  "ui": {
+    "unchanged": true,
+    "passedTests": 170,
+    "staticPages": 15,
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "dependencyFindings": {
+    "backendFull": 0,
+    "backendProduction": 0,
+    "uiFull": 0,
+    "uiProduction": 0
+  },
+  "database": {
+    "result": "PASS",
+    "migrations": 17,
+    "newMigration": "20260909190000_add_appointment_email_intent",
+    "processCrashCases": 13,
+    "newProcessCrashes": 2,
+    "newFreshProcessReads": 3,
+    "providerCalls": 0,
+    "cleanupVerified": true,
+    "detail": "database-summary.json",
+    "createReadbackAssertionsExtended": true
+  },
+  "browserRegressions": {
+    "result": "PASS",
+    "staticSuites": 5,
+    "staticArtifacts": "/private/tmp/signmons-confirmation-intent-browser.svufCd/evidence/APP-013",
+    "compositionGetRequests": 15,
+    "compositionArtifacts": "/private/tmp/signmons-confirmation-intent-composition",
+    "smsSettingsArtifacts": "/private/tmp/signmons-confirmation-intent-sms",
+    "emailSettingsArtifacts": "/private/tmp/signmons-confirmation-intent-settings",
+    "inboxArtifacts": "/private/tmp/signmons-confirmation-intent-inbox",
+    "newIntentUi": false
+  },
+  "testCorrections": [
+    "Jest array cases wrapped as named rows",
+    "Synthetic fixture windows made unique under existing reservation constraint"
+  ],
+  "releaseRequirements": [
+    "Separately approved forward migration before code release",
+    "No historical intent backfill",
+    "Snapshot storage failure requires existing finalization review; cannot undo external Calendar action"
+  ],
+  "remaining": [
+    "Reschedule/cancellation immutable intent capture",
+    "Consent, recipient and send-time eligibility",
+    "Durable admission, credential binding and delivery/retry",
+    "Legacy pre-finalization/provider acknowledgment gaps",
+    "Low local disk and dependency override maintenance"
+  ],
+  "completion": {
+    "app013ScopeCoveragePercent": 50,
+    "formalAcceptance": "0/12",
+    "pilotSectionAllowance": [20, 35],
+    "confidence": "low; unequal sections, not ETA",
+    "overallMvpPercentageEstablished": false
+  }
+}

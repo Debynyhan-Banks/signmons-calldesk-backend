@@ -22,6 +22,7 @@ import {
   calendarReadbackReady,
 } from "./calendar-readback-deadline";
 import { createHash } from "node:crypto";
+import { recordAppointmentEmailConfirmation } from "../communications/appointment-email-intent";
 
 type Result = {
   status: "finalized" | "already_finalized" | "pending" | "needs_review";
@@ -118,11 +119,12 @@ export class CalendarCreateReconciliationService {
         });
         if (completed.count !== 1)
           throw new ConflictException("Calendar operation changed.");
+        const finalizedUpdatedAt = advance(operation.claimedUpdatedAt);
         const changed = await tx.job.updateMany({
           where: this.claimWhere(operation),
           data: {
             calendarEventId: operation.calendarEventId,
-            updatedAt: advance(operation.claimedUpdatedAt),
+            updatedAt: finalizedUpdatedAt,
           },
         });
         if (changed.count !== 1)
@@ -131,7 +133,7 @@ export class CalendarCreateReconciliationService {
           tenantId: operation.tenantId,
           jobId: operation.jobId,
         });
-        await tx.auditLog.create({
+        const audit = await tx.auditLog.create({
           data: {
             tenantId: operation.tenantId,
             action: "appointment.initial_confirmed",
@@ -141,6 +143,7 @@ export class CalendarCreateReconciliationService {
             entityId: operation.jobId,
             metadata: {
               notificationIntentId: intent.id,
+              finalizedUpdatedAt: finalizedUpdatedAt.toISOString(),
               calendarOperationId: operation.id,
               calendarEvidence: "MATCHED_CREATE_READBACK",
               observedEventEtagHash: createHash("sha256")
@@ -148,6 +151,11 @@ export class CalendarCreateReconciliationService {
                 .digest("hex"),
             },
           },
+        });
+        await recordAppointmentEmailConfirmation(tx, {
+          tenantId: operation.tenantId,
+          jobId: operation.jobId,
+          sourceAuditId: audit.id,
         });
       });
       return { status: "finalized" };

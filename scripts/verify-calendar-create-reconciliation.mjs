@@ -145,6 +145,12 @@ export async function verifyCalendarCreateReconciliation({
   );
   const baselineMessages = await prisma.communicationEvent.count();
   const assertUnfinalized = async (fixture) => {
+    assert.equal(
+      await prisma.appointmentEmailIntent.count({
+        where: { jobId: fixture.job.id },
+      }),
+      0,
+    );
     assert.equal((await readJob(fixture)).calendarEventId, null);
     assert.equal((await readOperation(fixture)).finishedAt, null);
     assert.equal((await audits(fixture)).length, 0);
@@ -169,6 +175,23 @@ export async function verifyCalendarCreateReconciliation({
     assert.equal(audit.metadata.calendarOperationId, fixture.operation.id);
     assert.match(audit.metadata.observedEventEtagHash, /^[0-9a-f]{64}$/);
     assert.equal(audit.actorType, "SYSTEM_AI");
+    const email = await prisma.appointmentEmailIntent.findUniqueOrThrow({
+      where: {
+        sourceAuditId_tenantId: {
+          sourceAuditId: audit.id,
+          tenantId: jobData.tenantId,
+        },
+      },
+    });
+    assert.equal(email.source, "CREATE_READBACK");
+    assert.equal(email.calendarOperationId, fixture.operation.id);
+    assert.equal(
+      email.jobUpdatedAt.toISOString(),
+      audit.metadata.finalizedUpdatedAt,
+    );
+    assert.deepEqual(email.windowStart, fixture.operation.desiredWindowStart);
+    assert.deepEqual(email.windowEnd, fixture.operation.desiredWindowEnd);
+    assert.equal(email.state, "RECORDED");
     assert.ok(!JSON.stringify(audit.metadata).includes("synthetic-version"));
   };
   const success = await create();

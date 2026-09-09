@@ -1,4 +1,5 @@
 import { ConflictException, Injectable } from "@nestjs/common";
+import { recordAppointmentEmailConfirmation } from "../communications/appointment-email-intent";
 import { AuditActorType, JobStatus } from "@prisma/client";
 import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
 import { LoggingService } from "../logging/logging.service";
@@ -53,7 +54,7 @@ export class AppointmentConfirmationService {
           tenantId: input.tenantId,
           jobId: input.jobId,
         });
-        await transaction.auditLog.create({
+        const audit = await transaction.auditLog.create({
           data: {
             tenantId: input.tenantId,
             action: "appointment.initial_confirmed",
@@ -61,8 +62,16 @@ export class AppointmentConfirmationService {
             actorId: `customer:${confirmed.customerId}`,
             entityType: "Job",
             entityId: input.jobId,
-            metadata: { notificationIntentId: intent.id },
+            metadata: {
+              notificationIntentId: intent.id,
+              finalizedUpdatedAt: confirmed.updatedAt.toISOString(),
+            },
           },
+        });
+        await recordAppointmentEmailConfirmation(transaction, {
+          tenantId: input.tenantId,
+          jobId: input.jobId,
+          sourceAuditId: audit.id,
         });
         return { confirmed, intent };
       },

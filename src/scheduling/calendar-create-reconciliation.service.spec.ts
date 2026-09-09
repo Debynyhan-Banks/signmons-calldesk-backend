@@ -1,4 +1,10 @@
 import { CalendarOperation, CalendarOperationStatus } from "@prisma/client";
+import { recordAppointmentEmailConfirmation } from "../communications/appointment-email-intent";
+jest.mock("../communications/appointment-email-intent", () => ({
+  recordAppointmentEmailConfirmation: jest
+    .fn()
+    .mockResolvedValue({ id: "email-intent" }),
+}));
 import { CalendarCreateReconciliationService } from "./calendar-create-reconciliation.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
@@ -240,6 +246,7 @@ describe("CREATE Calendar read-back reconciliation", () => {
             calendarEvidence: "MATCHED_CREATE_READBACK",
             calendarOperationId: "operation",
             notificationIntentId: "intent",
+            finalizedUpdatedAt: expect.any(String),
             observedEventEtagHash: expect.stringMatching(/^[0-9a-f]{64}$/),
           },
         }),
@@ -248,6 +255,11 @@ describe("CREATE Calendar read-back reconciliation", () => {
     expect(JSON.stringify(prisma.auditLog.create.mock.calls)).not.toContain(
       "private-etag",
     );
+    expect(recordAppointmentEmailConfirmation).toHaveBeenCalledWith(prisma, {
+      tenantId: "tenant",
+      jobId: "job",
+      sourceAuditId: "audit",
+    });
     expect(intents.processOne).not.toHaveBeenCalled();
   });
   it("holds an already-started window without a Calendar request", async () => {

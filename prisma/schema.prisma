@@ -47,6 +47,7 @@ model TenantOrganization {
   communicationContents   CommunicationContent[]
   smsConsentRecords       SmsConsentRecord[]
   smsEnqueueIntents        SmsEnqueueIntent[]
+  appointmentEmailIntents AppointmentEmailIntent[]
   calendarOperations      CalendarOperation[]
   conversationJobLinks    ConversationJobLink[]
   jobOffers               JobOffer[]
@@ -366,6 +367,7 @@ model Job {
   communicationEvents CommunicationEvent[]
   conversationLinks   ConversationJobLink[]
   smsEnqueueIntents    SmsEnqueueIntent[]
+  appointmentEmailIntents AppointmentEmailIntent[]
   calendarOperations  CalendarOperation[]
 
   @@unique([id, tenantId])
@@ -757,6 +759,34 @@ model SmsConsentRecord {
 // AUDIT
 // =====================================================
 
+model AppointmentEmailIntent {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId String @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  sourceAuditId String @db.Uuid
+  sourceAudit AuditLog @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  version Int @default(1)
+  kind String @default("APPOINTMENT_CONFIRMED") @db.VarChar(64)
+  state String @default("RECORDED") @db.VarChar(32)
+  source String @db.VarChar(32)
+  calendarOperationId String? @db.Uuid
+  customerId String @db.Uuid
+  intakeSessionId String? @db.VarChar(64)
+  jobUpdatedAt DateTime
+  windowStart DateTime
+  windowEnd DateTime
+  calendarEventHash String @db.Char(64)
+  tenantSettingsUpdatedAt DateTime
+  preference String @db.VarChar(16)
+  createdAt DateTime @default(now())
+
+  @@unique([sourceAuditId, tenantId])
+  @@unique([tenantId, jobId, kind, jobUpdatedAt])
+  @@index([tenantId, createdAt])
+}
+
 model AuditLog {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @db.Uuid
@@ -773,6 +803,7 @@ model AuditLog {
   entityId    String
   metadata    Json?
   traceId     String?
+  appointmentEmailIntents AppointmentEmailIntent[]
   createdAt   DateTime @default(now())
 
   @@unique([id, tenantId])

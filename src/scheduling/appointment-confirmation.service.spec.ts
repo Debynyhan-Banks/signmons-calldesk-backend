@@ -1,4 +1,10 @@
 import { AppointmentConfirmationService } from "./appointment-confirmation.service";
+import { recordAppointmentEmailConfirmation } from "../communications/appointment-email-intent";
+jest.mock("../communications/appointment-email-intent", () => ({
+  recordAppointmentEmailConfirmation: jest
+    .fn()
+    .mockResolvedValue({ id: "email-intent" }),
+}));
 
 describe("AppointmentConfirmationService", () => {
   const input = {
@@ -13,11 +19,13 @@ describe("AppointmentConfirmationService", () => {
     const transaction = {
       job: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest
-          .fn()
-          .mockResolvedValue({ id: input.jobId, customerId: "customer-1" }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: input.jobId,
+          customerId: "customer-1",
+          updatedAt: input.start,
+        }),
       },
-      auditLog: { create: jest.fn().mockResolvedValue({}) },
+      auditLog: { create: jest.fn().mockResolvedValue({ id: "audit" }) },
     };
     const prisma = {
       $transaction: jest.fn(
@@ -48,6 +56,7 @@ describe("AppointmentConfirmationService", () => {
     await expect(service.finalize(input)).resolves.toEqual({
       id: input.jobId,
       customerId: "customer-1",
+      updatedAt: input.start,
     });
     expect(transaction.job.updateMany).toHaveBeenCalledWith({
       where: {
@@ -74,13 +83,20 @@ describe("AppointmentConfirmationService", () => {
         actorId: "customer:customer-1",
         entityType: "Job",
         entityId: input.jobId,
-        metadata: { notificationIntentId: "intent-1" },
+        metadata: {
+          notificationIntentId: "intent-1",
+          finalizedUpdatedAt: input.start.toISOString(),
+        },
       },
     });
     expect(intents.processOne).toHaveBeenCalledWith({
       tenantId: input.tenantId,
       intentId: "intent-1",
     });
+    expect(recordAppointmentEmailConfirmation).toHaveBeenCalledWith(
+      transaction,
+      { tenantId: input.tenantId, jobId: input.jobId, sourceAuditId: "audit" },
+    );
   });
   it("rejects changed/cross-tenant reservations without intent capture", async () => {
     const { service, transaction, intents } = harness();
@@ -117,6 +133,7 @@ describe("AppointmentConfirmationService", () => {
     await expect(service.finalize(input)).resolves.toEqual({
       id: input.jobId,
       customerId: "customer-1",
+      updatedAt: input.start,
     });
     expect(JSON.stringify(logging.error.mock.calls)).not.toContain(
       "PRIVATE_QUEUE_ERROR",

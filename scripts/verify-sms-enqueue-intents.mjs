@@ -5,6 +5,7 @@ import { verifyTechnicianNotifications } from "./verify-technician-notifications
 import { verifyConversationEmail } from "./verify-conversation-email.mjs";
 import { verifyAppointmentEmailRecipient } from "./verify-appointment-email-recipient.mjs";
 import { verifyCustomerEmailSettings } from "./verify-customer-email-settings.mjs";
+import { verifyAppointmentEmailIntents } from "./verify-appointment-email-intents.mjs";
 import { randomBytes, createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -475,13 +476,20 @@ try {
     tenantId: tenant.id,
     otherTenantId: other.id,
   });
+  const emailIntentChecks = await verifyAppointmentEmailIntents({
+    prisma,
+    jobData,
+    otherTenantId: other.id,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
+  assert.equal(await prisma.appointmentEmailIntent.count(), 0);
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
     JSON.stringify({
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...emailIntentChecks,
         ...emailSettingsChecks,
         ...emailRecipientChecks,
         ...emailCaptureChecks,
