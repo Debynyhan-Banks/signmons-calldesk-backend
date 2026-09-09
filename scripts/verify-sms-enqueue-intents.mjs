@@ -10,6 +10,7 @@ import { verifyInitialBookingPayment } from "./verify-initial-booking-payment.mj
 import { verifyJournaledAppointmentBooking } from "./verify-journaled-appointment-booking.mjs";
 import { verifyCalendarPendingReview } from "./verify-calendar-pending-review.mjs";
 import { verifyCalendarReviewState } from "./verify-calendar-review-state.mjs";
+import { verifyCalendarAppliedRecovery } from "./verify-calendar-applied-recovery.mjs";
 import { verifyEnqueueRecovery } from "./verify-enqueue-recovery.mjs";
 import { verifyAppointmentCancellation } from "./verify-appointment-cancellation.mjs";
 import { verifyAppointmentRescheduling } from "./verify-appointment-rescheduling.mjs";
@@ -431,6 +432,12 @@ try {
     jobData,
     otherTenantId: other.id,
   });
+  const appliedRecoveryChecks = await verifyCalendarAppliedRecovery({
+    prisma,
+    intents,
+    jobData,
+    otherTenantId: other.id,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -438,6 +445,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...appliedRecoveryChecks,
         ...reviewStateChecks,
         ...pendingReviewChecks,
         ...journaledBookingChecks,

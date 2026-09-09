@@ -1,0 +1,212 @@
+{
+  "ticket": "APP-013",
+  "date": "2026-09-09",
+  "section": "Reviewed APPLIED CREATE recovery ownership",
+  "status": "review-ready; inactive",
+  "baselines": {
+    "backend": "880658a68a8d8078bb6c614abd21c9e35c04bd4f",
+    "governance": "a6e00ea84ce0d2f1c6037527eb1a04de32d0b2be"
+  },
+  "files": [
+    "src/scheduling/calendar-applied-recovery.service.ts",
+    "src/scheduling/calendar-applied-recovery.service.spec.ts",
+    "src/scheduling/calendar-create-reconciliation.service.ts",
+    "src/scheduling/calendar-create-reconciliation.service.spec.ts",
+    "scripts/verify-calendar-applied-recovery.mjs",
+    "scripts/verify-sms-enqueue-intents.mjs"
+  ],
+  "contract": {
+    "authority": "Trusted user/tenant context and owner/admin role; future RequestAuthGuard/TenantGuard required",
+    "input": [
+      "operationId UUID",
+      "expectedUpdatedAt canonical exact ISO",
+      "acknowledgeReadback true"
+    ],
+    "admission": "Exact APPLIED CREATE unfinished version advances updatedAt and records one USER request audit atomically; job/status/target/window/claimed version/finishedAt unchanged",
+    "audit": {
+      "action": "appointment.applied_create_readback_requested",
+      "metadata": [
+        "jobId",
+        "reasonCode",
+        "acknowledged",
+        "reviewedUpdatedAt",
+        "admittedUpdatedAt"
+      ],
+      "reason": "APPLIED_CREATE_REVIEWED",
+      "meaning": "Request, not completion"
+    },
+    "handoff": "Only acknowledged server-admitted version reaches reconciliation; stale precondition rejects before job/provider read",
+    "outcomes": [
+      "finalized",
+      "already_finalized",
+      "pending",
+      "needs_review"
+    ],
+    "errors": "401 identity; 403 role; 400 input; 404 missing/cross-tenant; 409 admission state/version; 503 unknown admission or post-admission outcome",
+    "activeWiring": false,
+    "providerWrites": false,
+    "automaticRetry": false,
+    "uncertainRecoveryAdmitted": false,
+    "graceBypass": false
+  },
+  "validation": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 845,
+      "passingSuites": 60,
+      "existingSkippedTests": 3,
+      "existingSkippedSuites": 1,
+      "newTests": 35,
+      "newWrapperTests": 33,
+      "newReconcilerTests": 2,
+      "focusedTests": 70,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "database": {
+      "result": "PASS",
+      "migrations": 15,
+      "priorActualProcessCrashes": 11,
+      "newActualProcessCrashes": 0,
+      "checks": [
+        "Trusted context/role/tenant/ack/version and all non-APPLIED status refusals",
+        "Owner/admin matching synthetic evidence finalizes once with request+confirmation audit and one intent",
+        "Concurrent same-version submissions produce one admission audit/read/finalization",
+        "Actual audit insertion failure rolls back exact admission and makes zero reads",
+        "Lost admission commit acknowledgment preserves job/APPLIED fields, one audit and new version with zero reads",
+        "Fresh explicit new review in a fresh service recovers after lost acknowledgment, without duplicate intent",
+        "Newer committed hold after admission rejects version before read and preserves winner",
+        "Fresh explicit review supersedes an in-flight read; two request audits but one confirmation/intent",
+        "Unavailable/unverified evidence retains UNCERTAIN/NEEDS_REVIEW and no intent/message send"
+      ],
+      "realProviderCalls": 0,
+      "cleanup": "Parent-owned random Unix-socket DB removed; independent calldesk_app013_intents_% query returned no rows"
+    },
+    "ui": {
+      "changed": false,
+      "lintAndTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "build": "PASS"
+    },
+    "browser": {
+      "result": "PASS",
+      "kind": "Unchanged static export with synthetic API responses; no new review UI or Firebase/HTTP/live acceptance",
+      "viewports": [
+        1440,
+        390
+      ],
+      "artifacts": "/private/tmp/signmons-applied-recovery-qa.DHW00e/evidence/APP-013",
+      "framework": {
+        "routes": 22,
+        "navigations": 12,
+        "staticManifest": true,
+        "externalRequests": 0,
+        "errors": 0,
+        "failedResources": 0
+      },
+      "customerDispatch": {
+        "requests": 46,
+        "syntheticPosts": 22,
+        "dispatchWrites": 0,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "technician": {
+        "requests": 26,
+        "syntheticConflictPosts": 2,
+        "initialHeldMutationPosts": 0,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "policy": {
+        "requests": 8,
+        "syntheticConflictPosts": 4,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "notifications": {
+        "requests": 95,
+        "syntheticPosts": 14,
+        "result": "PASS"
+      },
+      "visualScreenshotInspection": false
+    },
+    "audits": {
+      "backendFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "backendProd": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiProd": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    }
+  },
+  "limits": [
+    "Request admission does not prove outcome; no public booking receipt",
+    "Version ownership is not an exclusive provider-read lease; different explicit fresh versions may preempt in-flight reads",
+    "No automatic recovery after lost admission acknowledgment",
+    "UNCERTAIN active-attempt recovery remains separate",
+    "No route/module/worker activation, provider/schema/dependency/configuration or production action",
+    "Synthetic contexts and read-back seams; no Firebase/HTTP/live-owner acceptance",
+    "No new process-crash case"
+  ],
+  "remainingRisks": [
+    "UNCERTAIN recovery ownership and persisted grace/clock assumptions",
+    "Protected review API/UI and request-audit visibility",
+    "Current public receipt and blocked-customer payment handoff",
+    "Post-read/payment/provider races",
+    "Legacy inventory/repair/retention",
+    "RESCHEDULE/CANCEL and SENDING recovery",
+    "Dependency override maintenance and live acceptance"
+  ],
+  "planningEstimates": {
+    "app013Percent": 85,
+    "app006ThroughApp016Percent": 81,
+    "note": "Unchanged planning estimates, not release readiness"
+  },
+  "warnings": [
+    "Existing pg concurrent-query deprecation",
+    "Existing Next lint/workspace-root warnings",
+    "Intentional PostCSS fixture warning"
+  ],
+  "reviewInstructions": "evidence/APP-013/readiness-report.md"
+}

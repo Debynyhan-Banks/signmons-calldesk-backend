@@ -100,6 +100,31 @@ describe("CREATE Calendar read-back reconciliation", () => {
   });
   afterEach(() => jest.restoreAllMocks());
 
+  it("rejects a stale reviewed admission before job/provider access or any write", async () => {
+    await expect(
+      service.reconcile({
+        ...input,
+        expectedUpdatedAt: new Date(operation.updatedAt.getTime() - 1),
+      }),
+    ).rejects.toThrow("Calendar operation changed");
+    expect(reader.read).not.toHaveBeenCalled();
+    expect(prisma.job.findFirst).not.toHaveBeenCalled();
+    expect(prisma.calendarOperation.updateMany).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it("does not let a matching reviewed version bypass UNCERTAIN grace", async () => {
+    operation.updatedAt = new Date(Date.now());
+    expect(
+      await service.reconcile({
+        ...input,
+        expectedUpdatedAt: operation.updatedAt,
+      }),
+    ).toEqual({ status: "pending" });
+    expect(reader.read).not.toHaveBeenCalled();
+    expect(prisma.job.findFirst).not.toHaveBeenCalled();
+    expect(prisma.calendarOperation.updateMany).not.toHaveBeenCalled();
+  });
+
   it.each(["found", "unverified", "unavailable", "throws"])(
     "leaves unattempted CREATE untouched regardless of hypothetical %s evidence",
     async (outcome) => {

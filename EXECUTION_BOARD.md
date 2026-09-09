@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Privacy-safe Calendar review-state projection is review-ready on PR #21: inactive owner/admin context-only capped job history and exact operation refresh with explicit metadata allowlist. Snapshot hints never authorize hold/recovery or prove provider state. 29 new cases/810 total, real 101-row truncation/order, unchanged reads, reviewed-hold refresh and stale-candidate refusal pass; 15 migrations/11 prior crashes, five browser suites/four clean audits pass. Attempted-operation ownership, protected review UI/API, customer handoff and acceptance remain open; no activation/deployment.
+  - Reviewed APPLIED CREATE recovery ownership is review-ready on PR #21: inactive owner/admin exact-version audited admission before read-back; stale admission rejected before Calendar access, no UNCERTAIN grace bypass or provider writes. 35 new cases/845 total, real single-admission/finalization, audit rollback/lost acknowledgment and superseding-review races pass; 15 migrations/11 prior crashes, five browser suites/four clean audits pass. UNCERTAIN ownership, protected review UI/API, customer handoff and acceptance remain open; no activation/deployment.
 
 ## Next
 

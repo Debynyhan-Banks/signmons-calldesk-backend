@@ -38,6 +38,9 @@ export class CalendarCreateReconciliationService {
   async reconcile(input: {
     tenantId: string;
     operationId: string;
+    // Reviewed recovery may only consume its acknowledged admission version.
+    // Omitted for the existing executor/recovery paths; never bypasses grace.
+    expectedUpdatedAt?: Date;
   }): Promise<Result> {
     const operation = await this.prisma.calendarOperation.findUnique({
       where: {
@@ -46,6 +49,13 @@ export class CalendarCreateReconciliationService {
     });
     if (!operation)
       throw new NotFoundException("Calendar operation was not found.");
+    if (
+      input.expectedUpdatedAt &&
+      operation.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()
+    )
+      throw new ConflictException(
+        "Calendar operation changed. Refresh review state.",
+      );
     if (operation.action !== "CREATE")
       throw new ConflictException(
         "Only initial booking reconciliation is supported.",
