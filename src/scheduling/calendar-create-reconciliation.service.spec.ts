@@ -25,7 +25,7 @@ describe("CREATE Calendar read-back reconciliation", () => {
       tenantId: "tenant",
       jobId: "job",
       action: "CREATE",
-      status: "PENDING",
+      status: "UNCERTAIN",
       calendarId: "saved-calendar",
       calendarEventId: "a".repeat(32),
       timeZone: "UTC",
@@ -99,6 +99,40 @@ describe("CREATE Calendar read-back reconciliation", () => {
     );
   });
   afterEach(() => jest.restoreAllMocks());
+
+  it.each(["found", "unverified", "unavailable", "throws"])(
+    "leaves unattempted CREATE untouched regardless of hypothetical %s evidence",
+    async (outcome) => {
+      operation.status = "PENDING";
+      const original = { ...operation };
+      reader.read.mockImplementation(() => {
+        if (outcome === "throws") throw new Error("private provider failure");
+        return Promise.resolve({ outcome, event });
+      });
+      for (const now of [date.getTime() - 1000, date.getTime() + 1000]) {
+        jest.mocked(Date.now).mockReturnValue(now);
+        await expect(service.reconcile(input)).resolves.toEqual({
+          status: "pending",
+        });
+      }
+      expect(operation).toEqual(original);
+      expect(reader.read).not.toHaveBeenCalled();
+      expect(prisma.job.findFirst).not.toHaveBeenCalled();
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(prisma.calendarOperation.updateMany).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(intents.recordConfirmation).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+      expect(intents.processOne).not.toHaveBeenCalled();
+    },
+  );
+  it("retains APPLIED read-back compatibility", async () => {
+    operation.status = "APPLIED";
+    await expect(service.reconcile(input)).resolves.toEqual({
+      status: "finalized",
+    });
+    expect(reader.read).toHaveBeenCalledTimes(1);
+  });
 
   it("atomically finalizes a matching observation without processing messages", async () => {
     await expect(service.reconcile(input)).resolves.toEqual({

@@ -54,6 +54,10 @@ export class CalendarCreateReconciliationService {
       return { status: "already_finalized" };
     if (operation.finishedAt || operation.status === "NEEDS_REVIEW")
       return { status: "needs_review" };
+    // PENDING belongs to the executor. Reading a not-yet-attempted event can
+    // turn absence/unavailability into a hold and consume its one-shot latch.
+    // Even apparently matching evidence must not bypass durable attempt order.
+    if (operation.status === "PENDING") return { status: "pending" };
     if (!futureWindow(operation)) return this.hold(operation, "NEEDS_REVIEW");
     const job = await this.prisma.job.findFirst({
       where: this.claimWhere(operation),

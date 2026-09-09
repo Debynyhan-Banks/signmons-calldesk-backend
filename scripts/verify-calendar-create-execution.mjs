@@ -94,18 +94,136 @@ export async function verifyCalendarCreateExecution({
     reconciliation,
   );
   try {
+    // An early recovery reader owns neither insertion nor expiry/review of a
+    // PENDING reservation. Hypothetical provider results must remain unread.
+    for (const outcome of ["found", "unverified", "unavailable", "throws"]) {
+      const fixture = await make();
+      const originalJob = await prisma.job.findUniqueOrThrow({
+        where: { id: fixture.operation.jobId },
+      });
+      let reads = 0;
+      const earlyReader = new CalendarCreateReconciliationService(
+        prisma,
+        {
+          read: async () => {
+            reads++;
+            if (outcome === "throws")
+              throw new Error("Synthetic private error");
+            return { outcome, event: snapshot(fixture.operation) };
+          },
+        },
+        intents,
+      );
+      for (let replay = 0; replay < 2; replay++) {
+        assert.deepEqual(await earlyReader.reconcile(fixture.input), {
+          status: "pending",
+        });
+      }
+      assert.equal(reads, 0);
+      assert.deepEqual(
+        await prisma.calendarOperation.findUniqueOrThrow({
+          where: { id: fixture.operation.id },
+        }),
+        fixture.operation,
+      );
+      assert.deepEqual(
+        await prisma.job.findUniqueOrThrow({
+          where: { id: fixture.operation.jobId },
+        }),
+        originalJob,
+      );
+      assert.equal(
+        await prisma.smsEnqueueIntent.count({
+          where: { jobId: fixture.operation.jobId },
+        }),
+        0,
+      );
+      assert.equal(
+        await prisma.auditLog.count({
+          where: { entityId: fixture.operation.jobId },
+        }),
+        0,
+      );
+      const beforeExecution = inserts;
+      assert.equal((await execute.execute(fixture.input)).status, "finalized");
+      assert.equal(
+        (await execute.execute(fixture.input)).status,
+        "already_finalized",
+      );
+      assert.equal(inserts, beforeExecution + 1);
+      assert.equal(
+        await prisma.smsEnqueueIntent.count({
+          where: { jobId: fixture.operation.jobId },
+        }),
+        1,
+      );
+    }
+
+    // Pause after a real PENDING lookup; execution commits before the old reader
+    // resumes. A conservative pending response must not replace the receipt.
+    const early = await make();
+    let releaseLookup, signalLookup;
+    const lookupSeen = new Promise((resolve) => {
+      signalLookup = resolve;
+    });
+    const lookupResume = new Promise((resolve) => {
+      releaseLookup = resolve;
+    });
+    let staleReads = 0;
+    const staleReader = new CalendarCreateReconciliationService(
+      {
+        ...prisma,
+        calendarOperation: {
+          ...prisma.calendarOperation,
+          findUnique: async (args) => {
+            const operation = await prisma.calendarOperation.findUnique(args);
+            signalLookup();
+            await lookupResume;
+            return operation;
+          },
+        },
+      },
+      {
+        read: async () => {
+          staleReads++;
+          return { outcome: "unavailable" };
+        },
+      },
+      intents,
+    );
+    const delayed = staleReader.reconcile(early.input);
+    await lookupSeen;
+    assert.equal((await execute.execute(early.input)).status, "finalized");
+    const receipt = await prisma.calendarOperation.findUniqueOrThrow({
+      where: { id: early.operation.id },
+    });
+    releaseLookup();
+    assert.deepEqual(await delayed, { status: "pending" });
+    assert.equal(staleReads, 0);
+    assert.deepEqual(
+      await prisma.calendarOperation.findUniqueOrThrow({
+        where: { id: early.operation.id },
+      }),
+      receipt,
+    );
+    assert.equal(
+      (await reconciliation.reconcile(early.input)).status,
+      "already_finalized",
+    );
+
+    const beforeFirst = inserts;
     const first = await make();
     const outcomes = await Promise.all([
       execute.execute(first.input),
       execute.execute(first.input),
     ]);
     assert.equal(outcomes.filter((r) => r.status === "finalized").length, 1);
-    assert.equal(inserts, 1);
+    assert.equal(inserts, beforeFirst + 1);
     assert.equal(
       (await execute.execute(first.input)).status,
       "already_finalized",
     );
-    assert.equal(inserts, 1);
+    assert.equal(inserts, beforeFirst + 1);
     assert.equal(
       await prisma.smsEnqueueIntent.count({
         where: { jobId: first.operation.jobId },
@@ -269,6 +387,8 @@ export async function verifyCalendarCreateExecution({
       }
     }
     return [
+      "four hypothetical early-read outcomes leave PENDING job/journal unchanged with zero reads, audits or intents; subsequent execution finalizes once",
+      "delayed PENDING reader cannot consume the attempt latch or overwrite a newer finalized receipt",
       "one committed CREATE attempt under concurrent execution and replay",
       "insert acknowledgment is never finalization proof",
       "unknown insert outcome with matching read-back finalizes once",

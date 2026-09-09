@@ -14,6 +14,9 @@ const {
   CalendarOperationJournalService,
 } = require("../dist/scheduling/calendar-operation-journal.service.js");
 const {
+  CalendarCreateExecutionService,
+} = require("../dist/scheduling/calendar-create-execution.service.js");
+const {
   SmsEnqueueIntentService,
 } = require("../dist/communications/sms-enqueue-intent.service.js");
 const databasePattern = /^calldesk_app013_intents_[0-9a-f]{12}$/;
@@ -64,6 +67,9 @@ export async function verifyCalendarCreateReconciliation({
         serviceWindowStart: null,
         serviceWindowEnd: null,
         preferredTimeText: null,
+        assignedUserId: null,
+        assignedUserTenantId: null,
+        technicianStatus: null,
       },
     });
     const start = new Date(Date.UTC(2036, 0, sequence, 14));
@@ -80,10 +86,28 @@ export async function verifyCalendarCreateReconciliation({
         label: "Synthetic arrival",
       },
     );
+    const input = { tenantId: job.tenantId, operationId: operation.id };
+    // Read-back fixtures must have passed the real durable attempt latch.
+    // The creator is synthetic and immediate recovery is deferred to each test.
+    let attempted = 0;
+    await new CalendarCreateExecutionService(
+      prisma,
+      {
+        create: async () => {
+          attempted++;
+        },
+      },
+      { reconcile: async () => ({ status: "pending" }) },
+    ).execute(input);
+    assert.equal(attempted, 1);
+    const saved = await prisma.calendarOperation.findUniqueOrThrow({
+      where: { id: operation.id },
+    });
+    assert.equal(saved.status, "UNCERTAIN");
     return {
       job,
-      operation,
-      input: { tenantId: job.tenantId, operationId: operation.id },
+      operation: saved,
+      input,
     };
   };
   const readOperation = (fixture) =>

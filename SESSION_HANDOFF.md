@@ -11,7 +11,20 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: Legacy CREATE technician/lifecycle safeguard
+### Latest: CREATE reader attempt-ownership safeguard
+
+- Owner continued remediation; fetched/reconciled backend `7026d08` and governance `159b3fe`. APP-013 remains the sole Now ticket; both focused boards selected a bounded CREATE reader-ownership safeguard before coding. Original saved worktree changes preserved.
+- CalendarCreateReconciliationService now returns pending immediately for an unfinished PENDING CREATE, after tenant/action/terminal checks and before window validation, job lookup, provider read or any write. PENDING belongs to the executor; neither absent/unavailable nor apparently matching provider evidence may consume or bypass its durable one-shot attempt latch. Expired PENDING records are also left untouched by the reader; the existing executor owns its expiry hold.
+- UNCERTAIN/APPLIED read-back behavior and exact tenant/job/window/version/identity evidence remain unchanged. FINALIZED remains a historical receipt; held/aborted records are not rearmed. A stale PENDING snapshot may conservatively return pending after a concurrent finalization; a fresh lookup sees the receipt, and the stale reader writes nothing.
+- Five added unit cases cover four hypothetical reader outcomes, before/after window start, zero side effects and APPLIED compatibility. Local PostgreSQL proves four early-reader scenarios (each replayed) leave exact job/journal rows unchanged with zero provider reads/audits/intents, followed by one successful synthetic execution/finalization. A paused real PENDING lookup resumes after competing execution and cannot replace its receipt.
+- Existing reconciliation fixtures now pass through the real executor's durable attempt transaction with a synthetic creator before read-back, rather than treating PENDING as an attempted insert. All 15 local migrations and 11 prior actual process-crash cases pass; no new crash case claimed. The disposable database was removed and absence independently verified; zero real provider calls.
+- Backend build/lint, 56 passing suites/689 tests (3 existing skipped tests), architecture/Prisma and formatting pass. Unchanged UI: lint/type check, 60 tests, 14-page build and all five desktop/390px synthetic browser suites pass. Four full/omit-dev backend/UI audits report zero findings. No clean-install claim for this source-only change.
+- Limits: inactive internal service only; no module/route/worker registration, request-authority bypass, schema/dependency/provider/configuration change, production migration, real-data action, external send, secrets/IAM/billing/charges, merge or deployment. Existing scheduling entry points still use the legacy path. PENDING is not automatically scanned, expired or repaired by this reader.
+- Remaining priority: active-attempt versus recovery-reader coordination. UNCERTAIN is an attempt latch, not proof that an in-flight executor has exited; another reader can still race with active execution, so this fix is not a worker lease, retry policy or global serialization guarantee. Authorized CREATE orchestration with tenant/auth/payment/availability gates, office-review controls/retention, legacy inventory/repair, external races, reschedule/cancel and SENDING recovery, dependency override maintenance/future upload gates and acceptance remain open. Estimates unchanged: APP-013 ~85%; governed APP-006 through APP-016 ~81%, planning only. Stop review-ready.
+
+- Exact commands/limits: `evidence/APP-013/readiness-report.md` and `create-reader-ownership-summary.json`.
+
+### Earlier: Legacy CREATE technician/lifecycle safeguard
 
 - Owner proceeded with remediation; fetched/reconciled backend `8450113` / governance `1113464`, APP-013 sole Now. Both focused boards selected one bounded legacy CREATE technician/lifecycle section before coding; original saved checkout changes preserved.
 - Promoted the reviewed dispatch helper to `src/jobs/job-calendar-guard.ts` with job-scoped names; dispatch behavior is unchanged. Technician list/detail and all six mutations plus direct job completion now share the unfinished-journal or ACCEPTED/reserved-window/no-nonblank-Calendar-reference hold. The predicate remains narrow; null/empty/whitespace references and partial windows qualify.
