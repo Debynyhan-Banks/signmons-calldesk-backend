@@ -70,6 +70,9 @@ describe("Calendar operation journal foundation", () => {
     });
     expect(tx.job.findFirst).toHaveBeenCalledWith({
       where: { id: "job", tenantId: "tenant", deletedAt: null, updatedAt: now },
+      include: {
+        payment: { select: { id: true, status: true, updatedAt: true } },
+      },
     });
     expect(tx.job.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -88,6 +91,8 @@ describe("Calendar operation journal foundation", () => {
     "retains the original external target for %s",
     async (action) => {
       Object.assign(original, {
+        policySnapshot: { depositRequired: true },
+        payment: { id: "refunded", status: "REFUNDED", updatedAt: now },
         status: "ACCEPTED",
         calendarEventId: "existing-event",
         serviceWindowStart: now,
@@ -95,6 +100,11 @@ describe("Calendar operation journal foundation", () => {
         preferredTimeText: "Original window",
       });
       const record = await service.reserve({ ...input, action });
+      expect(tx.job.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ payment: undefined }),
+        }),
+      );
       expect(record).toMatchObject({
         action,
         calendarEventId: "existing-event",
@@ -117,6 +127,103 @@ describe("Calendar operation journal foundation", () => {
         );
     },
   );
+
+  describe.each(["depositRequired", "serviceFeeRequired"])(
+    "CREATE %s",
+    (required) => {
+      it.each([null, "PENDING", "FAILED", "CANCELED", "REFUNDED", "UNKNOWN"])(
+        "rejects unpaid state %s before writes",
+        async (status) => {
+          original.policySnapshot = { [required]: true };
+          original.payment = status
+            ? { id: "payment", status, updatedAt: now }
+            : null;
+          await expect(service.reserve(input)).rejects.toBeInstanceOf(
+            ConflictException,
+          );
+          expect(tx.job.updateMany).not.toHaveBeenCalled();
+          expect(tx.calendarOperation.create).not.toHaveBeenCalled();
+        },
+      );
+    },
+  );
+
+  it("claims only the exact canonical successful payment, without persisting payment details", async () => {
+    original.policySnapshot = { depositRequired: true };
+    original.payment = { id: "payment", status: "SUCCEEDED", updatedAt: now };
+    const result = await service.reserve(input);
+    expect(tx.job.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          payment: {
+            is: {
+              id: "payment",
+              tenantId: "tenant",
+              status: "SUCCEEDED",
+              updatedAt: now,
+            },
+          },
+        }),
+      }),
+    );
+    expect(result).not.toHaveProperty("payment");
+    expect(result).not.toHaveProperty("policySnapshot");
+  });
+
+  it.each([false, true])(
+    "preserves no-requirement/approved-exception semantics: %s",
+    async (exception) => {
+      original.policySnapshot = exception
+        ? {
+            depositRequired: true,
+            paymentGateMode: "manual_override",
+            paymentGateException: {
+              active: true,
+              approvedAt: now.toISOString(),
+              reason: "Approved synthetic exception",
+            },
+          }
+        : { depositRequired: false, serviceFeeRequired: false };
+      original.payment = { id: "payment", status: "FAILED", updatedAt: now };
+      await service.reserve(input);
+      expect(tx.job.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            payment: undefined,
+            updatedAt: now,
+          }),
+        }),
+      );
+    },
+  );
+
+  it("rejects a revoked exception without a payment claim", async () => {
+    original.policySnapshot = {
+      depositRequired: true,
+      paymentGateMode: "manual_override",
+      paymentGateException: {
+        active: false,
+        approvedAt: now.toISOString(),
+        reason: "Revoked",
+      },
+    };
+    original.payment = null;
+    await expect(service.reserve(input)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(tx.job.updateMany).not.toHaveBeenCalled();
+    expect(tx.calendarOperation.create).not.toHaveBeenCalled();
+  });
+
+  it("does not journal a lost payment claim", async () => {
+    original.policySnapshot = { serviceFeeRequired: true };
+    original.payment = { id: "payment", status: "SUCCEEDED", updatedAt: now };
+    tx.job.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.reserve(input)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(tx.calendarOperation.create).not.toHaveBeenCalled();
+  });
 
   it("rejects missing/cross-tenant/stale snapshots before reservation", async () => {
     tx.job.findFirst.mockResolvedValue(null);

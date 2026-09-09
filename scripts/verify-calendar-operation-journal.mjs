@@ -266,6 +266,160 @@ export async function verifyCalendarOperationJournal({
     }),
   );
 
+  // CREATE admission must survive migration from legacy booking to the journal.
+  // All payment mutations below are fictional local race setup, never providers.
+  const makePaymentCase = async (policySnapshot, status) => {
+    const fixture = await create();
+    fixture.job = await prisma.job.update({
+      where: { id: fixture.job.id },
+      data: { policySnapshot },
+    });
+    fixture.input.expectedUpdatedAt = fixture.job.updatedAt;
+    fixture.payment = status
+      ? await prisma.payment.create({
+          data: {
+            tenantId: fixture.job.tenantId,
+            jobId: fixture.job.id,
+            jobTenantId: fixture.job.tenantId,
+            status,
+            amountTotalCents: 100,
+            applicationFeeAmountCents: 0,
+            currency: "usd",
+          },
+        })
+      : null;
+    return fixture;
+  };
+  for (const required of ["depositRequired", "serviceFeeRequired"]) {
+    for (const status of [null, "PENDING", "FAILED", "CANCELED", "REFUNDED"]) {
+      const fixture = await makePaymentCase({ [required]: true }, status);
+      await assert.rejects(
+        service.reserve(fixture.input),
+        /Appointment changed/,
+      );
+      assert.deepEqual(await readJob(fixture.job), fixture.job);
+      assert.equal((await operations(fixture.job)).length, 0);
+    }
+  }
+  const exceptionPolicy = {
+    depositRequired: true,
+    paymentGateMode: "manual_override",
+    paymentGateException: {
+      active: true,
+      approvedAt: new Date().toISOString(),
+      reason: "Synthetic approved exception",
+    },
+  };
+  for (const [policy, status] of [
+    [{ depositRequired: true }, "SUCCEEDED"],
+    [{ depositRequired: false, serviceFeeRequired: false }, "FAILED"],
+    [exceptionPolicy, "FAILED"],
+  ]) {
+    const fixture = await makePaymentCase(policy, status);
+    const journal = await service.reserve(fixture.input);
+    assert.equal(journal.status, "PENDING");
+    assert.equal((await readJob(fixture.job)).status, "ACCEPTED");
+    assert.equal((await operations(fixture.job)).length, 1);
+    assert.deepEqual(
+      await prisma.payment.findUnique({ where: { id: fixture.payment.id } }),
+      fixture.payment,
+    );
+    await assert.rejects(service.reserve(fixture.input), /Appointment changed/);
+    assert.equal((await operations(fixture.job)).length, 1);
+  }
+  for (const mutation of [
+    "refund",
+    "version",
+    "replacement",
+    "exception-revocation",
+  ]) {
+    const fixture = await makePaymentCase(
+      mutation === "exception-revocation"
+        ? exceptionPolicy
+        : { depositRequired: true },
+      mutation === "exception-revocation" ? "FAILED" : "SUCCEEDED",
+    );
+    let winningPayment = fixture.payment;
+    let winningJob = fixture.job;
+    let claims = 0;
+    const competing = new CalendarOperationJournalService({
+      $transaction: (callback) =>
+        prisma.$transaction((tx) =>
+          callback({
+            ...tx,
+            job: {
+              ...tx.job,
+              updateMany: async (args) => {
+                claims++;
+                if (mutation === "exception-revocation") {
+                  winningJob = await prisma.job.update({
+                    where: { id: fixture.job.id },
+                    data: {
+                      policySnapshot: {
+                        ...exceptionPolicy,
+                        paymentGateException: {
+                          ...exceptionPolicy.paymentGateException,
+                          active: false,
+                        },
+                      },
+                      updatedAt: new Date(
+                        fixture.job.updatedAt.getTime() + 1000,
+                      ),
+                    },
+                  });
+                } else if (mutation === "replacement") {
+                  winningPayment = await prisma.$transaction(async (other) => {
+                    await other.payment.delete({
+                      where: { id: fixture.payment.id },
+                    });
+                    return other.payment.create({
+                      data: { ...fixture.payment, id: randomUUID() },
+                    });
+                  });
+                } else {
+                  winningPayment = await prisma.payment.update({
+                    where: { id: fixture.payment.id },
+                    data: {
+                      status: mutation === "refund" ? "REFUNDED" : "SUCCEEDED",
+                      updatedAt: new Date(
+                        fixture.payment.updatedAt.getTime() + 1000,
+                      ),
+                    },
+                  });
+                }
+                return tx.job.updateMany(args);
+              },
+            },
+          }),
+        ),
+    });
+    await assert.rejects(
+      competing.reserve(fixture.input),
+      /Appointment changed/,
+    );
+    assert.equal(claims, 1);
+    assert.deepEqual(await readJob(fixture.job), winningJob);
+    assert.deepEqual(
+      await prisma.payment.findFirst({ where: { jobId: fixture.job.id } }),
+      winningPayment,
+    );
+    assert.equal((await operations(fixture.job)).length, 0);
+  }
+  const paidRollback = await makePaymentCase(
+    { depositRequired: true },
+    "SUCCEEDED",
+  );
+  await assert.rejects(
+    broken.reserve(paidRollback.input),
+    /failure after actual journal insert/,
+  );
+  assert.deepEqual(await readJob(paidRollback.job), paidRollback.job);
+  assert.equal((await operations(paidRollback.job)).length, 0);
+  assert.deepEqual(
+    await prisma.payment.findUnique({ where: { id: paidRollback.payment.id } }),
+    paidRollback.payment,
+  );
+
   assert.equal(await prisma.smsEnqueueIntent.count(), intentCount);
   assert.equal(await prisma.auditLog.count(), auditCount);
   assert.equal(await prisma.communicationEvent.count(), messageCount);
@@ -274,6 +428,9 @@ export async function verifyCalendarOperationJournal({
     where: { tenantId: jobData.tenantId },
   });
   return [
+    "CREATE journal payment admission: ten unpaid refusals and three allowed one-journal/replay refusals",
+    "CREATE journal payment claim: committed refund/version/replacement and policy-revocation races preserve winners",
+    "CREATE journal paid insertion failure rolls back job/journal and preserves payment",
     "journal atomic reservation for create/reschedule/cancel",
     "six real child-process crashes before/after commit",
     "durable target and snapshot after restart",

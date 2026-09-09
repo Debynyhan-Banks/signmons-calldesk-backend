@@ -1,0 +1,153 @@
+{
+  "checkpoint": "APP-013 journal CREATE payment-admission safeguard",
+  "date": "2026-09-09",
+  "baseline": {
+    "backend": "303765149af178082146b386e30c7faa9e630b92",
+    "governance": "94bddde284832042dcce3ef715ce7c2c1bbf6b8f"
+  },
+  "runtimeFiles": [
+    "src/scheduling/calendar-operation-journal.service.ts"
+  ],
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 728,
+      "suites": 56,
+      "skippedTests": 3,
+      "newTests": 17,
+      "focusedTests": 38,
+      "architecture": "PASS",
+      "prisma": "PASS",
+      "formatting": "PASS"
+    },
+    "database": {
+      "result": "PASS",
+      "migrations": 15,
+      "existingProcessCrashes": 11,
+      "newProcessCrashes": 0,
+      "journalUnpaidRefusals": 10,
+      "journalAllowedRepeatRefusalCases": 3,
+      "committedPaymentPolicyRaces": 4,
+      "paidInsertRollback": true,
+      "cleanupIndependentlyVerified": true,
+      "realProviderCalls": 0
+    },
+    "ui": {
+      "lintTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "changed": false
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "viewports": [
+      1440,
+      390
+    ],
+    "suites": 5,
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 46,
+    "technicianRequests": 26,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "artifacts": "/private/tmp/signmons-journal-payment-qa.8FRnIN/evidence/APP-013",
+    "newJournalUiAcceptance": false
+  },
+  "audits": {
+    "Backend-full": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 393,
+        "dev": 733,
+        "optional": 95,
+        "peer": 3,
+        "peerOptional": 0,
+        "total": 1195
+      }
+    },
+    "Backend-prod": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 393,
+        "dev": 733,
+        "optional": 95,
+        "peer": 3,
+        "peerOptional": 0,
+        "total": 1195
+      }
+    },
+    "Ui-full": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 16,
+        "dev": 309,
+        "optional": 61,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 362
+      }
+    },
+    "Ui-prod": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 16,
+        "dev": 309,
+        "optional": 61,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 362
+      }
+    }
+  },
+  "intermediateFailures": [
+    "Initial lint rejected untyped Jest mock-call access; matcher assertions corrected and full lint/test gates passed.",
+    "Old policy CREATE fixture lacked payment authority; supplied synthetic approved exception and terminal revocation before prior approval proof. Two intermediate database runs cleaned up on failure; final full run passed."
+  ],
+  "limits": [
+    "Internal journal service remains unregistered, with no live scheduling/worker activation.",
+    "Snapshot check does not serialize payment/provider changes after snapshot or claim.",
+    "Shared required-payment/default/exception semantics unchanged; no pricing or amount rule changes.",
+    "No provider configuration, charge/refund, real data, schema, dependency, deployment or merge.",
+    "Customer handoff, guarded composition and recovery/office-review ownership, clock/provider risks, legacy repair/retention and acceptance remain open."
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

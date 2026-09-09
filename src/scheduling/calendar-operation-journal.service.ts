@@ -3,9 +3,15 @@ import {
   ConflictException,
   Injectable,
 } from "@nestjs/common";
-import { CalendarOperationAction, JobStatus, Prisma } from "@prisma/client";
+import {
+  CalendarOperationAction,
+  JobStatus,
+  PaymentStatus,
+  Prisma,
+} from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { evaluatePaymentGate } from "../payments/payment-gate.policy";
 
 type ReservationInput = {
   tenantId: string;
@@ -20,8 +26,8 @@ type ReservationInput = {
 );
 
 /** Local persistence foundation, deliberately NOT registered in SchedulingModule.
- * Before activation, callers must retain auth/payment/slot/availability guards;
- * a provider adapter, reconciliation worker and atomic finalizer are still needed.
+ * Before activation, callers must retain auth/payment/slot/availability guards
+ * and explicitly compose the reviewed executor, recovery and office-review paths.
  * No Calendar, message, audit-of-success or automatic rollback occurs here.
  */
 @Injectable()
@@ -38,6 +44,9 @@ export class CalendarOperationJournalService {
             tenantId: input.tenantId,
             deletedAt: null,
             updatedAt: input.expectedUpdatedAt,
+          },
+          include: {
+            payment: { select: { id: true, status: true, updatedAt: true } },
           },
         });
         if (!original) throw this.conflict();
@@ -71,6 +80,13 @@ export class CalendarOperationJournalService {
           select: { id: true },
         });
         if (unfinished) throw this.conflict();
+        // Re-evaluate canonical CREATE authority inside the claim transaction;
+        // an upstream success response or stale preflight is not permission.
+        // Do not introduce payment admission for rescheduling/cancellation.
+        const paymentGate = creating
+          ? evaluatePaymentGate(original.policySnapshot, original.payment)
+          : null;
+        if (paymentGate?.state === "LOCKED") throw this.conflict();
         const cancelling = input.action === CalendarOperationAction.CANCEL;
         const claimedUpdatedAt = new Date(
           Math.max(Date.now(), original.updatedAt.getTime() + 1),
@@ -88,6 +104,19 @@ export class CalendarOperationJournalService {
             calendarEventId: original.calendarEventId,
             serviceWindowStart: original.serviceWindowStart,
             serviceWindowEnd: original.serviceWindowEnd,
+            // Fail if the observed successful payment changed before this
+            // statement snapshot. This does not serialize post-claim changes.
+            payment:
+              paymentGate?.reasonCode === "PAYMENT_SUCCEEDED"
+                ? {
+                    is: {
+                      id: original.payment!.id,
+                      tenantId: input.tenantId,
+                      status: PaymentStatus.SUCCEEDED,
+                      updatedAt: original.payment!.updatedAt,
+                    },
+                  }
+                : undefined,
           },
           data: {
             status: cancelling ? JobStatus.CANCELLED : JobStatus.ACCEPTED,

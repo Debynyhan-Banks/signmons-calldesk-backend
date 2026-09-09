@@ -70,6 +70,17 @@ export async function verifyPolicyCalendarGuards({
         policySnapshot: {
           depositRequired: true,
           paymentGateMode: "manual_override",
+          // CREATE must have canonical admission before testing later policy
+          // holds. This is a synthetic pre-approved exception, not a payment.
+          ...(action === "CREATE"
+            ? {
+                paymentGateException: {
+                  active: true,
+                  approvedAt: new Date().toISOString(),
+                  reason: "Synthetic pre-approved CREATE fixture",
+                },
+              }
+            : {}),
           preserved: "fixture",
           urgencyDecision: { source: "AI_INTAKE", level: "STANDARD" },
         },
@@ -187,6 +198,10 @@ export async function verifyPolicyCalendarGuards({
           /closed job/,
         );
       else {
+        // CREATE entered with an approved fixture exception. Once the hold is
+        // terminal, exercise revocation before the existing approve/revoke proof.
+        if (action === "CREATE")
+          await mutate(normal, "payment", await read(job.id), "REVOKE");
         await mutate(normal, "payment", await read(job.id));
         const approved = await read(job.id);
         assert.equal(approved.policySnapshot.urgencyDecision.level, "HIGH");
