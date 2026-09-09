@@ -2,7 +2,15 @@
 
 Date: 2026-09-09
 
-## Optional One-Time Customer Email Capture (2026-09-09, review-ready)
+## Approved MVP Plan and Completion Audit (2026-09-09, latest/documentation-only)
+
+- Owner approved documenting the supervised CallDesk MVP capabilities after the completion audit. Canonical plan: signmons-governance/CALLDESK_MVP_PLAN.md. Required call/text/chat, booking/payment, communications, dispatcher/technician and oversight capabilities are pilot exit requirements, not assertions of current availability.
+- Implementation baseline remains 00337a756a177d3752204acfb082c2bf774d431f. APP-013 classification: 1 locally demonstrated, 8 partial, 3 missing end-to-end; equal-weight score 5/12 = 42% scope coverage. This is not engineering effort, overall MVP completion or production readiness. Formal acceptance remains 0/12. Earlier 85%/81% values are retired historical estimates.
+- Next bounded continuation: fixed appointment-email composition, fictional local previews/tests, no actual credential issuance or delivery/provider/worker activation. APP-013 remains sole Now; Global Next unassigned; FE-014 paused. No other ticket is promoted.
+- Review the canonical plan's capabilities, evidence mapping, deferrals, 20-35-section low-confidence planning allowance, open pilot checklist and explicit production gates. Confirm backend board and both handoffs agree. Existing source, schema, dependencies and runtime configuration are unchanged.
+- Documentation checkpoint validation: governance placement tests and docs consistency, backend architecture and git diff checks. Full code tests/build/lint, database and browser QA are not rerun for this docs-only change; 1020 backend/159 UI tests and prior browser/database proof remain historical implementation evidence, not new runs.
+
+## Earlier: Optional One-Time Customer Email Capture (2026-09-09, review-ready)
 
 - Owner approved optional one-time customer email capture/retention, continuing from fetched/aligned backend aa5badd and governance 71cabdf. APP-013 remains sole Now; FE-014 paused. Existing focused feature branches retained and original saved-checkout changes preserved.
 - The application asks the fixed optional email question once when residential intake is ready or before a create_job tool call. A clearly volunteered valid address avoids the question. Skip/decline and invalid or absent optional email do not add a required booking field. Life-safety escalation takes priority and bypasses email capture. Model instructions expose only capture status, forbid email questions/tool arguments/delivery claims, and the reply guard replaces email-bearing model replies with the next missing intake question.

@@ -17,17 +17,18 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Owner approved one-time optional customer email capture/retention during intake, encrypted on the conversation and associated to the job through the existing tenant-scoped link. No customer-master overwrite, email delivery, provider configuration or production/release action. APP-013 remains Now; prior estimates remain retired.
+  - Owner approved the supervised CallDesk MVP boundary and completion audit in governance CALLDESK_MVP_PLAN.md: one approved business, English, online access and human supervision; required launch capabilities are not current availability claims. APP-013 remains sole Now. Next bounded continuation is fixed appointment-email composition with local previews/tests only; not implemented in this documentation checkpoint. No delivery/provider or production/release authorization.
 
 ## Next
 
-- [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
-- [ ] APP-018 Brand voice and AI personality configuration (`SCR-APP-027`)
-- [ ] APP-019 Customer profiles and service history (`SCR-APP-028`)
-- [ ] BE-001 Keyword opt-in/out persistence and telemetry (backend reliability stream)
+- Unassigned at program level. Finish APP-013 and explicitly update governance before selecting another ticket.
 
 ## Later
 
+- APP-017 Business rules and automation center (`SCR-APP-026`)
+- APP-018 Brand voice and AI personality configuration (`SCR-APP-027`)
+- APP-019 Customer profiles and service history (`SCR-APP-028`)
+- BE-001 Keyword opt-in/out persistence and telemetry (backend reliability stream)
 - Remaining backend-aligned work from `/Users/debynyhanbanks/Web Projects/signmons-governance/MVP_BACKLOG.md`
 
 ## Done

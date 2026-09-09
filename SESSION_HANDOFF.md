@@ -2,6 +2,13 @@
 
 Last Updated: 2026-09-09
 
+## Latest: Approved CallDesk MVP Plan (2026-09-09, documentation-only)
+
+- Owner approved the supervised CallDesk MVP boundary and completion audit in governance CALLDESK_MVP_PLAN.md: one approved business, English, online access and human supervision; required launch capabilities are not current availability claims. APP-013 remains sole Now. Next bounded continuation is fixed appointment-email composition with local previews/tests only; not implemented in this documentation checkpoint. No delivery/provider or production/release authorization.
+- Canonical plan: signmons-governance/CALLDESK_MVP_PLAN.md. It defines launch capabilities versus current evidence, deferrals, open acceptance checklist, milestones and risk stop rules. The backend board's stale Next entries were retained in Later to agree with the global unassigned Next.
+- APP-013 scope coverage 42% under equal-weight 1/0.5/0 classification (1 demonstrated, 8 partial, 3 missing); not effort completion or production readiness. Formal acceptance remains 0/12. Old 85%/81% estimates remain retired. Planning allowance 20-35 unequal bounded sections, low confidence, no calendar ETA.
+- Implementation baseline 00337a756a177d3752204acfb082c2bf774d431f. This docs-only checkpoint runs governance placement/consistency, architecture and diff checks; it does not rerun full implementation/browser/database gates or claim new runtime acceptance. Original saved-checkout user changes preserved.
+
 ## Current Program Pointer
 
 - Active ticket: `APP-013` Twilio-backed notification center and transactional customer messaging.
@@ -11,7 +18,7 @@ Last Updated: 2026-09-09
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: Optional One-Time Customer Email Capture (2026-09-09, review-ready)
+### Earlier: Optional One-Time Customer Email Capture (2026-09-09, review-ready)
 
 - Owner approved optional one-time customer email capture/retention, continuing from fetched/aligned backend aa5badd and governance 71cabdf. APP-013 remains sole Now; FE-014 paused. Existing focused feature branches retained and original saved-checkout changes preserved.
 - The application asks the fixed optional email question once when residential intake is ready or before a create_job tool call. A clearly volunteered valid address avoids the question. Skip/decline and invalid or absent optional email do not add a required booking field. Life-safety escalation takes priority and bypasses email capture. Model instructions expose only capture status, forbid email questions/tool arguments/delivery claims, and the reply guard replaces email-bearing model replies with the next missing intake question.

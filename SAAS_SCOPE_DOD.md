@@ -2,6 +2,10 @@
 
 Purpose: ensure backend execution stays aligned with the high-ticket frontend/governance plan.
 
+## Approved CallDesk pilot (2026-09-09)
+
+Governance `CALLDESK_MVP_PLAN.md` defines the owner-approved first pilot: one approved business, English-language operation, online access and human supervision. Required capabilities are launch targets, not current availability claims. The wider platform remains the roadmap; pricing/security rules and production approval gates remain unchanged. APP-013 stays sole Now, with local appointment-email composition the next bounded continuation.
+
 ## Authoritative Scope
 
 Canonical source of truth is:

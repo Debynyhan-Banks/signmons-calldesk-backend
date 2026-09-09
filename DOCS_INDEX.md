@@ -18,6 +18,8 @@ This backend repo follows governance-first execution.
 8. `/Users/debynyhanbanks/Web Projects/signmons-governance/LINK_CTA_MAP.md`
 9. `/Users/debynyhanbanks/Web Projects/signmons-governance/MARKETING_SITEMAP.md`
 
+For CallDesk work, also read `CALLDESK_MVP_PLAN.md` on the current focused governance branch. It is the approved first-pilot capability boundary, completion baseline and acceptance plan; the wider backlog is not the pilot denominator. Locate its current checkpoint through the global pointer rather than assuming an older saved checkout contains the latest document.
+
 ## Backend Local Operating Docs
 
 - `EXECUTION_BOARD.md` (backend queue state aligned to global pointer)
