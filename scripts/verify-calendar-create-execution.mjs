@@ -15,6 +15,9 @@ const {
 const {
   CalendarCreateReconciliationService,
 } = require("../dist/scheduling/calendar-create-reconciliation.service.js");
+const {
+  CALENDAR_CREATE_READER_GRACE_MS,
+} = require("../dist/scheduling/calendar-event-creator.js");
 const databasePattern = /^calldesk_app013_intents_[0-9a-f]{12}$/;
 
 export async function verifyCalendarCreateExecution({
@@ -211,6 +214,59 @@ export async function verifyCalendarCreateExecution({
       "already_finalized",
     );
 
+    // Once the executor owns UNCERTAIN, a concurrent recovery reader must not
+    // inspect Calendar until the bounded attempt exits and hands off APPLIED.
+    const active = await make();
+    let releaseCreator, signalCreator;
+    const creatorEntered = new Promise((resolve) => {
+      signalCreator = resolve;
+    });
+    const creatorResume = new Promise((resolve) => {
+      releaseCreator = resolve;
+    });
+    let activeReads = 0;
+    const activeReconciliation = new CalendarCreateReconciliationService(
+      prisma,
+      {
+        read: async () => {
+          activeReads++;
+          return { outcome: "unverified" };
+        },
+      },
+      intents,
+    );
+    const activeExecution = new CalendarCreateExecutionService(
+      prisma,
+      {
+        create: async (request) => {
+          inserts++;
+          signalCreator();
+          await creatorResume;
+          const saved = await prisma.calendarOperation.findUniqueOrThrow({
+            where: { id: request.operationId },
+          });
+          seen.set(request.eventId, snapshot(saved));
+        },
+      },
+      reconciliation,
+    ).execute(active.input);
+    await creatorEntered;
+    assert.deepEqual(await activeReconciliation.reconcile(active.input), {
+      status: "pending",
+    });
+    assert.equal(activeReads, 0);
+    assert.equal(
+      (
+        await prisma.calendarOperation.findUniqueOrThrow({
+          where: { id: active.operation.id },
+        })
+      ).status,
+      "UNCERTAIN",
+    );
+    releaseCreator();
+    assert.deepEqual(await activeExecution, { status: "finalized" });
+    assert.equal(activeReads, 0);
+
     const beforeFirst = inserts;
     const first = await make();
     const outcomes = await Promise.all([
@@ -360,6 +416,18 @@ export async function verifyCalendarCreateExecution({
       const beforeRetry = inserts;
       assert.equal((await execute.execute(fixture.input)).status, "pending");
       assert.equal(inserts, beforeRetry);
+      // Fresh UNCERTAIN is still owned by the possibly active executor. Age
+      // only this synthetic journal to model expiry; no retry/rearm occurs.
+      assert.equal(
+        (await reconciliation.reconcile(fixture.input)).status,
+        "pending",
+      );
+      await prisma.calendarOperation.update({
+        where: { id: fixture.operation.id },
+        data: {
+          updatedAt: new Date(Date.now() - CALENDAR_CREATE_READER_GRACE_MS - 1),
+        },
+      });
       if (mode === "--after-insert") {
         assert.equal(JSON.parse(output).eventId, afterCrash.calendarEventId);
         seen.set(afterCrash.calendarEventId, snapshot(afterCrash));
@@ -389,12 +457,13 @@ export async function verifyCalendarCreateExecution({
     return [
       "four hypothetical early-read outcomes leave PENDING job/journal unchanged with zero reads, audits or intents; subsequent execution finalizes once",
       "delayed PENDING reader cannot consume the attempt latch or overwrite a newer finalized receipt",
+      "active UNCERTAIN attempt blocks recovery reads until executor APPLIED handoff",
       "one committed CREATE attempt under concurrent execution and replay",
       "insert acknowledgment is never finalization proof",
       "unknown insert outcome with matching read-back finalizes once",
       "absent evidence and stale jobs stay held without compensation",
       "lost attempt-commit acknowledgment never dispatches",
-      "two process exits before/after synthetic insert retain latch and recover only by read-back",
+      "two process exits before/after synthetic insert retain latch, block fresh reads and recover after grace only by read-back",
     ];
   } finally {
     await prisma.calendarOperation.deleteMany({

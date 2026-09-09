@@ -100,6 +100,19 @@ describe("inactive one-shot CREATE execution", () => {
       end: operation.desiredWindowEnd,
       timeZone: "UTC",
     });
+    expect(h.prisma.calendarOperation.updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "UNCERTAIN",
+          updatedAt: expect.any(Date),
+          finishedAt: null,
+        }),
+        data: expect.objectContaining({
+          status: "APPLIED",
+          updatedAt: expect.any(Date),
+        }),
+      }),
+    );
     expect(h.reconciliation.reconcile).toHaveBeenCalledWith(input);
   });
   it.each(["UNCERTAIN", "APPLIED", "NEEDS_REVIEW", "FINALIZED", "ABORTED"])(
@@ -176,6 +189,20 @@ describe("inactive one-shot CREATE execution", () => {
     h.creator.create.mockRejectedValue(new Error("private provider failure"));
     h.reconciliation.reconcile.mockResolvedValue({ status: "needs_review" });
     expect(await h.service.execute(input)).toEqual({ status: "needs_review" });
+    expect(h.creator.create).toHaveBeenCalledTimes(1);
+    expect(h.prisma.calendarOperation.updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "APPLIED" }),
+      }),
+    );
+    expect(h.reconciliation.reconcile).toHaveBeenCalledTimes(1);
+  });
+  it("reads current state when the APPLIED handoff write is lost", async () => {
+    const h = harness();
+    h.prisma.calendarOperation.updateMany.mockRejectedValueOnce(
+      new Error("unknown handoff commit"),
+    );
+    expect(await h.service.execute(input)).toEqual({ status: "finalized" });
     expect(h.creator.create).toHaveBeenCalledTimes(1);
     expect(h.reconciliation.reconcile).toHaveBeenCalledTimes(1);
   });

@@ -16,6 +16,7 @@ import {
   CalendarEventSnapshot,
   CalendarReadResult,
 } from "./calendar-event-reader";
+import { CALENDAR_CREATE_READER_GRACE_MS } from "./calendar-event-creator";
 import { createHash } from "node:crypto";
 
 type Result = {
@@ -58,6 +59,16 @@ export class CalendarCreateReconciliationService {
     // turn absence/unavailability into a hold and consume its one-shot latch.
     // Even apparently matching evidence must not bypass durable attempt order.
     if (operation.status === "PENDING") return { status: "pending" };
+    // UNCERTAIN is also the active-attempt marker. The only approved creator
+    // bounds its complete write window below this grace period. A crashed
+    // executor becomes eligible for read-only recovery after the grace; an
+    // APPLIED handoff is eligible immediately. Neither path can reinsert.
+    if (
+      operation.status === "UNCERTAIN" &&
+      Date.now() <
+        operation.updatedAt.getTime() + CALENDAR_CREATE_READER_GRACE_MS
+    )
+      return { status: "pending" };
     if (!futureWindow(operation)) return this.hold(operation, "NEEDS_REVIEW");
     const job = await this.prisma.job.findFirst({
       where: this.claimWhere(operation),

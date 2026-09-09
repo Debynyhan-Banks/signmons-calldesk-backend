@@ -17,6 +17,9 @@ const {
   CalendarCreateExecutionService,
 } = require("../dist/scheduling/calendar-create-execution.service.js");
 const {
+  CALENDAR_CREATE_READER_GRACE_MS,
+} = require("../dist/scheduling/calendar-event-creator.js");
+const {
   SmsEnqueueIntentService,
 } = require("../dist/communications/sms-enqueue-intent.service.js");
 const databasePattern = /^calldesk_app013_intents_[0-9a-f]{12}$/;
@@ -103,7 +106,7 @@ export async function verifyCalendarCreateReconciliation({
     const saved = await prisma.calendarOperation.findUniqueOrThrow({
       where: { id: operation.id },
     });
-    assert.equal(saved.status, "UNCERTAIN");
+    assert.equal(saved.status, "APPLIED");
     return {
       job,
       operation: saved,
@@ -113,6 +116,13 @@ export async function verifyCalendarCreateReconciliation({
   const readOperation = (fixture) =>
     prisma.calendarOperation.findUniqueOrThrow({
       where: { id: fixture.operation.id },
+    });
+  const expireUncertain = (fixture) =>
+    prisma.calendarOperation.updateMany({
+      where: { id: fixture.operation.id, status: "UNCERTAIN" },
+      data: {
+        updatedAt: new Date(Date.now() - CALENDAR_CREATE_READER_GRACE_MS - 1),
+      },
     });
   const readJob = (fixture) =>
     prisma.job.findUniqueOrThrow({ where: { id: fixture.job.id } });
@@ -205,6 +215,10 @@ export async function verifyCalendarCreateReconciliation({
     await assertUnfinalized(fixture);
     if (outcome === "unavailable") {
       assert.deepEqual(await service.reconcile(fixture.input), {
+        status: "pending",
+      });
+      assert.equal((await expireUncertain(fixture)).count, 1);
+      assert.deepEqual(await service.reconcile(fixture.input), {
         status: "finalized",
       });
       await assertFinalized(fixture);
@@ -268,6 +282,10 @@ export async function verifyCalendarCreateReconciliation({
       { status: "pending" },
     );
     await assertUnfinalized(fixture);
+    assert.deepEqual(await service.reconcile(fixture.input), {
+      status: "pending",
+    });
+    assert.equal((await expireUncertain(fixture)).count, 1);
     assert.deepEqual(await service.reconcile(fixture.input), {
       status: "finalized",
     });

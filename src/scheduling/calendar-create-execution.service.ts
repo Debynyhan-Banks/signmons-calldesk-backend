@@ -105,6 +105,21 @@ export class CalendarCreateExecutionService {
     } catch {
       // Even a thrown adapter result is unknown. Only read-back may finalize.
     }
+    // APPLIED means the bounded adapter attempt has exited and read-back may
+    // begin; it is not provider-success evidence. A crash before this write
+    // leaves UNCERTAIN for delayed read-only recovery after the grace window.
+    try {
+      await this.prisma.calendarOperation.updateMany({
+        where: this.operationWhere(attempted),
+        data: {
+          status: "APPLIED",
+          updatedAt: advance(attempted.updatedAt),
+        },
+      });
+    } catch {
+      // Unknown handoff-write outcomes are safe to read: a fresh UNCERTAIN is
+      // held by the reader, while APPLIED permits reconciliation.
+    }
     return this.reconciliation.reconcile(input);
   }
 

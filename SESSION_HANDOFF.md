@@ -1,6 +1,6 @@
 # Backend Session Handoff
 
-Last Updated: 2026-09-08
+Last Updated: 2026-09-09
 
 ## Current Program Pointer
 
@@ -11,7 +11,19 @@ Last Updated: 2026-09-08
 
 ## APP-013 Transactional Messaging Foundation (2026-09-08)
 
-### Latest: CREATE reader attempt-ownership safeguard
+### Latest: CREATE active-attempt coordination
+
+- Automation fetched both remotes and reconciled backend `ab88f68` / governance `bdbdb52`; APP-013 remains the sole Now ticket. Both focused boards selected only the approved active-executor/recovery-reader coordination section; original saved-checkout changes remain untouched.
+- PENDING remains exclusively executor-owned. The executor commits UNCERTAIN before the provider seam; fresh UNCERTAIN is now a bounded active-attempt marker that returns pending before job or Calendar reads and before writes. The only approved Google creator starts its eight-second abort deadline before credential acquisition, so delayed auth cannot begin a late write. The reader grace is ten seconds.
+- When the adapter exits, the executor conditionally advances UNCERTAIN to APPLIED before read-back. APPLIED means the write attempt has quiesced, not that Calendar accepted it, and matching provider identity/window evidence is still required. A lost APPLIED acknowledgment safely reloads current state. A process crash before handoff leaves UNCERTAIN; after grace, read-only reconciliation can finalize matching evidence or hold absent/conflicting evidence. No path retries the insert, rearms the journal or releases the reservation.
+- Three new unit cases cover active-reader refusal, pre-auth deadline enforcement and lost handoff-write acknowledgment. Focused execution/reconciliation/adapter suites pass 72 tests. The disposable PostgreSQL proof applies all 15 migrations, pauses a real executor while a competing reader performs zero provider reads/writes, verifies APPLIED handoff, and proves fresh-then-expired UNCERTAIN behavior for process exits before and after synthetic insert. All 11 prior crash cases pass; provider calls remain zero and the fixture database was removed.
+- Full gates pass: backend build/lint, 56 suites/692 tests with three existing policy skips, architecture and Prisma; unchanged UI lint/60 tests/14-page build; all five desktop/390px synthetic browser suites; backend and UI full/omit-dev audits all zero findings. Existing pg, Next workspace/lint and intentional PostCSS fixture warnings remain nonblocking.
+- Limits: internal services remain absent from SchedulingModule and all public routes/workers; no schema, dependency, request-authority, payment/availability, provider configuration, real data, migration outside the fixture, message, charge, merge or deployment changed. Ten seconds is a coordination grace around the reviewed eight-second adapter deadline, not a distributed Calendar transaction or eventual-consistency guarantee.
+- Stop review-ready. APP-013 remains roughly 85%; governed APP-006 through APP-016 roughly 81%, planning only. Next after review is one bounded guarded CREATE integration section preserving tenant/auth/payment/availability and explicit execution/recovery/office-review ownership. Legacy repair/retention, external races, reschedule/cancel and SENDING recovery and acceptance remain separate.
+
+- Exact commands/limits: `evidence/APP-013/readiness-report.md` and `create-attempt-coordination-summary.json`.
+
+### Earlier: CREATE reader attempt-ownership safeguard
 
 - Owner continued remediation; fetched/reconciled backend `7026d08` and governance `159b3fe`. APP-013 remains the sole Now ticket; both focused boards selected a bounded CREATE reader-ownership safeguard before coding. Original saved worktree changes preserved.
 - CalendarCreateReconciliationService now returns pending immediately for an unfinished PENDING CREATE, after tenant/action/terminal checks and before window validation, job lookup, provider read or any write. PENDING belongs to the executor; neither absent/unavailable nor apparently matching provider evidence may consume or bypass its durable one-shot attempt latch. Expired PENDING records are also left untouched by the reader; the existing executor owns its expiry hold.

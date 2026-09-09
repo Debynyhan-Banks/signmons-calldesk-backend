@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { GoogleAuth } from "google-auth-library";
 import {
+  CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS,
   CalendarCreateRequest,
   CalendarEventCreator,
 } from "./calendar-event-creator";
@@ -27,10 +28,14 @@ export class GoogleCalendarEventCreator extends CalendarEventCreator {
       )
     )
       return;
+    // Start the deadline before credential acquisition. If auth stalls, the
+    // later fetch receives an already-aborted signal and cannot start a write.
+    const signal = AbortSignal.timeout(CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS);
     try {
       new Intl.DateTimeFormat("en", { timeZone: input.timeZone });
       const client = await this.auth.getClient();
       const headers = await client.getRequestHeaders();
+      signal.throwIfAborted();
       if (
         !(input.start instanceof Date) ||
         !(input.end instanceof Date) ||
@@ -47,7 +52,7 @@ export class GoogleCalendarEventCreator extends CalendarEventCreator {
             "content-type": "application/json",
           },
           redirect: "error",
-          signal: AbortSignal.timeout(8_000),
+          signal,
           body: JSON.stringify({
             id: input.eventId,
             summary: `CallDesk appointment ${input.jobId.slice(0, 8)}`,

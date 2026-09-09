@@ -41,7 +41,7 @@ describe("CREATE Calendar read-back reconciliation", () => {
       desiredTimeText: "Arrival",
       finishedAt: null,
       createdAt: date,
-      updatedAt: date,
+      updatedAt: new Date(date.getTime() - 20_000),
     };
     event = {
       id: operation.calendarEventId,
@@ -133,6 +133,16 @@ describe("CREATE Calendar read-back reconciliation", () => {
     });
     expect(reader.read).toHaveBeenCalledTimes(1);
   });
+  it("does not read or write while an UNCERTAIN executor may still be active", async () => {
+    operation.updatedAt = new Date(Date.now());
+    await expect(service.reconcile(input)).resolves.toEqual({
+      status: "pending",
+    });
+    expect(reader.read).not.toHaveBeenCalled();
+    expect(prisma.job.findFirst).not.toHaveBeenCalled();
+    expect(prisma.calendarOperation.updateMany).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
 
   it("atomically finalizes a matching observation without processing messages", async () => {
     await expect(service.reconcile(input)).resolves.toEqual({
@@ -146,12 +156,12 @@ describe("CREATE Calendar read-back reconciliation", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           tenantId: "tenant",
-          updatedAt: date,
+          updatedAt: new Date(date.getTime() - 20_000),
           finishedAt: null,
         }),
         data: expect.objectContaining({
           status: "FINALIZED",
-          updatedAt: new Date(date.getTime() + 1),
+          updatedAt: new Date(date.getTime() - 1000),
         }),
       }),
     );
@@ -159,7 +169,7 @@ describe("CREATE Calendar read-back reconciliation", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           tenantId: "tenant",
-          updatedAt: date,
+          updatedAt: operation.claimedUpdatedAt,
           calendarEventId: null,
         }),
         data: expect.objectContaining({

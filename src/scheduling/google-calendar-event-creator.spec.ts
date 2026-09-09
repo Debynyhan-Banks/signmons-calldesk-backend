@@ -73,6 +73,27 @@ describe("inactive Google CREATE adapter", () => {
     ).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+  it("starts the write deadline before credential acquisition", async () => {
+    const controller = new AbortController();
+    jest.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    let releaseAuth!: (value: unknown) => void;
+    jest.spyOn(GoogleAuth.prototype, "getClient").mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseAuth = resolve;
+        }) as never,
+    );
+    const pending = new GoogleCalendarEventCreator().create(input);
+    controller.abort();
+    releaseAuth({
+      getRequestHeaders: jest
+        .fn()
+        .mockResolvedValue(new Headers({ authorization: "Bearer synthetic" })),
+    });
+    await expect(pending).resolves.toBeUndefined();
+    expect(AbortSignal.timeout).toHaveBeenCalledWith(8_000);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
   it.each([
     { eventId: "wrong" },
     { start: new Date(0) },
