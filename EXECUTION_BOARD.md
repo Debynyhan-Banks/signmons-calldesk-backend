@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Privacy-safe recovery readiness/request history is review-ready on PR #21: inactive owner/admin snapshot-only candidate/deadline hints plus capped exact-operation request-only history, without actor/metadata/trace payloads. 30 new cases/917 total, real 101-row cap/decoy isolation, timing/rollback and lost-ack request visibility with unchanged reads pass; 16 local migrations/11 prior crashes, five browser suites/four clean audits pass. Protected read-only API/UI, timing/provider assumptions and acceptance remain open; no activation/production action.
+  - Protected read-only Calendar review HTTP boundary is review-ready on PR #21: three test-composed GET routes, existing verified auth/tenant plus owner/admin guard, UUID/query validation, private no-store success/error responses and local read throttles. 45 new HTTP cases/962 total pass; underlying real DB regressions retain 16 migrations/11 prior crashes. UI/browser and four clean audits recorded. Controller remains absent from all application modules; review UI/acceptance, mutation transport, timing/provider risks and release remain open.
 
 ## Next
 
