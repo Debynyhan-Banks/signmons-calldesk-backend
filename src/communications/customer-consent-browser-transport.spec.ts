@@ -33,12 +33,14 @@ describe("inactive same-origin browser transport", () => {
     acquire = jest.fn(),
     release = jest.fn(),
     diagnostic = jest.fn();
+  const continuation = jest.fn();
   const ports = {
     responses: { start, prompt, respond },
     capture: { capture },
     credentials,
     budget: { acquire },
     diagnostic,
+    continuation: { continue: continuation },
   };
   const model = () =>
     new CustomerConsentBrowserTransport({ origin, tenantId }, ports);
@@ -127,6 +129,107 @@ describe("inactive same-origin browser transport", () => {
       status: 200,
     });
     expect(release).toHaveBeenCalledTimes(1);
+  });
+  it("projects protected continuation and charges the existing budget", async () => {
+    const body = {
+      sessionToken,
+      interactionId: randomUUID(),
+      message: "Fictional issue",
+    };
+    continuation.mockResolvedValue({
+      reply: "Scripted reply",
+      revision: 1,
+      deliveryAuthorized: false,
+      private: "DO_NOT_LEAK",
+    });
+    const result = await call(req("continue", body));
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({
+      reply: "Scripted reply",
+      revision: 1,
+      deliveryAuthorized: false,
+    });
+    expect(continuation).toHaveBeenCalledWith(body);
+    expect(acquire).toHaveBeenCalledWith("127.0.0.1", "continue");
+    expect(result.headers).toEqual(CUSTOMER_BROWSER_HEADERS);
+  });
+  it.each([
+    { message: "" },
+    { message: "x".repeat(2001) },
+    { interactionId: "raw-id" },
+    { history: [] },
+    { sessionToken: "forged" },
+  ])(
+    "refuses invalid continuation authority/input %# before collaborator",
+    async (override) => {
+      const result = await call(
+        req("continue", {
+          sessionToken,
+          interactionId: randomUUID(),
+          message: "Fictional",
+          ...override,
+        }),
+      );
+      expect(result.status).not.toBe(200);
+      expect(continuation).not.toHaveBeenCalled();
+    },
+  );
+  it.each([0, 21, 1.5])(
+    "refuses invalid continuation receipt revision %s",
+    async (revision) => {
+      continuation.mockResolvedValue({
+        reply: "Scripted",
+        revision,
+        deliveryAuthorized: false,
+      });
+      expect(
+        (
+          await call(
+            req("continue", {
+              sessionToken,
+              interactionId: randomUUID(),
+              message: "Fictional",
+            }),
+          )
+        ).status,
+      ).toBe(503);
+    },
+  );
+  it.each([401, 409, 429, 503])(
+    "continuation errors are fixed and never automatically retried: %s",
+    async (status) => {
+      continuation.mockRejectedValue(new HttpException("PRIVATE", status));
+      const result = await call(
+        req("continue", {
+          sessionToken,
+          interactionId: randomUUID(),
+          message: "Fictional",
+        }),
+      );
+      expect(result.status).toBe(status);
+      expect(result.body).toEqual({ error: "Customer request refused." });
+      expect(continuation).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("missing continuation adapter refuses without side effects", async () => {
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, continuation: undefined },
+    );
+    expect(
+      (
+        await asActor(() =>
+          transport.handle(
+            req("continue", {
+              sessionToken,
+              interactionId: randomUUID(),
+              message: "Fictional",
+            }),
+          ),
+        )
+      ).status,
+    ).toBe(503);
+    expect(continuation).not.toHaveBeenCalled();
   });
   it.each([
     ["origin", undefined],

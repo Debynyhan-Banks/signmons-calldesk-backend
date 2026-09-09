@@ -13,6 +13,7 @@ import {
 } from "./customer-consent-browser-budget";
 import { CustomerConsentCaptureService } from "./customer-consent-capture.service";
 import { CustomerConsentResponseService } from "./customer-consent-response.service";
+import { CustomerIntakeContinuationService } from "./customer-intake-continuation.service";
 
 export const CUSTOMER_BROWSER_MAX_BYTES = 16384;
 export const CUSTOMER_BROWSER_HEADERS = Object.freeze({
@@ -67,6 +68,7 @@ type Ports = {
   capture: Pick<CustomerConsentCaptureService, "capture">;
   credentials: CustomerConsentCredentials;
   budget: CustomerBrowserBudget;
+  continuation?: Pick<CustomerIntakeContinuationService, "continue">;
   diagnostic?: (entry: {
     operation: CustomerBrowserOperation | "unknown";
     status: number;
@@ -122,9 +124,10 @@ export class CustomerConsentBrowserTransport {
         ctx.impersonatedTenantId
       )
         fail(403);
-      const match = /^\/customer-session\/(start|capture|prompt|respond)$/.exec(
-        request.url,
-      );
+      const match =
+        /^\/customer-session\/(start|capture|prompt|respond|continue)$/.exec(
+          request.url,
+        );
       if (!match || request.method !== "POST") fail(403);
       operation = match[1] as CustomerBrowserOperation;
       if (
@@ -182,6 +185,7 @@ export class CustomerConsentBrowserTransport {
         start: "",
         capture: "email,sessionToken",
         prompt: "sessionToken",
+        continue: "interactionId,message,sessionToken",
         respond: "mailboxConfirmed,promptToken,response,sessionToken",
       };
       if (Object.keys(input).sort().join(",") !== keys[operation]) fail(400);
@@ -263,6 +267,37 @@ export class CustomerConsentBrowserTransport {
       };
     }
     const sessionToken = input.sessionToken as string;
+    if (operation === "continue") {
+      if (!ports.continuation) fail(503);
+      if (
+        typeof input.interactionId !== "string" ||
+        !UUID.test(input.interactionId) ||
+        typeof input.message !== "string" ||
+        !input.message.trim() ||
+        input.message.length > 2000
+      )
+        fail(400);
+      const value = await ports.continuation.continue({
+        sessionToken,
+        interactionId: input.interactionId,
+        message: input.message,
+      });
+      if (
+        value.deliveryAuthorized !== false ||
+        typeof value.reply !== "string" ||
+        !value.reply.trim() ||
+        value.reply.length > 2000 ||
+        !Number.isInteger(value.revision) ||
+        value.revision < 1 ||
+        value.revision > 20
+      )
+        fail(503);
+      return {
+        reply: value.reply,
+        revision: value.revision,
+        deliveryAuthorized: false,
+      };
+    }
     if (operation === "capture") {
       if (typeof input.email !== "string") fail(400);
       const value = await ports.capture.capture({

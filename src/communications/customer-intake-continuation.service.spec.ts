@@ -253,11 +253,8 @@ describe("inactive credential-bound transcript continuation", () => {
     tx.auditLog.create.mockRejectedValueOnce(new Error("PRIVATE_DATABASE"));
     await expect(service().continue(input())).rejects.toThrow("unconfirmed");
   });
-  it("remains unregistered and absent from browser operation dispatch", () => {
-    for (const file of [
-      "communications.module.ts",
-      "customer-consent-browser-transport.ts",
-    ])
+  it("remains unregistered in production", () => {
+    for (const file of ["communications.module.ts"])
       expect(readFileSync(join(__dirname, file), "utf8")).not.toContain(
         "CustomerIntakeContinuation",
       );
