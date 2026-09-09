@@ -1,0 +1,152 @@
+.panel {
+  color: #10233c;
+  background: #f4f7fb;
+  border: 1px solid #dbe3ed;
+  border-radius: 14px;
+  padding: clamp(16px, 3vw, 32px);
+  max-width: 1200px;
+  margin: auto;
+  font:
+    1rem/1.6 Arial,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+.panel * {
+  box-sizing: border-box;
+}
+.panel h2 {
+  font-size: 1.75rem;
+  margin: 12px 0;
+}
+.panel h3 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+.panel h4 {
+  font-size: 1rem;
+  margin: 0 0 12px;
+}
+.panel p {
+  margin: 12px 0;
+}
+.tag {
+  color: #08294f;
+  background: #e3edf7;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.references {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 24px 0;
+}
+.references label {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 280px;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.panel input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #bbc9d9;
+  border-radius: 8px;
+  background: white;
+  color: #10233c;
+  font: inherit;
+}
+.panel button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #08294f;
+  border-radius: 8px;
+  background: #08294f;
+  color: white;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.panel button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.panel :is(input, button):focus-visible {
+  outline: 3px solid #bd4a13;
+  outline-offset: 3px;
+}
+.views {
+  display: grid;
+  gap: 20px;
+}
+.view {
+  background: white;
+  border: 1px solid #dbe3ed;
+  border-radius: 12px;
+  padding: 20px;
+  min-width: 0;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.notice {
+  border-left: 3px solid #bd4a13;
+  padding: 10px 14px;
+  background: #fff8f2;
+}
+.error {
+  color: #8a2222;
+  border: 1px solid #efb1b1;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff0f0;
+}
+.records {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.records li {
+  border-top: 1px solid #dbe3ed;
+  padding: 20px 0 0;
+  margin-top: 20px;
+}
+.records dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+}
+.records dt {
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+.records dd {
+  margin: 0;
+}
+.panel footer {
+  color: #52657b;
+  margin-top: 20px;
+  font-size: 0.875rem;
+}
+@media (max-width: 600px) {
+  .heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .records dl {
+    grid-template-columns: 1fr;
+  }
+  .view {
+    padding: 16px;
+  }
+}

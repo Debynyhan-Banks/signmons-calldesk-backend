@@ -14,6 +14,7 @@ const result = spawnSync(
     "src/lib/customer-booking.test.ts",
     "src/lib/notification-history.test.ts",
     "src/lib/notification-intents.test.ts",
+    "src/calendar-review/review.test.ts",
   ],
   { stdio: "inherit" },
 );
