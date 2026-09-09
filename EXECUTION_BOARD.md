@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Owner approved the proposed technician notification inbox: read-only existing recorded job activity, current signed-technician/tenant/assignment scope, privacy-safe projection and local proof. Customer Messaging Settings is review-ready at 7d2a4ee. No external delivery, provider configuration, production or release action. APP-013 remains Now; former percentage estimates remain retired.
+  - Owner approved one-time optional customer email capture/retention during intake, encrypted on the conversation and associated to the job through the existing tenant-scoped link. No customer-master overwrite, email delivery, provider configuration or production/release action. APP-013 remains Now; prior estimates remain retired.
 
 ## Next
 

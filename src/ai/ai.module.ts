@@ -17,6 +17,7 @@ import { AiErrorHandler } from "./ai-error.handler";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { AuthModule } from "../auth/auth.module";
 import { ConversationsService } from "../conversations/conversations.service";
+import { ConversationEmailService } from "../conversations/conversation-email.service";
 import { LifeSafetyService } from "./safety/life-safety.service";
 import { SchedulingModule } from "../scheduling/scheduling.module";
 
@@ -48,6 +49,7 @@ import { SchedulingModule } from "../scheduling/scheduling.module";
     TenantGuard,
     ToolSelectorService,
     ConversationsService,
+    ConversationEmailService,
     AiErrorHandler,
     AiService,
     LifeSafetyService,

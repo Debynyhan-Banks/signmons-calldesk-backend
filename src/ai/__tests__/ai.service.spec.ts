@@ -15,6 +15,10 @@ import type { IAiProviderClient } from "../providers/ai-provider.interface";
 import appConfig from "../../config/app.config";
 import { ToolSelectorService } from "../tools/tool-selector.service";
 import { ConversationsService } from "../../conversations/conversations.service";
+import {
+  ConversationEmailService,
+  EMAIL_QUESTION,
+} from "../../conversations/conversation-email.service";
 import { LifeSafetyService } from "../safety/life-safety.service";
 import { BadRequestException } from "@nestjs/common";
 import { CREATE_JOB_TOOL } from "../../jobs/tools/create-job.tool";
@@ -51,8 +55,13 @@ describe("AiService", () => {
   };
   let config: ReturnType<typeof appConfig>;
   let service: AiService;
+  const emailCapture = { observe: jest.fn(), requestOnce: jest.fn() };
 
   beforeEach(() => {
+    emailCapture.observe
+      .mockReset()
+      .mockResolvedValue({ status: "missing", ask: false });
+    emailCapture.requestOnce.mockReset().mockResolvedValue(false);
     aiProvider = {
       createCompletion: jest.fn(),
     } as unknown as jest.Mocked<IAiProvider>;
@@ -137,7 +146,76 @@ describe("AiService", () => {
       schedulingService as never,
       jobNotificationService,
       config,
+      emailCapture as unknown as ConversationEmailService,
     );
+  });
+
+  it("asks optional email once before a create_job tool call, without creating or sending", async () => {
+    emailCapture.requestOnce.mockResolvedValueOnce(true);
+    aiProvider.createCompletion.mockResolvedValue({
+      id: "email-fixture",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            tool_calls: [
+              {
+                id: "tool",
+                type: "function",
+                function: { name: "create_job", arguments: "{}" },
+              },
+            ],
+          },
+        },
+      ],
+    } as never);
+    const result = await service.triage(tenantId, sessionId, "I need service");
+    expect(result).toEqual({ status: "reply", reply: EMAIL_QUESTION });
+    expect(jobsRepository.createJobFromToolCall).not.toHaveBeenCalled();
+    expect(jobNotificationService.enqueueJobCreated).not.toHaveBeenCalled();
+  });
+
+  it("uses persisted email state without exposing the address in the state prompt", async () => {
+    emailCapture.observe.mockResolvedValue({ status: "captured", ask: false });
+    aiProvider.createCompletion.mockResolvedValue({
+      id: "email-fixture",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: "What is your email address again?",
+          },
+        },
+      ],
+    } as never);
+    const result = await service.triage(tenantId, sessionId, "Please continue");
+    expect(result).toEqual({
+      status: "reply",
+      reply: "What name should we put on the service request?",
+    });
+    expect(aiProvider.createCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            role: "system",
+            content: expect.stringContaining(
+              "Optional email capture state: captured",
+            ),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it("does not capture email or ask it during life-safety escalation", async () => {
+    await service.triage(
+      tenantId,
+      sessionId,
+      "I smell gas, my email is person@example.com",
+    );
+    expect(emailCapture.observe).not.toHaveBeenCalled();
+    expect(emailCapture.requestOnce).not.toHaveBeenCalled();
+    expect(aiProvider.createCompletion).not.toHaveBeenCalled();
   });
 
   it("returns AI reply and logs conversation", async () => {
