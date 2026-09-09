@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-09",
+  "baselineBackend": "18cd9a9847ba1823c02c4231ef7b1f6ecd26e010",
+  "baselineGovernance": "c6d884ea397812a0aae9172000d49d047ff071a2",
+  "result": "PASS",
+  "newUnitTests": 53,
+  "backend": { "passedTests": 1384, "passedSuites": 79, "skippedTests": 3, "skippedSuites": 1, "lint": "PASS", "build": "PASS", "architecture": "PASS", "prisma": "PASS" },
+  "ui": { "changed": false, "passedTests": 170, "staticPages": 15, "lint": "PASS", "build": "PASS" },
+  "audits": { "backendFull": 0, "backendProduction": 0, "uiFull": 0, "uiProduction": 0 },
+  "database": { "existingMigrations": 19, "newBoundaryChecks": 9, "priorProtectedIntakeChecks": 10, "priorSessionChecks": 18, "priorConsentChecks": 24, "existingProcessCrashCases": 19, "newProcessCrashCases": 0, "eligibilityReads": 23, "fixtureCleanup": "PASS" },
+  "browser": { "newTransportAndSecondOrigin": "PASS", "priorConsentAndIntake": "PASS", "localSettingsInbox": "PASS", "mobileScreenshotInspected": true, "unrelatedStaticScripts": "NOT_RERUN", "emailComposition": "NOT_RERUN" },
+  "developmentFindings": ["Browser bootstrap refusal exposed empty-string versus literal empty Sec-Fetch-Dest mismatch; corrected and full proof rerun", "Fixture uses cors fetch mode with fixed same-origin URLs and no-referrer; no cross-origin authorization"],
+  "productionActions": 0, "providerCalls": 0, "deliveryAuthorized": false,
+  "warnings": ["Existing Next lint deprecation/multiple-lockfile root warning", "Existing pg concurrent-query deprecation", "Local limiter is not distributed or restart-persistent", "No production TLS/proxy/access-log/outer-parser acceptance"],
+  "completion": { "app013ScopeCoveragePercent": 50, "formalAcceptance": "0/12", "remainingApp013UnequalSections": "7-12", "remainingPilotUnequalSections": "20-35", "confidence": "low", "overallMvpPercent": null }
+}

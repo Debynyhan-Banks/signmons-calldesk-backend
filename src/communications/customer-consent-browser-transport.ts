@@ -1,0 +1,315 @@
+import { HttpException } from "@nestjs/common";
+import { isIP } from "node:net";
+import { TextDecoder } from "node:util";
+import { getRequestContext } from "../common/context/request-context";
+import { extractIntakeEmail } from "../conversations/conversation-email.service";
+import {
+  CONSENT_PROMPT,
+  CustomerConsentCredentials,
+} from "./customer-consent-credentials";
+import {
+  CustomerBrowserBudget,
+  CustomerBrowserOperation,
+} from "./customer-consent-browser-budget";
+import { CustomerConsentCaptureService } from "./customer-consent-capture.service";
+import { CustomerConsentResponseService } from "./customer-consent-response.service";
+
+export const CUSTOMER_BROWSER_MAX_BYTES = 16384;
+export const CUSTOMER_BROWSER_HEADERS = Object.freeze({
+  "Content-Type": "application/json; charset=utf-8",
+  "Cache-Control": "private, no-store, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+  "Referrer-Policy": "no-referrer",
+  "X-Content-Type-Options": "nosniff",
+  "Cross-Origin-Resource-Policy": "same-origin",
+  "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+  Vary: "Origin, Sec-Fetch-Site",
+});
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function fail(status: number): never {
+  throw new HttpException("Customer request refused.", status);
+}
+const object = (v: unknown): Record<string, unknown> => {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return fail(400);
+  return v as Record<string, unknown>;
+};
+
+/** Read before JSON parsing; upstream socket/header/time limits remain mandatory. */
+export async function readCustomerBrowserBody(
+  source: AsyncIterable<Uint8Array>,
+) {
+  const chunks: Buffer[] = [];
+  let bytes = 0;
+  for await (const chunk of source) {
+    bytes += chunk.byteLength;
+    if (bytes > CUSTOMER_BROWSER_MAX_BYTES) fail(413);
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks, bytes);
+}
+
+export type CustomerBrowserRequest = {
+  method: string;
+  url: string;
+  rawHeaders: string[];
+  body: Buffer;
+  peerAddress: string;
+  encrypted: boolean;
+};
+type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
+type Ports = {
+  responses: Pick<
+    CustomerConsentResponseService,
+    "start" | "prompt" | "respond"
+  >;
+  capture: Pick<CustomerConsentCaptureService, "capture">;
+  credentials: CustomerConsentCredentials;
+  budget: CustomerBrowserBudget;
+  diagnostic?: (entry: {
+    operation: CustomerBrowserOperation | "unknown";
+    status: number;
+  }) => void;
+};
+
+/** Inactive browser/BFF boundary. No controller, server, environment/key loader or DI.
+ * Trusted integration context, TLS and socket peer must be supplied by the server.
+ * Origin/Fetch Metadata/custom header are CSRF defenses, NOT customer authentication.
+ */
+export class CustomerConsentBrowserTransport {
+  private readonly origin?: URL;
+  private readonly binding?: Readonly<Binding>;
+  constructor(
+    binding?: Binding,
+    private readonly ports?: Ports,
+  ) {
+    if (!binding) return;
+    this.binding = Object.freeze({ ...binding });
+    try {
+      const origin = new URL(binding.origin);
+      if (
+        !UUID.test(binding.tenantId) ||
+        origin.origin !== binding.origin ||
+        (origin.protocol !== "https:" &&
+          !(
+            binding.fixtureLoopback === true &&
+            origin.protocol === "http:" &&
+            origin.hostname === "127.0.0.1" &&
+            origin.port
+          ))
+      )
+        fail(503);
+      this.origin = origin;
+    } catch {
+      fail(503);
+    }
+  }
+
+  async handle(request: CustomerBrowserRequest) {
+    let operation: CustomerBrowserOperation | "unknown" = "unknown";
+    let release: (() => void) | undefined;
+    let status = 503,
+      result: Record<string, unknown> = { error: "Customer request refused." };
+    try {
+      const { origin, binding, ports } = this;
+      if (!origin || !binding || !ports?.budget) fail(503);
+      const ctx = getRequestContext();
+      if (
+        ctx?.tenantId !== binding.tenantId ||
+        ctx.role !== "webchat_integration" ||
+        !ctx.userId?.startsWith("integration:") ||
+        ctx.impersonatedTenantId
+      )
+        fail(403);
+      const match = /^\/customer-session\/(start|capture|prompt|respond)$/.exec(
+        request.url,
+      );
+      if (!match || request.method !== "POST") fail(403);
+      operation = match[1] as CustomerBrowserOperation;
+      if (
+        !isIP(request.peerAddress) ||
+        (origin.protocol === "https:"
+          ? request.encrypted !== true
+          : request.peerAddress !== "127.0.0.1")
+      )
+        fail(403);
+      const headers = this.headers(request.rawHeaders);
+      if (
+        headers.get("origin") !== binding.origin ||
+        headers.get("host") !== origin.host ||
+        headers.get("sec-fetch-site") !== "same-origin" ||
+        !["cors", "same-origin"].includes(
+          headers.get("sec-fetch-mode") ?? "",
+        ) ||
+        headers.get("sec-fetch-dest") !== "empty" ||
+        headers.get("x-calldesk-request") !== "customer-intake-v1" ||
+        headers.has("cookie") ||
+        headers.has("authorization") ||
+        headers.has("proxy-authorization") ||
+        headers.has("content-encoding")
+      )
+        fail(403);
+      if (headers.get("content-type") !== "application/json") fail(415);
+      // Validate before parsing; unknown outcomes are not retried by this transport.
+      release =
+        ports.budget.acquire(request.peerAddress, operation) ?? undefined;
+      if (!release) fail(429);
+      if (typeof release !== "function") fail(503);
+      if (
+        !Buffer.isBuffer(request.body) ||
+        request.body.length > CUSTOMER_BROWSER_MAX_BYTES
+      )
+        fail(413);
+      if (
+        headers.has("content-length") &&
+        headers.get("content-length") !== String(request.body.length)
+      )
+        fail(400);
+      let parsed: unknown;
+      try {
+        const raw = new TextDecoder("utf-8", { fatal: true }).decode(
+          request.body,
+        );
+        parsed = JSON.parse(raw) as unknown;
+        // Compact canonical JSON refuses duplicate keys and parser ambiguity.
+        if (JSON.stringify(parsed) !== raw) fail(400);
+      } catch {
+        fail(400);
+      }
+      const input = object(parsed);
+      const keys = {
+        start: "",
+        capture: "email,sessionToken",
+        prompt: "sessionToken",
+        respond: "mailboxConfirmed,promptToken,response,sessionToken",
+      };
+      if (Object.keys(input).sort().join(",") !== keys[operation]) fail(400);
+      if (operation !== "start") {
+        if (
+          typeof input.sessionToken !== "string" ||
+          input.sessionToken.length > 4096
+        )
+          fail(401);
+        if (
+          ports.credentials.verifySession(input.sessionToken).tenantId !==
+          binding.tenantId
+        )
+          fail(403);
+      }
+      result = await this.invoke(operation, input, ports, binding.tenantId);
+      status = 200;
+    } catch (error) {
+      const candidate =
+        error instanceof HttpException ? error.getStatus() : 503;
+      status = [400, 401, 403, 409, 413, 415, 429].includes(candidate)
+        ? candidate
+        : 503;
+    } finally {
+      // A diagnostic/release fault cannot alter a committed application outcome.
+      try {
+        release?.();
+      } catch {
+        /* Invalid adapter must be repaired before activation. */
+      }
+      try {
+        this.ports?.diagnostic?.({ operation, status });
+      } catch {
+        /* No raw error fallback. */
+      }
+    }
+    return { status, headers: { ...CUSTOMER_BROWSER_HEADERS }, body: result };
+  }
+
+  private headers(raw: string[]) {
+    if (
+      !Array.isArray(raw) ||
+      raw.length % 2 ||
+      raw.length > 200 ||
+      raw.some((v) => typeof v !== "string" || v.length > 4096) ||
+      raw.reduce((n, v) => n + Buffer.byteLength(v), 0) > 8192
+    )
+      return fail(400);
+    const headers = new Map<string, string>();
+    for (let i = 0; i < raw.length; i += 2) {
+      const name = raw[i].toLowerCase(),
+        value = raw[i + 1];
+      if (
+        !/^[a-z0-9-]+$/.test(name) ||
+        /[\r\n\0]/.test(value) ||
+        headers.has(name)
+      )
+        fail(400);
+      headers.set(name, value);
+    }
+    return headers;
+  }
+
+  private async invoke(
+    operation: CustomerBrowserOperation,
+    input: Record<string, unknown>,
+    ports: Ports,
+    tenantId: string,
+  ) {
+    if (operation === "start") {
+      const value = await ports.responses.start();
+      const claims = ports.credentials.verifySession(value.sessionToken);
+      if (claims.tenantId !== tenantId || value.deliveryAuthorized !== false)
+        fail(503);
+      return {
+        sessionToken: value.sessionToken,
+        expiresAt: new Date(claims.expiresAt).toISOString(),
+        deliveryAuthorized: false,
+      };
+    }
+    const sessionToken = input.sessionToken as string;
+    if (operation === "capture") {
+      if (typeof input.email !== "string") fail(400);
+      const value = await ports.capture.capture({
+        sessionToken,
+        email: input.email,
+      });
+      if (value.status !== "captured" || value.deliveryAuthorized !== false)
+        fail(503);
+      return { status: "captured", deliveryAuthorized: false };
+    }
+    if (operation === "prompt") {
+      const value = await ports.responses.prompt({ sessionToken });
+      if (value.deliveryAuthorized !== false) fail(503);
+      if (value.state === "completed")
+        return { state: "completed", deliveryAuthorized: false };
+      if (
+        value.prompt !== CONSENT_PROMPT ||
+        extractIntakeEmail(value.mailbox) !== value.mailbox
+      )
+        fail(503);
+      const prompt = ports.credentials.verifyPrompt(
+        value.promptToken,
+        sessionToken,
+      );
+      return {
+        state: "prompt",
+        prompt: CONSENT_PROMPT,
+        mailbox: value.mailbox,
+        promptToken: value.promptToken,
+        expiresAt: new Date(prompt.expiresAt).toISOString(),
+        deliveryAuthorized: false,
+      };
+    }
+    if (
+      typeof input.promptToken !== "string" ||
+      typeof input.response !== "string" ||
+      typeof input.mailboxConfirmed !== "boolean"
+    )
+      fail(400);
+    const value = await ports.responses.respond({
+      sessionToken,
+      promptToken: input.promptToken,
+      response: input.response,
+      mailboxConfirmed: input.mailboxConfirmed,
+    });
+    if (value.deliveryAuthorized !== false) fail(503);
+    // Do not expose internal scope/audit/evidence identifiers through this browser seam.
+    return { state: "recorded", deliveryAuthorized: false };
+  }
+}

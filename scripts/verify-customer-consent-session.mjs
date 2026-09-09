@@ -6,6 +6,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createServer } from "node:http";
 import { verifyProtectedIntake } from "./verify-protected-customer-intake.mjs";
+import { verifyCustomerBrowserTransport } from "./verify-customer-browser-transport.mjs";
 const require = createRequire(import.meta.url);
 const {
   CustomerConsentCredentials: Credentials,
@@ -421,6 +422,16 @@ export async function verifyCustomerConsentSession({
     tenantId,
     otherTenantId,
     asIntegration,
+  });
+  await verifyCustomerBrowserTransport({
+    prisma,
+    make,
+    service,
+    capture,
+    credentials,
+    asIntegration,
+    tenantId,
+    otherTenantId,
   });
   const out =
     process.env.CUSTOMER_CONSENT_EVIDENCE_DIR ??
