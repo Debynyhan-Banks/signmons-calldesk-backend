@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Reschedule/cancellation email events and immutable pre-clear cancellation snapshots are review-ready. 1190 backend/170 UI tests, 18 local migrations/19 process-crash cases, browser and four audit gates pass. Recording only; no email admission or sending. Migration-before-code and old/in-flight cancellation compatibility need separate release review. Next proposed after review: inactive event/policy/recipient admission eligibility with missing consent/expiry authority refused. Scope coverage 50%, acceptance 0/12; pilot allowance 20-35 unequal sections, low confidence, not ETA. Approved pilot boundary remains CALLDESK_MVP_PLAN.md.
+  - Inactive finalized-email eligibility binding is review-ready: read-only consistent event/current policy/recipient checks; missing consent/expiry authority always blocks. 1232 backend/170 UI tests, 23 invariant-checked reads, 18 existing local migrations/19 crash cases, browser and four audit gates pass. No positive admission, credentials or sending. Next decision after review: consent-evidence and event-expiry contract; no activation. Scope coverage 50%, acceptance 0/12; 20-35 unequal pilot sections, low confidence, not ETA. Approved boundary remains CALLDESK_MVP_PLAN.md.
 
 ## Next
 

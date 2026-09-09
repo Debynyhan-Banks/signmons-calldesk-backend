@@ -339,7 +339,8 @@ describe("inactive appointment email recipient resolution", () => {
       if (
         !file.endsWith(".ts") ||
         file.endsWith(".spec.ts") ||
-        file.endsWith("appointment-email-recipient.service.ts")
+        file.endsWith("appointment-email-recipient.service.ts") ||
+        file.endsWith("appointment-email-eligibility.service.ts")
       )
         continue;
       expect(readFileSync(file, "utf8")).not.toContain(

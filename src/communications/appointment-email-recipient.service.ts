@@ -52,7 +52,7 @@ function object(value: unknown): Record<string, unknown> | null {
  */
 export class AppointmentEmailRecipientService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly prisma: Pick<PrismaService, "$queryRaw">,
     private readonly cipher: ConversationMemoryCipher,
   ) {}
 
