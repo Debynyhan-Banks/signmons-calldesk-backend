@@ -25,9 +25,10 @@ export async function lockCustomerConsentSession(
       marker: unknown;
       capture: unknown;
       hasCapture: boolean;
+      status: string;
     }[]
   >(Prisma.sql`
-    SELECT c."collectedData" -> 'sessionId' AS "sessionId",
+    SELECT c.status, c."collectedData" -> 'sessionId' AS "sessionId",
       c."collectedData" -> 'customerSessionVersion' AS marker,
       c."collectedData" ? 'intakeEmail' AS "hasCapture",
       c."collectedData" -> 'intakeEmail' AS capture FROM "Conversation" c

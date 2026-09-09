@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Local customer browser boundary is review-ready: exact same-origin/server context checks, bounded JSON, local rate/concurrency limits and private projections/diagnostics. 1384 backend/170 UI tests; nine new HTTP/browser/database checks plus existing regressions; four audits clean. No production route/key/configuration, collection, verification, queue or sending. Production transport/distributed limiter/full protected AI intake remain unfinished. Next proposed: local credential-bound intake continuation starting with transcript ownership/refusal tests, scripted collaborators only. Coverage 50%, acceptance 0/12; 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now.
+  - Credential-bound intake continuation is locally review-ready: encrypted owned transcript pairs, atomic audits, exact replay and stale/expired/foreign-session refusal, scripted-only. 1411 backend/170 UI tests, 12 new database checks and prior browser regressions pass; four audits clean. No production route, AI/booking, collection, verification, queue or sending. Next proposed: local authenticated browser continuation with explicit retry/stale/expired-session UX, still scripted-only. Coverage 50%, acceptance 0/12; 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now.
 
 ## Next
 

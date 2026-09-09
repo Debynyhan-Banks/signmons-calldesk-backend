@@ -2,7 +2,25 @@
 
 Date: 2026-09-09
 
-## Local Customer Browser Security Boundary (2026-09-09, latest/review-ready)
+## Credential-Bound Intake Continuation (2026-09-09, latest/review-ready)
+
+- Owner approved the proposed bounded section with "proceed". Started from fetched/aligned backend 43108f1748ae2df65ee5e6d3c71ec57d22c0f024 and governance 49f5c81065ddcb8e915285487ab30208dff0c523. APP-013 remains sole Now, Global Next unassigned, FE-014 paused; original dirty checkouts preserved.
+- Added unregistered CustomerIntakeContinuationService with a scripted-only reply port. Exact sessionToken/interactionId/message input; valid unexpired credential and active, undeleted, protected WEBCHAT ownership are required. Ongoing/unlinked sessions only, 2000-character messages/replies and twenty-turn history cap; no browser dispatch or AI/booking activation.
+- Only new protected_intake_turn_v1 encrypted input/reply pairs are trusted. Strict metadata and gap-free revisions refuse malformed history; legacy caller-ID messages cannot become authenticated history and the legacy reader excludes protected pairs. No plaintext fallback. This does not retrofit authentication onto historical intake.
+- Scripted computation occurs outside transactions. Current ownership, credential, job linkage and transcript snapshot are checked again before one encrypted pair plus privacy-safe CUSTOMER audit commit atomically. Concurrent different turns cannot append stale replies. Exact interaction/message replay returns the original receipt; changed input and foreign/legacy interaction collisions refuse. A lost commit acknowledgment recovers only by same-interaction replay with the same unexpired credential. Duplicate scripted computation is possible; no provider exactly-once or process-restart proof is claimed.
+- Validation: 27 new unit tests; 1411 backend tests across 80 passing suites, prior 3 tests/1 suite skipped. Backend lint/build/architecture/Prisma, UI lint/170 tests/15-page build and four full/production dependency audits pass; zero audit findings. Twelve new disposable database checks plus existing consent/session/protected/browser/Settings/Inbox and 19 process-crash regressions pass. Existing 19 migrations only; fixture database removed. No new browser screen or process-crash test.
+- No production route/module/UI, schema/package/configuration/key/provider change; no collection, consent grant, mailbox verification, job creation, finalized intent, queue, sending, merge, deployment, production migration, IAM/secrets/billing or real-data action. Application transcript locks/checks are not database immutability, retention integration or a production limiter. Production transport/key lifecycle, full protected AI/booking, verification/retention/admission/delivery, Calendar/pre-finalization and old-writer compatibility remain.
+- Completion unchanged: 50% APP-013 scope coverage (1 demonstrated, 10 partial, 1 missing), 0/12 formal acceptance. Not an overall MVP percentage or production readiness. Retain 7-12 unequal APP-013 / 20-35 pilot remaining sections, low confidence, not an ETA; no end-to-end criterion newly completed.
+- Stop for review. Next proposed bounded section: connect this inactive continuation to the local authenticated browser boundary with explicit same-interaction retry and stale/expired-session UX, still scripted-only and without production routes, AI, booking or sending. No ticket transition.
+
+### Review steps
+
+1. Review PR #21 incremental after 43108f1: continuation service/tests, shared lock status selection, verification script/hook and evidence. Confirm production registration, schema, packages and UI are unchanged.
+2. Run backend lint/full tests/architecture/build/Prisma; UI lint/tests/build; full and production npm audit in both roots.
+3. Follow evidence/APP-013/customer-intake-continuation/README.md for the exact disposable database/browser command. Inspect summary.json and validation-summary.json; cleanup query must return no rows.
+4. Run governance placement/consistency and both git diff --check. Review DATA_CONTRACTS.md and APP013_CUSTOMER_SESSION_SECURITY_PLAN.md before any activation.
+
+## Earlier: Local Customer Browser Security Boundary (2026-09-09, review-ready)
 
 - Owner approved this bounded section with "proceed". Started from fetched/aligned backend 18cd9a9847ba1823c02c4231ef7b1f6ecd26e010 and governance c6d884ea397812a0aae9172000d49d047ff071a2. APP-013 remains sole Now; Global Next unassigned, FE-014 paused; original dirty checkouts preserved.
 - Added unregistered CustomerConsentBrowserTransport and LocalCustomerBrowserBudget. Fixed canonical origin/tenant, verified server integration context, TLS/socket identity, exact Origin/Host/Fetch Metadata and custom JSON header are required. Cookies/public integration Authorization, absent/null/same-site/cross-site metadata, navigation, query credentials and noncanonical paths refuse. These are CSRF/browser checks, not customer authentication; non-start requests also require the correctly tenant-bound customer credential.
