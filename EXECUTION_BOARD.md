@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Inactive finalized-email eligibility binding is review-ready: read-only consistent event/current policy/recipient checks; missing consent/expiry authority always blocks. 1232 backend/170 UI tests, 23 invariant-checked reads, 18 existing local migrations/19 crash cases, browser and four audit gates pass. No positive admission, credentials or sending. Next decision after review: consent-evidence and event-expiry contract; no activation. Scope coverage 50%, acceptance 0/12; 20-35 unequal pilot sections, low confidence, not ETA. Approved boundary remains CALLDESK_MVP_PLAN.md.
+  - Consent/expiry contract proposal is review-ready in governance APP013_EMAIL_CONSENT_EXPIRY_PROPOSAL.md; D1-D4 await explicit owner approval. Documentation only: no positive eligibility, schema, consent capture, verification, credentials, queue or sending. Current docs/architecture gates pass; prior aa4c547 runtime evidence is unchanged, not rerun. Scope coverage 50%, acceptance 0/12; 7-12 unequal APP-013 / 20-35 pilot sections, low confidence, subject to verification/retention sizing. APP-013 stays Now; approved boundary remains CALLDESK_MVP_PLAN.md.
 
 ## Next
 

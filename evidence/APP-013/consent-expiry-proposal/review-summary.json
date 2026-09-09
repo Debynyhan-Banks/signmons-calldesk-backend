@@ -1,0 +1,56 @@
+{
+  "result": "PASS",
+  "date": "2026-09-09",
+  "scope": "Documentation-only contract proposal; awaiting approval of proposed rules",
+  "baseBackendCommit": "aa4c5470a0bdea64524cf1d2c65c0f8ee15e8cae",
+  "baseGovernanceCommit": "5f4d46aa83cb9f364d3894d916f3fdd5342d53fe",
+  "canonicalProposal": "signmons-governance/APP013_EMAIL_CONSENT_EXPIRY_PROPOSAL.md",
+  "status": "PROPOSED",
+  "decisionsAwaitingApproval": [
+    "D1 job-scoped opt-in",
+    "D2 separate mailbox verification",
+    "D3 24-hour event deadline with active-window cutoff",
+    "D4 grant termination and proposed 90-day post-close evidence retention"
+  ],
+  "currentValidation": {
+    "governancePlacementTests": 4,
+    "docsConsistency": "PASS",
+    "proposalRelativeLinks": 4,
+    "decisionMarkers": 4,
+    "backendArchitecture": "PASS",
+    "diffCheck": "PASS",
+    "runtimeFilesChanged": 0
+  },
+  "notRerun": [
+    "backend and UI tests/lint/build",
+    "browser QA",
+    "database fixture and crash suite",
+    "dependency audits"
+  ],
+  "notRerunReason": "Only documentation and documentation evidence changed; prior runtime results are explicitly historical",
+  "priorRuntimeEvidence": {
+    "commit": "aa4c5470a0bdea64524cf1d2c65c0f8ee15e8cae",
+    "backendTests": 1232,
+    "uiTests": 170,
+    "localMigrations": 18,
+    "processCrashCases": 19,
+    "eligibilityInvariantReads": 23,
+    "dependencyAuditsWithZeroFindings": 4
+  },
+  "eligible": false,
+  "deliveryAuthorized": false,
+  "runtimeChanges": false,
+  "productionActions": 0,
+  "remainingDecisions": [
+    "Owner accepts or amends D1-D4",
+    "Verification challenge/transport implementation review",
+    "Retention and legal-hold compatibility before purge or release"
+  ],
+  "completion": {
+    "app013ScopeCoveragePercent": 50,
+    "formalAcceptedCriteria": 0,
+    "totalCriteria": 12,
+    "app013SectionAllowance": "7-12, low confidence",
+    "pilotSectionAllowance": "20-35, low confidence; verification/retention sizing may increase these"
+  }
+}
