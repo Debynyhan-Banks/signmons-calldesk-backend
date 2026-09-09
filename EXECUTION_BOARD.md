@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Initial CREATE uncertainty safeguard is review-ready on PR #21: unknown insert failures retain the reservation, omit raw errors and require office review; 630 backend tests and three new PostgreSQL failure cases pass. Backend/UI audits remain clean. Authorized journal orchestration/recovery ownership, legacy visibility/repair, reschedule/cancel and SENDING recovery, external-state races, override limitations and acceptance remain open; no activation or deployment.
+  - Legacy CREATE customer-management safeguard is review-ready on PR #21: held reservations no longer expose provisional details or permit seven management actions; 644 backend tests and extended database/browser checks pass. Audits clean. Soft-delete filtering, remaining legacy consumer guards/repair, authorized journal orchestration/recovery ownership, reschedule/cancel and SENDING recovery, races and acceptance remain open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)

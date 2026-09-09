@@ -269,6 +269,62 @@ export async function verifyAppointmentConfirmation({
     assert.equal(held.calendarEventId, null);
     assert.equal(held.serviceWindowStart.getTime(), fixture.start.getTime());
     assert.equal(held.serviceWindowEnd.getTime(), fixture.end.getTime());
+    const managementPayload = Buffer.from(
+      JSON.stringify({
+        version: 1,
+        purpose: "appointment-management",
+        tenantId: fixture.job.tenantId,
+        jobId: fixture.job.id,
+        expiresAt: Date.now() + 60000,
+      }),
+    ).toString("base64url");
+    const managementSignature = createHmac(
+      "sha256",
+      config.conversationDataEncryptionKey,
+    )
+      .update(managementPayload)
+      .digest("base64url");
+    const managementToken = `${managementPayload}.${managementSignature}`;
+    for (const action of [
+      "view",
+      "confirm",
+      "request_reschedule",
+      "continue_payment",
+      "availability",
+      "reschedule",
+      "cancel",
+    ]) {
+      await assert.rejects(
+        () =>
+          attempts.manageAppointment({
+            managementToken,
+            action,
+            expectedTenantId: fixture.job.tenantId,
+          }),
+        (error) =>
+          error.getStatus() === 409 &&
+          /reservation needs confirmation by the office/.test(error.message),
+      );
+    }
+    await assert.rejects(
+      () =>
+        attempts.manageAppointment({
+          managementToken,
+          action: "view",
+          expectedTenantId: randomUUID(),
+        }),
+      /invalid or has expired/,
+    );
+    assert.equal(
+      await prisma.calendarOperation.count({
+        where: { jobId: fixture.job.id },
+      }),
+      0,
+    );
+    assert.deepEqual(
+      await prisma.job.findUniqueOrThrow({ where: { id: fixture.job.id } }),
+      held,
+    );
     assert.equal(
       await prisma.smsEnqueueIntent.count({ where: { jobId: fixture.job.id } }),
       0,
@@ -325,6 +381,7 @@ export async function verifyAppointmentConfirmation({
   }
   return [
     "unknown legacy CREATE outcome retains actual reservation without success intent/audit/message",
+    "all seven customer management actions hold legacy CREATE without a journal; tenant authority preserved",
     "failed CREATE cannot overwrite a newer office change",
     "restarted same/different signed choice cannot reinsert held CREATE",
     "initial confirmation reference/audit/intent atomicity",

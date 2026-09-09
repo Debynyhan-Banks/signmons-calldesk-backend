@@ -534,6 +534,97 @@ describe("SchedulingService", () => {
       );
   }
 
+  describe("legacy CREATE customer-management hold", () => {
+    it.each([
+      "view",
+      "confirm",
+      "request_reschedule",
+      "continue_payment",
+      "availability",
+      "reschedule",
+      "cancel",
+    ] as const)(
+      "holds %s before exposing provisional data or calling a downstream service",
+      async (action) => {
+        prisma.job.findFirst.mockResolvedValue(
+          appointmentJob({ calendarEventId: null }),
+        );
+        const fetchMock = jest.spyOn(global, "fetch");
+        await expect(
+          service.manageAppointment({
+            expectedTenantId: baseJob.tenantId,
+            managementToken: managementToken(),
+            action,
+          }),
+        ).rejects.toMatchObject({
+          status: 409,
+          message: expect.stringContaining(
+            "reservation needs confirmation by the office",
+          ),
+        });
+        expect(prisma.job.updateMany).not.toHaveBeenCalled();
+        expect(prisma.auditLog.findMany).not.toHaveBeenCalled();
+        expect(prisma.auditLog.create).not.toHaveBeenCalled();
+        expect(paymentRequests.recover).not.toHaveBeenCalled();
+        expect(confirmation.finalize).not.toHaveBeenCalled();
+        expect(rescheduling.claim).not.toHaveBeenCalled();
+        expect(cancellation.claim).not.toHaveBeenCalled();
+        expect(
+          notifications.enqueueAppointmentConfirmed,
+        ).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
+      },
+    );
+    it.each([
+      { serviceWindowStart: null },
+      { serviceWindowEnd: null },
+      { calendarEventId: "" },
+      { calendarEventId: "   " },
+    ])("also holds incomplete legacy reservation %j", async (overrides) => {
+      prisma.job.findFirst.mockResolvedValue(
+        appointmentJob({ calendarEventId: null, ...overrides }),
+      );
+      await expect(
+        service.manageAppointment({
+          managementToken: managementToken(),
+          action: "view",
+        }),
+      ).rejects.toThrow("reservation needs confirmation by the office");
+      expect(prisma.auditLog.findMany).not.toHaveBeenCalled();
+    });
+    it("does not redefine payment recovery for an unscheduled job", async () => {
+      prisma.job.findFirst.mockResolvedValue(
+        appointmentJob({
+          calendarEventId: null,
+          serviceWindowStart: null,
+          serviceWindowEnd: null,
+        }),
+      );
+      await service.manageAppointment({
+        managementToken: managementToken(),
+        action: "continue_payment",
+      });
+      expect(paymentRequests.recover).toHaveBeenCalledTimes(1);
+    });
+    it.each(["CANCELLED", "COMPLETED"])(
+      "preserves historical %s viewing",
+      async (status) => {
+        prisma.job.findFirst.mockResolvedValue(
+          appointmentJob({ status, calendarEventId: null }),
+        );
+        await expect(
+          service.manageAppointment({
+            managementToken: managementToken(),
+            action: "view",
+          }),
+        ).resolves.toMatchObject({
+          status: "appointment_details",
+          bookingState: status,
+        });
+      },
+    );
+  });
+
   it("opens a confirmed appointment through a signed management link", async () => {
     prisma.job.findFirst.mockResolvedValue(appointmentJob());
 

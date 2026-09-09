@@ -46,6 +46,8 @@ const errors = [],
 const jobId = "10000000-0000-4000-8000-000000000001";
 const hold =
   "Calendar synchronization is unfinished. Appointment details and actions are on hold; please contact the office before making plans or changes.";
+const legacyHold =
+  "The calendar reservation needs confirmation by the office. Appointment details and actions are on hold; please contact the office before making plans or changes.";
 const booking = {
   status: "appointment_details",
   state: "confirmed",
@@ -149,7 +151,13 @@ try {
         const action = req.postDataJSON().action;
         return customerMode === "settled" && action === "view"
           ? reply(booking)
-          : reply({ statusCode: 409, message: hold }, 409);
+          : reply(
+              {
+                statusCode: 409,
+                message: customerMode === "legacy" ? legacyHold : hold,
+              },
+              409,
+            );
       }
       if (req.method() !== "GET") {
         unexpected.push(path);
@@ -190,7 +198,42 @@ try {
       path: `${evidence}calendar-hold-customer-${name}.png`,
       fullPage: true,
     });
-    // A formerly settled page must discard the old card when an action conflicts.
+    // An unjournaled legacy CREATE hold uses the same fail-closed customer UI.
+    customerMode = "legacy";
+    await page.reload();
+    await page.getByRole("alert").filter({ hasText: legacyHold }).waitFor();
+    assert.equal(
+      await page.getByText("Synthetic Customer", { exact: true }).count(),
+      0,
+    );
+    assert.equal(
+      await page.getByRole("button", { name: /Confirm.*window/i }).count(),
+      0,
+    );
+    await overflow();
+    await page.screenshot({
+      path: `${evidence}legacy-create-hold-customer-${name}.png`,
+      fullPage: true,
+    });
+    customerMode = "settled";
+    await page.reload();
+    await page
+      .getByText("Synthetic finalized arrival window", { exact: true })
+      .waitFor();
+    customerMode = "legacy";
+    await page.getByRole("button", { name: /Confirm.*window/i }).click();
+    await page.getByRole("alert").filter({ hasText: legacyHold }).waitFor();
+    assert.equal(
+      await page
+        .getByText("Synthetic finalized arrival window", { exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await page.getByRole("button", { name: /Confirm.*window/i }).count(),
+      0,
+    );
+    // A formerly settled page must also discard the old card for a journal hold.
     customerMode = "settled";
     await page.reload();
     await page

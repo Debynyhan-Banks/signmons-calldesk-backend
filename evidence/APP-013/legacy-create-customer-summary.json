@@ -1,0 +1,125 @@
+{
+  "date": "2026-09-08",
+  "baselineBackend": "fd68377c5f151ab08ccdf32712167f269432b862",
+  "baselineGovernance": "83aaad4cea26df0563da76fefd9c77929747a309",
+  "scope": "Legacy CREATE customer management: ACCEPTED reserved window with missing/blank Calendar reference returns office-review 409",
+  "verification": {
+    "backendTests": 644,
+    "backendSuites": 55,
+    "addedUnitCases": 14,
+    "existingSkippedTests": 3,
+    "managementActions": [
+      "view",
+      "confirm",
+      "request_reschedule",
+      "continue_payment",
+      "availability",
+      "reschedule",
+      "cancel"
+    ],
+    "databaseLegacyCases": 3,
+    "databaseManagementRefusals": 21,
+    "databaseChecks": [
+      "no journal present",
+      "cross-tenant refusal preserved",
+      "held row unchanged",
+      "no success audit, intent or message"
+    ],
+    "localMigrations": 15,
+    "existingProcessCrashCases": 11,
+    "newProcessCrashCases": 0,
+    "realProviderCalls": 0,
+    "fixtureDatabaseAbsenceIndependentlyVerified": true,
+    "uiTests": 60,
+    "staticPages": 14,
+    "browser": {
+      "harnesses": 5,
+      "routeChecks": 22,
+      "homeNavigations": 12,
+      "mockedRequests": [
+        20,
+        14,
+        8,
+        92
+      ],
+      "customerSyntheticPosts": 12,
+      "viewports": [
+        1440,
+        390
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "newChecks": [
+        "legacy hold on initial load",
+        "stale details/actions removed after legacy conflict",
+        "no horizontal overflow"
+      ],
+      "visualReview": [
+        "legacy-create-hold-customer-desktop.png",
+        "legacy-create-hold-customer-mobile.png"
+      ],
+      "temporaryEvidence": "/private/tmp/signmons-legacy-customer-regression.zBorFS/evidence/APP-013"
+    }
+  },
+  "audits": {
+    "backend": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "backendOmitDev": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "ui": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "uiOmitDev": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    }
+  },
+  "limits": [
+    "Customer-boundary snapshot guard only, not global legacy-state detection/serialization or provider reconciliation.",
+    "Existing unscheduled payment recovery, terminal historical viewing and finalized booking behavior are preserved; no payment policy changed.",
+    "Dispatch/technician/message handling of unjournaled reservations remains open.",
+    "Inspection found loadAppointment filters id/tenant but not deletedAt; separate soft-deleted management-link access remediation remains necessary.",
+    "No automatic repair, new durable ID/journal, review UI, historical backfill or new process-crash claim.",
+    "All browser responses intercepted; no real Calendar, customer, payment or external message action.",
+    "No dependencies/schema/module/provider-adapter changes; no migration outside disposable fixtures, merge, deployment or activation."
+  ],
+  "estimates": {
+    "app013": 85,
+    "governedApp006ThroughApp016": 81,
+    "basis": "Unchanged planning estimates, not release readiness"
+  },
+  "riskAcceptance": false
+}

@@ -372,6 +372,18 @@ export class SchedulingService {
     );
     const job = await this.loadAppointment(authority.tenantId, authority.jobId);
     requireCalendarOperationSettled(job);
+    // Legacy CREATE can persist its reservation before Calendar insertion or
+    // finalization fails, without a journal row. A signed link is authority to
+    // access the job, not evidence that this provisional window was confirmed.
+    if (
+      job.status === JobStatus.ACCEPTED &&
+      !job.calendarEventId?.trim() &&
+      (job.serviceWindowStart || job.serviceWindowEnd)
+    ) {
+      throw new ConflictException(
+        "The calendar reservation needs confirmation by the office. Appointment details and actions are on hold; please contact the office before making plans or changes.",
+      );
+    }
     const record = this.mapJob(job);
 
     if (input.action === "view") {
