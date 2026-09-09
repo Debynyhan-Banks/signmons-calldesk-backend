@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Inactive read-only Calendar review UI/client contract is review-ready on PR #21: unlinked three-view panel, private validated snapshots, manual reads, session/reference invalidation, late-response/15-second-timeout protection and access-denial clearing. 39 new UI cases/99 total; actual-component desktop/mobile QA and 962 backend tests/real DB regressions pass. No route/network adapter/recovery controls or activation. Transport/session binding, live acceptance, timing/provider and release risks remain open.
+  - Inactive Calendar review HTTP adapter/session binding is review-ready on PR #21: explicit trusted origin/fetch, bearer-only fixed GETs, non-secret generations, credential/session invalidation, bounded/cancellable response reads. 36 new UI cases/135 total, real local HTTP cross-layer proof (16 GETs/15 double reads), 962 backend tests and DB/audit regressions pass. Prior pointer/step placement repaired and guarded by four tests. UI stays unlinked; no live access/activation/recovery controls.
 
 ## Next
 
