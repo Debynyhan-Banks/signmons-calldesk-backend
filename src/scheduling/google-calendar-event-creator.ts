@@ -28,14 +28,26 @@ export class GoogleCalendarEventCreator extends CalendarEventCreator {
       )
     )
       return;
-    // Start the deadline before credential acquisition. If auth stalls, the
-    // later fetch receives an already-aborted signal and cannot start a write.
-    const signal = AbortSignal.timeout(CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS);
+    if (
+      !(input.attemptDeadline instanceof Date) ||
+      !Number.isFinite(input.attemptDeadline.getTime())
+    )
+      return;
+    const now = Date.now();
+    const deadline = Math.min(
+      input.attemptDeadline.getTime(),
+      now + CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS,
+    );
+    if (deadline <= now) return;
+    // Carry the persisted claim's remaining budget through auth and transport.
+    // The wall-clock check also rejects late auth when timer delivery is delayed.
+    const signal = AbortSignal.timeout(deadline - now);
     try {
       new Intl.DateTimeFormat("en", { timeZone: input.timeZone });
       const client = await this.auth.getClient();
       const headers = await client.getRequestHeaders();
       signal.throwIfAborted();
+      if (Date.now() >= deadline) return;
       if (
         !(input.start instanceof Date) ||
         !(input.end instanceof Date) ||

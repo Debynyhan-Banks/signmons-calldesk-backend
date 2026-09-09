@@ -5,7 +5,10 @@ import {
 } from "@nestjs/common";
 import { CalendarOperation } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-import { CalendarEventCreator } from "./calendar-event-creator";
+import {
+  CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS,
+  CalendarEventCreator,
+} from "./calendar-event-creator";
 import { CalendarCreateReconciliationService } from "./calendar-create-reconciliation.service";
 
 /** Inactive internal seam for an ALREADY authorized, persisted CREATE reservation.
@@ -45,6 +48,9 @@ export class CalendarCreateExecutionService {
       return this.hold(operation);
     const claimedAt = advance(operation.claimedUpdatedAt);
     const attemptedAt = advance(operation.updatedAt);
+    const attemptDeadline = new Date(
+      attemptedAt.getTime() + CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS,
+    );
     let claimed: boolean;
     try {
       claimed = await this.prisma.$transaction(async (tx) => {
@@ -91,6 +97,9 @@ export class CalendarCreateExecutionService {
       }))
     )
       return this.hold(attempted);
+    // Transaction/lookup latency consumes the same persisted write budget as
+    // credentials and transport; never restart the clock at adapter entry.
+    if (Date.now() >= attemptDeadline.getTime()) return this.hold(attempted);
     try {
       await this.creator.create({
         calendarId: operation.calendarId,
@@ -101,6 +110,7 @@ export class CalendarCreateExecutionService {
         start: operation.desiredWindowStart!,
         end: operation.desiredWindowEnd!,
         timeZone: operation.timeZone,
+        attemptDeadline,
       });
     } catch {
       // Even a thrown adapter result is unknown. Only read-back may finalize.

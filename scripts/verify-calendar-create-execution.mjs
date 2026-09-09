@@ -17,6 +17,7 @@ const {
 } = require("../dist/scheduling/calendar-create-reconciliation.service.js");
 const {
   CALENDAR_CREATE_READER_GRACE_MS,
+  CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS,
 } = require("../dist/scheduling/calendar-event-creator.js");
 const databasePattern = /^calldesk_app013_intents_[0-9a-f]{12}$/;
 
@@ -53,6 +54,10 @@ export async function verifyCalendarCreateExecution({
         where: { id: request.operationId },
       });
       assert.equal(saved.status, "UNCERTAIN");
+      assert.equal(
+        request.attemptDeadline.getTime(),
+        saved.updatedAt.getTime() + CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS,
+      );
       assert.equal(saved.calendarEventId, request.eventId);
       assert.equal(
         await prisma.smsEnqueueIntent.count({ where: { jobId: saved.jobId } }),
@@ -267,6 +272,91 @@ export async function verifyCalendarCreateExecution({
     assert.deepEqual(await activeExecution, { status: "finalized" });
     assert.equal(activeReads, 0);
 
+    // Real persisted claims/queries with an advanced clock model delayed DB
+    // acknowledgment or the final lookup; no wall-clock sleep or real provider.
+    for (const stage of ["commit", "lookup"]) {
+      const fixture = await make();
+      const clock = Date.now;
+      let claimedJob;
+      const advancePastBudget = async () => {
+        const saved = await prisma.calendarOperation.findUniqueOrThrow({
+          where: { id: fixture.operation.id },
+        });
+        claimedJob = await prisma.job.findUniqueOrThrow({
+          where: { id: fixture.operation.jobId },
+        });
+        Date.now = () =>
+          saved.updatedAt.getTime() + CALENDAR_CREATE_ATTEMPT_TIMEOUT_MS + 1;
+      };
+      let forbiddenCalls = 0;
+      const slowed = {
+        calendarOperation: prisma.calendarOperation,
+        job: {
+          ...prisma.job,
+          findFirst: async (args) => {
+            const value = await prisma.job.findFirst(args);
+            if (stage === "lookup") await advancePastBudget();
+            return value;
+          },
+        },
+        $transaction: async (callback) => {
+          const result = await prisma.$transaction(callback);
+          if (stage === "commit") await advancePastBudget();
+          return result;
+        },
+      };
+      try {
+        const blocked = new CalendarCreateExecutionService(
+          slowed,
+          {
+            create: async () => {
+              forbiddenCalls++;
+            },
+          },
+          {
+            reconcile: async () => {
+              forbiddenCalls++;
+              return { status: "pending" };
+            },
+          },
+        );
+        assert.deepEqual(await blocked.execute(fixture.input), {
+          status: "needs_review",
+        });
+        assert.equal(forbiddenCalls, 0);
+        assert.deepEqual(
+          await prisma.job.findUniqueOrThrow({
+            where: { id: fixture.operation.jobId },
+          }),
+          claimedJob,
+        );
+        const held = await prisma.calendarOperation.findUniqueOrThrow({
+          where: { id: fixture.operation.id },
+        });
+        assert.equal(held.status, "NEEDS_REVIEW");
+        assert.equal(held.finishedAt, null);
+        assert.equal(held.calendarEventId, fixture.operation.calendarEventId);
+        assert.equal(
+          await prisma.smsEnqueueIntent.count({
+            where: { jobId: fixture.operation.jobId },
+          }),
+          0,
+        );
+        assert.equal(
+          await prisma.auditLog.count({
+            where: { entityId: fixture.operation.jobId },
+          }),
+          0,
+        );
+        assert.equal(
+          (await execute.execute(fixture.input)).status,
+          "needs_review",
+        );
+      } finally {
+        Date.now = clock;
+      }
+    }
+
     const beforeFirst = inserts;
     const first = await make();
     const outcomes = await Promise.all([
@@ -455,6 +545,8 @@ export async function verifyCalendarCreateExecution({
       }
     }
     return [
+      "persisted attempt deadline survives executor-to-creator handoff without a refreshed budget",
+      "two clock-advanced real database commit/lookup delays exhaust the write budget with no creator/reconciler call; reservation and event identity retained",
       "four hypothetical early-read outcomes leave PENDING job/journal unchanged with zero reads, audits or intents; subsequent execution finalizes once",
       "delayed PENDING reader cannot consume the attempt latch or overwrite a newer finalized receipt",
       "active UNCERTAIN attempt blocks recovery reads until executor APPLIED handoff",

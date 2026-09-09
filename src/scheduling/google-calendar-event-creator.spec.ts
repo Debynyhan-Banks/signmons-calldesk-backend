@@ -2,6 +2,7 @@ import { GoogleAuth } from "google-auth-library";
 import { GoogleCalendarEventCreator } from "./google-calendar-event-creator";
 
 describe("inactive Google CREATE adapter", () => {
+  const now = Date.parse("2026-09-09T12:00:00Z");
   const input = {
     calendarId: "saved/@fixture.invalid",
     eventId: "a".repeat(32),
@@ -11,9 +12,11 @@ describe("inactive Google CREATE adapter", () => {
     start: new Date("2099-01-01T14:00:00Z"),
     end: new Date("2099-01-01T15:00:00Z"),
     timeZone: "UTC",
+    attemptDeadline: new Date(now + 8_000),
   };
   let fetchMock: jest.SpyInstance;
   beforeEach(() => {
+    jest.spyOn(Date, "now").mockReturnValue(now);
     jest.spyOn(GoogleAuth.prototype, "getClient").mockResolvedValue({
       getRequestHeaders: jest
         .fn()
@@ -95,12 +98,64 @@ describe("inactive Google CREATE adapter", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
   it.each([
+    { attemptDeadline: new Date(NaN) },
+    { attemptDeadline: new Date(now) },
+    { attemptDeadline: undefined as unknown as Date },
     { eventId: "wrong" },
     { start: new Date(0) },
     { timeZone: "bad/zone" },
     { tenantId: "wrong" },
   ])("does not dispatch invalid persisted input %j", async (change) => {
     await new GoogleCalendarEventCreator().create({ ...input, ...change });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("uses only the persisted deadline's remaining budget", async () => {
+    const timeout = jest.spyOn(AbortSignal, "timeout");
+    jest.mocked(Date.now).mockReturnValue(now + 5_000);
+    await new GoogleCalendarEventCreator().create(input);
+    expect(timeout).toHaveBeenCalledWith(3_000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it.each(["client", "headers"])(
+    "rejects delayed %s at the absolute deadline even before abort delivery",
+    async (stage) => {
+      const controller = new AbortController();
+      jest.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+      jest.spyOn(GoogleAuth.prototype, "getClient").mockImplementation(() => {
+        if (stage === "client")
+          jest.mocked(Date.now).mockReturnValue(now + 8_000);
+        return Promise.resolve({
+          getRequestHeaders: () => {
+            jest.mocked(Date.now).mockReturnValue(now + 8_000);
+            return Promise.resolve(new Headers());
+          },
+        }) as never;
+      });
+      await new GoogleCalendarEventCreator().create(input);
+      expect(controller.signal.aborted).toBe(false);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects an exhausted budget before loading credentials", async () => {
+    jest.mocked(Date.now).mockReturnValue(now + 8_001);
+    await new GoogleCalendarEventCreator().create(input);
+    expect(GoogleAuth.prototype.getClient).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("caps an oversized caller deadline at the adapter bound", async () => {
+    const controller = new AbortController();
+    jest.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+    jest.spyOn(GoogleAuth.prototype, "getClient").mockImplementation(() => {
+      jest.mocked(Date.now).mockReturnValue(now + 8_000);
+      return Promise.resolve({
+        getRequestHeaders: () => Promise.resolve(new Headers()),
+      }) as never;
+    });
+    await new GoogleCalendarEventCreator().create({
+      ...input,
+      attemptDeadline: new Date(now + 60_000),
+    });
+    expect(AbortSignal.timeout).toHaveBeenCalledWith(8_000);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

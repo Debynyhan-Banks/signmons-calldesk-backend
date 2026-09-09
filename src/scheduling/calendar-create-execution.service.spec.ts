@@ -1,6 +1,9 @@
 import { CalendarCreateExecutionService } from "./calendar-create-execution.service";
 
 describe("inactive one-shot CREATE execution", () => {
+  const now = Date.parse("2026-09-09T12:00:00Z");
+  beforeEach(() => jest.spyOn(Date, "now").mockReturnValue(now));
+  afterEach(() => jest.restoreAllMocks());
   const operation = {
     id: "op",
     tenantId: "tenant",
@@ -99,6 +102,7 @@ describe("inactive one-shot CREATE execution", () => {
       start: operation.desiredWindowStart,
       end: operation.desiredWindowEnd,
       timeZone: "UTC",
+      attemptDeadline: new Date(now + 8_000),
     });
     expect(h.prisma.calendarOperation.updateMany).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -215,5 +219,45 @@ describe("inactive one-shot CREATE execution", () => {
       "read persistence failed",
     );
     expect(h.creator.create).toHaveBeenCalledTimes(1);
+  });
+  it.each(["transaction", "lookup"])(
+    "refuses insertion when %s latency exhausts the persisted attempt budget",
+    async (stage) => {
+      const h = harness();
+      if (stage === "transaction") {
+        h.tx.job.updateMany.mockImplementation(() => {
+          jest.mocked(Date.now).mockReturnValue(now + 8_000);
+          return Promise.resolve({ count: 1 });
+        });
+      } else {
+        h.prisma.job.findFirst.mockImplementation(() => {
+          jest.mocked(Date.now).mockReturnValue(now + 8_000);
+          return Promise.resolve({ id: "job" });
+        });
+      }
+      expect(await h.service.execute(input)).toEqual({
+        status: "needs_review",
+      });
+      expect(h.creator.create).not.toHaveBeenCalled();
+      expect(h.reconciliation.reconcile).not.toHaveBeenCalled();
+      expect(h.prisma.calendarOperation.updateMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "NEEDS_REVIEW" }),
+        }),
+      );
+    },
+  );
+  it("does not refresh the deadline after slow successful lookups", async () => {
+    const h = harness();
+    h.prisma.job.findFirst.mockImplementation(() => {
+      jest.mocked(Date.now).mockReturnValue(now + 5_000);
+      return Promise.resolve({ id: "job" });
+    });
+    await h.service.execute(input);
+    expect(h.creator.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attemptDeadline: new Date(now + 8_000),
+      }),
+    );
   });
 });
