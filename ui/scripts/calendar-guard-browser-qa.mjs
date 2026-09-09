@@ -149,6 +149,20 @@ try {
         });
       if (path.endsWith("/appointments/manage")) {
         const action = req.postDataJSON().action;
+        if (customerMode === "deleted")
+          return reply(
+            { statusCode: 400, message: "Appointment not found." },
+            400,
+          );
+        if (customerMode === "settled-payment" && action === "view")
+          return reply({
+            ...booking,
+            payment: {
+              state: "PENDING",
+              label: "Synthetic payment pending",
+              canContinue: true,
+            },
+          });
         return customerMode === "settled" && action === "view"
           ? reply(booking)
           : reply(
@@ -252,6 +266,65 @@ try {
       await page.getByRole("button", { name: /Confirm.*window/i }).count(),
       0,
     );
+    // Missing/deleted responses must hide both initially loaded and stale data.
+    customerMode = "deleted";
+    await page.reload();
+    await page
+      .getByRole("alert")
+      .filter({ hasText: "Appointment not found." })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByText("Synthetic finalized arrival window", { exact: true })
+        .count(),
+      0,
+    );
+    await overflow();
+    await page.screenshot({
+      path: `${evidence}deleted-booking-customer-${name}.png`,
+      fullPage: true,
+    });
+    for (const action of ["confirm", "payment"]) {
+      customerMode = action === "payment" ? "settled-payment" : "settled";
+      await page.reload();
+      await page
+        .getByText("Synthetic finalized arrival window", { exact: true })
+        .waitFor();
+      customerMode = "deleted";
+      if (action === "payment") {
+        const popupPromise = page.waitForEvent("popup");
+        await page
+          .getByRole("button", { name: "Continue to payment", exact: true })
+          .click();
+        const popup = await popupPromise;
+        await page
+          .getByRole("alert")
+          .filter({ hasText: "Appointment not found." })
+          .waitFor();
+        if (!popup.isClosed())
+          await popup.waitForEvent("close", { timeout: 5000 });
+        assert.equal(popup.isClosed(), true);
+      } else {
+        await page.getByRole("button", { name: /Confirm.*window/i }).click();
+        await page
+          .getByRole("alert")
+          .filter({ hasText: "Appointment not found." })
+          .waitFor();
+      }
+      assert.equal(
+        await page
+          .getByText("Synthetic finalized arrival window", { exact: true })
+          .count(),
+        0,
+      );
+      assert.equal(
+        await page
+          .getByRole("button", { name: /Confirm.*window|Continue to payment/i })
+          .count(),
+        0,
+      );
+      await overflow();
+    }
     await page.goto(`${origin}/app/dispatch`);
     await page
       .getByLabel("Firebase operator ID token")

@@ -64,7 +64,10 @@ export default function CustomerBookingPage() {
       );
       if (action === "request_reschedule") setRescheduleOpen(false);
     } catch (actionError) {
-      if (actionError instanceof ApiError && actionError.status === 409)
+      if (
+        actionError instanceof ApiError &&
+        [400, 409].includes(actionError.status)
+      )
         setBooking(null);
       setError(errorMessage(actionError));
     } finally {
@@ -89,7 +92,10 @@ export default function CustomerBookingPage() {
       checkoutWindow.location.replace(result.checkoutUrl);
     } catch (paymentError) {
       checkoutWindow.close();
-      if (paymentError instanceof ApiError && paymentError.status === 409)
+      if (
+        paymentError instanceof ApiError &&
+        [400, 409].includes(paymentError.status)
+      )
         setBooking(null);
       setError(errorMessage(paymentError));
     } finally {

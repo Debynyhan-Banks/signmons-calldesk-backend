@@ -1065,7 +1065,7 @@ export class SchedulingService {
     jobId: string,
   ): Promise<AppointmentJob> {
     const job = await this.prisma.job.findFirst({
-      where: { id: jobId, tenantId },
+      where: { id: jobId, tenantId, deletedAt: null },
       include: {
         calendarOperations: unfinishedCalendarOperations,
         customer: true,
@@ -1085,7 +1085,10 @@ export class SchedulingService {
         },
       },
     });
-    if (!job) throw new BadRequestException("Appointment not found.");
+    // A formerly valid bearer link cannot authorize access to a deleted job.
+    // Keep the same response as a missing record; do not expose deletion state.
+    if (!job || job.deletedAt)
+      throw new BadRequestException("Appointment not found.");
     return job;
   }
 

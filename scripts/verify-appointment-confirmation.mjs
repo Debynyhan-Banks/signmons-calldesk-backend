@@ -379,7 +379,99 @@ export async function verifyAppointmentConfirmation({
       held,
     );
   }
+  // A valid previously issued management token must stop working after the
+  // parent-owned fixture job is soft-deleted, including terminal history.
+  const signManagement = (tenantId, jobId) => {
+    const payload = Buffer.from(
+      JSON.stringify({
+        version: 1,
+        purpose: "appointment-management",
+        tenantId,
+        jobId,
+        expiresAt: Date.now() + 60000,
+      }),
+    ).toString("base64url");
+    return `${payload}.${createHmac("sha256", config.conversationDataEncryptionKey).update(payload).digest("base64url")}`;
+  };
+  for (const [index, status] of [
+    "ACCEPTED",
+    "CANCELLED",
+    "COMPLETED",
+  ].entries()) {
+    const fixture = await makeInput(index + 30);
+    await prisma.job.update({
+      where: { id: fixture.job.id },
+      data: {
+        status,
+        calendarEventId: "synthetic-existing-event",
+        serviceWindowStart: fixture.start,
+        serviceWindowEnd: fixture.end,
+      },
+    });
+    const management = makeScheduling(intents);
+    const token = signManagement(fixture.job.tenantId, fixture.job.id);
+    assert.equal(
+      (
+        await management.manageAppointment({
+          managementToken: token,
+          action: "view",
+        })
+      ).status,
+      "appointment_details",
+    );
+    const deleted = await prisma.job.update({
+      where: { id: fixture.job.id },
+      data: { deletedAt: new Date() },
+    });
+    for (const managementToken of [
+      token,
+      signManagement(fixture.job.tenantId, randomUUID()),
+      signManagement(randomUUID(), fixture.job.id),
+    ]) {
+      for (const action of [
+        "view",
+        "confirm",
+        "request_reschedule",
+        "continue_payment",
+        "availability",
+        "reschedule",
+        "cancel",
+      ]) {
+        await assert.rejects(
+          () => management.manageAppointment({ managementToken, action }),
+          (error) => {
+            assert.equal(error.getStatus(), 400);
+            assert.deepEqual(error.getResponse(), {
+              message: "Appointment not found.",
+              error: "Bad Request",
+              statusCode: 400,
+            });
+            return true;
+          },
+        );
+      }
+    }
+    assert.deepEqual(
+      await prisma.job.findUniqueOrThrow({ where: { id: fixture.job.id } }),
+      deleted,
+    );
+    assert.equal(
+      await prisma.auditLog.count({ where: { entityId: fixture.job.id } }),
+      0,
+    );
+    assert.equal(
+      await prisma.smsEnqueueIntent.count({ where: { jobId: fixture.job.id } }),
+      0,
+    );
+    assert.equal(
+      await prisma.communicationEvent.count({
+        where: { jobId: fixture.job.id },
+      }),
+      0,
+    );
+  }
   return [
+    "deleted/missing/cross-tenant management records uniformly refuse seven actions across active/terminal jobs",
     "unknown legacy CREATE outcome retains actual reservation without success intent/audit/message",
     "all seven customer management actions hold legacy CREATE without a journal; tenant authority preserved",
     "failed CREATE cannot overwrite a newer office change",

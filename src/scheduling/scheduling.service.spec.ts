@@ -534,6 +534,77 @@ describe("SchedulingService", () => {
       );
   }
 
+  describe("deleted customer-management authority", () => {
+    it.each([
+      "view",
+      "confirm",
+      "request_reschedule",
+      "continue_payment",
+      "availability",
+      "reschedule",
+      "cancel",
+    ] as const)(
+      "rejects missing and deleted %s identically before any downstream activity",
+      async (action) => {
+        const fetchMock = jest.spyOn(global, "fetch");
+        for (const job of [
+          null,
+          appointmentJob({
+            deletedAt: new Date(),
+            calendarOperations: [{ id: "unfinished" }],
+          }),
+        ]) {
+          prisma.job.findFirst.mockResolvedValue(job);
+          await expect(
+            service.manageAppointment({
+              managementToken: managementToken(),
+              expectedTenantId: baseJob.tenantId,
+              action,
+            }),
+          ).rejects.toMatchObject({
+            status: 400,
+            message: "Appointment not found.",
+          });
+          expect(prisma.job.findFirst).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+              where: {
+                id: baseJob.id,
+                tenantId: baseJob.tenantId,
+                deletedAt: null,
+              },
+            }),
+          );
+        }
+        expect(prisma.job.updateMany).not.toHaveBeenCalled();
+        expect(prisma.auditLog.findMany).not.toHaveBeenCalled();
+        expect(prisma.auditLog.create).not.toHaveBeenCalled();
+        expect(paymentRequests.recover).not.toHaveBeenCalled();
+        expect(confirmation.finalize).not.toHaveBeenCalled();
+        expect(rescheduling.claim).not.toHaveBeenCalled();
+        expect(cancellation.claim).not.toHaveBeenCalled();
+        expect(
+          notifications.enqueueAppointmentConfirmed,
+        ).not.toHaveBeenCalled();
+        expect(fetchMock).not.toHaveBeenCalled();
+      },
+    );
+    it.each(["CREATED", "ACCEPTED", "IN_PROGRESS", "CANCELLED", "COMPLETED"])(
+      "does not expose a deleted %s record even through historical viewing",
+      async (status) => {
+        prisma.job.findFirst.mockResolvedValue(
+          appointmentJob({ status, deletedAt: new Date() }),
+        );
+        await expect(
+          service.manageAppointment({
+            managementToken: managementToken(),
+            action: "view",
+          }),
+        ).rejects.toThrow("Appointment not found.");
+        expect(prisma.auditLog.findMany).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   describe("legacy CREATE customer-management hold", () => {
     it.each([
       "view",
