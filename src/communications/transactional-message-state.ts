@@ -37,6 +37,16 @@ export function evaluateTransactionalMessageState(
 ): TransactionalMessageState {
   if (!job || job.deletedAt) return "MISSING";
   if (calendarOperationPending(job)) return "CALENDAR_PENDING";
+  // Legacy CREATE can retain a reservation after an unknown provider outcome
+  // without a journal row. Local ACCEPTED/window state is not confirmation.
+  // Reuse the recoverable hold before comparing hashes or spending retries.
+  if (
+    job.status === JobStatus.ACCEPTED &&
+    !job.calendarEventId?.trim() &&
+    (job.serviceWindowStart || job.serviceWindowEnd)
+  ) {
+    return "CALENDAR_PENDING";
+  }
 
   const cancellation =
     templateKey === TransactionalMessageTemplateKey.APPOINTMENT_CANCELLED;

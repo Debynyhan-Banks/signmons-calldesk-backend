@@ -15,6 +15,7 @@ import { verifyCalendarOperationGuards } from "./verify-calendar-operation-guard
 import { verifyCalendarCreateExecution } from "./verify-calendar-create-execution.mjs";
 import { verifyLifecycleCalendarGuards } from "./verify-lifecycle-calendar-guards.mjs";
 import { verifyPolicyCalendarGuards } from "./verify-policy-calendar-guards.mjs";
+import { verifyLegacyMessageGuards } from "./verify-legacy-message-guards.mjs";
 const require = createRequire(import.meta.url);
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
@@ -387,6 +388,13 @@ try {
     jobData,
     otherTenantId: other.id,
   });
+  const legacyMessageChecks = await verifyLegacyMessageGuards({
+    prisma,
+    intents,
+    messaging,
+    jobData,
+    otherTenantId: other.id,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -394,6 +402,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...legacyMessageChecks,
         ...policyGuardChecks,
         ...lifecycleGuardChecks,
         ...executionChecks,

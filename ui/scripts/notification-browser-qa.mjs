@@ -204,6 +204,12 @@ await page.route("**/communications/sms/**", async (route) => {
         ? { message: "DO_NOT_RENDER_SERVER_PAYLOAD" }
         : responseMode === "empty"
           ? []
+          : responseMode === "legacy"
+            ? isIntent
+              ? [{ ...intents[0], templateKey: "TECHNICIAN_ON_THE_WAY",
+                  lastErrorCode: "calendar_sync_pending", attemptCount: 4 }]
+              : [{ ...records[2], templateKey: "TECHNICIAN_ON_THE_WAY",
+                  lastErrorCode: "calendar_sync_pending", attemptCount: 2 }]
           : isIntent
             ? intents
             : records,
@@ -617,6 +623,28 @@ try {
       .evaluate((element) => element === document.activeElement),
     true,
   );
+  // Same public hold code for legacy reservations; no journal/provider metadata.
+  mode = "legacy";
+  retryAllowed = true;
+  capabilityFailure = false;
+  await page.getByLabel("Operator ID token").fill("synthetic-owner-token");
+  await page.getByLabel("Job ID").fill(jobId);
+  await page.getByRole("combobox", { name: "History status" }).selectOption("all");
+  await page.getByRole("combobox", { name: "Intent status" }).selectOption("all");
+  const postsBeforeHold = posts.length;
+  await page.getByRole("button", { name: "Load history" }).click();
+  await intentPanel.getByText("On hold for Calendar review", { exact: true }).waitFor();
+  assert.equal(await intentPanel.locator("li").count(), 1);
+  assert.equal(await page.getByRole("button", { name: /Review retry/ }).count(), 0);
+  assert.ok((await intentPanel.innerText()).includes("Pending enqueue"));
+  for (const [label, width, height] of [["desktop", 1440, 1000], ["mobile", 390, 844]]) {
+    await page.setViewportSize({ width, height });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.screenshot({ path: `${evidence}legacy-message-hold-${label}.png`, fullPage: true });
+  }
+  assert.equal(posts.length, postsBeforeHold);
+  assert.equal((await page.locator("body").innerText()).includes("DO_NOT_RENDER"), false);
+  assert.deepEqual(errors, []);
   console.log(
     JSON.stringify(
       {
@@ -625,6 +653,7 @@ try {
         syntheticPosts: posts.length,
         methods: [...new Set(requests.map((request) => request.method))],
         checks: [
+          "legacy reservation hold visible without retry controls or new POSTs at desktop/390px",
           "desktop",
           "390px no overflow",
           "status and job filters",
@@ -648,6 +677,8 @@ try {
           "late POST after token edit, job edit and session clear",
         ],
         screenshots: [
+          "legacy-message-hold-desktop.png",
+          "legacy-message-hold-mobile.png",
           "reschedule-intents-desktop.png",
           "reschedule-intents-mobile.png",
           "reschedule-retry-desktop.png",

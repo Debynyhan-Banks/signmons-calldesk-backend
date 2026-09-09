@@ -298,11 +298,12 @@ export async function verifyCalendarOperationGuards({
         where: { id: job.id },
         select: transactionalMessageJobSelect,
       });
-      assert.notEqual(
+      assert.equal(
         evaluateTransactionalMessageState(templateKey, settled),
-        "CALENDAR_PENDING",
+        action === "CREATE" ? "CALENDAR_PENDING" : "AVAILABLE",
       );
-      // Terminal evidence removes only the hold; a changed lifecycle must still stop.
+      // Terminal history removes only the journal hold, not an unconfirmed CREATE.
+      // Other changed lifecycles must still stop at the ordinary state/hash gate.
       await prisma.smsEnqueueIntent.update({
         where: { id: intent.id },
         data: { nextAttemptAt: new Date(0) },
@@ -314,7 +315,7 @@ export async function verifyCalendarOperationGuards({
             where: { id: intent.id },
           })
         ).status,
-        "STALE",
+        action === "CREATE" ? "PENDING" : "STALE",
       );
       if (action === "CANCEL") {
         // With no unfinished journal, the existing compatible-state policy works again.
@@ -341,7 +342,7 @@ export async function verifyCalendarOperationGuards({
       "pending cancellations remain visible and tenant scoped",
       "legacy mutation claims reject current-version pending journals",
       "enqueue and delivery holds preserve retry budgets and enforce delay",
-      "terminal journal releases hold but preserves stale-state rejection",
+      "terminal journal removes journal hold only; unconfirmed CREATE remains held and other stale states reject",
     ];
   } finally {
     await prisma.calendarOperation.deleteMany({

@@ -4,6 +4,10 @@ import type { PrismaService } from "../prisma/prisma.service";
 import { CalendarOperationPendingError } from "../scheduling/calendar-operation-guard";
 import type { SmsDeliveryService } from "./sms-delivery.service";
 import {
+  transactionalMessageStateHash,
+  type TransactionalMessageJob,
+} from "./transactional-message-state";
+import {
   TransactionalMessageTemplateKey,
   TransactionalMessageTemplateService,
 } from "./transactional-message-template.service";
@@ -58,6 +62,32 @@ describe("TransactionalMessagingService", () => {
           expectedStateHash: "f".repeat(64),
         }),
       ).rejects.toBeInstanceOf(CalendarOperationPendingError);
+      expect(delivery.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(Object.values(TransactionalMessageTemplateKey))(
+    "holds legacy %s at manual and lifecycle admission even with a matching hash",
+    async (templateKey) => {
+      const job = {
+        ...((await prisma.job.findUnique()) as TransactionalMessageJob),
+        calendarEventId: null,
+        technicianStatus: TechnicianJobStatus.EN_ROUTE,
+      };
+      prisma.job.findUnique.mockResolvedValue(job);
+      const input = { tenantId, jobId, templateKey, idempotencyKey: "legacy" };
+      await expect(createService().queue(input)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      for (const expectedStateHash of [
+        undefined,
+        "f".repeat(64),
+        transactionalMessageStateHash(templateKey, job),
+      ]) {
+        await expect(
+          createService().queueLifecycle({ ...input, expectedStateHash }),
+        ).rejects.toBeInstanceOf(CalendarOperationPendingError);
+      }
       expect(delivery.create).not.toHaveBeenCalled();
     },
   );

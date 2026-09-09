@@ -1,0 +1,156 @@
+{
+  "checkpoint": "APP-013 legacy CREATE messaging safeguard",
+  "baseline": {
+    "backend": "e7024c1",
+    "governance": "d0ee7c6"
+  },
+  "scope": "ACCEPTED plus either reserved window endpoint plus null/empty/whitespace Calendar reference returns CALENDAR_PENDING in shared transactional message state; no journal required",
+  "runtimeFiles": [
+    "src/communications/transactional-message-state.ts"
+  ],
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 668,
+      "suites": 56,
+      "skippedTests": 3,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "lintAndTypecheck": "PASS",
+      "tests": 60,
+      "buildStaticPages": 14
+    },
+    "database": {
+      "migrations": 15,
+      "priorChildProcessCrashCases": 11,
+      "newCrashCases": 0,
+      "newLegacyTemplateVariantCases": 36,
+      "transactionRollbacks": 9,
+      "postSettlementStaleRefusals": 36,
+      "providerCalls": 0,
+      "cleanupVerified": true
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "viewports": [
+      1440,
+      390
+    ],
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 30,
+    "technicianRequests": 14,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "notificationSyntheticPosts": 14,
+    "newLegacyHoldPosts": 0,
+    "artifacts": "/private/tmp/signmons-legacy-message-regression.8ivwlT/evidence/APP-013",
+    "screenshotsReviewed": [
+      "legacy-message-hold-desktop.png",
+      "legacy-message-hold-mobile.png"
+    ]
+  },
+  "audits": {
+    "backendFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "backendProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "uiFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    },
+    "uiProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    }
+  },
+  "limits": [
+    "Hold may persist indefinitely pending separately approved repair",
+    "Not global dispatch or technician guarding",
+    "No live integration acceptance",
+    "Post-read/provider races and SENDING crash gap remain",
+    "Stored Calendar reference is not independent provider proof",
+    "No activation, merge, deploy, provider send or real-data change"
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

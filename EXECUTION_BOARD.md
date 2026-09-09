@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Soft-deleted customer-management safeguard is review-ready on PR #21: deleted-at-load jobs uniformly return missing-record 400, stale action/payment UI clears; 656 backend tests, 63 database refusals and extended browser checks pass. Audits clean. In-flight races, remaining legacy consumer guards/repair, authorized journal orchestration/recovery ownership, reschedule/cancel and SENDING recovery and acceptance remain open; no activation or deployment.
+  - Legacy CREATE messaging safeguard is review-ready on PR #21: ACCEPTED reserved jobs with no nonblank Calendar reference are held across admission/capture/recovery/pre-send, without retry-budget consumption. 668 backend tests, 36 database message-state combinations and extended notification browser checks pass; four audits clean. Legacy dispatch/technician guards and repair, authorized CREATE orchestration/recovery ownership, post-read/provider races, reschedule/cancel and SENDING recovery and acceptance remain open; no activation or deployment.
 
 ## Next
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
