@@ -1,0 +1,80 @@
+{
+  "date": "2026-09-09",
+  "scope": "inactive tenant-scoped appointment email recipient snapshot",
+  "baseBackendCommit": "efa9e3136fc196a2d95704ac4a26c6bc5f7e9782",
+  "baseGovernanceCommit": "ac4deaa3e0431d3781397dce8b39ec84c1afdc4d",
+  "newUnitTests": 53,
+  "backend": {
+    "passedTests": 1128,
+    "passedSuites": 68,
+    "existingSkippedTests": 3,
+    "existingSkippedSuites": 1,
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "prismaValidation": "PASS"
+  },
+  "ui": {
+    "unchanged": true,
+    "passedTests": 159,
+    "staticPages": 15,
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "audits": {
+    "backendFull": 0,
+    "backendProduction": 0,
+    "uiFull": 0,
+    "uiProduction": 0
+  },
+  "database": {
+    "result": "PASS",
+    "migrations": 16,
+    "existingProcessCrashCases": 11,
+    "newProcessCrashCases": 0,
+    "newSuccessfulReads": 6,
+    "newRefusedReads": 26,
+    "providerCalls": 0,
+    "cleanupVerified": true,
+    "detail": "database-summary.json"
+  },
+  "browserRegression": {
+    "newRecipientSurface": false,
+    "staticSuites": [
+      "calendar-guard",
+      "framework",
+      "notification",
+      "policy-calendar-guard",
+      "technician-calendar-guard"
+    ],
+    "staticResult": "PASS",
+    "staticArtifacts": "/private/tmp/signmons-email-recipient-browser.KdzO0L/evidence/APP-013",
+    "compositionResult": "PASS",
+    "compositionGetRequests": 15,
+    "compositionArtifacts": "/private/tmp/signmons-recipient-composition-regression",
+    "settingsArtifacts": "/private/tmp/signmons-recipient-settings-regression",
+    "inboxArtifacts": "/private/tmp/signmons-recipient-inbox-regression"
+  },
+  "limits": [
+    "No HTTP authentication acceptance for this inactive reader",
+    "No mailbox ownership or consent proof",
+    "No finalized-event or send-time eligibility proof",
+    "No email client or Calendar import acceptance",
+    "No runtime registration, credential issuance, provider calls or delivery"
+  ],
+  "initialFailuresResolved": [
+    "Test lint cast",
+    "Composition isolation check distinguished an erased type-only import",
+    "Disposable Calendar fixture label and optimistic-version constraints",
+    "UI ENOSPC resolved by removing and rebuilding only ignored worktree cache"
+  ],
+  "remainingLocalRisk": "Roughly 400 MiB free disk; operator cleanup advisable before future builds",
+  "completion": {
+    "app013ScopeCoveragePercent": 50,
+    "formalAcceptedCriteria": 0,
+    "criteria": 12,
+    "pilotSectionAllowance": [20, 35],
+    "confidence": "low",
+    "overallMvpPercentageEstablished": false
+  }
+}

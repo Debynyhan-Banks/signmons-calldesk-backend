@@ -318,12 +318,13 @@ describe("inactive appointment email composition", () => {
         file.endsWith("appointment-email-template.ts")
       )
         continue;
-      expect(readFileSync(file, "utf8")).not.toContain(
-        'from "./appointment-email-template"',
+      // A shared event-kind type is erased at build time, not a runtime consumer.
+      const consumer = readFileSync(file, "utf8").replace(
+        /^import type \{ AppointmentEmailKind \} from "\.\/appointment-email-template";$/gm,
+        "",
       );
-      expect(readFileSync(file, "utf8")).not.toContain(
-        "composeAppointmentEmail",
-      );
+      expect(consumer).not.toContain('from "./appointment-email-template"');
+      expect(consumer).not.toContain("composeAppointmentEmail");
     }
   });
 });
