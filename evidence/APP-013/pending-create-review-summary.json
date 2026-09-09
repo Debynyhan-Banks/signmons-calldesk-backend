@@ -1,0 +1,218 @@
+{
+  "ticket": "APP-013",
+  "date": "2026-09-09",
+  "section": "Reviewed PENDING CREATE containment",
+  "status": "review-ready; inactive",
+  "branch": "codex/app-013-transactional-messaging",
+  "baselines": {
+    "backend": "10d64d1fc8cb7844ee5188e2d3126004df888a7c",
+    "governance": "11783fe5b31ba57e530923af4b967ec547e3d226"
+  },
+  "implementation": {
+    "service": "src/scheduling/calendar-pending-review.service.ts",
+    "unitTests": "src/scheduling/calendar-pending-review.service.spec.ts",
+    "databaseTests": "scripts/verify-calendar-pending-review.mjs",
+    "parentVerifier": "scripts/verify-sms-enqueue-intents.mjs",
+    "behavior": [
+      "Existing trusted user/tenant context and normalized owner/admin role required before database access; future invocation requires RequestAuthGuard/TenantGuard",
+      "Explicit acknowledgment, operation UUID and canonical exact reviewed timestamp",
+      "Tenant-bound CREATE/PENDING/unfinished reviewed-version conditional update only",
+      "NEEDS_REVIEW plus monotonically advanced version and one bounded USER audit in the same transaction",
+      "Job, target, window, claimed version and unfinished uniqueness hold remain unchanged",
+      "Lost commit acknowledgment returns fixed refresh-required 503, with no automatic retry",
+      "No module, route or worker registration; no automatic abandonment determination, repair, execute, rearm or clear"
+    ]
+  },
+  "validation": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": {
+        "passed": 781,
+        "passingSuites": 58,
+        "existingSkippedTests": 3,
+        "existingSkippedSuites": 1,
+        "newTests": 27
+      },
+      "architecture": "PASS",
+      "prismaValidate": "PASS"
+    },
+    "database": {
+      "result": "PASS",
+      "command": "node scripts/verify-sms-enqueue-intents.mjs",
+      "migrations": 15,
+      "priorActualProcessCrashes": 11,
+      "newActualProcessCrashes": 0,
+      "checks": [
+        "Owner/admin allowed; missing identity, other roles, cross-tenant, missing acknowledgment and stale version rejected",
+        "Both unsupported actions and all five non-PENDING statuses rejected",
+        "Exact job and non-status/version journal fields preserved",
+        "Two concurrent reviews yield one hold/audit",
+        "Actual audit insertion failure rolls back both writes",
+        "Actual committed transaction followed by lost acknowledgment retains one audited hold; stale retry refused",
+        "Review-before-executor latch prevents stale and fresh executor attempts/reads",
+        "Executor-before-review CAS preserves committed APPLIED winner and job, with no review audit",
+        "No new enqueue intents or communication events"
+      ],
+      "realProviderCalls": 0,
+      "fixture": "Parent-owned random Unix-socket PostgreSQL database",
+      "cleanup": "Removed; independent calldesk_app013_intents_% query returned no rows"
+    },
+    "ui": {
+      "changed": false,
+      "lintAndTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "build": "PASS"
+    },
+    "browser": {
+      "result": "PASS",
+      "kind": "Unchanged static-export regression suites with synthetic API responses; no new review UI or Firebase/HTTP/live-owner acceptance",
+      "viewports": [
+        1440,
+        390
+      ],
+      "artifacts": "/private/tmp/signmons-pending-review-qa.YVEVhy/evidence/APP-013",
+      "framework": {
+        "routes": 22,
+        "homeNavigations": 12,
+        "staticManifest": true,
+        "externalRequests": 0,
+        "errors": 0,
+        "failedResources": 0
+      },
+      "customerDispatch": {
+        "requests": 46,
+        "syntheticCustomerPosts": 22,
+        "dispatchMutationPosts": 0,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "technician": {
+        "requests": 26,
+        "syntheticConflictPosts": 2,
+        "initialHeldMutationPosts": 0,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "policy": {
+        "requests": 8,
+        "syntheticConflictPosts": 4,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "notifications": {
+        "requests": 95,
+        "syntheticPosts": 14,
+        "result": "PASS"
+      }
+    },
+    "audits": {
+      "backendFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      },
+      "backendOmitDev": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      },
+      "uiFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      },
+      "uiOmitDev": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    },
+    "warnings": [
+      "Existing pg concurrent-query deprecation",
+      "Existing Next lint/workspace-root warnings",
+      "Intentional PostCSS test fixture warning",
+      "Initial new-test formatting failure corrected with ESLint; full lint/tests/architecture/Prisma rerun passed"
+    ]
+  },
+  "limits": [
+    "Synthetic authenticated contexts and provider seams; no Firebase, live-owner or provider acceptance",
+    "A PENDING row alone cannot establish process death; this is an explicit reviewed stop, not automatic orphan detection",
+    "No terminal resolution or reservation release",
+    "No existing scheduling/payment/messaging behavior, schema/dependency/provider configuration or production changes"
+  ],
+  "remainingRisks": [
+    "Privacy-safe review-state projection",
+    "Attempted-operation recovery ownership",
+    "Blocked-customer payment handoff",
+    "Post-read/payment/provider/clock races",
+    "Legacy inventory/repair/retention",
+    "RESCHEDULE/CANCEL and SENDING recovery",
+    "Dependency override maintenance",
+    "Explicit live acceptance and release"
+  ],
+  "nextAfterReview": "One bounded privacy-safe review-state projection section; no activation",
+  "planningEstimates": {
+    "app013Percent": 85,
+    "app006ThroughApp016Percent": 81,
+    "note": "Unchanged planning estimates, not release readiness"
+  },
+  "reviewInstructions": "evidence/APP-013/readiness-report.md"
+}
