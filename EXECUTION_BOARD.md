@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Tenant-scoped appointment-email recipient snapshot is review-ready and inactive: private captured address from one valid origin/session, stale/lifecycle/Calendar/ambiguity refusals; never delivery-authorized. 1128 backend/159 UI tests, 6 successful/26 refused real database reads and browser/audit gates pass. APP-013 scope coverage stays 50%, formal acceptance 0/12; not launch readiness. Reassessed pilot allowance 20-35 unequal sections, low confidence. Next proposed after review: independent default-off customer-email event controls, no sending. Approved supervised pilot boundary remains CALLDESK_MVP_PLAN.md.
+  - Independent default-off customer-email event controls are review-ready: three preferences, owner/admin active-tenant API, atomic audit/version checks and SMS/email UI selector. 1157 backend/170 UI tests, real browser/database and audit gates pass. Email delivery unavailable; no consent grant or queue activation. Scope coverage stays 50%, acceptance 0/12; pilot allowance 20-35 unequal sections, low confidence, not ETA. Next proposed after review: durable finalized-appointment email intents with immutable event/window snapshots, no delivery. Approved pilot boundary remains CALLDESK_MVP_PLAN.md.
 
 ## Next
 

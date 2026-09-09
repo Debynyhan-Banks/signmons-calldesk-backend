@@ -8,7 +8,7 @@ export type SmsKey = (typeof SMS_KEYS)[number];
 export type SmsPreferences = Record<SmsKey, boolean>;
 export type MessagingSettings = {
   updatedAt: string;
-  source: "legacy" | "saved" | "invalid";
+  source: "legacy" | "default" | "saved" | "invalid";
   templates: {
     key: SmsKey;
     enabled: boolean;
@@ -58,7 +58,7 @@ export function settingsError(status?: number, saving = false) {
   if (status === 409)
     return "Settings changed or need review. Reload before saving again.";
   if (status === 400)
-    return "Settings were rejected. Reload and review all four preferences.";
+    return "Settings were rejected. Reload and review all preferences for this channel.";
   return saving
     ? "Save outcome is unconfirmed. Reload settings before saving again; do not assume it failed."
     : "Settings unavailable. Reload to try again.";
@@ -77,9 +77,13 @@ export async function requestMessagingSettings(
   token: string,
   signal: AbortSignal,
   input?: { expectedUpdatedAt: string; events: SmsPreferences },
+  channel: "sms" | "email" = "sms",
 ) {
   const response = await fetch(
-    apiOrigin + "/communications/customer-messaging-settings",
+    apiOrigin +
+      (channel === "email"
+        ? "/communications/customer-email-settings"
+        : "/communications/customer-messaging-settings"),
     {
       method: input ? "PUT" : "GET",
       credentials: "omit",
@@ -105,5 +109,47 @@ export async function requestMessagingSettings(
     !response.headers.get("content-type")?.startsWith("application/json")
   )
     throw new Error("Settings unavailable");
-  return parseMessagingSettings(await response.json());
+  return channel === "email"
+    ? parseEmailSettings(await response.json())
+    : parseMessagingSettings(await response.json());
+}
+
+export function parseEmailSettings(value: unknown): MessagingSettings {
+  const item = value as {
+    updatedAt: string;
+    source: "default" | "saved" | "invalid";
+    events: Record<string, boolean>;
+    recipientRole: string;
+    deliveryAvailable: boolean;
+  };
+  const keys = SMS_KEYS.slice(0, 3);
+  if (
+    !item ||
+    typeof item.updatedAt !== "string" ||
+    !Number.isFinite(Date.parse(item.updatedAt)) ||
+    new Date(item.updatedAt).toISOString() !== item.updatedAt ||
+    !["default", "saved", "invalid"].includes(item.source) ||
+    item.recipientRole !== "customer" ||
+    item.deliveryAvailable !== false ||
+    !item.events ||
+    Array.isArray(item.events) ||
+    Object.keys(item.events).length !== 3 ||
+    !keys.every(
+      (key) =>
+        Object.hasOwn(item.events, key) &&
+        typeof item.events[key] === "boolean",
+    ) ||
+    (item.source !== "saved" && keys.some((key) => item.events[key]))
+  )
+    throw new Error("Email settings unavailable");
+  return {
+    updatedAt: item.updatedAt,
+    source: item.source,
+    templates: keys.map((key) => ({
+      key,
+      enabled: item.events[key],
+      templateVersion: 1,
+      body: "Event preference only — this is not an email preview. Customer email delivery is unavailable. Saving does not send or replay a message.",
+    })),
+  };
 }

@@ -1,4 +1,6 @@
 import { Module } from "@nestjs/common";
+import { CustomerEmailSettingsController } from "./customer-email-settings.controller";
+import { CustomerEmailSettingsService } from "./customer-email-settings.service";
 import { CustomerMessagingSettingsController } from "./customer-messaging-settings.controller";
 import { CustomerMessagingSettingsService } from "./customer-messaging-settings.service";
 import { AuthModule } from "../auth/auth.module";
@@ -21,11 +23,13 @@ import { SmsEnqueueRecoveryService } from "./sms-enqueue-recovery.service";
 @Module({
   imports: [AuthModule],
   controllers: [
+    CustomerEmailSettingsController,
     TwilioWebhooksController,
     CommunicationsOperationsController,
     CustomerMessagingSettingsController,
   ],
   providers: [
+    CustomerEmailSettingsService,
     CustomerMessagingSettingsService,
     TwilioWebhookService,
     SmsConsentService,

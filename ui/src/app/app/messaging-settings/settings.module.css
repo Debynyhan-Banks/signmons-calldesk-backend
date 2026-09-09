@@ -47,7 +47,8 @@
   min-width: 200px;
   font-weight: bold;
 }
-.connection input {
+.connection input,
+.connection select {
   display: block;
   width: 100%;
   padding: 12px;

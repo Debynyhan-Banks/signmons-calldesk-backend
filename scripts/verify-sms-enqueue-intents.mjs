@@ -4,6 +4,7 @@ import { verifyCustomerMessagingSettings } from "./verify-customer-messaging-set
 import { verifyTechnicianNotifications } from "./verify-technician-notifications.mjs";
 import { verifyConversationEmail } from "./verify-conversation-email.mjs";
 import { verifyAppointmentEmailRecipient } from "./verify-appointment-email-recipient.mjs";
+import { verifyCustomerEmailSettings } from "./verify-customer-email-settings.mjs";
 import { randomBytes, createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -469,6 +470,11 @@ try {
     jobData,
     otherTenantId: other.id,
   });
+  const emailSettingsChecks = await verifyCustomerEmailSettings({
+    prisma,
+    tenantId: tenant.id,
+    otherTenantId: other.id,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -476,6 +482,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...emailSettingsChecks,
         ...emailRecipientChecks,
         ...emailCaptureChecks,
         ...technicianNotificationChecks,

@@ -12,6 +12,7 @@ import styles from "./settings.module.css";
 
 export default function MessagingSettingsPage() {
   const [token, setToken] = useState("");
+  const [channel, setChannel] = useState<"sms" | "email">("sms");
   const [snapshot, setSnapshot] = useState<MessagingSettings | null>(null);
   const [events, setEvents] = useState<SmsPreferences | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,7 +58,12 @@ export default function MessagingSettingsPage() {
     setNotice(saving ? "Saving preferences…" : "Loading settings…");
     const timer = setTimeout(() => abort.abort(), 15_000);
     try {
-      const result = await requestMessagingSettings(token, abort.signal, input);
+      const result = await requestMessagingSettings(
+        token,
+        abort.signal,
+        input,
+        channel,
+      );
       if (current !== generation.current) return;
       if (saving)
         setNotice(
@@ -71,7 +77,9 @@ export default function MessagingSettingsPage() {
           ) as SmsPreferences,
         );
         setNotice(
-          "Settings loaded. Previews use an example date and technician, not customer data.",
+          channel === "email"
+            ? "Email preferences loaded. Delivery is unavailable; these switches do not grant customer consent."
+            : "Settings loaded. Previews use an example date and technician, not customer data.",
         );
       }
     } catch (error) {
@@ -97,11 +105,24 @@ export default function MessagingSettingsPage() {
         <p className={styles.eyebrow}>Customer communications</p>
         <h1>Messaging settings</h1>
         <p>
-          Choose which customer SMS events are permitted. Preview the fixed
-          messages before saving.
+          Choose customer SMS or email event preferences independently. Email
+          delivery remains unavailable.
         </p>
       </header>
       <section className={styles.connection} aria-label="Owner connection">
+        <label>
+          Communication channel
+          <select
+            value={channel}
+            onChange={(e) => {
+              clear();
+              setChannel(e.target.value as "sms" | "email");
+            }}
+          >
+            <option value="sms">Customer SMS</option>
+            <option value="email">Customer email</option>
+          </select>
+        </label>
         <label>
           Operator ID token
           <input
@@ -133,7 +154,8 @@ export default function MessagingSettingsPage() {
       </p>
       <p className={styles.boundary}>
         Preferences do not turn delivery on or bypass consent, opt-out, quiet
-        hours, or Calendar checks. Email and other notification events are not
+        hours, or Calendar checks. Email preferences are not consent or proof of
+        a finalized booking. Other recipient roles and events are not
         configurable here.
       </p>
       {snapshot && events && (
@@ -144,11 +166,15 @@ export default function MessagingSettingsPage() {
           }}
         >
           <p>
-            {snapshot.source === "legacy"
-              ? "No saved preferences yet. Existing SMS events remain permitted, subject to all delivery controls."
-              : snapshot.source === "invalid"
-                ? "Stored preferences are invalid. All four events are blocked until valid settings are saved."
-                : "Saved tenant preferences"}
+            {snapshot.source === "default"
+              ? "No saved email preferences. All three events are blocked by default."
+              : snapshot.source === "legacy"
+                ? "No saved preferences yet. Existing SMS events remain permitted, subject to all delivery controls."
+                : snapshot.source === "invalid"
+                  ? channel === "email"
+                    ? "Stored email preferences need administrator review. All three events are blocked; saving is unavailable."
+                    : "Stored preferences are invalid. All four events are blocked until valid settings are saved."
+                  : "Saved tenant preferences"}
           </p>
           <div className={styles.cards}>
             {snapshot.templates.map((template) => (
@@ -172,8 +198,10 @@ export default function MessagingSettingsPage() {
                   {messageLabel(template.key)}
                 </label>
                 <p className={styles.meta}>
-                  Customer SMS · fixed template v{template.templateVersion} ·{" "}
-                  {events[template.key] ? "Permitted" : "Blocked"}
+                  {channel === "email"
+                    ? "Customer email · preference only"
+                    : `Customer SMS · fixed template v${template.templateVersion}`}{" "}
+                  · {events[template.key] ? "Permitted" : "Blocked"}
                 </p>
                 <blockquote>{template.body}</blockquote>
               </section>
@@ -190,12 +218,25 @@ export default function MessagingSettingsPage() {
               only when delivery is separately enabled and all checks pass.
             </label>
             <p>
-              Blocking stops new queue admission and suppresses queued messages
-              when checked before sending. It cannot recall an in-flight
-              message. Permitting an event does not replay previously stopped
-              notifications.
+              {channel === "email" ? (
+                "Email delivery is not connected. Saving changes only the tenant preference and its audit. It does not verify mailbox ownership, grant consent, issue links or queue a message."
+              ) : (
+                <>
+                  Blocking stops new queue admission and suppresses queued
+                  messages when checked before sending. It cannot recall an
+                  in-flight message. Permitting an event does not replay
+                  previously stopped notifications.
+                </>
+              )}
             </p>
-            <button disabled={busy || !acknowledged} type="submit">
+            <button
+              disabled={
+                busy ||
+                !acknowledged ||
+                (channel === "email" && snapshot.source === "invalid")
+              }
+              type="submit"
+            >
               Save preferences
             </button>
           </section>

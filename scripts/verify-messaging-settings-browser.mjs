@@ -11,6 +11,7 @@ export async function verifyMessagingSettingsBrowser({
   prisma,
   tenantId,
   otherTenantId,
+  channel = "sms",
 }) {
   const { Test } = require("@nestjs/testing"),
     { APP_GUARD } = require("@nestjs/core"),
@@ -22,6 +23,12 @@ export async function verifyMessagingSettingsBrowser({
   const {
     CustomerMessagingSettingsService,
   } = require("../dist/communications/customer-messaging-settings.service.js");
+  const {
+    CustomerEmailSettingsController,
+  } = require("../dist/communications/customer-email-settings.controller.js");
+  const {
+    CustomerEmailSettingsService,
+  } = require("../dist/communications/customer-email-settings.service.js");
   const {
     TransactionalMessageTemplateService,
   } = require("../dist/communications/transactional-message-template.service.js");
@@ -39,7 +46,10 @@ export async function verifyMessagingSettingsBrowser({
     forbiddenHeaders = [];
   const module = await Test.createTestingModule({
     imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }])],
-    controllers: [CustomerMessagingSettingsController],
+    controllers: [
+      CustomerMessagingSettingsController,
+      CustomerEmailSettingsController,
+    ],
     providers: [
       { provide: APP_GUARD, useClass: ThrottlerGuard },
       {
@@ -73,6 +83,7 @@ export async function verifyMessagingSettingsBrowser({
       { provide: PrismaService, useValue: prisma },
       { provide: LoggingService, useValue: { warn() {}, error() {} } },
       CustomerMessagingSettingsService,
+      CustomerEmailSettingsService,
       TransactionalMessageTemplateService,
     ],
   }).compile();
@@ -102,7 +113,10 @@ export async function verifyMessagingSettingsBrowser({
   );
   const output = await mkdtemp(join(tmpdir(), "signmons-messaging-settings-"));
   const evidence =
-    process.env.MESSAGING_SETTINGS_EVIDENCE_DIR ?? join(output, "evidence");
+    (channel === "email"
+      ? process.env.EMAIL_SETTINGS_EVIDENCE_DIR
+      : process.env.MESSAGING_SETTINGS_EVIDENCE_DIR) ??
+    join(output, "evidence");
   await mkdir(evidence, { recursive: true });
   try {
     await app.listen(0, "127.0.0.1");
@@ -193,7 +207,10 @@ export async function verifyMessagingSettingsBrowser({
         .waitFor();
     const auditWhere = {
       tenantId,
-      action: "communication.customer_sms_preferences_updated",
+      action:
+        channel === "email"
+          ? "communication.customer_email_preferences_updated"
+          : "communication.customer_sms_preferences_updated",
     };
     for (const [width, token] of [
       [1440, "owner"],
@@ -201,9 +218,28 @@ export async function verifyMessagingSettingsBrowser({
     ]) {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto(browserOrigin, { waitUntil: "load" });
+      await page.getByLabel("Communication channel").selectOption(channel);
       await load(token);
       await ready();
-      assert.equal(await page.getByRole("checkbox").count(), 5);
+      assert.equal(
+        await page.getByRole("checkbox").count(),
+        channel === "email" ? 4 : 5,
+      );
+      if (channel === "email" && width === 1440) {
+        assert.match(
+          await page.locator("main").innerText(),
+          /blocked by default/,
+        );
+        assert.equal(
+          await page
+            .getByRole("checkbox", {
+              name: "Appointment confirmed",
+              exact: true,
+            })
+            .isChecked(),
+          false,
+        );
+      }
       assert.equal(
         await page
           .getByRole("button", { name: "Save preferences" })
@@ -273,7 +309,110 @@ export async function verifyMessagingSettingsBrowser({
     }
     await load("other");
     await ready();
-    assert.match(await page.locator("main").innerText(), /Other Fixture/);
+    assert.match(
+      await page.locator("main").innerText(),
+      channel === "email" ? /blocked by default/ : /Other Fixture/,
+    );
+    if (channel === "email") {
+      const endpoint = api + "/communications/customer-email-settings";
+      const bad = await fetch(endpoint, {
+        method: "PUT",
+        headers: {
+          Authorization: "Bearer owner",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          expectedUpdatedAt: "2030-01-01T00:00:00.000Z",
+          events: {},
+          tenantId: otherTenantId,
+        }),
+      });
+      assert.equal(bad.status, 400);
+      assert.match(bad.headers.get("cache-control"), /no-store/);
+      // A late real GET must not repaint a different channel after cancellation.
+      let started, release;
+      const start = new Promise((resolve) => {
+        started = resolve;
+      });
+      const hold = new Promise((resolve) => {
+        release = resolve;
+      });
+      await page.route(endpoint, async (route) => {
+        const response = await route.fetch();
+        started();
+        await hold;
+        await route.fulfill({ response }).catch(() => {});
+      });
+      await page
+        .getByRole("button", { name: "Load settings", exact: true })
+        .click();
+      await start;
+      await page.getByLabel("Communication channel").selectOption("sms");
+      release();
+      await page.unroute(endpoint);
+      assert.equal(await page.getByRole("checkbox").count(), 0);
+      await page.getByLabel("Communication channel").selectOption("email");
+      await load("owner");
+      await ready();
+      // Commit succeeds, response is lost: UI must report uncertainty and require reload.
+      const before = await prisma.auditLog.count({ where: auditWhere });
+      await page.route(endpoint, async (route) => {
+        if (route.request().method() === "PUT") {
+          const result = await route.fetch();
+          assert.equal(result.status(), 200);
+          await route.fulfill({
+            status: 503,
+            headers: {
+              "Cache-Control": "private, no-store",
+              "Content-Type": "application/json",
+            },
+            body: "{}",
+          });
+        } else await route.continue();
+      });
+      await page.getByRole("checkbox", { name: /I reviewed/ }).check();
+      await page.getByRole("button", { name: "Save preferences" }).click();
+      await page
+        .getByText("Save outcome is unconfirmed.", { exact: false })
+        .waitFor();
+      assert.equal(
+        await prisma.auditLog.count({ where: auditWhere }),
+        before + 1,
+      );
+      assert.equal(await page.getByRole("checkbox").count(), 0);
+      await page.unroute(endpoint);
+      await load("owner");
+      await ready();
+      const tenant = await prisma.tenantOrganization.findUniqueOrThrow({
+        where: { id: tenantId },
+      });
+      await prisma.tenantOrganization.update({
+        where: { id: tenantId },
+        data: {
+          settings: {
+            ...tenant.settings,
+            customerEmailPreferences: { version: 2, events: {} },
+          },
+        },
+      });
+      await load("owner");
+      await ready();
+      assert.match(
+        await page.locator("main").innerText(),
+        /administrator review/,
+      );
+      await page.getByRole("checkbox", { name: /I reviewed/ }).check();
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Save preferences" })
+          .isDisabled(),
+        true,
+      );
+      await page.screenshot({
+        path: join(evidence, "email-invalid-mobile.png"),
+        fullPage: true,
+      });
+    }
     await page.getByRole("button", { name: "Clear session" }).click();
     assert.equal(await page.getByRole("checkbox").count(), 0);
     assert.equal(
@@ -285,13 +424,23 @@ export async function verifyMessagingSettingsBrowser({
     assert.deepEqual(external, []);
     assert.deepEqual(forbiddenHeaders, []);
     assert.ok(methods.OPTIONS > 0);
-    assert.equal(methods.PUT, 3);
+    assert.equal(methods.PUT, channel === "email" ? 5 : 3);
     const summary = {
       result: "PASS",
+      channel,
       methods,
       real: "React browser fetch/CORS -> Nest verified-role/tenant boundary -> settings service -> disposable PostgreSQL",
       synthetic: ["Firebase verifier"],
-      persistedSaves: 2,
+      persistedSaves: channel === "email" ? 3 : 2,
+      ...(channel === "email"
+        ? {
+            defaultOff: true,
+            strictBody: true,
+            channelSwitchDiscardsLateResponse: true,
+            committedButLostResponseRequiresReload: true,
+            unknownVersionSaveDisabled: true,
+          }
+        : {}),
       staleSaveRefused: true,
       desktopMobile: true,
       providerCalls: 0,
