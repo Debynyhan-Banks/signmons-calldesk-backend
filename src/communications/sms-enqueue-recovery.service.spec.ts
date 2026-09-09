@@ -24,7 +24,7 @@ describe("SmsEnqueueRecoveryService", () => {
     serviceWindowStart: now,
     serviceWindowEnd: new Date(now.getTime() + 60_000),
     calendarOperations: [],
-    tenant: { name: "Fixture", timezone: "UTC" },
+    tenant: { settings: {}, name: "Fixture", timezone: "UTC" },
     customer: { phone: "+15555550123" },
     assignedUser: null,
   } as const;

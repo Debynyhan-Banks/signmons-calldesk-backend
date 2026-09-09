@@ -34,7 +34,11 @@ describe("TransactionalMessagingService", () => {
       serviceWindowStart: new Date("2026-09-09T14:00:00.000Z"),
       serviceWindowEnd: new Date("2026-09-09T16:00:00.000Z"),
       calendarOperations: [],
-      tenant: { name: "Eternity Mechanical", timezone: "America/New_York" },
+      tenant: {
+        settings: {},
+        name: "Eternity Mechanical",
+        timezone: "America/New_York",
+      },
       customer: { phone: "+12165550183" },
       assignedUser: {
         id: "20000000-0000-4000-8000-000000000002",
@@ -88,6 +92,40 @@ describe("TransactionalMessagingService", () => {
           createService().queueLifecycle({ ...input, expectedStateHash }),
         ).rejects.toBeInstanceOf(CalendarOperationPendingError);
       }
+      expect(delivery.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(Object.values(TransactionalMessageTemplateKey))(
+    "blocks %s queue admission when tenant preferences disable it",
+    async (templateKey) => {
+      const job = (await prisma.job.findUnique()) as TransactionalMessageJob;
+      prisma.job.findUnique.mockResolvedValue({
+        ...job,
+        status: "CANCELLED",
+        tenant: {
+          ...job.tenant,
+          settings: {
+            customerSmsPreferences: {
+              version: 1,
+              events: Object.fromEntries(
+                Object.values(TransactionalMessageTemplateKey).map((key) => [
+                  key,
+                  false,
+                ]),
+              ),
+            },
+          },
+        },
+      });
+      await expect(
+        createService().queue({
+          tenantId,
+          jobId,
+          templateKey,
+          idempotencyKey: "preference",
+        }),
+      ).rejects.toThrow("disabled by tenant");
       expect(delivery.create).not.toHaveBeenCalled();
     },
   );

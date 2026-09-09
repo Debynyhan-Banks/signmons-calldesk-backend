@@ -1,4 +1,5 @@
 import { SmsEnqueueIntentStatus } from "@prisma/client";
+import { CustomerSmsPreferenceError } from "./customer-messaging-policy";
 import { CalendarOperationPendingError } from "../scheduling/calendar-operation-guard";
 import { SmsEnqueueIntentService } from "./sms-enqueue-intent.service";
 import { StaleMessageIntentError } from "./transactional-messaging.service";
@@ -66,6 +67,25 @@ describe("SmsEnqueueIntentService", () => {
     });
   });
 
+  it("stops disabled preferences with a fixed reason instead of automatic retries", async () => {
+    const { prisma, service, messaging } = harness();
+    messaging.queueLifecycle.mockRejectedValue(
+      new CustomerSmsPreferenceError(),
+    );
+    await service.processOne({
+      tenantId: intent.tenantId,
+      intentId: intent.id,
+    });
+    expect(prisma.smsEnqueueIntent.updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "STALE",
+          lastErrorCode: "suppressed_tenant_preference",
+        }),
+      }),
+    );
+  });
+
   it("does no processing or reads while delivery is disabled", async () => {
     const { prisma, service, messaging } = harness(false);
     expect(await service.processDue()).toBe(0);
@@ -87,7 +107,7 @@ describe("SmsEnqueueIntentService", () => {
       technicianStatusUpdatedAt: now,
       customer: { phone: "+15555550123" },
       calendarOperations: [],
-      tenant: { name: "Fixture", timezone: "UTC" },
+      tenant: { settings: {}, name: "Fixture", timezone: "UTC" },
       assignedUser: { id: "tech-1", fullName: "Fixture Tech" },
     });
     await service.recordDeparture(prisma as never, {
@@ -132,7 +152,7 @@ describe("SmsEnqueueIntentService", () => {
         deletedAt: null,
         customer: { phone: "+15555550123" },
         calendarOperations: [],
-        tenant: { name: "Fixture", timezone: "UTC" },
+        tenant: { settings: {}, name: "Fixture", timezone: "UTC" },
         calendarEventId: "calendar-1",
         serviceWindowStart: now,
         serviceWindowEnd: new Date(now.getTime() + 60_000),
@@ -191,7 +211,7 @@ describe("SmsEnqueueIntentService", () => {
       deletedAt: null,
       customer: { phone: "+15555550123" },
       calendarOperations: [],
-      tenant: { name: "Fixture", timezone: "UTC" },
+      tenant: { settings: {}, name: "Fixture", timezone: "UTC" },
     };
     prisma.job.findUnique.mockResolvedValue({ ...job, status: "ACCEPTED" });
     await expect(

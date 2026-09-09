@@ -1,4 +1,5 @@
 import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import { CustomerSmsPreferenceError } from "./customer-messaging-policy";
 import type { ConfigType } from "@nestjs/config";
 import { Prisma, SmsEnqueueIntentStatus } from "@prisma/client";
 import appConfig from "../config/app.config";
@@ -181,7 +182,8 @@ export class SmsEnqueueIntentService {
         });
         return;
       }
-      const stale = error instanceof StaleMessageIntentError;
+      const suppressed = error instanceof CustomerSmsPreferenceError;
+      const stale = error instanceof StaleMessageIntentError || suppressed;
       const failures = Math.min(
         intent.attemptCount + 1,
         SMS_ENQUEUE_MAX_FAILURES,
@@ -195,7 +197,11 @@ export class SmsEnqueueIntentService {
               ? SmsEnqueueIntentStatus.FAILED
               : SmsEnqueueIntentStatus.PENDING,
           attemptCount: failures,
-          lastErrorCode: stale ? "stale_lifecycle_state" : "enqueue_failed",
+          lastErrorCode: suppressed
+            ? "suppressed_tenant_preference"
+            : stale
+              ? "stale_lifecycle_state"
+              : "enqueue_failed",
           nextAttemptAt: new Date(now.getTime() + LEASE_MS * 2 ** failures),
         },
       });

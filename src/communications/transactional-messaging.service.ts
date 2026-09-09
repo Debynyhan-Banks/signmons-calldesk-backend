@@ -4,6 +4,10 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  customerSmsAllowed,
+  CustomerSmsPreferenceError,
+} from "./customer-messaging-policy";
 import { CalendarOperationPendingError } from "../scheduling/calendar-operation-guard";
 import { SmsDeliveryService } from "./sms-delivery.service";
 import {
@@ -91,6 +95,8 @@ export class TransactionalMessagingService {
     idempotencyKey: string;
     job: TransactionalMessageJob;
   }) {
+    if (!customerSmsAllowed(input.job.tenant.settings, input.templateKey))
+      throw new CustomerSmsPreferenceError();
     if (
       evaluateTransactionalMessageState(input.templateKey, input.job) !==
       "AVAILABLE"

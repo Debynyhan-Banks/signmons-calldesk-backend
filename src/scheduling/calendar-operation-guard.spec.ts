@@ -30,7 +30,7 @@ describe("unfinished Calendar consumer policy", () => {
         calendarEventId: null,
         serviceWindowStart: null,
         serviceWindowEnd: null,
-        tenant: { name: "Fixture", timezone: "UTC" },
+        tenant: { settings: {}, name: "Fixture", timezone: "UTC" },
         customer: { phone: "+15555550123" },
       } as TransactionalMessageJob;
       expect(evaluateTransactionalMessageState(template, job)).toBe(

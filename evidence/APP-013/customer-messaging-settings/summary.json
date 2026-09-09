@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-09",
+  "scope": "APP-013 Customer Messaging Settings",
+  "baselineBackend": "a42f0a42660cb148734e67e81985a4765cc5bfae",
+  "baselineGovernance": "371f3b06ec4d077eb35fdda40d3dea49a0ae612c",
+  "result": "PASS",
+  "backend": { "tests": 989, "passingSuites": 64, "existingSkippedTests": 3, "existingSkippedSuites": 1, "lint": "PASS", "build": "PASS", "architecture": "PASS", "prismaValidation": "PASS" },
+  "ui": { "tests": 145, "lint": "PASS", "typecheck": "PASS", "build": "PASS", "staticPages": 15 },
+  "audits": { "backendFull": 0, "backendProduction": 0, "uiFull": 0, "uiProduction": 0 },
+  "database": {
+    "kind": "disposable local Unix-socket PostgreSQL",
+    "existingMigrations": 16,
+    "priorActualCrashCases": 11,
+    "newCrashCases": 0,
+    "checks": ["persisted preferences", "unrelated JSON preserved", "tenant/role refusal", "stale CAS refusal", "concurrent single winner and one audit", "audit failure rolls back settings", "four-template queue admission suppression", "four-template pre-send suppression", "reenable does not replay stopped records", "delivery worker remains disabled"],
+    "removed": true,
+    "absenceIndependentlyVerified": true,
+    "providerCalls": 0
+  },
+  "browser": {
+    "summary": "browser-summary.json",
+    "viewports": [1440, 390],
+    "screenshotsVisuallyInspected": ["settings-1440.png", "settings-390.png"],
+    "text200PercentNoOverflow": true,
+    "real": ["React page", "browser fetch and CORS", "Nest auth and tenant guards", "settings service", "PostgreSQL"],
+    "synthetic": ["Firebase token verification"],
+    "existingStaticRegressions": { "framework": "PASS", "calendarGuard": "PASS", "technicianCalendarGuard": "PASS", "policyCalendarGuard": "PASS", "notifications": "PASS" }
+  },
+  "governance": { "placementTests": 4, "consistency": "PASS", "activeTicket": "APP-013", "acceptanceCriteriaSignedOff": 0, "acceptanceCriteriaTotal": 12 },
+  "completionEstimate": "Prior APP-013 85 percent and overall 81 percent estimates retired. One more review-ready workflow, not full acceptance. No defensible percentage or ETA yet.",
+  "notPerformed": ["real identity acceptance", "deployed API/CORS acceptance", "provider configuration", "external send", "production data access", "production migration", "merge", "deployment", "billing or secret/IAM change"],
+  "remainingRisks": ["check-to-provider and in-flight delivery race", "identity/session deployed acceptance", "remaining email and technician/other-event workflows", "Calendar recovery and migration/release ordering", "dependency override maintenance"]
+}

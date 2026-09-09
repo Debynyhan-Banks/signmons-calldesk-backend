@@ -16,7 +16,7 @@ export const transactionalMessageJobSelect = {
   calendarEventId: true,
   serviceWindowStart: true,
   serviceWindowEnd: true,
-  tenant: { select: { name: true, timezone: true } },
+  tenant: { select: { name: true, timezone: true, settings: true } },
   customer: { select: { phone: true } },
   assignedUser: { select: { id: true, fullName: true } },
 } satisfies Prisma.JobSelect;

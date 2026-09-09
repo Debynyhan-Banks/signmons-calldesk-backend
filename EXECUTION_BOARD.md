@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Inactive subscribed Calendar review panel/browser HTTP integration is review-ready on PR #21: descriptor subscription and credential-aware clear, 20 actual GETs/20 CORS preflights/19 read-double queries, six cancelled delayed reads with no stale data. 135 UI and 962 backend tests, browser/DB/audit gates pass. No activation. Next agreed step is APP-013 acceptance-gap review and user-facing workflow prioritization, not automatic additional remediation.
+  - Owner approved Customer Messaging Settings for the four existing customer SMS templates: fixed branded previews, owner/admin tenant event preferences, queue/pre-send enforcement, local end-to-end proof. No free-text templates, new channels/events, provider configuration, delivery activation or deployment. APP-013 remains Now; former percentage estimates are retired pending acceptance-based reassessment.
 
 ## Next
 

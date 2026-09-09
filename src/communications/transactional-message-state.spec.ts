@@ -18,7 +18,7 @@ describe("legacy reservation messaging hold", () => {
     serviceWindowStart: start,
     serviceWindowEnd: end,
     calendarOperations: [],
-    tenant: { name: "Fixture", timezone: "UTC" },
+    tenant: { settings: {}, name: "Fixture", timezone: "UTC" },
     customer: { phone: "+15555550123" },
     assignedUser: { id: "tech", fullName: "Fixture Tech" },
   };

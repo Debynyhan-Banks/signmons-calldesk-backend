@@ -1,0 +1,20 @@
+{
+  "result": "PASS",
+  "methods": {
+    "GET": 7,
+    "PUT": 3,
+    "OPTIONS": 10
+  },
+  "real": "React browser fetch/CORS -> Nest verified-role/tenant boundary -> settings service -> disposable PostgreSQL",
+  "synthetic": [
+    "Firebase verifier"
+  ],
+  "persistedSaves": 2,
+  "staleSaveRefused": true,
+  "desktopMobile": true,
+  "providerCalls": 0,
+  "pageErrors": [],
+  "external": [],
+  "forbiddenHeaders": [],
+  "evidence": "/private/tmp/signmons-messaging-settings-proof"
+}

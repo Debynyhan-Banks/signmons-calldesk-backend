@@ -52,7 +52,11 @@ describe("SmsDeliveryService", () => {
     serviceWindowStart: new Date("2026-09-09T14:00:00.000Z"),
     serviceWindowEnd: new Date("2026-09-09T16:00:00.000Z"),
     calendarOperations: [],
-    tenant: { name: "Example Contractor", timezone: "America/New_York" },
+    tenant: {
+      settings: {},
+      name: "Example Contractor",
+      timezone: "America/New_York",
+    },
     customer: { phone: to },
     assignedUser: {
       id: "30000000-0000-4000-8000-000000000003",
@@ -89,6 +93,61 @@ describe("SmsDeliveryService", () => {
       status: "queued",
     });
   });
+
+  it.each([false, "malformed"])(
+    "suppresses a previously queued message for blocked/invalid preferences %s",
+    async (value) => {
+      const templateKey = TransactionalMessageTemplateKey.APPOINTMENT_CONFIRMED;
+      prisma.job.findUnique.mockResolvedValue({
+        ...lifecycleJob,
+        tenant: {
+          ...lifecycleJob.tenant,
+          settings: {
+            customerSmsPreferences:
+              value === false
+                ? {
+                    version: 1,
+                    events: Object.fromEntries(
+                      Object.values(TransactionalMessageTemplateKey).map(
+                        (key) => [key, false],
+                      ),
+                    ),
+                  }
+                : value,
+          },
+        },
+      });
+      prisma.communicationEvent.findUniqueOrThrow.mockResolvedValue({
+        id: eventId,
+        tenantId,
+        jobId: lifecycleJob.id,
+        attemptCount: 1,
+        content: {
+          encryptedRaw: "encrypted",
+          payload: {
+            kind: "transactional_sms",
+            templateKey,
+            lifecycleStateHash: transactionalMessageStateHash(
+              templateKey,
+              lifecycleJob,
+            ),
+          },
+        },
+      });
+      expect(await createService().deliver(tenantId, eventId)).toBe(
+        "DEAD_LETTER",
+      );
+      expect(provider.send).not.toHaveBeenCalled();
+      expect(cipher.decrypt).not.toHaveBeenCalled();
+      expect(prisma.communicationEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            lastErrorCode: "suppressed_tenant_preference",
+          }),
+        }),
+      );
+    },
+  );
 
   it("creates one encrypted, privacy-safe queue record and reuses its idempotency key", async () => {
     const service = createService();

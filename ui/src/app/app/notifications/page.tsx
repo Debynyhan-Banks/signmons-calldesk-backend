@@ -194,6 +194,7 @@ export default function NotificationsPage() {
           <a href="/app/notifications" aria-current="page">
             Notification center
           </a>
+          <a href="/app/messaging-settings">Messaging settings</a>
         </nav>
         <p>
           Operational visibility.

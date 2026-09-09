@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { customerSmsAllowed } from "./customer-messaging-policy";
 import {
   BadRequestException,
   ConflictException,
@@ -511,6 +512,8 @@ export class SmsDeliveryService {
       },
       select: transactionalMessageJobSelect,
     });
+    if (job && !customerSmsAllowed(job.tenant.settings, templateKey))
+      return "suppressed_tenant_preference";
     if (
       evaluateTransactionalMessageState(templateKey, job) === "CALENDAR_PENDING"
     )
