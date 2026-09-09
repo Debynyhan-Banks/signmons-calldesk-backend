@@ -23,6 +23,7 @@ import {
   technicianTokenFromHash,
 } from "@/lib/technician-workflow";
 import styles from "./technician.module.css";
+import { TechnicianInbox } from "@/components/TechnicianInbox";
 
 const groupLabels: Record<TechnicianJobGroup, string> = {
   today: "Today",
@@ -235,6 +236,7 @@ export default function TechnicianPage() {
 
         {!loading && data && (
           <>
+            <TechnicianInbox token={token} />
             <nav className={styles.tabs} aria-label="Job groups">
               {(Object.keys(groupLabels) as TechnicianJobGroup[]).map((key) => (
                 <button

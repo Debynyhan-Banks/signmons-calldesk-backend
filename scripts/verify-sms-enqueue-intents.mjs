@@ -1,6 +1,7 @@
 // Explicit local-only integration proof. Creates and drops its own PostgreSQL database.
 import assert from "node:assert/strict";
 import { verifyCustomerMessagingSettings } from "./verify-customer-messaging-settings.mjs";
+import { verifyTechnicianNotifications } from "./verify-technician-notifications.mjs";
 import { randomBytes, createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -451,6 +452,11 @@ try {
     jobData,
     otherTenantId: other.id,
   });
+  const technicianNotificationChecks = await verifyTechnicianNotifications({
+    prisma,
+    jobData,
+    otherTenantId: other.id,
+  });
   await prisma.tenantOrganization.delete({ where: { id: tenant.id } });
   assert.equal(await prisma.smsEnqueueIntent.count(), 0);
   console.log(
@@ -458,6 +464,7 @@ try {
       result: "PASS",
       migrations: directories.length,
       checks: [
+        ...technicianNotificationChecks,
         ...messagingSettingsChecks,
         ...uncertainRecoveryChecks,
         ...appliedRecoveryChecks,

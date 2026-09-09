@@ -1,0 +1,98 @@
+.inbox {
+  overflow-wrap: anywhere;
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  border: 1px solid #b9cbe0;
+  border-radius: 1rem;
+  background: #fff;
+  color: #143451;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.heading h2 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+.eyebrow {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.actions button {
+  background: #143c61;
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  min-height: 44px;
+}
+.actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.actions button:focus-visible {
+  outline: 3px solid #187ac5;
+  outline-offset: 3px;
+}
+.boundary {
+  border-left: 4px solid #33688e;
+  padding: 0.75rem 1rem;
+  background: #edf4fa;
+}
+.meta {
+  font-size: 0.875rem;
+  color: #435e78;
+}
+.list {
+  padding: 0;
+  list-style: none;
+  margin: 0;
+}
+.list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid #d5e0eb;
+  overflow-wrap: anywhere;
+}
+.list p {
+  margin: 0.25rem 0 0;
+}
+.list time {
+  font-size: 0.875rem;
+  color: #435e78;
+}
+@media (max-width: 600px) {
+  .inbox {
+    padding: 1rem;
+  }
+  .list li {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .actions {
+    width: 100%;
+  }
+  .actions button {
+    flex: 1 1 100%;
+  }
+}
