@@ -1,13 +1,16 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { getRequestContext } from "../common/context/request-context";
 import { PrismaService } from "../prisma/prisma.service";
 import { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.service";
+import { AppointmentEmailConsentEvidenceStore } from "./appointment-email-consent-evidence";
 import {
   CustomerConsentCredentials,
   ConsentSessionClaims,
@@ -20,6 +23,7 @@ const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const changed = () =>
   new ConflictException("Customer intake changed or is unavailable.");
+const reviewRoles = new Set(["owner", "admin", "dispatcher"]);
 function text(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -53,7 +57,244 @@ export class CustomerIntakeContinuationService {
     >,
     private readonly credentials: CustomerConsentCredentials,
     private readonly collaborator?: CustomerIntakeReply,
+    private readonly consentEvidence?: Pick<
+      AppointmentEmailConsentEvidenceStore,
+      "bindJob"
+    >,
   ) {}
+
+  /** Inactive local admission only. There is no controller/module registration.
+   * Verified operator context supplies authority; the customer credential supplies
+   * session ownership. Calendar, payment, notification and provider work stay off.
+   */
+  async admitDraft(input: {
+    sessionToken: string;
+    expectedRevision: number;
+    draft: unknown;
+    review: unknown;
+  }) {
+    if (
+      !input ||
+      typeof input !== "object" ||
+      Array.isArray(input) ||
+      Object.keys(input).sort().join(",") !==
+        "draft,expectedRevision,review,sessionToken" ||
+      typeof input.sessionToken !== "string" ||
+      input.sessionToken.length > 4096 ||
+      !Number.isInteger(input.expectedRevision) ||
+      input.expectedRevision < 1 ||
+      input.expectedRevision > 20
+    )
+      throw new BadRequestException("Invalid intake admission request.");
+    const draft = validateCustomerIntakeDraft(input.draft);
+    const review = this.review(input.review);
+    const context = this.operator();
+    const session = this.credentials.verifySession(input.sessionToken);
+    if (session.tenantId !== context.tenantId)
+      throw new ForbiddenException("Intake review is unavailable.");
+    const admissionDigest = createHash("sha256")
+      .update(
+        JSON.stringify({
+          version: 1,
+          tenantId: context.tenantId,
+          actorId: context.actorId,
+          conversationId: session.conversationId,
+          sessionId: session.sessionId,
+          transcriptRevision: input.expectedRevision,
+          draft,
+          review,
+        }),
+      )
+      .digest("hex");
+    try {
+      return await this.transaction(async (tx) => {
+        const sessionRow = await lockCustomerConsentSession(tx, session);
+        this.credentials.verifySession(input.sessionToken);
+        const prior = await tx.job.findUnique({
+          where: {
+            tenantId_intakeSessionId: {
+              tenantId: session.tenantId,
+              intakeSessionId: session.sessionId,
+            },
+          },
+          select: {
+            id: true,
+            status: true,
+            urgency: true,
+            policySnapshot: true,
+            deletedAt: true,
+            conversationLinks: {
+              where: {
+                tenantId: session.tenantId,
+                conversationId: session.conversationId,
+                relationType: "CREATED_FROM",
+              },
+              select: { id: true },
+              take: 2,
+            },
+            emailConsentBinding: { select: { scopeId: true } },
+          },
+        });
+        if (prior)
+          return this.admissionReplay(
+            prior,
+            admissionDigest,
+            input.expectedRevision,
+          );
+        if (sessionRow.status !== "ONGOING") throw changed();
+        const history = await this.history(tx, session, true);
+        if (history.turns.length !== input.expectedRevision) throw changed();
+        const consent = await this.consentState(tx, session);
+        const category = await tx.serviceCategory.findFirst({
+          where: { tenantId: session.tenantId, name: draft.issueCategory },
+          select: { id: true },
+        });
+        if (!category)
+          throw new ConflictException(
+            "The reviewed service category is not available for this business.",
+          );
+        const customer = await tx.customer.upsert({
+          where: {
+            tenantId_phone: {
+              tenantId: session.tenantId,
+              phone: draft.phone,
+            },
+          },
+          update: { fullName: draft.customerName, updatedAt: new Date() },
+          create: {
+            id: randomUUID(),
+            tenantId: session.tenantId,
+            phone: draft.phone,
+            fullName: draft.customerName,
+          },
+          select: { id: true, deletedAt: true },
+        });
+        if (customer.deletedAt) throw changed();
+        const address = await tx.propertyAddress.create({
+          data: {
+            id: randomUUID(),
+            tenantId: session.tenantId,
+            customerId: customer.id,
+            customerTenantId: session.tenantId,
+            googlePlaceId: randomUUID(),
+            formattedAddress: draft.address,
+            addressComponents: {},
+            latitude: 0,
+            longitude: 0,
+          },
+          select: { id: true },
+        });
+        const job = await tx.job.create({
+          data: {
+            id: randomUUID(),
+            tenantId: session.tenantId,
+            customerId: customer.id,
+            customerTenantId: session.tenantId,
+            propertyAddressId: address.id,
+            propertyAddressTenantId: session.tenantId,
+            serviceCategoryId: category.id,
+            serviceCategoryTenantId: session.tenantId,
+            status: "CREATED",
+            urgency: review.urgency,
+            description: draft.description,
+            intakeSessionId: session.sessionId,
+            pricingSnapshot: {},
+            policySnapshot: {
+              propertyType: draft.propertyType,
+              serviceIntent: draft.serviceIntent,
+              leadAttribution: { channel: "website_chat" },
+              urgencyDecision: {
+                source: "OPERATOR_OVERRIDE",
+                level: review.urgency,
+                reasonCodes: ["HUMAN_INTAKE_REVIEW"],
+                confidenceNote:
+                  "Authorized operator reviewed customer-stated intake.",
+              },
+              intakeAdmission: {
+                version: 1,
+                digest: admissionDigest,
+                transcriptRevision: input.expectedRevision,
+                reviewReasonCode: review.reasonCode,
+                humanReviewed: true,
+                contactVerification: "NOT_VERIFIED",
+                addressVerification: "NOT_VERIFIED",
+                emailChoice: consent.choice,
+              },
+            } satisfies Prisma.InputJsonValue,
+          },
+          select: { id: true, status: true, urgency: true },
+        });
+        const link = await tx.conversationJobLink.create({
+          data: {
+            id: randomUUID(),
+            tenantId: session.tenantId,
+            conversationId: session.conversationId,
+            conversationTenantId: session.tenantId,
+            jobId: job.id,
+            jobTenantId: session.tenantId,
+            relationType: "CREATED_FROM",
+          },
+          select: { id: true },
+        });
+        if (consent.scopeId) {
+          if (!this.consentEvidence)
+            throw new ServiceUnavailableException(
+              "Intake consent binding is unavailable.",
+            );
+          await this.consentEvidence.bindJob(tx, {
+            tenantId: session.tenantId,
+            conversationId: session.conversationId,
+            jobId: job.id,
+          });
+        }
+        await tx.auditLog.create({
+          data: {
+            tenantId: session.tenantId,
+            entityType: "Job",
+            entityId: job.id,
+            actorType: "USER",
+            actorId: context.actorId,
+            action: "job.customer_intake_admitted",
+            metadata: {
+              version: 1,
+              transcriptRevision: input.expectedRevision,
+              urgency: review.urgency,
+              reviewReasonCode: review.reasonCode,
+              humanReviewed: true,
+              customerStatementsVerified: false,
+              consentEvidence: consent.scopeId ? "BOUND" : "NOT_RECORDED",
+              originLinkId: link.id,
+            } satisfies Prisma.InputJsonValue,
+            traceId: context.traceId,
+          },
+        });
+        const closed = await tx.conversation.updateMany({
+          where: {
+            id: session.conversationId,
+            tenantId: session.tenantId,
+            status: "ONGOING",
+            deletedAt: null,
+          },
+          data: { status: "COMPLETED", currentFSMState: "JOB_CREATED" },
+        });
+        if (closed.count !== 1) throw changed();
+        this.credentials.verifySession(input.sessionToken);
+        return this.admissionReceipt({
+          id: job.id,
+          status: job.status,
+          urgency: job.urgency,
+          transcriptRevision: input.expectedRevision,
+          consentEvidence: consent.scopeId ? "BOUND" : "NOT_RECORDED",
+        });
+      });
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500)
+        throw error;
+      throw new ServiceUnavailableException(
+        "Intake admission outcome is unconfirmed. Retry only the exact reviewed request with the same unexpired session.",
+      );
+    }
+  }
 
   /** Read-only preview. No job, consent mutation, finalization or delivery admission. */
   async previewDraft(input: {
@@ -264,8 +505,11 @@ export class CustomerIntakeContinuationService {
   private async history(
     tx: Prisma.TransactionClient,
     session: ConsentSessionClaims,
+    sessionAlreadyLocked = false,
   ) {
-    const row = await lockCustomerConsentSession(tx, session);
+    const row = sessionAlreadyLocked
+      ? { status: "ONGOING" }
+      : await lockCustomerConsentSession(tx, session);
     if (row.status !== "ONGOING") throw changed();
     if (
       await tx.conversationJobLink.count({
@@ -336,6 +580,154 @@ export class CustomerIntakeContinuationService {
     return {
       turns,
       digest: createHash("sha256").update(JSON.stringify(rows)).digest("hex"),
+    };
+  }
+
+  private operator() {
+    const context = getRequestContext();
+    const role = context?.role?.trim().toLowerCase();
+    if (
+      !context?.tenantId ||
+      !context.userId ||
+      context.userId.length > 128 ||
+      !role ||
+      !reviewRoles.has(role) ||
+      context.impersonatedTenantId
+    )
+      throw new ForbiddenException(
+        "Intake admission requires a verified owner, admin, or dispatcher.",
+      );
+    return {
+      tenantId: context.tenantId,
+      actorId: context.userId,
+      traceId:
+        typeof context.requestId === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          context.requestId,
+        )
+          ? context.requestId
+          : undefined,
+    };
+  }
+
+  private review(value: unknown) {
+    if (
+      !value ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
+      Object.keys(value).sort().join(",") !==
+        "acknowledgeCustomerStatements,reasonCode,urgency"
+    )
+      throw new BadRequestException("Invalid intake review decision.");
+    const v = value as Record<string, unknown>;
+    if (
+      v.acknowledgeCustomerStatements !== true ||
+      typeof v.urgency !== "string" ||
+      !["EMERGENCY", "HIGH", "STANDARD"].includes(v.urgency) ||
+      v.reasonCode !== "OPERATOR_REVIEWED_INTAKE"
+    )
+      throw new BadRequestException("Invalid intake review decision.");
+    return {
+      urgency: v.urgency as "EMERGENCY" | "HIGH" | "STANDARD",
+      reasonCode: "OPERATOR_REVIEWED_INTAKE" as const,
+      acknowledgeCustomerStatements: true as const,
+    };
+  }
+
+  private async consentState(
+    tx: Prisma.TransactionClient,
+    session: ConsentSessionClaims,
+  ) {
+    const scope = await tx.appointmentEmailConsentScope.findUnique({
+      where: {
+        tenantId_conversationId: {
+          tenantId: session.tenantId,
+          conversationId: session.conversationId,
+        },
+      },
+    });
+    if (!scope) return { scopeId: null, choice: "NOT_RECORDED" as const };
+    if (scope.sessionId !== session.sessionId) throw changed();
+    const evidence = await tx.appointmentEmailConsentEvidence.findFirst({
+      where: { scopeId: scope.id },
+      orderBy: { revision: "desc" },
+    });
+    if (
+      !evidence ||
+      !["GRANTED", "DECLINED", "REVOKED"].includes(evidence.decision)
+    )
+      throw changed();
+    return { scopeId: scope.id, choice: evidence.decision };
+  }
+
+  private admissionReplay(
+    prior: {
+      id: string;
+      status: string;
+      urgency: string;
+      policySnapshot: Prisma.JsonValue;
+      deletedAt: Date | null;
+      conversationLinks: { id: string }[];
+      emailConsentBinding: { scopeId: string } | null;
+    },
+    digest: string,
+    transcriptRevision: number,
+  ) {
+    const policy =
+      prior.policySnapshot &&
+      typeof prior.policySnapshot === "object" &&
+      !Array.isArray(prior.policySnapshot)
+        ? (prior.policySnapshot as Record<string, unknown>)
+        : null;
+    const admission =
+      policy?.intakeAdmission &&
+      typeof policy.intakeAdmission === "object" &&
+      !Array.isArray(policy.intakeAdmission)
+        ? (policy.intakeAdmission as Record<string, unknown>)
+        : null;
+    const consentEvidence =
+      admission?.emailChoice === "NOT_RECORDED"
+        ? "NOT_RECORDED"
+        : prior.emailConsentBinding
+          ? "BOUND"
+          : null;
+    if (
+      prior.deletedAt ||
+      prior.status !== "CREATED" ||
+      admission?.version !== 1 ||
+      admission.digest !== digest ||
+      admission.transcriptRevision !== transcriptRevision ||
+      admission.humanReviewed !== true ||
+      prior.conversationLinks.length !== 1 ||
+      !consentEvidence
+    )
+      throw changed();
+    return this.admissionReceipt({
+      id: prior.id,
+      status: prior.status,
+      urgency: prior.urgency,
+      transcriptRevision,
+      consentEvidence,
+    });
+  }
+
+  private admissionReceipt(input: {
+    id: string;
+    status: string;
+    urgency: string;
+    transcriptRevision: number;
+    consentEvidence: "BOUND" | "NOT_RECORDED";
+  }) {
+    return {
+      jobId: input.id,
+      status: input.status,
+      urgency: input.urgency,
+      transcriptRevision: input.transcriptRevision,
+      humanReviewed: true as const,
+      consentEvidence: input.consentEvidence,
+      jobCreated: true as const,
+      bookingAuthorized: false as const,
+      deliveryAuthorized: false as const,
     };
   }
 }

@@ -42,8 +42,13 @@ export class CustomerConsentCaptureService {
     try {
       return await this.prisma.$transaction(
         async (tx) => {
-          const { capture: prior, hasCapture } =
-            await lockCustomerConsentSession(tx, session);
+          const {
+            capture: prior,
+            hasCapture,
+            status,
+          } = await lockCustomerConsentSession(tx, session);
+          if (status !== "ONGOING")
+            throw new ConflictException("Customer session is unavailable.");
           this.credentials.verifySession(input.sessionToken);
           if (hasCapture !== false) {
             const value = prior as Record<string, unknown>;

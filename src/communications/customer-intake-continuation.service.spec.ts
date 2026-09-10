@@ -10,6 +10,10 @@ import { CustomerConsentCredentials } from "./customer-consent-credentials";
 import { lockCustomerConsentSession } from "./customer-consent-session-lock";
 import { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.service";
 import appConfig from "../config/app.config";
+import {
+  requestContextMiddleware,
+  setAuthContext,
+} from "../common/context/request-context";
 jest.mock("./customer-consent-session-lock", () => ({
   lockCustomerConsentSession: jest.fn(),
 }));
@@ -38,19 +42,26 @@ describe("inactive credential-bound transcript continuation", () => {
       findUnique: jest.fn(),
       create: jest.fn(),
     },
-    conversationJobLink: { count: jest.fn() },
+    conversationJobLink: { count: jest.fn(), create: jest.fn() },
+    job: { findUnique: jest.fn(), create: jest.fn() },
+    serviceCategory: { findFirst: jest.fn() },
+    customer: { upsert: jest.fn() },
+    propertyAddress: { create: jest.fn() },
+    conversation: { updateMany: jest.fn() },
     auditLog: { create: jest.fn() },
     appointmentEmailConsentScope: { findUnique: jest.fn() },
     appointmentEmailConsentEvidence: { findFirst: jest.fn() },
   };
   const transaction = jest.fn(),
-    reply = jest.fn();
+    reply = jest.fn(),
+    bindJob = jest.fn();
   const service = (collaborator = true) =>
     new CustomerIntakeContinuationService(
       { $transaction: transaction },
       cipher,
       credentials,
       collaborator ? { reply } : undefined,
+      { bindJob },
     );
   const saved = (id = randomUUID(), revision = 1) => ({
     id,
@@ -81,8 +92,29 @@ describe("inactive credential-bound transcript continuation", () => {
     tx.communicationEvent.findMany.mockResolvedValue([]);
     tx.communicationEvent.findUnique.mockResolvedValue(null);
     tx.conversationJobLink.count.mockResolvedValue(0);
+    tx.conversationJobLink.create.mockResolvedValue({
+      id: "33333333-3333-4333-8333-333333333333",
+    });
     tx.communicationEvent.create.mockResolvedValue({});
     tx.auditLog.create.mockResolvedValue({});
+    tx.job.findUnique.mockResolvedValue(null);
+    tx.job.create.mockResolvedValue({
+      id: "44444444-4444-4444-8444-444444444444",
+      status: "CREATED",
+      urgency: "HIGH",
+    });
+    tx.serviceCategory.findFirst.mockResolvedValue({
+      id: "55555555-5555-4555-8555-555555555555",
+    });
+    tx.customer.upsert.mockResolvedValue({
+      id: "66666666-6666-4666-8666-666666666666",
+      deletedAt: null,
+    });
+    tx.propertyAddress.create.mockResolvedValue({
+      id: "77777777-7777-4777-8777-777777777777",
+    });
+    tx.conversation.updateMany.mockResolvedValue({ count: 1 });
+    bindJob.mockResolvedValue({});
     reply.mockResolvedValue("Scripted private reply");
     transaction.mockImplementation((fn: (client: typeof tx) => unknown) =>
       fn(tx),
@@ -269,6 +301,30 @@ describe("inactive credential-bound transcript continuation", () => {
     expectedRevision: 1,
     draft,
   });
+  const admission = () => ({
+    sessionToken: input().sessionToken,
+    expectedRevision: 1,
+    draft,
+    review: {
+      urgency: "HIGH",
+      reasonCode: "OPERATOR_REVIEWED_INTAKE",
+      acknowledgeCustomerStatements: true,
+    },
+  });
+  const asOperator = <T>(
+    action: () => Promise<T>,
+    override: { tenantId?: string; role?: string; userId?: string } = {},
+  ) =>
+    new Promise<T>((resolve, reject) => {
+      requestContextMiddleware({ headers: {} } as never, {} as never, () => {
+        setAuthContext({
+          tenantId: override.tenantId ?? scope.tenantId,
+          role: override.role ?? "dispatcher",
+          userId: override.userId ?? "fixture-operator",
+        });
+        action().then(resolve, reject);
+      });
+    });
   it("validates a read-only draft without requiring consent or writing any records", async () => {
     tx.communicationEvent.findMany.mockResolvedValue([saved()]);
     tx.appointmentEmailConsentScope.findUnique.mockResolvedValue(null);
@@ -354,6 +410,213 @@ describe("inactive credential-bound transcript continuation", () => {
     await expect(service().previewDraft(preview())).rejects.toThrow(
       "Intake draft unavailable.",
     );
+  });
+  it("atomically admits an exact reviewed draft without booking or delivery authority", async () => {
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    tx.appointmentEmailConsentScope.findUnique.mockResolvedValue(null);
+    expect(await asOperator(() => service().admitDraft(admission()))).toEqual({
+      jobId: "44444444-4444-4444-8444-444444444444",
+      status: "CREATED",
+      urgency: "HIGH",
+      transcriptRevision: 1,
+      humanReviewed: true,
+      consentEvidence: "NOT_RECORDED",
+      jobCreated: true,
+      bookingAuthorized: false,
+      deliveryAuthorized: false,
+    });
+    expect(tx.job.create).toHaveBeenCalledTimes(1);
+    expect(tx.conversationJobLink.create).toHaveBeenCalledTimes(1);
+    expect(tx.conversation.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: "COMPLETED", currentFSMState: "JOB_CREATED" },
+      }),
+    );
+    expect(bindJob).not.toHaveBeenCalled();
+    const writes = JSON.stringify([
+      tx.job.create.mock.calls,
+      tx.auditLog.create.mock.calls,
+    ]);
+    expect(writes).not.toContain(draft.customerName);
+    expect(writes).not.toContain(draft.phone);
+    expect(writes).not.toContain(draft.address);
+    expect(writes).toContain("HUMAN_INTAKE_REVIEW");
+  });
+  it.each(["owner", "admin", "dispatcher"])(
+    "allows verified %s admission review",
+    async (role) => {
+      tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+      tx.appointmentEmailConsentScope.findUnique.mockResolvedValue(null);
+      await expect(
+        asOperator(() => service().admitDraft(admission()), { role }),
+      ).resolves.toMatchObject({ jobCreated: true });
+    },
+  );
+  it.each([undefined, "tech", "webchat_integration"])(
+    "refuses untrusted admission role %s before database",
+    async (role) => {
+      const action = () => service().admitDraft(admission());
+      await expect(
+        role ? asOperator(action, { role }) : action(),
+      ).rejects.toThrow("verified owner");
+      expect(transaction).not.toHaveBeenCalled();
+    },
+  );
+  it("refuses operator/customer tenant mismatch before database", async () => {
+    await expect(
+      asOperator(() => service().admitDraft(admission()), {
+        tenantId: randomUUID(),
+      }),
+    ).rejects.toThrow("unavailable");
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it.each([
+    { acknowledgeCustomerStatements: false },
+    { reasonCode: "FREE_TEXT" },
+    { urgency: "UNKNOWN" },
+    { extra: true },
+  ])("refuses malformed or non-explicit human review %#", async (override) => {
+    await expect(
+      asOperator(() =>
+        service().admitDraft({
+          ...admission(),
+          review: { ...admission().review, ...override },
+        }),
+      ),
+    ).rejects.toThrow("Invalid intake review");
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it("binds existing consent evidence in the same admission transaction", async () => {
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    tx.appointmentEmailConsentScope.findUnique.mockResolvedValue({
+      id: "88888888-8888-4888-8888-888888888888",
+      sessionId: scope.sessionId,
+    });
+    tx.appointmentEmailConsentEvidence.findFirst.mockResolvedValue({
+      decision: "DECLINED",
+    });
+    await expect(
+      asOperator(() => service().admitDraft(admission())),
+    ).resolves.toMatchObject({ consentEvidence: "BOUND" });
+    expect(bindJob).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        tenantId: scope.tenantId,
+        conversationId: scope.conversationId,
+        jobId: "44444444-4444-4444-8444-444444444444",
+      }),
+    );
+  });
+  it("fails closed before job creation for stale transcript or unsupported category", async () => {
+    tx.communicationEvent.findMany.mockResolvedValue([]);
+    await expect(
+      asOperator(() => service().admitDraft(admission())),
+    ).rejects.toThrow("changed");
+    expect(tx.job.create).not.toHaveBeenCalled();
+    jest.clearAllMocks();
+    jest.mocked(lockCustomerConsentSession).mockResolvedValue({
+      status: "ONGOING",
+      sessionId: scope.sessionId,
+      marker: 1,
+      capture: null,
+      hasCapture: false,
+    });
+    transaction.mockImplementation((fn: (client: typeof tx) => unknown) =>
+      fn(tx),
+    );
+    tx.job.findUnique.mockResolvedValue(null);
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    tx.conversationJobLink.count.mockResolvedValue(0);
+    tx.appointmentEmailConsentScope.findUnique.mockResolvedValue(null);
+    tx.serviceCategory.findFirst.mockResolvedValue(null);
+    await expect(
+      asOperator(() => service().admitDraft(admission())),
+    ).rejects.toThrow("not available");
+    expect(tx.customer.upsert).not.toHaveBeenCalled();
+  });
+  it("replays only the exact admitted request without duplicate writes", async () => {
+    const request = admission();
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    tx.appointmentEmailConsentScope.findUnique.mockResolvedValue(null);
+    const first = await asOperator(() => service().admitDraft(request));
+    const [createInput] = tx.job.create.mock.calls[0] as unknown as [
+      { data: { policySnapshot: object } },
+    ];
+    const policy = createInput.data.policySnapshot;
+    jest.clearAllMocks();
+    jest.mocked(lockCustomerConsentSession).mockResolvedValue({
+      status: "COMPLETED",
+      sessionId: scope.sessionId,
+      marker: 1,
+      capture: null,
+      hasCapture: false,
+    });
+    transaction.mockImplementation((fn: (client: typeof tx) => unknown) =>
+      fn(tx),
+    );
+    tx.job.findUnique.mockResolvedValue({
+      id: first.jobId,
+      status: "CREATED",
+      urgency: "HIGH",
+      policySnapshot: policy,
+      deletedAt: null,
+      conversationLinks: [{ id: "link" }],
+      emailConsentBinding: null,
+    });
+    await expect(
+      asOperator(() => service().admitDraft(request)),
+    ).resolves.toEqual(first);
+    expect(tx.job.create).not.toHaveBeenCalled();
+    await expect(
+      asOperator(() =>
+        service().admitDraft({
+          ...request,
+          review: { ...request.review, urgency: "STANDARD" },
+        }),
+      ),
+    ).rejects.toThrow("changed");
+  });
+  it("rolls back if session close or consent binding cannot be confirmed", async () => {
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    tx.appointmentEmailConsentScope.findUnique.mockResolvedValue(null);
+    tx.conversation.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      asOperator(() => service().admitDraft(admission())),
+    ).rejects.toThrow("changed");
+    jest.clearAllMocks();
+    jest.mocked(lockCustomerConsentSession).mockResolvedValue({
+      status: "ONGOING",
+      sessionId: scope.sessionId,
+      marker: 1,
+      capture: null,
+      hasCapture: false,
+    });
+    transaction.mockImplementation((fn: (client: typeof tx) => unknown) =>
+      fn(tx),
+    );
+    tx.job.findUnique.mockResolvedValue(null);
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    tx.conversationJobLink.count.mockResolvedValue(0);
+    tx.appointmentEmailConsentScope.findUnique.mockResolvedValue({
+      id: "88888888-8888-4888-8888-888888888888",
+      sessionId: scope.sessionId,
+    });
+    tx.appointmentEmailConsentEvidence.findFirst.mockResolvedValue({
+      decision: "GRANTED",
+    });
+    tx.serviceCategory.findFirst.mockResolvedValue({ id: randomUUID() });
+    tx.customer.upsert.mockResolvedValue({ id: randomUUID(), deletedAt: null });
+    tx.propertyAddress.create.mockResolvedValue({ id: randomUUID() });
+    tx.job.create.mockResolvedValue({
+      id: randomUUID(),
+      status: "CREATED",
+      urgency: "HIGH",
+    });
+    tx.conversationJobLink.create.mockResolvedValue({ id: randomUUID() });
+    bindJob.mockRejectedValue(new Error("private binding failure"));
+    await expect(
+      asOperator(() => service().admitDraft(admission())),
+    ).rejects.toThrow("outcome is unconfirmed");
   });
   it("remains unregistered in production", () => {
     for (const file of ["communications.module.ts"])

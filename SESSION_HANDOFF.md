@@ -1,6 +1,25 @@
 # Backend Session Handoff
 
-Last Updated: 2026-09-09
+Last Updated: 2026-09-10
+
+## Local Human-Reviewed Intake Admission (2026-09-10, latest/review-ready)
+
+- Backend implementation and evidence are in this focused checkpoint, incremental `0a2b7ab..HEAD` on PR #21. Fetched backend and governance remotes and aligned starting backend `0a2b7abe50fef6072f9d0fd7400b10b6ecc77eeb` / governance `a104d21fd81dcbfb1ce3a0595e3d91f92f792983`. APP-013 remains sole Now; Global Next unassigned, FE-014 paused; unrelated original checkouts remain untouched.
+- Added unregistered `admitDraft` composition to the protected intake service. It accepts only the exact session token/revision/draft plus an explicit urgency, fixed `OPERATOR_REVIEWED_INTAKE` reason and customer-statement acknowledgment. Verified non-impersonated owner/admin/dispatcher context supplies tenant/actor authority; its tenant must match the protected session. No caller actor/tenant/job/consent/payment/booking/delivery override.
+- Under the shared tenant/session/conversation lock, admission rechecks current ongoing/unlinked protected history, exact revision and credential expiry. The reviewed category must already exist in the tenant catalog. Customer upsert, customer-stated address, CREATED job, CREATED_FROM link, optional immutable consent-history binding, privacy-safe USER audit and session close commit in one transaction or none do.
+- Job policy records human-reviewed urgency, source, transcript revision, explicit unverified contact/address state and a one-way exact-request digest. Audit/policy binding omit customer name, phone and address. Existing grant/decline/revoke association is historical only and returns `BOUND`, never sending authority; no evidence is allowed as `NOT_RECORDED`.
+- Exact same-actor/request replay while the session credential remains valid returns the original receipt; changed draft/review cannot adopt it. Concurrent exact requests serialize to one job/link/audit. Binding or close failure rolls back every admission write. Closing the session now also blocks later email capture/prompt in addition to transcript/draft writes.
+- Validation: 19 new unit cases; backend lint/build, 80 suites/1471 tests with the prior three tests/one suite skipped, architecture and Prisma pass. Unchanged UI lint/170 tests/15-page build pass. Four backend/UI full/production audits report zero findings.
+- Disposable local PostgreSQL proof applies all 19 existing migrations and adds nine admission groups: exact records, privacy/side-effect absence, post-close refusal, lost-ack replay, concurrent single admission, decline binding, injected binding rollback, and role/tenant/revision/category refusal. Prior 19 process-crash and desktop/mobile browser regressions pass; no new migration/crash/browser surface. Fixture database removed and cleanup query empty; provider calls zero.
+- No production controller/module/UI/config/schema/package/key change; no real AI, preferred window, job notification, urgency diagnosis, booking, payment, Calendar, dispatch, provider, queue/send, real data, merge/deploy, production migration, IAM/secrets/billing or charges. Customer statements remain unverified; this local method has both customer-session and operator context and is not an approved production dual-credential transport.
+- Completion stays 50% APP-013 scope coverage (1 demonstrated, 10 partial, 1 missing), formal acceptance 0/12. Retain 7-12 unequal APP-013 / 20-35 pilot remaining sections, low confidence; no acceptance box changes. Stop for review. Next proposed: a durable split customer/operator review-request boundary so the customer bearer credential is never an operator DTO, followed by local intake-review integration; no production route/activation or provider action.
+
+### Review steps
+
+1. Review PR #21 incremental after `0a2b7ab`: admission/service and closed-session changes, 19 tests, disposable verifier hook and `evidence/APP-013/customer-intake-admission/`. Confirm production modules/controllers/UI/schema/packages are unchanged.
+2. Run backend lint/build/full tests/architecture/Prisma; UI lint/tests/build; full and production audits in both roots.
+3. Follow the new evidence README and run the parent disposable verifier with prior evidence outputs redirected. Confirm `summary.json`, `validation-summary.json`, zero provider calls and an empty fixture-database cleanup query.
+4. Run governance placement/consistency and both diff checks. Confirm the receipt does not authorize booking/delivery and no APP-013 acceptance box is checked.
 
 ## Latest: Fixed Appointment-Email Composition (2026-09-09, inactive/review-ready)
 

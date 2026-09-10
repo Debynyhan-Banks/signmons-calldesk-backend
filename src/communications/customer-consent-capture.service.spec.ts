@@ -12,7 +12,7 @@ describe("inactive credential-bound email capture", () => {
     conversationId: randomUUID(),
     sessionId: randomUUID(),
   };
-  let marker: unknown, prior: unknown;
+  let marker: unknown, prior: unknown, sessionStatus: string;
   const tx = {
     $queryRaw: jest.fn(),
     $executeRaw: jest.fn(),
@@ -37,6 +37,7 @@ describe("inactive credential-bound email capture", () => {
     tx.$queryRaw.mockReset();
     marker = 1;
     prior = null;
+    sessionStatus = "ONGOING";
     tx.$queryRaw
       .mockResolvedValueOnce([{ locked: 1 }])
       .mockResolvedValueOnce([{ id: scope.tenantId }])
@@ -44,6 +45,7 @@ describe("inactive credential-bound email capture", () => {
         Promise.resolve([
           {
             sessionId: scope.sessionId,
+            status: sessionStatus,
             marker,
             capture: prior,
             hasCapture: prior !== null,
@@ -98,6 +100,15 @@ describe("inactive credential-bound email capture", () => {
       timeout: 5000,
     });
   });
+  it.each(["COMPLETED", "ABANDONED"])(
+    "refuses capture for closed session %s",
+    async (status) => {
+      sessionStatus = status;
+      await expect(service.capture(input())).rejects.toThrow("unavailable");
+      expect(tx.$executeRaw).not.toHaveBeenCalled();
+      expect(tx.auditLog.create).not.toHaveBeenCalled();
+    },
+  );
   it("replays identical capture without rewriting ciphertext or audit", async () => {
     prior = {
       version: 1,

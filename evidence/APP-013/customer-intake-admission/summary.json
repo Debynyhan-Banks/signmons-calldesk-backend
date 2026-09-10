@@ -1,0 +1,26 @@
+{
+  "result": "PASS",
+  "checks": [
+    "reviewed draft atomically creates exact tenant job/customer/address/link/audit and closes session",
+    "admission exposes no booking/delivery authority and creates no payment, Calendar, SMS or email work",
+    "audit and policy binding omit customer name, phone and address",
+    "closed admitted session refuses later email capture or consent prompt",
+    "exact lost-ack replay is idempotent; changed review cannot adopt the job",
+    "concurrent identical admission serializes to one job, link and review audit",
+    "existing grant/decline ledger association binds atomically without becoming delivery authority",
+    "binding failure rolls back job, link, audit, consent binding and session closure",
+    "role, tenant, transcript and unsupported tenant-category refusals leave no job"
+  ],
+  "checkCount": 9,
+  "providerCalls": 0,
+  "productionActions": 0,
+  "newMigrations": 0,
+  "jobStatus": "CREATED",
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false,
+  "limits": [
+    "Unregistered local service; no production controller, module or browser admission route",
+    "Customer statements and address/contact remain unverified; human-reviewed urgency only",
+    "No preferred window, Calendar, payment, dispatch, notification, provider or sending action"
+  ]
+}

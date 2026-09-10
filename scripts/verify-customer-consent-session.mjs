@@ -10,6 +10,7 @@ import { verifyCustomerBrowserTransport } from "./verify-customer-browser-transp
 import { verifyCustomerIntakeContinuation } from "./verify-customer-intake-continuation.mjs";
 import { verifyCustomerIntakeBrowser } from "./verify-customer-intake-browser.mjs";
 import { verifyCustomerIntakeJourney } from "./verify-customer-intake-journey.mjs";
+import { verifyCustomerIntakeAdmission } from "./verify-customer-intake-admission.mjs";
 const require = createRequire(import.meta.url);
 const {
   CustomerConsentCredentials: Credentials,
@@ -449,6 +450,19 @@ export async function verifyCustomerConsentSession({
     service,
     capture,
   });
+  checks.push(
+    ...(await verifyCustomerIntakeAdmission({
+      prisma,
+      make,
+      credentials,
+      cipher,
+      evidence,
+      service,
+      capture,
+      tenantId,
+      otherTenantId,
+    })),
+  );
   await verifyCustomerIntakeBrowser({
     prisma,
     make,

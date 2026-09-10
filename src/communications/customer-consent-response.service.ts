@@ -300,9 +300,9 @@ export class CustomerConsentResponseService {
     tx: Prisma.TransactionClient,
     session: ConsentSessionClaims,
   ) {
-    const capture = object(
-      (await lockCustomerConsentSession(tx, session)).capture,
-    );
+    const state = await lockCustomerConsentSession(tx, session);
+    if (state.status !== "ONGOING") throw conflict();
+    const capture = object(state.capture);
     if (
       !capture ||
       capture.version !== 1 ||
