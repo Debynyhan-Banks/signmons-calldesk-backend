@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## MVP steel-thread audit (2026-09-10, current planning checkpoint)
+
+See governance `CALLDESK_STEEL_THREAD_CLOSEOUT.md` for the fixed MVP outcome milestones and twelve-criterion APP-013 ledger. This planning checkpoint supersedes earlier automatic next-section suggestions and rolling section-count forecasts, not product scope or contracts. APP-013 remains sole Now, acceptance 0/12; Next unassigned and FE-014 paused. Next decision is approval of web chat as the first proving channel and a usable customer/operator intake-to-job demonstration target; phone/SMS remain required for MVP. No coding, ticket promotion or release action in this checkpoint.
+
 Canonical governance source: `/Users/debynyhanbanks/Web Projects/signmons-governance`.
 Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_EXECUTION_POINTER.md`.
 
