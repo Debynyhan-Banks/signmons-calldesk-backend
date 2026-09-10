@@ -11,6 +11,7 @@ import { verifyCustomerIntakeContinuation } from "./verify-customer-intake-conti
 import { verifyCustomerIntakeBrowser } from "./verify-customer-intake-browser.mjs";
 import { verifyCustomerIntakeJourney } from "./verify-customer-intake-journey.mjs";
 import { verifyCustomerIntakeAdmission } from "./verify-customer-intake-admission.mjs";
+import { verifyCustomerIntakeReviewRequest } from "./verify-customer-intake-review-request.mjs";
 const require = createRequire(import.meta.url);
 const {
   CustomerConsentCredentials: Credentials,
@@ -440,6 +441,14 @@ export async function verifyCustomerConsentSession({
   const out =
     process.env.CUSTOMER_CONSENT_EVIDENCE_DIR ??
     join(process.cwd(), "evidence/APP-013/customer-consent-session");
+  await verifyCustomerIntakeReviewRequest({
+    prisma,
+    make,
+    credentials,
+    cipher,
+    tenantId,
+    otherTenantId,
+  });
   await verifyCustomerIntakeJourney({
     prisma,
     make,

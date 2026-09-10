@@ -1,10 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { BadRequestException } from "@nestjs/common";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   CustomerIntakeContinuationService,
   PROTECTED_INTAKE_TURN,
+  PROTECTED_INTAKE_REVIEW,
 } from "./customer-intake-continuation.service";
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
 import { lockCustomerConsentSession } from "./customer-consent-session-lock";
@@ -38,6 +39,7 @@ describe("inactive credential-bound transcript continuation", () => {
   });
   const tx = {
     communicationEvent: {
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
@@ -325,6 +327,161 @@ describe("inactive credential-bound transcript continuation", () => {
         action().then(resolve, reject);
       });
     });
+  const submission = () => ({
+    sessionToken: input().sessionToken,
+    requestId: randomUUID(),
+    expectedRevision: 1,
+    draft,
+    confirmed: true,
+  });
+  function setupReview(request = submission()) {
+    const turn = saved();
+    tx.communicationEvent.findMany.mockImplementation(
+      (query: {
+        where: { content?: { is?: { payload?: { equals?: string } } } };
+      }) =>
+        Promise.resolve(
+          query.where.content?.is?.payload?.equals === PROTECTED_INTAKE_REVIEW
+            ? []
+            : [turn],
+        ),
+    );
+    const row = {
+      conversationId: scope.conversationId,
+      createdAt: new Date(),
+      channel: "WEBCHAT",
+      direction: "INBOUND",
+      provider: "OTHER",
+      status: "RECEIVED",
+      content: {
+        tenantId: scope.tenantId,
+        payload: {
+          type: PROTECTED_INTAKE_REVIEW,
+          version: 1,
+          sessionId: scope.sessionId,
+          expiresAt: credentials.verifySession(request.sessionToken).expiresAt,
+          transcriptRevision: 1,
+          transcriptDigest: createHash("sha256")
+            .update(JSON.stringify([turn]))
+            .digest("hex"),
+          encryptedDraft: cipher.encrypt(JSON.stringify(draft)),
+        },
+      },
+    };
+    tx.communicationEvent.findFirst.mockResolvedValue(row);
+    return { request, row, turn };
+  }
+  it("persists an encrypted customer review request and audit without a bearer or job", async () => {
+    const { request } = setupReview();
+    const result = await service().submitReview(request);
+    expect(result.state).toBe("PENDING_REVIEW");
+    expect(result.jobCreated).toBe(false);
+    const serialized = JSON.stringify(tx.communicationEvent.create.mock.calls);
+    expect(serialized).not.toContain(request.sessionToken);
+    expect(serialized).not.toContain(draft.phone);
+    expect(tx.auditLog.create).toHaveBeenCalledTimes(1);
+    expect(tx.job.create).not.toHaveBeenCalled();
+  });
+  it.each([
+    { confirmed: false },
+    { expectedRevision: 0 },
+    { requestId: "raw" },
+    { sessionToken: "forged" },
+    { actorId: "operator" },
+    { review: { urgency: "HIGH" } },
+  ])(
+    "refuses invalid customer submission %# before persistence",
+    async (override) => {
+      await expect(
+        service().submitReview({ ...submission(), ...override }),
+      ).rejects.toThrow();
+      expect(tx.communicationEvent.create).not.toHaveBeenCalled();
+    },
+  );
+  it("replays the same durable submission without another audit", async () => {
+    const { request, turn } = setupReview();
+    tx.communicationEvent.findMany
+      .mockResolvedValueOnce([turn])
+      .mockResolvedValueOnce([{ id: request.requestId }]);
+    expect((await service().submitReview(request)).requestId).toBe(
+      request.requestId,
+    );
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+  it("refuses replacement draft under an existing request", async () => {
+    const { request, turn } = setupReview();
+    tx.communicationEvent.findMany
+      .mockResolvedValueOnce([turn])
+      .mockResolvedValueOnce([{ id: request.requestId }]);
+    await expect(
+      service().submitReview({
+        ...request,
+        draft: { ...draft, customerName: "Replacement" },
+      }),
+    ).rejects.toThrow("changed");
+  });
+  it("operator review uses no customer credential method and returns no session identity", async () => {
+    const { request } = setupReview();
+    const verify = jest.spyOn(credentials, "verifySession");
+    verify.mockClear();
+    try {
+      const result = await asOperator(() =>
+        service().readReview({ requestId: request.requestId }),
+      );
+      expect(result.draft).toEqual(draft);
+      expect(verify).not.toHaveBeenCalled();
+      expect(JSON.stringify(result)).not.toContain(scope.sessionId);
+      expect(JSON.stringify(result)).not.toContain(request.sessionToken);
+      expect(tx.auditLog.create).not.toHaveBeenCalled();
+    } finally {
+      verify.mockRestore();
+    }
+  });
+  it.each(["technician", "webchat_integration", "customer", ""])(
+    "refuses operator read role %s before database",
+    async (role) => {
+      await expect(
+        asOperator(() => service().readReview({ requestId: randomUUID() }), {
+          role,
+        }),
+      ).rejects.toThrow();
+      expect(transaction).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects a customer token or draft supplied in the operator DTO", async () => {
+    await expect(
+      asOperator(() => service().readReview({ ...submission() })),
+    ).rejects.toThrow();
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it.each(["expired", "ciphertext", "digest", "session", "type"])(
+    "refuses changed or invalid durable review %s",
+    async (kind) => {
+      const { request, row } = setupReview();
+      if (kind === "expired") row.content.payload.expiresAt = Date.now() - 1;
+      if (kind === "ciphertext") row.content.payload.encryptedDraft = "bad";
+      if (kind === "digest")
+        row.content.payload.transcriptDigest = "0".repeat(64);
+      if (kind === "session") row.content.payload.sessionId = "bad";
+      if (kind === "type") row.content.payload.type = "message";
+      await expect(
+        asOperator(() =>
+          service().readReview({ requestId: request.requestId }),
+        ),
+      ).rejects.toThrow();
+    },
+  );
+  it("refuses missing/foreign request uniformly and scopes its query to the operator tenant", async () => {
+    tx.communicationEvent.findFirst.mockResolvedValue(null);
+    await expect(
+      asOperator(() => service().readReview({ requestId: randomUUID() })),
+    ).rejects.toThrow("changed");
+    expect(tx.communicationEvent.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ tenantId: scope.tenantId }),
+      }),
+    );
+  });
   it("validates a read-only draft without requiring consent or writing any records", async () => {
     tx.communicationEvent.findMany.mockResolvedValue([saved()]);
     tx.appointmentEmailConsentScope.findUnique.mockResolvedValue(null);

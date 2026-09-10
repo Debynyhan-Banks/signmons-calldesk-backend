@@ -15,10 +15,14 @@ import {
   CustomerConsentCredentials,
   ConsentSessionClaims,
 } from "./customer-consent-credentials";
-import { lockCustomerConsentSession } from "./customer-consent-session-lock";
+import {
+  lockCustomerConsentSession,
+  CustomerSessionScope,
+} from "./customer-consent-session-lock";
 import { validateCustomerIntakeDraft } from "./customer-intake-draft";
 
 export const PROTECTED_INTAKE_TURN = "protected_intake_turn_v1";
+export const PROTECTED_INTAKE_REVIEW = "protected_intake_review_v1";
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const changed = () =>
@@ -62,6 +66,267 @@ export class CustomerIntakeContinuationService {
       "bindJob"
     >,
   ) {}
+
+  /** Customer-only durable submission. Does not store the bearer or authorize a job. */
+  async submitReview(input: {
+    sessionToken: string;
+    requestId: string;
+    expectedRevision: number;
+    draft: unknown;
+    confirmed: boolean;
+  }) {
+    if (
+      !input ||
+      typeof input !== "object" ||
+      Array.isArray(input) ||
+      Object.keys(input).sort().join(",") !==
+        "confirmed,draft,expectedRevision,requestId,sessionToken" ||
+      input.confirmed !== true ||
+      typeof input.sessionToken !== "string" ||
+      input.sessionToken.length > 4096 ||
+      typeof input.requestId !== "string" ||
+      !UUID.test(input.requestId) ||
+      !Number.isInteger(input.expectedRevision) ||
+      input.expectedRevision < 1 ||
+      input.expectedRevision > 20
+    )
+      throw new BadRequestException("Invalid review submission.");
+    const draft = validateCustomerIntakeDraft(input.draft),
+      session = this.credentials.verifySession(input.sessionToken);
+    try {
+      return await this.transaction(async (tx) => {
+        const history = await this.history(tx, session);
+        if (history.turns.length !== input.expectedRevision) throw changed();
+        this.credentials.verifySession(input.sessionToken);
+        const existing = await tx.communicationEvent.findMany({
+          where: {
+            tenantId: session.tenantId,
+            conversationId: session.conversationId,
+            content: {
+              is: {
+                payload: { path: ["type"], equals: PROTECTED_INTAKE_REVIEW },
+              },
+            },
+          },
+          take: 2,
+          select: { id: true },
+        });
+        if (existing.length) {
+          if (existing.length !== 1 || existing[0].id !== input.requestId)
+            throw changed();
+          const record = await this.reviewRecord(
+            tx,
+            session.tenantId,
+            input.requestId,
+          );
+          if (
+            record.sessionId !== session.sessionId ||
+            record.expiresAt !== session.expiresAt ||
+            record.transcriptRevision !== input.expectedRevision ||
+            record.transcriptDigest !== history.digest ||
+            JSON.stringify(record.draft) !== JSON.stringify(draft)
+          )
+            throw changed();
+          return this.reviewSubmissionReceipt(
+            input.requestId,
+            record.expiresAt,
+          );
+        }
+        if (
+          await tx.communicationEvent.findUnique({
+            where: { id: input.requestId },
+            select: { id: true },
+          })
+        )
+          throw changed();
+        await tx.communicationEvent.create({
+          data: {
+            id: input.requestId,
+            tenantId: session.tenantId,
+            conversationId: session.conversationId,
+            conversationTenantId: session.tenantId,
+            channel: "WEBCHAT",
+            direction: "INBOUND",
+            provider: "OTHER",
+            status: "RECEIVED",
+            content: {
+              create: {
+                tenantId: session.tenantId,
+                payload: {
+                  type: PROTECTED_INTAKE_REVIEW,
+                  version: 1,
+                  sessionId: session.sessionId,
+                  expiresAt: session.expiresAt,
+                  transcriptRevision: history.turns.length,
+                  transcriptDigest: history.digest,
+                  encryptedDraft: this.cipher.encrypt(JSON.stringify(draft)),
+                },
+              },
+            },
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            tenantId: session.tenantId,
+            entityType: "Conversation",
+            entityId: session.conversationId,
+            actorType: "CUSTOMER",
+            actorId: "intake-session",
+            action: "conversation.intake_review_requested",
+            metadata: {
+              version: 1,
+              requestId: input.requestId,
+              transcriptRevision: history.turns.length,
+            },
+          },
+        });
+        this.credentials.verifySession(input.sessionToken);
+        return this.reviewSubmissionReceipt(input.requestId, session.expiresAt);
+      });
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500)
+        throw error;
+      throw new ServiceUnavailableException(
+        "Review submission outcome is unconfirmed. Retry the exact request with the same unexpired session.",
+      );
+    }
+  }
+
+  /** Operator-only read. Never accepts, verifies, issues or reconstructs a customer token. */
+  async readReview(input: { requestId: string }) {
+    if (
+      !input ||
+      typeof input !== "object" ||
+      Array.isArray(input) ||
+      Object.keys(input).join(",") !== "requestId" ||
+      typeof input.requestId !== "string" ||
+      !UUID.test(input.requestId)
+    )
+      throw new BadRequestException("Invalid review request.");
+    const operator = this.operator();
+    try {
+      return await this.transaction(async (tx) => {
+        const before = await this.reviewRecord(
+          tx,
+          operator.tenantId,
+          input.requestId,
+        );
+        const scope = {
+          tenantId: operator.tenantId,
+          conversationId: before.conversationId,
+          sessionId: before.sessionId,
+        };
+        const history = await this.history(tx, scope);
+        const current = await this.reviewRecord(
+          tx,
+          operator.tenantId,
+          input.requestId,
+        );
+        if (
+          JSON.stringify(current) !== JSON.stringify(before) ||
+          history.digest !== current.transcriptDigest ||
+          history.turns.length !== current.transcriptRevision
+        )
+          throw changed();
+        return {
+          ...this.reviewSubmissionReceipt(input.requestId, current.expiresAt),
+          draft: current.draft,
+          transcriptRevision: current.transcriptRevision,
+          requiresHumanReview: true as const,
+          urgencyAssessment: "NOT_PERFORMED" as const,
+        };
+      });
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500)
+        throw error;
+      throw new ServiceUnavailableException("Intake review unavailable.");
+    }
+  }
+
+  private reviewSubmissionReceipt(requestId: string, expiresAt: number) {
+    return {
+      requestId,
+      state: "PENDING_REVIEW" as const,
+      expiresAt: new Date(expiresAt).toISOString(),
+      jobCreated: false as const,
+      bookingAuthorized: false as const,
+      deliveryAuthorized: false as const,
+    };
+  }
+
+  private async reviewRecord(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    requestId: string,
+  ) {
+    const row = await tx.communicationEvent.findFirst({
+      where: { id: requestId, tenantId, conversationTenantId: tenantId },
+      select: {
+        conversationId: true,
+        createdAt: true,
+        channel: true,
+        direction: true,
+        provider: true,
+        status: true,
+        content: { select: { tenantId: true, payload: true } },
+      },
+    });
+    if (
+      !row ||
+      !row.conversationId ||
+      row.channel !== "WEBCHAT" ||
+      row.direction !== "INBOUND" ||
+      row.provider !== "OTHER" ||
+      row.status !== "RECEIVED" ||
+      row.content?.tenantId !== tenantId
+    )
+      throw changed();
+    const p = row.content.payload;
+    if (
+      !p ||
+      typeof p !== "object" ||
+      Array.isArray(p) ||
+      Object.keys(p).sort().join(",") !==
+        "encryptedDraft,expiresAt,sessionId,transcriptDigest,transcriptRevision,type,version"
+    )
+      throw changed();
+    const v = p as Record<string, unknown>;
+    if (
+      v.type !== PROTECTED_INTAKE_REVIEW ||
+      v.version !== 1 ||
+      typeof v.sessionId !== "string" ||
+      !UUID.test(v.sessionId) ||
+      typeof v.encryptedDraft !== "string" ||
+      typeof v.transcriptDigest !== "string" ||
+      !/^[0-9a-f]{64}$/.test(v.transcriptDigest) ||
+      typeof v.expiresAt !== "number" ||
+      !Number.isSafeInteger(v.expiresAt) ||
+      Date.now() >= v.expiresAt ||
+      v.expiresAt > row.createdAt.getTime() + 900000 ||
+      row.createdAt.getTime() > Date.now() ||
+      typeof v.transcriptRevision !== "number" ||
+      !Number.isInteger(v.transcriptRevision) ||
+      v.transcriptRevision < 1 ||
+      v.transcriptRevision > 20
+    )
+      throw changed();
+    const plaintext = this.cipher.decrypt(v.encryptedDraft);
+    if (!plaintext || plaintext.length > 4096) throw changed();
+    let draft;
+    try {
+      draft = validateCustomerIntakeDraft(JSON.parse(plaintext));
+    } catch {
+      throw changed();
+    }
+    return {
+      conversationId: row.conversationId,
+      sessionId: v.sessionId,
+      expiresAt: v.expiresAt,
+      transcriptRevision: v.transcriptRevision,
+      transcriptDigest: v.transcriptDigest,
+      draft,
+    };
+  }
 
   /** Inactive local admission only. There is no controller/module registration.
    * Verified operator context supplies authority; the customer credential supplies
@@ -504,7 +769,7 @@ export class CustomerIntakeContinuationService {
   }
   private async history(
     tx: Prisma.TransactionClient,
-    session: ConsentSessionClaims,
+    session: CustomerSessionScope,
     sessionAlreadyLocked = false,
   ) {
     const row = sessionAlreadyLocked

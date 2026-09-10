@@ -2,7 +2,27 @@
 
 Date: 2026-09-10
 
-## Local Human-Reviewed Intake Admission (2026-09-10, latest/review-ready)
+## Split Customer and Operator Review Requests (2026-09-10, latest/review-ready)
+
+- Owner approved the credential-separation section with "proceed" after the newer admission checkpoint was reconciled. Fetched/aligned backend 1e145d1858c95453d4548b706115b1558c5e31c5 and governance 8b0a59208a8eeb0196a72820547a123323af4759. APP-013 stays sole Now, Global Next unassigned and FE-014 paused. Original dirty checkouts preserved.
+- Added inactive customer submitReview and operator readReview to the protected intake service. Customer input is exactly sessionToken/requestId/expectedRevision/draft/confirmed:true; one encrypted protected_intake_review_v1 event/content plus CUSTOMER audit commits under the shared session lock. Payload stores canonical encrypted draft, scope identifier, transcript revision/digest and original session expiry; no bearer token. One request per conversation, exact replay only.
+- Operator input is exactly requestId, with verified non-impersonated owner/admin/dispatcher tenant/actor context. The read path never verifies, issues or reconstructs a customer credential. It tenant-scopes durable lookup, validates metadata/ciphertext/expiry, rechecks current ongoing/unlinked protected history under locks and rereads the record. Private receipt omits customer token/session/conversation IDs and explicitly denies job/booking/delivery authority.
+- Concurrent identical submissions record once; changed/replacement requests, stale transcript, foreign scope, invalid role, expired or closed state refuse. Submission failure after event/content/audit insertion rolls everything back; lost acknowledgment recovers by exact unexpired replay. Operator read is nonmutating and uses no customer credential method, verified with a throwing credential proxy.
+- Original session expiry caps review; no new approval lifetime or renewal. Customer edits may invalidate the one pending request. Replacement, withdrawal, per-request revocation, durable operator decision, retention and database immutability are not implemented; this is application-serialized storage in existing tables, no new migration. The prior combined admitDraft remains inactive and unchanged, not connected to this read foundation.
+- Validation: 21 new unit cases; 1492 backend tests / 80 passing suites, prior three tests / one suite skipped. Backend lint/build/architecture/Prisma, UI lint/170 tests/15-page build, changed-script syntax/format and four fresh full/production dependency audits pass, zero findings. Sandbox initially blocked local HTTP test listeners; approved rerun passed.
+- Ten new disposable PostgreSQL groups pass with the existing nineteen migrations; prior admission/transcript/journey/consent/Settings/Inbox/browser and nineteen process-crash regressions also pass. No new UI/browser surface or process-crash test. Corrected a fixture-only consent-binding sort key from id to scopeId; failed and successful runs removed their databases, cleanup query empty.
+- No production controller/module/UI/config/schema/package/key change; no operator job admission from request, real AI, urgency decision, booking/payment/Calendar/dispatch/notification, consent mutation/binding, queue/send/provider, real data, merge/deploy, production migration, IAM/secrets/billing or charge. Private read transport, operator decision-to-job integration and production identity/lifecycle/access auditing remain approval-gated.
+- Completion unchanged: 50% APP-013 scope coverage (1 demonstrated, 10 partial, 1 missing), 0/12 formal acceptance. Keep 7-12 unequal APP-013 / 20-35 pilot remaining sections, low confidence, not an overall MVP percentage or ETA.
+- Stop for review. Next proposed bounded section: token-free operator admission from the durable review request with an exact human decision and atomic request/job/consent outcome, preserving deadline/stale/replay rules and no external actions. Operator UI/route integration follows only after review; no automatic ticket transition.
+
+### Review steps
+
+1. Review PR #21 incremental after 1e145d1: submit/read service and tests, scope-only shared lock type, local verifier/hook and evidence. Confirm no new production dispatch/module/UI/schema/package/key.
+2. Run backend lint/full tests/architecture/build/Prisma; UI lint/tests/build; full and production npm audits in both roots.
+3. Follow evidence/APP-013/customer-intake-review-request/README.md for exact disposable proof and cleanup commands; inspect summary.json and validation-summary.json. Confirm no bearer in persisted payload/operator output and no credential method call in operator proof.
+4. Run governance placement/consistency and both git diff --check. Review DATA_CONTRACTS.md lifetime/replacement/retention limits; PENDING_REVIEW is not admission or sending authority.
+
+## Earlier: Local Human-Reviewed Intake Admission (2026-09-10, review-ready)
 
 - Fetched/aligned starting backend `0a2b7abe50fef6072f9d0fd7400b10b6ecc77eeb` and governance `a104d21fd81dcbfb1ce3a0595e3d91f92f792983`. APP-013 remains sole Now; unrelated original checkout changes are preserved.
 - Added an unregistered local `admitDraft` composition. Exact protected session/revision/draft, verified owner/admin/dispatcher context, explicit reviewed urgency, fixed reason and customer-statement acknowledgment are mandatory. Customer/operator tenants must match; impersonation and caller authority fields refuse.

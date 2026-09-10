@@ -17,7 +17,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Local human-reviewed intake admission is review-ready: exact protected session/transcript plus verified owner/admin/dispatcher authority atomically create a CREATED job/customer/address/link/audit, bind any existing immutable email-consent history, and close the session. 1471 backend/170 UI tests, nine new PostgreSQL groups and prior browser/crash regressions pass; four audits clean. The service is unregistered; no preferred window, booking, payment, Calendar, notification, provider or sending action. Next proposed: a durable split customer/operator review-request boundary before any UI/route integration, without exposing the customer bearer credential. Coverage 50%, acceptance 0/12; retain 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now.
+  - Split customer/operator review-request foundation is review-ready: encrypted one-time customer submission and authorized request-ID-only operator read, no stored or reconstructed customer bearer. 1492 backend/170 UI tests, ten new PostgreSQL groups and prior browser/crash regressions pass; four audits clean. Original session deadline, stale/closed refusal and exact replay remain. No request-to-job admission or UI/route activation. Next proposed: token-free operator admission from the durable request with atomic job/consent outcome, no external actions. Coverage 50%, acceptance 0/12; 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now.
 
 ## Next
 

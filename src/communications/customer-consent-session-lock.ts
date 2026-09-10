@@ -3,11 +3,15 @@ import { Prisma } from "@prisma/client";
 import { getRequestContext } from "../common/context/request-context";
 import { lockConversationSession } from "../conversations/conversation-session-lock";
 import { ConsentSessionClaims } from "./customer-consent-credentials";
+export type CustomerSessionScope = Pick<
+  ConsentSessionClaims,
+  "tenantId" | "conversationId" | "sessionId"
+>;
 
 /** Shared lock order with legacy intake; callers verify the credential before entering. */
 export async function lockCustomerConsentSession(
   tx: Prisma.TransactionClient,
-  session: ConsentSessionClaims,
+  session: CustomerSessionScope,
 ) {
   if (getRequestContext()?.impersonatedTenantId)
     throw new ForbiddenException(
