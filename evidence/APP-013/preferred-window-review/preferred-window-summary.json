@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "actual operator browser save and lost-response exact retry",
+    "real audit failure rolls back preference and job version",
+    "fresh reload removes only missing preference blocker",
+    "stale and foreign/role/authority inputs refuse",
+    "concurrent identical correction commits once"
+  ],
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false,
+  "availabilityChecked": false,
+  "calendarWindowsUnchanged": true,
+  "pricingAndPolicyPreserved": true,
+  "auditRows": 2,
+  "paymentRecords": 0,
+  "productionRegistered": false
+}

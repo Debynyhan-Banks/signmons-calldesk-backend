@@ -2,8 +2,15 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFile, writeFile } from "node:fs/promises";
+import { verifyPreferredWindow } from "./verify-preferred-window-review.mjs";
 const require = createRequire(import.meta.url);
 const { Test } = require("@nestjs/testing");
+const {
+  PreferredWindowReviewService: WindowReview,
+} = require("../dist/jobs/preferred-window-review.service.js");
+const {
+  PreferredWindowReviewController: WindowController,
+} = require("../dist/jobs/preferred-window-review.controller.js");
 const {
   OrganizationPaymentPolicyService: Policy,
 } = require("../dist/tenants/organization-payment-policy.service.js");
@@ -110,9 +117,11 @@ export async function verifyBrowserReviewAdmission({
       ReadinessController,
       PolicyController,
       JobPolicyController,
+      WindowController,
     ],
     providers: [
       { provide: Intake, useValue: operator },
+      { provide: WindowReview, useValue: new WindowReview(prisma) },
       { provide: Policy, useValue: new Policy(prisma) },
       { provide: JobPolicy, useValue: new JobPolicy(prisma) },
       { provide: Readiness, useValue: new Readiness(prisma) },
@@ -149,6 +158,7 @@ export async function verifyBrowserReviewAdmission({
     "/operator": "operator-intake-review.html",
     "/operator-review.js": "operator-intake-review.js",
     "/payment-policy.js": "payment-policy.js",
+    "/window-review.js": "window-review.js",
   }))
     files[path] = await readFile(
       new URL("./fixtures/" + name, import.meta.url),
@@ -160,9 +170,21 @@ export async function verifyBrowserReviewAdmission({
   );
   assert.ok(files["/customer"].includes('data-review-submit="true"'));
   let lostSubmission = false,
-    lostApproval = false;
+    lostApproval = false,
+    lostWindow = false;
   app.use(requestContextMiddleware);
   app.use(async (req, res, next) => {
+    if (req.url === "/preferred-window-review/save") {
+      const json = res.json.bind(res);
+      res.json = (body) => {
+        if (!lostWindow && res.statusCode < 300) {
+          lostWindow = true;
+          res.statusCode = 503;
+          return json({});
+        }
+        return json(body);
+      };
+    }
     if (req.url === "/intake-review-request/approve") {
       const json = res.json.bind(res);
       res.json = (body) => {
@@ -711,6 +733,17 @@ export async function verifyBrowserReviewAdmission({
     checks.push(
       "owner browser saves and separately approves payment policy; reviewed job binds exact approved snapshot once; draft changes do not alter approval or job; required payment remains locked",
     );
+    checks.push(
+      ...(await verifyPreferredWindow({
+        prisma,
+        reviewer,
+        origin,
+        evidence,
+        jobId: job.id,
+        asOwner: asPolicyOwner,
+        failingDb,
+      })),
+    );
     await reviewer.locator("#load").click();
     await reviewer.waitForFunction(() =>
       document.getElementById("status").textContent.includes("Request refused"),
@@ -735,6 +768,8 @@ export async function verifyBrowserReviewAdmission({
       await page.locator(page === customer ? "#forget" : "#clear").click();
     }
     assert.equal(await reviewer.locator("#operatorToken").inputValue(), "");
+    assert.equal(await reviewer.locator("#windowPreference").inputValue(), "");
+    assert.equal(await reviewer.locator("#windowReview").isVisible(), false);
     assert.deepEqual(errors, []);
     checks.push(
       "separate customer/operator contexts, no browser storage, mobile fit, private clear and zero page errors",

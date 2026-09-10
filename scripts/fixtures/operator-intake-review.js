@@ -75,6 +75,7 @@
     paint();
   }
   function invalidate() {
+    document.dispatchEvent(new CustomEvent("job-readiness-invalidated"));
     admittedJob = undefined;
     el("readiness").hidden = true;
     el("readinessFacts").textContent = el("confirmationPreview").textContent =
@@ -255,6 +256,7 @@
     }
   }
   el("openReadiness").onclick = async () => {
+    document.dispatchEvent(new CustomEvent("job-readiness-invalidated"));
     if (busy || !admittedJob) return;
     const current = epoch,
       jobId = admittedJob,
@@ -303,6 +305,8 @@
         jobId +
         "\nVersion: " +
         value.jobUpdatedAt +
+        "\nCustomer preference (not booked): " +
+        (value.preferredServiceWindow ?? "not recorded") +
         "\nAssessment: " +
         value.assessment +
         "\nPayment: " +
@@ -315,7 +319,11 @@
       el("readiness").hidden = false;
       document.dispatchEvent(
         new CustomEvent("job-readiness", {
-          detail: { jobId: value.jobId, updatedAt: value.jobUpdatedAt },
+          detail: {
+            jobId: value.jobId,
+            updatedAt: value.jobUpdatedAt,
+            preference: value.preferredServiceWindow,
+          },
         }),
       );
       note(
@@ -334,6 +342,22 @@
       }
     }
   };
+  for (const event of ["window-review-saved", "window-review-refused"])
+    document.addEventListener(event, () => {
+      epoch++;
+      controller?.abort();
+      busy = false;
+      el("readiness").hidden = true;
+      el("readinessFacts").textContent = el("confirmationPreview").textContent =
+        "";
+      document.dispatchEvent(new CustomEvent("job-readiness-invalidated"));
+      note(
+        event === "window-review-saved"
+          ? "Customer preference saved, not booked. Reload readiness."
+          : "Preference review refused or changed. Reload readiness.",
+      );
+      paint();
+    });
   el("load").onclick = () => {
     invalidate();
     void run("read");

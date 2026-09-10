@@ -60,6 +60,13 @@
       paint();
     }
   });
+  document.addEventListener("job-readiness-invalidated", () => {
+    if (!pending && !busy) {
+      job = undefined;
+      el("applyPolicyAck").checked = false;
+      paint();
+    }
+  });
   async function run() {
     if (busy || !pending) return;
     const request = pending,

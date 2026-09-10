@@ -122,6 +122,23 @@
     <h2>Job created — not booked</h2>
     <pre id="receipt"></pre>
     <button id="openReadiness">Open job booking readiness</button>
+    <section id="windowReview" hidden>
+      <h2>Review the customer's preferred service window</h2>
+      <p>
+        Record the customer's words. This does not check availability, reserve
+        time or promise an appointment.
+      </p>
+      <label for="windowPreference"
+        >Preferred service window (up to 500 characters)</label
+      ><input id="windowPreference" maxlength="500" autocomplete="off" />
+      <label
+        ><input id="windowAck" type="checkbox" /> I reviewed this preference
+        with the customer; it is not a confirmed appointment.</label
+      >
+      <button id="saveWindow" disabled>Save reviewed preference</button>
+      <button id="retryWindow" hidden>Retry exact preference save</button>
+      <p id="windowStatus" role="status"></p>
+    </section>
     <section id="readiness" hidden>
       <h2>Booking readiness — read-only snapshot</h2>
       <pre id="readinessFacts"></pre>
@@ -141,4 +158,5 @@
   </p>
   <script src="/operator-review.js"></script>
   <script src="/payment-policy.js"></script>
+  <script src="/window-review.js"></script>
 </html>

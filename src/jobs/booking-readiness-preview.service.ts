@@ -99,6 +99,7 @@ export class BookingReadinessPreviewService {
           jobUpdatedAt: job.updatedAt.toISOString(),
           status: job.status,
           snapshotOnly: true,
+          preferredServiceWindow: summary.preferredWindow,
           assessment: blockers.length
             ? "BLOCKED"
             : "REQUIRES_BOOKING_VALIDATION",
