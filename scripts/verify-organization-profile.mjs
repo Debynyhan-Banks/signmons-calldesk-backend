@@ -2,6 +2,7 @@
 // explicitly substituted test identity guard, static exported UI. No provider credentials.
 import assert from "node:assert/strict";
 import { verifyOrganizationIntake } from "./verify-organization-intake.mjs";
+import { verifyOperatorIntakeAdmission } from "./verify-operator-intake-admission.mjs";
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
@@ -413,6 +414,18 @@ try {
     ),
   );
   console.log(JSON.stringify({ checks, evidence, providerCalls: 0 }));
+  console.log(
+    JSON.stringify({
+      operatorAdmission: await verifyOperatorIntakeAdmission({
+        prisma,
+        tenantId: tenant.id,
+        otherTenantId: other.id,
+        asOwner,
+        organizationService: service,
+        evidence,
+      }),
+    }),
+  );
 } finally {
   await browser?.close();
   await app?.close();

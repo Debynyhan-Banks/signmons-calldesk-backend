@@ -484,6 +484,205 @@ describe("inactive credential-bound transcript continuation", () => {
     tx.communicationEvent.findFirst.mockResolvedValue(row);
     return { request, row, turn };
   }
+  function setupOrganizationAdmission() {
+    const savedReview = setupReview();
+    const tenant = organization();
+    const approved = tenant.settings.organizationProfileV1.approved;
+    Object.assign(savedReview.turn.content.payload, {
+      version: 2,
+      organizationApprovedAt: approved.approvedAt,
+      organizationDigest: createHash("sha256")
+        .update(JSON.stringify(approved))
+        .digest("hex"),
+    });
+    savedReview.row.content.payload.transcriptDigest = createHash("sha256")
+      .update(JSON.stringify([savedReview.turn]))
+      .digest("hex");
+    tx.tenantOrganization.findFirst.mockResolvedValue(tenant);
+    return {
+      ...savedReview,
+      input: {
+        requestId: savedReview.request.requestId,
+        expectedOrganizationApprovedAt: approved.approvedAt,
+        review: admission().review,
+      },
+    };
+  }
+  const tokenFreeService = () =>
+    new CustomerIntakeContinuationService(
+      { $transaction: transaction },
+      cipher,
+      new Proxy({} as CustomerConsentCredentials, {
+        get() {
+          throw new Error("Credential access forbidden");
+        },
+      }),
+      undefined,
+      { bindJob },
+    );
+  it.each(["owner", "admin", "dispatcher"])(
+    "admits durable organization review with no customer credentials for %s",
+    async (role) => {
+      const { input } = setupOrganizationAdmission();
+      const result = await asOperator(
+        () => tokenFreeService().admitReview(input),
+        { role },
+      );
+      expect(result).toMatchObject({
+        requestId: input.requestId,
+        state: "ADMITTED",
+        organizationApprovedAt: input.expectedOrganizationApprovedAt,
+        jobCreated: true,
+        bookingAuthorized: false,
+        deliveryAuthorized: false,
+      });
+      expect(tx.job.create).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(tx.job.create.mock.calls)).toContain(
+        input.requestId,
+      );
+      expect(JSON.stringify(tx.auditLog.create.mock.calls)).not.toContain(
+        draft.phone,
+      );
+    },
+  );
+  it.each(["customer", "technician", "webchat_integration"])(
+    "denies request admission role %s",
+    async (role) => {
+      const { input } = setupOrganizationAdmission();
+      await expect(
+        asOperator(() => tokenFreeService().admitReview(input), { role }),
+      ).rejects.toThrow();
+      expect(transaction).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    { sessionToken: "not-allowed" },
+    { draft },
+    { expectedOrganizationApprovedAt: "not-a-version" },
+    { tenantId: "other" },
+  ])("rejects operator authority or draft overrides %j", async (override) => {
+    const { input } = setupOrganizationAdmission();
+    await expect(
+      asOperator(() =>
+        tokenFreeService().admitReview({ ...input, ...override }),
+      ),
+    ).rejects.toThrow();
+    expect(tx.job.create).not.toHaveBeenCalled();
+  });
+  it("requires current organization and exact transcript digest", async () => {
+    const { input, row } = setupOrganizationAdmission();
+    await expect(
+      asOperator(() =>
+        tokenFreeService().admitReview({
+          ...input,
+          expectedOrganizationApprovedAt: "2025-01-01T00:00:00.000Z",
+        }),
+      ),
+    ).rejects.toThrow("changed");
+    row.content.payload.transcriptDigest = "0".repeat(64);
+    await expect(
+      asOperator(() => tokenFreeService().admitReview(input)),
+    ).rejects.toThrow("changed");
+    expect(tx.job.create).not.toHaveBeenCalled();
+  });
+  it("refuses legacy scripted review without organization binding", async () => {
+    const { request } = setupReview();
+    tx.tenantOrganization.findFirst.mockResolvedValue(organization());
+    await expect(
+      asOperator(() =>
+        tokenFreeService().admitReview({
+          requestId: request.requestId,
+          expectedOrganizationApprovedAt: "2026-01-01T00:00:00.000Z",
+          review: admission().review,
+        }),
+      ),
+    ).rejects.toThrow("changed");
+  });
+  it("returns exact prior receipt only to the same actor and decision", async () => {
+    const { input } = setupOrganizationAdmission();
+    const first = await asOperator(() => tokenFreeService().admitReview(input));
+    const [createInput] = tx.job.create.mock.calls[0] as unknown as [
+      { data: { policySnapshot: object } },
+    ];
+    jest.mocked(lockCustomerConsentSession).mockResolvedValue({
+      status: "COMPLETED",
+      sessionId: scope.sessionId,
+      marker: 1,
+      capture: null,
+      hasCapture: false,
+    });
+    tx.job.findUnique.mockResolvedValue({
+      id: first.jobId,
+      status: "CREATED",
+      urgency: "HIGH",
+      policySnapshot: createInput.data.policySnapshot,
+      deletedAt: null,
+      conversationLinks: [{ id: "link" }],
+      emailConsentBinding: null,
+    });
+    tx.job.create.mockClear();
+    tx.auditLog.create.mockClear();
+    expect(
+      await asOperator(() => tokenFreeService().admitReview(input)),
+    ).toEqual(first);
+    await expect(
+      asOperator(() => tokenFreeService().admitReview(input), {
+        userId: "another-operator",
+      }),
+    ).rejects.toThrow("changed");
+    await expect(
+      asOperator(() =>
+        tokenFreeService().admitReview({
+          ...input,
+          review: { ...input.review, urgency: "STANDARD" },
+        }),
+      ),
+    ).rejects.toThrow("changed");
+    expect(tx.job.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+  it.each(["GRANTED", "DECLINED", "REVOKED"])(
+    "binds historical %s consent without delivery authority",
+    async (decision) => {
+      const { input } = setupOrganizationAdmission();
+      tx.appointmentEmailConsentScope.findUnique.mockResolvedValue({
+        id: "scope",
+        sessionId: scope.sessionId,
+      });
+      tx.appointmentEmailConsentEvidence.findFirst.mockResolvedValue({
+        decision,
+      });
+      const result = await asOperator(() =>
+        tokenFreeService().admitReview(input),
+      );
+      expect(result.consentEvidence).toBe("BOUND");
+      expect(result.deliveryAuthorized).toBe(false);
+      expect(bindJob).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("refuses expired request before creating a job", async () => {
+    const { input, row } = setupOrganizationAdmission();
+    row.content.payload.expiresAt = Date.now() - 1;
+    await expect(
+      asOperator(() => tokenFreeService().admitReview(input)),
+    ).rejects.toThrow("changed");
+    expect(tx.job.create).not.toHaveBeenCalled();
+  });
+  it("rechecks deadline after writes so the transaction can roll back", async () => {
+    const { input, row } = setupOrganizationAdmission();
+    const clock = jest.spyOn(Date, "now");
+    tx.conversation.updateMany.mockImplementation(() => {
+      clock.mockReturnValue(row.content.payload.expiresAt);
+      return Promise.resolve({ count: 1 });
+    });
+    try {
+      await expect(
+        asOperator(() => tokenFreeService().admitReview(input)),
+      ).rejects.toThrow("changed");
+    } finally {
+      clock.mockRestore();
+    }
+  });
   it("persists an encrypted customer review request and audit without a bearer or job", async () => {
     const { request } = setupReview();
     const result = await service().submitReview(request);
