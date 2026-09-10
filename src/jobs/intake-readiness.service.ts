@@ -78,6 +78,11 @@ type IntakeJob = Prisma.JobGetPayload<{
 export class IntakeReadinessService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Assess an already loaded snapshot without reading transcripts or writing audits. */
+  assessSnapshot(job: IntakeJob): IntakeReviewSummary {
+    return this.toSummary(job);
+  }
+
   async list(tenantId: string): Promise<IntakeReviewSummary[]> {
     const jobs = await this.prisma.job.findMany({
       where: { tenantId, deletedAt: null },

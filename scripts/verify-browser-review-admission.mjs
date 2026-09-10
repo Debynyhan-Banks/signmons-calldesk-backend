@@ -4,6 +4,12 @@ import { createRequire } from "node:module";
 import { readFile, writeFile } from "node:fs/promises";
 const require = createRequire(import.meta.url);
 const { Test } = require("@nestjs/testing");
+const {
+  BookingReadinessPreviewService: Readiness,
+} = require("../dist/jobs/booking-readiness-preview.service.js");
+const {
+  BookingReadinessPreviewController: ReadinessController,
+} = require("../dist/jobs/booking-readiness-preview.controller.js");
 const { UnauthorizedException } = require("@nestjs/common");
 const {
   CustomerIntakeContinuationService: Intake,
@@ -87,9 +93,10 @@ export async function verifyBrowserReviewAdmission({
       }),
     );
   const module = await Test.createTestingModule({
-    controllers: [Controller],
+    controllers: [Controller, ReadinessController],
     providers: [
       { provide: Intake, useValue: operator },
+      { provide: Readiness, useValue: new Readiness(prisma) },
       { provide: LoggingService, useValue: { warn() {}, error() {} } },
     ],
   })
@@ -345,6 +352,110 @@ export async function verifyBrowserReviewAdmission({
       path: evidence + "/operator-admitted-mobile.png",
       fullPage: true,
     });
+    const snapshotBefore = await prisma.job.findUnique({
+      where: { id: job.id },
+    });
+    const auditBefore = await prisma.auditLog.count();
+    await reviewer.locator("#openReadiness").click();
+    await reviewer.locator("#readiness").waitFor({ state: "visible" });
+    const readinessText = await reviewer.locator("#readinessFacts").innerText();
+    for (const reason of [
+      "Preferred service window is missing",
+      "Payment policy needs operator review",
+      "Customer contact is not verified",
+      "Service address is not verified",
+    ])
+      assert.ok(readinessText.includes(reason));
+    assert.ok(
+      (await reviewer.locator("#confirmationPreview").innerText()).includes(
+        "no finalized booking",
+      ),
+    );
+    await reviewer.screenshot({
+      path: evidence + "/booking-readiness-mobile.png",
+      fullPage: true,
+    });
+    await reviewer.setViewportSize({ width: 1280, height: 1000 });
+    await reviewer.screenshot({
+      path: evidence + "/booking-readiness-desktop.png",
+      fullPage: true,
+    });
+    await reviewer.setViewportSize({ width: 390, height: 844 });
+    assert.deepEqual(
+      await prisma.job.findUnique({ where: { id: job.id } }),
+      snapshotBefore,
+    );
+    assert.equal(await prisma.auditLog.count(), auditBefore);
+    const preview = async (token = "fixture-owner", body = { jobId: job.id }) =>
+      fetch(origin + "/booking-readiness/preview", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+    assert.equal((await preview("fixture-other")).status, 404);
+    assert.equal((await preview("fixture-tech")).status, 403);
+    assert.equal((await preview("bad")).status, 401);
+    assert.equal(
+      (
+        await preview("fixture-owner", {
+          jobId: job.id,
+          bookingAuthorized: true,
+        })
+      ).status,
+      400,
+    );
+    await prisma.job.update({
+      where: { id: job.id },
+      data: {
+        policySnapshot: {
+          ...snapshotBefore.policySnapshot,
+          depositRequired: true,
+          serviceFeeRequired: false,
+        },
+      },
+    });
+    await reviewer.locator("#openReadiness").click();
+    await reviewer.waitForFunction(() =>
+      document
+        .getElementById("readinessFacts")
+        .textContent.includes("Required payment has not been requested"),
+    );
+    const paymentPreview = await preview();
+    assert.equal(
+      paymentPreview.headers.get("cache-control"),
+      "private, no-store",
+    );
+    const paymentBody = await paymentPreview.json();
+    assert.equal(paymentBody.payment.state, "LOCKED");
+    assert.equal(paymentBody.bookingAuthorized, false);
+    assert.equal(paymentBody.deliveryAuthorized, false);
+    await writeFile(
+      evidence + "/booking-readiness-summary.json",
+      JSON.stringify(
+        {
+          jobId: job.id,
+          initialBlockers: readinessText,
+          paymentRequiredReason: paymentBody.payment.reason,
+          readOnlyJobAndAuditUnchanged: true,
+          bookingAuthorized: false,
+          deliveryAuthorized: false,
+          confirmation: paymentBody.confirmation,
+          identity: "fixture only",
+        },
+        null,
+        2,
+      ),
+    );
+    await prisma.job.update({
+      where: { id: job.id },
+      data: { policySnapshot: snapshotBefore.policySnapshot },
+    });
+    checks.push(
+      "created job opens read-only readiness; missing policy/window/verification and required-payment refusal; no false confirmation or writes",
+    );
     await reviewer.locator("#load").click();
     await reviewer.waitForFunction(() =>
       document.getElementById("status").textContent.includes("Request refused"),

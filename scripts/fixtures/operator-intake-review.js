@@ -1,7 +1,32 @@
 // Local operator UI: tokens/decisions are memory-only; no customer credentials.
 (() => {
   const el = (id) => document.getElementById(id);
+  const readinessLabel = (code) =>
+    ({
+      MISSING_customerName: "Customer name is missing",
+      MISSING_phone: "Phone is missing",
+      MISSING_serviceAddress: "Service address is missing",
+      MISSING_serviceCategory: "Service category is missing",
+      MISSING_issueSummary: "Issue summary is missing",
+      MISSING_urgency: "Urgency review is missing",
+      MISSING_preferredWindow: "Preferred service window is missing",
+      PAYMENT_POLICY_UNRESOLVED: "Payment policy needs operator review",
+      PAYMENT_REQUIRED_NOT_REQUESTED: "Required payment has not been requested",
+      PAYMENT_PENDING: "Required payment is pending",
+      PAYMENT_FAILED: "Required payment failed",
+      PAYMENT_CANCELED: "Required payment was cancelled",
+      PAYMENT_REFUNDED: "Required payment was refunded",
+      PAYMENT_SUCCEEDED: "Payment is recorded as received",
+      PAYMENT_EXCEPTION_APPROVED: "Payment exception is recorded",
+      PAYMENT_NOT_REQUIRED: "Job policy records no payment requirement",
+      HUMAN_REVIEW_REQUIRED: "Human intake review is required",
+      CONTACT_NOT_VERIFIED: "Customer contact is not verified",
+      ADDRESS_NOT_VERIFIED: "Service address is not verified",
+      CALENDAR_REVIEW_REQUIRED:
+        "An unresolved Calendar operation needs operator review",
+    })[code] ?? code;
   let loaded,
+    admittedJob,
     pending,
     busy = false,
     epoch = 0,
@@ -11,6 +36,7 @@
     el("status").textContent = text;
   };
   function paint() {
+    el("openReadiness").disabled = busy || !admittedJob;
     for (const id of ["operatorToken", "requestId", "load", "urgency", "ack"])
       el(id).disabled = busy || !!pending;
     el("review").hidden = !loaded;
@@ -30,6 +56,10 @@
     controller?.abort();
     clearTimeout(timer);
     loaded = pending = undefined;
+    admittedJob = undefined;
+    el("readiness").hidden = true;
+    el("readinessFacts").textContent = el("confirmationPreview").textContent =
+      "";
     busy = false;
     el("operatorToken").value =
       el("requestId").value =
@@ -45,6 +75,10 @@
     paint();
   }
   function invalidate() {
+    admittedJob = undefined;
+    el("readiness").hidden = true;
+    el("readinessFacts").textContent = el("confirmationPreview").textContent =
+      "";
     loaded = undefined;
     el("facts").textContent = el("version").textContent = "";
     el("ack").checked = false;
@@ -186,6 +220,7 @@
           "\nStatus: CREATED\nConsent association: " +
           value.consentEvidence +
           " (not sending permission)";
+        admittedJob = value.jobId;
         el("result").hidden = false;
         note(
           "One job created. No appointment, payment, dispatch or message was performed.",
@@ -219,6 +254,81 @@
       }
     }
   }
+  el("openReadiness").onclick = async () => {
+    if (busy || !admittedJob) return;
+    const current = epoch,
+      jobId = admittedJob,
+      abort = new AbortController();
+    controller = abort;
+    busy = true;
+    paint();
+    el("readiness").hidden = true;
+    el("readinessFacts").textContent = el("confirmationPreview").textContent =
+      "";
+    const timeout = setTimeout(() => abort.abort(), 15000);
+    try {
+      const response = await fetch("/booking-readiness/preview", {
+        method: "POST",
+        credentials: "omit",
+        cache: "no-store",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        signal: abort.signal,
+        headers: {
+          Authorization: "Bearer " + el("operatorToken").value.trim(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ jobId }),
+      });
+      if (!response.ok) throw Error("Read refused");
+      const raw = await response.text();
+      if (raw.length > 16384) throw Error("Invalid preview");
+      const value = JSON.parse(raw);
+      if (current !== epoch) return;
+      if (
+        value.jobId !== jobId ||
+        value.status !== "CREATED" ||
+        value.snapshotOnly !== true ||
+        value.bookingAuthorized !== false ||
+        value.deliveryAuthorized !== false ||
+        !Array.isArray(value.blockers) ||
+        value.blockers.some((x) => typeof x !== "string") ||
+        value.confirmation?.eligible !== false ||
+        value.confirmation?.state !== "UNAVAILABLE" ||
+        typeof value.confirmation.preview !== "string"
+      )
+        throw Error("Invalid preview");
+      el("readinessFacts").textContent =
+        "Job: " +
+        jobId +
+        "\nVersion: " +
+        value.jobUpdatedAt +
+        "\nAssessment: " +
+        value.assessment +
+        "\nPayment: " +
+        value.payment.state +
+        " — " +
+        readinessLabel(value.payment.reason) +
+        "\nBlockers:\n" +
+        value.blockers.map(readinessLabel).join("\n");
+      el("confirmationPreview").textContent = value.confirmation.preview;
+      el("readiness").hidden = false;
+      note(
+        "Read-only snapshot loaded. This is not permission to book or send.",
+      );
+    } catch {
+      if (current === epoch)
+        note(
+          "Readiness unavailable or job changed. No action performed; reload or ask the operator to review the job.",
+        );
+    } finally {
+      clearTimeout(timeout);
+      if (current === epoch) {
+        busy = false;
+        paint();
+      }
+    }
+  };
   el("load").onclick = () => {
     invalidate();
     void run("read");

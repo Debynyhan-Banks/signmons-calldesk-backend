@@ -1,6 +1,16 @@
 # Signmons Backend Execution Board
 
-## Browser customer submission and operator approval (2026-09-10, latest review-ready)
+## Local job booking-readiness preview (2026-09-10, latest review-ready)
+
+Owner reviewed the browser admission checkpoint and approved the proposed bounded S2 readiness section. Added inactive jobId-only POST /booking-readiness/preview and operator fixture control opening the newly created job. Verified non-impersonated owner/admin/dispatcher and active tenant; CREATED jobs only. PostgreSQL repeatable-read READ ONLY snapshot reuses intake assessment and payment gate without changing policy/integrations. Missing explicit payment flags are UNKNOWN, not no-payment-required; missing window, human/verification and unfinished Calendar blockers are visible. No blockers still requires booking validation, never grants authority.
+
+Confirmation preview explicitly refuses APPOINTMENT_NOT_FINALIZED for this unbooked job; no date, link or message is fabricated. This is not finalized-event content rendering or positive recipient/consent eligibility. No production module registration, booking, payment, sending, provider actions, schema/package changes or release authority.
+
+Evidence: backend evidence/APP-013/booking-readiness-preview/README.md, summary and desktop/mobile screenshots. 1554 backend tests including 12 new, 170 UI tests, lint/build/architecture/Prisma and four clean dependency audits pass. Local proof now covers 12 organization/intake, eight admission and six browser groups. Reads leave job/audit unchanged; fictional required-payment policy demonstrates refusal; all disposable records removed. Prior Calendar test instability remains historical; this run passed. Existing non-blocking toolchain warnings and one pg concurrency deprecation are recorded.
+
+Stop for review. Next proposed outcome: authorized review of missing preferred window and applicable payment policy on the created job, followed by the local booking decision; inspect/reuse existing mutation contracts before implementation and do not treat diagnostic flags as policy authority. Full S2 booking/notification remains open. APP-013 sole Now, Next empty, FE-014 paused. Coverage unchanged: APP-013 50% / 0 of 12 accepted, onboarding 50% local / 0 of 6 accepted, pilot 0 of 12 accepted. No overall engineering ETA. No merge/deploy, production migration, real data, IAM/secrets/billing/charges; advisory sales/website import outside MVP.
+
+## Browser customer submission and operator approval (2026-09-10, prior checkpoint)
 
 Owner approved continuing the local admission connection. Customer fixture explicitly submits its reviewed draft; separate operator fixture loads an opaque reference, reviews facts/current organization version, selects urgency and acknowledges statements, then creates one CREATED job. Inactive customer transport adds submit; new guarded read/approve controller is deliberately absent from production modules. Customer credentials never enter operator requests. Exact retry after lost acknowledgment returns the original outcome; closed/expired/changed requests do not silently become replacements.
 

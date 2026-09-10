@@ -1,0 +1,15 @@
+{
+  "jobId": "5ed00e4f-77ff-4803-82e1-c7128b788c3d",
+  "initialBlockers": "Job: 5ed00e4f-77ff-4803-82e1-c7128b788c3d\nVersion: 2026-09-10T21:04:29.862Z\nAssessment: BLOCKED\nPayment: UNKNOWN — Payment policy needs operator review\nBlockers:\nPreferred service window is missing\nPayment policy needs operator review\nCustomer contact is not verified\nService address is not verified",
+  "paymentRequiredReason": "PAYMENT_REQUIRED_NOT_REQUESTED",
+  "readOnlyJobAndAuditUnchanged": true,
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false,
+  "confirmation": {
+    "state": "UNAVAILABLE",
+    "eligible": false,
+    "reason": "APPOINTMENT_NOT_FINALIZED",
+    "preview": "No confirmation generated: this job has no finalized booking. Recipient, current consent, mailbox verification and expiry must be checked at the finalized-event boundary."
+  },
+  "identity": "fixture only"
+}
