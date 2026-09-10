@@ -1,5 +1,15 @@
 # Signmons Backend Execution Board
 
+## Durable verification reservation and observation (2026-09-10, latest review-ready)
+
+Implemented inactive session-bound reserve/invoke/finalize around the Verify adapter, with no transaction spanning the mocked provider call. Encrypted bounded ledger and atomic audits preserve attempt identity. Exact replay returns the saved result or unresolved reservation without invoking again; changed payload refuses. Check SID comes from the matching saved start, not the customer. Failed finalization retains unknown invocation count and UNRECONCILED potential cost; no automatic reservation reclaim or resend.
+
+Evidence: backend evidence/APP-013/durable-verification/README.md and nine-group database summary. 18 new unit tests; full backend 1676 passing / 3 existing skips; lint/build/architecture/Prisma, two clean backend audits and existing full browser regression passed. Disposable database removed. No new UI, actual delivery, process-kill or reconciliation claim; all authority flags remain false and local phone fixture stays separate.
+
+One START/five CHECK local bound is not a production budget. Reserve/observe audit rows share attempt ID and must not be counted twice. Rate/account/service binding, OTP opt-in, shared traffic limits, monetary cap, recovery and admission proof transfer remain open. Next after review: durable verification opt-in and usage-budget admission prerequisites, mocked/inactive; no live sends or configured costs. No schema/package/migration, production registration, real data, merge/deploy, IAM/secrets/billing or charges.
+
+APP-013 sole Now, Next empty, FE-014 paused. Progress unchanged: APP-013 50% scope coverage / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No overall engineering ETA.
+
 ## Inactive Verify adapter and cost boundaries (2026-09-10, latest review-ready)
 
 Owner approved the Twilio recommendation and requested competitive/profitable pricing awareness. Implemented one unregistered injected-client adapter: strict tenant/account/service/phone/SID binding, SMS start/check mapping, sanitized outcomes and no automatic retries. APPROVED is provider evidence only; all application authority flags remain false. No live client/configuration, provider calls, UI/route/persistence changes, secrets, billing or charges.

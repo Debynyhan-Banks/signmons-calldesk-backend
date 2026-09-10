@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "reservation and audit visible before mocked SDK call outside transaction",
+    "concurrent replay while call pending does not invoke again",
+    "new service instance replays finalized receipt without writes",
+    "check derives stored SID, saved approval does not grant application authority",
+    "changed retry and new operation after approval refuse",
+    "encrypted ledger and private audit omit phone/code",
+    "reservation audit failure rolls back before invocation",
+    "finalization audit failure preserves unresolved cost and prevents replay",
+    "forged session scope refuses"
+  ],
+  "mockedStartCalls": 2,
+  "mockedCheckCalls": 1,
+  "liveProviderCalls": 0,
+  "productionRegistered": false
+}

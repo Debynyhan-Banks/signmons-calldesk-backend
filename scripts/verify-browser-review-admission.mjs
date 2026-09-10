@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { readFile, writeFile } from "node:fs/promises";
 import { verifyPreferredWindow } from "./verify-preferred-window-review.mjs";
 import { verifyLocalPhone } from "./verify-local-phone.mjs";
+import { verifyDurableVerification } from "./verify-durable-verification.mjs";
 const require = createRequire(import.meta.url);
 const {
   LocalCustomerPhoneService: Phone,
@@ -122,6 +123,18 @@ export async function verifyBrowserReviewAdmission({
     responses,
     fixture,
   });
+  const durableProof = await verifyDurableVerification({
+    prisma,
+    cipher,
+    credentials,
+    responses,
+    fixture,
+    tenantId,
+  });
+  await writeFile(
+    evidence + "/durable-verification-summary.json",
+    JSON.stringify(durableProof, null, 2),
+  );
   await writeFile(
     evidence + "/phone-database-summary.json",
     JSON.stringify(phoneProof, null, 2),
