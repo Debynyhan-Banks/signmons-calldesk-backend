@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Automated verification contract mapping (2026-09-10, latest)
+
+Source audit completed at 511cd1a; canonical findings and proposed local phone challenge slice are in governance AUTOMATED_VERIFICATION_CONNECTION.md. Existing transport is not OTP, placeholder addresses are not validation, and routing fallback is not coverage evidence. No runtime changes or acceptance credit. Next proposed: connected local request/check/resend/correction with durable session-bound proof after explicit contract/policy definition. No live sends, provider activation or release; APP-013 remains sole Now. Stop at mapping review.
+
 ## Approved automated verification MVP decision (2026-09-10, current)
 
 Owner approved documentation before implementation: automated phone one-time-code verification, address autocomplete/validation and configured service-area checks, followed by existing payment/availability gates. Mandatory operator contact/address confirmation is superseded; human help is an exception. Phone access is not identity or messaging consent; payment is a separate safeguard. Existing human-reviewed admission is not silently removed. Canonical requirements and acceptance cases are in governance CALLDESK_MVP_PLAN.md, section "Approved automated verification MVP decision".
