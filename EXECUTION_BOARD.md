@@ -1,6 +1,16 @@
 # Signmons Backend Execution Board
 
-## Local customer verification journey (2026-09-10, latest review-ready)
+## Address and service-area source map (2026-09-10, latest review-ready)
+
+Completed the approved inspect/map section; see ADDRESS_COVERAGE_CONNECTION.md (repository-root path). Current structured address fields are placeholders in protected admission; CustomerCoverageCheck has no application consumer found under src. Existing active ZIP configuration is reusable, but routing's no-rule covered:true fallback and formatted-text ZIP extraction cannot establish validated customer service coverage. No routing behavior changed.
+
+Next proposed implementation is one connected local address suggestion/selection/confirmation and explicit configured-ZIP coverage result in the existing customer journey, using fictional injected data and session-scoped evidence. Address/unit and area-policy changes invalidate stale results; missing geographic authority remains UNKNOWN. No new provider, master-address backfill, job/admission mutation or booking/send permission. The $50 phone budget does not authorize address-provider spend.
+
+Backend evidence: evidence/APP-013/address-coverage-map/README.md. Documentation-only audit at backend 77c2744 / governance b37ae9b, following remote refresh. Existing backend 1709 tests passed / 3 skipped; build/lint/architecture/Prisma passed. No runtime/UI changes, new browser QA or provider acceptance claimed. No merge, deployment, migration, live calls, charges, real data, IAM/secrets or billing.
+
+Stop for review of the source map and six local acceptance cases before implementation. APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% recorded scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No defensible overall engineering percentage or ETA.
+
+## Local customer verification journey (2026-09-10, prior checkpoint)
 
 Connected the approved consent/budget controls to the existing optional local customer page: trusted test notice and unchecked acknowledgment, exact-number binding, mocked START/CHECK, wrong/correct code, lost-response exact retry, correction invalidation and draft-preserving refusal. Local-only POST /customer-session/verify reuses the existing origin/session/tenant/request-budget boundary and requires explicit fixture binding and port injection. All phone/booking/delivery authority remains false.
 
