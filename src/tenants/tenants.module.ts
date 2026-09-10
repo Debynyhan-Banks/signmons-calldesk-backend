@@ -4,11 +4,15 @@ import { PrismaTenantsService } from "./tenants.service";
 import { TenantsController } from "./tenants.controller";
 import { SanitizationModule } from "../sanitization/sanitization.module";
 import { AdminApiGuard } from "../common/guards/admin-api.guard";
+import { AuthModule } from "../auth/auth.module";
+import { OrganizationProfileController } from "./organization-profile.controller";
+import { OrganizationProfileService } from "./organization-profile.service";
 
 @Module({
-  imports: [SanitizationModule],
-  controllers: [TenantsController],
+  imports: [SanitizationModule, AuthModule],
+  controllers: [TenantsController, OrganizationProfileController],
   providers: [
+    OrganizationProfileService,
     PrismaTenantsService,
     AdminApiGuard,
     {
