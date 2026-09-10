@@ -1,5 +1,15 @@
 # Signmons Backend Execution Board
 
+## Inactive Verify adapter and cost boundaries (2026-09-10, latest review-ready)
+
+Owner approved the Twilio recommendation and requested competitive/profitable pricing awareness. Implemented one unregistered injected-client adapter: strict tenant/account/service/phone/SID binding, SMS start/check mapping, sanitized outcomes and no automatic retries. APPROVED is provider evidence only; all application authority flags remain false. No live client/configuration, provider calls, UI/route/persistence changes, secrets, billing or charges.
+
+Evidence: backend evidence/APP-013/twilio-verify-adapter/README.md. 42 new tests; full backend 1658 passed / 3 existing skips, lint/build/architecture/Prisma and two clean backend audits. Installed SDK tested with network-free HTTP client; maxRetries:0 defaults to 3, so autoRetry:false is the effective guard. No new browser/UI QA claim; none required for inactive adapter-only change.
+
+Usage output records attempted SDK calls and UNRECONCILED billing, not billable SMS or implemented cost enforcement. VERIFICATION_UNIT_ECONOMICS.md defines per-tenant/cohort costing, versioned rate inputs, failure/retry attribution, reconciliation and margin-planning requirements without setting prices or margins. Missing cost is unknown, not zero.
+
+Stop for review. Next bounded connection: durable request reservation/finalization and deduplicated usage observations using mocked provider outcomes. Opt-in, spend circuit breaker, recovery, live activation and admission transfer remain gates. APP-013 sole Now, Next empty, FE-014 paused. Percentages unchanged: APP-013 50% scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No overall engineering ETA or production authority.
+
 ## Phone verification provider recommendation (2026-09-10, latest review-ready)
 
 Read-only provider review recommends Twilio Verify v2; governance PHONE_VERIFICATION_PROVIDER_DECISION.md records sources, costs and recovery differences from fixture. Next after review: inactive injected-client adapter and tests, no live calls or configuration. Standard test credentials do not support Verify; 404 is not approval; durable network recovery and OTP opt-in remain required. No runtime or acceptance change. APP-013 sole Now, Next empty, FE-014 paused; percentages unchanged. No release, secrets, billing, real data or charges authorized.
