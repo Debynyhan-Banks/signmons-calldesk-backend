@@ -5,6 +5,18 @@ import { readFile, writeFile } from "node:fs/promises";
 const require = createRequire(import.meta.url);
 const { Test } = require("@nestjs/testing");
 const {
+  OrganizationPaymentPolicyService: Policy,
+} = require("../dist/tenants/organization-payment-policy.service.js");
+const {
+  OrganizationPaymentPolicyController: PolicyController,
+} = require("../dist/tenants/organization-payment-policy.controller.js");
+const {
+  JobPaymentPolicyService: JobPolicy,
+} = require("../dist/jobs/job-payment-policy.service.js");
+const {
+  JobPaymentPolicyController: JobPolicyController,
+} = require("../dist/jobs/job-payment-policy.controller.js");
+const {
   BookingReadinessPreviewService: Readiness,
 } = require("../dist/jobs/booking-readiness-preview.service.js");
 const {
@@ -93,9 +105,16 @@ export async function verifyBrowserReviewAdmission({
       }),
     );
   const module = await Test.createTestingModule({
-    controllers: [Controller, ReadinessController],
+    controllers: [
+      Controller,
+      ReadinessController,
+      PolicyController,
+      JobPolicyController,
+    ],
     providers: [
       { provide: Intake, useValue: operator },
+      { provide: Policy, useValue: new Policy(prisma) },
+      { provide: JobPolicy, useValue: new JobPolicy(prisma) },
       { provide: Readiness, useValue: new Readiness(prisma) },
       { provide: LoggingService, useValue: { warn() {}, error() {} } },
     ],
@@ -129,6 +148,7 @@ export async function verifyBrowserReviewAdmission({
     "/journey.js": "customer-intake-journey.js",
     "/operator": "operator-intake-review.html",
     "/operator-review.js": "operator-intake-review.js",
+    "/payment-policy.js": "payment-policy.js",
   }))
     files[path] = await readFile(
       new URL("./fixtures/" + name, import.meta.url),
@@ -455,6 +475,241 @@ export async function verifyBrowserReviewAdmission({
     });
     checks.push(
       "created job opens read-only readiness; missing policy/window/verification and required-payment refusal; no false confirmation or writes",
+    );
+    await reviewer.locator("#loadPolicy").click();
+    await reviewer.waitForFunction(
+      () => !document.getElementById("savePolicy").disabled,
+    );
+    await reviewer.locator("#feeRequired").check();
+    await reviewer.locator("#feeCents").fill("7500");
+    await reviewer.locator("#savePolicy").click();
+    await reviewer.waitForFunction(() =>
+      document.getElementById("policySnapshot").textContent.includes("7500"),
+    );
+    assert.equal(await reviewer.locator("#approvePolicy").isDisabled(), true);
+    await reviewer.locator("#policyAck").check();
+    await reviewer.locator("#approvePolicy").click();
+    await reviewer.waitForFunction(() =>
+      document
+        .getElementById("policySnapshot")
+        .textContent.includes("approvedAt"),
+    );
+    const policyFetch = async () => {
+      const r = await fetch(origin + "/organization/payment-policy", {
+        headers: { Authorization: "Bearer fixture-owner" },
+      });
+      assert.equal(r.status, 200);
+      return r.json();
+    };
+    const approvedPolicy = await policyFetch();
+    const asPolicyOwner = (fn) =>
+      new Promise((resolve, reject) =>
+        requestContextMiddleware({ headers: {} }, {}, () => {
+          setAuthContext({
+            tenantId,
+            userId: "fictional-owner",
+            role: "owner",
+          });
+          Promise.resolve().then(fn).then(resolve, reject);
+        }),
+      );
+    const failingDb = new Proxy(prisma, {
+      get(target, key) {
+        if (key === "$transaction")
+          return (fn) =>
+            target.$transaction((tx) =>
+              fn(
+                new Proxy(tx, {
+                  get(t, k) {
+                    return k === "auditLog"
+                      ? {
+                          create: async () => {
+                            throw Error("fixture audit failure");
+                          },
+                        }
+                      : Reflect.get(t, k);
+                  },
+                }),
+              ),
+            );
+        return Reflect.get(target, key);
+      },
+    });
+    const beforeFailedPolicy = await prisma.tenantOrganization.findUnique({
+      where: { id: tenantId },
+    });
+    await assert.rejects(
+      asPolicyOwner(() =>
+        new Policy(failingDb).write({
+          expectedUpdatedAt: approvedPolicy.updatedAt,
+          draft: { ...approvedPolicy.policy.draft, serviceFeeCents: 8500 },
+        }),
+      ),
+    );
+    assert.deepEqual(
+      await prisma.tenantOrganization.findUnique({ where: { id: tenantId } }),
+      beforeFailedPolicy,
+    );
+    const beforeFailedBinding = await prisma.job.findUnique({
+      where: { id: job.id },
+    });
+    await assert.rejects(
+      asPolicyOwner(() =>
+        new JobPolicy(failingDb).apply({
+          jobId: job.id,
+          expectedUpdatedAt: beforeFailedBinding.updatedAt.toISOString(),
+          approvedAt: approvedPolicy.policy.approved.approvedAt,
+          acknowledged: true,
+        }),
+      ),
+    );
+    assert.deepEqual(
+      await prisma.job.findUnique({ where: { id: job.id } }),
+      beforeFailedBinding,
+    );
+    await reviewer.locator("#openReadiness").click();
+    await reviewer.waitForFunction(() =>
+      document
+        .getElementById("readinessFacts")
+        .textContent.includes("Payment policy needs operator review"),
+    );
+    await reviewer.locator("#applyPolicyAck").check();
+    const applying = reviewer.waitForRequest((r) =>
+      r.url().endsWith("/job-payment-policy/apply"),
+    );
+    await reviewer.locator("#applyPolicy").click();
+    const appliedRequest = await applying;
+    await reviewer.waitForFunction(() =>
+      document
+        .getElementById("policyStatus")
+        .textContent.includes("Reviewed policy attached"),
+    );
+    const bound = await prisma.job.findUnique({ where: { id: job.id } });
+    assert.equal(bound.policySnapshot.serviceFeeRequired, true);
+    assert.equal(bound.pricingSnapshot.serviceFeeAmountCents, 7500);
+    assert.equal(
+      bound.policySnapshot.paymentPolicyBinding.approvedAt,
+      approvedPolicy.policy.approved.approvedAt,
+    );
+    assert.deepEqual(
+      bound.policySnapshot.intakeAdmission,
+      snapshotBefore.policySnapshot.intakeAdmission,
+    );
+    const auditCount = await prisma.auditLog.count();
+    const replay = await fetch(origin + "/job-payment-policy/apply", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer fixture-owner",
+        "Content-Type": "application/json",
+      },
+      body: appliedRequest.postData(),
+    });
+    assert.equal(replay.status, 201);
+    assert.equal(await prisma.auditLog.count(), auditCount);
+    assert.deepEqual(
+      await prisma.job.findUnique({ where: { id: job.id } }),
+      bound,
+    );
+    await reviewer.locator("#feeCents").fill("9500");
+    assert.equal(await reviewer.locator("#approvePolicy").isDisabled(), true);
+    await reviewer.locator("#savePolicy").click();
+    await reviewer.waitForFunction(() =>
+      document.getElementById("policySnapshot").textContent.includes("9500"),
+    );
+    const changedDraft = await policyFetch();
+    assert.equal(changedDraft.policy.approved.draft.serviceFeeCents, 7500);
+    await reviewer.locator("#openReadiness").click();
+    await reviewer.waitForFunction(() =>
+      document
+        .getElementById("readinessFacts")
+        .textContent.includes("Required payment has not been requested"),
+    );
+    await reviewer.screenshot({
+      path: evidence + "/payment-policy-mobile.png",
+      fullPage: true,
+    });
+    await reviewer.setViewportSize({ width: 1280, height: 1000 });
+    await reviewer.screenshot({
+      path: evidence + "/payment-policy-desktop.png",
+      fullPage: true,
+    });
+    await reviewer.setViewportSize({ width: 390, height: 844 });
+    assert.equal((await preview()).status, 201);
+    for (const token of ["fixture-tech", "fixture-other"]) {
+      const refused = await fetch(origin + "/job-payment-policy/apply", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
+        body: appliedRequest.postData(),
+      });
+      assert.ok([403, 409].includes(refused.status));
+    }
+    assert.equal(await prisma.payment.count(), 0);
+    const stale = await fetch(origin + "/organization/payment-policy/approve", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer fixture-owner",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        expectedUpdatedAt: approvedPolicy.updatedAt,
+        acknowledged: true,
+      }),
+    });
+    assert.equal(stale.status, 409);
+    const concurrent = await Promise.all(
+      [1, 2].map(() =>
+        fetch(origin + "/organization/payment-policy/approve", {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer fixture-owner",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            expectedUpdatedAt: changedDraft.updatedAt,
+            acknowledged: true,
+          }),
+        }),
+      ),
+    );
+    assert.deepEqual(concurrent.map((r) => r.status).sort(), [201, 409]);
+    assert.deepEqual(
+      await prisma.job.findUnique({ where: { id: job.id } }),
+      bound,
+    );
+    const supersededReplay = await fetch(origin + "/job-payment-policy/apply", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer fixture-owner",
+        "Content-Type": "application/json",
+      },
+      body: appliedRequest.postData(),
+    });
+    assert.equal(supersededReplay.status, 409);
+    await writeFile(
+      evidence + "/payment-policy-summary.json",
+      JSON.stringify(
+        {
+          approvedServiceFeeCents: 7500,
+          unapprovedDraftServiceFeeCents: 9500,
+          jobSnapshotPreserved: true,
+          exactReplayNoWrites: true,
+          realPolicyAndBindingAuditRollback: true,
+          concurrentApprovalCommitsOnce: true,
+          supersededApprovalReplayRefused: true,
+          paymentRecords: 0,
+          bookingAuthorized: false,
+          deliveryAuthorized: false,
+          productionRegistered: false,
+        },
+        null,
+        2,
+      ),
+    );
+    checks.push(
+      "owner browser saves and separately approves payment policy; reviewed job binds exact approved snapshot once; draft changes do not alter approval or job; required payment remains locked",
     );
     await reviewer.locator("#load").click();
     await reviewer.waitForFunction(() =>

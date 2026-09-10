@@ -1,6 +1,16 @@
 # Signmons Backend Execution Board
 
-## Local job booking-readiness preview (2026-09-10, latest review-ready)
+## Approved payment-policy prerequisite (2026-09-10, latest review-ready)
+
+User explicitly approved owner/admin organization payment-policy setup after the missing authoritative setup was identified. Completed one local prerequisite: fixed USD fee/deposit draft, separate versioned approval, and explicit approved-snapshot attachment to a human-reviewed CREATED job. Tenant settings preserve other configuration; CAS and audits protect save/approval. Shared tenant/job locks, exact versions, pristine-job checks and atomic job/audit binding protect attachment. No auto-waiver or implicit approval; exact retry only. Later drafts/approvals do not rewrite existing job snapshots.
+
+Evidence: backend evidence/APP-013/organization-payment-policy/README.md, summary and desktop/mobile screenshots. 1573 backend tests (19 new), 170 UI tests, lint/build/architecture/Prisma and four zero-finding audits pass. Real local database rollback for settings and binding audit failures, concurrent approval once, stale/foreign/role/superseded refusal and exact replay tested. Parent retains 12 organization/intake, eight admission and seven browser groups. All fictional records/database removed. Fixture identity is not production authentication acceptance; existing toolchain/pg deprecation notices remain documented.
+
+New controllers/services are unregistered in production. Fixed positive integer USD cents only; fail_closed and webhook validation mandatory; no exceptions, emergency surcharge, SDK/provider/payment/gate change, schema or migration. Missing preferred window and contact/address verification still block. No booking, charge, send, merge/deploy, real data, IAM/secrets/billing or charges. This is a local policy source/attachment workflow, not automatic adoption by every existing job-creation path.
+
+Stop for review. Next proposed: return to explicit preferred-service-window review on the created job, with exact job version; a preference is not availability or booking. Existing-job repricing/current-policy rollout and production/integration acceptance remain gates. APP-013 sole Now, Next empty, FE-014 paused; sales/advisor/website import outside MVP. Progress unchanged: APP-013 50% scope coverage / 0 of 12 accepted, onboarding 50% local / 0 of 6 accepted, pilot 0 of 12 accepted. No overall engineering percentage or ETA.
+
+## Local job booking-readiness preview (2026-09-10, prior checkpoint)
 
 Owner reviewed the browser admission checkpoint and approved the proposed bounded S2 readiness section. Added inactive jobId-only POST /booking-readiness/preview and operator fixture control opening the newly created job. Verified non-impersonated owner/admin/dispatcher and active tenant; CREATED jobs only. PostgreSQL repeatable-read READ ONLY snapshot reuses intake assessment and payment gate without changing policy/integrations. Missing explicit payment flags are UNKNOWN, not no-payment-required; missing window, human/verification and unfinished Calendar blockers are visible. No blockers still requires booking validation, never grants authority.
 

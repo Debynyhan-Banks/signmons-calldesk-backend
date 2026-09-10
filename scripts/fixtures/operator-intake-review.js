@@ -313,6 +313,11 @@
         value.blockers.map(readinessLabel).join("\n");
       el("confirmationPreview").textContent = value.confirmation.preview;
       el("readiness").hidden = false;
+      document.dispatchEvent(
+        new CustomEvent("job-readiness", {
+          detail: { jobId: value.jobId, updatedAt: value.jobUpdatedAt },
+        }),
+      );
       note(
         "Read-only snapshot loaded. This is not permission to book or send.",
       );
