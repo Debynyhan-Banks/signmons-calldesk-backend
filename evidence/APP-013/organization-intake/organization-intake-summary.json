@@ -1,0 +1,14 @@
+{
+  "checks": [
+    "tenant without approved profile cannot borrow another tenant answers",
+    "protected browser approved answer and optional-email skip/read-only draft desktop/mobile",
+    "service-level submit and token-free operator read retain approved version without job admission",
+    "encrypted version-bound exact replay and scripted-mode isolation",
+    "new approval refuses stale review and replay; draft-only changes do not invalidate"
+  ],
+  "providerCalls": 0,
+  "jobCreated": false,
+  "liveAI": false,
+  "browserSubmission": "read-only draft; durable submit/operator read tested at service boundary",
+  "approvalChange": "old session refused; automatic restart/recovery not implemented"
+}

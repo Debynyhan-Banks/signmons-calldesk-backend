@@ -1,5 +1,13 @@
 # Signmons Backend Execution Board
 
+## Approved organization to protected intake (2026-09-10, latest review-ready)
+
+Owner said proceed after the documentation-only advisory vision clarification. Completed one local steel-thread connection: continueOrganization answers from this tenant's approved FAQ/fallback, persists encrypted version-2 turns bound to approval timestamp/digest, and existing customer submit/operator read preserves and checks that binding. Draft edits do not change answers; reapproval invalidates the old session/request. Scripted and organization histories cannot mix. Operator read uses no customer credential and identifies organizationApprovedAt. No customer production route, live AI, job admission or provider activation. Sales/advisor and website-import work remain outside MVP.
+
+Evidence: backend evidence/APP-013/organization-intake/README.md, summary and desktop/mobile screenshots. 1520 backend tests (nine new), 170 UI tests, lint/build/architecture/Prisma, four clean audits; 12 local organization/database/browser groups including five new intake groups. Browser demonstrates approved reply through optional-email skip/read-only draft; durable submission and operator read are service-boundary proofs, not a finished browser-to-job workflow. Disposable database removed and cleanup query empty. No schema/package/migration change. Version-2 history needs separately reviewed old-reader rollout; changed-approval recovery remains a human-owned future UI task, not silently repaired here.
+
+Percentages unchanged: onboarding 50% local outcome evidence (3/6), 0% accepted (0/6); APP-013 50% scope coverage, 0% accepted (0/12); pilot 0% accepted (0/12). No overall engineering percentage or ETA. Next after review: token-free operator admission from durable request with organization-version binding and atomic job/consent outcome, followed by browser decision integration. APP-013 sole Now, Next empty, FE-014 paused. No merge/deploy, production migration, live data/provider/IAM/secrets/billing or charges.
+
 ## Organization setup slice (2026-09-10, latest review-ready)
 
 Completed the owner-approved S0 page/API slice within the explicitly amended APP-013 steel-thread dependency. Company facts, greeting/tone and sourced FAQs save to a tenant-scoped draft; exact saved-version approval preserves a separate approved snapshot; deterministic FAQ or human-contact fallback preview uses only that snapshot. Source routes are registered and the root sandbox links to /app/organization; nothing is deployed. No runtime AI, customer-journey/job connection, canonical policy changes or provider calls. Details and exact commands: backend evidence/APP-013/organization-setup/README.md; governance DATA_CONTRACTS.md.

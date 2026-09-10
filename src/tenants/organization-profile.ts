@@ -140,8 +140,9 @@ export function profile(value: unknown): OrganizationProfile | null {
 export function preview(
   approved: NonNullable<OrganizationProfile["approved"]>,
   question: unknown,
+  maxQuestionLength = 200,
 ) {
-  const query = text(question, 200).toLowerCase();
+  const query = text(question, maxQuestionLength).toLowerCase();
   const facts = approved.draft;
   const match = facts.faqs.find((faq) => faq.question.toLowerCase() === query);
   return {

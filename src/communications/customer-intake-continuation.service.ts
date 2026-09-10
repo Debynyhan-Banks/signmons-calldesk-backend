@@ -20,6 +20,12 @@ import {
   CustomerSessionScope,
 } from "./customer-consent-session-lock";
 import { validateCustomerIntakeDraft } from "./customer-intake-draft";
+import {
+  ORGANIZATION_PROFILE,
+  object,
+  profile,
+  preview,
+} from "../tenants/organization-profile";
 
 export const PROTECTED_INTAKE_TURN = "protected_intake_turn_v1";
 export const PROTECTED_INTAKE_REVIEW = "protected_intake_review_v1";
@@ -234,6 +240,9 @@ export class CustomerIntakeContinuationService {
           transcriptRevision: current.transcriptRevision,
           requiresHumanReview: true as const,
           urgencyAssessment: "NOT_PERFORMED" as const,
+          ...(history.organization
+            ? { organizationApprovedAt: history.organization.approvedAt }
+            : {}),
         };
       });
     } catch (error) {
@@ -632,6 +641,46 @@ export class CustomerIntakeContinuationService {
     interactionId: string;
     message: string;
   }) {
+    return this.continueInternal(input, false);
+  }
+
+  /** Local protected customer FAQ path; never uses operator credentials or live AI. */
+  async continueOrganization(input: {
+    sessionToken: string;
+    interactionId: string;
+    message: string;
+  }) {
+    return this.continueInternal(input, true);
+  }
+
+  private async organization(tx: Prisma.TransactionClient, tenantId: string) {
+    // history() holds the shared tenant lock through the surrounding transaction.
+    const tenant = await tx.tenantOrganization.findFirst({
+      where: { id: tenantId, status: "ACTIVE" },
+      select: { settings: true },
+    });
+    const approved = profile(
+      object(tenant?.settings)?.[ORGANIZATION_PROFILE],
+    )?.approved;
+    if (!approved || Date.parse(approved.approvedAt) > Date.now())
+      throw changed();
+    return {
+      approved,
+      approvedAt: approved.approvedAt,
+      digest: createHash("sha256")
+        .update(JSON.stringify(approved))
+        .digest("hex"),
+    };
+  }
+
+  private async continueInternal(
+    input: {
+      sessionToken: string;
+      interactionId: string;
+      message: string;
+    },
+    organizationMode: boolean,
+  ) {
     if (
       !input ||
       typeof input !== "object" ||
@@ -649,26 +698,40 @@ export class CustomerIntakeContinuationService {
     try {
       const first = await this.transaction(async (tx) => {
         const history = await this.history(tx, session);
+        if (
+          history.turns.length &&
+          Boolean(history.organization) !== organizationMode
+        )
+          throw changed();
+        const organization = organizationMode
+          ? await this.organization(tx, session.tenantId)
+          : null;
         this.credentials.verifySession(input.sessionToken);
         const prior = await this.replay(tx, input, history.turns);
-        if (prior) return { history, prior };
+        if (prior) return { history, prior, organization };
         if (history.turns.length >= 20) throw changed();
-        return { history, prior: null };
+        return { history, prior: null, organization };
       });
       if (first.prior) return this.receipt(first.prior);
-      if (!this.collaborator)
+      if (!this.collaborator && !first.organization)
         throw new ServiceUnavailableException(
           "Intake collaborator unavailable.",
         );
       let reply: string;
       try {
-        reply = await this.collaborator.reply({
-          turns: first.history.turns.map(({ message, reply }) => ({
-            message,
-            reply,
-          })),
-          message: input.message,
-        });
+        reply = first.organization
+          ? preview(
+              first.organization.approved,
+              input.message.replace(/[\t\n]/g, " "),
+              2000,
+            ).answer
+          : await this.collaborator!.reply({
+              turns: first.history.turns.map(({ message, reply }) => ({
+                message,
+                reply,
+              })),
+              message: input.message,
+            });
       } catch {
         throw new ServiceUnavailableException("Intake reply unavailable.");
       }
@@ -677,6 +740,10 @@ export class CustomerIntakeContinuationService {
       this.credentials.verifySession(input.sessionToken);
       return await this.transaction(async (tx) => {
         const current = await this.history(tx, session);
+        if (first.organization) {
+          const latest = await this.organization(tx, session.tenantId);
+          if (latest.digest !== first.organization.digest) throw changed();
+        }
         this.credentials.verifySession(input.sessionToken);
         const prior = await this.replay(tx, input, current.turns);
         if (prior) return this.receipt(prior);
@@ -700,8 +767,14 @@ export class CustomerIntakeContinuationService {
               create: {
                 tenantId: session.tenantId,
                 payload: {
-                  version: 1,
+                  version: first.organization ? 2 : 1,
                   type: PROTECTED_INTAKE_TURN,
+                  ...(first.organization
+                    ? {
+                        organizationApprovedAt: first.organization.approvedAt,
+                        organizationDigest: first.organization.digest,
+                      }
+                    : {}),
                   sessionId: session.sessionId,
                   revision,
                   encryptedInput: this.cipher.encrypt(input.message),
@@ -719,7 +792,13 @@ export class CustomerIntakeContinuationService {
             actorType: "CUSTOMER",
             actorId: "intake-session",
             action: "conversation.protected_intake_turn",
-            metadata: { version: 1, revision },
+            metadata: {
+              version: first.organization ? 2 : 1,
+              revision,
+              ...(first.organization
+                ? { organizationApprovedAt: first.organization.approvedAt }
+                : {}),
+            },
           },
         });
         this.credentials.verifySession(input.sessionToken);
@@ -809,6 +888,8 @@ export class CustomerIntakeContinuationService {
       },
     });
     if (rows.length > 20) throw changed();
+    let boundOrganization: { approvedAt: string; digest: string } | null = null;
+    let organizationTurns = 0;
     const turns = rows
       .map((row) => {
         const payload = row.content?.payload;
@@ -823,10 +904,34 @@ export class CustomerIntakeContinuationService {
         )
           throw changed();
         const p = payload as Record<string, unknown>;
+        if (p.version === 2) {
+          if (
+            typeof p.organizationApprovedAt !== "string" ||
+            !Number.isFinite(Date.parse(p.organizationApprovedAt)) ||
+            new Date(p.organizationApprovedAt).toISOString() !==
+              p.organizationApprovedAt ||
+            typeof p.organizationDigest !== "string" ||
+            !/^[0-9a-f]{64}$/.test(p.organizationDigest)
+          )
+            throw changed();
+          const binding = {
+            approvedAt: p.organizationApprovedAt,
+            digest: p.organizationDigest,
+          };
+          if (
+            boundOrganization &&
+            JSON.stringify(boundOrganization) !== JSON.stringify(binding)
+          )
+            throw changed();
+          boundOrganization = binding;
+          organizationTurns++;
+        }
         if (
           Object.keys(p).sort().join(",") !==
-            "encryptedInput,encryptedReply,revision,sessionId,type,version" ||
-          p.version !== 1 ||
+            (p.version === 2
+              ? "encryptedInput,encryptedReply,organizationApprovedAt,organizationDigest,revision,sessionId,type,version"
+              : "encryptedInput,encryptedReply,revision,sessionId,type,version") ||
+          (p.version !== 1 && p.version !== 2) ||
           p.type !== PROTECTED_INTAKE_TURN ||
           p.sessionId !== session.sessionId ||
           !Number.isSafeInteger(p.revision) ||
@@ -842,8 +947,21 @@ export class CustomerIntakeContinuationService {
       .sort((a, b) => a.revision - b.revision);
     if (turns.some((turn, index) => turn.revision !== index + 1))
       throw changed();
+    if (organizationTurns) {
+      if (organizationTurns !== turns.length) throw changed();
+      const currentOrganization = await this.organization(tx, session.tenantId);
+      if (
+        currentOrganization.digest !== boundOrganization!.digest ||
+        currentOrganization.approvedAt !== boundOrganization!.approvedAt
+      )
+        throw changed();
+    }
     return {
       turns,
+      organization: boundOrganization as {
+        approvedAt: string;
+        digest: string;
+      } | null,
       digest: createHash("sha256").update(JSON.stringify(rows)).digest("hex"),
     };
   }

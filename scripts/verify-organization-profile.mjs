@@ -1,6 +1,7 @@
 // Fictional local-only proof: disposable Unix-socket PostgreSQL, real controller/service,
 // explicitly substituted test identity guard, static exported UI. No provider credentials.
 import assert from "node:assert/strict";
+import { verifyOrganizationIntake } from "./verify-organization-intake.mjs";
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
@@ -376,6 +377,17 @@ try {
   );
   checks.push(
     "desktop/mobile real-controller save approve FAQ/fallback preview and clear-session browser flow",
+  );
+  checks.push(
+    ...(await verifyOrganizationIntake({
+      prisma,
+      tenantId: tenant.id,
+      otherTenantId: other.id,
+      asOwner,
+      organizationService: service,
+      browser,
+      evidence,
+    })),
   );
   const audit = await prisma.auditLog.findMany({
     where: { tenantId: tenant.id },

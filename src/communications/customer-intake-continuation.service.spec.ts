@@ -38,6 +38,7 @@ describe("inactive credential-bound transcript continuation", () => {
     message: "Fictional private intake text",
   });
   const tx = {
+    tenantOrganization: { findFirst: jest.fn() },
     communicationEvent: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
@@ -54,6 +55,118 @@ describe("inactive credential-bound transcript continuation", () => {
     appointmentEmailConsentScope: { findUnique: jest.fn() },
     appointmentEmailConsentEvidence: { findFirst: jest.fn() },
   };
+  const organization = () => {
+    const facts = {
+      companyName: "Fictional Service",
+      timezone: "UTC",
+      hours: "Weekdays",
+      services: "Heating",
+      fallback: "Contact our office for human help.",
+      greeting: "Welcome.",
+      tone: "warm",
+      faqs: [
+        {
+          question: "Do you service heating?",
+          answer: "Yes, we service heating.",
+          source: "Owner",
+        },
+      ],
+    };
+    return {
+      settings: {
+        organizationProfileV1: {
+          version: 1,
+          draft: { ...facts, greeting: "UNAPPROVED" },
+          approved: {
+            draft: facts,
+            actorId: "owner",
+            approvedAt: "2026-01-01T00:00:00.000Z",
+          },
+        },
+      },
+    };
+  };
+  it("uses only approved tenant facts for a protected customer turn without a collaborator", async () => {
+    tx.tenantOrganization.findFirst.mockResolvedValue(organization());
+    const result = await service(false).continueOrganization({
+      ...input(),
+      message: "Do you service heating?",
+    });
+    expect(result.reply).toContain("Yes, we service heating.");
+    expect(result.reply).not.toContain("UNAPPROVED");
+    expect(reply).not.toHaveBeenCalled();
+    expect(tx.communicationEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          content: {
+            create: expect.objectContaining({
+              payload: expect.objectContaining({
+                version: 2,
+                organizationApprovedAt: "2026-01-01T00:00:00.000Z",
+                organizationDigest: expect.stringMatching(/^[0-9a-f]{64}$/),
+              }),
+            }),
+          },
+        }),
+      }),
+    );
+  });
+  it("returns approved human-contact fallback without creating any task", async () => {
+    tx.tenantOrganization.findFirst.mockResolvedValue(organization());
+    expect(
+      (await service(false).continueOrganization(input())).reply,
+    ).toContain("Contact our office");
+    expect(tx.job.create).not.toHaveBeenCalled();
+  });
+  it("handles longer multiline intake as fallback without changing its encrypted input", async () => {
+    tx.tenantOrganization.findFirst.mockResolvedValue(organization());
+    expect(
+      (
+        await service(false).continueOrganization({
+          ...input(),
+          message: "Customer details\n" + "x".repeat(300),
+        })
+      ).reply,
+    ).toContain("Contact our office");
+  });
+  it.each([
+    null,
+    { settings: {} },
+    { settings: { organizationProfileV1: null } },
+  ])("refuses absent or invalid approved organization %j", async (row) => {
+    tx.tenantOrganization.findFirst.mockResolvedValue(row);
+    await expect(
+      service(false).continueOrganization(input()),
+    ).rejects.toThrow();
+    expect(tx.communicationEvent.create).not.toHaveBeenCalled();
+  });
+  it("refuses approval changes between read and encrypted write", async () => {
+    const changed = organization();
+    changed.settings.organizationProfileV1.approved.draft.greeting =
+      "Changed approval";
+    tx.tenantOrganization.findFirst
+      .mockResolvedValueOnce(organization())
+      .mockResolvedValue(changed);
+    await expect(service(false).continueOrganization(input())).rejects.toThrow(
+      "changed",
+    );
+    expect(tx.communicationEvent.create).not.toHaveBeenCalled();
+  });
+  it("does not adopt a preexisting scripted conversation into organization mode", async () => {
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    await expect(service(false).continueOrganization(input())).rejects.toThrow(
+      "changed",
+    );
+  });
+  it("rejects caller-provided organization version before persistence", async () => {
+    await expect(
+      service(false).continueOrganization({
+        ...input(),
+        organizationApprovedAt: "forged",
+      } as ReturnType<typeof input>),
+    ).rejects.toThrow();
+    expect(transaction).not.toHaveBeenCalled();
+  });
   const transaction = jest.fn(),
     reply = jest.fn(),
     bindJob = jest.fn();
