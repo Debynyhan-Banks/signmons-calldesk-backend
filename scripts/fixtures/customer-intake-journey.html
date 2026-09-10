@@ -97,6 +97,24 @@
       placeholder="+12025550123"
       autocomplete="off"
     />
+    <div id="phoneVerification" hidden>
+      <h3>Phone code — local demonstration</h3>
+      <p>
+        No text is sent. Use test code 123456. This does not prove real phone
+        access.
+      </p>
+      <button id="phoneRequest">Request / resend test code</button>
+      <label for="phoneCode" style="display: block">Six-digit test code</label>
+      <input
+        id="phoneCode"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6"
+      />
+      <button id="phoneCheck">Check test code</button>
+      <button id="phoneChange">Change phone number</button>
+      <p id="phoneStatus" role="status">Not verified.</p>
+    </div>
     <label for="address">Service address</label
     ><input id="address" maxlength="200" autocomplete="off" />
     <label for="description">Issue summary</label

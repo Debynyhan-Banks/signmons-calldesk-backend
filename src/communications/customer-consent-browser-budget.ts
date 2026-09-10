@@ -8,6 +8,7 @@ export type CustomerBrowserOperation =
   | "continue"
   | "draft"
   | "submit"
+  | "phone"
   | "respond";
 export interface CustomerBrowserBudget {
   /** Atomic admission; peer comes from the server socket, never forwarded headers.
@@ -46,6 +47,7 @@ export class LocalCustomerBrowserBudget implements CustomerBrowserBudget {
         "continue",
         "draft",
         "submit",
+        "phone",
       ].includes(operation)
     )
       return null;

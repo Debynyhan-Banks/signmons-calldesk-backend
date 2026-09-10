@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { readFile, writeFile } from "node:fs/promises";
 import { verifyPreferredWindow } from "./verify-preferred-window-review.mjs";
+import { verifyLocalPhone } from "./verify-local-phone.mjs";
 const require = createRequire(import.meta.url);
+const {
+  LocalCustomerPhoneService: Phone,
+} = require("../dist/communications/local-customer-phone.service.js");
 const { Test } = require("@nestjs/testing");
 const {
   PreferredWindowReviewService: WindowReview,
@@ -111,6 +115,17 @@ export async function verifyBrowserReviewAdmission({
         Promise.resolve().then(fn).then(resolve, reject);
       }),
     );
+  const phoneProof = await verifyLocalPhone({
+    prisma,
+    cipher,
+    credentials,
+    responses,
+    fixture,
+  });
+  await writeFile(
+    evidence + "/phone-database-summary.json",
+    JSON.stringify(phoneProof, null, 2),
+  );
   const module = await Test.createTestingModule({
     controllers: [
       Controller,
@@ -166,12 +181,13 @@ export async function verifyBrowserReviewAdmission({
     );
   files["/customer"] = files["/customer"].replace(
     '<html lang="en">',
-    '<html lang="en" data-review-submit="true">',
+    '<html lang="en" data-review-submit="true" data-phone-fixture="true">',
   );
   assert.ok(files["/customer"].includes('data-review-submit="true"'));
   let lostSubmission = false,
     lostApproval = false,
-    lostWindow = false;
+    lostWindow = false,
+    lostPhone = false;
   app.use(requestContextMiddleware);
   app.use(async (req, res, next) => {
     if (req.url === "/preferred-window-review/save") {
@@ -222,11 +238,18 @@ export async function verifyBrowserReviewAdmission({
           encrypted: false,
         }),
       );
-      const lose =
-        req.url === "/customer-session/submit" &&
+      const losePhone =
+        req.url === "/customer-session/phone" &&
         value.status === 200 &&
-        !lostSubmission;
-      if (lose) lostSubmission = true;
+        value.body.state === "FIXTURE_VERIFIED" &&
+        !lostPhone;
+      if (losePhone) lostPhone = true;
+      const lose =
+        losePhone ||
+        (req.url === "/customer-session/submit" &&
+          value.status === 200 &&
+          !lostSubmission);
+      if (lose && !losePhone) lostSubmission = true;
       res.statusCode = lose ? 503 : value.status;
       for (const [key, value2] of Object.entries(value.headers))
         res.setHeader(key, value2);
@@ -239,6 +262,7 @@ export async function verifyBrowserReviewAdmission({
   const errors = [],
     submissions = [],
     approvals = [],
+    phoneRequests = [],
     checks = [];
   const before = await prisma.job.count();
   try {
@@ -248,6 +272,7 @@ export async function verifyBrowserReviewAdmission({
       { origin, tenantId, fixtureLoopback: true },
       {
         responses,
+        localPhone: new Phone(prisma, cipher, credentials, Buffer.alloc(32, 7)),
         capture: new Capture(prisma, cipher, credentials),
         credentials,
         budget: new Budget(),
@@ -270,11 +295,13 @@ export async function verifyBrowserReviewAdmission({
           url = new URL(request.url());
         if (url.origin !== origin) return route.abort();
         const list =
-          url.pathname === "/customer-session/submit"
-            ? submissions
-            : url.pathname === "/intake-review-request/approve"
-              ? approvals
-              : null;
+          url.pathname === "/customer-session/phone"
+            ? phoneRequests
+            : url.pathname === "/customer-session/submit"
+              ? submissions
+              : url.pathname === "/intake-review-request/approve"
+                ? approvals
+                : null;
         if (!list) return route.continue();
         list.push(request.postData());
         return route.continue();
@@ -306,6 +333,54 @@ export async function verifyBrowserReviewAdmission({
       serviceIntent: "REPAIR",
     }))
       await customer.locator("#" + id).selectOption(value);
+    await customer.locator("#phoneRequest").click();
+    await customer
+      .locator("#phoneStatus")
+      .filter({ hasText: "Enter test code" })
+      .waitFor();
+    await customer.locator("#phoneCode").fill("000000");
+    await customer.locator("#phoneCheck").click();
+    await customer.waitForFunction(
+      () => document.querySelector("#phoneCode").value === "",
+    );
+    await customer.locator("#phoneCode").fill("123456");
+    await customer.locator("#phoneCheck").click();
+    await customer.locator("#retry").waitFor({ state: "visible" });
+    await customer.locator("#retry").click();
+    await customer
+      .locator("#phoneStatus")
+      .filter({ hasText: "Test verification complete" })
+      .waitFor();
+    const successfulChecks = phoneRequests.filter(
+      (s) => JSON.parse(s).code === "123456",
+    );
+    assert.equal(successfulChecks.length, 2);
+    assert.equal(successfulChecks[0], successfulChecks[1]);
+    await customer.setViewportSize({ width: 1280, height: 900 });
+    await customer
+      .locator("#details")
+      .screenshot({ path: evidence + "/phone-fixture-desktop.png" });
+    await customer.setViewportSize({ width: 390, height: 844 });
+    await customer
+      .locator("#details")
+      .screenshot({ path: evidence + "/phone-fixture-mobile.png" });
+    assert.equal(
+      await customer.locator("#phone").evaluate((e) => e.readOnly),
+      true,
+    );
+    await customer.locator("#phoneChange").click();
+    await customer
+      .locator("#phoneStatus")
+      .filter({ hasText: "Previous test proof cleared" })
+      .waitFor();
+    assert.equal(
+      await customer.locator("#phone").evaluate((e) => e.readOnly),
+      false,
+    );
+    await customer.locator("#phone").fill("+12025550197");
+    checks.push(
+      "local phone request, wrong code, successful fixture check and explicit correction invalidate proof without sending",
+    );
     await customer.locator("#reviewed").check();
     await customer.locator("#draft").click();
     await customer.locator("#submitReview").click();

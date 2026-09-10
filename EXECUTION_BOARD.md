@@ -1,5 +1,15 @@
 # Signmons Backend Execution Board
 
+## Local phone-code journey (2026-09-10, latest review-ready)
+
+Implemented the approved first local phone slice: request/check/resend/clear/status in the existing fictional customer browser, encrypted durable session-bound state, exact version/retry handling, atomic audits and database-backed per-destination request/attempt limits. Explicit number change revokes prior test proof without staff verification. Lost-response retry writes once. Deterministic code 123456 is a labeled fixture; FIXTURE_VERIFIED never grants phoneAccessAuthorized, bookingAuthorized or deliveryAuthorized. No job verification flag or admission authority changes.
+
+Evidence: backend evidence/APP-013/local-phone-verification/README.md, ten database proof groups, browser summary and mobile/desktop screenshots. 1616 backend tests (18 new), 170 UI tests, lint/build/architecture/Prisma, four clean audits and full local browser/database proof passed. Initial sandbox socket refusal and advisory-lock void-result issue were resolved and final gates passed; existing toolchain/pg warnings remain. Fictional database removed; original dirty checkouts preserved.
+
+Local QA policy only: 5-minute challenge, 10-minute test proof capped by session, 30-second resend cooldown, 3 requests/5 checks per session and per tenant/destination over one hour. No approved production thresholds or provider semantics inferred. Optional transport is fixture-only, with no module/controller registration, package/schema/migration changes or live sending. No provider, real data, merge/deploy, IAM/secrets/billing or charges.
+
+Stop for review. Next is the real verification provider contract/selection and activation plan, not silent activation; define actual delivery/check semantics, costs, limits and channel behavior before production evidence or admission transfer. Address/coverage and existing human-reviewed admission remain distinct unfinished connections. APP-013 sole Now, Next empty, FE-014 paused. Progress unchanged: APP-013 50% scope coverage / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No overall engineering ETA.
+
 ## Automated verification contract mapping (2026-09-10, latest)
 
 Source audit completed at 511cd1a; canonical findings and proposed local phone challenge slice are in governance AUTOMATED_VERIFICATION_CONNECTION.md. Existing transport is not OTP, placeholder addresses are not validation, and routing fallback is not coverage evidence. No runtime changes or acceptance credit. Next proposed: connected local request/check/resend/correction with durable session-bound proof after explicit contract/policy definition. No live sends, provider activation or release; APP-013 remains sole Now. Stop at mapping review.

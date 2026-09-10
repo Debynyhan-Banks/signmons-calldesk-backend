@@ -11,6 +11,9 @@
       "serviceIntent",
     ];
   let token,
+    phoneRevision = 0,
+    phoneLocked = false,
+    phoneExpiryTimer,
     reviewedDraft,
     expires = 0,
     revision = 0,
@@ -26,6 +29,9 @@
     el("status").textContent = value;
   };
   function paint() {
+    el("phoneVerification").hidden =
+      document.documentElement.dataset.phoneFixture !== "true";
+    el("phone").readOnly = phoneLocked;
     for (const id of [
       "conversation",
       "email",
@@ -54,6 +60,10 @@
     epoch++;
     controller?.abort();
     clearTimeout(expiryTimer);
+    clearTimeout(phoneExpiryTimer);
+    phoneRevision = 0;
+    phoneLocked = false;
+    el("phoneStatus").textContent = "Not verified.";
     token = promptToken = email = pending = reviewedDraft = undefined;
     expires = revision = 0;
     step = "start";
@@ -120,6 +130,46 @@
       if (request.operation !== "start" && !alive()) return;
       if (value.deliveryAuthorized !== false) throw Error("Invalid receipt");
       switch (request.operation) {
+        case "phone": {
+          if (
+            value.fixtureOnly !== true ||
+            value.phoneAccessAuthorized !== false ||
+            value.bookingAuthorized !== false ||
+            !Number.isSafeInteger(value.revision) ||
+            ![
+              "EMPTY",
+              "PENDING",
+              "FIXTURE_VERIFIED",
+              "EXPIRED",
+              "EXHAUSTED",
+            ].includes(value.state) ||
+            !Number.isSafeInteger(value.expiresAt) ||
+            !Number.isSafeInteger(value.retryAt)
+          )
+            throw Error("Invalid phone receipt");
+          phoneRevision = value.revision;
+          phoneLocked = value.state !== "EMPTY";
+          el("phoneCode").value = "";
+          clearTimeout(phoneExpiryTimer);
+          el("phoneStatus").textContent =
+            value.state === "FIXTURE_VERIFIED"
+              ? "Test verification complete. Real phone access is NOT verified; no booking or sending permission."
+              : value.state === "EMPTY"
+                ? "Previous test proof cleared. Enter the corrected phone number."
+                : value.state === "PENDING"
+                  ? "Enter test code 123456. A wrong code uses an attempt. Resend is available after " +
+                    new Date(value.retryAt).toLocaleTimeString() +
+                    "."
+                  : "Test challenge " +
+                    value.state.toLowerCase() +
+                    ". Request a new code when allowed or change the number.";
+          if (value.expiresAt > Date.now())
+            phoneExpiryTimer = setTimeout(() => {
+              el("phoneStatus").textContent =
+                "Test proof/challenge expired. No phone access authority. Request a code again when allowed.";
+            }, value.expiresAt - Date.now());
+          break;
+        }
         case "start": {
           const deadline = Date.parse(value.expiresAt);
           if (
@@ -240,7 +290,17 @@
           "Start outcome unconfirmed. No automatic retry or adoption. Start a new request explicitly.",
         );
       else if (!alive()) return;
-      else if (error?.status === 400 && request.operation === "draft") {
+      else if (
+        [400, 429].includes(error?.status) &&
+        request.operation === "phone"
+      ) {
+        pending = undefined;
+        el("phoneCode").value = "";
+        el("phoneStatus").textContent =
+          error.status === 429
+            ? "Code requests or attempts are limited. Wait for the resend time; session limits may require starting later. No text was sent."
+            : "Check the country-code phone number and six-digit code.";
+      } else if (error?.status === 400 && request.operation === "draft") {
         pending = undefined;
         status(
           "Check the draft fields and phone country code. No draft was saved.",
@@ -273,6 +333,21 @@
       submit("start", {});
     }
   };
+  for (const [id, action] of [
+    ["phoneRequest", "request"],
+    ["phoneCheck", "check"],
+    ["phoneChange", "clear"],
+  ]) {
+    el(id).onclick = () =>
+      submit("phone", {
+        sessionToken: token,
+        action,
+        operationId: crypto.randomUUID(),
+        expectedRevision: phoneRevision,
+        phone: action === "clear" ? "" : el("phone").value.trim(),
+        code: action === "check" ? el("phoneCode").value.trim() : "",
+      });
+  }
   el("continue").onclick = () => {
     const message = el("message").value.trim();
     if (!message || message.length > 400) {
