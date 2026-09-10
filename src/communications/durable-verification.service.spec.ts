@@ -17,6 +17,7 @@ describe("durable verification operation", () => {
     active: boolean;
   let service: DurableVerificationService,
     adapter: { start: jest.Mock; check: jest.Mock };
+  let admission: { lock: jest.Mock; reserve: jest.Mock; check: jest.Mock };
   const scope = {
     tenantId: randomUUID(),
     conversationId: randomUUID(),
@@ -117,13 +118,35 @@ describe("durable verification operation", () => {
         return result(input.operationId as string, "CHECK", "APPROVED");
       }),
     };
+    admission = {
+      lock: jest.fn(async () => {}),
+      reserve: jest.fn(async () => {}),
+      check: jest.fn(async () => {}),
+    };
     service = new DurableVerificationService(
       prisma,
       cipher,
       credentials,
       Buffer.alloc(32, 9),
       adapter as Pick<TwilioVerifyAdapter, "start" | "check">,
+      admission,
     );
+  });
+  it("refuses a rejected admission before provider invocation or operation writes", async () => {
+    admission.reserve.mockRejectedValue(Error("budget unavailable"));
+    await expect(service.execute(request())).rejects.toThrow();
+    expect(adapter.start).not.toHaveBeenCalled();
+    expect(stored).toBeNull();
+    expect(audits).toHaveLength(0);
+  });
+  it("replays without reserving twice and refuses missing check authority", async () => {
+    const start = request();
+    await service.execute(start);
+    await service.execute(start);
+    expect(admission.reserve).toHaveBeenCalledTimes(1);
+    admission.check.mockRejectedValue(Error("no budget authority"));
+    await expect(service.execute(check(start.operationId))).rejects.toThrow();
+    expect(adapter.check).not.toHaveBeenCalled();
   });
   it("reserves before call, finalizes once, replays without duplicate usage", async () => {
     const input = request(),

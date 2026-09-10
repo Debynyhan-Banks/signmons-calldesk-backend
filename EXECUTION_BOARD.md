@@ -1,6 +1,20 @@
 # Signmons Backend Execution Board
 
-## Durable verification reservation and observation (2026-09-10, latest review-ready)
+## Approved verification budget and opt-in (2026-09-10, latest review-ready)
+
+Owner approved a $50 USD per-organization monthly verification ceiling, internal alerts at $25/$40, explicit approval for higher limits, and no automatic cost-bearing starts beyond the ceiling. This is an internal phone-verification safeguard, not a customer charge, paid-plan entitlement, approved live spend or guarantee of profitability. Review actual usage, conversion and subscription economics after the first pilot month.
+
+Implemented one inactive consent/budget admission connection before durable verification invocation. Explicit request and trusted notice version are bound to session/phone digest; shared tenant lock and atomic audit reserve the fictional whole-flow upper bound before START. CHECK uses the original held reservation; exact replay does not reserve twice. Missing opt-in/pricing or insufficient balance refuses. Unknown outcomes retain cost; approved provider outcomes grant no application authority.
+
+Proof is fixture-only, with $25/$30 fictional whole-flow costs for boundary tests, never actual provider prices. Current model uses USD integer micro-units and UTC month labels. All reservations remain HELD, including older-month liabilities; there is no settlement, release or automatic monthly reset yet. Alert threshold crossings are recorded, not delivered. No production rate source, provider binding, configurable override UI or real customer consent UI is claimed.
+
+Evidence: backend evidence/APP-013/verification-budget/README.md and fourteen-group database summary. Full backend 1698 passed / 3 existing skips; 22 new tests, lint/build/architecture/Prisma and two zero-finding audits. Existing browser regression and disposable PostgreSQL concurrency/rollback proof passed; database removed. No new UI, module registration, schema/package/migration, provider configuration, live sending/spending, billing, real data, merge or deployment.
+
+Stop for review. Next bounded outcome: connect the explicit notice/code request and budget-refusal states to the existing local customer journey using mocked verification, not another disconnected backend slice. Before live activation, finish rate/account/service binding, reconciliation/retention and abuse controls, alert delivery, customer recovery and separately approved capped testing. Address/coverage and admission proof transfer remain open.
+
+APP-013 sole Now, Next empty, FE-014 paused. Progress unchanged: APP-013 50% recorded scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No defensible overall engineering percentage or ETA.
+
+## Durable verification reservation and observation (2026-09-10, prior checkpoint)
 
 Implemented inactive session-bound reserve/invoke/finalize around the Verify adapter, with no transaction spanning the mocked provider call. Encrypted bounded ledger and atomic audits preserve attempt identity. Exact replay returns the saved result or unresolved reservation without invoking again; changed payload refuses. Check SID comes from the matching saved start, not the customer. Failed finalization retains unknown invocation count and UNRECONCILED potential cost; no automatic reservation reclaim or resend.
 

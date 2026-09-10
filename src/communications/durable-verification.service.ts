@@ -10,6 +10,10 @@ import { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
 import { lockCustomerConsentSession } from "./customer-consent-session-lock";
 import {
+  VerificationAdmission,
+  VerificationOptIn,
+} from "./verification-budget-admission";
+import {
   TwilioVerifyAdapter,
   VerifyAdapterResult,
 } from "./twilio-verify.adapter";
@@ -48,13 +52,14 @@ export class DurableVerificationService {
     private readonly credentials: CustomerConsentCredentials,
     key: Buffer,
     private readonly adapter?: Pick<TwilioVerifyAdapter, "start" | "check">,
+    private readonly admission?: VerificationAdmission,
   ) {
     if (!Buffer.isBuffer(key) || key.length !== 32)
       throw Error("Explicit verification digest key required.");
     this.key = Buffer.from(key);
   }
 
-  async execute(input: Record<string, unknown>) {
+  async execute(input: Record<string, unknown>, optIn?: VerificationOptIn) {
     if (
       !input ||
       typeof input !== "object" ||
@@ -77,7 +82,8 @@ export class DurableVerificationService {
           !UUID.test(input.startOperationId))
     )
       throw new BadRequestException("Invalid durable verification request.");
-    if (!this.adapter) throw unavailable();
+    if (!this.adapter || !this.admission) throw unavailable();
+    optIn = optIn ? { ...optIn } : undefined;
     input = { ...input };
     const token = input.sessionToken as string;
     const session = this.credentials.verifySession(token);
@@ -91,12 +97,14 @@ export class DurableVerificationService {
         input.phone,
         input.code,
         input.startOperationId,
+        ...(optIn ? [optIn.requested, optIn.noticeVersion] : []),
       ]),
     );
     const phoneDigest = this.hash(input.phone as string);
     let reservation: { entry: Entry; fresh: boolean; verificationSid?: string };
     try {
       reservation = await this.prisma.$transaction(async (tx) => {
+        await this.admission!.lock(tx, session.tenantId);
         const ledger = await this.read(tx, token);
         const prior = ledger.entries.find((e) => e.id === input.operationId);
         if (prior) {
@@ -149,6 +157,19 @@ export class DurableVerificationService {
           reservedAt: new Date().toISOString(),
           result: null,
         };
+        if (kind === "START") {
+          await this.admission!.reserve(
+            tx,
+            session,
+            entry.id,
+            phoneDigest,
+            optIn,
+          );
+        } else {
+          if (optIn)
+            throw new ConflictException("Checks cannot replace consent.");
+          await this.admission!.check(tx, session, entry.startId, phoneDigest);
+        }
         ledger.entries.push(entry);
         await this.write(tx, session, ledger);
         await tx.auditLog.create({

@@ -8,6 +8,9 @@ const {
 const {
   TwilioVerifyAdapter: Adapter,
 } = require("../dist/communications/twilio-verify.adapter.js");
+const {
+  VerificationBudgetAdmission: Budget,
+} = require("../dist/communications/verification-budget-admission.js");
 export async function verifyDurableVerification({
   prisma,
   cipher,
@@ -88,10 +91,67 @@ export async function verifyDurableVerification({
       },
     },
   }));
-  const make = (client = prisma) =>
-    new Durable(client, cipher, credentials, Buffer.alloc(32, 8), provider);
+  const policy = {
+    mode: "FIXTURE_ONLY",
+    tenantId,
+    noticeVersion: "fixture-v1",
+    noticeText:
+      "Request a test code. Standard message and data rates may apply",
+    termsUrl: "https://example.test/terms",
+    privacyUrl: "https://example.test/privacy",
+    rateVersion: "fictional-whole-flow-v1",
+    flowUpperBoundUsdMicros: 25_000_000,
+  };
+  const optIn = { requested: true, noticeVersion: policy.noticeVersion };
+  const make = (client = prisma) => {
+    const service = new Durable(
+      client,
+      cipher,
+      credentials,
+      Buffer.alloc(32, 8),
+      provider,
+      new Budget(policy),
+    );
+    return {
+      execute: (input, consent = input.kind === "START" ? optIn : undefined) =>
+        service.execute(input, consent),
+    };
+  };
   const session = await fixture(() => responses.start());
   scope = credentials.verifySession(session.sessionToken);
+  const competing = new Budget({
+    ...policy,
+    flowUpperBoundUsdMicros: 30_000_000,
+  });
+  const race = await Promise.allSettled(
+    [1, 2].map(() =>
+      prisma.$transaction(async (tx) => {
+        await competing.lock(tx, tenantId);
+        await competing.reserve(
+          tx,
+          scope,
+          randomUUID(),
+          "fixture-digest",
+          optIn,
+        );
+      }),
+    ),
+  );
+  assert.equal(race.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(
+    await prisma.auditLog.count({
+      where: { tenantId, action: "conversation.verification_budget_reserved" },
+    }),
+    1,
+  );
+  // Remove only this isolated fictional concurrency setup before the integrated proof.
+  await prisma.auditLog.deleteMany({
+    where: {
+      tenantId,
+      entityId: scope.conversationId,
+      action: "conversation.verification_budget_reserved",
+    },
+  });
   const start = {
     sessionToken: session.sessionToken,
     operationId: randomUUID(),
@@ -100,6 +160,17 @@ export async function verifyDurableVerification({
     code: "",
     startOperationId: "",
   };
+  await assert.rejects(make().execute(start, null));
+  await assert.rejects(
+    make().execute(start, { requested: true, noticeVersion: "stale" }),
+  );
+  assert.equal(starts, 0);
+  assert.equal(
+    await prisma.auditLog.count({
+      where: { tenantId, action: "conversation.verification_budget_reserved" },
+    }),
+    0,
+  );
   const pending = make().execute(start);
   let first;
   try {
@@ -154,7 +225,7 @@ export async function verifyDurableVerification({
       action: { startsWith: "conversation.verification_" },
     },
   });
-  assert.equal(audits.length, 4);
+  assert.equal(audits.length, 5);
   assert.ok(!JSON.stringify(audits).includes(start.phone));
   assert.ok(!JSON.stringify(audits).includes("123456"));
   const failing = (action) =>
@@ -223,6 +294,33 @@ export async function verifyDurableVerification({
     sessionId: randomUUID(),
   });
   await assert.rejects(make().execute({ ...request, sessionToken: forged }));
+  const budgetRows = await prisma.auditLog.findMany({
+    where: { tenantId, action: "conversation.verification_budget_reserved" },
+  });
+  assert.equal(budgetRows.length, 2);
+  assert.equal(
+    budgetRows.reduce((sum, r) => sum + r.metadata.reservedMicros, 0),
+    50_000_000,
+  );
+  assert.deepEqual(
+    budgetRows.flatMap((r) => r.metadata.crossedAlertMicros).sort(),
+    [25_000_000, 40_000_000],
+  );
+  const third = await fixture(() => responses.start());
+  await assert.rejects(
+    make().execute({
+      ...start,
+      sessionToken: third.sessionToken,
+      operationId: randomUUID(),
+    }),
+  );
+  assert.equal(starts, 2);
+  assert.equal(
+    await prisma.auditLog.count({
+      where: { tenantId, action: "conversation.verification_budget_reserved" },
+    }),
+    2,
+  );
   return {
     checks: [
       "reservation and audit visible before mocked SDK call outside transaction",
@@ -234,6 +332,11 @@ export async function verifyDurableVerification({
       "reservation audit failure rolls back before invocation",
       "finalization audit failure preserves unresolved cost and prevents replay",
       "forged session scope refuses",
+      "competing $30 fictional flow reservations admit exactly one below the $50 ceiling",
+      "reservation rollback and exact replay do not consume duplicate budget",
+      "unknown finalization keeps its flow reservation and prevents a third start at ceiling",
+      "both approved alert thresholds recorded without external notification",
+      "missing and stale opt-in refuse before reservation or mocked provider invocation",
     ],
     mockedStartCalls: starts,
     mockedCheckCalls: checks,

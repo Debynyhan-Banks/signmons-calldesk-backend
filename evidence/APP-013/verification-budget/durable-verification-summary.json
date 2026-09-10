@@ -1,0 +1,22 @@
+{
+  "checks": [
+    "reservation and audit visible before mocked SDK call outside transaction",
+    "concurrent replay while call pending does not invoke again",
+    "new service instance replays finalized receipt without writes",
+    "check derives stored SID, saved approval does not grant application authority",
+    "changed retry and new operation after approval refuse",
+    "encrypted ledger and private audit omit phone/code",
+    "reservation audit failure rolls back before invocation",
+    "finalization audit failure preserves unresolved cost and prevents replay",
+    "forged session scope refuses",
+    "competing $30 fictional flow reservations admit exactly one below the $50 ceiling",
+    "reservation rollback and exact replay do not consume duplicate budget",
+    "unknown finalization keeps its flow reservation and prevents a third start at ceiling",
+    "both approved alert thresholds recorded without external notification",
+    "missing and stale opt-in refuse before reservation or mocked provider invocation"
+  ],
+  "mockedStartCalls": 2,
+  "mockedCheckCalls": 1,
+  "liveProviderCalls": 0,
+  "productionRegistered": false
+}
