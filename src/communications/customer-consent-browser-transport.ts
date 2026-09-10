@@ -62,6 +62,9 @@ export type CustomerBrowserRequest = {
 };
 type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
 type Ports = {
+  address?: {
+    handle(input: Record<string, unknown>): Promise<Record<string, unknown>>;
+  };
   verification?: {
     handle(input: Record<string, unknown>): Promise<Record<string, unknown>>;
   };
@@ -134,7 +137,7 @@ export class CustomerConsentBrowserTransport {
       )
         fail(403);
       const match =
-        /^\/customer-session\/(start|capture|prompt|respond|continue|draft|submit|phone|verify)$/.exec(
+        /^\/customer-session\/(start|capture|prompt|respond|continue|draft|submit|phone|verify|address)$/.exec(
           request.url,
         );
       if (!match || request.method !== "POST") fail(403);
@@ -191,6 +194,8 @@ export class CustomerConsentBrowserTransport {
       }
       const input = object(parsed);
       const keys = {
+        address:
+          "action,candidateId,confirmed,expectedRevision,operationId,query,sessionToken,unit",
         verify:
           "action,code,noticeVersion,operationId,phone,requested,sessionToken,startOperationId",
         phone: "action,code,expectedRevision,operationId,phone,sessionToken",
@@ -281,6 +286,10 @@ export class CustomerConsentBrowserTransport {
       };
     }
     const sessionToken = input.sessionToken as string;
+    if (operation === "address") {
+      if (this.binding?.fixtureLoopback !== true || !ports.address) fail(503);
+      return ports.address.handle(input);
+    }
     if (operation === "verify") {
       if (this.binding?.fixtureLoopback !== true || !ports.verification)
         fail(503);

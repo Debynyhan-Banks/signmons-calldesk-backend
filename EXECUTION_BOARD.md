@@ -1,6 +1,16 @@
 # Signmons Backend Execution Board
 
-## Address and service-area source map (2026-09-10, latest review-ready)
+## Local address selection and coverage (2026-09-10, latest review-ready)
+
+Implemented optional local customer address suggestions, explicit candidate/unit confirmation and separate configured ZIP coverage using encrypted session state and existing active ServiceArea rows. Exact revision/replay, atomic audit, and whole-area/catalog fingerprint checks refuse stale selection or configuration. Missing/inactive/malformed/unsupported geography is UNKNOWN; explicit valid nonmatch is OUT_OF_AREA. Existing routing fallback is unchanged.
+
+Evidence: backend evidence/APP-013/address-journey/README.md, eight-group browser/database summary and mobile/desktop/UNKNOWN screenshots. Fourteen new policy cases; full backend 1723 passed / three existing skips; build/lint/architecture/Prisma/syntax and two clean audits. Real audit rollback, concurrent correction once, forged session/tenant refusal and policy insertion invalidation tested; parent regression retained. Disposable database removed.
+
+Fictional catalog only; no provider, production registration, schema/package/migration, master-address/job creation, real data, booking/send authority, billing, charges, merge or deployment. Selected address remains separate from the customer-stated draft; unit is not independently validated. Result is a snapshot, not live geographic authority. Existing pg warning and production recovery/retention/provider decisions remain open.
+
+Stop for review. Next proposed connection: carry selected fictional address/unit into local draft review with exact revision and current policy revalidation, without real verification or admission/booking authority. APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% recorded scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No defensible overall engineering percentage or ETA.
+
+## Address and service-area source map (2026-09-10, prior checkpoint)
 
 Completed the approved inspect/map section; see ADDRESS_COVERAGE_CONNECTION.md (repository-root path). Current structured address fields are placeholders in protected admission; CustomerCoverageCheck has no application consumer found under src. Existing active ZIP configuration is reusable, but routing's no-rule covered:true fallback and formatted-text ZIP extraction cannot establish validated customer service coverage. No routing behavior changed.
 

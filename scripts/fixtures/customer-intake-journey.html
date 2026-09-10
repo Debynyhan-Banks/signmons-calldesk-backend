@@ -43,10 +43,12 @@
     [hidden] {
       display: none;
     }
-    #durableVerification p {
+    #durableVerification p,
+    #addressVerification p {
       white-space: normal;
     }
-    #durableVerification label[for] {
+    #durableVerification label[for],
+    #addressVerification label[for] {
       display: block;
       margin-top: 16px;
     }
@@ -162,6 +164,32 @@
     </div>
     <label for="address">Service address</label
     ><input id="address" maxlength="200" autocomplete="off" />
+    <div id="addressVerification" hidden>
+      <p>
+        This test selection is separate from the customer-stated draft address;
+        it does not replace a job address.
+      </p>
+      <h3>Address and service area — local test</h3>
+      <p>
+        Use "Fictional" to find test addresses. No real address, occupancy or
+        booking is verified.
+      </p>
+      <label for="addressUnit">Unit / apartment (optional)</label>
+      <input id="addressUnit" maxlength="40" autocomplete="off" />
+      <button id="addressSuggest">Find test addresses</button>
+      <label for="addressCandidate">Select the intended test address</label>
+      <select id="addressCandidate">
+        <option value="">Choose a test address</option>
+      </select>
+      <label
+        ><input id="addressConfirmed" type="checkbox" /> I confirm this test
+        address and unit.</label
+      >
+      <button id="addressConfirm">Confirm and check service area</button>
+      <button id="addressRefresh">Refresh saved check</button>
+      <button id="addressClear">Clear saved test address</button>
+      <p id="addressStatus" role="status">Address and coverage not checked.</p>
+    </div>
     <label for="description">Issue summary</label
     ><textarea id="description" maxlength="400"></textarea>
     <label for="issueCategory">Service category</label

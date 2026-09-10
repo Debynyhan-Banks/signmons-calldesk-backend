@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import {
+  verifyAddressJourney,
+  ADDRESS_CATALOG,
+} from "./verify-address-journey.mjs";
 const require = createRequire(import.meta.url);
+const {
+  LocalAddressService,
+} = require("../dist/communications/local-address.service.js");
 const {
   DurableVerificationService,
 } = require("../dist/communications/durable-verification.service.js");
@@ -119,13 +126,15 @@ export async function verifyBrowserVerification({
       )
     ).replace(
       '<html lang="en">',
-      '<html lang="en" data-verification-fixture="true">',
+      '<html lang="en" data-verification-fixture="true" data-address-fixture="true">',
     ),
     "/journey.js": await readFile(
       new URL("./fixtures/customer-intake-journey.js", import.meta.url),
       "utf8",
     ),
   };
+  let addressLost = false;
+  const addressRequests = [];
   const requests = [],
     errors = [];
   const server = createServer(async (req, res) => {
@@ -144,6 +153,8 @@ export async function verifyBrowserVerification({
         return res.end(files[req.url]);
       }
       const body = await readCustomerBrowserBody(req);
+      if (req.url === "/customer-session/address")
+        addressRequests.push(JSON.parse(body.toString()));
       if (req.url === "/customer-session/verify")
         requests.push(JSON.parse(body.toString()));
       const result = await fixture(() =>
@@ -156,8 +167,16 @@ export async function verifyBrowserVerification({
           encrypted: false,
         }),
       );
+      const lostAddress =
+        !addressLost &&
+        result.status === 200 &&
+        result.body.addressState === "FIXTURE_VALIDATED";
+      if (lostAddress) addressLost = true;
       const lost =
-        loseAck && result.status === 200 && result.body.outcome === "APPROVED";
+        lostAddress ||
+        (loseAck &&
+          result.status === 200 &&
+          result.body.outcome === "APPROVED");
       if (lost) loseAck = false;
       res.statusCode = lost ? 503 : result.status;
       for (const [k, v] of Object.entries(result.headers)) res.setHeader(k, v);
@@ -172,12 +191,19 @@ export async function verifyBrowserVerification({
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const origin = `http://127.0.0.1:${server.address().port}`;
     // Fresh local request limiter per fixture; never bypass the durable money reservation.
+    let localBudget = new LocalCustomerBrowserBudget();
     transport = new CustomerConsentBrowserTransport(
       { origin, tenantId, fixtureLoopback: true },
       {
         responses,
         credentials,
-        budget: new LocalCustomerBrowserBudget(),
+        budget: { acquire: (...args) => localBudget.acquire(...args) },
+        address: new LocalAddressService(
+          prisma,
+          cipher,
+          credentials,
+          ADDRESS_CATALOG,
+        ),
         capture: {
           capture: async () => {
             throw Error("not used");
@@ -337,6 +363,17 @@ export async function verifyBrowserVerification({
       evidence + "/verification-journey-summary.json",
       JSON.stringify(summary, null, 2),
     );
+    localBudget = new LocalCustomerBrowserBudget();
+    await begin();
+    await verifyAddressJourney({
+      page,
+      prisma,
+      cipher,
+      credentials,
+      token: requests.at(-1).sessionToken,
+      requests: addressRequests,
+      evidence,
+    });
     return summary;
   } finally {
     await context?.close();

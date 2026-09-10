@@ -11,6 +11,7 @@
       "serviceIntent",
     ];
   let token,
+    addressRevision = 0,
     verifyNotice,
     verifyStart,
     verifyState = "EMPTY",
@@ -32,6 +33,8 @@
     el("status").textContent = value;
   };
   function paint() {
+    el("addressVerification").hidden =
+      document.documentElement.dataset.addressFixture !== "true";
     const durableMode =
       document.documentElement.dataset.verificationFixture === "true";
     el("durableVerification").hidden = !durableMode;
@@ -61,6 +64,11 @@
       step !== "preview";
     el("retry").hidden = !pending || busy;
     el("retry").disabled = busy;
+    el("addressConfirm").disabled =
+      busy ||
+      !!pending ||
+      !el("addressCandidate").value ||
+      !el("addressConfirmed").checked;
     el("verifyConsent").hidden = !verifyNotice;
     el("verifyNotice").disabled =
       busy ||
@@ -89,6 +97,11 @@
     clearTimeout(phoneExpiryTimer);
     phoneRevision = 0;
     phoneLocked = false;
+    addressRevision = 0;
+    el("addressCandidate").replaceChildren(
+      new Option("Choose a test address", ""),
+    );
+    el("addressStatus").textContent = "Address and coverage not checked.";
     verifyNotice = verifyStart = undefined;
     verifyState = "EMPTY";
     el("verifyStatus").textContent =
@@ -163,6 +176,63 @@
       if (request.operation !== "start" && !alive()) return;
       if (value.deliveryAuthorized !== false) throw Error("Invalid receipt");
       switch (request.operation) {
+        case "address": {
+          if (
+            value.fixtureOnly !== true ||
+            value.addressAuthorized !== false ||
+            value.bookingAuthorized !== false ||
+            !Number.isSafeInteger(value.revision) ||
+            value.revision < 0 ||
+            value.revision > 20 ||
+            typeof value.stale !== "boolean" ||
+            ![
+              "NOT_CHECKED",
+              "NEEDS_SELECTION",
+              "NEEDS_CORRECTION",
+              "FIXTURE_VALIDATED",
+            ].includes(value.addressState) ||
+            ![
+              "NOT_CHECKED",
+              "FIXTURE_IN_AREA",
+              "OUT_OF_AREA",
+              "UNKNOWN",
+            ].includes(value.coverage) ||
+            !Array.isArray(value.candidates) ||
+            value.candidates.length > 10 ||
+            !value.candidates.every(
+              (c) =>
+                typeof c.id === "string" &&
+                typeof c.address === "string" &&
+                c.address.length <= 200 &&
+                typeof c.postalCode === "string",
+            )
+          )
+            throw Error("Invalid address receipt");
+          addressRevision = value.revision;
+          el("addressCandidate").replaceChildren(
+            new Option("Choose a test address", ""),
+          );
+          el("addressConfirmed").checked = false;
+          const changed =
+            value.query !== el("address").value.trim() ||
+            value.unit !== el("addressUnit").value.trim();
+          if (!changed && !value.stale)
+            for (const c of value.candidates)
+              el("addressCandidate").add(
+                new Option(c.address + " · " + c.postalCode, c.id),
+              );
+          if (!changed && !value.stale && typeof value.selectedId === "string")
+            el("addressCandidate").value = value.selectedId;
+          el("addressStatus").textContent =
+            changed || value.stale
+              ? "Address or service-area settings changed. Find and confirm a test address again. No current coverage result."
+              : "Address: " +
+                value.addressState +
+                ". Service area: " +
+                value.coverage +
+                ". Snapshot only; no real address, booking or sending authority.";
+          break;
+        }
         case "verify": {
           if (
             value.fixtureOnly !== true ||
@@ -382,6 +452,18 @@
         );
       else if (!alive()) return;
       else if (
+        request.operation === "address" &&
+        [400, 409, 429].includes(error?.status)
+      ) {
+        pending = undefined;
+        el("addressCandidate").replaceChildren(
+          new Option("Choose a test address", ""),
+        );
+        el("addressConfirmed").checked = false;
+        el("addressStatus").textContent =
+          "Address check refused or changed. Draft retained. Refresh saved check, then find and confirm again.";
+        status("Address check refused; no verification or booking.");
+      } else if (
         request.operation === "verify" &&
         [400, 409, 429].includes(error?.status)
       ) {
@@ -463,6 +545,50 @@
   el("verifyStart").onclick = () => submitVerification("START");
   el("verifyCheck").onclick = () => submitVerification("CHECK");
   el("verifyRequested").onchange = paint;
+  for (const [id, action] of [
+    ["addressSuggest", "suggest"],
+    ["addressConfirm", "confirm"],
+    ["addressRefresh", "status"],
+    ["addressClear", "clear"],
+  ]) {
+    el(id).onclick = () => {
+      if (document.documentElement.dataset.addressFixture !== "true") return;
+      if (
+        action === "confirm" &&
+        (!el("addressConfirmed").checked || !el("addressCandidate").value)
+      )
+        return;
+      submit("address", {
+        sessionToken: token,
+        action,
+        operationId: crypto.randomUUID(),
+        expectedRevision: addressRevision,
+        query: ["clear", "status"].includes(action)
+          ? ""
+          : el("address").value.trim(),
+        unit: ["clear", "status"].includes(action)
+          ? ""
+          : el("addressUnit").value.trim(),
+        candidateId: action === "confirm" ? el("addressCandidate").value : "",
+        confirmed: action === "confirm",
+      });
+    };
+  }
+  for (const id of ["address", "addressUnit"])
+    el(id).addEventListener("input", () => {
+      el("addressCandidate").replaceChildren(
+        new Option("Choose a test address", ""),
+      );
+      el("addressConfirmed").checked = false;
+      el("addressStatus").textContent =
+        "Address changed. Previous test selection and coverage no longer apply.";
+      paint();
+    });
+  el("addressCandidate").onchange = () => {
+    el("addressConfirmed").checked = false;
+    paint();
+  };
+  el("addressConfirmed").onchange = paint;
   el("phone").addEventListener("input", () => {
     verifyNotice = undefined;
     el("verifyRequested").checked = false;
