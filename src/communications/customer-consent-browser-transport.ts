@@ -71,6 +71,7 @@ type Ports = {
   budget: CustomerBrowserBudget;
   continuation?: Pick<CustomerIntakeContinuationService, "continue">;
   draft?: Pick<CustomerIntakeContinuationService, "previewDraft">;
+  review?: Pick<CustomerIntakeContinuationService, "submitReview">;
   diagnostic?: (entry: {
     operation: CustomerBrowserOperation | "unknown";
     status: number;
@@ -127,7 +128,7 @@ export class CustomerConsentBrowserTransport {
       )
         fail(403);
       const match =
-        /^\/customer-session\/(start|capture|prompt|respond|continue|draft)$/.exec(
+        /^\/customer-session\/(start|capture|prompt|respond|continue|draft|submit)$/.exec(
           request.url,
         );
       if (!match || request.method !== "POST") fail(403);
@@ -189,6 +190,7 @@ export class CustomerConsentBrowserTransport {
         prompt: "sessionToken",
         continue: "interactionId,message,sessionToken",
         draft: "draft,expectedRevision,sessionToken",
+        submit: "confirmed,draft,expectedRevision,requestId,sessionToken",
         respond: "mailboxConfirmed,promptToken,response,sessionToken",
       };
       if (Object.keys(input).sort().join(",") !== keys[operation]) fail(400);
@@ -270,6 +272,43 @@ export class CustomerConsentBrowserTransport {
       };
     }
     const sessionToken = input.sessionToken as string;
+    if (operation === "submit") {
+      if (!ports.review) fail(503);
+      if (
+        input.confirmed !== true ||
+        typeof input.requestId !== "string" ||
+        !UUID.test(input.requestId) ||
+        !Number.isInteger(input.expectedRevision) ||
+        (input.expectedRevision as number) < 1 ||
+        (input.expectedRevision as number) > 20
+      )
+        fail(400);
+      const value = await ports.review.submitReview({
+        sessionToken,
+        requestId: input.requestId,
+        expectedRevision: input.expectedRevision as number,
+        draft: validateCustomerIntakeDraft(input.draft),
+        confirmed: true,
+      });
+      const claims = ports.credentials.verifySession(sessionToken);
+      if (
+        value.requestId !== input.requestId ||
+        value.state !== "PENDING_REVIEW" ||
+        value.expiresAt !== new Date(claims.expiresAt).toISOString() ||
+        value.jobCreated !== false ||
+        value.bookingAuthorized !== false ||
+        value.deliveryAuthorized !== false
+      )
+        fail(503);
+      return {
+        requestId: value.requestId,
+        state: "PENDING_REVIEW",
+        expiresAt: value.expiresAt,
+        jobCreated: false,
+        bookingAuthorized: false,
+        deliveryAuthorized: false,
+      };
+    }
     if (operation === "draft") {
       if (!ports.draft) fail(503);
       if (

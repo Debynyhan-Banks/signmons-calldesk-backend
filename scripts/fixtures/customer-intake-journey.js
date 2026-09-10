@@ -11,6 +11,7 @@
       "serviceIntent",
     ];
   let token,
+    reviewedDraft,
     expires = 0,
     revision = 0,
     promptToken,
@@ -32,6 +33,7 @@
       "consent",
       "details",
       "preview",
+      "submitted",
     ])
       el(id).hidden = step !== id;
     el("start").hidden = step !== "start" || busy;
@@ -42,6 +44,9 @@
       control.disabled = busy || !!pending;
     el("grant").disabled = busy || !!pending || !el("confirmed").checked;
     el("draft").disabled = busy || !!pending || !el("reviewed").checked;
+    el("submitReview").hidden =
+      document.documentElement.dataset.reviewSubmit !== "true" ||
+      step !== "preview";
     el("retry").hidden = !pending || busy;
     el("retry").disabled = busy;
   }
@@ -49,7 +54,7 @@
     epoch++;
     controller?.abort();
     clearTimeout(expiryTimer);
-    token = promptToken = email = pending = undefined;
+    token = promptToken = email = pending = reviewedDraft = undefined;
     expires = revision = 0;
     step = "start";
     busy = false;
@@ -59,7 +64,13 @@
     }
     for (const select of document.querySelectorAll("select"))
       select.selectedIndex = 0;
-    for (const id of ["reply", "mailbox", "permissionText", "summary"])
+    for (const id of [
+      "reply",
+      "mailbox",
+      "permissionText",
+      "summary",
+      "requestReceipt",
+    ])
       el(id).textContent = "";
     status(message);
     paint();
@@ -195,13 +206,32 @@
             "\nUrgency: not assessed\nTranscript revision: " +
             revision;
           step = "preview";
+          reviewedDraft = request.body.draft;
+          break;
+        case "submit":
+          if (
+            value.requestId !== request.body.requestId ||
+            value.state !== "PENDING_REVIEW" ||
+            Date.parse(value.expiresAt) !== expires ||
+            value.jobCreated !== false ||
+            value.bookingAuthorized !== false
+          )
+            throw Error("Invalid review receipt");
+          el("requestReceipt").textContent =
+            "Review reference: " +
+            value.requestId +
+            ". Review deadline: " +
+            value.expiresAt;
+          step = "submitted";
           break;
       }
       pending = undefined;
       status(
-        step === "preview"
-          ? "Draft validated for review only. Nothing booked or sent."
-          : "Step completed privately. Sending remains disabled.",
+        step === "submitted"
+          ? "Request saved for operator review. Nothing booked or sent."
+          : step === "preview"
+            ? "Draft validated for review only. Nothing booked or sent."
+            : "Step completed privately. Sending remains disabled.",
       );
     } catch (error) {
       if (generation !== epoch) return;
@@ -292,6 +322,21 @@
   };
   el("retry").onclick = () => {
     if (!busy && pending && alive()) void run();
+  };
+  el("submitReview").onclick = () => {
+    if (
+      step !== "preview" ||
+      !reviewedDraft ||
+      document.documentElement.dataset.reviewSubmit !== "true"
+    )
+      return;
+    submit("submit", {
+      sessionToken: token,
+      requestId: crypto.randomUUID(),
+      expectedRevision: revision,
+      draft: reviewedDraft,
+      confirmed: true,
+    });
   };
   el("forget").onclick = () =>
     clear(

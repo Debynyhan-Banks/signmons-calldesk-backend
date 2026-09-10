@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { verifyOrganizationIntake } from "./verify-organization-intake.mjs";
 import { verifyOperatorIntakeAdmission } from "./verify-operator-intake-admission.mjs";
+import { verifyBrowserReviewAdmission } from "./verify-browser-review-admission.mjs";
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
@@ -422,6 +423,17 @@ try {
         otherTenantId: other.id,
         asOwner,
         organizationService: service,
+        evidence,
+      }),
+    }),
+  );
+  console.log(
+    JSON.stringify({
+      browserReview: await verifyBrowserReviewAdmission({
+        prisma,
+        tenantId: tenant.id,
+        otherTenantId: other.id,
+        browser,
         evidence,
       }),
     }),

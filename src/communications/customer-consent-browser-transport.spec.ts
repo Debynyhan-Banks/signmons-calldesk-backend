@@ -130,6 +130,62 @@ describe("inactive same-origin browser transport", () => {
     expectedRevision: 1,
     draft: draftDetails,
   });
+  it("submits an explicit review request and projects only its pending receipt", async () => {
+    const input = { ...draftInput(), requestId: randomUUID(), confirmed: true };
+    const receipt = {
+      requestId: input.requestId,
+      state: "PENDING_REVIEW",
+      expiresAt: new Date(
+        credentials.verifySession(sessionToken).expiresAt,
+      ).toISOString(),
+      jobCreated: false,
+      bookingAuthorized: false,
+      deliveryAuthorized: false,
+    };
+    const submitReview = jest
+      .fn()
+      .mockResolvedValue({ ...receipt, secret: "DO_NOT_LEAK" });
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, review: { submitReview } },
+    );
+    const result = await asActor(() => transport.handle(req("submit", input)));
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual(receipt);
+    expect(submitReview).toHaveBeenCalledWith(input);
+    expect(acquire).toHaveBeenCalledWith("127.0.0.1", "submit");
+    expect((await call(req("submit", input))).status).toBe(503);
+    for (const changed of [
+      { confirmed: false },
+      { expectedRevision: 0 },
+      { requestId: "invalid" },
+      { tenantId },
+      { draft: { ...draftDetails, authority: true } },
+    ]) {
+      submitReview.mockClear();
+      expect(
+        (
+          await asActor(() =>
+            transport.handle(req("submit", { ...input, ...changed })),
+          )
+        ).status,
+      ).toBe(400);
+      expect(submitReview).not.toHaveBeenCalled();
+    }
+    for (const changed of [
+      { jobCreated: true },
+      { bookingAuthorized: true },
+      { deliveryAuthorized: true },
+      { expiresAt: "invalid" },
+      { requestId: randomUUID() },
+      { state: "ADMITTED" },
+    ]) {
+      submitReview.mockResolvedValue({ ...receipt, ...changed });
+      expect(
+        (await asActor(() => transport.handle(req("submit", input)))).status,
+      ).toBe(503);
+    }
+  });
   const draftReceipt = () => ({
     draft: draftDetails,
     transcriptRevision: 1,

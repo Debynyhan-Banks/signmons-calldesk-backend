@@ -7,6 +7,7 @@ export type CustomerBrowserOperation =
   | "prompt"
   | "continue"
   | "draft"
+  | "submit"
   | "respond";
 export interface CustomerBrowserBudget {
   /** Atomic admission; peer comes from the server socket, never forwarded headers.
@@ -37,9 +38,15 @@ export class LocalCustomerBrowserBudget implements CustomerBrowserBudget {
     if (!isIP(peer) || !Number.isFinite(now) || now < this.previous || now < 0)
       return null;
     if (
-      !["start", "capture", "prompt", "respond", "continue", "draft"].includes(
-        operation,
-      )
+      ![
+        "start",
+        "capture",
+        "prompt",
+        "respond",
+        "continue",
+        "draft",
+        "submit",
+      ].includes(operation)
     )
       return null;
     if (this.previous === -1 || now - this.windowStart >= 60000) {

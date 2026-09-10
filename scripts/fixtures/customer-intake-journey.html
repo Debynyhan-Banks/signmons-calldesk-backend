@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Local protected intake journey</title>
   <style>
@@ -45,8 +46,8 @@
   </style>
   <h1>Review your service request</h1>
   <p>
-    Fictional local test. Automated replies are scripted. No job or appointment
-    will be created. Sending remains disabled.
+    Fictional local test. Automated replies are scripted. This customer page
+    does not create a job or appointment. Sending remains disabled.
   </p>
   <button id="start">Start a new request</button>
   <section id="conversation" hidden>
@@ -137,9 +138,18 @@
   <section id="preview" hidden>
     <h2>Draft only — human review required</h2>
     <pre id="summary"></pre>
+    <button id="submitReview" hidden>Submit for operator review</button>
     <p>
       No job created, no appointment booked, no message sent. The draft is not
       saved and is not an admission receipt.
+    </p>
+  </section>
+  <section id="submitted" hidden>
+    <h2>Submitted for operator review</h2>
+    <p id="requestReceipt"></p>
+    <p>
+      No job or appointment has been created by this submission. An authorized
+      operator must review it before the original deadline.
     </p>
   </section>
   <button id="retry" hidden>Retry the same request</button
@@ -147,8 +157,8 @@
   <p id="status" role="status"></p>
   <p>
     Clearing or reloading loses private browser state but does not undo
-    previously saved conversation or consent. Contact the office for an existing
-    appointment.
+    previously saved conversation, consent or review requests. Contact the office
+    to check an existing request or appointment.
   </p>
   <script src="/journey.js"></script>
 </html>

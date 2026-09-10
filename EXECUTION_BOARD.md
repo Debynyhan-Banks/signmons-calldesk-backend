@@ -1,6 +1,16 @@
 # Signmons Backend Execution Board
 
-## Token-free operator admission (2026-09-10, latest review-ready)
+## Browser customer submission and operator approval (2026-09-10, latest review-ready)
+
+Owner approved continuing the local admission connection. Customer fixture explicitly submits its reviewed draft; separate operator fixture loads an opaque reference, reviews facts/current organization version, selects urgency and acknowledges statements, then creates one CREATED job. Inactive customer transport adds submit; new guarded read/approve controller is deliberately absent from production modules. Customer credentials never enter operator requests. Exact retry after lost acknowledgment returns the original outcome; closed/expired/changed requests do not silently become replacements.
+
+Evidence: backend evidence/APP-013/browser-review-admission/README.md, browser-review-summary.json and three screenshots. Five new real-browser/local-database groups plus 20 prior organization/admission groups pass. 1542 backend tests (four new), 170 UI tests, lint/build/architecture/Prisma and four zero-finding audits pass. One existing Calendar HTTP test failed during a concurrent run, then the isolated full suite passed; root cause is not established. Disposable fictional records/databases removed. No process-kill or production-auth acceptance claim.
+
+The local approved-information → customer submission → operator review → one job connection is now demonstrated. CREATED is not booked, charged, dispatched or sent; contact/address remain unverified. Stop for owner review of this connected milestone, then select the next existing MVP outcome. Do not automatically extend hardening or promote a ticket. Post-expiry/status recovery, changed-approval recovery, production identity/shared budget/key/retention/access controls and old-reader rollout remain gates. No live AI/provider action, schema/package change, production registration, real data, merge/deploy, IAM/secrets/billing or charges.
+
+Progress unchanged: onboarding 3/6 = 50% local evidence and 0/6 accepted; APP-013 50% recorded scope coverage and 0/12 accepted; pilot 0/12 accepted, not 0% built. No defensible overall engineering percentage or ETA. APP-013 stays sole Now, Next empty, FE-014 paused; sales/advisor and website import remain outside MVP.
+
+## Token-free operator admission (2026-09-10, prior checkpoint)
 
 Owner approved proceeding from organization-bound intake to one job. Added unregistered admitReview: exact requestId, expectedOrganizationApprovedAt and explicit human decision; verified non-impersonated owner/admin/dispatcher only. No customer credential is accepted, read or reconstructed. Locked durable draft/transcript/current organization checks precede shared atomic customer/address/job/link/consent/audit/session-close persistence. Job policy retains request and organization binding; request event remains unchanged. Exact same-actor/decision replay before original expiry and while job/approval remain valid returns the original receipt without writes. No booking or delivery authority.
 
