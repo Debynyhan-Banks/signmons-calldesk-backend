@@ -166,8 +166,9 @@
     ><input id="address" maxlength="200" autocomplete="off" />
     <div id="addressVerification" hidden>
       <p>
-        This test selection is separate from the customer-stated draft address;
-        it does not replace a job address.
+        Draft review rechecks this selection and copies the fictional address
+        and customer-stated unit into your review-only draft. No job address is
+        changed.
       </p>
       <h3>Address and service area — local test</h3>
       <p>
@@ -229,6 +230,7 @@
   <section id="preview" hidden>
     <h2>Draft only — human review required</h2>
     <pre id="summary"></pre>
+    <button id="editDraft">Edit draft</button>
     <button id="submitReview" hidden>Submit for operator review</button>
     <p>
       No job created, no appointment booked, no message sent. The draft is not

@@ -92,7 +92,9 @@ export class LocalAddressService {
       Object.keys(input).sort().join(",") !==
         "action,candidateId,confirmed,expectedRevision,operationId,query,sessionToken,unit" ||
       typeof input.action !== "string" ||
-      !["suggest", "confirm", "status", "clear"].includes(input.action) ||
+      !["suggest", "confirm", "status", "clear", "review"].includes(
+        input.action,
+      ) ||
       typeof input.sessionToken !== "string" ||
       input.sessionToken.length > 4096 ||
       typeof input.operationId !== "string" ||
@@ -108,7 +110,7 @@ export class LocalAddressService {
       /[\p{Cc}\p{Cf}]/u.test(input.query + input.unit) ||
       typeof input.candidateId !== "string" ||
       typeof input.confirmed !== "boolean" ||
-      (input.action === "confirm"
+      (["confirm", "review"].includes(input.action)
         ? !input.candidateId || input.confirmed !== true
         : input.candidateId !== "" || input.confirmed !== false) ||
       (input.action === "suggest" && !input.query) ||
@@ -192,6 +194,20 @@ export class LocalAddressService {
       if (input.action === "status") {
         this.credentials.verifySession(token);
         return this.receipt(s, areas, s.revision > 0 && s.policy !== policy);
+      }
+      // Read-only snapshot. Never transfers verification or admission authority.
+      if (input.action === "review") {
+        if (
+          !s.selected ||
+          s.selected !== input.candidateId ||
+          s.revision !== input.expectedRevision ||
+          s.policy !== policy ||
+          s.query !== input.query ||
+          s.unit !== input.unit
+        )
+          throw new ConflictException();
+        this.credentials.verifySession(token);
+        return this.receipt(s, areas, false);
       }
       if (s.lastId === input.operationId) {
         if (s.lastDigest !== digest || s.policy !== policy)

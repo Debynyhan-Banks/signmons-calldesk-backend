@@ -1,4 +1,5 @@
 import { HttpException } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { TextDecoder } from "node:util";
 import { getRequestContext } from "../common/context/request-context";
@@ -203,7 +204,9 @@ export class CustomerConsentBrowserTransport {
         capture: "email,sessionToken",
         prompt: "sessionToken",
         continue: "interactionId,message,sessionToken",
-        draft: "draft,expectedRevision,sessionToken",
+        draft: Object.prototype.hasOwnProperty.call(input, "addressSelection")
+          ? "addressSelection,draft,expectedRevision,sessionToken"
+          : "draft,expectedRevision,sessionToken",
         submit: "confirmed,draft,expectedRevision,requestId,sessionToken",
         respond: "mailboxConfirmed,promptToken,response,sessionToken",
       };
@@ -345,7 +348,71 @@ export class CustomerConsentBrowserTransport {
         (input.expectedRevision as number) > 20
       )
         fail(400);
-      const draft = validateCustomerIntakeDraft(input.draft);
+      let draft = validateCustomerIntakeDraft(input.draft);
+      const selection = input.addressSelection;
+      const checkAddress = async () => {
+        if (this.binding?.fixtureLoopback !== true || !ports.address) fail(503);
+        const selected = object(selection);
+        if (
+          Object.keys(selected).sort().join(",") !==
+          "candidateId,query,revision,unit"
+        )
+          fail(400);
+        const receipt = await ports.address.handle({
+          sessionToken,
+          action: "review",
+          operationId: randomUUID(),
+          expectedRevision: selected.revision,
+          query: selected.query,
+          unit: selected.unit,
+          candidateId: selected.candidateId,
+          confirmed: true,
+        });
+        if (
+          receipt.fixtureOnly !== true ||
+          receipt.stale !== false ||
+          receipt.addressAuthorized !== false ||
+          receipt.bookingAuthorized !== false ||
+          receipt.deliveryAuthorized !== false ||
+          receipt.addressState !== "FIXTURE_VALIDATED" ||
+          receipt.revision !== selected.revision ||
+          receipt.selectedId !== selected.candidateId ||
+          receipt.query !== selected.query ||
+          receipt.unit !== selected.unit ||
+          !["FIXTURE_IN_AREA", "OUT_OF_AREA", "UNKNOWN"].includes(
+            String(receipt.coverage),
+          ) ||
+          !Array.isArray(receipt.candidates)
+        )
+          fail(503);
+        const candidate = receipt.candidates
+          .map(object)
+          .find((c) => c.id === selected.candidateId);
+        if (
+          !candidate ||
+          typeof candidate.address !== "string" ||
+          typeof receipt.unit !== "string"
+        )
+          fail(503);
+        return {
+          fixtureOnly: true,
+          revision: receipt.revision,
+          candidateId: receipt.selectedId,
+          address:
+            candidate.address + (receipt.unit ? ", " + receipt.unit : ""),
+          coverage: receipt.coverage,
+          addressAuthorized: false,
+          bookingAuthorized: false,
+          deliveryAuthorized: false,
+        };
+      };
+      const localAddress =
+        selection === undefined ? undefined : await checkAddress();
+      if (localAddress)
+        draft = validateCustomerIntakeDraft({
+          ...draft,
+          address: localAddress.address,
+        });
       const value = await ports.draft.previewDraft({
         sessionToken,
         expectedRevision: input.expectedRevision as number,
@@ -365,7 +432,14 @@ export class CustomerConsentBrowserTransport {
         fail(503);
       const projected = validateCustomerIntakeDraft(value.draft);
       if (JSON.stringify(projected) !== JSON.stringify(draft)) fail(503);
+      // Recheck after transcript preview; a changed selection/policy refuses the response.
+      if (
+        localAddress &&
+        JSON.stringify(await checkAddress()) !== JSON.stringify(localAddress)
+      )
+        fail(409);
       return {
+        ...(localAddress ? { localAddress } : {}),
         draft: projected,
         transcriptRevision: value.transcriptRevision,
         emailChoice: value.emailChoice,

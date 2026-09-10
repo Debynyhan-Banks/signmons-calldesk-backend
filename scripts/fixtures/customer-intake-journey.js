@@ -60,6 +60,7 @@
     el("grant").disabled = busy || !!pending || !el("confirmed").checked;
     el("draft").disabled = busy || !!pending || !el("reviewed").checked;
     el("submitReview").hidden =
+      document.documentElement.dataset.addressFixture === "true" ||
       document.documentElement.dataset.reviewSubmit !== "true" ||
       step !== "preview";
     el("retry").hidden = !pending || busy;
@@ -407,17 +408,45 @@
             !value.draft ||
             Object.keys(value.draft).sort().join(",") !==
               [...fields].sort().join(",") ||
-            fields.some((key) => value.draft[key] !== request.body.draft[key])
+            fields.some(
+              (key) =>
+                value.draft[key] !==
+                (key === "address" && request.body.addressSelection
+                  ? value.localAddress?.address
+                  : request.body.draft[key]),
+            )
           )
             throw Error("Invalid draft");
+          if (
+            request.body.addressSelection &&
+            (value.localAddress?.fixtureOnly !== true ||
+              value.localAddress.addressAuthorized !== false ||
+              value.localAddress.bookingAuthorized !== false ||
+              value.localAddress.deliveryAuthorized !== false ||
+              value.localAddress.revision !==
+                request.body.addressSelection.revision ||
+              value.localAddress.candidateId !==
+                request.body.addressSelection.candidateId ||
+              !["FIXTURE_IN_AREA", "OUT_OF_AREA", "UNKNOWN"].includes(
+                value.localAddress.coverage,
+              ))
+          )
+            throw Error("Invalid local address snapshot");
           el("summary").textContent =
             fields.map((key) => key + ": " + value.draft[key]).join("\n") +
             "\nEmail choice: " +
             value.emailChoice +
             "\nUrgency: not assessed\nTranscript revision: " +
-            revision;
+            revision +
+            (value.localAddress
+              ? "\nLocal test coverage: " +
+                value.localAddress.coverage +
+                "\nAddress revision: " +
+                value.localAddress.revision +
+                "\nSnapshot only. Unit is customer-stated. No real address verification or submission authority."
+              : "");
           step = "preview";
-          reviewedDraft = request.body.draft;
+          reviewedDraft = Object.freeze(value.draft);
           break;
         case "submit":
           if (
@@ -486,10 +515,13 @@
           error.status === 429
             ? "Code requests or attempts are limited. Wait for the resend time; session limits may require starting later. No text was sent."
             : "Check the country-code phone number and six-digit code.";
-      } else if (error?.status === 400 && request.operation === "draft") {
+      } else if (
+        [400, 409].includes(error?.status) &&
+        request.operation === "draft"
+      ) {
         pending = undefined;
         status(
-          "Check the draft fields and phone country code. No draft was saved.",
+          "Check the draft fields. Find and confirm the test address again if it or coverage changed. No draft was saved.",
         );
       } else if ([400, 401, 403, 409, 413, 415].includes(error?.status))
         clear(
@@ -665,7 +697,34 @@
     const draft = Object.freeze(
       Object.fromEntries(fields.map((key) => [key, el(key).value.trim()])),
     );
-    submit("draft", { sessionToken: token, expectedRevision: revision, draft });
+    const addressMode =
+      document.documentElement.dataset.addressFixture === "true";
+    if (addressMode && !el("addressCandidate").value) {
+      status("Find and confirm a test address before draft review.");
+      return;
+    }
+    submit("draft", {
+      sessionToken: token,
+      expectedRevision: revision,
+      draft,
+      ...(addressMode
+        ? {
+            addressSelection: {
+              revision: addressRevision,
+              candidateId: el("addressCandidate").value,
+              query: el("address").value.trim(),
+              unit: el("addressUnit").value.trim(),
+            },
+          }
+        : {}),
+    });
+  };
+  el("editDraft").onclick = () => {
+    reviewedDraft = undefined;
+    el("summary").textContent = "";
+    el("reviewed").checked = false;
+    step = "details";
+    paint();
   };
   el("retry").onclick = () => {
     if (!busy && pending && alive()) void run();
@@ -674,6 +733,7 @@
     if (
       step !== "preview" ||
       !reviewedDraft ||
+      document.documentElement.dataset.addressFixture === "true" ||
       document.documentElement.dataset.reviewSubmit !== "true"
     )
       return;

@@ -151,6 +151,97 @@ describe("inactive same-origin browser transport", () => {
     expectedRevision: 1,
     draft: draftDetails,
   });
+  it.each([
+    "ok",
+    "UNKNOWN",
+    "OUT_OF_AREA",
+    "stale",
+    "changed-after-preview",
+    "authority",
+    "extra",
+    "nonfixture",
+  ])("binds local address draft snapshot: %s", async (scenario) => {
+    const selection = {
+      revision: 2,
+      query: "Fictional",
+      unit: "Unit A",
+      candidateId: "fictional-in",
+    };
+    const receipt = {
+      fixtureOnly: true,
+      stale: false,
+      revision: 2,
+      query: "Fictional",
+      unit: "Unit A",
+      selectedId: "fictional-in",
+      addressState: "FIXTURE_VALIDATED",
+      coverage: ["UNKNOWN", "OUT_OF_AREA"].includes(scenario)
+        ? scenario
+        : "FIXTURE_IN_AREA",
+      candidates: [
+        {
+          id: "fictional-in",
+          address: "10 Fictional Lane",
+          postalCode: "44119",
+        },
+      ],
+      addressAuthorized: false,
+      bookingAuthorized: false,
+      deliveryAuthorized: false,
+    };
+    const handle = jest.fn().mockResolvedValue(receipt);
+    if (scenario === "stale")
+      handle.mockRejectedValue(new HttpException("changed", 409));
+    if (scenario === "changed-after-preview")
+      handle
+        .mockResolvedValueOnce(receipt)
+        .mockRejectedValueOnce(new HttpException("changed", 409));
+    if (scenario === "authority")
+      handle.mockResolvedValue({ ...receipt, addressAuthorized: true });
+    const previewDraft = jest
+      .fn()
+      .mockImplementation(({ draft }: { draft: unknown }) =>
+        Promise.resolve({ ...draftReceipt(), draft }),
+      );
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId, fixtureLoopback: scenario !== "nonfixture" },
+      { ...ports, address: { handle }, draft: { previewDraft } },
+    );
+    const result = await asActor(() =>
+      transport.handle(
+        req("draft", {
+          ...draftInput(),
+          addressSelection:
+            scenario === "extra"
+              ? { ...selection, authority: true }
+              : selection,
+        }),
+      ),
+    );
+    if (["ok", "UNKNOWN", "OUT_OF_AREA"].includes(scenario)) {
+      expect(result.status).toBe(200);
+      expect(result.body.draft).toEqual({
+        ...draftDetails,
+        address: "10 Fictional Lane, Unit A",
+      });
+      expect(handle).toHaveBeenCalledTimes(2);
+      expect(handle).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionToken,
+          action: "review",
+          expectedRevision: 2,
+          query: "Fictional",
+          unit: "Unit A",
+          candidateId: "fictional-in",
+        }),
+      );
+    } else {
+      expect(result.status).toBeGreaterThanOrEqual(400);
+      expect(result.body).not.toHaveProperty("draft");
+      if (scenario !== "changed-after-preview")
+        expect(previewDraft).not.toHaveBeenCalled();
+    }
+  });
   it("submits an explicit review request and projects only its pending receipt", async () => {
     const input = { ...draftInput(), requestId: randomUUID(), confirmed: true };
     const receipt = {

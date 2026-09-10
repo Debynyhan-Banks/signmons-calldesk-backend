@@ -217,6 +217,20 @@ export async function verifyBrowserVerification({
           }),
         },
         verification: new LocalVerificationBrowserService(durable),
+        // Scripted transcript preview in this isolated address/phone fixture.
+        // Real continuation preview remains covered by the parent proof.
+        draft: {
+          previewDraft: async ({ draft, expectedRevision }) => ({
+            draft,
+            transcriptRevision: expectedRevision,
+            emailChoice: "NOT_RECORDED",
+            urgencyAssessment: "NOT_PERFORMED",
+            requiresHumanReview: true,
+            jobCreated: false,
+            bookingAuthorized: false,
+            deliveryAuthorized: false,
+          }),
+        },
       },
     );
     context = await browser.newContext({

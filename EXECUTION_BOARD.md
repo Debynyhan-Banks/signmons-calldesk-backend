@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Local address selection and coverage (2026-09-10, latest review-ready)
+## Local address draft connection (2026-09-10, latest review-ready)
+
+Selected fictional address/unit now enters read-only draft review after exact session/revision and current catalog/service-area checks before and after preview. Local coverage snapshot stays non-authoritative; no admission or job changes. Evidence and exact review: evidence/APP-013/address-draft/README.md; incremental c5e4f6d..HEAD, current focused branch and PR #21.
+
+1731 tests passed / 3 existing skips; lint/build/architecture/Prisma/syntax/diff and two zero-finding audits. Eleven-group address browser/database proof plus parent regression passed; desktop/mobile screenshots reviewed, disposable database removed. Scripted transcript in address fixture; real address service and database. No live calls, production registration, schema, provider, billing, merge or deployment changes.
+
+Stop for review. Next proposed: persist the non-authoritative local snapshot in the existing operator-review handoff, with fresh binding checks and no verification/admission promotion. APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% recorded scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. Overall engineering percentage/ETA remains unestablished.
+
+## Local address selection and coverage (2026-09-10, prior checkpoint)
 
 Implemented optional local customer address suggestions, explicit candidate/unit confirmation and separate configured ZIP coverage using encrypted session state and existing active ServiceArea rows. Exact revision/replay, atomic audit, and whole-area/catalog fingerprint checks refuse stale selection or configuration. Missing/inactive/malformed/unsupported geography is UNKNOWN; explicit valid nonmatch is OUT_OF_AREA. Existing routing fallback is unchanged.
 

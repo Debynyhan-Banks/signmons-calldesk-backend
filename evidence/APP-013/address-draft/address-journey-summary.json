@@ -1,0 +1,19 @@
+{
+  "checks": [
+    "read-only draft copies server-selected address/unit; mobile/desktop snapshots; no submission authority",
+    "policy change before draft refuses and retains editable customer fields",
+    "review refuses wrong revision, query, unit, candidate, acknowledgment and forged session",
+    "fictional candidate confirmation and explicit active ZIP match",
+    "lost acknowledgment exact replay writes once",
+    "unit edit invalidates local selection; outside ZIP is OUT_OF_AREA",
+    "area edits invalidate status and pending confirmation",
+    "inactive geography yields UNKNOWN",
+    "real audit rollback and concurrent corrections commit once",
+    "forged session refuses; audit privacy; no master-address/job writes",
+    "mobile desktop fit and private clear"
+  ],
+  "liveProviderCalls": 0,
+  "addressAuthorized": false,
+  "bookingAuthorized": false,
+  "productionRegistered": false
+}

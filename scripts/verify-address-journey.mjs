@@ -62,6 +62,80 @@ export async function verifyAddressJourney({
     }),
     2,
   );
+  const review = async () => {
+    await page.locator("#description").fill("Fictional cooling issue");
+    await page.locator("#issueCategory").selectOption("COOLING");
+    await page.locator("#propertyType").selectOption("RESIDENTIAL");
+    await page.locator("#serviceIntent").selectOption("REPAIR");
+    await page.locator("#reviewed").check();
+    await page.locator("#draft").click();
+  };
+  const beforeReview = await prisma.conversation.findUnique({
+    where: { id: scope.conversationId },
+  });
+  const readOnly = new LocalAddressService(
+    prisma,
+    cipher,
+    credentials,
+    ADDRESS_CATALOG,
+  );
+  const reviewInput = {
+    ...confirms[0],
+    action: "review",
+    operationId: randomUUID(),
+    expectedRevision: 2,
+  };
+  assert.equal(
+    (await readOnly.handle(reviewInput)).coverage,
+    "FIXTURE_IN_AREA",
+  );
+  for (const override of [
+    { expectedRevision: 1 },
+    { unit: "Other" },
+    { query: "Other" },
+    { candidateId: "fictional-out" },
+    { confirmed: false },
+    {
+      sessionToken: credentials.issueSession({
+        tenantId: scope.tenantId,
+        conversationId: scope.conversationId,
+        sessionId: randomUUID(),
+      }),
+    },
+  ])
+    await assert.rejects(readOnly.handle({ ...reviewInput, ...override }));
+  await review();
+  await page.locator("#preview").waitFor({ state: "visible" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    true,
+  );
+  assert.match(
+    await page.locator("#summary").innerText(),
+    /address: 10 Fictional Lane, Unit A/,
+  );
+  assert.match(
+    await page.locator("#summary").innerText(),
+    /Local test coverage: FIXTURE_IN_AREA/,
+  );
+  assert.equal(await page.locator("#submitReview").isVisible(), false);
+  await page
+    .locator("#preview")
+    .screenshot({ path: evidence + "/address-draft-mobile.png" });
+  assert.deepEqual(
+    await prisma.conversation.findUnique({
+      where: { id: scope.conversationId },
+    }),
+    beforeReview,
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page
+    .locator("#preview")
+    .screenshot({ path: evidence + "/address-draft-desktop.png" });
+  await page.locator("#editDraft").click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page
     .locator("#addressVerification")
@@ -85,6 +159,11 @@ export async function verifyAddressJourney({
     where: { id: area.id },
     data: { definition: { postalCodes: ["99999"] } },
   });
+  await review();
+  await page
+    .getByText("Find and confirm the test address again", { exact: false })
+    .waitFor();
+  assert.equal(await page.locator("#preview").isVisible(), false);
   await page.locator("#addressRefresh").click();
   await page
     .getByText("service-area settings changed", { exact: false })
@@ -223,6 +302,9 @@ export async function verifyAddressJourney({
   assert.equal(await page.locator("#addressUnit").inputValue(), "");
   const summary = {
     checks: [
+      "read-only draft copies server-selected address/unit; mobile/desktop snapshots; no submission authority",
+      "policy change before draft refuses and retains editable customer fields",
+      "review refuses wrong revision, query, unit, candidate, acknowledgment and forged session",
       "fictional candidate confirmation and explicit active ZIP match",
       "lost acknowledgment exact replay writes once",
       "unit edit invalidates local selection; outside ZIP is OUT_OF_AREA",
