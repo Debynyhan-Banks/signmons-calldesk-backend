@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Phone verification provider recommendation (2026-09-10, latest review-ready)
+
+Read-only provider review recommends Twilio Verify v2; governance PHONE_VERIFICATION_PROVIDER_DECISION.md records sources, costs and recovery differences from fixture. Next after review: inactive injected-client adapter and tests, no live calls or configuration. Standard test credentials do not support Verify; 404 is not approval; durable network recovery and OTP opt-in remain required. No runtime or acceptance change. APP-013 sole Now, Next empty, FE-014 paused; percentages unchanged. No release, secrets, billing, real data or charges authorized.
+
 ## Local phone-code journey (2026-09-10, latest review-ready)
 
 Implemented the approved first local phone slice: request/check/resend/clear/status in the existing fictional customer browser, encrypted durable session-bound state, exact version/retry handling, atomic audits and database-backed per-destination request/attempt limits. Explicit number change revokes prior test proof without staff verification. Lost-response retry writes once. Deterministic code 123456 is a labeled fixture; FIXTURE_VERIFIED never grants phoneAccessAuthorized, bookingAuthorized or deliveryAuthorized. No job verification flag or admission authority changes.
