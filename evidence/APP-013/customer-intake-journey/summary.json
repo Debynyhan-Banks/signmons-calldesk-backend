@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "checks": [
+    "actual browser/transport/database journey covers grant, decline and no-email branches",
+    "email skip creates no capture or consent and does not block draft",
+    "lost capture/consent acknowledgment replays exact input and records once",
+    "grant requires separate mailbox confirmation; declining still reaches draft",
+    "description carries forward without repeated intake question; explicit draft review required",
+    "invalid phone refuses with editable correction and no draft write",
+    "draft previews leave conversation/content/events/audit/consent/jobs/intents unchanged",
+    "new transcript revision invalidates an older draft request",
+    "draft records historical choice only; urgency unassessed and job/booking/sending disabled",
+    "desktop/mobile privacy clearing, no cookies/storage/credential URLs/external requests/page errors"
+  ],
+  "checkCount": 10,
+  "choices": [
+    "GRANTED",
+    "DECLINED",
+    "NOT_RECORDED"
+  ],
+  "viewports": [
+    1440,
+    390
+  ],
+  "scriptedCalls": 6,
+  "providerCalls": 0,
+  "productionActions": 0,
+  "jobCreated": false,
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false,
+  "pageErrors": [],
+  "external": [],
+  "limits": [
+    "Read-only customer-stated draft, not saved or a CreateJobPayload",
+    "No actual AI, urgency assessment, address/phone/mailbox verification, booking or delivery",
+    "No production route/key/configuration or retention/recovery implementation"
+  ]
+}

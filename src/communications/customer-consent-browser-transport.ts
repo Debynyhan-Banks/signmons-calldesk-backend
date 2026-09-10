@@ -14,6 +14,7 @@ import {
 import { CustomerConsentCaptureService } from "./customer-consent-capture.service";
 import { CustomerConsentResponseService } from "./customer-consent-response.service";
 import { CustomerIntakeContinuationService } from "./customer-intake-continuation.service";
+import { validateCustomerIntakeDraft } from "./customer-intake-draft";
 
 export const CUSTOMER_BROWSER_MAX_BYTES = 16384;
 export const CUSTOMER_BROWSER_HEADERS = Object.freeze({
@@ -69,6 +70,7 @@ type Ports = {
   credentials: CustomerConsentCredentials;
   budget: CustomerBrowserBudget;
   continuation?: Pick<CustomerIntakeContinuationService, "continue">;
+  draft?: Pick<CustomerIntakeContinuationService, "previewDraft">;
   diagnostic?: (entry: {
     operation: CustomerBrowserOperation | "unknown";
     status: number;
@@ -125,7 +127,7 @@ export class CustomerConsentBrowserTransport {
       )
         fail(403);
       const match =
-        /^\/customer-session\/(start|capture|prompt|respond|continue)$/.exec(
+        /^\/customer-session\/(start|capture|prompt|respond|continue|draft)$/.exec(
           request.url,
         );
       if (!match || request.method !== "POST") fail(403);
@@ -186,6 +188,7 @@ export class CustomerConsentBrowserTransport {
         capture: "email,sessionToken",
         prompt: "sessionToken",
         continue: "interactionId,message,sessionToken",
+        draft: "draft,expectedRevision,sessionToken",
         respond: "mailboxConfirmed,promptToken,response,sessionToken",
       };
       if (Object.keys(input).sort().join(",") !== keys[operation]) fail(400);
@@ -267,6 +270,45 @@ export class CustomerConsentBrowserTransport {
       };
     }
     const sessionToken = input.sessionToken as string;
+    if (operation === "draft") {
+      if (!ports.draft) fail(503);
+      if (
+        !Number.isInteger(input.expectedRevision) ||
+        (input.expectedRevision as number) < 1 ||
+        (input.expectedRevision as number) > 20
+      )
+        fail(400);
+      const draft = validateCustomerIntakeDraft(input.draft);
+      const value = await ports.draft.previewDraft({
+        sessionToken,
+        expectedRevision: input.expectedRevision as number,
+        draft,
+      });
+      if (
+        value.transcriptRevision !== input.expectedRevision ||
+        value.jobCreated !== false ||
+        value.bookingAuthorized !== false ||
+        value.deliveryAuthorized !== false ||
+        value.requiresHumanReview !== true ||
+        value.urgencyAssessment !== "NOT_PERFORMED" ||
+        !["NOT_RECORDED", "GRANTED", "DECLINED", "REVOKED"].includes(
+          value.emailChoice,
+        )
+      )
+        fail(503);
+      const projected = validateCustomerIntakeDraft(value.draft);
+      if (JSON.stringify(projected) !== JSON.stringify(draft)) fail(503);
+      return {
+        draft: projected,
+        transcriptRevision: value.transcriptRevision,
+        emailChoice: value.emailChoice,
+        urgencyAssessment: "NOT_PERFORMED",
+        requiresHumanReview: true,
+        jobCreated: false,
+        bookingAuthorized: false,
+        deliveryAuthorized: false,
+      };
+    }
     if (operation === "continue") {
       if (!ports.continuation) fail(503);
       if (

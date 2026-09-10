@@ -40,6 +40,8 @@ describe("inactive credential-bound transcript continuation", () => {
     },
     conversationJobLink: { count: jest.fn() },
     auditLog: { create: jest.fn() },
+    appointmentEmailConsentScope: { findUnique: jest.fn() },
+    appointmentEmailConsentEvidence: { findFirst: jest.fn() },
   };
   const transaction = jest.fn(),
     reply = jest.fn();
@@ -252,6 +254,106 @@ describe("inactive credential-bound transcript continuation", () => {
     await expect(service().continue(input())).rejects.toThrow("unconfirmed");
     tx.auditLog.create.mockRejectedValueOnce(new Error("PRIVATE_DATABASE"));
     await expect(service().continue(input())).rejects.toThrow("unconfirmed");
+  });
+  const draft = {
+    customerName: "Fictional Customer",
+    phone: "+12025550123",
+    address: "123 Fictional Lane",
+    description: "Cooling issue",
+    issueCategory: "COOLING",
+    propertyType: "RESIDENTIAL",
+    serviceIntent: "REPAIR",
+  };
+  const preview = () => ({
+    sessionToken: input().sessionToken,
+    expectedRevision: 1,
+    draft,
+  });
+  it("validates a read-only draft without requiring consent or writing any records", async () => {
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    tx.appointmentEmailConsentScope.findUnique.mockResolvedValue(null);
+    const result = await service().previewDraft(preview());
+    expect(result).toEqual({
+      draft,
+      transcriptRevision: 1,
+      emailChoice: "NOT_RECORDED",
+      urgencyAssessment: "NOT_PERFORMED",
+      requiresHumanReview: true,
+      jobCreated: false,
+      bookingAuthorized: false,
+      deliveryAuthorized: false,
+    });
+    expect(reply).not.toHaveBeenCalled();
+    expect(tx.communicationEvent.create).not.toHaveBeenCalled();
+    expect(tx.auditLog.create).not.toHaveBeenCalled();
+  });
+  it.each(["GRANTED", "DECLINED", "REVOKED"])(
+    "projects historical email choice %s without treating it as sending authority",
+    async (decision) => {
+      tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+      tx.appointmentEmailConsentScope.findUnique.mockResolvedValue({
+        id: "scope",
+        sessionId: scope.sessionId,
+      });
+      tx.appointmentEmailConsentEvidence.findFirst.mockResolvedValue({
+        decision,
+      });
+      expect((await service().previewDraft(preview())).emailChoice).toBe(
+        decision,
+      );
+    },
+  );
+  it.each([
+    { phone: "555-1234" },
+    { customerName: " " },
+    { address: "x".repeat(201) },
+    { description: "bad\u0000data" },
+    { issueCategory: "UNKNOWN" },
+    { propertyType: "OTHER" },
+    { serviceIntent: "BOOK_NOW" },
+    { urgency: "STANDARD" },
+    { email: "private@example.invalid" },
+  ])(
+    "refuses malformed or authority-bearing draft %# before database",
+    async (override) => {
+      await expect(
+        service().previewDraft({
+          ...preview(),
+          draft: { ...draft, ...override },
+        }),
+      ).rejects.toThrow();
+      expect(transaction).not.toHaveBeenCalled();
+    },
+  );
+  it.each([0, 2, 1.5])(
+    "refuses missing/stale draft revision %s",
+    async (expectedRevision) => {
+      tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+      await expect(
+        service().previewDraft({ ...preview(), expectedRevision }),
+      ).rejects.toThrow();
+      expect(tx.auditLog.create).not.toHaveBeenCalled();
+    },
+  );
+  it("refuses a foreign session consent scope", async () => {
+    tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+    tx.appointmentEmailConsentScope.findUnique.mockResolvedValue({
+      id: "scope",
+      sessionId: randomUUID(),
+    });
+    await expect(service().previewDraft(preview())).rejects.toThrow("changed");
+  });
+  it("refuses forged draft credential before database", async () => {
+    await expect(
+      service().previewDraft({ ...preview(), sessionToken: "raw-session" }),
+    ).rejects.toThrow();
+    expect(transaction).not.toHaveBeenCalled();
+  });
+  it("sanitizes draft database errors", async () => {
+    transaction.mockRejectedValue(new Error("PRIVATE"));
+    await expect(service().previewDraft(preview())).rejects.toThrow(
+      "Intake draft unavailable.",
+    );
   });
   it("remains unregistered in production", () => {
     for (const file of ["communications.module.ts"])

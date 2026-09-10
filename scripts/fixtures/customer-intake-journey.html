@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Local protected intake journey</title>
+  <style>
+    body {
+      font: 18px system-ui;
+      max-width: 42rem;
+      margin: 24px;
+      padding: 12px;
+      color: #183044;
+      background: #f5f8fa;
+    }
+    input,
+    textarea,
+    select,
+    button {
+      font: inherit;
+      box-sizing: border-box;
+      max-width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+    }
+    input,
+    textarea,
+    select {
+      display: block;
+      width: 100%;
+    }
+    input[type="checkbox"] {
+      display: inline;
+      width: auto;
+    }
+    p,
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    section {
+      margin: 24px 0;
+    }
+    [hidden] {
+      display: none;
+    }
+  </style>
+  <h1>Review your service request</h1>
+  <p>
+    Fictional local test. Automated replies are scripted. No job or appointment
+    will be created. Sending remains disabled.
+  </p>
+  <button id="start">Start a new request</button>
+  <section id="conversation" hidden>
+    <label for="message">Describe the fictional issue</label
+    ><textarea id="message" maxlength="400"></textarea
+    ><button id="continue">Continue conversation</button>
+  </section>
+  <p id="reply"></p>
+  <section id="email" hidden>
+    <h2>Optional appointment email</h2>
+    <p>
+      Email is optional. Skipping or declining does not block your draft.
+      Entering an address alone does not give permission to send.
+    </p>
+    <label for="mailboxInput">Email address</label
+    ><input id="mailboxInput" type="email" autocomplete="off" /><button
+      id="capture"
+    >
+      Retain this address</button
+    ><button id="skip">Continue without email</button>
+  </section>
+  <section id="promptStep" hidden>
+    <p>Address retained privately. Permission has not been recorded.</p>
+    <button id="prompt">Review email permission</button>
+  </section>
+  <section id="consent" hidden>
+    <p id="mailbox"></p>
+    <p id="permissionText"></p>
+    <label
+      ><input id="confirmed" type="checkbox" /> I confirm this is my email
+      address.</label
+    ><button id="grant">Allow appointment emails</button
+    ><button id="decline">No thanks</button>
+  </section>
+  <section id="details" hidden>
+    <h2>Customer-stated draft details</h2>
+    <p>
+      Please review these details. Urgency has not been assessed. This is not a
+      booking or a verified service address.
+    </p>
+    <label for="customerName">Name</label
+    ><input id="customerName" maxlength="120" autocomplete="off" />
+    <label for="phone">Phone, including country code</label
+    ><input
+      id="phone"
+      type="tel"
+      placeholder="+12025550123"
+      autocomplete="off"
+    />
+    <label for="address">Service address</label
+    ><input id="address" maxlength="200" autocomplete="off" />
+    <label for="description">Issue summary</label
+    ><textarea id="description" maxlength="400"></textarea>
+    <label for="issueCategory">Service category</label
+    ><select id="issueCategory">
+      <option value="">Choose a category</option>
+      <option>HEATING</option>
+      <option>COOLING</option>
+      <option>PLUMBING</option>
+      <option>ELECTRICAL</option>
+      <option>DRAINS</option>
+      <option>GENERAL</option>
+      <option>BOILER</option>
+      <option>REFRIGERATION</option>
+      <option>COMMERCIAL_HVAC</option>
+      <option>COMMERCIAL_REFRIGERATION</option>
+    </select>
+    <label for="propertyType">Property type</label
+    ><select id="propertyType">
+      <option value="">Choose a property type</option>
+      <option>RESIDENTIAL</option>
+      <option>COMMERCIAL</option>
+      <option>MANAGED</option>
+    </select>
+    <label for="serviceIntent">Service requested</label
+    ><select id="serviceIntent">
+      <option value="">Choose a service</option>
+      <option>DIAGNOSTIC</option>
+      <option>REPAIR</option>
+      <option>INSTALLATION</option>
+      <option>MAINTENANCE</option>
+      <option>OTHER</option>
+    </select>
+    <label
+      ><input id="reviewed" type="checkbox" /> I reviewed these details.</label
+    ><button id="draft">Preview validated draft</button>
+  </section>
+  <section id="preview" hidden>
+    <h2>Draft only — human review required</h2>
+    <pre id="summary"></pre>
+    <p>
+      No job created, no appointment booked, no message sent. The draft is not
+      saved and is not an admission receipt.
+    </p>
+  </section>
+  <button id="retry" hidden>Retry the same request</button
+  ><button id="forget" hidden>Clear private session</button>
+  <p id="status" role="status"></p>
+  <p>
+    Clearing or reloading loses private browser state but does not undo
+    previously saved conversation or consent. Contact the office for an existing
+    appointment.
+  </p>
+  <script src="/journey.js"></script>
+</html>

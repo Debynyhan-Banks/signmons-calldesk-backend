@@ -13,6 +13,7 @@ import {
   ConsentSessionClaims,
 } from "./customer-consent-credentials";
 import { lockCustomerConsentSession } from "./customer-consent-session-lock";
+import { validateCustomerIntakeDraft } from "./customer-intake-draft";
 
 export const PROTECTED_INTAKE_TURN = "protected_intake_turn_v1";
 const UUID =
@@ -53,6 +54,72 @@ export class CustomerIntakeContinuationService {
     private readonly credentials: CustomerConsentCredentials,
     private readonly collaborator?: CustomerIntakeReply,
   ) {}
+
+  /** Read-only preview. No job, consent mutation, finalization or delivery admission. */
+  async previewDraft(input: {
+    sessionToken: string;
+    expectedRevision: number;
+    draft: unknown;
+  }) {
+    if (
+      !input ||
+      typeof input !== "object" ||
+      Array.isArray(input) ||
+      Object.keys(input).sort().join(",") !==
+        "draft,expectedRevision,sessionToken" ||
+      typeof input.sessionToken !== "string" ||
+      input.sessionToken.length > 4096 ||
+      !Number.isInteger(input.expectedRevision) ||
+      input.expectedRevision < 1 ||
+      input.expectedRevision > 20
+    )
+      throw new BadRequestException("Invalid intake draft request.");
+    const draft = validateCustomerIntakeDraft(input.draft);
+    const session = this.credentials.verifySession(input.sessionToken);
+    try {
+      return await this.transaction(async (tx) => {
+        const history = await this.history(tx, session);
+        if (history.turns.length !== input.expectedRevision) throw changed();
+        const scope = await tx.appointmentEmailConsentScope.findUnique({
+          where: {
+            tenantId_conversationId: {
+              tenantId: session.tenantId,
+              conversationId: session.conversationId,
+            },
+          },
+        });
+        if (scope && scope.sessionId !== session.sessionId) throw changed();
+        const evidence = scope
+          ? await tx.appointmentEmailConsentEvidence.findFirst({
+              where: { scopeId: scope.id },
+              orderBy: { revision: "desc" },
+            })
+          : null;
+        const emailChoice = evidence?.decision ?? "NOT_RECORDED";
+        if (
+          !["NOT_RECORDED", "GRANTED", "DECLINED", "REVOKED"].includes(
+            emailChoice,
+          )
+        )
+          throw changed();
+        this.credentials.verifySession(input.sessionToken);
+        return {
+          draft,
+          transcriptRevision: history.turns.length,
+          emailChoice,
+          urgencyAssessment: "NOT_PERFORMED" as const,
+          requiresHumanReview: true as const,
+          jobCreated: false as const,
+          bookingAuthorized: false as const,
+          deliveryAuthorized: false as const,
+        };
+      });
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500)
+        throw error;
+      throw new ServiceUnavailableException("Intake draft unavailable.");
+    }
+  }
 
   async continue(input: {
     sessionToken: string;

@@ -116,6 +116,86 @@ describe("inactive same-origin browser transport", () => {
       private: "DO_NOT_LEAK",
     });
   });
+  const draftDetails = {
+    customerName: "Fictional",
+    phone: "+12025550123",
+    address: "123 Fictional Lane",
+    description: "Cooling issue",
+    issueCategory: "COOLING",
+    propertyType: "RESIDENTIAL",
+    serviceIntent: "REPAIR",
+  };
+  const draftInput = () => ({
+    sessionToken,
+    expectedRevision: 1,
+    draft: draftDetails,
+  });
+  const draftReceipt = () => ({
+    draft: draftDetails,
+    transcriptRevision: 1,
+    emailChoice: "NOT_RECORDED",
+    urgencyAssessment: "NOT_PERFORMED" as const,
+    requiresHumanReview: true as const,
+    jobCreated: false as const,
+    bookingAuthorized: false as const,
+    deliveryAuthorized: false as const,
+  });
+  it("projects only a read-only validated draft without internal fields", async () => {
+    const previewDraft = jest
+      .fn()
+      .mockResolvedValue({ ...draftReceipt(), secret: "DO_NOT_LEAK" });
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, draft: { previewDraft } },
+    );
+    const result = await asActor(() =>
+      transport.handle(req("draft", draftInput())),
+    );
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual(draftReceipt());
+    expect(result.headers).toEqual(CUSTOMER_BROWSER_HEADERS);
+    expect(acquire).toHaveBeenCalledWith("127.0.0.1", "draft");
+  });
+  it.each([
+    { jobCreated: true },
+    { bookingAuthorized: true },
+    { deliveryAuthorized: true },
+    { requiresHumanReview: false },
+    { transcriptRevision: 2 },
+    { draft: { ...draftDetails, customerName: "Changed" } },
+  ])("refuses unsafe or changed draft receipt %#", async (override) => {
+    const previewDraft = jest
+      .fn()
+      .mockResolvedValue({ ...draftReceipt(), ...override });
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, draft: { previewDraft } },
+    );
+    expect(
+      (await asActor(() => transport.handle(req("draft", draftInput()))))
+        .status,
+    ).toBe(503);
+  });
+  it("refuses missing draft adapter", async () => {
+    expect((await call(req("draft", draftInput()))).status).toBe(503);
+  });
+  it("refuses caller draft admission override before adapter", async () => {
+    const previewDraft = jest.fn();
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, draft: { previewDraft } },
+    );
+    expect(
+      (
+        await asActor(() =>
+          transport.handle(
+            req("draft", { ...draftInput(), bookingAuthorized: true }),
+          ),
+        )
+      ).status,
+    ).toBe(400);
+    expect(previewDraft).not.toHaveBeenCalled();
+  });
   it("projects fresh bootstrap without internal fields and applies private headers", async () => {
     const result = await call();
     expect(result.status).toBe(200);
