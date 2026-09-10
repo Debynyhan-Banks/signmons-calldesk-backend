@@ -11,6 +11,9 @@
       "serviceIntent",
     ];
   let token,
+    verifyNotice,
+    verifyStart,
+    verifyState = "EMPTY",
     phoneRevision = 0,
     phoneLocked = false,
     phoneExpiryTimer,
@@ -29,6 +32,9 @@
     el("status").textContent = value;
   };
   function paint() {
+    const durableMode =
+      document.documentElement.dataset.verificationFixture === "true";
+    el("durableVerification").hidden = !durableMode;
     el("phoneVerification").hidden =
       document.documentElement.dataset.phoneFixture !== "true";
     el("phone").readOnly = phoneLocked;
@@ -55,6 +61,26 @@
       step !== "preview";
     el("retry").hidden = !pending || busy;
     el("retry").disabled = busy;
+    el("verifyConsent").hidden = !verifyNotice;
+    el("verifyNotice").disabled =
+      busy ||
+      !!pending ||
+      !!verifyStart ||
+      verifyState === "CORRECTION_REQUIRED";
+    el("verifyStart").disabled =
+      busy ||
+      !!pending ||
+      !verifyNotice ||
+      !el("verifyRequested").checked ||
+      !!verifyStart ||
+      verifyState === "CORRECTION_REQUIRED";
+    el("verifyCheck").disabled = busy || !!pending || verifyState !== "PENDING";
+    el("verifyCode").disabled = busy || !!pending || verifyState !== "PENDING";
+    el("verifyRequested").disabled = busy || !!pending || !!verifyStart;
+    el("verifyChange").disabled = busy || !!pending;
+    if (durableMode)
+      el("phone").readOnly =
+        !!verifyStart && verifyState !== "CORRECTION_REQUIRED";
   }
   function clear(message) {
     epoch++;
@@ -63,6 +89,13 @@
     clearTimeout(phoneExpiryTimer);
     phoneRevision = 0;
     phoneLocked = false;
+    verifyNotice = verifyStart = undefined;
+    verifyState = "EMPTY";
+    el("verifyStatus").textContent =
+      "Not verified. Review the code request first.";
+    el("verifyNoticeText").textContent = el("verifyNumber").textContent = "";
+    el("verifyTerms").removeAttribute("href");
+    el("verifyPrivacy").removeAttribute("href");
     el("phoneStatus").textContent = "Not verified.";
     token = promptToken = email = pending = reviewedDraft = undefined;
     expires = revision = 0;
@@ -130,6 +163,64 @@
       if (request.operation !== "start" && !alive()) return;
       if (value.deliveryAuthorized !== false) throw Error("Invalid receipt");
       switch (request.operation) {
+        case "verify": {
+          if (
+            value.fixtureOnly !== true ||
+            value.phoneAccessAuthorized !== false ||
+            value.bookingAuthorized !== false
+          )
+            throw Error("Invalid verification receipt");
+          if (request.body.action === "NOTICE") {
+            if (
+              value.state !== "NOTICE" ||
+              value.noticeVersion !== "local-verification-v1" ||
+              typeof value.noticeText !== "string" ||
+              value.noticeText.length > 1000 ||
+              value.termsUrl !== "https://example.test/terms" ||
+              value.privacyUrl !== "https://example.test/privacy"
+            )
+              throw Error("Invalid notice");
+            verifyNotice = value.noticeVersion;
+            el("verifyNoticeText").textContent = value.noticeText;
+            el("verifyTerms").href = value.termsUrl;
+            el("verifyPrivacy").href = value.privacyUrl;
+            el("verifyNumber").textContent = el("phone").value.trim();
+            el("verifyRequested").checked = false;
+          } else {
+            if (
+              value.operationId !== request.body.operationId ||
+              !["OBSERVED", "UNCONFIRMED"].includes(value.state) ||
+              ![
+                "PENDING",
+                "APPROVED",
+                "UNKNOWN",
+                "REFUSED",
+                "RATE_LIMITED",
+                "EXPIRED",
+                "UNAVAILABLE",
+              ].includes(value.outcome)
+            )
+              throw Error("Invalid verification receipt");
+            el("verifyCode").value = "";
+            if (value.state === "UNCONFIRMED" || value.outcome === "UNKNOWN") {
+              verifyState = "UNCONFIRMED";
+              el("verifyStatus").textContent =
+                "Outcome unconfirmed. Do not request another code. Retry this exact request or clear private state; clearing does not cancel the saved request.";
+              status("Verification outcome unconfirmed. Exact retry only.");
+              return;
+            }
+            if (request.body.action === "START")
+              verifyStart = request.body.operationId;
+            verifyState = value.outcome;
+            el("verifyStatus").textContent =
+              value.outcome === "APPROVED"
+                ? "Test code accepted. Real phone access is NOT verified. No booking or sending permission."
+                : value.outcome === "PENDING"
+                  ? "Test request recorded. No SMS sent. Enter 123456; an incorrect code uses an attempt."
+                  : "Test verification is unavailable or expired. Your draft is retained; nothing is verified. No automatic resend.";
+          }
+          break;
+        }
         case "phone": {
           if (
             value.fixtureOnly !== true ||
@@ -291,6 +382,19 @@
         );
       else if (!alive()) return;
       else if (
+        request.operation === "verify" &&
+        [400, 409, 429].includes(error?.status)
+      ) {
+        pending = undefined;
+        el("verifyCode").value = "";
+        el("verifyStatus").textContent =
+          error.status === 400
+            ? "Check the phone number, consent and six-digit code. Your draft is retained."
+            : "Verification is unavailable: budget, request limits or eligibility may prevent a new code. Your draft is retained. Do not restart to bypass the limit; contact the office if needed.";
+        status(
+          "Verification request refused. Draft retained; nothing verified.",
+        );
+      } else if (
         [400, 429].includes(error?.status) &&
         request.operation === "phone"
       ) {
@@ -332,6 +436,48 @@
       clear("");
       submit("start", {});
     }
+  };
+  function submitVerification(action) {
+    if (document.documentElement.dataset.verificationFixture !== "true") return;
+    if (
+      action === "START" &&
+      (!verifyNotice ||
+        !el("verifyRequested").checked ||
+        verifyStart ||
+        verifyState === "CORRECTION_REQUIRED")
+    )
+      return;
+    if (action === "CHECK" && verifyState !== "PENDING") return;
+    submit("verify", {
+      sessionToken: token,
+      action,
+      operationId: action === "NOTICE" ? "" : crypto.randomUUID(),
+      phone: action === "NOTICE" ? "" : el("phone").value.trim(),
+      code: action === "CHECK" ? el("verifyCode").value.trim() : "",
+      startOperationId: action === "CHECK" ? verifyStart : "",
+      requested: action === "START",
+      noticeVersion: action === "START" ? verifyNotice : "",
+    });
+  }
+  el("verifyNotice").onclick = () => submitVerification("NOTICE");
+  el("verifyStart").onclick = () => submitVerification("START");
+  el("verifyCheck").onclick = () => submitVerification("CHECK");
+  el("verifyRequested").onchange = paint;
+  el("phone").addEventListener("input", () => {
+    verifyNotice = undefined;
+    el("verifyRequested").checked = false;
+    paint();
+  });
+  el("verifyChange").onclick = () => {
+    if (busy || pending) return;
+    verifyNotice = undefined;
+    el("verifyRequested").checked = false;
+    el("verifyCode").value = "";
+    if (verifyStart) verifyState = "CORRECTION_REQUIRED";
+    el("verifyStatus").textContent =
+      "Number correction: no verification applies to the edited number. This local flow cannot issue a replacement; saved requests and costs are not erased.";
+    paint();
+    el("phone").focus();
   };
   for (const [id, action] of [
     ["phoneRequest", "request"],

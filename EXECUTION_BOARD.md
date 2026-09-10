@@ -1,6 +1,18 @@
 # Signmons Backend Execution Board
 
-## Approved verification budget and opt-in (2026-09-10, latest review-ready)
+## Local customer verification journey (2026-09-10, latest review-ready)
+
+Connected the approved consent/budget controls to the existing optional local customer page: trusted test notice and unchecked acknowledgment, exact-number binding, mocked START/CHECK, wrong/correct code, lost-response exact retry, correction invalidation and draft-preserving refusal. Local-only POST /customer-session/verify reuses the existing origin/session/tenant/request-budget boundary and requires explicit fixture binding and port injection. All phone/booking/delivery authority remains false.
+
+Evidence: backend evidence/APP-013/verification-journey/README.md, seven-group verification-journey-summary.json and desktop/mobile/refusal screenshots. 11 new unit cases; full backend 1709 passed / 3 existing skips, lint/build/architecture/Prisma/syntax checks and two zero-finding audits. New browser helper uses real session/durable/budget services and mocked Verify adapter, scripted surrounding reply, two START/two CHECK invocations, zero live calls and no new jobs. Parent organization/admission/browser/local-phone/durable-budget regression also passed; disposable database removed.
+
+The exported notice matches the saved fixture consent copy; example.test Terms/Privacy are placeholders, not production legal acceptance. Unknown outcomes permit only exact retry; correction does not erase saved requests or refund costs, and replacement verification within the session remains unavailable. $50 ceiling/$25 and $40 threshold policy unchanged; fictional $25 flow prices only, no settlement/monthly replenishment or alert delivery implemented. No production registration, schema/package/migration, provider configuration, live spending/sending, billing, real data, merge or deployment.
+
+Stop for owner review. Next proposed MVP section: inspect/map existing address-validation and service-area evidence into the same customer journey, reusing current contracts; no provider setup or live calls. Phone live activation still needs approved real rate/account/service binding, legal notice, reconciliation/retention, shared abuse controls, recovery, alerts and separately approved capped testing. Application proof transfer remains open.
+
+APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% recorded scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted, not 0% built. No defensible overall engineering percentage or ETA.
+
+## Approved verification budget and opt-in (2026-09-10, prior checkpoint)
 
 Owner approved a $50 USD per-organization monthly verification ceiling, internal alerts at $25/$40, explicit approval for higher limits, and no automatic cost-bearing starts beyond the ceiling. This is an internal phone-verification safeguard, not a customer charge, paid-plan entitlement, approved live spend or guarantee of profitability. Review actual usage, conversion and subscription economics after the first pilot month.
 

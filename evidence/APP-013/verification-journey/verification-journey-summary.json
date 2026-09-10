@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "server notice and unchecked consent; phone edit requires fresh acknowledgment",
+    "mocked start and wrong/correct code through real durable services",
+    "lost approval response exact retry without duplicate provider call or budget",
+    "phone correction removes local verification state without replacement request",
+    "unknown outcome exact retry retains original reservation",
+    "budget refusal retains customer draft and does not call provider",
+    "mobile/desktop fit, private clearing, no browser storage or page errors"
+  ],
+  "mockedStarts": 2,
+  "mockedChecks": 2,
+  "liveProviderCalls": 0,
+  "newJobs": 0,
+  "phoneAccessAuthorized": false,
+  "productionRegistered": false
+}

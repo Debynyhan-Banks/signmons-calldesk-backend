@@ -62,6 +62,9 @@ export type CustomerBrowserRequest = {
 };
 type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
 type Ports = {
+  verification?: {
+    handle(input: Record<string, unknown>): Promise<Record<string, unknown>>;
+  };
   localPhone?: {
     handle(input: Record<string, unknown>): Promise<Record<string, unknown>>;
   };
@@ -131,7 +134,7 @@ export class CustomerConsentBrowserTransport {
       )
         fail(403);
       const match =
-        /^\/customer-session\/(start|capture|prompt|respond|continue|draft|submit|phone)$/.exec(
+        /^\/customer-session\/(start|capture|prompt|respond|continue|draft|submit|phone|verify)$/.exec(
           request.url,
         );
       if (!match || request.method !== "POST") fail(403);
@@ -188,6 +191,8 @@ export class CustomerConsentBrowserTransport {
       }
       const input = object(parsed);
       const keys = {
+        verify:
+          "action,code,noticeVersion,operationId,phone,requested,sessionToken,startOperationId",
         phone: "action,code,expectedRevision,operationId,phone,sessionToken",
         start: "",
         capture: "email,sessionToken",
@@ -276,6 +281,11 @@ export class CustomerConsentBrowserTransport {
       };
     }
     const sessionToken = input.sessionToken as string;
+    if (operation === "verify") {
+      if (this.binding?.fixtureLoopback !== true || !ports.verification)
+        fail(503);
+      return ports.verification.handle(input);
+    }
     if (operation === "phone") {
       if (this.binding?.fixtureLoopback !== true || !ports.localPhone)
         fail(503);

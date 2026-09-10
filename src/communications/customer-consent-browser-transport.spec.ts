@@ -87,6 +87,27 @@ describe("inactive same-origin browser transport", () => {
       );
     });
   const call = (request = req()) => asActor(() => model().handle(request));
+  it("keeps verification unavailable outside the explicit loopback fixture", async () => {
+    const handle = jest.fn();
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, verification: { handle } },
+    );
+    const input = {
+      sessionToken,
+      action: "NOTICE",
+      operationId: "",
+      phone: "",
+      code: "",
+      startOperationId: "",
+      requested: false,
+      noticeVersion: "",
+    };
+    expect(
+      (await asActor(() => transport.handle(req("verify", input)))).status,
+    ).toBe(503);
+    expect(handle).not.toHaveBeenCalled();
+  });
   function header(name: string, value?: string) {
     const request = req(),
       index = request.rawHeaders.findIndex((v) => v.toLowerCase() === name);
