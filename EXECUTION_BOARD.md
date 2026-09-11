@@ -1,5 +1,15 @@
 # Signmons Backend Execution Board
 
+## Section 2B — entry review, blocked before live actions
+
+Owner accepted 2A with “i reviewed continue”. Accepted 3/8; current section 4/8 (2B) is entry-review only, not implemented or demonstrated. Backend runtime remains f8e35e8. This documentation-only checkpoint does not add a ninth section or authorize provider calls.
+
+CONTROLLED_VERIFICATION_2B_CHECKLIST.md records the missing source/participant/environment/account/rate/notice/operational approvals. County source remains unqualified; older handoff records the inquiry sent, but bounded read-only Outlook searches for the GIS sender and CEGIS found no matching messages in the connected mailbox. This is not proof that no reply exists, and no follow-up was sent. No private mailbox payload was copied into public evidence.
+
+Next decision: identify the legitimate test participant and private test environment, then resolve county evidence and produce the exact account/rate/cap/notice approval packet before any live call. No recipient or address is inferred from prior business details; no configuration, secret, billing or production change. The existing monthly phone ceiling is not a test-spend authorization.
+
+APP-013 stays sole Now; Next empty; FE-014 paused. APP-013 local scope index 50%, accepted 0/12; onboarding local 50%, accepted 0/6; pilot accepted 0/12. Accepted 3/8 is steel-thread milestone progress, not overall MVP effort completion or an ETA. Prior checkpoints below remain historical.
+
 ## Section 2A — current-proof admission, review-ready
 
 Owner reviewed 1B evidence and said “i reviewed the evidence proceed”, accepting 1B and approving 2A only. Current section 3 of 8 (2A) is locally Demonstrated pending owner acceptance; accepted 2/8. No baseline expansion or new ticket.
