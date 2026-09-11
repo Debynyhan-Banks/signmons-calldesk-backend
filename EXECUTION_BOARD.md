@@ -1,5 +1,12 @@
 # Signmons Backend Execution Board
 
+## Disabled Google adapter checkpoint
+
+Owner approved a disabled Google adapter with mocked tests and design defaults: permitted correction cache expires at session end or 24 hours; other Google fields stay in memory without explicit caching permission; abandoned drafts delete within seven days or sooner under existing session policy; Signmons automates deletion with the pilot owner accountable. Submitted business-record retention remains separately gated. These are documented defaults, not an implemented deletion job.
+
+Implemented an unregistered fixture adapter only: default DISABLED, no HTTP client, credentials, cache, route, database writes or county resolver. All results keep addressVerified/admissionAuthorized false and county UNKNOWN. Evidence: backend evidence/APP-013/google-adapter/README.md. 19 focused tests and full backend 93 suites/1,772 tests pass, three existing skips; build/lint/architecture/diff pass. No UI change or browser QA applicability. Next proposed: strengthen response policy and qualify county record types, still without live activation. APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% scope/0 of 12 accepted; onboarding 50% local/0 of 6 accepted; pilot 0 of 12 accepted. No overall estimate, merge, deployment, billing, live calls or real data.
+
+
 ## CEGIS county-source and Google retention qualification (2026-09-11)
 
 Completed the approved documentation-only source qualification. The official Cuyahoga County CEGIS Addressing Sites and Streets service is conditionally suitable for a future fail-closed county resolver: an exact unique current site-address record must agree on US/OH/county with its current linked road, and both road sides must name the same county. A consistent Cuyahoga result may be IN_AREA; a consistent adjacent-county result may be OUT_OF_AREA. Boundary roads, null/pending/temporary/other status, validation-error/unknown records, missing or conflicting links, unit ambiguity, wrong state/country, stale evidence and outages are UNKNOWN. ZIP, postal county, Google administrative labels and routing fallback never grant coverage.
