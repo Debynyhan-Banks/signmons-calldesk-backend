@@ -1,5 +1,12 @@
 # Signmons Backend Execution Board
 
+## Google response-policy hardening checkpoint
+
+The approved disabled-adapter continuation now checks bounded, unique, confirmed components, required street/city/state/postal/country fields, complete postal output, malformed flags and contradictory missing/unconfirmed/unresolved lists. Supplied units require a confirmed subpremise and SUB_PREMISE validation. Component ordering is irrelevant; corrections still require review. Every result remains fixture-only with address/admission authority false and county UNKNOWN. No runtime registration, network, cache, deletion job, schema, UI or live action added.
+
+Evidence: backend evidence/APP-013/google-adapter/README.md. 39 focused tests and full backend 93 suites/1,792 tests pass, three existing skips; build/lint/architecture/diff pass. Browser QA is not applicable to this unregistered backend-only change. Next proposed: qualify county physical-record types before connecting real verification. Full semantic input/result matching and operational provider controls remain open; this is not production validation acceptance. APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% scope/0 of 12 accepted; onboarding 50% local/0 of 6 accepted; pilot 0 of 12 accepted; no defensible overall estimate. No merge, deploy, billing or real data.
+
+
 ## Disabled Google adapter checkpoint
 
 Owner approved a disabled Google adapter with mocked tests and design defaults: permitted correction cache expires at session end or 24 hours; other Google fields stay in memory without explicit caching permission; abandoned drafts delete within seven days or sooner under existing session policy; Signmons automates deletion with the pilot owner accountable. Submitted business-record retention remains separately gated. These are documented defaults, not an implemented deletion job.
