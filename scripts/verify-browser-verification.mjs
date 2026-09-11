@@ -8,6 +8,9 @@ import {
 } from "./verify-address-journey.mjs";
 const require = createRequire(import.meta.url);
 const {
+  OrganizationProfileService,
+} = require("../dist/tenants/organization-profile.service.js");
+const {
   CustomerIntakeContinuationService,
 } = require("../dist/communications/customer-intake-continuation.service.js");
 const {
@@ -53,9 +56,58 @@ export async function verifyBrowserVerification({
   assert.match(db.name, /^calldesk_org_[0-9a-f]{12}$/);
   assert.equal(db.address, null);
   const tenant = await prisma.tenantOrganization.create({
-    data: { name: "Fictional verification browser QA", timezone: "UTC" },
+    data: {
+      name: "Fictional verification browser QA",
+      timezone: "UTC",
+      settings: {},
+    },
   });
   const tenantId = tenant.id;
+  const organizationService = new OrganizationProfileService(prisma);
+  const asOwner = (fn) =>
+    new Promise((resolve, reject) =>
+      requestContextMiddleware({ headers: {} }, {}, () => {
+        setAuthContext({ tenantId, userId: "fictional-owner", role: "owner" });
+        Promise.resolve().then(fn).then(resolve, reject);
+      }),
+    );
+  const facts = {
+    companyName: "Fictional Service",
+    timezone: "UTC",
+    hours: "Weekdays 9 to 5",
+    services: "Cooling repairs",
+    fallback: "Contact our office for human help.",
+    greeting: "Welcome.",
+    tone: "warm",
+    faqs: [
+      {
+        question: "Do you repair cooling?",
+        answer: "Yes, we service cooling equipment.",
+        source: "Fictional owner review",
+      },
+    ],
+  };
+  let profile = await asOwner(() => organizationService.read());
+  await asOwner(() =>
+    organizationService.write({
+      expectedUpdatedAt: profile.updatedAt,
+      draft: facts,
+    }),
+  );
+  profile = await asOwner(() => organizationService.read());
+  await asOwner(() =>
+    organizationService.write(
+      { expectedUpdatedAt: profile.updatedAt, acknowledged: true },
+      true,
+    ),
+  );
+  profile = await asOwner(() => organizationService.read());
+  const organization = {
+    approvedAt: profile.profile.approved.approvedAt,
+    facts,
+    asOwner,
+    service: organizationService,
+  };
   const localAddress = new LocalAddressService(
     prisma,
     cipher,
@@ -66,7 +118,7 @@ export async function verifyBrowserVerification({
     prisma,
     cipher,
     credentials,
-    { reply: async () => "Fictional verification test conversation." },
+    undefined,
     undefined,
     localAddress,
   );
@@ -232,7 +284,9 @@ export async function verifyBrowserVerification({
             throw Error("not used");
           },
         },
-        continuation: intake,
+        continuation: {
+          continue: (input) => intake.continueOrganization(input),
+        },
         verification: new LocalVerificationBrowserService(durable),
         draft: intake,
         review: intake,
@@ -251,8 +305,11 @@ export async function verifyBrowserVerification({
     const begin = async () => {
       await page.goto(origin, { waitUntil: "load" });
       await page.locator("#start").click();
-      await page.locator("#message").fill("Fictional cooling issue");
+      await page.locator("#message").fill("Do you repair cooling?");
       await page.locator("#continue").click();
+      await page
+        .getByText("Yes, we service cooling equipment.", { exact: false })
+        .waitFor();
       await page.locator("#skip").click();
       await page.locator("#phone").fill("+12025550123");
       await page.locator("#customerName").fill("Fictional retained draft");
@@ -394,6 +451,7 @@ export async function verifyBrowserVerification({
       evidence,
       intake,
       browser,
+      organization,
       resetLocalRequestBudget: () => {
         localBudget = new LocalCustomerBrowserBudget();
       },

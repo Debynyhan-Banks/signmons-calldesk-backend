@@ -21,6 +21,7 @@ export async function verifyAddressJourney({
   evidence,
   intake,
   browser,
+  organization,
   resetLocalRequestBudget,
 }) {
   const scope = credentials.verifySession(token);
@@ -325,6 +326,7 @@ export async function verifyAddressJourney({
     token,
     evidence,
     catalog: ADDRESS_CATALOG,
+    organization,
   });
   await page.locator("#forget").click();
   assert.equal(await page.locator("#addressUnit").inputValue(), "");

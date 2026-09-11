@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Saved local address handoff (2026-09-10, latest review-ready)
+## Combined organization/address review proof (2026-09-10, latest review-ready)
+
+Existing approved company FAQ, same-session address selection, saved encrypted review and operator organization-version display now run together. Unapproved company edits preserve the review; a new approval invalidates it. Local address evidence still cannot authorize admission. Proof scripts only; no production code or contract change. Evidence/review: evidence/APP-013/organization-address-thread/README.md, incremental 588c9f7..HEAD, current focused branch and PR #21.
+
+Seven combined checks plus prior regression passed. Backend 1753 passed / 3 existing skips; build/lint/architecture/Prisma/syntax/diff and two zero-finding audits. Desktop/mobile reviewed, disposable database removed. No live calls or new jobs in this combined fixture.
+
+Stop for review. Next proposed: review-only real-verification/admission readiness contract and approval checklist; no automatic provider activation or new fixture feature. APP-013 sole Now, Next empty, FE-014 paused. APP-013 50% recorded scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No defensible overall percentage/ETA. No production, merge or deployment actions.
+
+## Saved local address handoff (2026-09-10, prior checkpoint)
 
 Saved review now retains an encrypted, exact-selection-bound local address snapshot with atomic audit and fresh precommit checks. Operators see historical test coverage, not current proof; snapshot-bearing requests cannot enter job admission. Existing non-snapshot workflow unchanged. Evidence and review: evidence/APP-013/address-handoff/README.md, incremental 8a0178a..HEAD on the focused feature branch, PR #21.
 

@@ -24,6 +24,7 @@ export async function verifyAddressHandoff({
   token,
   evidence,
   catalog,
+  organization,
 }) {
   const scope = credentials.verifySession(token);
   const asOperator = (fn, tenantId = scope.tenantId, role = "dispatcher") =>
@@ -163,6 +164,25 @@ export async function verifyAddressHandoff({
   );
   assert.equal(saved.localAddress.address, draft.address);
   assert.equal(saved.addressSnapshotCurrent, false);
+  assert.equal(saved.organizationApprovedAt, organization.approvedAt);
+  let profile = await organization.asOwner(() => organization.service.read());
+  await organization.asOwner(() =>
+    organization.service.write({
+      expectedUpdatedAt: profile.updatedAt,
+      draft: {
+        ...organization.facts,
+        greeting: "Unapproved changed greeting.",
+      },
+    }),
+  );
+  assert.equal(
+    (
+      await asOperator(() =>
+        intake.readReview({ requestId: submitted.requestId }),
+      )
+    ).organizationApprovedAt,
+    organization.approvedAt,
+  );
   await assert.rejects(
     asOperator(
       () => intake.readReview({ requestId: submitted.requestId }),
@@ -198,7 +218,7 @@ export async function verifyAddressHandoff({
     asOperator(() =>
       intake.admitReview({
         requestId: submitted.requestId,
-        expectedOrganizationApprovedAt: new Date().toISOString(),
+        expectedOrganizationApprovedAt: organization.approvedAt,
         review: {
           urgency: "STANDARD",
           acknowledgeCustomerStatements: true,
@@ -253,6 +273,11 @@ export async function verifyAddressHandoff({
     await operator
       .getByText("Historical local test coverage", { exact: false })
       .waitFor();
+    assert.ok(
+      (await operator.locator("#version").innerText()).includes(
+        organization.approvedAt,
+      ),
+    );
     assert.equal(await operator.locator("#approve").isEnabled(), false);
     assert.equal(await operator.locator("#urgency").isEnabled(), false);
     assert.equal(await operator.locator("#ack").isEnabled(), false);
@@ -272,6 +297,39 @@ export async function verifyAddressHandoff({
   } finally {
     await context.close();
   }
+  profile = await organization.asOwner(() => organization.service.read());
+  await organization.asOwner(() =>
+    organization.service.write(
+      { expectedUpdatedAt: profile.updatedAt, acknowledged: true },
+      true,
+    ),
+  );
+  await assert.rejects(
+    asOperator(() => intake.readReview({ requestId: submitted.requestId })),
+  );
+  await assert.rejects(intake.submitReview(submitted));
+  await writeFile(
+    evidence + "/organization-address-thread-summary.json",
+    JSON.stringify(
+      {
+        checks: [
+          "real owner save and separate approval",
+          "approved FAQ answer in customer browser",
+          "same session selected address and encrypted saved review",
+          "operator displays exact organization approval and historical address",
+          "draft-only company edit preserves approved review",
+          "new company approval refuses old review",
+          "local snapshot still cannot authorize admission",
+        ],
+        liveProviderCalls: 0,
+        newJobs: 0,
+        realVerification: false,
+        pilotAcceptance: false,
+      },
+      null,
+      2,
+    ),
+  );
   await writeFile(
     evidence + "/address-handoff-summary.json",
     JSON.stringify(

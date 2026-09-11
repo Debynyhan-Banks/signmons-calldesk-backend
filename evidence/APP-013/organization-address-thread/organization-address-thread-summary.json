@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "real owner save and separate approval",
+    "approved FAQ answer in customer browser",
+    "same session selected address and encrypted saved review",
+    "operator displays exact organization approval and historical address",
+    "draft-only company edit preserves approved review",
+    "new company approval refuses old review",
+    "local snapshot still cannot authorize admission"
+  ],
+  "liveProviderCalls": 0,
+  "newJobs": 0,
+  "realVerification": false,
+  "pilotAcceptance": false
+}
