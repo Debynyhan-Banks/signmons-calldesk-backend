@@ -198,7 +198,8 @@ export class CustomerConsentBrowserTransport {
       }
       const input = object(parsed);
       const keys = {
-        correction: "action,candidateId,confirmed,input,revision,sessionToken",
+        correction:
+          "action,candidateId,confirmed,input,requestId,revision,sessionToken",
         address:
           "action,candidateId,confirmed,expectedRevision,operationId,query,sessionToken,unit",
         verify:

@@ -12,6 +12,7 @@ model AddressVerificationOperation {
   heldMicros     BigInt
   createdAt      DateTime                     @default(now()) @db.Timestamptz(3)
   attemptId      String?                      @db.Uuid
+  executionDeadline DateTime? @db.Timestamptz(3)
   requests       AddressVerificationRequest[]
 
   @@unique([accountId, tenantId, sessionId, intentId, revision, policyHash], map: "AddressOperation_binding_key")

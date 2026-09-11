@@ -193,6 +193,15 @@
             value.county !== "UNKNOWN"
           )
             throw Error("Invalid correction receipt");
+          if (value.status === "UNCERTAIN") {
+            clearCorrection();
+            el("correctionStatus").textContent =
+              "Outcome uncertain. Your draft is retained. Retry this same operation only; contact the office if it remains unresolved. Nothing verified or sent.";
+            status(
+              "Outcome uncertain. No automatic new attempt or cost release.",
+            );
+            return;
+          }
           if (
             JSON.stringify(request.body.input) !==
             JSON.stringify(correctionInput())
@@ -665,6 +674,7 @@
         },
         body: JSON.stringify({
           action: "clear",
+          requestId: "",
           sessionToken: token,
           input: null,
           candidateId: correction.candidateId,
@@ -694,6 +704,7 @@
     clearCorrection();
     submit("correction", {
       action: "propose",
+      requestId: crypto.randomUUID(),
       sessionToken: token,
       input: correctionInput(),
       candidateId: "",
@@ -713,6 +724,7 @@
     }
     submit("correction", {
       action: "confirm",
+      requestId: "",
       sessionToken: token,
       input: correctionInput(),
       candidateId: correction.candidateId,

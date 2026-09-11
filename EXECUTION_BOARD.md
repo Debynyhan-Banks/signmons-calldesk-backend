@@ -1,5 +1,13 @@
 # Signmons Backend Execution Board
 
+## VO-2 mocked execution and recovery checkpoint
+
+Owner approved test-only eight-second absolute deadline, three new attempts/session spaced thirty seconds apart within existing caps, exact-operation retry, retained uncertain costs and authorized audited recovery. Implemented durable deadline/attempt completion, mock-only execution outside database locks, and existing protected correction-page integration. Lost/late results, orphan claims and persistence faults never authorize redispatch or refund. Owner/admin recovery requires tenant/account/attempt-bound server-resolved evidence and only retains liability; no real provider reconciliation or operator UI is claimed.
+
+Evidence: backend evidence/APP-013/address-execution/README.md. 96 suites/1,835 tests, three existing skips; build/lint/architecture/Prisma/format/diff pass. Eleven new database groups plus prior VO-1 and parent responsive browser regression pass; disposable database removed. Timezone-dependent raw clock decoding was replaced with epoch reads. One Node/Jest exit 139 passed on unchanged rerun; existing pg warning remains. No production migration, provider call/configuration, real data, billing, merge or deployment.
+
+Stop review-ready. Next: VO-3 policy review for freshness/revocation/cleanup, then bounded implementation after approval of dependent freshness and retention values. County/live accounts/rates/budgets/notices, distributed intent/evidence/cleanup and current-proof-to-job remain gates. APP-013 sole Now; Next empty; FE-014 paused. APP-013 scope index 50%, accepted 0/12; onboarding local 50%, accepted 0/6; pilot accepted 0/12. No overall percentage/ETA.
+
 ## VO-1 durable address operations checkpoint
 
 Owner approved VO-1 only. Implemented disabled AddressOperationLedger and minimal operation/request-alias migration, applied solely in disposable local PostgreSQL. Trusted integration/session and locked server-owned intent/revision/policy bind reservation; shared account, tenant and session money/request caps reserve atomically. Identical intent aliases share one operation; conflicting IDs refuse. Claim commits once, restart/replay never claims again, and cancellation releases only unclaimed liability. All prior-month holds and request counts remain; no settlement/replenishment. No provider or production registration, customer-input digest, job authority or live spending.

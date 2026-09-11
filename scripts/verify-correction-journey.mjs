@@ -8,43 +8,123 @@ const {
 } = require("../dist/communications/google-address.adapter.js");
 
 export function correctionFixture(prisma, credentials) {
-  return localCorrectionPort({
+  let calls = 0;
+  const port = localCorrectionPort({
     prisma,
     credentials,
-    adapter: new GoogleAddressAdapter(async () => ({
-      result: {
-        verdict: {
-          addressComplete: true,
-          validationGranularity: "PREMISE",
-          hasReplacedComponents: true,
-        },
-        address: {
-          postalAddress: {
-            regionCode: "US",
-            administrativeArea: "OH",
-            locality: "Example",
-            postalCode: "44101",
-            addressLines: ["123 Fictional Street"],
+    adapter: new GoogleAddressAdapter(async () => {
+      if (++calls === 3) throw Error("synthetic unknown provider result");
+      return {
+        result: {
+          verdict: {
+            addressComplete: true,
+            validationGranularity: "PREMISE",
+            hasReplacedComponents: true,
           },
-          addressComponents: Object.entries({
-            street_number: "123",
-            route: "Fictional Street",
-            locality: "Example",
-            administrative_area_level_1: "Ohio",
-            postal_code: "44101",
-            country: "United States",
-          }).map(([componentType, text]) => ({
-            componentType,
-            componentName: { text },
-            confirmationLevel: "CONFIRMED",
-          })),
+          address: {
+            postalAddress: {
+              regionCode: "US",
+              administrativeArea: "OH",
+              locality: "Example",
+              postalCode: "44101",
+              addressLines: ["123 Fictional Street"],
+            },
+            addressComponents: Object.entries({
+              street_number: "123",
+              route: "Fictional Street",
+              locality: "Example",
+              administrative_area_level_1: "Ohio",
+              postal_code: "44101",
+              country: "United States",
+            }).map(([componentType, text]) => ({
+              componentType,
+              componentName: { text },
+              confirmationLevel: "CONFIRMED",
+            })),
+          },
+          uspsData: { dpvConfirmation: "Y" },
         },
-        uspsData: { dpvConfirmation: "Y" },
-      },
-      responseId: "must-not-reach-browser",
-      geocode: { private: true },
-    })),
+        responseId: "must-not-reach-browser",
+        geocode: { private: true },
+      };
+    }),
   });
+  return { ...port, mockCalls: () => calls };
+}
+
+export async function verifyUncertainCorrectionJourney({
+  page,
+  prisma,
+  credentials,
+  evidence,
+  mockCalls,
+}) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let body;
+  page.on("request", (req) => {
+    if (
+      req.url().endsWith("/customer-session/correction") &&
+      req.postDataJSON().action === "propose"
+    )
+      body = req.postDataJSON();
+  });
+  await page.locator("#address").fill("123 Fictional St");
+  await page.locator("#correctionCity").fill("Example");
+  await page.locator("#correctionPostal").fill("44101");
+  await page.locator("#correctionPropose").click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector("#correctionStatus")
+      .textContent.startsWith("Outcome uncertain"),
+  );
+  const calls = mockCalls();
+  assert.equal(calls, 3);
+  await page.locator("#retry").click();
+  await page.waitForFunction(() => !document.querySelector("#retry").disabled);
+  assert.equal(mockCalls(), calls);
+  assert.equal(await page.locator("#address").inputValue(), "123 Fictional St");
+  assert.equal(await page.locator("#correctionConfirm").isEnabled(), false);
+  const scope = credentials.verifySession(body.sessionToken);
+  const rows = await prisma.addressVerificationOperation.findMany({
+    where: { sessionId: scope.sessionId },
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].state, "UNCERTAIN");
+  assert.equal(rows[0].heldMicros, 10n);
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    true,
+  );
+  await page.screenshot({
+    path: evidence + "/address-uncertain-mobile.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({
+    path: evidence + "/address-uncertain-desktop.png",
+    fullPage: true,
+  });
+  await page.locator("#forget").click();
+  assert.equal(await page.locator("#address").inputValue(), "");
+  await writeFile(
+    evidence + "/address-uncertain-browser.json",
+    JSON.stringify(
+      {
+        checks: [
+          "unknown result retains draft and held cost",
+          "exact retry uses same operation with no new mock call",
+          "confirmation unavailable",
+          "private reset",
+          "mobile and desktop",
+        ],
+        liveProviderCalls: 0,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 export async function verifyCorrectionJourney({
@@ -64,6 +144,8 @@ export async function verifyCorrectionJourney({
   await page.locator("#correctionPostal").fill("44101");
   assert.equal(await page.locator("#correctionConfirm").isEnabled(), false);
   await page.locator("#correctionPropose").click();
+  await page.locator("#retry").waitFor({ state: "visible" });
+  await page.locator("#retry").click();
   await page.waitForFunction(() =>
     document
       .querySelector("#correctionCandidate")
@@ -124,10 +206,29 @@ export async function verifyCorrectionJourney({
   );
   const unknown = await replay({ ...confirmation, tenantId: "forged" });
   assert.equal(unknown.status, 400);
+  const discarded = page.waitForResponse(
+    (r) =>
+      r.url().endsWith("/customer-session/correction") &&
+      r.request().postDataJSON()?.action === "clear",
+  );
   await page.locator("#correctionCity").fill("Changed");
+  await discarded;
   assert.equal(await page.locator("#correctionConfirm").isEnabled(), false);
   assert.equal(await page.locator("#correctionCandidate").textContent(), "");
   await page.locator("#correctionCity").fill("Example");
+  await page.locator("#correctionPropose").click();
+  await page.waitForFunction(() =>
+    document
+      .querySelector("#correctionStatus")
+      .textContent.startsWith("Correction refused"),
+  );
+  assert.equal(await page.locator("#address").inputValue(), "123 Fictional St");
+  // Disposable DB only: simulate elapsed cooldown without sleeping or altering policy.
+  const firstScope = credentials.verifySession(confirmation.sessionToken);
+  await prisma.addressVerificationOperation.updateMany({
+    where: { sessionId: firstScope.sessionId },
+    data: { createdAt: new Date(Date.now() - 31000) },
+  });
   await page.locator("#correctionPropose").click();
   await page.waitForFunction(() =>
     document
@@ -164,6 +265,8 @@ export async function verifyCorrectionJourney({
           "exact correction displayed",
           "explicit confirmation required",
           "exact retry",
+          "lost response exact retry reuses observed candidate",
+          "30-second cooldown refusal retains draft",
           "tampered candidate and address refused",
           "unknown claims refused",
           "edit clears UI",

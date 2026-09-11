@@ -20,6 +20,7 @@ export type AddressOperationPolicy = {
   account: Limit;
   tenant: Limit;
   session: Limit;
+  execution?: "VO2_FIXTURE_8S_3_ATTEMPTS_30S";
 };
 export type AddressOperationBinding = {
   // Trusted immutable input reference: never browser-supplied or reused for edits.
@@ -33,6 +34,15 @@ const uuid = (v: unknown): v is string =>
     v,
   );
 const refuse = () => new ConflictException("Address operation unavailable.");
+// Epoch avoids session-timezone-dependent raw timestamp decoding in the adapter.
+async function databaseClock(tx: Prisma.TransactionClient) {
+  const [row] = await tx.$queryRaw<{ ms: bigint }[]>(
+    Prisma.sql`SELECT floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint AS ms`,
+  );
+  const ms = Number(row?.ms);
+  if (!Number.isSafeInteger(ms)) throw refuse();
+  return new Date(ms);
+}
 
 /** Disabled by default; no route, DI, provider or worker. readBinding runs under
  * the session lock and must read current server-owned intent/policy authority.
@@ -49,6 +59,14 @@ export class AddressOperationLedger {
         tx: Prisma.TransactionClient,
         scope: CustomerSessionScope,
       ) => Promise<AddressOperationBinding | null>;
+      recoveryEvidence?: (
+        tx: Prisma.TransactionClient,
+        evidenceId: string,
+      ) => Promise<{
+        operationId: string;
+        attemptId: string;
+        decision: "RETAIN_LIABILITY";
+      } | null>;
     },
   ) {}
 
@@ -57,6 +75,41 @@ export class AddressOperationLedger {
     requestId: string;
     action: "reserve" | "claim" | "cancel";
   }) {
+    return this.perform(input);
+  }
+
+  async complete(input: {
+    sessionToken: string;
+    requestId: string;
+    attemptId: string;
+    state: "OBSERVED" | "UNCERTAIN";
+  }) {
+    if (
+      !input ||
+      Object.keys(input).sort().join(",") !==
+        "attemptId,requestId,sessionToken,state" ||
+      !uuid(input.attemptId) ||
+      !["OBSERVED", "UNCERTAIN"].includes(input.state)
+    )
+      throw refuse();
+    return this.perform(
+      {
+        sessionToken: input.sessionToken,
+        requestId: input.requestId,
+        action: "claim",
+      },
+      { attemptId: input.attemptId, state: input.state },
+    );
+  }
+
+  private async perform(
+    input: {
+      sessionToken: string;
+      requestId: string;
+      action: "reserve" | "claim" | "cancel";
+    },
+    completion?: { attemptId: string; state: "OBSERVED" | "UNCERTAIN" },
+  ) {
     if (
       !input ||
       Object.keys(input).sort().join(",") !== "action,requestId,sessionToken" ||
@@ -90,9 +143,7 @@ export class AddressOperationLedger {
       if ((await lockCustomerConsentSession(tx, scope)).status !== "ONGOING")
         throw refuse();
       const binding = structuredClone(await fixture.readBinding(tx, scope));
-      const [clock] = await tx.$queryRaw<{ now: Date }[]>(
-        Prisma.sql`SELECT clock_timestamp() AS now`,
-      );
+      const clock = { now: await databaseClock(tx) };
       const now = clock?.now?.getTime();
       if (
         !binding ||
@@ -108,6 +159,8 @@ export class AddressOperationLedger {
         !p ||
         p.mode !== "FIXTURE_ONLY" ||
         p.approved !== true ||
+        (p.execution !== undefined &&
+          p.execution !== "VO2_FIXTURE_8S_3_ATTEMPTS_30S") ||
         !Number.isFinite(p.validUntil) ||
         p.validUntil <= now ||
         ![p.version, p.rateVersion].every(
@@ -140,6 +193,7 @@ export class AddressOperationLedger {
             p.tenant.requests,
             p.session.micros,
             p.session.requests,
+            ...(p.execution ? [p.execution] : []),
           ]),
         )
         .digest("hex");
@@ -168,6 +222,22 @@ export class AddressOperationLedger {
         if (input.action !== "reserve") throw refuse();
         operation = await tx.addressVerificationOperation.findFirst({ where });
         if (!operation) {
+          if (p.execution) {
+            const prior = await tx.addressVerificationOperation.findMany({
+              where: {
+                accountId: fixture.accountId,
+                tenantId: scope.tenantId,
+                sessionId: scope.sessionId,
+              },
+              orderBy: { createdAt: "desc" },
+              take: 3,
+            });
+            if (
+              prior.length >= 3 ||
+              (prior[0] && now - prior[0].createdAt.getTime() < 30000)
+            )
+              throw refuse();
+          }
           for (const [filter, limit] of [
             [{ accountId: fixture.accountId }, p.account],
             [
@@ -199,6 +269,7 @@ export class AddressOperationLedger {
             data: {
               ...where,
               id: randomUUID(),
+              createdAt: clock.now,
               heldMicros: BigInt(p.costMicros),
             },
           });
@@ -216,10 +287,37 @@ export class AddressOperationLedger {
         });
       }
       let claimed = false;
-      if (input.action === "claim" && operation.state === "RESERVED") {
+      let completed = false;
+      if (completion) {
+        if (
+          !p.execution ||
+          operation.attemptId !== completion.attemptId ||
+          !operation.executionDeadline
+        )
+          throw refuse();
+        if (operation.state === "DISPATCH_CLAIMED") {
+          operation = await tx.addressVerificationOperation.update({
+            where: { id: operation.id },
+            data: {
+              state:
+                now >= operation.executionDeadline.getTime()
+                  ? "UNCERTAIN"
+                  : completion.state,
+            },
+          });
+          await this.audit(tx, scope, operation.id, "observed");
+          completed = true;
+        }
+      } else if (input.action === "claim" && operation.state === "RESERVED") {
         operation = await tx.addressVerificationOperation.update({
           where: { id: operation.id },
-          data: { state: "DISPATCH_CLAIMED", attemptId: randomUUID() },
+          data: {
+            state: "DISPATCH_CLAIMED",
+            attemptId: randomUUID(),
+            executionDeadline: p.execution
+              ? new Date(Math.min(now + 8000, p.validUntil, scope.expiresAt))
+              : null,
+          },
         });
         await this.audit(tx, scope, operation.id, "claimed");
         claimed = true;
@@ -235,24 +333,149 @@ export class AddressOperationLedger {
         }
       }
       this.credentials.verifySession(input.sessionToken);
-      const [finished] = await tx.$queryRaw<{ now: Date }[]>(
-        Prisma.sql`SELECT clock_timestamp() AS now`,
-      );
+      const finished = { now: await databaseClock(tx) };
       if (
         !Number.isFinite(finished?.now?.getTime()) ||
         finished.now.getTime() >= p.validUntil
       )
         throw refuse();
+      if (
+        completed &&
+        operation.state === "OBSERVED" &&
+        operation.executionDeadline &&
+        finished.now.getTime() >= operation.executionDeadline.getTime()
+      ) {
+        operation = await tx.addressVerificationOperation.update({
+          where: { id: operation.id },
+          data: { state: "UNCERTAIN" },
+        });
+      }
       return {
         operationId: operation.id,
         state: operation.state,
         claimed,
+        completed,
+        attemptId: operation.attemptId,
+        executionDeadline: operation.executionDeadline?.getTime() ?? null,
         fixtureOnly: true,
         dispatchAuthorized: false,
         addressVerified: false,
         admissionAuthorized: false,
         county: "UNKNOWN",
         deliveryAuthorized: false,
+      } as const;
+    });
+  }
+
+  /** Inactive operator recovery: retain liability only. No refund, resend or proof.
+   * Evidence must be resolved server-side, not accepted as a customer assertion.
+   */
+  async recover(input: {
+    operationId: string;
+    attemptId: string;
+    evidenceId: string;
+  }) {
+    const ctx = getRequestContext();
+    const fixture = this.fixture;
+    if (
+      !input ||
+      Object.keys(input).sort().join(",") !==
+        "attemptId,evidenceId,operationId" ||
+      ![input.operationId, input.attemptId, input.evidenceId].every(uuid) ||
+      !ctx ||
+      !uuid(ctx.tenantId) ||
+      !uuid(ctx.userId) ||
+      !["owner", "admin"].includes(ctx.role ?? "") ||
+      ctx.impersonatedTenantId ||
+      !fixture?.recoveryEvidence ||
+      !uuid(fixture.accountId)
+    )
+      throw refuse();
+    const actorId = ctx.userId,
+      tenantId = ctx.tenantId;
+    input = { ...input };
+    return this.prisma.$transaction(async (tx) => {
+      for (const key of [
+        "address-account:" + fixture.accountId,
+        "address-tenant:" + tenantId,
+      ])
+        await tx.$queryRaw(
+          Prisma.sql`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${key},0))`,
+        );
+      const tenant = await tx.tenantOrganization.findUnique({
+        where: { id: tenantId },
+        select: { status: true },
+      });
+      if (tenant?.status !== "ACTIVE") throw refuse();
+      const row = await tx.addressVerificationOperation.findFirst({
+        where: {
+          id: input.operationId,
+          tenantId,
+          accountId: fixture.accountId,
+        },
+      });
+      const evidence = structuredClone(
+        await fixture.recoveryEvidence!(tx, input.evidenceId),
+      );
+      const clock = { now: await databaseClock(tx) };
+      if (
+        !row ||
+        row.attemptId !== input.attemptId ||
+        !row.executionDeadline ||
+        !Number.isFinite(clock?.now?.getTime()) ||
+        clock.now.getTime() < row.executionDeadline.getTime() ||
+        !evidence ||
+        evidence.operationId !== row.id ||
+        evidence.attemptId !== row.attemptId ||
+        evidence.decision !== "RETAIN_LIABILITY" ||
+        !["DISPATCH_CLAIMED", "UNCERTAIN"].includes(row.state)
+      )
+        throw refuse();
+      const action = "conversation.address_operation_recovered";
+      const prior = await tx.auditLog.findFirst({
+        where: {
+          tenantId,
+          action,
+          metadata: { path: ["operationId"], equals: row.id },
+        },
+      });
+      if (prior) {
+        const meta = prior.metadata as Record<string, unknown>;
+        if (
+          prior.actorId !== actorId ||
+          meta.evidenceId !== input.evidenceId ||
+          meta.attemptId !== input.attemptId
+        )
+          throw refuse();
+      } else {
+        await tx.addressVerificationOperation.update({
+          where: { id: row.id },
+          data: { state: "UNCERTAIN" },
+        });
+        await tx.auditLog.create({
+          data: {
+            tenantId,
+            entityType: "Conversation",
+            entityId: row.conversationId,
+            actorType: "USER",
+            actorId,
+            action,
+            metadata: {
+              version: 1,
+              operationId: row.id,
+              attemptId: row.attemptId,
+              evidenceId: input.evidenceId,
+              decision: "RETAIN_LIABILITY",
+              fixtureOnly: true,
+            },
+          },
+        });
+      }
+      return {
+        state: "UNCERTAIN",
+        liabilityRetained: true,
+        dispatchAuthorized: false,
+        admissionAuthorized: false,
       } as const;
     });
   }

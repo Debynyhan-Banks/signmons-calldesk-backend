@@ -1,0 +1,18 @@
+{
+  "checks": [
+    "mock outside account transaction",
+    "observed replay never dispatches again",
+    "30 second cooldown before new intent",
+    "three attempt cap despite higher money limits",
+    "unknown result preserves liability and exact retry",
+    "orphan claim survives service reconstruction",
+    "late result refused",
+    "result audit failure retains claim",
+    "owner evidence scope and expected attempt required",
+    "concurrent recovery audited once with no refund",
+    "recovery audit failure rolls back state"
+  ],
+  "liveProviderCalls": 0,
+  "productionRegistered": false,
+  "dispatchAuthorized": false
+}

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   correctionFixture,
   verifyCorrectionJourney,
+  verifyUncertainCorrectionJourney,
 } from "./verify-correction-journey.mjs";
 import { createServer } from "node:http";
 import { readFile, writeFile } from "node:fs/promises";
@@ -208,6 +209,7 @@ export async function verifyBrowserVerification({
     ),
   };
   let addressLost = false;
+  let correctionLost = false;
   let reviewLost = false;
   const addressRequests = [];
   const requests = [],
@@ -247,11 +249,18 @@ export async function verifyBrowserVerification({
         result.status === 200 &&
         result.body.addressState === "FIXTURE_VALIDATED";
       if (lostAddress) addressLost = true;
+      const lostCorrection =
+        !correctionLost &&
+        req.url === "/customer-session/correction" &&
+        result.status === 200 &&
+        result.body.status === "CONFIRMATION_REQUIRED";
+      if (lostCorrection) correctionLost = true;
       const lost =
         (!reviewLost &&
           req.url === "/customer-session/submit" &&
           result.status === 200) ||
         lostAddress ||
+        lostCorrection ||
         (loseAck &&
           result.status === 200 &&
           result.body.outcome === "APPROVED");
@@ -465,6 +474,15 @@ export async function verifyBrowserVerification({
     localBudget = new LocalCustomerBrowserBudget();
     await begin();
     await verifyCorrectionJourney({ page, evidence, prisma, credentials });
+    localBudget = new LocalCustomerBrowserBudget();
+    await begin();
+    await verifyUncertainCorrectionJourney({
+      page,
+      prisma,
+      credentials,
+      evidence,
+      mockCalls: correction.mockCalls,
+    });
     assert.deepEqual(errors, []);
     return summary;
   } finally {

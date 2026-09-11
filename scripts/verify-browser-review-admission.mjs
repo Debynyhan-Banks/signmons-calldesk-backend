@@ -6,6 +6,7 @@ import { verifyPreferredWindow } from "./verify-preferred-window-review.mjs";
 import { verifyLocalPhone } from "./verify-local-phone.mjs";
 import { verifyDurableVerification } from "./verify-durable-verification.mjs";
 import { verifyAddressOperationLedger } from "./verify-address-operation-ledger.mjs";
+import { verifyAddressExecution } from "./verify-address-execution.mjs";
 import { verifyBrowserVerification } from "./verify-browser-verification.mjs";
 const require = createRequire(import.meta.url);
 const {
@@ -93,6 +94,14 @@ export async function verifyBrowserReviewAdmission({
     },
   });
   const intake = new Intake(prisma, cipher, credentials);
+  await writeFile(
+    evidence + "/address-execution-summary.json",
+    JSON.stringify(
+      await verifyAddressExecution({ prisma, credentials, responses }),
+      null,
+      2,
+    ),
+  );
   await writeFile(
     evidence + "/address-operation-ledger-summary.json",
     JSON.stringify(

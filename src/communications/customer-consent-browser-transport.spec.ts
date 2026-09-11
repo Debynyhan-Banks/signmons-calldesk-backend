@@ -96,6 +96,7 @@ describe("inactive same-origin browser transport", () => {
     const input = {
       sessionToken,
       action: "propose",
+      requestId: randomUUID(),
       input: {},
       candidateId: "",
       confirmed: false,
@@ -115,6 +116,7 @@ describe("inactive same-origin browser transport", () => {
     const input = {
       sessionToken,
       action: "propose",
+      requestId: randomUUID(),
       input: {},
       candidateId: "",
       confirmed: false,
