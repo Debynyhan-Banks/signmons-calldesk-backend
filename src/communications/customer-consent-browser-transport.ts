@@ -63,6 +63,7 @@ export type CustomerBrowserRequest = {
 };
 type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
 type Ports = {
+  lifecycle?: { end(sessionToken: string): Promise<Record<string, unknown>> };
   correction?: {
     handle(input: Record<string, unknown>): Promise<Record<string, unknown>>;
   };
@@ -141,7 +142,7 @@ export class CustomerConsentBrowserTransport {
       )
         fail(403);
       const match =
-        /^\/customer-session\/(start|capture|prompt|respond|continue|draft|submit|phone|verify|address|correction)$/.exec(
+        /^\/customer-session\/(start|end|capture|prompt|respond|continue|draft|submit|phone|verify|address|correction)$/.exec(
           request.url,
         );
       if (!match || request.method !== "POST") fail(403);
@@ -206,6 +207,7 @@ export class CustomerConsentBrowserTransport {
           "action,code,noticeVersion,operationId,phone,requested,sessionToken,startOperationId",
         phone: "action,code,expectedRevision,operationId,phone,sessionToken",
         start: "",
+        end: "sessionToken",
         capture: "email,sessionToken",
         prompt: "sessionToken",
         continue: "interactionId,message,sessionToken",
@@ -296,6 +298,10 @@ export class CustomerConsentBrowserTransport {
       };
     }
     const sessionToken = input.sessionToken as string;
+    if (operation === "end") {
+      if (this.binding?.fixtureLoopback !== true || !ports.lifecycle) fail(503);
+      return ports.lifecycle.end(sessionToken);
+    }
     if (operation === "correction") {
       if (this.binding?.fixtureLoopback !== true || !ports.correction)
         fail(503);

@@ -107,6 +107,9 @@ export async function verifyUncertainCorrectionJourney({
     fullPage: true,
   });
   await page.locator("#forget").click();
+  await page.waitForFunction(
+    () => document.getElementById("correctionCandidate").textContent === "",
+  );
   assert.equal(await page.locator("#address").inputValue(), "");
   await writeFile(
     evidence + "/address-uncertain-browser.json",
@@ -258,6 +261,9 @@ export async function verifyCorrectionJourney({
     true,
   );
   await page.locator("#forget").click();
+  await page.waitForFunction(
+    () => document.getElementById("correctionCandidate").textContent === "",
+  );
   assert.equal(await page.locator("#correctionCandidate").textContent(), "");
   await writeFile(
     evidence + "/correction-summary.json",

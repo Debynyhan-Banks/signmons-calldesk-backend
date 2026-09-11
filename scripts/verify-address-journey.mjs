@@ -329,6 +329,9 @@ export async function verifyAddressJourney({
     organization,
   });
   await page.locator("#forget").click();
+  await page.waitForFunction(
+    () => document.getElementById("addressUnit").value === "",
+  );
   assert.equal(await page.locator("#addressUnit").inputValue(), "");
   const summary = {
     checks: [

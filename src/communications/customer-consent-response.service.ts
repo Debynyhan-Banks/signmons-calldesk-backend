@@ -80,6 +80,13 @@ export class CustomerConsentResponseService {
         async (tx) => {
           // Never adopt a caller's ID; use the shared lock order before creation.
           const sessionId = randomUUID();
+          const conversationId = randomUUID();
+          const token = this.credentials.issueSession({
+            tenantId,
+            conversationId,
+            sessionId,
+          });
+          const claims = this.credentials.verifySession(token);
           await lockConversationSession(tx, tenantId, sessionId);
           const rows = await tx.$queryRaw(
             Prisma.sql`SELECT id FROM "TenantOrganization" WHERE id=${tenantId}::uuid AND status='ACTIVE' FOR SHARE`,
@@ -94,6 +101,7 @@ export class CustomerConsentResponseService {
           });
           const conversation = await tx.conversation.create({
             data: {
+              id: conversationId,
               tenantId,
               customerId: customer.id,
               customerTenantId: tenantId,
@@ -104,15 +112,16 @@ export class CustomerConsentResponseService {
                 sessionId,
                 source: "WEBCHAT",
                 [CUSTOMER_SESSION_MARKER]: 1,
+                verificationLifecycle: {
+                  version: 1,
+                  expiresAt: claims.expiresAt,
+                  closedAt: null,
+                  purgedAt: null,
+                },
               },
             },
           });
-          const token = this.credentials.issueSession({
-            tenantId,
-            conversationId: conversation.id,
-            sessionId,
-          });
-          const claims = this.credentials.verifySession(token);
+          if (conversation.id !== conversationId) throw conflict();
           return {
             sessionToken: token,
             expiresAt: new Date(claims.expiresAt).toISOString(),

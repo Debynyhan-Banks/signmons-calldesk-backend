@@ -1,4 +1,4 @@
-// Existing single-customer fixture, now using durable VO-2 operations. No live client.
+// Bounded per-session fixture ownership; no live client or production bootstrap.
 import { createRequire } from "node:module";
 import { createHash, randomUUID } from "node:crypto";
 import { localFreshnessPolicy } from "./local-freshness-policy.mjs";
@@ -16,7 +16,7 @@ const {
   lockCustomerConsentSession,
 } = require("../dist/communications/customer-consent-session-lock.js");
 
-export function localCorrectionPort({
+function singleCorrectionPort({
   prisma,
   credentials,
   adapter,
@@ -199,6 +199,80 @@ export function localCorrectionPort({
       } finally {
         busy = false;
       }
+    },
+  };
+}
+
+export function localCorrectionPort(options) {
+  const entries = new Map();
+  let sweeping = false;
+  const key = (claims) =>
+    `${claims.tenantId}:${claims.conversationId}:${claims.sessionId}`;
+  const refused = () => ({
+    status: "REFUSED",
+    fixtureOnly: true,
+    addressVerified: false,
+    county: "UNKNOWN",
+    admissionAuthorized: false,
+    deliveryAuthorized: false,
+  });
+  const drop = (id) => {
+    entries.get(id)?.port.clear();
+    entries.delete(id);
+  };
+  const sweep = async () => {
+    if (sweeping) return;
+    sweeping = true;
+    try {
+      for (const [id, entry] of entries) {
+        try {
+          if (Date.now() >= entry.expiresAt) throw Error("expired");
+          const state = await options.prisma.$transaction((tx) =>
+            lockCustomerConsentSession(tx, entry.claims),
+          );
+          if (state.status !== "ONGOING") throw Error("closed");
+        } catch {
+          drop(id);
+        } // Unknown lifecycle is unusable; no provider work or liability release.
+      }
+    } finally {
+      sweeping = false;
+    }
+  };
+  const timer = setInterval(() => {
+    void sweep();
+  }, 1000);
+  timer.unref();
+  return {
+    async handle(input) {
+      try {
+        input = structuredClone(input);
+        const claims = options.credentials.verifySession(input.sessionToken);
+        const id = key(claims);
+        if (!entries.has(id)) {
+          if (entries.size >= 64) return refused();
+          entries.set(id, {
+            claims,
+            expiresAt: Math.min(claims.expiresAt, Date.now() + 86400000),
+            port: singleCorrectionPort(options),
+          });
+        }
+        return await entries.get(id).port.handle(input);
+      } catch {
+        return refused();
+      }
+    },
+    discard(sessionToken) {
+      const claims = options.credentials.verifySession(sessionToken);
+      drop(key(claims));
+    },
+    sweep,
+    size() {
+      return entries.size;
+    }, // Fixture evidence only, never transported.
+    clear() {
+      clearInterval(timer);
+      for (const id of entries.keys()) drop(id);
     },
   };
 }

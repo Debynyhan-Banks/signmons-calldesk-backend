@@ -1,5 +1,17 @@
 # Signmons Backend Execution Board
 
+## Section 1B — cleanup and restart, review-ready
+
+Owner accepted 1A with “proceed” and approved 1B plus ninety-day resolved-reference retention with “yes”. Current section 2 of 8 (1B) is locally Demonstrated, awaiting owner acceptance; accepted 1/8. Fixed eight-section denominator unchanged.
+
+Protected sessions now persist their original expiry. Closure commits before retryable physical purge; shared session checks refuse closed/expired proof even when deletion fails. A fixture-owned startup/periodic sweep needs no browser token. Per-session correction entries are isolated, capped at 64 and discarded on session closure/expiry (no later than 24 hours); reconstruction cannot revive cached candidates or redispatch an observed operation.
+
+Abandoned matching draft payloads and verification-only payloads are removed at session closure/expiry, earlier than seven days. Submitted review/job business payloads, consent and unrelated records remain. Ninety-day cleanup removes only request aliases for authoritatively cancelled, never-dispatched address operations with zero hold; core operation/accounting rows, counters, audits and all unresolved liabilities remain. No unsupported financial settlement or blanket ninety-day ledger deletion is claimed.
+
+Evidence: backend evidence/APP-013/verification-cleanup/README.md and reproducible disposable-database/browser summaries. Restore evidence is service reconstruction and an expired snapshot simulation, not a production backup/restore drill. Production scheduling, legacy-record migration and provider retention qualification remain gated. No schema change, production deletion, external provider call, job/send authority, billing, merge or deployment.
+
+Next after review/acceptance: explicitly approve 2A current-proof admission, not 2B live verification. APP-013 remains sole Now; Next empty; FE-014 paused. APP-013 scope index 50%, accepted 0/12; onboarding local 50%, accepted 0/6; pilot accepted 0/12. No defensible overall engineering percentage/ETA. Historical checkpoint text below is superseded by this section.
+
 ## Section 1A — freshness and invalidation, review-ready
 
 Owner explicitly approved 1A and the thirty-minute phone/address proof ceiling with “yes i approve proceed”. Implemented only this mock-only section of PAYMENT_BOOKING_TEXT_STEEL_THREAD.md. Proof expires at the earlier of original successful check plus thirty minutes and session expiry; the existing fifteen-minute session limit is unchanged. Confirmation/status/exact replay never restart the clock. Current tenant/session/revision, notice/source/business-policy versions and server time are required; phone START/CHECK must share the policy version.

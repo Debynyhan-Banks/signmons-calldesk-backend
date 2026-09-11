@@ -14,6 +14,9 @@ import {
 } from "./verify-address-journey.mjs";
 const require = createRequire(import.meta.url);
 const {
+  VerificationCleanupService,
+} = require("../dist/communications/verification-cleanup.service.js");
+const {
   OrganizationProfileService,
 } = require("../dist/tenants/organization-profile.service.js");
 const {
@@ -195,6 +198,29 @@ export async function verifyBrowserVerification({
     localFreshnessPolicy,
   );
   const correction = correctionFixture(prisma, credentials);
+  const cleanup = new VerificationCleanupService(
+    prisma,
+    credentials,
+    "FIXTURE_ONLY",
+  );
+  await cleanup.sweep(tenantId); // Startup reconciliation before exposing the fixture.
+  await cleanup.purgeResolvedReferences(tenantId);
+  let cleanupBusy = false;
+  let cleanupCursor;
+  const cleanupTimer = setInterval(async () => {
+    if (cleanupBusy) return;
+    cleanupBusy = true;
+    try {
+      const batch = await cleanup.sweep(tenantId, cleanupCursor);
+      cleanupCursor = batch.nextCursor ?? undefined;
+      await cleanup.purgeResolvedReferences(tenantId);
+    } catch {
+      /* retry next tick; expiry checks still refuse */
+    } finally {
+      cleanupBusy = false;
+    }
+  }, 1000);
+  cleanupTimer.unref();
   const files = {
     "/": (
       await readFile(
@@ -203,7 +229,7 @@ export async function verifyBrowserVerification({
       )
     ).replace(
       '<html lang="en">',
-      '<html lang="en" data-verification-fixture="true" data-address-fixture="true" data-correction-fixture="true">',
+      '<html lang="en" data-verification-fixture="true" data-address-fixture="true" data-correction-fixture="true" data-lifecycle-fixture="true">',
     ),
     "/journey.js": await readFile(
       new URL("./fixtures/customer-intake-journey.js", import.meta.url),
@@ -213,6 +239,7 @@ export async function verifyBrowserVerification({
   let addressLost = false;
   let correctionLost = false;
   let reviewLost = false;
+  let endLost = false;
   const addressRequests = [];
   const requests = [],
     errors = [];
@@ -258,6 +285,9 @@ export async function verifyBrowserVerification({
         result.body.status === "CONFIRMATION_REQUIRED";
       if (lostCorrection) correctionLost = true;
       const lost =
+        (!endLost &&
+          req.url === "/customer-session/end" &&
+          result.status === 200) ||
         (!reviewLost &&
           req.url === "/customer-session/submit" &&
           result.status === 200) ||
@@ -267,6 +297,8 @@ export async function verifyBrowserVerification({
           result.status === 200 &&
           result.body.outcome === "APPROVED");
       if (lost) loseAck = false;
+      if (req.url === "/customer-session/end" && result.status === 200)
+        endLost = true;
       if (req.url === "/customer-session/submit" && result.status === 200)
         reviewLost = true;
       res.statusCode = lost ? 503 : result.status;
@@ -305,6 +337,13 @@ export async function verifyBrowserVerification({
         },
         verification: new LocalVerificationBrowserService(durable),
         correction,
+        lifecycle: {
+          end: async (token) => {
+            const result = await cleanup.end(token);
+            correction.discard(token);
+            return result;
+          },
+        },
         draft: intake,
         review: intake,
       },
@@ -320,6 +359,8 @@ export async function verifyBrowserVerification({
     const page = await context.newPage();
     page.on("pageerror", (e) => errors.push(e.message));
     const begin = async () => {
+      // Independent browser scenario; durable spend holds are never reset.
+      localBudget = new LocalCustomerBrowserBudget();
       await page.goto(origin, { waitUntil: "load" });
       await page.locator("#start").click();
       await page.locator("#message").fill("Do you repair cooling?");
@@ -435,6 +476,37 @@ export async function verifyBrowserVerification({
       ),
     );
     await page.locator("#forget").click();
+    await page.locator("#retry").waitFor({ state: "visible" });
+    await page.locator("#retry").click();
+    await page.waitForFunction(
+      () => document.getElementById("phone").value === "",
+    );
+    await page
+      .getByText("Session closed and verification data cleared.", {
+        exact: false,
+      })
+      .waitFor();
+    await page.screenshot({
+      path: evidence + "/cleanup-closed-mobile.png",
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.screenshot({
+      path: evidence + "/cleanup-closed-desktop.png",
+      fullPage: true,
+    });
+    const closedRow = await prisma.conversation.findUnique({
+      where: { id: freshScope.conversationId },
+    });
+    assert.notEqual(
+      closedRow.collectedData.verificationLifecycle.closedAt,
+      null,
+    );
+    assert.notEqual(
+      closedRow.collectedData.verificationLifecycle.purgedAt,
+      null,
+    );
+    assert.equal("verificationOperations" in closedRow.collectedData, false);
     failStart = true;
     await begin();
     await page.locator("#verifyRequested").check();
@@ -446,6 +518,9 @@ export async function verifyBrowserVerification({
       .waitFor();
     assert.equal(starts, 2);
     await page.locator("#forget").click();
+    await page.waitForFunction(
+      () => document.querySelector("#phone").value === "",
+    );
     await begin();
     await page.locator("#verifyRequested").check();
     await page.locator("#verifyStart").click();
@@ -478,6 +553,9 @@ export async function verifyBrowserVerification({
       0,
     );
     await page.locator("#forget").click();
+    await page.waitForFunction(
+      () => document.getElementById("phone").value === "",
+    );
     assert.equal(await page.locator("#phone").inputValue(), "");
     assert.equal(await page.locator("#verifyNoticeText").innerText(), "");
     assert.deepEqual(errors, []);
@@ -491,6 +569,7 @@ export async function verifyBrowserVerification({
         "unknown outcome exact retry retains original reservation",
         "budget refusal retains customer draft and does not call provider",
         "mobile/desktop fit, private clearing, no browser storage or page errors",
+        "server session closure and lost acknowledgment retry; verification payload purged without refund",
       ],
       mockedStarts: starts,
       mockedChecks: checks,
@@ -535,6 +614,7 @@ export async function verifyBrowserVerification({
     assert.deepEqual(errors, []);
     return summary;
   } finally {
+    clearInterval(cleanupTimer);
     correction.clear();
     await context?.close();
     await new Promise((resolve) => server.close(resolve));

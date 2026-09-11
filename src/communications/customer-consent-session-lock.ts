@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { getRequestContext } from "../common/context/request-context";
 import { lockConversationSession } from "../conversations/conversation-session-lock";
 import { ConsentSessionClaims } from "./customer-consent-credentials";
+import { lifecycle, sessionCleanupDue } from "./verification-retention";
 export type CustomerSessionScope = Pick<
   ConsentSessionClaims,
   "tenantId" | "conversationId" | "sessionId"
@@ -30,9 +31,15 @@ export async function lockCustomerConsentSession(
       capture: unknown;
       hasCapture: boolean;
       status: string;
+      lifecycle: unknown;
+      hasLifecycle: boolean;
+      nowMs: bigint;
     }[]
   >(Prisma.sql`
     SELECT c.status, c."collectedData" -> 'sessionId' AS "sessionId",
+      c."collectedData" -> 'verificationLifecycle' AS lifecycle,
+      c."collectedData" ? 'verificationLifecycle' AS "hasLifecycle",
+      floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint AS "nowMs",
       c."collectedData" -> 'customerSessionVersion' AS marker,
       c."collectedData" ? 'intakeEmail' AS "hasCapture",
       c."collectedData" -> 'intakeEmail' AS capture FROM "Conversation" c
@@ -46,5 +53,14 @@ export async function lockCustomerConsentSession(
     rows[0].marker !== 1
   )
     throw new ConflictException("Customer session is unavailable.");
+  if (rows[0].hasLifecycle) {
+    const state = lifecycle(rows[0].lifecycle);
+    if (
+      !state ||
+      !Number.isSafeInteger(Number(rows[0].nowMs)) ||
+      sessionCleanupDue(state, Number(rows[0].nowMs))
+    )
+      throw new ConflictException("Customer session is closed or expired.");
+  }
   return rows[0];
 }

@@ -3,6 +3,7 @@ import { performance } from "node:perf_hooks";
 
 export type CustomerBrowserOperation =
   | "start"
+  | "end"
   | "capture"
   | "prompt"
   | "continue"
@@ -44,6 +45,7 @@ export class LocalCustomerBrowserBudget implements CustomerBrowserBudget {
     if (
       ![
         "start",
+        "end",
         "capture",
         "prompt",
         "respond",

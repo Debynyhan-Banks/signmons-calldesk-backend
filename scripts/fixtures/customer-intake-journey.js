@@ -188,6 +188,19 @@
       if (request.operation !== "start" && !alive()) return;
       if (value.deliveryAuthorized !== false) throw Error("Invalid receipt");
       switch (request.operation) {
+        case "end":
+          if (
+            value.state !== "CLOSED" ||
+            value.fixtureOnly !== true ||
+            typeof value.cleanupPending !== "boolean"
+          )
+            throw Error("Invalid session closure");
+          clear(
+            value.cleanupPending
+              ? "Session closed. Server cleanup is pending; saved business records and cost holds are retained."
+              : "Session closed and verification data cleared. Saved business records and cost holds are retained.",
+          );
+          return;
         case "correction": {
           if (
             value.fixtureOnly !== true ||
@@ -995,10 +1008,20 @@
         : {}),
     });
   };
-  el("forget").onclick = () =>
-    clear(
-      "Private state cleared. Prior saved conversation and consent are not undone.",
-    );
+  el("forget").onclick = () => {
+    if (
+      document.documentElement.dataset.lifecycleFixture === "true" &&
+      token &&
+      !busy &&
+      !pending &&
+      alive()
+    )
+      submit("end", { sessionToken: token });
+    else
+      clear(
+        "Private state cleared. Prior saved conversation and consent are not undone; server expiry still applies.",
+      );
+  };
   window.addEventListener("pagehide", () => clear(""));
   paint();
 })();
