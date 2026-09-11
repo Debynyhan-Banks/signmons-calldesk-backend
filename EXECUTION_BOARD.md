@@ -1,5 +1,11 @@
 # Signmons Backend Execution Board
 
+## Approved Cuyahoga County pilot boundary
+
+Owner approved all of Cuyahoga County, Ohio for Eternity's U.S.-only pilot. The planned coverage decision requires trustworthy country/state/county evidence for a validated service address: reliable inside is IN_AREA, reliable outside is OUT_OF_AREA, unresolved/conflicting/imprecise evidence is UNKNOWN with assistance. ZIP-only tests and routing fallback cannot authorize county coverage. See governance REAL_VERIFICATION_ADMISSION_PLAN.md for requirements and acceptance cases.
+
+This is documentation only. No provider/boundary source selected, tenant provisioned, service-area record changed, real customer data accessed, website modified or live activation authorized. Backend runtime remains 5fb4f36. Next: specify provider-compatible verification settings and authoritative county-resolution criteria before approving a bounded implementation. APP-013 sole Now; Next empty; FE-014 paused. Progress unchanged: APP-013 50% scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No overall percentage/ETA established.
+
 ## Approved U.S.-only Eternity pilot direction
 
 Owner approved the real-verification/admission planning requirements and checklist, U.S.A.-only operation and Eternity Mechanical Services as the pilot business. Canonical plan: governance REAL_VERIFICATION_ADMISSION_PLAN.md. Selecting the business does not provision a tenant or authorize provider setup, spending, production/customer changes or Eternity website work. Backend runtime remains 5fb4f36; this is documentation only.
