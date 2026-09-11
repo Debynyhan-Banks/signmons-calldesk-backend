@@ -1,6 +1,12 @@
 # Signmons Backend Execution Board
 
-## Combined organization/address review proof (2026-09-10, latest review-ready)
+## Approved U.S.-only Eternity pilot direction
+
+Owner approved the real-verification/admission planning requirements and checklist, U.S.A.-only operation and Eternity Mechanical Services as the pilot business. Canonical plan: governance REAL_VERIFICATION_ADMISSION_PLAN.md. Selecting the business does not provision a tenant or authorize provider setup, spending, production/customer changes or Eternity website work. Backend runtime remains 5fb4f36; this is documentation only.
+
+Next: resolve exact tenant/environment, supported U.S. destinations/address types, proof timing/limits, retention/notice and cost/recovery decisions before approving one implementation section. APP-013 sole Now, Next empty, FE-014 paused. Progress unchanged: APP-013 50% recorded scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. No overall percentage/ETA established. Documentation checks only; no runtime gate rerun claimed.
+
+## Combined organization/address review proof (2026-09-10, prior checkpoint)
 
 Existing approved company FAQ, same-session address selection, saved encrypted review and operator organization-version display now run together. Unapproved company edits preserve the review; a new approval invalidates it. Local address evidence still cannot authorize admission. Proof scripts only; no production code or contract change. Evidence/review: evidence/APP-013/organization-address-thread/README.md, incremental 588c9f7..HEAD, current focused branch and PR #21.
 
