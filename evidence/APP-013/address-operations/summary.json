@@ -1,0 +1,20 @@
+{
+  "checks": [
+    "identical intent aliases reserve once",
+    "concurrent claim once",
+    "restart never reclaims",
+    "wrong scope or edited intent refuses",
+    "cross-tenant shared ceiling",
+    "old-month holds retained",
+    "missing stale malformed unapproved policy refuses",
+    "reservation and claim audit rollback",
+    "safe cancellation releases only unclaimed cost",
+    "all three money and request ceilings independently refuse",
+    "claim versus cancel race cannot release claimed liability",
+    "closed session refuses",
+    "no customer or provider payload columns"
+  ],
+  "liveProviderCalls": 0,
+  "dispatchAuthorized": false,
+  "productionRegistered": false
+}

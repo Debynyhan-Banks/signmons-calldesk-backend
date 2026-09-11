@@ -1,5 +1,13 @@
 # Signmons Backend Execution Board
 
+## VO-1 durable address operations checkpoint
+
+Owner approved VO-1 only. Implemented disabled AddressOperationLedger and minimal operation/request-alias migration, applied solely in disposable local PostgreSQL. Trusted integration/session and locked server-owned intent/revision/policy bind reservation; shared account, tenant and session money/request caps reserve atomically. Identical intent aliases share one operation; conflicting IDs refuse. Claim commits once, restart/replay never claims again, and cancellation releases only unclaimed liability. All prior-month holds and request counts remain; no settlement/replenishment. No provider or production registration, customer-input digest, job authority or live spending.
+
+Evidence: backend evidence/APP-013/address-operations/README.md. 95 suites/1,824 tests pass with three existing skips; build/lint/architecture/Prisma/format/diff pass. Thirteen disposable database groups plus existing parent browser regression pass; fixture cleaned up. Existing pg deprecation remains. Original dirty checkout preserved. Production binding/retention/operational rates/deadlines, county qualification and proof-to-job remain gates.
+
+Stop review-ready. Next proposed: VO-2 bounded mocked execution and uncertain recovery in the existing customer journey, after review and operational policy agreement; no automatic activation or later-ticket work. APP-013 sole Now; Next empty; FE-014 paused. APP-013 scope index 50%, accepted 0/12; onboarding local 50%, accepted 0/6; pilot accepted 0/12. No overall percentage/ETA, merge, deployment, production migration or external action.
+
 ## Verification operations sizing checkpoint
 
 Approved planning continuation from runtime 4ad7def: governance VERIFICATION_OPERATIONS_PLAN.md sizes three dependent sections, durable address operation/shared liability reservation (VO-1), bounded execution/uncertain recovery (VO-2), freshness/revocation/cleanup (VO-3). Next decision is approve VO-1 only, with disabled integration and minimal ledger migration exercised only in disposable local PostgreSQL. No new isolated UI fixture, live price/budget approval, provider activation or job authority. No runtime/schema/UI change this checkpoint. Documentation diff check applies; previous build/test/browser evidence is not a fresh run. APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% scope index/0 of 12 accepted; onboarding 50% local/0 of 6 accepted; pilot 0 of 12 accepted. No overall percentage/ETA or release action.

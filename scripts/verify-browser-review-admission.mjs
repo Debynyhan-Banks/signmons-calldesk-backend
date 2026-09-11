@@ -5,6 +5,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { verifyPreferredWindow } from "./verify-preferred-window-review.mjs";
 import { verifyLocalPhone } from "./verify-local-phone.mjs";
 import { verifyDurableVerification } from "./verify-durable-verification.mjs";
+import { verifyAddressOperationLedger } from "./verify-address-operation-ledger.mjs";
 import { verifyBrowserVerification } from "./verify-browser-verification.mjs";
 const require = createRequire(import.meta.url);
 const {
@@ -92,6 +93,14 @@ export async function verifyBrowserReviewAdmission({
     },
   });
   const intake = new Intake(prisma, cipher, credentials);
+  await writeFile(
+    evidence + "/address-operation-ledger-summary.json",
+    JSON.stringify(
+      await verifyAddressOperationLedger({ prisma, credentials, responses }),
+      null,
+      2,
+    ),
+  );
   let credentialAccesses = 0;
   const operator = new Intake(
     prisma,

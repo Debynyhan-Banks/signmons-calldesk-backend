@@ -1,3 +1,29 @@
+// Inactive VO-1 ledger. No provider payload or customer-input digest retained.
+model AddressVerificationOperation {
+  id             String                       @id @db.Uuid
+  accountId      String                       @db.Uuid
+  tenantId       String                       @db.Uuid
+  conversationId String                       @db.Uuid
+  sessionId      String                       @db.Uuid
+  intentId       String                       @db.Uuid
+  revision       Int
+  policyHash     String
+  state          String                       @default("RESERVED")
+  heldMicros     BigInt
+  createdAt      DateTime                     @default(now()) @db.Timestamptz(3)
+  attemptId      String?                      @db.Uuid
+  requests       AddressVerificationRequest[]
+
+  @@unique([accountId, tenantId, sessionId, intentId, revision, policyHash], map: "AddressOperation_binding_key")
+  @@index([accountId, state])
+}
+
+model AddressVerificationRequest {
+  id          String                       @id @db.Uuid
+  operationId String                       @db.Uuid
+  operation   AddressVerificationOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+}
+
 generator client {
   provider = "prisma-client-js"
 }
