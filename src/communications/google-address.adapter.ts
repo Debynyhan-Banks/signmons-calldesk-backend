@@ -10,6 +10,13 @@ export type GoogleAddressRequest = {
 };
 
 type FixtureTransport = (request: GoogleAddressRequest) => Promise<unknown>;
+export type AddressCorrectionCandidate = {
+  addressLines: string[];
+  city: string;
+  postalCode: string;
+  country: "US";
+  state: "OH";
+};
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -28,6 +35,18 @@ export class GoogleAddressAdapter {
   constructor(private readonly fixture?: FixtureTransport) {}
 
   async validate(input: unknown) {
+    const preview = await this.preview(input);
+    return {
+      status: preview.status,
+      fixtureOnly: preview.fixtureOnly,
+      addressVerified: preview.addressVerified,
+      county: preview.county,
+      admissionAuthorized: preview.admissionAuthorized,
+    };
+  }
+
+  /** Transient correction-display fields only; never a verification receipt. */
+  async preview(input: unknown) {
     const result = (
       status:
         | "DISABLED"
@@ -35,12 +54,14 @@ export class GoogleAddressAdapter {
         | "UNKNOWN"
         | "REVIEW"
         | "CORRECTION_REQUIRED",
+      candidate: AddressCorrectionCandidate | null = null,
     ) => ({
       status,
       fixtureOnly: true as const,
       addressVerified: false as const,
       county: "UNKNOWN" as const,
       admissionAuthorized: false as const,
+      candidate,
     });
     if (!this.fixture) return result("DISABLED");
     const data = record(input);
@@ -193,8 +214,15 @@ export class GoogleAddressAdapter {
             (key) => component[key] === true,
           ),
         );
-      if (correction) return result("CORRECTION_REQUIRED");
-      return result("REVIEW");
+      const candidate: AddressCorrectionCandidate = {
+        addressLines: [...postal.addressLines],
+        city: postal.locality,
+        postalCode: postal.postalCode,
+        country: "US",
+        state: "OH",
+      };
+      if (correction) return result("CORRECTION_REQUIRED", candidate);
+      return result("REVIEW", candidate);
     } catch {
       // Do not leak provider errors or retry an uncertain operation.
       return result("UNKNOWN");
