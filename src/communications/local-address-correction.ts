@@ -1,5 +1,13 @@
 import { randomUUID } from "node:crypto";
 import {
+  createVerificationProof,
+  verificationProofCurrent,
+  sameFreshnessPolicy,
+  validFreshnessPolicy,
+  type VerificationProof,
+  type VerificationFreshnessPolicy,
+} from "./verification-freshness";
+import {
   GoogleAddressAdapter,
   type AddressCorrectionCandidate,
 } from "./google-address.adapter";
@@ -9,12 +17,15 @@ export type CorrectionScope = {
   sessionId: string;
   revision: number;
   expiresAt: number;
+  policy?: VerificationFreshnessPolicy | null;
 };
 type Pending = {
   id: string;
   scope: CorrectionScope;
   candidate: AddressCorrectionCandidate;
   expiresAt: number;
+  proof: VerificationProof;
+  confirmedAt?: number;
 };
 
 /** Single-session local composition. No route, persistence or production auth.
@@ -50,11 +61,20 @@ export class LocalAddressCorrection {
       !preview.candidate
     )
       return this.refused();
+    const checkedAt = this.now();
+    const proof = createVerificationProof(
+      { ...scope, revision: String(scope.revision) },
+      scope.policy,
+      checkedAt,
+      checkedAt,
+    );
+    if (!proof) return this.refused();
     const pending: Pending = {
       id: randomUUID(),
       scope,
       candidate: structuredClone(preview.candidate),
-      expiresAt: Math.min(scope.expiresAt, this.now() + 24 * 60 * 60 * 1000),
+      expiresAt: proof.expiresAt,
+      proof,
     };
     this.pending = pending;
     this.expiryTimer = setTimeout(
@@ -68,6 +88,7 @@ export class LocalAddressCorrection {
       revision: scope.revision,
       candidate: structuredClone(pending.candidate),
       expiresAt: pending.expiresAt,
+      checkedAt,
       ...this.authority(),
     };
   }
@@ -79,7 +100,12 @@ export class LocalAddressCorrection {
       !pending ||
       !scope ||
       !this.same(pending.scope, scope) ||
-      this.now() >= pending.expiresAt
+      !verificationProofCurrent(
+        pending.proof,
+        { ...scope, revision: String(scope.revision) },
+        scope.policy,
+        this.now(),
+      )
     ) {
       this.clear();
       return this.refused();
@@ -94,8 +120,12 @@ export class LocalAddressCorrection {
       data.confirmed !== true
     )
       return this.refused();
+    pending.confirmedAt ??= this.now();
     return {
       status: "CUSTOMER_CONFIRMED" as const,
+      checkedAt: pending.proof.checkedAt,
+      confirmedAt: pending.confirmedAt,
+      expiresAt: pending.expiresAt,
       candidateId: pending.id,
       revision: scope.revision,
       // Fresh copy of the exact presented fields, not submitted replacement text.
@@ -115,10 +145,11 @@ export class LocalAddressCorrection {
       !Number.isSafeInteger(scope.revision) ||
       scope.revision < 0 ||
       !Number.isFinite(scope.expiresAt) ||
-      scope.expiresAt <= now
+      scope.expiresAt <= now ||
+      !validFreshnessPolicy(scope.policy)
     )
       return null;
-    return { ...scope };
+    return { ...scope, policy: { ...scope.policy } };
   }
   private same(a: CorrectionScope, b: CorrectionScope | null) {
     return (
@@ -126,7 +157,8 @@ export class LocalAddressCorrection {
       a.tenantId === b.tenantId &&
       a.sessionId === b.sessionId &&
       a.revision === b.revision &&
-      a.expiresAt === b.expiresAt
+      a.expiresAt === b.expiresAt &&
+      sameFreshnessPolicy(a.policy, b.policy)
     );
   }
   private authority() {

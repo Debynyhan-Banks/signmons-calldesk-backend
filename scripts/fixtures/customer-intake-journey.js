@@ -16,6 +16,7 @@
     addressRevision = 0,
     verifyNotice,
     verifyStart,
+    verificationProofTimer,
     verifyState = "EMPTY",
     phoneRevision = 0,
     phoneLocked = false,
@@ -90,6 +91,7 @@
       !!verifyStart ||
       verifyState === "CORRECTION_REQUIRED";
     el("verifyCheck").disabled = busy || !!pending || verifyState !== "PENDING";
+    el("verifyRefresh").disabled = busy || !!pending || !verifyStart;
     el("verifyCode").disabled = busy || !!pending || verifyState !== "PENDING";
     el("verifyRequested").disabled = busy || !!pending || !!verifyStart;
     el("verifyChange").disabled = busy || !!pending;
@@ -111,6 +113,7 @@
     );
     el("addressStatus").textContent = "Address and coverage not checked.";
     verifyNotice = verifyStart = undefined;
+    clearTimeout(verificationProofTimer);
     verifyState = "EMPTY";
     el("verifyStatus").textContent =
       "Not verified. Review the code request first.";
@@ -345,6 +348,21 @@
             el("verifyPrivacy").href = value.privacyUrl;
             el("verifyNumber").textContent = el("phone").value.trim();
             el("verifyRequested").checked = false;
+          } else if (
+            request.body.action === "STATUS" ||
+            request.body.action === "REVOKE"
+          ) {
+            if (value.state !== "FRESHNESS")
+              throw Error("Invalid freshness receipt");
+            showVerificationProof(value.proof);
+            if (request.body.action === "REVOKE") {
+              verifyNotice = undefined;
+              verifyState = "CORRECTION_REQUIRED";
+              el("verifyRequested").checked = false;
+              el("verifyCode").value = "";
+              el("verifyStatus").textContent =
+                "Number correction: no verification applies to the edited number. This local flow cannot issue a replacement; saved requests and costs are not erased.";
+            }
           } else {
             if (
               value.operationId !== request.body.operationId ||
@@ -377,6 +395,8 @@
                 : value.outcome === "PENDING"
                   ? "Test request recorded. No SMS sent. Enter 123456; an incorrect code uses an attempt."
                   : "Test verification is unavailable or expired. Your draft is retained; nothing is verified. No automatic resend.";
+            if (value.outcome === "APPROVED")
+              showVerificationProof(value.proof);
           }
           break;
         }
@@ -752,7 +772,9 @@
     submit("verify", {
       sessionToken: token,
       action,
-      operationId: action === "NOTICE" ? "" : crypto.randomUUID(),
+      operationId: ["NOTICE", "STATUS", "REVOKE"].includes(action)
+        ? ""
+        : crypto.randomUUID(),
       phone: action === "NOTICE" ? "" : el("phone").value.trim(),
       code: action === "CHECK" ? el("verifyCode").value.trim() : "",
       startOperationId: action === "CHECK" ? verifyStart : "",
@@ -763,6 +785,7 @@
   el("verifyNotice").onclick = () => submitVerification("NOTICE");
   el("verifyStart").onclick = () => submitVerification("START");
   el("verifyCheck").onclick = () => submitVerification("CHECK");
+  el("verifyRefresh").onclick = () => submitVerification("STATUS");
   el("verifyRequested").onchange = paint;
   for (const [id, action] of [
     ["addressSuggest", "suggest"],
@@ -815,6 +838,10 @@
   });
   el("verifyChange").onclick = () => {
     if (busy || pending) return;
+    if (verifyStart) {
+      submitVerification("REVOKE");
+      return;
+    }
     verifyNotice = undefined;
     el("verifyRequested").checked = false;
     el("verifyCode").value = "";
@@ -824,6 +851,39 @@
     paint();
     el("phone").focus();
   };
+  function showVerificationProof(proof) {
+    clearTimeout(verificationProofTimer);
+    if (!proof || !["CURRENT", "NOT_CURRENT"].includes(proof.state))
+      throw Error("Missing proof freshness");
+    if (proof.state === "CURRENT") {
+      if (
+        !Number.isSafeInteger(proof.expiresAt) ||
+        !Number.isSafeInteger(proof.checkedAt) ||
+        proof.expiresAt > expires ||
+        proof.expiresAt <= proof.checkedAt ||
+        proof.expiresAt - proof.checkedAt > 1800000
+      )
+        throw Error("Invalid proof deadline");
+      verifyState = "APPROVED";
+      el("verifyStatus").textContent =
+        "Test code accepted. Mock proof current until " +
+        new Date(proof.expiresAt).toISOString() +
+        ". Real phone access is NOT verified. No booking or sending permission.";
+      verificationProofTimer = setTimeout(
+        () => {
+          verifyState = "EXPIRED";
+          el("verifyStatus").textContent =
+            "Mock proof expired. Your draft is retained; recheck freshness before continuing. No automatic resend.";
+          paint();
+        },
+        Math.max(0, proof.expiresAt - Date.now()),
+      );
+    } else {
+      verifyState = "EXPIRED";
+      el("verifyStatus").textContent =
+        "Mock proof is not current. Your draft is retained. No verification or sending authority; no automatic resend.";
+    }
+  }
   for (const [id, action] of [
     ["phoneRequest", "request"],
     ["phoneCheck", "check"],

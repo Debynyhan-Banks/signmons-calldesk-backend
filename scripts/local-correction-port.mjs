@@ -1,6 +1,7 @@
 // Existing single-customer fixture, now using durable VO-2 operations. No live client.
 import { createRequire } from "node:module";
 import { createHash, randomUUID } from "node:crypto";
+import { localFreshnessPolicy } from "./local-freshness-policy.mjs";
 const require = createRequire(import.meta.url);
 const {
   LocalAddressCorrection,
@@ -15,7 +16,12 @@ const {
   lockCustomerConsentSession,
 } = require("../dist/communications/customer-consent-session-lock.js");
 
-export function localCorrectionPort({ prisma, credentials, adapter }) {
+export function localCorrectionPort({
+  prisma,
+  credentials,
+  adapter,
+  readPolicy = localFreshnessPolicy,
+}) {
   const digest = (value) =>
     createHash("sha256").update(JSON.stringify(value)).digest("hex");
   const accountId = "00000000-0000-4000-8000-000000000013"; // Stable fictional shared account across service reconstruction.
@@ -49,30 +55,25 @@ export function localCorrectionPort({ prisma, credentials, adapter }) {
   async function snapshot(tx, claims) {
     if ((await lockCustomerConsentSession(tx, claims)).status !== "ONGOING")
       throw Error("closed");
-    const row = await tx.conversation.findUnique({
-      where: { id: claims.conversationId },
-      select: { updatedAt: true },
-    });
+    const freshnessPolicy = await readPolicy(tx, claims.tenantId);
+    if (!freshnessPolicy) throw Error("missing freshness policy");
     return JSON.stringify([
       claims.tenantId,
       claims.sessionId,
       claims.expiresAt,
-      row.updatedAt,
+      freshnessPolicy,
     ]);
   }
   const ledger = new AddressOperationLedger(prisma, credentials, {
     accountId,
     readBinding: async (tx, claims) => {
       // The ledger already holds the session lock; do not reacquire it here.
-      const row = await tx.conversation.findUnique({
-        where: { id: claims.conversationId },
-        select: { updatedAt: true },
-      });
+      const freshnessPolicy = await readPolicy(tx, claims.tenantId);
       const current = JSON.stringify([
         claims.tenantId,
         claims.sessionId,
         active?.expiresAt,
-        row?.updatedAt,
+        freshnessPolicy,
       ]);
       return active && current === active.snapshot
         ? { intentId: active.intentId, revision: active.revision, policy }
@@ -122,6 +123,7 @@ export function localCorrectionPort({ prisma, credentials, adapter }) {
               sessionId: claims.sessionId,
               revision: ++revision,
               expiresAt: claims.expiresAt,
+              policy: JSON.parse(current)[3],
             };
             active = {
               snapshot: current,

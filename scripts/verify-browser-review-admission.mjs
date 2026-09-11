@@ -5,6 +5,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { verifyPreferredWindow } from "./verify-preferred-window-review.mjs";
 import { verifyLocalPhone } from "./verify-local-phone.mjs";
 import { verifyDurableVerification } from "./verify-durable-verification.mjs";
+import { verifyVerificationFreshness } from "./verify-verification-freshness.mjs";
 import { verifyAddressOperationLedger } from "./verify-address-operation-ledger.mjs";
 import { verifyAddressExecution } from "./verify-address-execution.mjs";
 import { verifyBrowserVerification } from "./verify-browser-verification.mjs";
@@ -94,6 +95,19 @@ export async function verifyBrowserReviewAdmission({
     },
   });
   const intake = new Intake(prisma, cipher, credentials);
+  await writeFile(
+    evidence + "/verification-freshness-summary.json",
+    JSON.stringify(
+      await verifyVerificationFreshness({
+        prisma,
+        cipher,
+        credentials,
+        responses,
+      }),
+      null,
+      2,
+    ),
+  );
   await writeFile(
     evidence + "/address-execution-summary.json",
     JSON.stringify(

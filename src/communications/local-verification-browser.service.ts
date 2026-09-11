@@ -15,7 +15,8 @@ export const LOCAL_VERIFICATION_NOTICE = Object.freeze({
 /** Local-only projection over the durable service; never registered in production. */
 export class LocalVerificationBrowserService {
   constructor(
-    private readonly durable: Pick<DurableVerificationService, "execute">,
+    private readonly durable: Pick<DurableVerificationService, "execute"> &
+      Partial<Pick<DurableVerificationService, "freshness">>,
   ) {}
   async handle(
     input: Record<string, unknown>,
@@ -52,6 +53,25 @@ export class LocalVerificationBrowserService {
       )
         throw new BadRequestException();
       return { ...LOCAL_VERIFICATION_NOTICE, ...flags, state: "NOTICE" };
+    }
+    if (action === "STATUS" || action === "REVOKE") {
+      if (
+        !this.durable.freshness ||
+        operationId !== "" ||
+        code !== "" ||
+        startOperationId !== "" ||
+        requested !== false ||
+        noticeVersion !== "" ||
+        typeof sessionToken !== "string" ||
+        typeof phone !== "string"
+      )
+        throw new BadRequestException();
+      const proof = await this.durable.freshness({
+        sessionToken,
+        phone,
+        revoke: action === "REVOKE",
+      });
+      return { ...flags, state: "FRESHNESS", proof };
     }
     if (action !== "START" && action !== "CHECK")
       throw new BadRequestException();
@@ -95,8 +115,17 @@ export class LocalVerificationBrowserService {
       ].includes(result.outcome)
     )
       throw new ServiceUnavailableException();
+    const proof =
+      result.outcome === "APPROVED" && this.durable.freshness
+        ? await this.durable.freshness({
+            sessionToken: sessionToken as string,
+            phone: phone as string,
+            revoke: false,
+          })
+        : undefined;
     return {
       ...flags,
+      ...(proof ? { proof } : {}),
       state: result.state,
       outcome: result.outcome,
       operationId: result.operationId,

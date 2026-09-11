@@ -190,7 +190,10 @@ export async function verifyCorrectionJourney({
       });
       return { status: response.status, body: await response.json() };
     }, body);
-  assert.equal((await replay(confirmation)).body.status, "CUSTOMER_CONFIRMED");
+  const confirmed = (await replay(confirmation)).body;
+  assert.equal(confirmed.status, "CUSTOMER_CONFIRMED");
+  assert.ok(confirmed.expiresAt - confirmed.checkedAt <= 1800000);
+  assert.deepEqual((await replay(confirmation)).body, confirmed);
   assert.equal(
     (await replay({ ...confirmation, candidateId: "wrong" })).body.status,
     "REFUSED",

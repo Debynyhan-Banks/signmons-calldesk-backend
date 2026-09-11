@@ -109,4 +109,40 @@ describe("local verification browser projection", () => {
     });
     await expect(service.handle(start)).rejects.toThrow();
   });
+  it.each(["STATUS", "REVOKE"])(
+    "projects %s without provider execution",
+    async (action) => {
+      const freshness = jest.fn().mockResolvedValue({
+        state: "NOT_CURRENT",
+        checkedAt: null,
+        expiresAt: null,
+      });
+      const local = new LocalVerificationBrowserService({ execute, freshness });
+      expect(
+        await local.handle({ ...notice, action, phone: start.phone }),
+      ).toMatchObject({
+        state: "FRESHNESS",
+        proof: { state: "NOT_CURRENT" },
+        phoneAccessAuthorized: false,
+        deliveryAuthorized: false,
+      });
+      expect(freshness).toHaveBeenCalledWith({
+        sessionToken: "fixture",
+        phone: start.phone,
+        revoke: action === "REVOKE",
+      });
+      expect(execute).not.toHaveBeenCalled();
+    },
+  );
+  it("freshness refuses extra operation authority and missing implementation", async () => {
+    await expect(
+      service.handle({ ...notice, action: "STATUS", phone: start.phone }),
+    ).rejects.toThrow();
+    const freshness = jest.fn();
+    const local = new LocalVerificationBrowserService({ execute, freshness });
+    await expect(
+      local.handle({ ...start, action: "REVOKE" }),
+    ).rejects.toThrow();
+    expect(freshness).not.toHaveBeenCalled();
+  });
 });

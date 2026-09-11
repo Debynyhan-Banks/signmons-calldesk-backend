@@ -1,0 +1,22 @@
+{
+  "checks": [
+    "thirty-minute proof capped by existing session",
+    "read and exact replay/reconstruction do not renew or call provider",
+    "phone and session isolation",
+    "address confirmation survives phone revocation; phone proof survives address validation",
+    "revocation survives successful receipt replay",
+    "expired and legacy proof refused",
+    "policy change/missing policy invalidation",
+    "real audit rollback",
+    "in-flight CHECK revocation race",
+    "notice change during provider I/O",
+    "source or notice policy cannot change between START and CHECK",
+    "closed session refuses and all cost holds remain",
+    "foreign tenant refuses; missing policy rolls back before dispatch or reservation"
+  ],
+  "mockedCalls": 21,
+  "heldMicros": 110,
+  "liveProviderCalls": 0,
+  "newJobs": 0,
+  "productionRegistered": false
+}

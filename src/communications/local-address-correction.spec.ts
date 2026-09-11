@@ -54,6 +54,14 @@ describe("exact local address correction confirmation", () => {
       sessionId: "session-a",
       revision: 1,
       expiresAt: 10000,
+      policy: {
+        mode: "FIXTURE_ONLY",
+        version: "1A",
+        lifetimeMs: 1800000,
+        noticeVersion: "notice",
+        sourceVersion: "mock",
+        businessPolicyVersion: "approved",
+      },
     };
     flow = new LocalAddressCorrection(
       new GoogleAddressAdapter(() => Promise.resolve(response)),
@@ -172,10 +180,10 @@ describe("exact local address correction confirmation", () => {
     resolve(response);
     expect((await pending).status).toBe("REFUSED");
   });
-  it("refuses a lost-process candidate and caps review at 24 hours", async () => {
+  it("refuses a lost-process candidate and caps review at thirty minutes", async () => {
     scope!.expiresAt = now + 48 * 60 * 60 * 1000;
     const preview = await flow.propose(input);
-    expect(preview).toMatchObject({ expiresAt: now + 24 * 60 * 60 * 1000 });
+    expect(preview).toMatchObject({ expiresAt: now + 30 * 60 * 1000 });
     const restarted = new LocalAddressCorrection(
       new GoogleAddressAdapter(),
       () => scope,
@@ -194,4 +202,29 @@ describe("exact local address correction confirmation", () => {
       jest.useRealTimers();
     }
   });
+  it("confirmation and exact reuse preserve the original check deadline", async () => {
+    scope!.expiresAt = 4000000;
+    const preview = await flow.propose(input);
+    now += 1000;
+    const first = flow.confirm(accept(preview));
+    now += 1000;
+    expect(flow.confirm(accept(preview))).toEqual(first);
+    now = 1801000;
+    expect(flow.confirm(accept(preview)).status).toBe("REFUSED");
+  });
+  it("refuses missing freshness policy without calling the adapter", async () => {
+    scope!.policy = null;
+    expect((await flow.propose(input)).status).toBe("REFUSED");
+  });
+  it.each(["noticeVersion", "sourceVersion", "businessPolicyVersion"] as const)(
+    "invalidates %s changes permanently",
+    async (key) => {
+      const preview = await flow.propose(input);
+      const old = scope!.policy!;
+      scope!.policy = { ...old, [key]: "changed" };
+      expect(flow.confirm(accept(preview)).status).toBe("REFUSED");
+      scope!.policy = old;
+      expect(flow.confirm(accept(preview)).status).toBe("REFUSED");
+    },
+  );
 });

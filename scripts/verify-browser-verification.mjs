@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { localFreshnessPolicy } from "./local-freshness-policy.mjs";
 import {
   correctionFixture,
   verifyCorrectionJourney,
@@ -191,6 +192,7 @@ export async function verifyBrowserVerification({
       rateVersion: "fictional-browser-flow-v1",
       flowUpperBoundUsdMicros: 25_000_000,
     }),
+    localFreshnessPolicy,
   );
   const correction = correctionFixture(prisma, credentials);
   const files = {
@@ -364,6 +366,12 @@ export async function verifyBrowserVerification({
     const approvals = requests.filter((r) => r.code === "123456");
     assert.equal(approvals.length, 2);
     assert.deepEqual(approvals[0], approvals[1]);
+    await page.locator("#verifyRefresh").click();
+    await page
+      .getByText("Mock proof current until", { exact: false })
+      .waitFor();
+    assert.equal(starts, 1);
+    assert.equal(checks, 2);
     await page
       .locator("#durableVerification")
       .screenshot({ path: evidence + "/verification-journey-mobile.png" });
@@ -377,6 +385,46 @@ export async function verifyBrowserVerification({
     await page
       .locator("#durableVerification")
       .screenshot({ path: evidence + "/verification-journey-desktop.png" });
+    // Disposable fixture only: expire the saved proof, not its session or draft.
+    const freshScope = credentials.verifySession(approvals[0].sessionToken);
+    const freshRow = await prisma.conversation.findUnique({
+      where: { id: freshScope.conversationId },
+    });
+    const freshLedger = JSON.parse(
+      cipher.decrypt(freshRow.collectedData.verificationOperations),
+    );
+    const savedProof = freshLedger.entries.find(
+      (e) => e.result?.outcome === "APPROVED",
+    ).proof;
+    savedProof.checkedAt = Date.now() - 1800001;
+    savedProof.confirmedAt = savedProof.checkedAt;
+    savedProof.expiresAt = savedProof.checkedAt + 1800000;
+    await prisma.conversation.update({
+      where: { id: freshScope.conversationId },
+      data: {
+        collectedData: {
+          ...freshRow.collectedData,
+          verificationOperations: cipher.encrypt(JSON.stringify(freshLedger)),
+        },
+      },
+    });
+    await page.locator("#verifyRefresh").click();
+    await page
+      .getByText("Mock proof is not current.", { exact: false })
+      .waitFor();
+    assert.equal(
+      await page.locator("#customerName").inputValue(),
+      "Fictional retained draft",
+    );
+    assert.equal(starts, 1);
+    assert.equal(checks, 2);
+    await page
+      .locator("#durableVerification")
+      .screenshot({ path: evidence + "/freshness-expired-desktop.png" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page
+      .locator("#durableVerification")
+      .screenshot({ path: evidence + "/freshness-expired-mobile.png" });
     await page.locator("#verifyChange").click();
     await page.locator("#phone").fill("+12025550125");
     assert.equal(await page.locator("#verifyCheck").isEnabled(), false);
@@ -438,6 +486,7 @@ export async function verifyBrowserVerification({
         "server notice and unchecked consent; phone edit requires fresh acknowledgment",
         "mocked start and wrong/correct code through real durable services",
         "lost approval response exact retry without duplicate provider call or budget",
+        "server freshness reuse invokes no provider; expired proof retains draft and holds",
         "phone correction removes local verification state without replacement request",
         "unknown outcome exact retry retains original reservation",
         "budget refusal retains customer draft and does not call provider",
