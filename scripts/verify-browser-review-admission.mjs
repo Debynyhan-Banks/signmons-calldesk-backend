@@ -7,6 +7,7 @@ import { verifyLocalPhone } from "./verify-local-phone.mjs";
 import { verifyDurableVerification } from "./verify-durable-verification.mjs";
 import { verifyVerificationFreshness } from "./verify-verification-freshness.mjs";
 import { verifyVerificationCleanup } from "./verify-verification-cleanup.mjs";
+import { verifyCurrentProofAdmission } from "./verify-current-proof-admission.mjs";
 import { verifyAddressOperationLedger } from "./verify-address-operation-ledger.mjs";
 import { verifyAddressExecution } from "./verify-address-execution.mjs";
 import { verifyBrowserVerification } from "./verify-browser-verification.mjs";
@@ -96,6 +97,14 @@ export async function verifyBrowserReviewAdmission({
     },
   });
   const intake = new Intake(prisma, cipher, credentials);
+  await verifyCurrentProofAdmission({
+    prisma,
+    cipher,
+    credentials,
+    browser,
+    evidence,
+    templateTenantId: tenantId,
+  });
   await writeFile(
     evidence + "/verification-cleanup-summary.json",
     JSON.stringify(

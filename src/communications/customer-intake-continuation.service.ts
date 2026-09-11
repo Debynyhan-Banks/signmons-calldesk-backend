@@ -20,6 +20,10 @@ import { validateCustomerIntakeDraft } from "./customer-intake-draft";
 import { LocalAddressService } from "./local-address.service";
 import { localAddressReviewSnapshot } from "./local-address-review-snapshot";
 import {
+  CurrentProofSource,
+  consumeCurrentAdmissionProof,
+} from "./current-proof-admission";
+import {
   ORGANIZATION_PROFILE,
   object,
   profile,
@@ -75,6 +79,7 @@ export class CustomerIntakeContinuationService {
       LocalAddressService,
       "reviewInTransaction"
     >,
+    private readonly admissionProof?: CurrentProofSource,
   ) {}
 
   /** Customer-only durable submission. Does not store the bearer or authorize a job. */
@@ -305,6 +310,9 @@ export class CustomerIntakeContinuationService {
         return {
           ...this.reviewSubmissionReceipt(input.requestId, current.expiresAt),
           draft: current.draft,
+          ...(this.admissionProof
+            ? { fixtureAdmissionAvailable: true as const }
+            : {}),
           ...(current.localAddress
             ? {
                 localAddress: current.localAddress,
@@ -560,15 +568,17 @@ export class CustomerIntakeContinuationService {
           conversationId: before.conversationId,
           sessionId: before.sessionId,
         };
-        const locked = await lockCustomerConsentSession(tx, session);
+        // Lock first, then distinguish immutable receipt retrieval from new admission.
+        // Cleanup may win the lock while an exact concurrent retry is waiting.
+        const locked = await lockCustomerConsentSession(tx, session, true);
         const record = await this.reviewRecord(
           tx,
           context.tenantId,
           input.requestId,
         );
         if (JSON.stringify(before) !== JSON.stringify(record)) throw changed();
-        // New fictional handoff records are review-only; existing admission is unchanged.
-        if (record.localAddress) throw changed();
+        // Historical snapshots alone never authorize admission.
+        if (record.localAddress && !this.admissionProof) throw changed();
         const organization = await this.organization(tx, context.tenantId);
         if (organization.approvedAt !== input.expectedOrganizationApprovedAt)
           throw changed();
@@ -646,6 +656,17 @@ export class CustomerIntakeContinuationService {
           return wrap(receipt);
         }
         if (locked.status !== "ONGOING") throw changed();
+        await lockCustomerConsentSession(tx, session);
+        const proof = this.admissionProof
+          ? await consumeCurrentAdmissionProof(tx, this.admissionProof, {
+              ...session,
+              requestId: input.requestId,
+              expiresAt: record.expiresAt,
+              phone: record.draft.phone,
+              address: record.draft.address,
+              organizationApprovedAt: organization.approvedAt,
+            })
+          : undefined;
         const history = await this.history(tx, session, true);
         if (
           !history.organization ||
@@ -666,9 +687,14 @@ export class CustomerIntakeContinuationService {
             requestId: input.requestId,
             approvedAt: organization.approvedAt,
             digest: organization.digest,
+            ...(proof ? { proof } : {}),
           },
         );
-        if (Date.now() >= record.expiresAt) throw changed();
+        if (
+          Date.now() >= record.expiresAt ||
+          (proof && Date.now() >= proof.expiresAt)
+        )
+          throw changed();
         return wrap(receipt);
       });
     } catch (error) {
@@ -688,7 +714,12 @@ export class CustomerIntakeContinuationService {
     context: ReturnType<CustomerIntakeContinuationService["operator"]>,
     admissionDigest: string,
     expectedRevision: number,
-    requestBinding?: { requestId: string; approvedAt: string; digest: string },
+    requestBinding?: {
+      requestId: string;
+      approvedAt: string;
+      digest: string;
+      proof?: Awaited<ReturnType<typeof consumeCurrentAdmissionProof>>;
+    },
   ) {
     const consent = await this.consentState(tx, session);
     const category = await tx.serviceCategory.findFirst({
@@ -770,6 +801,9 @@ export class CustomerIntakeContinuationService {
                   requestId: requestBinding.requestId,
                   organizationApprovedAt: requestBinding.approvedAt,
                   organizationDigest: requestBinding.digest,
+                  ...(requestBinding.proof
+                    ? { currentProof: requestBinding.proof }
+                    : {}),
                 }
               : {}),
           },

@@ -1,0 +1,14 @@
+{
+  "checks": [
+    "existing customer submits and existing operator approves with separate fixture identity",
+    "ten invalid or changed injected proof cases refuse without a job",
+    "wrong role and tenant refuse",
+    "real audit failure rolls back admission",
+    "lost acknowledgment and concurrent exact replay after cleanup retain one job and audit without fresh proof",
+    "fixture-only references bind atomically without real verification or send authority",
+    "desktop/mobile existing operator page, zero page errors"
+  ],
+  "liveProviderCalls": 0,
+  "realVerificationAccepted": false,
+  "productionRegistered": false
+}

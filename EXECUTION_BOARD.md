@@ -1,5 +1,17 @@
 # Signmons Backend Execution Board
 
+## Section 2A — current-proof admission, review-ready
+
+Owner reviewed 1B evidence and said “i reviewed the evidence proceed”, accepting 1B and approving 2A only. Current section 3 of 8 (2A) is locally Demonstrated pending owner acceptance; accepted 2/8. No baseline expansion or new ticket.
+
+The existing admission transaction now optionally consumes a trusted FIXTURE_ONLY source under session/organization locks: exact phone/address values and current revisions, fresh phone/address/county evidence, U.S./Ohio/Cuyahoga 39035 coverage and current approved organization/payment policy. Missing, stale, foreign, uncertain or changed evidence refuses a new job. Minimal source references and an approved payment-policy snapshot bind atomically to the job; no raw provider payload or new durable customer-input digest. Human job review remains separate from automated verification.
+
+Existing customer and operator pages/controllers are reused with separate explicit fictional identities. Browser flags and historical address snapshots never become proof. Audit rollback, lost response and concurrent receipt replay are evidenced. A closed-session receipt-only lock path retrieves an already committed matching job after cleanup; every new admission still requires the normal active-session guard. The original review deadline remains in force.
+
+Evidence: backend evidence/APP-013/current-proof-admission/README.md and summary. This is injected-source local evidence, not a received OTP, qualified county record or real verification acceptance. Payment terms are recorded for admission provenance, not applied as charge authority. Contact/address real-verification flags and booking/sending remain disabled. No migration, provider call, billing, deployment or merge.
+
+Next after review/acceptance is 2B controlled verification, subject to qualified county source, named legitimate test participant/tenant/accounts, notices, rates, caps and explicit bounded provider-action approval. Do not silently replace missing live gates with mock completion. APP-013 sole Now; Next empty; FE-014 paused. APP-013 scope index 50%, accepted 0/12; onboarding local 50%, accepted 0/6; pilot accepted 0/12. No overall engineering percentage or calendar ETA. Older next-action text below is historical.
+
 ## Section 1B — cleanup and restart, review-ready
 
 Owner accepted 1A with “proceed” and approved 1B plus ninety-day resolved-reference retention with “yes”. Current section 2 of 8 (1B) is locally Demonstrated, awaiting owner acceptance; accepted 1/8. Fixed eight-section denominator unchanged.

@@ -9,10 +9,14 @@ export type CustomerSessionScope = Pick<
   "tenantId" | "conversationId" | "sessionId"
 >;
 
-/** Shared lock order with legacy intake; callers verify the credential before entering. */
+/** Shared lock order with legacy intake; callers verify the credential before entering.
+ * receiptOnly is restricted to authenticated operator receipt lookup. A caller must
+ * recheck with the default before any new admission; it grants no write authority.
+ */
 export async function lockCustomerConsentSession(
   tx: Prisma.TransactionClient,
   session: CustomerSessionScope,
+  receiptOnly = false,
 ) {
   if (getRequestContext()?.impersonatedTenantId)
     throw new ForbiddenException(
@@ -58,7 +62,7 @@ export async function lockCustomerConsentSession(
     if (
       !state ||
       !Number.isSafeInteger(Number(rows[0].nowMs)) ||
-      sessionCleanupDue(state, Number(rows[0].nowMs))
+      (!receiptOnly && sessionCleanupDue(state, Number(rows[0].nowMs)))
     )
       throw new ConflictException("Customer session is closed or expired.");
   }

@@ -174,7 +174,8 @@
         )
           throw Error("Invalid draft");
         loaded = {
-          localOnly: !!value.localAddress,
+          localOnly:
+            !!value.localAddress && value.fixtureAdmissionAvailable !== true,
           requestId: value.requestId,
           organizationApprovedAt: value.organizationApprovedAt,
           expires,
@@ -201,7 +202,9 @@
             value.localAddress.coverage +
             "\nAddress revision: " +
             value.localAddress.revision +
-            "\nNot a current coverage check. Unit is customer-stated. Job admission is unavailable for this test snapshot.";
+            (value.fixtureAdmissionAvailable === true
+              ? "\nHistorical snapshot only. Separate server-resolved fixture proof is required at approval; real verification remains disabled."
+              : "\nNot a current coverage check. Unit is customer-stated. Job admission is unavailable for this test snapshot.");
         }
         el("version").textContent =
           "Organization approval: " +
