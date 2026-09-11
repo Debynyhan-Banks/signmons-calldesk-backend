@@ -63,6 +63,9 @@ export type CustomerBrowserRequest = {
 };
 type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
 type Ports = {
+  correction?: {
+    handle(input: Record<string, unknown>): Promise<Record<string, unknown>>;
+  };
   address?: {
     handle(input: Record<string, unknown>): Promise<Record<string, unknown>>;
   };
@@ -138,7 +141,7 @@ export class CustomerConsentBrowserTransport {
       )
         fail(403);
       const match =
-        /^\/customer-session\/(start|capture|prompt|respond|continue|draft|submit|phone|verify|address)$/.exec(
+        /^\/customer-session\/(start|capture|prompt|respond|continue|draft|submit|phone|verify|address|correction)$/.exec(
           request.url,
         );
       if (!match || request.method !== "POST") fail(403);
@@ -195,6 +198,7 @@ export class CustomerConsentBrowserTransport {
       }
       const input = object(parsed);
       const keys = {
+        correction: "action,candidateId,confirmed,input,revision,sessionToken",
         address:
           "action,candidateId,confirmed,expectedRevision,operationId,query,sessionToken,unit",
         verify:
@@ -291,6 +295,11 @@ export class CustomerConsentBrowserTransport {
       };
     }
     const sessionToken = input.sessionToken as string;
+    if (operation === "correction") {
+      if (this.binding?.fixtureLoopback !== true || !ports.correction)
+        fail(503);
+      return ports.correction.handle(input);
+    }
     if (operation === "address") {
       if (this.binding?.fixtureLoopback !== true || !ports.address) fail(503);
       return ports.address.handle(input);

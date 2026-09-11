@@ -1,4 +1,8 @@
 import assert from "node:assert/strict";
+import {
+  correctionFixture,
+  verifyCorrectionJourney,
+} from "./verify-correction-journey.mjs";
 import { createServer } from "node:http";
 import { readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -187,6 +191,7 @@ export async function verifyBrowserVerification({
       flowUpperBoundUsdMicros: 25_000_000,
     }),
   );
+  const correction = correctionFixture(prisma, credentials);
   const files = {
     "/": (
       await readFile(
@@ -195,7 +200,7 @@ export async function verifyBrowserVerification({
       )
     ).replace(
       '<html lang="en">',
-      '<html lang="en" data-verification-fixture="true" data-address-fixture="true">',
+      '<html lang="en" data-verification-fixture="true" data-address-fixture="true" data-correction-fixture="true">',
     ),
     "/journey.js": await readFile(
       new URL("./fixtures/customer-intake-journey.js", import.meta.url),
@@ -288,6 +293,7 @@ export async function verifyBrowserVerification({
           continue: (input) => intake.continueOrganization(input),
         },
         verification: new LocalVerificationBrowserService(durable),
+        correction,
         draft: intake,
         review: intake,
       },
@@ -456,8 +462,13 @@ export async function verifyBrowserVerification({
         localBudget = new LocalCustomerBrowserBudget();
       },
     });
+    localBudget = new LocalCustomerBrowserBudget();
+    await begin();
+    await verifyCorrectionJourney({ page, evidence, prisma, credentials });
+    assert.deepEqual(errors, []);
     return summary;
   } finally {
+    correction.clear();
     await context?.close();
     await new Promise((resolve) => server.close(resolve));
   }

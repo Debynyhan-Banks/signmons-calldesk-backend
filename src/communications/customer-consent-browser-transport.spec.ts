@@ -87,6 +87,64 @@ describe("inactive same-origin browser transport", () => {
       );
     });
   const call = (request = req()) => asActor(() => model().handle(request));
+  it("keeps correction unavailable outside the explicit fixture", async () => {
+    const handle = jest.fn();
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, correction: { handle } },
+    );
+    const input = {
+      sessionToken,
+      action: "propose",
+      input: {},
+      candidateId: "",
+      confirmed: false,
+      revision: 0,
+    };
+    expect(
+      (await asActor(() => transport.handle(req("correction", input)))).status,
+    ).toBe(503);
+    expect(handle).not.toHaveBeenCalled();
+  });
+  it("protects the optional correction port with exact input, session and origin checks", async () => {
+    const handle = jest.fn().mockResolvedValue({ deliveryAuthorized: false });
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId, fixtureLoopback: true },
+      { ...ports, correction: { handle } },
+    );
+    const input = {
+      sessionToken,
+      action: "propose",
+      input: {},
+      candidateId: "",
+      confirmed: false,
+      revision: 0,
+    };
+    expect(
+      (await asActor(() => transport.handle(req("correction", input)))).status,
+    ).toBe(200);
+    expect(handle).toHaveBeenCalledTimes(1);
+    expect(
+      (
+        await asActor(() =>
+          transport.handle(req("correction", { ...input, tenantId })),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await asActor(() =>
+          transport.handle(
+            req("correction", { ...input, sessionToken: "bad" }),
+          ),
+        )
+      ).status,
+    ).not.toBe(200);
+    const cross = req("correction", input);
+    cross.rawHeaders[3] = "https://other.invalid";
+    expect((await asActor(() => transport.handle(cross))).status).toBe(403);
+    expect(handle).toHaveBeenCalledTimes(1);
+  });
   it("keeps verification unavailable outside the explicit loopback fixture", async () => {
     const handle = jest.fn();
     const transport = new CustomerConsentBrowserTransport(

@@ -1,5 +1,13 @@
 # Signmons Backend Execution Board
 
+## Protected correction browser checkpoint (2026-09-11)
+
+Approved continuation connects exact correction display and confirmation to the existing protected local customer-review page. Optional fixture-only transport reuses session/origin/request-budget protections. Server-side fixture locks the current conversation and binds candidate to trusted tenant/session/expiry, conversation version and server-generated revision. Explicit acknowledgment is required; edits clear UI, tampering/replacement/closed sessions refuse, and conditional best-effort discard plus expiry bounds pending state. Confirmation remains customer-stated only: addressVerified/admissionAuthorized false, county UNKNOWN, sending disabled. No automatic draft rewrite or proof-to-job connection.
+
+Evidence: backend evidence/APP-013/address-correction/README.md and reproducible correction browser verifier. Full backend 94 suites/1,818 tests, three existing skips; build/lint/architecture pass. Full disposable PostgreSQL and Playwright organization/customer/operator regression passes; actual 390px mobile and 1280px desktop inspected, no overflow/storage/page errors; fixture database cleaned up. Existing pg deprecation remains. This is a single-customer mock composition, not production session/provider registration; no network provider, real data, billing, migration, merge or deployment.
+
+Stop review-ready. Next proposed: size verification operations (shared cost reservation, bounded attempts, uncertain outcomes and retention cleanup) before provider connection; county qualification and current-proof-to-job remain gates. S1 and APP-013 are not complete. APP-013 sole Now; Next empty; FE-014 paused. APP-013 scope index 50%, accepted 0/12; onboarding local 50%, accepted 0/6; pilot accepted 0/12. No overall build percentage or ETA.
+
 ## Exact local correction confirmation checkpoint
 
 Approved S1 section now composes Google fixture validation with a single-session in-memory correction review. Candidate ID binds exact presented fields to trusted tenant/session/revision/expiry context before and after validation. Explicit true confirmation returns the stored customer-confirmed copy; changed scope, revision, expiry, candidate or payload refuses. Copies prevent mutation; replacement/clear invalidates in-flight work; timer purges pending state, and restart refuses lost candidates. Default Google validate still strips candidate fields; preview exposes only permitted correction-display fields, not raw provider content.

@@ -191,6 +191,25 @@
       <button id="addressClear">Clear saved test address</button>
       <p id="addressStatus" role="status">Address and coverage not checked.</p>
     </div>
+    <div id="correctionReview" hidden>
+      <h3>Review address correction — local test</h3>
+      <p>
+        Fictional demonstration only. Confirming does not verify the address,
+        county, occupancy or eligibility and cannot create a job.
+      </p>
+      <label for="correctionCity">City</label
+      ><input id="correctionCity" maxlength="100" autocomplete="off" />
+      <label for="correctionPostal">ZIP code</label
+      ><input id="correctionPostal" maxlength="10" autocomplete="off" />
+      <button id="correctionPropose">Review suggested correction</button>
+      <p id="correctionCandidate"></p>
+      <label
+        ><input id="correctionChecked" type="checkbox" /> I confirm this exact
+        displayed address.</label
+      >
+      <button id="correctionConfirm">Confirm displayed correction</button>
+      <p id="correctionStatus" role="status">No correction reviewed.</p>
+    </div>
     <label for="description">Issue summary</label
     ><textarea id="description" maxlength="400"></textarea>
     <label for="issueCategory">Service category</label

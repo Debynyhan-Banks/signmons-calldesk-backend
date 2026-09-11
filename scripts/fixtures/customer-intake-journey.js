@@ -11,6 +11,8 @@
       "serviceIntent",
     ];
   let token,
+    correction,
+    correctionTimer,
     addressRevision = 0,
     verifyNotice,
     verifyStart,
@@ -34,6 +36,8 @@
     el("status").textContent = value;
   };
   function paint() {
+    el("correctionReview").hidden =
+      document.documentElement.dataset.correctionFixture !== "true";
     el("addressVerification").hidden =
       document.documentElement.dataset.addressFixture !== "true";
     const durableMode =
@@ -70,6 +74,8 @@
       !!pending ||
       !el("addressCandidate").value ||
       !el("addressConfirmed").checked;
+    el("correctionConfirm").disabled =
+      busy || !!pending || !correction || !el("correctionChecked").checked;
     el("verifyConsent").hidden = !verifyNotice;
     el("verifyNotice").disabled =
       busy ||
@@ -92,6 +98,7 @@
         !!verifyStart && verifyState !== "CORRECTION_REQUIRED";
   }
   function clear(message) {
+    clearCorrection();
     epoch++;
     controller?.abort();
     clearTimeout(expiryTimer);
@@ -178,6 +185,77 @@
       if (request.operation !== "start" && !alive()) return;
       if (value.deliveryAuthorized !== false) throw Error("Invalid receipt");
       switch (request.operation) {
+        case "correction": {
+          if (
+            value.fixtureOnly !== true ||
+            value.addressVerified !== false ||
+            value.admissionAuthorized !== false ||
+            value.county !== "UNKNOWN"
+          )
+            throw Error("Invalid correction receipt");
+          if (
+            JSON.stringify(request.body.input) !==
+            JSON.stringify(correctionInput())
+          ) {
+            clearCorrection();
+            break;
+          }
+          if (value.status === "CONFIRMATION_REQUIRED") {
+            const c = value.candidate;
+            if (
+              !c ||
+              c.country !== "US" ||
+              c.state !== "OH" ||
+              !Array.isArray(c.addressLines) ||
+              c.addressLines.length < 1 ||
+              c.addressLines.length > 2 ||
+              !c.addressLines.every(
+                (s) => typeof s === "string" && s.length <= 200,
+              ) ||
+              typeof c.city !== "string" ||
+              typeof c.postalCode !== "string" ||
+              typeof value.candidateId !== "string" ||
+              !Number.isSafeInteger(value.revision) ||
+              !Number.isFinite(value.expiresAt) ||
+              Date.now() >= value.expiresAt
+            )
+              throw Error("Invalid candidate");
+            correction = value;
+            clearTimeout(correctionTimer);
+            correctionTimer = setTimeout(
+              () => {
+                clearCorrection();
+                paint();
+              },
+              Math.max(0, value.expiresAt - Date.now()),
+            );
+            el("correctionCandidate").textContent = [
+              ...c.addressLines,
+              c.city,
+              c.state,
+              c.postalCode,
+              c.country,
+            ].join(", ");
+            el("correctionChecked").checked = false;
+            el("correctionStatus").textContent =
+              "Review all displayed fields, then explicitly confirm. Not verified.";
+          } else if (
+            value.status === "CUSTOMER_CONFIRMED" &&
+            correction &&
+            value.candidateId === correction.candidateId &&
+            value.revision === correction.revision &&
+            JSON.stringify(value.customerAddress) ===
+              JSON.stringify(correction.candidate)
+          ) {
+            el("correctionStatus").textContent =
+              "Customer confirmed this exact correction. Address not verified; county UNKNOWN. No job or sending authority.";
+          } else {
+            clearCorrection();
+            el("correctionStatus").textContent =
+              "Correction refused or stale. Review again; your draft is retained.";
+          }
+          break;
+        }
         case "address": {
           if (
             value.fixtureOnly !== true ||
@@ -563,6 +641,85 @@
     pending = Object.freeze({ operation, body });
     void run();
   }
+  function correctionInput() {
+    return {
+      street: el("address").value.trim(),
+      city: el("correctionCity").value.trim(),
+      postalCode: el("correctionPostal").value.trim(),
+      unit: el("addressUnit").value.trim(),
+    };
+  }
+  function clearCorrection() {
+    clearTimeout(correctionTimer);
+    // Best-effort conditional discard; expiry still bounds retention if disconnected.
+    // Candidate/revision prevent a delayed discard from clearing a replacement.
+    if (correction && token && Date.now() < expires)
+      void fetch("/customer-session/correction", {
+        method: "POST",
+        credentials: "omit",
+        cache: "no-store",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          "X-CallDesk-Request": "customer-intake-v1",
+        },
+        body: JSON.stringify({
+          action: "clear",
+          sessionToken: token,
+          input: null,
+          candidateId: correction.candidateId,
+          revision: correction.revision,
+          confirmed: false,
+        }),
+      }).catch(() => {});
+    correction = undefined;
+    el("correctionCandidate").textContent = "";
+    el("correctionChecked").checked = false;
+    el("correctionStatus").textContent =
+      "No current correction reviewed. Review again after any edit.";
+  }
+  for (const id of [
+    "address",
+    "addressUnit",
+    "correctionCity",
+    "correctionPostal",
+  ])
+    el(id).addEventListener("input", () => {
+      clearCorrection();
+      paint();
+    });
+  el("correctionChecked").onchange = paint;
+  el("correctionPropose").onclick = () => {
+    if (document.documentElement.dataset.correctionFixture !== "true") return;
+    clearCorrection();
+    submit("correction", {
+      action: "propose",
+      sessionToken: token,
+      input: correctionInput(),
+      candidateId: "",
+      revision: 0,
+      confirmed: false,
+    });
+  };
+  el("correctionConfirm").onclick = () => {
+    if (
+      !correction ||
+      !el("correctionChecked").checked ||
+      Date.now() >= correction.expiresAt
+    ) {
+      clearCorrection();
+      paint();
+      return;
+    }
+    submit("correction", {
+      action: "confirm",
+      sessionToken: token,
+      input: correctionInput(),
+      candidateId: correction.candidateId,
+      revision: correction.revision,
+      confirmed: true,
+    });
+  };
   el("start").onclick = () => {
     if (!busy) {
       clear("");
