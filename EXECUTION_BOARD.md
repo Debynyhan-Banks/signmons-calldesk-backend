@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Verification operations sizing checkpoint
+
+Approved planning continuation from runtime 4ad7def: governance VERIFICATION_OPERATIONS_PLAN.md sizes three dependent sections, durable address operation/shared liability reservation (VO-1), bounded execution/uncertain recovery (VO-2), freshness/revocation/cleanup (VO-3). Next decision is approve VO-1 only, with disabled integration and minimal ledger migration exercised only in disposable local PostgreSQL. No new isolated UI fixture, live price/budget approval, provider activation or job authority. No runtime/schema/UI change this checkpoint. Documentation diff check applies; previous build/test/browser evidence is not a fresh run. APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% scope index/0 of 12 accepted; onboarding 50% local/0 of 6 accepted; pilot 0 of 12 accepted. No overall percentage/ETA or release action.
+
 ## Protected correction browser checkpoint (2026-09-11)
 
 Approved continuation connects exact correction display and confirmation to the existing protected local customer-review page. Optional fixture-only transport reuses session/origin/request-budget protections. Server-side fixture locks the current conversation and binds candidate to trusted tenant/session/expiry, conversation version and server-generated revision. Explicit acknowledgment is required; edits clear UI, tampering/replacement/closed sessions refuse, and conditional best-effort discard plus expiry bounds pending state. Confirmation remains customer-stated only: addressVerified/admissionAuthorized false, county UNKNOWN, sending disabled. No automatic draft rewrite or proof-to-job connection.
