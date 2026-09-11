@@ -1,5 +1,9 @@
 # APP-013 address source and retention qualification — 2026-09-11
 
+## Subsequent record-type review supersedes conditional acceptance
+
+Governance CEGIS_RECORD_TYPE_REVIEW.md records a 52-group public aggregate totaling 115,395 current US/OH/Cuyahoga records, all VALIDATIONSTATUS 2 (validation required). Candidate Building/Unit with Site Visit/Photogrammetry totals 9,534, not accepted records or a coverage-rate sample. Published category labels do not establish accuracy; legacy/null categories also exist. No positive allowlist is qualified. County acceptance remains UNKNOWN pending source-owner clarification or independent qualification. An inquiry is drafted but not sent; separate approval is required. No code/UI changed or application tests rerun in this documentation-only review. Previous evidence below is historical.
+
 ## Outcome
 
 This documentation-only section qualifies the official Cuyahoga County CEGIS `Addressing_Sites_Streets` service as a conditional, fail-closed physical-county source for a future implementation and fixes the minimum Google Address Validation retention matrix. It does not connect either source to runtime, call Google, configure an account, modify tenant service areas or remove the existing `ADDRESS_NOT_VERIFIED` blocker.

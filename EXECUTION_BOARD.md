@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## County record-type review
+
+Governance CEGIS_RECORD_TYPE_REVIEW.md supersedes conditional source acceptance: no positive allowlist is qualified; county remains UNKNOWN. All current queried records report validation required, and physical/capture labels lack documented accuracy guarantees. Source-owner inquiry drafted, not sent; approval required for contact. No runtime change beyond abde6a9. APP-013 sole Now; Next empty; FE-014 paused; progress unchanged at 50% recorded scope/0 of 12 accepted. No live calls, billing, merge or deployment.
+
 ## Google response-policy hardening checkpoint
 
 The approved disabled-adapter continuation now checks bounded, unique, confirmed components, required street/city/state/postal/country fields, complete postal output, malformed flags and contradictory missing/unconfirmed/unresolved lists. Supplied units require a confirmed subpremise and SUB_PREMISE validation. Component ordering is irrelevant; corrections still require review. Every result remains fixture-only with address/admission authority false and county UNKNOWN. No runtime registration, network, cache, deletion job, schema, UI or live action added.
