@@ -1,5 +1,13 @@
 # Signmons Backend Execution Board
 
+## Section 2B — participant confirmed; console preflight interrupted
+
+Owner confirmed participation, U.S. SMS-capable mobile phone and authorized Cuyahoga County address. Do not repeat those questions; exact personal details remain uncollected. CONTROLLED_VERIFICATION_2B_CHECKLIST.md now contains a provisional lean test packet and official reference pricing, not approved spending or account-specific rates.
+
+Google Cloud opened with Signmons selected; API/billing/quotas/permissions and nonproduction binding remain unverified. Twilio account readiness remains unverified. Chrome blocked automation because another extension UI was open. Smallest next action: user dismisses that panel, then resume read-only inspection. County searches again found no matching messages, not proof no response exists. No live call, settings/secrets/IAM/billing change, email, deployment or production data action.
+
+Current section 4/8 (2B) remains blocked at entry; accepted 3/8. Backend runtime unchanged f8e35e8. APP-013 sole Now; Next empty; FE-014 paused. Local scope index 50%, accepted 0/12; onboarding local 50%, accepted 0/6; pilot accepted 0/12. No overall effort percentage or ETA. This supersedes older participant questions, not the live gates.
+
 ## Section 2B — entry review, blocked before live actions
 
 Owner accepted 2A with “i reviewed continue”. Accepted 3/8; current section 4/8 (2B) is entry-review only, not implemented or demonstrated. Backend runtime remains f8e35e8. This documentation-only checkpoint does not add a ninth section or authorize provider calls.
