@@ -29,7 +29,12 @@ export class GoogleAddressAdapter {
 
   async validate(input: unknown) {
     const result = (
-      status: "DISABLED" | "INVALID_INPUT" | "UNKNOWN" | "REVIEW",
+      status:
+        | "DISABLED"
+        | "INVALID_INPUT"
+        | "UNKNOWN"
+        | "REVIEW"
+        | "CORRECTION_REQUIRED",
     ) => ({
       status,
       fixtureOnly: true as const,
@@ -64,6 +69,14 @@ export class GoogleAddressAdapter {
         addressLines: [data.street, ...(data.unit ? [data.unit] : [])],
       },
       enableUspsCass: true,
+    };
+    // Snapshot intended values before yielding to the fixture; never compare
+    // against caller-owned objects that could change while awaiting a response.
+    const intended = {
+      street: data.street,
+      city: data.city,
+      postalCode: data.postalCode,
+      unit: data.unit,
     };
     try {
       const response = record(await this.fixture(request));
@@ -125,8 +138,9 @@ export class GoogleAddressAdapter {
         !["PREMISE", "SUB_PREMISE"].includes(
           String(verdict.validationGranularity),
         ) ||
-        (data.unit !== "" && verdict.validationGranularity !== "SUB_PREMISE") ||
-        (data.unit !== "" && !types.has("subpremise")) ||
+        (intended.unit !== "" &&
+          verdict.validationGranularity !== "SUB_PREMISE") ||
+        (intended.unit !== "" && !types.has("subpremise")) ||
         (types.has("subpremise") &&
           verdict.validationGranularity !== "SUB_PREMISE") ||
         postal.regionCode !== "US" ||
@@ -141,6 +155,45 @@ export class GoogleAddressAdapter {
         usps.dpvConfirmation !== "Y"
       )
         return result("UNKNOWN");
+      const normalize = (value: string) =>
+        value.toUpperCase().trim().replace(/\s+/g, " ");
+      const names = new Map<string, string>(
+        (components as Record<string, unknown>[]).map((component) => [
+          component.componentType as string,
+          record(component.componentName).text as string,
+        ]),
+      );
+      const correction =
+        normalize(intended.street) !==
+          normalize(names.get("street_number") + " " + names.get("route")) ||
+        normalize(intended.city) !== normalize(postal.locality) ||
+        normalize(intended.city) !== normalize(names.get("locality") ?? "") ||
+        intended.postalCode !== postal.postalCode ||
+        intended.postalCode !== names.get("postal_code") ||
+        !["OH", "OHIO"].includes(
+          normalize(names.get("administrative_area_level_1") ?? ""),
+        ) ||
+        !["US", "USA", "UNITED STATES"].includes(
+          normalize(names.get("country") ?? ""),
+        ) ||
+        normalize(
+          [intended.street, intended.unit].filter(Boolean).join(" "),
+        ) !== normalize(postal.addressLines.join(" ")) ||
+        (intended.unit === ""
+          ? types.has("subpremise")
+          : normalize(intended.unit).replace(/^UNIT /, "") !==
+            normalize(names.get("subpremise") ?? "")) ||
+        [
+          "hasInferredComponents",
+          "hasReplacedComponents",
+          "hasSpellCorrectedComponents",
+        ].some((key) => verdict[key] === true) ||
+        (components as Record<string, unknown>[]).some((component) =>
+          ["inferred", "replaced", "spellCorrected"].some(
+            (key) => component[key] === true,
+          ),
+        );
+      if (correction) return result("CORRECTION_REQUIRED");
       return result("REVIEW");
     } catch {
       // Do not leak provider errors or retry an uncertain operation.

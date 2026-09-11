@@ -27,7 +27,18 @@ describe("disabled Google address adapter", () => {
           "country",
         ].map((componentType) => ({
           componentType,
-          componentName: { text: "Fixture" },
+          componentName: {
+            text: (
+              {
+                street_number: "123",
+                route: "Fictional Street",
+                locality: "Example",
+                administrative_area_level_1: "Ohio",
+                postal_code: "44101",
+                country: "United States",
+              } as Record<string, string>
+            )[componentType],
+          },
           confirmationLevel: "CONFIRMED",
         })),
       },
@@ -209,7 +220,6 @@ describe("disabled Google address adapter", () => {
   it("accepts unordered confirmed components only for nonauthoritative review", async () => {
     const value = response();
     value.result.address.addressComponents.reverse();
-    Object.assign(value.result.verdict, { hasReplacedComponents: true });
     const result = await new GoogleAddressAdapter(() =>
       Promise.resolve(value),
     ).validate(input);
@@ -220,6 +230,7 @@ describe("disabled Google address adapter", () => {
   it("requires confirmed subpremise component and granular validation together", async () => {
     const value = response();
     value.result.verdict.validationGranularity = "SUB_PREMISE";
+    value.result.address.postalAddress.addressLines.push("Unit 2");
     value.result.address.addressComponents.push({
       componentType: "subpremise",
       componentName: { text: "2" },
@@ -231,6 +242,82 @@ describe("disabled Google address adapter", () => {
           ...input,
           unit: "Unit 2",
         })
+      ).status,
+    ).toBe("REVIEW");
+  });
+  it.each([
+    ["street_number", "124"],
+    ["route", "Different Street"],
+    ["subpremise", "3"],
+  ])("requires correction for changed %s", async (type, name) => {
+    const value = response();
+    const found = value.result.address.addressComponents.find(
+      (c) => c.componentType === type,
+    );
+    if (found) found.componentName.text = name;
+    else {
+      value.result.verdict.validationGranularity = "SUB_PREMISE";
+      value.result.address.addressComponents.push({
+        componentType: type,
+        componentName: { text: name },
+        confirmationLevel: "CONFIRMED",
+      });
+    }
+    const result = await new GoogleAddressAdapter(() =>
+      Promise.resolve(value),
+    ).validate(input);
+    expect(result.status).toBe("CORRECTION_REQUIRED");
+    expect(result.addressVerified).toBe(false);
+    expect(result.admissionAuthorized).toBe(false);
+  });
+  it.each([
+    "hasInferredComponents",
+    "hasReplacedComponents",
+    "hasSpellCorrectedComponents",
+  ])("requires explicit correction review for %s", async (key) => {
+    const value = response();
+    Object.assign(value.result.verdict, { [key]: true });
+    expect(
+      (
+        await new GoogleAddressAdapter(() => Promise.resolve(value)).validate(
+          input,
+        )
+      ).status,
+    ).toBe("CORRECTION_REQUIRED");
+  });
+  it.each([
+    ["locality", "Other City"],
+    ["postalCode", "44102"],
+  ])("does not silently accept changed %s", async (key, changed) => {
+    const value = response();
+    Object.assign(value.result.address.postalAddress, { [key]: changed });
+    expect(
+      (
+        await new GoogleAddressAdapter(() => Promise.resolve(value)).validate(
+          input,
+        )
+      ).status,
+    ).toBe("CORRECTION_REQUIRED");
+  });
+  it("does not equate street abbreviations or changed postal lines automatically", async () => {
+    const value = response();
+    value.result.address.postalAddress.addressLines = ["123 Fictional St"];
+    expect(
+      (
+        await new GoogleAddressAdapter(() => Promise.resolve(value)).validate(
+          input,
+        )
+      ).status,
+    ).toBe("CORRECTION_REQUIRED");
+  });
+  it("permits only case and whitespace normalization without correction", async () => {
+    const value = response();
+    value.result.address.postalAddress.addressLines = ["123  FICTIONAL STREET"];
+    expect(
+      (
+        await new GoogleAddressAdapter(() => Promise.resolve(value)).validate(
+          input,
+        )
       ).status,
     ).toBe("REVIEW");
   });

@@ -1,5 +1,12 @@
 # Signmons Backend Execution Board
 
+## Google intended-address matching checkpoint
+
+Approved mocked continuation compares returned number/route, locality, postal code, unit and postal lines with a pre-await snapshot of customer intent. Only case/whitespace normalization is automatic; changed/added values, component correction flags and abbreviations return CORRECTION_REQUIRED. Existing malformed/incomplete evidence remains UNKNOWN. REVIEW is not confirmation. No confirmation-consumption endpoint is added; every result stays fixture-only, address/admission false, county UNKNOWN. No network, registration, persistence or UI activation.
+
+49 focused tests (10 new), full backend 93 suites/1,802 tests with three existing skips, build/lint/architecture/diff pass. No UI change; browser QA not applicable. Evidence: backend evidence/APP-013/google-adapter/README.md. Owner-authorized county inquiry was sent September 11 via Outlook; no reply check is claimed here. Next proposed bounded section: explicit revision-bound correction confirmation with mocks, before operational provider controls/live connection. County, budget and admission gates remain. APP-013 sole Now; Next empty; FE-014 paused. APP-013 50% scope/0 of 12 accepted; onboarding 50% local/0 of 6 accepted; pilot 0 of 12 accepted. No overall estimate, merge, deployment, billing or real customer data.
+
+
 ## County record-type review
 
 Governance CEGIS_RECORD_TYPE_REVIEW.md supersedes conditional source acceptance: no positive allowlist is qualified; county remains UNKNOWN. All current queried records report validation required, and physical/capture labels lack documented accuracy guarantees. Source-owner inquiry drafted, not sent; approval required for contact. No runtime change beyond abde6a9. APP-013 sole Now; Next empty; FE-014 paused; progress unchanged at 50% recorded scope/0 of 12 accepted. No live calls, billing, merge or deployment.

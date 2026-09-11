@@ -1,5 +1,13 @@
 # Disabled Google address adapter
 
+## Intended-address matching (current)
+
+Incremental review against abde6a9: added CORRECTION_REQUIRED for number/route, city, ZIP, unit or postal-line changes and inferred/replaced/spell-corrected provider flags. Case and whitespace are the only general automatic normalization; UNIT prefix handling is narrowly limited to unit-component comparison. Snapshot original intent before awaiting the injected fixture. No source text leaves the adapter. Existing malformed/incomplete output remains UNKNOWN; even unchanged REVIEW is not customer confirmation.
+
+49 focused tests (10 added), full backend 93 suites/1,802 tests with three existing skips passed. Build/lint/architecture/diff passed after removing unnecessary type assertions. No rendered code changed; browser QA not applicable. No dependency/schema/network/registration/persistence changes. Previous audits below are historical, not rerun here.
+
+Reproduce using commands below. Review changed/added number/street/unit, postal city/ZIP, abbreviations and correction-flag tests; verify every result still has false address/admission authority. Explicit revision-bound correction confirmation is not implemented; no result can grant admission. Full production matching and provider operational controls remain gated.
+
 ## Response-policy hardening (current)
 
 39 focused tests (20 additional) and full backend 93 passing suites/1,792 tests, three existing skips. Build, lint, architecture and diff checks pass. Required typed postal fields and bounded unique confirmed components now complement the complete verdict and DPV gate. Missing/unconfirmed/unresolved component lists must be absent or empty arrays; malformed booleans refuse. Supplied units require confirmed subpremise plus matching granularity. Ordering does not matter; corrections can only yield nonauthoritative REVIEW. No source response is returned or persisted. No browser surface or runtime registration changed.
