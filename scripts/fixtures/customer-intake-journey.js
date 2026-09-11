@@ -19,6 +19,7 @@
     phoneLocked = false,
     phoneExpiryTimer,
     reviewedDraft,
+    reviewedAddressSelection,
     expires = 0,
     revision = 0,
     promptToken,
@@ -60,7 +61,6 @@
     el("grant").disabled = busy || !!pending || !el("confirmed").checked;
     el("draft").disabled = busy || !!pending || !el("reviewed").checked;
     el("submitReview").hidden =
-      document.documentElement.dataset.addressFixture === "true" ||
       document.documentElement.dataset.reviewSubmit !== "true" ||
       step !== "preview";
     el("retry").hidden = !pending || busy;
@@ -112,6 +112,7 @@
     el("verifyPrivacy").removeAttribute("href");
     el("phoneStatus").textContent = "Not verified.";
     token = promptToken = email = pending = reviewedDraft = undefined;
+    reviewedAddressSelection = undefined;
     expires = revision = 0;
     step = "start";
     busy = false;
@@ -443,10 +444,13 @@
                 value.localAddress.coverage +
                 "\nAddress revision: " +
                 value.localAddress.revision +
-                "\nSnapshot only. Unit is customer-stated. No real address verification or submission authority."
+                "\nSnapshot only. Unit is customer-stated. No real verification or job-admission authority."
               : "");
           step = "preview";
           reviewedDraft = Object.freeze(value.draft);
+          reviewedAddressSelection = request.body.addressSelection
+            ? Object.freeze({ ...request.body.addressSelection })
+            : undefined;
           break;
         case "submit":
           if (
@@ -522,6 +526,20 @@
         pending = undefined;
         status(
           "Check the draft fields. Find and confirm the test address again if it or coverage changed. No draft was saved.",
+        );
+      } else if (
+        request.operation === "submit" &&
+        request.body.addressSelection &&
+        [400, 409].includes(error?.status)
+      ) {
+        pending = reviewedDraft = reviewedAddressSelection = undefined;
+        el("summary").textContent = "";
+        el("reviewed").checked = false;
+        step = "details";
+        status(
+          "Review outcome unavailable or changed. A prior submission may already be saved under reference " +
+            request.body.requestId +
+            ". Your fields are retained. No automatic resubmission or job creation.",
         );
       } else if ([400, 401, 403, 409, 413, 415].includes(error?.status))
         clear(
@@ -721,6 +739,7 @@
   };
   el("editDraft").onclick = () => {
     reviewedDraft = undefined;
+    reviewedAddressSelection = undefined;
     el("summary").textContent = "";
     el("reviewed").checked = false;
     step = "details";
@@ -733,7 +752,6 @@
     if (
       step !== "preview" ||
       !reviewedDraft ||
-      document.documentElement.dataset.addressFixture === "true" ||
       document.documentElement.dataset.reviewSubmit !== "true"
     )
       return;
@@ -743,6 +761,9 @@
       expectedRevision: revision,
       draft: reviewedDraft,
       confirmed: true,
+      ...(reviewedAddressSelection
+        ? { addressSelection: reviewedAddressSelection }
+        : {}),
     });
   };
   el("forget").onclick = () =>

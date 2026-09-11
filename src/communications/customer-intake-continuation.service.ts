@@ -17,6 +17,8 @@ import {
   CustomerSessionScope,
 } from "./customer-consent-session-lock";
 import { validateCustomerIntakeDraft } from "./customer-intake-draft";
+import { LocalAddressService } from "./local-address.service";
+import { localAddressReviewSnapshot } from "./local-address-review-snapshot";
 import {
   ORGANIZATION_PROFILE,
   object,
@@ -69,6 +71,10 @@ export class CustomerIntakeContinuationService {
       AppointmentEmailConsentEvidenceStore,
       "bindJob"
     >,
+    private readonly localAddress?: Pick<
+      LocalAddressService,
+      "reviewInTransaction"
+    >,
   ) {}
 
   /** Customer-only durable submission. Does not store the bearer or authorize a job. */
@@ -78,13 +84,16 @@ export class CustomerIntakeContinuationService {
     expectedRevision: number;
     draft: unknown;
     confirmed: boolean;
+    addressSelection?: unknown;
   }) {
     if (
       !input ||
       typeof input !== "object" ||
       Array.isArray(input) ||
       Object.keys(input).sort().join(",") !==
-        "confirmed,draft,expectedRevision,requestId,sessionToken" ||
+        (input.addressSelection === undefined
+          ? "confirmed,draft,expectedRevision,requestId,sessionToken"
+          : "addressSelection,confirmed,draft,expectedRevision,requestId,sessionToken") ||
       input.confirmed !== true ||
       typeof input.sessionToken !== "string" ||
       input.sessionToken.length > 4096 ||
@@ -97,10 +106,61 @@ export class CustomerIntakeContinuationService {
       throw new BadRequestException("Invalid review submission.");
     const draft = validateCustomerIntakeDraft(input.draft),
       session = this.credentials.verifySession(input.sessionToken);
+    const selection =
+      input.addressSelection === undefined
+        ? undefined
+        : structuredClone(input.addressSelection);
+    const snapshot = async (tx: Prisma.TransactionClient) => {
+      if (selection === undefined) return undefined;
+      if (!this.localAddress) throw changed();
+      const s = object(selection);
+      if (
+        !s ||
+        Object.keys(s).sort().join(",") !== "candidateId,query,revision,unit"
+      )
+        throw changed();
+      const r = await this.localAddress.reviewInTransaction(tx, {
+        action: "review",
+        sessionToken: input.sessionToken,
+        operationId: randomUUID(),
+        expectedRevision: s.revision,
+        query: s.query,
+        unit: s.unit,
+        candidateId: s.candidateId,
+        confirmed: true,
+      });
+      if (
+        r.stale ||
+        r.addressState !== "FIXTURE_VALIDATED" ||
+        r.revision !== s.revision ||
+        r.selectedId !== s.candidateId ||
+        r.query !== s.query ||
+        r.unit !== s.unit
+      )
+        throw changed();
+      const candidate = r.candidates.find((c) => c.id === s.candidateId);
+      const result = localAddressReviewSnapshot({
+        fixtureOnly: r.fixtureOnly,
+        revision: r.revision,
+        candidateId: r.selectedId,
+        query: r.query,
+        unit: r.unit,
+        coverage: r.coverage,
+        address: candidate
+          ? candidate.address + (r.unit ? ", " + r.unit : "")
+          : "",
+        addressAuthorized: r.addressAuthorized,
+        bookingAuthorized: r.bookingAuthorized,
+        deliveryAuthorized: r.deliveryAuthorized,
+      });
+      if (result.address !== draft.address) throw changed();
+      return result;
+    };
     try {
       return await this.transaction(async (tx) => {
         const history = await this.history(tx, session);
         if (history.turns.length !== input.expectedRevision) throw changed();
+        const localAddress = await snapshot(tx);
         this.credentials.verifySession(input.sessionToken);
         const existing = await tx.communicationEvent.findMany({
           where: {
@@ -128,7 +188,8 @@ export class CustomerIntakeContinuationService {
             record.expiresAt !== session.expiresAt ||
             record.transcriptRevision !== input.expectedRevision ||
             record.transcriptDigest !== history.digest ||
-            JSON.stringify(record.draft) !== JSON.stringify(draft)
+            JSON.stringify(record.draft) !== JSON.stringify(draft) ||
+            JSON.stringify(record.localAddress) !== JSON.stringify(localAddress)
           )
             throw changed();
           return this.reviewSubmissionReceipt(
@@ -164,6 +225,13 @@ export class CustomerIntakeContinuationService {
                   transcriptRevision: history.turns.length,
                   transcriptDigest: history.digest,
                   encryptedDraft: this.cipher.encrypt(JSON.stringify(draft)),
+                  ...(localAddress
+                    ? {
+                        encryptedLocalAddress: this.cipher.encrypt(
+                          JSON.stringify(localAddress),
+                        ),
+                      }
+                    : {}),
                 },
               },
             },
@@ -185,6 +253,8 @@ export class CustomerIntakeContinuationService {
           },
         });
         this.credentials.verifySession(input.sessionToken);
+        if (JSON.stringify(await snapshot(tx)) !== JSON.stringify(localAddress))
+          throw changed();
         return this.reviewSubmissionReceipt(input.requestId, session.expiresAt);
       });
     } catch (error) {
@@ -235,6 +305,13 @@ export class CustomerIntakeContinuationService {
         return {
           ...this.reviewSubmissionReceipt(input.requestId, current.expiresAt),
           draft: current.draft,
+          ...(current.localAddress
+            ? {
+                localAddress: current.localAddress,
+                addressSnapshotCurrent: false as const,
+                admissionAuthorized: false as const,
+              }
+            : {}),
           transcriptRevision: current.transcriptRevision,
           requiresHumanReview: true as const,
           urgencyAssessment: "NOT_PERFORMED" as const,
@@ -294,7 +371,9 @@ export class CustomerIntakeContinuationService {
       typeof p !== "object" ||
       Array.isArray(p) ||
       Object.keys(p).sort().join(",") !==
-        "encryptedDraft,expiresAt,sessionId,transcriptDigest,transcriptRevision,type,version"
+        (Object.prototype.hasOwnProperty.call(p, "encryptedLocalAddress")
+          ? "encryptedDraft,encryptedLocalAddress,expiresAt,sessionId,transcriptDigest,transcriptRevision,type,version"
+          : "encryptedDraft,expiresAt,sessionId,transcriptDigest,transcriptRevision,type,version")
     )
       throw changed();
     const v = p as Record<string, unknown>;
@@ -320,8 +399,16 @@ export class CustomerIntakeContinuationService {
     const plaintext = this.cipher.decrypt(v.encryptedDraft);
     if (!plaintext || plaintext.length > 4096) throw changed();
     let draft;
+    let localAddress;
     try {
       draft = validateCustomerIntakeDraft(JSON.parse(plaintext));
+      if (Object.prototype.hasOwnProperty.call(v, "encryptedLocalAddress")) {
+        if (typeof v.encryptedLocalAddress !== "string") throw changed();
+        const raw = this.cipher.decrypt(v.encryptedLocalAddress);
+        if (!raw || raw.length > 2048) throw changed();
+        localAddress = localAddressReviewSnapshot(JSON.parse(raw));
+        if (localAddress.address !== draft.address) throw changed();
+      }
     } catch {
       throw changed();
     }
@@ -332,6 +419,7 @@ export class CustomerIntakeContinuationService {
       transcriptRevision: v.transcriptRevision,
       transcriptDigest: v.transcriptDigest,
       draft,
+      localAddress,
     };
   }
 
@@ -479,6 +567,8 @@ export class CustomerIntakeContinuationService {
           input.requestId,
         );
         if (JSON.stringify(before) !== JSON.stringify(record)) throw changed();
+        // New fictional handoff records are review-only; existing admission is unchanged.
+        if (record.localAddress) throw changed();
         const organization = await this.organization(tx, context.tenantId);
         if (organization.approvedAt !== input.expectedOrganizationApprovedAt)
           throw changed();

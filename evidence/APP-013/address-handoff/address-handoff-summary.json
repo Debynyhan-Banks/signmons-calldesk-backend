@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "atomic encrypted save and audit rollback",
+    "exact revision/unit/candidate binding",
+    "lost acknowledgment and concurrent replay save once",
+    "omitted evidence cannot downgrade replay",
+    "historical role-isolated operator read",
+    "policy changes refuse replay but preserve historical display",
+    "no job admission and mobile/desktop operator warning"
+  ],
+  "liveProviderCalls": 0,
+  "newJobs": 0
+}

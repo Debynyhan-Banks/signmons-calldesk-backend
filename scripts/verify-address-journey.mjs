@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { verifyAddressHandoff } from "./verify-address-handoff.mjs";
 const require = createRequire(import.meta.url);
 const {
   LocalAddressService,
@@ -18,6 +19,9 @@ export async function verifyAddressJourney({
   token,
   requests,
   evidence,
+  intake,
+  browser,
+  resetLocalRequestBudget,
 }) {
   const scope = credentials.verifySession(token);
   const area = await prisma.serviceArea.create({
@@ -298,6 +302,30 @@ export async function verifyAddressJourney({
     await prisma.job.count({ where: { tenantId: scope.tenantId } }),
     0,
   );
+  // Separate bounded proof group, not a production traffic-limit bypass.
+  resetLocalRequestBudget();
+  await page.locator("#addressRefresh").click();
+  await page.waitForFunction(
+    () => !document.getElementById("addressSuggest").disabled,
+  );
+  await suggest();
+  await confirm("fictional-in");
+  await page
+    .getByText("Service area: FIXTURE_IN_AREA", { exact: false })
+    .waitFor();
+  await review();
+  await page.locator("#preview").waitFor({ state: "visible" });
+  await verifyAddressHandoff({
+    page,
+    prisma,
+    cipher,
+    credentials,
+    intake,
+    browser,
+    token,
+    evidence,
+    catalog: ADDRESS_CATALOG,
+  });
   await page.locator("#forget").click();
   assert.equal(await page.locator("#addressUnit").inputValue(), "");
   const summary = {

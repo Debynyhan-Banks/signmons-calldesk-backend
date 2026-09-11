@@ -207,7 +207,9 @@ export class CustomerConsentBrowserTransport {
         draft: Object.prototype.hasOwnProperty.call(input, "addressSelection")
           ? "addressSelection,draft,expectedRevision,sessionToken"
           : "draft,expectedRevision,sessionToken",
-        submit: "confirmed,draft,expectedRevision,requestId,sessionToken",
+        submit: Object.prototype.hasOwnProperty.call(input, "addressSelection")
+          ? "addressSelection,confirmed,draft,expectedRevision,requestId,sessionToken"
+          : "confirmed,draft,expectedRevision,requestId,sessionToken",
         respond: "mailboxConfirmed,promptToken,response,sessionToken",
       };
       if (Object.keys(input).sort().join(",") !== keys[operation]) fail(400);
@@ -306,6 +308,11 @@ export class CustomerConsentBrowserTransport {
     if (operation === "submit") {
       if (!ports.review) fail(503);
       if (
+        input.addressSelection !== undefined &&
+        this.binding?.fixtureLoopback !== true
+      )
+        fail(503);
+      if (
         input.confirmed !== true ||
         typeof input.requestId !== "string" ||
         !UUID.test(input.requestId) ||
@@ -320,6 +327,9 @@ export class CustomerConsentBrowserTransport {
         expectedRevision: input.expectedRevision as number,
         draft: validateCustomerIntakeDraft(input.draft),
         confirmed: true,
+        ...(input.addressSelection !== undefined
+          ? { addressSelection: input.addressSelection }
+          : {}),
       });
       const claims = ports.credentials.verifySession(sessionToken);
       if (

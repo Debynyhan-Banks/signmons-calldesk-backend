@@ -39,11 +39,16 @@
     el("openReadiness").disabled = busy || !admittedJob;
     for (const id of ["operatorToken", "requestId", "load", "urgency", "ack"])
       el(id).disabled = busy || !!pending;
+    if (loaded?.localOnly) {
+      el("urgency").disabled = true;
+      el("ack").disabled = true;
+    }
     el("review").hidden = !loaded;
     el("approve").disabled =
       busy ||
       !!pending ||
       !loaded ||
+      loaded.localOnly ||
       !el("ack").checked ||
       !["STANDARD", "HIGH", "EMERGENCY"].includes(el("urgency").value);
     el("retry").hidden = !pending;
@@ -145,7 +150,8 @@
           !value.draft ||
           !Number.isFinite(expires) ||
           expires <= Date.now() ||
-          !Number.isFinite(Date.parse(value.organizationApprovedAt))
+          (!value.localAddress &&
+            !Number.isFinite(Date.parse(value.organizationApprovedAt)))
         )
           throw Error("Invalid review");
         const keys = [
@@ -168,6 +174,7 @@
         )
           throw Error("Invalid draft");
         loaded = {
+          localOnly: !!value.localAddress,
           requestId: value.requestId,
           organizationApprovedAt: value.organizationApprovedAt,
           expires,
@@ -175,9 +182,30 @@
         el("facts").textContent = keys
           .map((key) => key + ": " + value.draft[key])
           .join("\n");
+        if (value.localAddress) {
+          if (
+            value.localAddress.fixtureOnly !== true ||
+            value.localAddress.addressAuthorized !== false ||
+            value.localAddress.bookingAuthorized !== false ||
+            value.localAddress.deliveryAuthorized !== false ||
+            value.addressSnapshotCurrent !== false ||
+            value.admissionAuthorized !== false ||
+            value.localAddress.address !== value.draft.address ||
+            !["FIXTURE_IN_AREA", "OUT_OF_AREA", "UNKNOWN"].includes(
+              value.localAddress.coverage,
+            )
+          )
+            throw Error("Invalid local snapshot");
+          el("facts").textContent +=
+            "\nHistorical local test coverage: " +
+            value.localAddress.coverage +
+            "\nAddress revision: " +
+            value.localAddress.revision +
+            "\nNot a current coverage check. Unit is customer-stated. Job admission is unavailable for this test snapshot.";
+        }
         el("version").textContent =
           "Organization approval: " +
-          loaded.organizationApprovedAt +
+          (loaded.organizationApprovedAt || "not bound in local test") +
           ". Review deadline: " +
           value.expiresAt;
         el("ack").checked = false;
@@ -365,6 +393,7 @@
   el("approve").onclick = () => {
     if (
       !loaded ||
+      loaded.localOnly ||
       pending ||
       busy ||
       !el("ack").checked ||

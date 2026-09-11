@@ -298,6 +298,43 @@ describe("inactive same-origin browser transport", () => {
       ).toBe(503);
     }
   });
+  it.each([false, true])(
+    "gates selected-address submission by fixture binding %s",
+    async (fixtureLoopback) => {
+      const input = {
+        ...draftInput(),
+        requestId: randomUUID(),
+        confirmed: true,
+        addressSelection: {
+          revision: 2,
+          candidateId: "fixture",
+          query: "Fictional",
+          unit: "",
+        },
+      };
+      const receipt = {
+        requestId: input.requestId,
+        state: "PENDING_REVIEW",
+        expiresAt: new Date(
+          credentials.verifySession(sessionToken).expiresAt,
+        ).toISOString(),
+        jobCreated: false,
+        bookingAuthorized: false,
+        deliveryAuthorized: false,
+      };
+      const submitReview = jest.fn().mockResolvedValue(receipt);
+      const transport = new CustomerConsentBrowserTransport(
+        { origin, tenantId, fixtureLoopback },
+        { ...ports, review: { submitReview } },
+      );
+      const result = await asActor(() =>
+        transport.handle(req("submit", input)),
+      );
+      expect(result.status).toBe(fixtureLoopback ? 200 : 503);
+      if (fixtureLoopback) expect(submitReview).toHaveBeenCalledWith(input);
+      else expect(submitReview).not.toHaveBeenCalled();
+    },
+  );
   const draftReceipt = () => ({
     draft: draftDetails,
     transcriptRevision: 1,

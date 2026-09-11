@@ -694,6 +694,69 @@ describe("inactive credential-bound transcript continuation", () => {
     expect(tx.auditLog.create).toHaveBeenCalledTimes(1);
     expect(tx.job.create).not.toHaveBeenCalled();
   });
+  it("refuses local snapshot submission without an injected transaction reader", async () => {
+    const { request } = setupReview();
+    await expect(
+      service().submitReview({
+        ...request,
+        addressSelection: {
+          revision: 2,
+          candidateId: "fixture",
+          query: "Fictional",
+          unit: "",
+        },
+      }),
+    ).rejects.toThrow();
+    expect(tx.communicationEvent.create).not.toHaveBeenCalled();
+  });
+  it("stores local evidence encrypted and rechecks it inside the save transaction", async () => {
+    const { request } = setupReview();
+    const reviewInTransaction = jest.fn().mockResolvedValue({
+      fixtureOnly: true,
+      stale: false,
+      addressState: "FIXTURE_VALIDATED",
+      revision: 2,
+      selectedId: "fixture",
+      query: "Fictional",
+      unit: "",
+      coverage: "UNKNOWN",
+      candidates: [
+        { id: "fixture", address: draft.address, postalCode: "44119" },
+      ],
+      addressAuthorized: false,
+      bookingAuthorized: false,
+      deliveryAuthorized: false,
+    });
+    const localService = new CustomerIntakeContinuationService(
+      { $transaction: transaction },
+      cipher,
+      credentials,
+      undefined,
+      undefined,
+      { reviewInTransaction },
+    );
+    await localService.submitReview({
+      ...request,
+      addressSelection: {
+        revision: 2,
+        candidateId: "fixture",
+        query: "Fictional",
+        unit: "",
+      },
+    });
+    expect(reviewInTransaction).toHaveBeenCalledTimes(2);
+    expect(reviewInTransaction).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({
+        action: "review",
+        sessionToken: request.sessionToken,
+      }),
+    );
+    const written = JSON.stringify(tx.communicationEvent.create.mock.calls);
+    expect(written).toContain("encryptedLocalAddress");
+    expect(written).not.toContain("Fictional");
+    expect(tx.job.create).not.toHaveBeenCalled();
+  });
   it.each([
     { confirmed: false },
     { expectedRevision: 0 },

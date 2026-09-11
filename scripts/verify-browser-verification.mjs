@@ -8,6 +8,9 @@ import {
 } from "./verify-address-journey.mjs";
 const require = createRequire(import.meta.url);
 const {
+  CustomerIntakeContinuationService,
+} = require("../dist/communications/customer-intake-continuation.service.js");
+const {
   LocalAddressService,
 } = require("../dist/communications/local-address.service.js");
 const {
@@ -53,6 +56,20 @@ export async function verifyBrowserVerification({
     data: { name: "Fictional verification browser QA", timezone: "UTC" },
   });
   const tenantId = tenant.id;
+  const localAddress = new LocalAddressService(
+    prisma,
+    cipher,
+    credentials,
+    ADDRESS_CATALOG,
+  );
+  const intake = new CustomerIntakeContinuationService(
+    prisma,
+    cipher,
+    credentials,
+    { reply: async () => "Fictional verification test conversation." },
+    undefined,
+    localAddress,
+  );
   const fixture = (fn) =>
     new Promise((resolve, reject) =>
       requestContextMiddleware({ headers: {} }, {}, () => {
@@ -134,6 +151,7 @@ export async function verifyBrowserVerification({
     ),
   };
   let addressLost = false;
+  let reviewLost = false;
   const addressRequests = [];
   const requests = [],
     errors = [];
@@ -173,11 +191,16 @@ export async function verifyBrowserVerification({
         result.body.addressState === "FIXTURE_VALIDATED";
       if (lostAddress) addressLost = true;
       const lost =
+        (!reviewLost &&
+          req.url === "/customer-session/submit" &&
+          result.status === 200) ||
         lostAddress ||
         (loseAck &&
           result.status === 200 &&
           result.body.outcome === "APPROVED");
       if (lost) loseAck = false;
+      if (req.url === "/customer-session/submit" && result.status === 200)
+        reviewLost = true;
       res.statusCode = lost ? 503 : result.status;
       for (const [k, v] of Object.entries(result.headers)) res.setHeader(k, v);
       res.end(JSON.stringify(lost ? {} : result.body));
@@ -209,28 +232,10 @@ export async function verifyBrowserVerification({
             throw Error("not used");
           },
         },
-        continuation: {
-          continue: async () => ({
-            reply: "Fictional verification test conversation.",
-            revision: 1,
-            deliveryAuthorized: false,
-          }),
-        },
+        continuation: intake,
         verification: new LocalVerificationBrowserService(durable),
-        // Scripted transcript preview in this isolated address/phone fixture.
-        // Real continuation preview remains covered by the parent proof.
-        draft: {
-          previewDraft: async ({ draft, expectedRevision }) => ({
-            draft,
-            transcriptRevision: expectedRevision,
-            emailChoice: "NOT_RECORDED",
-            urgencyAssessment: "NOT_PERFORMED",
-            requiresHumanReview: true,
-            jobCreated: false,
-            bookingAuthorized: false,
-            deliveryAuthorized: false,
-          }),
-        },
+        draft: intake,
+        review: intake,
       },
     );
     context = await browser.newContext({
@@ -387,6 +392,11 @@ export async function verifyBrowserVerification({
       token: requests.at(-1).sessionToken,
       requests: addressRequests,
       evidence,
+      intake,
+      browser,
+      resetLocalRequestBudget: () => {
+        localBudget = new LocalCustomerBrowserBudget();
+      },
     });
     return summary;
   } finally {

@@ -87,6 +87,20 @@ export class LocalAddressService {
     this.catalogHash = hash(this.catalog);
   }
   async handle(input: Record<string, unknown>) {
+    return this.execute(input);
+  }
+  /** Read-only composition in the caller's review-save transaction. */
+  async reviewInTransaction(
+    tx: Prisma.TransactionClient,
+    input: Record<string, unknown>,
+  ) {
+    if (input.action !== "review") throw new BadRequestException();
+    return this.execute(input, tx);
+  }
+  private async execute(
+    input: Record<string, unknown>,
+    transaction?: Prisma.TransactionClient,
+  ) {
     if (
       !input ||
       Object.keys(input).sort().join(",") !==
@@ -131,7 +145,7 @@ export class LocalAddressService {
       input.candidateId,
       input.confirmed,
     ]);
-    return this.prisma.$transaction(async (tx) => {
+    const operation = async (tx: Prisma.TransactionClient) => {
       if ((await lockCustomerConsentSession(tx, session)).status !== "ONGOING")
         throw new ConflictException();
       const rows = await tx.$queryRaw<{ value: unknown }[]>(
@@ -266,7 +280,10 @@ export class LocalAddressService {
       });
       this.credentials.verifySession(token);
       return this.receipt(s, areas, false);
-    });
+    };
+    return transaction
+      ? operation(transaction)
+      : this.prisma.$transaction(operation);
   }
   private receipt(s: State, areas: Area[], stale: boolean) {
     const selected = this.catalog.find((c) => c.id === s.selected);

@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Local address draft connection (2026-09-10, latest review-ready)
+## Saved local address handoff (2026-09-10, latest review-ready)
+
+Saved review now retains an encrypted, exact-selection-bound local address snapshot with atomic audit and fresh precommit checks. Operators see historical test coverage, not current proof; snapshot-bearing requests cannot enter job admission. Existing non-snapshot workflow unchanged. Evidence and review: evidence/APP-013/address-handoff/README.md, incremental 8a0178a..HEAD on the focused feature branch, PR #21.
+
+1753 tests passed / 3 existing skips; build/lint/architecture/Prisma/syntax/diff and two zero-finding audits. Seven-group new browser/database handoff proof plus parent regression passed; mobile/desktop visually reviewed and disposable database removed. Real local transcript/review services with scripted replies; no provider/production acceptance.
+
+Stop for review. Next proposed: one combined approved-organization/address handoff steel-thread proof, documenting remaining real-verification/admission gates without enabling them. APP-013 sole Now, Next empty, FE-014 paused. APP-013 50% recorded scope / 0 of 12 accepted; onboarding 50% local / 0 of 6 accepted; pilot 0 of 12 accepted. Overall percentage/ETA remains unestablished. No production, real data, billing, merge or deployment actions.
+
+## Local address draft connection (2026-09-10, prior checkpoint)
 
 Selected fictional address/unit now enters read-only draft review after exact session/revision and current catalog/service-area checks before and after preview. Local coverage snapshot stays non-authoritative; no admission or job changes. Evidence and exact review: evidence/APP-013/address-draft/README.md; incremental c5e4f6d..HEAD, current focused branch and PR #21.
 
