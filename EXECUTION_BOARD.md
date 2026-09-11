@@ -1,5 +1,11 @@
 # Signmons Backend Execution Board
 
+## Current eight-section steel-thread plan
+
+Owner-approved planning is documented in Signmons governance PAYMENT_BOOKING_TEXT_STEEL_THREAD.md baseline v1. Reuse runtime cbe605f; no runtime change in this checkpoint. Fixed sections: 1A freshness, 1B cleanup/restart, 2A current-proof admission, 2B controlled verification, 3A Sandbox payment, 3B test-calendar scheduling, 3C received text, 3D changes/recovery. Section 3C is the connected happy-path demonstration, not full recovery or MVP completion.
+
+Current target: section 1 of 8 (1A), pending policy/implementation approval; accepted 0/8. Every section has source-based sizing, dependencies, acceptance tests, evidence and sign-off slots in the canonical plan. No silent new sections. Thirty-minute proof and ninety-day resolved-reference proposals remain decisions, not runtime policy. County, live accounts/rates/caps/notices, test-calendar/SMS and release remain separately gated. APP-013 sole Now; Next empty; FE-014 paused. APP-013 scope index 50%, accepted 0/12; onboarding local 50%, accepted 0/6; pilot accepted 0/12; no overall percentage/ETA. Earlier checkpoint next steps below are historical. Documentation diff checks only; no fresh build/test/browser claims.
+
 ## VO-2 mocked execution and recovery checkpoint
 
 Owner approved test-only eight-second absolute deadline, three new attempts/session spaced thirty seconds apart within existing caps, exact-operation retry, retained uncertain costs and authorized audited recovery. Implemented durable deadline/attempt completion, mock-only execution outside database locks, and existing protected correction-page integration. Lost/late results, orphan claims and persistence faults never authorize redispatch or refund. Owner/admin recovery requires tenant/account/attempt-bound server-resolved evidence and only retains liability; no real provider reconciliation or operator UI is claimed.
