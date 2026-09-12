@@ -1,0 +1,13 @@
+# Intelligence alignment — coordinated documentation review
+
+Owner-requested proposal, NOT ADOPTED. Governance owns the master plan: [adoption record](https://github.com/Debynyhan-Banks/Signmons-governance/blob/codex/intelligence-alignment-docs/INTELLIGENCE_ALIGNMENT_ADOPTION.md), [specification](https://github.com/Debynyhan-Banks/Signmons-governance/blob/codex/intelligence-alignment-docs/SIGNMONS_INTELLIGENCE_SPEC.md), [roadmap](https://github.com/Debynyhan-Banks/Signmons-governance/blob/codex/intelligence-alignment-docs/INTELLIGENCE_MVP_ROADMAP.md), and [acceptance matrix](https://github.com/Debynyhan-Banks/Signmons-governance/blob/codex/intelligence-alignment-docs/MVP_ACCEPTANCE_MATRIX.md).
+
+This documentation-only branch is stacked on APP-013 PR #21 head 330e402. Runtime, current implementation branch and unrelated saved-checkout work are unchanged. Latest disabled OAuth/capture evidence remains implemented-not-accepted; no live verification or release is inferred.
+
+APP-013 remains Now, 2B current, 3/8 fixed walkthrough milestones accepted (37.5%), Next empty. The proposed intelligence pilot adds advisory/knowledge/memory/evaluation requirements relative to the earlier explicit MVP deferral; it is an owner review decision, not silent scope expansion or a changed historical denominator.
+
+After reviewed adoption, synchronize both boards/global pointer with the governance queue, finish full current-ticket acceptance, then progress routinely under WIP=1. Required human/provider acceptance, budgets, IAM/secrets, merge and deployment remain gated; no real contacts/calls/charges or training. No autonomous background run is created. This document is a pointer, not a competing backend mandate.
+
+Review this diff against codex/app-013-transactional-messaging, not main, and the paired governance diff against codex/app-013-message-state-evidence. Parent branches may advance: reconcile before adoption. No parent implementation merge is authorized. Full backend build/tests/architecture and governance consistency are required for this preparation; no UI/runtime changes or new browser acceptance claims.
+
+Preparation validation: build, lint, architecture and final full tests passed (1,989 passed, three skipped; 105 passing suites, one skipped). Initial run exposed a dependency symlink path check and Calendar 401/429 mismatch; isolated dependency copy plus unchanged rerun passed. No runtime assertion weakened. Runtime/schema/configuration/package/script diff against parent 330e402 is empty. Governance complete consistency and whitespace checks passed; no UI/browser change to validate. Full details and source reconciliation are in the governance adoption record.

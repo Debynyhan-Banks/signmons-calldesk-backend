@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Documentation alignment review pending
+
+See [INTELLIGENCE_ALIGNMENT_REVIEW.md](INTELLIGENCE_ALIGNMENT_REVIEW.md). Proposal only: APP-013/2B and Next remain unchanged; new intelligence scope/queue takes effect only after coordinated owner-reviewed adoption. Preserve runtime 330e402 and all newer accepted evidence.
+
 
 ## 2B OAuth address transport — owner-approved bounded implementation, 2026-09-12
 

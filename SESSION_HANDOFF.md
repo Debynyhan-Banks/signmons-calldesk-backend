@@ -1,5 +1,9 @@
 # Backend Session Handoff
 
+## Documentation alignment review pending
+
+Owner-requested isolated documentation proposal: see [INTELLIGENCE_ALIGNMENT_REVIEW.md](INTELLIGENCE_ALIGNMENT_REVIEW.md). No runtime change, ticket promotion, merge or activation. APP-013/2B remains current; after reviewed adoption continue full acceptance and the adopted queue without asking for routine phase choices, subject to existing permission gates.
+
 
 ## 2B OAuth address transport — owner-approved bounded implementation, 2026-09-12
 
