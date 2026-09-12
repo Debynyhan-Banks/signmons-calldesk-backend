@@ -63,6 +63,10 @@
       "section input,section textarea,section select,section button",
     ))
       control.disabled = busy || !!pending;
+    // No trusted tenant disclosure/policy-link source exists yet. Never
+    // infer enrollment authority from browser state or a fixture flag.
+    el("smsRequested").checked = false;
+    el("smsRequested").disabled = true;
     el("grant").disabled = busy || !!pending || !el("confirmed").checked;
     el("draft").disabled = busy || !!pending || !el("reviewed").checked;
     el("submitReview").hidden =
@@ -557,6 +561,7 @@
             fields.map((key) => key + ": " + value.draft[key]).join("\n") +
             "\nEmail choice: " +
             value.emailChoice +
+            "\nSMS: no new consent recorded; enrollment unavailable." +
             "\nUrgency: not assessed\nTranscript revision: " +
             revision +
             (value.localAddress

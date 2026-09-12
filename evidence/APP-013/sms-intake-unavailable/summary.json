@@ -1,0 +1,21 @@
+{
+  "mode": "UI_MOCK_ONLY",
+  "providerCalls": 0,
+  "databaseWrites": 0,
+  "checks": [
+    {
+      "width": 390,
+      "unavailable": true,
+      "continuedWithoutSms": true,
+      "tamperingExcluded": true,
+      "keyboard": true
+    },
+    {
+      "width": 1280,
+      "unavailable": true,
+      "continuedWithoutSms": true,
+      "tamperingExcluded": true,
+      "keyboard": true
+    }
+  ]
+}

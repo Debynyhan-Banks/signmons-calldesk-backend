@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## APP-013 local optional SMS unavailable-policy branch — 2026-09-12
+
+Existing intake fixture now keeps optional SMS enrollment unchecked/disabled until approved policy/disclosure configuration exists; customers can continue to preview without texts. No new consent capture or server contract change. Evidence: evidence/APP-013/sms-intake-unavailable/README.md. Build/lint/architecture passed; 99 suites and 1,887 tests passed (three skips), production audit zero findings; 390px/1280px mock-browser checks passed. Full enabled consent capture remains incomplete. No live sending/configuration/deployment. APP-013 remains Now; 3/8 milestones accepted unchanged.
+
 ## Section 2B — participant confirmed; console preflight interrupted
 
 Owner confirmed participation, U.S. SMS-capable mobile phone and authorized Cuyahoga County address. Do not repeat those questions; exact personal details remain uncollected. CONTROLLED_VERIFICATION_2B_CHECKLIST.md now contains a provisional lean test packet and official reference pricing, not approved spending or account-specific rates.

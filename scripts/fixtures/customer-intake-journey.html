@@ -43,6 +43,7 @@
     [hidden] {
       display: none;
     }
+    #smsPreference p,
     #durableVerification p,
     #addressVerification p {
       white-space: normal;
@@ -243,6 +244,22 @@
       <option>MAINTENANCE</option>
       <option>OTHER</option>
     </select>
+    <fieldset id="smsPreference" aria-describedby="smsUnavailable">
+      <legend>Optional appointment texts</legend>
+      <label for="smsRequested">
+        <input id="smsRequested" type="checkbox" disabled />
+        Send me service-related appointment texts
+      </label>
+      <p id="smsUnavailable">
+        Text enrollment is unavailable until this business's approved SMS
+        disclosure, Privacy Policy and Messaging Terms are configured.
+        You can continue without texts. No SMS consent will be recorded.
+      </p>
+      <p>
+        Phone verification is separate from appointment-text consent.
+        This choice does not book an appointment or authorize payment.
+      </p>
+    </fieldset>
     <label
       ><input id="reviewed" type="checkbox" /> I reviewed these details.</label
     ><button id="draft">Preview validated draft</button>
