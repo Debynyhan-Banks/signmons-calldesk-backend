@@ -6,6 +6,7 @@ import { userInfo } from "node:os";
 import { createRequire } from "node:module";
 import { verifyFixtureSmsBrowser } from "./verify-fixture-sms-consent.mjs";
 import { verifyTenantSmsPolicyRegistry } from "./verify-tenant-sms-policy-registry.mjs";
+import { verifySmsConsentSerialization } from "./verify-sms-consent-serialization.mjs";
 const require = createRequire(import.meta.url);
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
@@ -530,6 +531,8 @@ try {
     ) + "\n",
   );
   console.log(JSON.stringify({ passed: checks.length, providerCalls: 0 }));
+  // Separate post-baseline integration proof creates only fictional legacy consent rows.
+  await verifySmsConsentSerialization({ prisma, out: out + "/suppression" });
 } finally {
   await migration?.end();
   await prisma?.$disconnect();

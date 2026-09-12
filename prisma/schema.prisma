@@ -778,6 +778,7 @@ model SmsConsentRecord {
   tenant   TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   phoneHash         String
+  revision          Int              @default(1)
   status            SmsConsentStatus
   source            SmsConsentSource
   disclosureVersion String

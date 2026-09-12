@@ -1,9 +1,8 @@
-import { createHmac } from "node:crypto";
 import {
   BadRequestException,
   Inject,
   Injectable,
-  ServiceUnavailableException,
+  ConflictException,
 } from "@nestjs/common";
 import type { ConfigType } from "@nestjs/config";
 import {
@@ -15,6 +14,10 @@ import appConfig, {
   type TwilioTenantIdentityConfig,
 } from "../config/app.config";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  lockSmsConsentRecipient,
+  smsConsentPhoneHash,
+} from "./sms-consent-recipient";
 
 const KEYWORD_DISCLOSURE_VERSION = "sms-keyword-v1";
 
@@ -94,14 +97,7 @@ export class SmsConsentService {
     }
 
     if (keyword === "START") {
-      const existing = await this.find(input.tenantId, input.phoneNumber);
-      if (existing?.status !== SmsConsentStatus.OPTED_OUT) {
-        await this.audit(input.tenantId, "sms.start_rejected", {
-          reason: "prior_opt_out_not_found",
-        });
-        return `${input.displayName}: We could not restore SMS because no prior opt-out was found. Call ${input.supportPhone} to provide consent.`;
-      }
-      await this.persistConsent({
+      const restored = await this.persistConsent({
         tenantId: input.tenantId,
         phoneNumber: input.phoneNumber,
         status: SmsConsentStatus.OPTED_IN,
@@ -111,7 +107,10 @@ export class SmsConsentService {
         actorId: "twilio-webhook",
         actorType: AuditActorType.WEBHOOK,
         action: "sms.opted_in_again",
+        requirePriorOptOut: true,
       });
+      if (!restored)
+        return `${input.displayName}: We could not restore SMS because no prior opt-out was found. Call ${input.supportPhone} to provide consent.`;
       return providerHandled
         ? null
         : `${input.displayName}: SMS service messages have resumed. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out.`;
@@ -176,9 +175,41 @@ export class SmsConsentService {
     actorId: string;
     actorType: AuditActorType;
     action: string;
-  }): Promise<void> {
+    requirePriorOptOut?: boolean;
+  }): Promise<boolean> {
     const phoneHash = this.phoneHash(input.tenantId, input.phoneNumber);
-    await this.prisma.$transaction(async (transaction) => {
+    return this.prisma.$transaction(async (transaction) => {
+      await lockSmsConsentRecipient(transaction, input.tenantId, phoneHash);
+      const existing = await transaction.smsConsentRecord.findUnique({
+        where: { tenantId_phoneHash: { tenantId: input.tenantId, phoneHash } },
+        select: { status: true },
+      });
+      if (
+        input.requirePriorOptOut &&
+        existing?.status !== SmsConsentStatus.OPTED_OUT
+      ) {
+        await transaction.auditLog.create({
+          data: {
+            tenantId: input.tenantId,
+            action: "sms.start_rejected",
+            actorType: input.actorType,
+            actorId: input.actorId,
+            entityType: "SmsConsent",
+            entityId: phoneHash,
+            metadata: { reason: "prior_opt_out_not_found" },
+          },
+        });
+        return false;
+      }
+      if (
+        input.source === SmsConsentSource.VERBAL &&
+        input.status === SmsConsentStatus.OPTED_IN &&
+        existing?.status === SmsConsentStatus.OPTED_OUT
+      ) {
+        throw new ConflictException(
+          "SMS opt-out cannot be replaced by verbal consent. A new explicit restoration is required.",
+        );
+      }
       await transaction.smsConsentRecord.upsert({
         where: {
           tenantId_phoneHash: { tenantId: input.tenantId, phoneHash },
@@ -220,6 +251,7 @@ export class SmsConsentService {
           },
         },
       });
+      return true;
     });
   }
 
@@ -242,17 +274,11 @@ export class SmsConsentService {
   }
 
   private phoneHash(tenantId: string, phoneNumber: string): string {
-    if (!this.config.smsConsentHashKey) {
-      throw new ServiceUnavailableException(
-        "SMS consent processing is not configured.",
-      );
-    }
-    if (!/^\+[1-9]\d{7,14}$/.test(phoneNumber)) {
-      throw new BadRequestException("SMS phone number is invalid.");
-    }
-    return createHmac("sha256", this.config.smsConsentHashKey)
-      .update(`${tenantId}:${phoneNumber}`)
-      .digest("hex");
+    return smsConsentPhoneHash(
+      this.config.smsConsentHashKey,
+      tenantId,
+      phoneNumber,
+    );
   }
 }
 

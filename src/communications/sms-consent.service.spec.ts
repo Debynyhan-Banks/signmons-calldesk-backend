@@ -18,7 +18,8 @@ describe("SmsConsentService", () => {
   const tenantId = "8cf1e75e-14e7-4d4f-afd1-b4416a832ba1";
   const phoneNumber = "+12165550183";
   const transaction = {
-    smsConsentRecord: { upsert: jest.fn() },
+    $queryRaw: jest.fn(),
+    smsConsentRecord: { upsert: jest.fn(), findUnique: jest.fn() },
     customer: { updateMany: jest.fn() },
     auditLog: { create: jest.fn() },
   };
@@ -42,6 +43,7 @@ describe("SmsConsentService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    transaction.smsConsentRecord.findUnique.mockResolvedValue(null);
     prisma.$transaction.mockImplementation(
       async (callback: (value: typeof transaction) => Promise<unknown>) =>
         callback(transaction),
@@ -139,7 +141,7 @@ describe("SmsConsentService", () => {
   });
 
   it("START restores only a previously opted-out recipient", async () => {
-    prisma.smsConsentRecord.findUnique.mockResolvedValue({
+    transaction.smsConsentRecord.findUnique.mockResolvedValue({
       status: SmsConsentStatus.OPTED_OUT,
     });
     const service = createService();
@@ -174,7 +176,7 @@ describe("SmsConsentService", () => {
 
     expect(reply).toContain("no prior opt-out");
     expect(transaction.smsConsentRecord.upsert).not.toHaveBeenCalled();
-    expect(prisma.auditLog.create).toHaveBeenCalledWith(
+    expect(transaction.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: "sms.start_rejected" }),
       }),
@@ -199,6 +201,46 @@ describe("SmsConsentService", () => {
         data: expect.objectContaining({ action: "sms.help_requested" }),
       }),
     );
+  });
+
+  it("locks before reading and writing the recipient", async () => {
+    await createService().handleInboundKeyword({
+      tenantId,
+      phoneNumber,
+      body: "STOP",
+      displayName: "Fixture",
+      supportPhone: phoneNumber,
+    });
+    expect(transaction.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      transaction.smsConsentRecord.findUnique.mock.invocationCallOrder[0],
+    );
+    expect(
+      transaction.smsConsentRecord.findUnique.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      transaction.smsConsentRecord.upsert.mock.invocationCallOrder[0],
+    );
+    expect(JSON.stringify(transaction.$queryRaw.mock.calls)).not.toContain(
+      phoneNumber,
+    );
+  });
+
+  it("refuses a verbal grant after suppression without writing", async () => {
+    transaction.smsConsentRecord.findUnique.mockResolvedValue({
+      status: SmsConsentStatus.OPTED_OUT,
+    });
+    await expect(
+      createService().recordVerbalConsent({
+        tenantId,
+        phoneNumber,
+        accepted: true,
+        disclosureVersion: "v1",
+        evidenceAt: new Date(),
+        actorId: "fixture",
+        actorType: AuditActorType.USER,
+      }),
+    ).rejects.toThrow("opt-out cannot be replaced");
+    expect(transaction.smsConsentRecord.upsert).not.toHaveBeenCalled();
+    expect(transaction.customer.updateMany).not.toHaveBeenCalled();
   });
 
   it("ignores ordinary inbound content in the consent layer", async () => {

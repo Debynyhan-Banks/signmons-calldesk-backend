@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## APP-013 P2 suppression write boundary — review-ready, 2026-09-12
+
+Owner approved P2. One bounded prerequisite section implements shared tenant/recipient serialization, atomic START eligibility/update/audit, refusal of verbal grants over opt-outs, and database-incremented consent revision. Registry-to-capture evidence integration remains next within P2, not completed here. See evidence/APP-013/sms-consent-serialization/README.md for exact scope, reproduction and failed-run corrections. Build/lint/architecture/audit passed; 1,945 tests, 20 existing regression groups plus seven suppression groups and existing 390px/1280px browser QA passed. Only fictional local database records; zero providers/queues/production writes; database removed. Capture/sending not activated. APP-013 Now; 3/8 milestones (37.5%) unchanged; no merge/deploy/provider action.
+
 ## APP-013 P1 tenant SMS policy registry — 2026-09-12
 
 Owner-approved P1 implemented locally: immutable policy versions, versioned lifecycle/current pointer, owner/admin tenant access, audited atomic transitions, exact safe URL allowlist and fixture-only publication attestation. Transaction-scoped reader rechecks current state/time/proof and rejects superseded bindings; no production registration or live capture connection. Evidence: evidence/APP-013/tenant-sms-policy-registry/README.md. Final build/lint/architecture/audit passed; 1,941 tests, six registry plus fourteen regression groups and 390px/1280px existing-flow QA passed. Earlier Jest exit 139 passed on unchanged rerun; retained as runner risk. Local migration only; disposable DB removed. Review-ready; next proposed P2 consent/suppression integration, no sending. APP-013 Now; 3/8 milestones unchanged.
