@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: disabled candidate deployed — 2026-09-12
+
+Owner-reviewed deployment executed for source d33ecd0; revision signmons-calldesk-staging-phone-d33ecd0, zero normal traffic. Evidence: evidence/APP-013/disabled-phone-deployment.md. Health/readiness 200, unauthenticated phone routes 401/no-store; all six safety flags false. Temporary build grants removed and build account disabled. No activation/session/send/migration. Next: exact activation packet and separate capped single-SMS approval, not another feature section. APP-013/2B Now; 3/8 (37.5%) walkthrough accepted unchanged.
+
 ## Current: candidate worker isolation — 2026-09-12
 
 Owner-approved callback guard is review-ready. BACKGROUND_WORKERS_ENABLED=false prevents both scheduled workers from accessing database/recovery/delivery services; omission preserves existing revisions. See evidence/APP-013/background-worker-isolation.md. 2,080 tests passed, three existing skips; lint/build/architecture/Prisma/audit passed. No deployment/provider/configuration action. Next is review and explicit disabled candidate release authorization, not another feature section. APP-013/2B remains Now, 3/8 (37.5%) walkthrough acceptance unchanged.
