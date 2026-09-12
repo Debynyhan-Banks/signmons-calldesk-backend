@@ -1,5 +1,11 @@
 # Signmons Backend Execution Board
 
+## Current: Google-only coverage policy approved — 2026-09-12
+
+Owner approved governance GOOGLE_ONLY_SERVICE_AREA_POLICY.md: replace mandatory independent CEGIS qualification with Google-based business service-area qualification, not parcel certification. Valid confirmed physical address/unit plus consistent structured county/state/country and current bindings required; uncertainty preserves draft and refuses automatic admission. Old CEGIS digest retention exceptions do not apply to Google-derived content. Runtime unchanged, no live calls or acceptance claim.
+
+Next bounded section: authority-neutral default-disabled Google coverage evaluator with fictional tests, no provider I/O/persistence/admission authority. Retention and controlled live admission remain gates; county reply is no longer a launch dependency. APP-013/2B Now; walkthrough 3/8 (37.5%) unchanged. Real phone test remains passed and closed; no fresh send authorized.
+
 ## Current: real phone verification passed and closed — 2026-09-12
 
 Owner-ready, explicitly capped single-SMS execution succeeded: START 201/PENDING, private six-digit CHECK 201/APPROVED, STOP 201/stopped. No resend. Booking and delivery authorization remained false. Backend evidence: evidence/APP-013/real-phone-verification.md. Final readback confirms isolated tenant suspended, approval disabled, one closed session, candidate six safety flags false and temporary policy/token mapping absent. Operator disabled/revoked, signing binding removed, role disabled; issued token refused with 401. Normal traffic unchanged. Prior preparation/failure entries below are historical, superseded for this phone subcheck only.
