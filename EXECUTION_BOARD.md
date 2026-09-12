@@ -1,8 +1,8 @@
 # Signmons Backend Execution Board
 
-## Documentation alignment review pending
+## Owner-reviewed dependency alignment
 
-See [INTELLIGENCE_ALIGNMENT_REVIEW.md](INTELLIGENCE_ALIGNMENT_REVIEW.md). Proposal only: APP-013/2B and Next remain unchanged; new intelligence scope/queue takes effect only after coordinated owner-reviewed adoption. Preserve runtime 330e402 and all newer accepted evidence.
+See [INTELLIGENCE_ALIGNMENT_REVIEW.md](INTELLIGENCE_ALIGNMENT_REVIEW.md). Owner-reviewed documentation correction: APP-013/2B remains Now; Next follows the six-ticket order below. Preserve runtime 330e402, existing evidence and 3/8 walkthrough acceptance. Older dated Next-empty or advisory-deferred entries are historical, not current queue instructions. Merge and release remain gated.
 
 
 ## 2B OAuth address transport — owner-approved bounded implementation, 2026-09-12
@@ -397,18 +397,20 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Split customer/operator review-request foundation is review-ready: encrypted one-time customer submission and authorized request-ID-only operator read, no stored or reconstructed customer bearer. 1492 backend/170 UI tests, ten new PostgreSQL groups and prior browser/crash regressions pass; four audits clean. Original session deadline, stale/closed refusal and exact replay remain. No request-to-job admission or UI/route activation. Next proposed: token-free operator admission from the durable request with atomic job/consent outcome, no external actions. Coverage 50%, acceptance 0/12; 7-12 APP-013 / 20-35 pilot unequal sections, low confidence. APP-013 stays Now.
+  - Current section 2B; fixed walkthrough 3/8 accepted (37.5%), not whole-MVP engineering completion. Backend 330e402 disabled OAuth transport is review-ready. Preserve all newer evidence; BE-001 residual proof must close inside full APP-013 acceptance.
 
 ## Next
 
-- Unassigned at program level. Finish APP-013 and explicitly update governance before selecting another ticket.
+- [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
+- [ ] APP-018 Brand voice and AI behavior (`SCR-APP-027`)
+- [ ] APP-019 Customer profiles and service history (`SCR-APP-028`)
+- [ ] APP-015 AI quality and failure review (`SCR-APP-020`, `SCR-ADM-005`)
+- [ ] APP-016 Calendar scheduling and appointment integrity (`SCR-APP-025`)
+- [ ] APP-033 OpenAI voice intake and intelligence orchestration
 
 ## Later
 
-- APP-017 Business rules and automation center (`SCR-APP-026`)
-- APP-018 Brand voice and AI personality configuration (`SCR-APP-027`)
-- APP-019 Customer profiles and service history (`SCR-APP-028`)
-- BE-001 Keyword opt-in/out persistence and telemetry (backend reliability stream)
+- BE-001 residual acceptance is consolidated into APP-013; retained for traceability, not an independent future feature.
 - Remaining backend-aligned work from `/Users/debynyhanbanks/Web Projects/signmons-governance/MVP_BACKLOG.md`
 
 ## Done
