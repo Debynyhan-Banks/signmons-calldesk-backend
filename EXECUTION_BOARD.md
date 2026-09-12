@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: atomic staging budget review — 2026-09-12
+
+Optional inactive ledger path reads current stored review approval and real ledger usage under existing reservation locks; preserves replay at cap and refuses revocation/changed approval before mutation. Evidence: evidence/APP-013/staging-address-reservation/README.md. Six new database checks plus 24 existing groups passed; 2,039 Jest tests passed, three skipped; build/lint/architecture/Prisma/audit passed. No actual approval/rates/provider activation. Next: read-only exact staging packet and trusted configuration readiness, not new fixture services. County/Google retention gates unresolved; 3/8 acceptance unchanged.
+
 ## Current: staging address budget policy validator — 2026-09-12
 
 Owner approved independent budget-gate work while Google retention and county clarification remain unresolved. Pure inactive validator now binds reviewed packet digest to current staging account/project/service/runtime/tenant/session, rates, windows and account/tenant/session caps. No defaults or live permissions; POLICY_READY never authorizes dispatch. Evidence: evidence/APP-013/staging-address-budget/README.md. 2,039 tests passed, three skipped; build/lint/architecture/Prisma and zero-finding production audit passed. Next is atomic trusted-authority/usage reservation integration, not provider activation; no full live-gate completion claim. APP-013/2B Now, 3/8 accepted (37.5%), queue unchanged.

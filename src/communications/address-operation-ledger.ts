@@ -2,6 +2,10 @@ import { ConflictException } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  checkStagingAddressReservation,
+  StagingBudgetConfiguration,
+} from "./staging-address-budget-reader";
 import { getRequestContext } from "../common/context/request-context";
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
 import {
@@ -55,6 +59,7 @@ export class AddressOperationLedger {
     private readonly credentials: CustomerConsentCredentials,
     private readonly fixture?: {
       accountId: string;
+      stagingReview?: StagingBudgetConfiguration;
       readBinding: (
         tx: Prisma.TransactionClient,
         scope: CustomerSessionScope,
@@ -131,7 +136,17 @@ export class AddressOperationLedger {
       ctx.impersonatedTenantId
     )
       throw refuse();
-    const fixture = { ...this.fixture };
+    const fixture = {
+      ...this.fixture,
+      stagingReview: this.fixture.stagingReview
+        ? structuredClone(this.fixture.stagingReview)
+        : undefined,
+    };
+    if (
+      fixture.stagingReview &&
+      fixture.stagingReview.accountId !== fixture.accountId
+    )
+      throw refuse();
     return this.prisma.$transaction(async (tx) => {
       for (const key of [
         "address-account:" + fixture.accountId,
@@ -194,6 +209,9 @@ export class AddressOperationLedger {
             p.session.micros,
             p.session.requests,
             ...(p.execution ? [p.execution] : []),
+            ...(fixture.stagingReview
+              ? ["STAGING_REVIEW_ONLY", fixture.stagingReview.packetDigest]
+              : []),
           ]),
         )
         .digest("hex");
@@ -221,6 +239,15 @@ export class AddressOperationLedger {
       if (!operation) {
         if (input.action !== "reserve") throw refuse();
         operation = await tx.addressVerificationOperation.findFirst({ where });
+        if (fixture.stagingReview)
+          await checkStagingAddressReservation(
+            tx,
+            fixture.stagingReview,
+            scope,
+            p,
+            now,
+            operation ?? undefined,
+          );
         if (!operation) {
           if (p.execution) {
             const prior = await tx.addressVerificationOperation.findMany({
@@ -286,6 +313,15 @@ export class AddressOperationLedger {
           data: { id: input.requestId, operationId: operation.id },
         });
       }
+      if (alias?.operation && fixture.stagingReview)
+        await checkStagingAddressReservation(
+          tx,
+          fixture.stagingReview,
+          scope,
+          p,
+          now,
+          operation ?? undefined,
+        );
       let claimed = false;
       let completed = false;
       if (completion) {
