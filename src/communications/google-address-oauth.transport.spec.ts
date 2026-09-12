@@ -34,6 +34,36 @@ describe("inactive Google address OAuth transport", () => {
   };
   afterEach(() => jest.useRealTimers());
 
+  it("refuses an already aborted operation before credentials", async () => {
+    const s = setup();
+    const controller = new AbortController();
+    controller.abort();
+    expect(await s.transport.validate(input(), controller.signal)).toEqual({
+      status: "UNAVAILABLE",
+    });
+    expect(s.token).not.toHaveBeenCalled();
+    expect(s.send).not.toHaveBeenCalled();
+  });
+
+  it("operation abort cancels streaming and removes its listener", async () => {
+    const s = setup();
+    const controller = new AbortController();
+    const remove = jest.spyOn(controller.signal, "removeEventListener");
+    const cancel = jest.fn();
+    s.send.mockResolvedValue(
+      new Response(new ReadableStream({ cancel }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const pending = s.transport.validate(input(), controller.signal);
+    await Promise.resolve();
+    await Promise.resolve();
+    controller.abort();
+    expect(await pending).toEqual({ status: "UNAVAILABLE" });
+    expect(cancel).toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
+  });
+
   it("remains absent from application registration and the fixture adapter", () => {
     for (const file of [
       "communications.module.ts",

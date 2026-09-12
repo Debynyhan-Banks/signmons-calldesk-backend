@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## 2B controlled address operation composition — 2026-09-12
+
+Review-ready inactive fixture-only connection of trusted intent/revision, durable claim executor and injected OAuth transport; parent deadline cancellation and sanitized observation, with all address/county/admission/delivery authority refused. See evidence/APP-013/google-address-operation/README.md. Build/lint/architecture/Prisma passed; 2,001 tests passed, three skipped; production audit zero. No browser surface or live provider/configuration action. County qualification and live-mode/staging approval gates remain open. APP-013/2B stays Now; approved Next queue unchanged; accepted 3/8 (37.5% walkthrough milestones), not overall MVP completion. This supersedes older next-composition wording only.
+
 ## Owner-reviewed dependency alignment
 
 See [INTELLIGENCE_ALIGNMENT_REVIEW.md](INTELLIGENCE_ALIGNMENT_REVIEW.md). Owner-reviewed documentation correction: APP-013/2B remains Now; Next follows the six-ticket order below. Preserve runtime 330e402, existing evidence and 3/8 walkthrough acceptance. Older dated Next-empty or advisory-deferred entries are historical, not current queue instructions. Merge and release remain gated.

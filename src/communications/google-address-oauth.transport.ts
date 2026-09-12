@@ -4,7 +4,7 @@ import { GoogleAddressRequest } from "./google-address.adapter";
 const endpoint = "https://addressvalidation.googleapis.com/v1:validateAddress";
 const maxResponseBytes = 64 * 1024;
 
-type Ports = {
+export type GoogleAddressOAuthPorts = {
   token: () => Promise<string | null | undefined>;
   fetch: typeof fetch;
 };
@@ -20,7 +20,7 @@ export type GoogleAddressTransportResult =
 export class GoogleAddressOAuthTransport {
   constructor(
     private readonly enabled = false,
-    private readonly ports: Ports = {
+    private readonly ports: GoogleAddressOAuthPorts = {
       token: async () =>
         new GoogleAuth({
           scopes: ["https://www.googleapis.com/auth/cloud-platform"],
@@ -31,11 +31,21 @@ export class GoogleAddressOAuthTransport {
 
   async validate(
     input: GoogleAddressRequest,
+    parentSignal?: AbortSignal,
   ): Promise<GoogleAddressTransportResult> {
     if (this.enabled !== true) return { status: "DISABLED" };
+    if (parentSignal?.aborted) return { status: "UNAVAILABLE" };
     const body = requestBody(input);
     if (body === null) return { status: "INVALID_INPUT" };
     const controller = new AbortController();
+    let abortParent: (() => void) | undefined;
+    const parentAbort = new Promise<GoogleAddressTransportResult>((resolve) => {
+      abortParent = () => {
+        controller.abort();
+        resolve({ status: "UNAVAILABLE" });
+      };
+      parentSignal?.addEventListener("abort", abortParent, { once: true });
+    });
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<GoogleAddressTransportResult>((resolve) => {
       timer = setTimeout(() => {
@@ -47,12 +57,14 @@ export class GoogleAddressOAuthTransport {
       return await Promise.race([
         this.execute(body, controller.signal),
         timeout,
+        parentAbort,
       ]);
     } catch {
       // Never expose/log credentials, address content or provider errors.
       return { status: "UNAVAILABLE" };
     } finally {
       if (timer) clearTimeout(timer);
+      if (abortParent) parentSignal?.removeEventListener("abort", abortParent);
       controller.abort();
     }
   }

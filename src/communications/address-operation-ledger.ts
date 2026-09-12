@@ -352,6 +352,8 @@ export class AddressOperationLedger {
       }
       return {
         operationId: operation.id,
+        intentId: binding.intentId,
+        revision: binding.revision,
         state: operation.state,
         claimed,
         completed,

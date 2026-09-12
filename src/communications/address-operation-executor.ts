@@ -13,7 +13,13 @@ export class AddressOperationExecutor {
   ) {}
   async run<T>(
     input: { sessionToken: string; requestId: string },
-    mock: { mode: "FIXTURE_ONLY"; run: (signal: AbortSignal) => Promise<T> },
+    mock: {
+      mode: "FIXTURE_ONLY";
+      run: (
+        signal: AbortSignal,
+        binding: { intentId: string; revision: number },
+      ) => Promise<T>;
+    },
   ) {
     const uncertain = () => ({ status: "UNCERTAIN" as const });
     if (!mock || mock.mode !== "FIXTURE_ONLY") return uncertain();
@@ -48,7 +54,10 @@ export class AddressOperationExecutor {
       const value = await Promise.race([
         Promise.resolve().then(() => {
           if (!current()) throw Error("expired");
-          return work(controller.signal);
+          return work(controller.signal, {
+            intentId: claim.intentId,
+            revision: claim.revision,
+          });
         }),
         new Promise<never>((_, reject) => {
           timer = setTimeout(() => {
