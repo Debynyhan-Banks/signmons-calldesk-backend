@@ -1,5 +1,9 @@
 # Backend Session Handoff
 
+## Owner-reviewed dependency alignment
+
+Owner reviewed the proposal and requested dependency correction: see [INTELLIGENCE_ALIGNMENT_REVIEW.md](INTELLIGENCE_ALIGNMENT_REVIEW.md). APP-013/2B stays Now, including BE-001 residual proof. Next is APP-017 → APP-018 → APP-019 → APP-015 → APP-016 → APP-033. Finish full acceptance before promotion; no routine phase-choice question needed. Older dated Next-empty notes are historical. No runtime change, merge, deployment, provider activity or training.
+
 
 ## 2B OAuth address transport — owner-approved bounded implementation, 2026-09-12
 
