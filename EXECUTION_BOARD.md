@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: staging address budget policy validator — 2026-09-12
+
+Owner approved independent budget-gate work while Google retention and county clarification remain unresolved. Pure inactive validator now binds reviewed packet digest to current staging account/project/service/runtime/tenant/session, rates, windows and account/tenant/session caps. No defaults or live permissions; POLICY_READY never authorizes dispatch. Evidence: evidence/APP-013/staging-address-budget/README.md. 2,039 tests passed, three skipped; build/lint/architecture/Prisma and zero-finding production audit passed. Next is atomic trusted-authority/usage reservation integration, not provider activation; no full live-gate completion claim. APP-013/2B Now, 3/8 accepted (37.5%), queue unchanged.
+
 ## 2B county fallback/live gap assessment — 2026-09-12
 
 Documentation-only readiness review; runtime f9181eb unchanged. Governance COUNTY_FALLBACK_LIVE_GAP_ASSESSMENT.md records no qualified immediate county fallback and four remaining work packages within 2B, not new milestones. Next recommendation: trusted transient Google revalidation sequence/reference contract and tests after retention qualification, still disabled. County UNKNOWN and all live gates remain. APP-013/2B Now, approved Next queue unchanged; walkthrough accepted 3/8 (37.5%), not overall MVP completion. No fresh runtime/browser tests, provider calls, configuration, charges or release actions.
