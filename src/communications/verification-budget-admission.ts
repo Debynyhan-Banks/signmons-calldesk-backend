@@ -4,6 +4,12 @@ import { CustomerSessionScope } from "./customer-consent-session-lock";
 
 export type VerificationOptIn = { requested: true; noticeVersion: string };
 export interface VerificationAdmission {
+  replay?(
+    tx: Prisma.TransactionClient,
+    scope: CustomerSessionScope,
+    startId: string,
+    phoneDigest: string,
+  ): Promise<void>;
   lock(tx: Prisma.TransactionClient, tenantId: string): Promise<void>;
   reserve(
     tx: Prisma.TransactionClient,

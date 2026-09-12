@@ -6,6 +6,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { userInfo } from "node:os";
 import { verifyAddressOperationLedger } from "./verify-address-operation-ledger.mjs";
 import { verifyAddressExecution } from "./verify-address-execution.mjs";
+import { verifyStagingPhone } from "./verify-staging-phone.mjs";
 const require = createRequire(import.meta.url);
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
@@ -203,6 +204,7 @@ try {
     await verifyAddressOperationLedger({ prisma, credentials, responses }),
   );
   console.log(await verifyAddressExecution({ prisma, credentials, responses }));
+  console.log(await verifyStagingPhone({ prisma, cipher }));
 } finally {
   await migration?.end();
   await prisma?.$disconnect();

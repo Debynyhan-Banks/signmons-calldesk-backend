@@ -61,7 +61,8 @@ export type VerifyAdapterResult = {
   deliveryAuthorized: false;
 };
 
-/** Inactive server-internal adapter. No DI, environment/secret loader or default client.
+/** Server-internal adapter with no implicit credentials or default client.
+ * StagingPhoneService supplies a client only behind its explicit staging gates.
  * Factory must honor no-retry/timeout/log options. All tests inject a network-free client.
  * A provider APPROVED result is evidence to finalize, not persisted application authority.
  * Caller must durably reserve/dedupe operations, establish OTP opt-in and budget BEFORE calls.

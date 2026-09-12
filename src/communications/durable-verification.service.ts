@@ -46,7 +46,8 @@ const unavailable = () =>
     "Verification outcome is unconfirmed. Do not resend automatically.",
   );
 
-/** Inactive durable local proving connection; no controller, DI or live-client bootstrap.
+/** Durable core with explicit ports; StagingPhoneService is its default-disabled
+ * phone-only HTTP composition. Other callers remain local proving connections.
  * One START and up to five CHECK operations per session in this bounded model.
  * Orphan reservations are NEVER reclaimed: a crash may have occurred after a provider call.
  * Opt-in, live budgets, recovery and admission authority are separate activation gates.
@@ -129,6 +130,12 @@ export class DurableVerificationService {
         if (prior) {
           if (prior.digest !== digest)
             throw new ConflictException("Verification operation changed.");
+          await this.admission!.replay?.(
+            tx,
+            session,
+            prior.kind === "START" ? prior.id : prior.startId,
+            phoneDigest,
+          );
           return { entry: prior, fresh: false };
         }
         const policy = await this.freshnessPolicy?.(tx, session.tenantId);

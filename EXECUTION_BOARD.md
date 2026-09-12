@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: default-disabled phone-only execution — 2026-09-12
+
+Owner-reviewed packet implemented as an authenticated staging-only operations/stop connection to existing durable verification, with exact participant binding, atomic retained phone liabilities, expiry and database approval revocation. Default off; no release or SMS. See evidence/APP-013/phone-only-execution.md. Next: read-only exact release/configuration packet, then explicit deployment/test approval. Address/job admission remain off; Google/county gates persist. APP-013/2B Now, 3/8 (37.5%) walkthrough accepted; approved queue unchanged.
+
 ## Current: atomic staging budget review — 2026-09-12
 
 Optional inactive ledger path reads current stored review approval and real ledger usage under existing reservation locks; preserves replay at cap and refuses revocation/changed approval before mutation. Evidence: evidence/APP-013/staging-address-reservation/README.md. Six new database checks plus 24 existing groups passed; 2,039 Jest tests passed, three skipped; build/lint/architecture/Prisma/audit passed. No actual approval/rates/provider activation. Next: read-only exact staging packet and trusted configuration readiness, not new fixture services. County/Google retention gates unresolved; 3/8 acceptance unchanged.
