@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## APP-013 production-policy/SMS activation readiness — 2026-09-12
+
+Planning-only reconciliation of runtime c081fb0 completed. Governance PILOT_SMS_ACTIVATION_READINESS.md maps completed fixture durability to P1 tenant policy registry, P2 production consent/suppression integration and existing 3C controlled-send gates. No new milestone or fixture rewrite. Next proposed implementation: P1 only after approval, no publication/sending. Public policy, retention/key lifecycle, live source/suppression and provider/release approvals remain gates. No runtime/account/data change or fresh runtime test claim. APP-013 Now; current 2B; accepted 3/8 (37.5% milestones), not overall MVP completion.
+
 ## APP-013 durable fixture SMS evidence — 2026-09-12
 
 Owner accepted the prior fixture interaction and approved durable evidence/current-policy/recipient checks. Encrypted local PostgreSQL fixture capture and audit now commit atomically; restart, exact retry, rollback, deadline crossing and stale/foreign/opt-out checks are evidenced. No live consent or sending authority. Evidence: evidence/APP-013/durable-fixture-sms-consent/README.md. Build/lint/architecture passed; 101 suites/1,917 tests passed (three skips); production audit zero; 14 database groups and mobile/desktop QA passed. Migration ran only in disposable local DB, now removed. Review-ready; APP-013 Now and 3/8 accepted unchanged. Production policy/source/lifecycle and activation remain gated.
