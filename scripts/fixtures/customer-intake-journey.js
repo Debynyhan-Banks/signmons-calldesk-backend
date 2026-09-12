@@ -11,6 +11,7 @@
       "serviceIntent",
     ];
   let token,
+    smsPrompt,
     correction,
     correctionTimer,
     addressRevision = 0,
@@ -65,8 +66,24 @@
       control.disabled = busy || !!pending;
     // No trusted tenant disclosure/policy-link source exists yet. Never
     // infer enrollment authority from browser state or a fixture flag.
-    el("smsRequested").checked = false;
-    el("smsRequested").disabled = true;
+    const smsMode = document.documentElement.dataset.smsFixture === "true";
+    el("smsReview").hidden = !smsMode;
+    el("smsSave").hidden = el("smsSkip").hidden = !smsPrompt;
+    el("smsPolicies").hidden = el("smsDisclosure").hidden = !smsPrompt;
+    if (
+      !smsPrompt ||
+      smsPrompt.phone !== el("phone").value.trim() ||
+      Date.now() >= smsPrompt.expiresAt
+    ) {
+      smsPrompt = undefined;
+      el("smsRequested").checked = false;
+      el("smsPolicies").hidden = el("smsDisclosure").hidden = true;
+      el("smsSave").hidden = el("smsSkip").hidden = true;
+    }
+    el("smsRequested").disabled = busy || !!pending || !smsPrompt;
+    el("smsSave").disabled =
+      busy || !!pending || !smsPrompt || !el("smsRequested").checked;
+    el("smsUnavailable").hidden = !!smsPrompt;
     el("grant").disabled = busy || !!pending || !el("confirmed").checked;
     el("draft").disabled = busy || !!pending || !el("reviewed").checked;
     el("submitReview").hidden =
@@ -104,6 +121,8 @@
         !!verifyStart && verifyState !== "CORRECTION_REQUIRED";
   }
   function clear(message) {
+    smsPrompt = undefined;
+    el("smsStatus").textContent = "";
     clearCorrection();
     epoch++;
     controller?.abort();
@@ -192,6 +211,46 @@
       if (request.operation !== "start" && !alive()) return;
       if (value.deliveryAuthorized !== false) throw Error("Invalid receipt");
       switch (request.operation) {
+        case "sms":
+          if (value.fixtureOnly !== true || value.liveConsentRecorded !== false)
+            throw Error("Invalid test SMS receipt");
+          if (value.state === "PROMPT") {
+            if (
+              typeof value.promptId !== "string" ||
+              value.promptId.length > 64 ||
+              typeof value.sender !== "string" ||
+              !value.sender ||
+              value.sender.length > 120 ||
+              typeof value.disclosure !== "string" ||
+              !value.disclosure ||
+              value.disclosure.length > 2000 ||
+              value.privacyPath !== "/fixture-sms-privacy" ||
+              value.termsPath !== "/fixture-sms-terms" ||
+              !Number.isSafeInteger(value.expiresAt) ||
+              value.expiresAt <= Date.now() ||
+              value.expiresAt > expires
+            )
+              throw Error("Invalid test SMS prompt");
+            smsPrompt = {
+              promptId: value.promptId,
+              phone: request.body.phone,
+              expiresAt: value.expiresAt,
+            };
+            el("smsRequested").checked = false;
+            el("smsDisclosure").textContent =
+              value.sender + " — " + value.disclosure;
+            el("smsStatus").textContent =
+              "Fictional test only. This cannot authorize real messages.";
+          } else if (
+            ["RECORDED", "NOT_RECORDED", "UNAVAILABLE"].includes(value.state)
+          ) {
+            smsPrompt = undefined;
+            el("smsStatus").textContent =
+              value.state === "RECORDED"
+                ? "Test preference recorded in temporary fixture memory only. No live consent or sending permission."
+                : "No new test consent recorded. You can continue without texts.";
+          } else throw Error("Invalid test SMS state");
+          break;
         case "end":
           if (
             value.state !== "CLOSED" ||
@@ -561,7 +620,7 @@
             fields.map((key) => key + ": " + value.draft[key]).join("\n") +
             "\nEmail choice: " +
             value.emailChoice +
-            "\nSMS: no new consent recorded; enrollment unavailable." +
+            "\nSMS: no new consent recorded for live delivery; sending disabled." +
             "\nUrgency: not assessed\nTranscript revision: " +
             revision +
             (value.localAddress
@@ -850,6 +909,8 @@
   };
   el("addressConfirmed").onchange = paint;
   el("phone").addEventListener("input", () => {
+    smsPrompt = undefined;
+    el("smsStatus").textContent = "";
     verifyNotice = undefined;
     el("verifyRequested").checked = false;
     paint();
@@ -945,6 +1006,32 @@
   };
   el("prompt").onclick = () => submit("prompt", { sessionToken: token });
   el("confirmed").onchange = paint;
+  el("smsRequested").onchange = paint;
+  el("smsReview").onclick = () =>
+    submit("sms", {
+      sessionToken: token,
+      action: "PROMPT",
+      phone: el("phone").value.trim(),
+      promptId: "",
+      accepted: false,
+    });
+  el("smsSave").onclick = () => {
+    if (!smsPrompt || !el("smsRequested").checked) return;
+    submit("sms", {
+      sessionToken: token,
+      action: "CAPTURE",
+      phone: el("phone").value.trim(),
+      promptId: smsPrompt.promptId,
+      accepted: true,
+    });
+  };
+  el("smsSkip").onclick = () => {
+    if (busy || pending) return;
+    smsPrompt = undefined;
+    el("smsStatus").textContent =
+      "No new test consent recorded. You can continue without texts.";
+    paint();
+  };
   el("reviewed").onchange = paint;
   for (const [id, response] of [
     ["grant", "GRANTED"],

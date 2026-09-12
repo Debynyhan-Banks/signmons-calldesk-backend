@@ -2,6 +2,7 @@ import { isIP } from "node:net";
 import { performance } from "node:perf_hooks";
 
 export type CustomerBrowserOperation =
+  | "sms"
   | "start"
   | "end"
   | "capture"
@@ -44,6 +45,7 @@ export class LocalCustomerBrowserBudget implements CustomerBrowserBudget {
       return null;
     if (
       ![
+        "sms",
         "start",
         "end",
         "capture",

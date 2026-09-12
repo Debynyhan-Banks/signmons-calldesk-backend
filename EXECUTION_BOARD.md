@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## APP-013 fixture-only SMS prompt/capture — 2026-09-12
+
+Review-ready: existing intake now exercises injected fictional policy prompt/capture, tenant/session/phone/revision/version checks, opt-out refusal and exact receipt retry. Temporary in-memory evidence only; no live consent, database persistence or sending authority. Evidence: evidence/APP-013/fixture-sms-consent/README.md. Build/lint/architecture passed; 100 suites/1,906 tests passed, three skips; production audit zero. Mobile/desktop enabled and default-unavailable branches passed. APP-013 Now; 3/8 accepted unchanged. Durable production consent and approved policy/provider activation remain separate gates.
+
 ## APP-013 local optional SMS unavailable-policy branch — 2026-09-12
 
 Existing intake fixture now keeps optional SMS enrollment unchecked/disabled until approved policy/disclosure configuration exists; customers can continue to preview without texts. No new consent capture or server contract change. Evidence: evidence/APP-013/sms-intake-unavailable/README.md. Build/lint/architecture passed; 99 suites and 1,887 tests passed (three skips), production audit zero findings; 390px/1280px mock-browser checks passed. Full enabled consent capture remains incomplete. No live sending/configuration/deployment. APP-013 remains Now; 3/8 milestones accepted unchanged.

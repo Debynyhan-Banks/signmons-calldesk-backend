@@ -63,6 +63,9 @@ export type CustomerBrowserRequest = {
 };
 type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
 type Ports = {
+  fixtureSms?: {
+    handle(input: Record<string, unknown>): Record<string, unknown>;
+  };
   lifecycle?: { end(sessionToken: string): Promise<Record<string, unknown>> };
   correction?: {
     handle(input: Record<string, unknown>): Promise<Record<string, unknown>>;
@@ -142,7 +145,7 @@ export class CustomerConsentBrowserTransport {
       )
         fail(403);
       const match =
-        /^\/customer-session\/(start|end|capture|prompt|respond|continue|draft|submit|phone|verify|address|correction)$/.exec(
+        /^\/customer-session\/(start|end|capture|prompt|respond|continue|draft|submit|phone|verify|address|correction|sms)$/.exec(
           request.url,
         );
       if (!match || request.method !== "POST") fail(403);
@@ -199,6 +202,7 @@ export class CustomerConsentBrowserTransport {
       }
       const input = object(parsed);
       const keys = {
+        sms: "accepted,action,phone,promptId,sessionToken",
         correction:
           "action,candidateId,confirmed,input,requestId,revision,sessionToken",
         address:
@@ -298,6 +302,18 @@ export class CustomerConsentBrowserTransport {
       };
     }
     const sessionToken = input.sessionToken as string;
+    if (operation === "sms") {
+      if (this.binding?.fixtureLoopback !== true || !ports.fixtureSms)
+        fail(503);
+      const value = ports.fixtureSms.handle(input);
+      if (
+        value.fixtureOnly !== true ||
+        value.deliveryAuthorized !== false ||
+        value.liveConsentRecorded !== false
+      )
+        fail(503);
+      return value;
+    }
     if (operation === "end") {
       if (this.binding?.fixtureLoopback !== true || !ports.lifecycle) fail(503);
       return ports.lifecycle.end(sessionToken);

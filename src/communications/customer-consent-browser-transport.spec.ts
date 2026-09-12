@@ -395,6 +395,38 @@ describe("inactive same-origin browser transport", () => {
       else expect(submitReview).not.toHaveBeenCalled();
     },
   );
+  it.each(["enabled", "nonfixture", "missing", "unsafe", "extra"])(
+    "keeps SMS fixture transport gated: %s",
+    async (scenario) => {
+      const handle = jest.fn().mockReturnValue({
+        fixtureOnly: true,
+        liveConsentRecorded: false,
+        deliveryAuthorized: scenario === "unsafe",
+        state: "UNAVAILABLE",
+      });
+      const transport = new CustomerConsentBrowserTransport(
+        { origin, tenantId, fixtureLoopback: scenario !== "nonfixture" },
+        {
+          ...ports,
+          fixtureSms: scenario === "missing" ? undefined : { handle },
+        },
+      );
+      const input = {
+        sessionToken,
+        action: "PROMPT",
+        phone: "+12025550123",
+        promptId: "",
+        accepted: false,
+        ...(scenario === "extra" ? { tenantId } : {}),
+      };
+      const result = await asActor(() => transport.handle(req("sms", input)));
+      expect(result.status).toBe(
+        scenario === "enabled" ? 200 : scenario === "extra" ? 400 : 503,
+      );
+      if (["nonfixture", "missing", "extra"].includes(scenario))
+        expect(handle).not.toHaveBeenCalled();
+    },
+  );
   const draftReceipt = () => ({
     draft: draftDetails,
     transcriptRevision: 1,
