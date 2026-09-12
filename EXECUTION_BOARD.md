@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: default-disabled one-shot runner implemented — 2026-09-12
+
+Backend evidence/APP-013/google-address-one-shot.md records local exclusive durable claim before the existing transport, one packet/request, bounded approval window/liability, timeout/no-retry and content stripping. No CLI/route/credential/live call. This local claim does not promote the fixture database ledger or enforce distributed/account budgets. Exact credential, private input and stable protected claim directory remain qualification gates; no executable live test claimed. Next is that bounded connection/qualification, not another evaluator or waiting exclusively on support. APP-013/2B Now; 3/8 (37.5%) unchanged; no live authority.
+
 ## Current: disabled Google coverage evaluator implemented — 2026-09-12
 
 Backend src/communications/google-service-area.ts reuses the existing Google address adapter for fictional in-memory coverage proposals. Default disabled; explicit FIXTURE_ONLY mode, current confirmation bindings, unit/physical-address checks and consistent structured Ohio county evidence required. All downstream authority stays false. No route registration, provider I/O, persistence, schema or UI change. Evidence: backend evidence/APP-013/google-service-area.md.
