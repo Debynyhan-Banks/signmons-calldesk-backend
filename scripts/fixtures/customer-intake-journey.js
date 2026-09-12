@@ -247,7 +247,9 @@
             smsPrompt = undefined;
             el("smsStatus").textContent =
               value.state === "RECORDED"
-                ? "Test preference recorded in temporary fixture memory only. No live consent or sending permission."
+                ? value.storage === "DURABLE_FIXTURE"
+                  ? "Test preference saved in the local fixture database. No live consent or sending permission."
+                  : "Test preference recorded in temporary fixture memory only. No live consent or sending permission."
                 : "No new test consent recorded. You can continue without texts.";
           } else throw Error("Invalid test SMS state");
           break;

@@ -5,6 +5,12 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import {
+  fixtureSmsInput,
+  fixtureSmsPolicy,
+  fixtureSmsBinding,
+  FIXTURE_SMS_FLAGS,
+} from "./fixture-sms-policy";
+import {
   CustomerConsentCredentials,
   ConsentSessionClaims,
 } from "./customer-consent-credentials";
@@ -45,19 +51,8 @@ export class FixtureSmsConsent {
   ) {}
 
   handle(input: Record<string, unknown>): Record<string, unknown> {
-    if (
-      Object.keys(input).sort().join(",") !==
-        "accepted,action,phone,promptId,sessionToken" ||
-      typeof input.sessionToken !== "string" ||
-      typeof input.phone !== "string" ||
-      !/^\+[1-9][0-9]{7,14}$/.test(input.phone) ||
-      typeof input.promptId !== "string" ||
-      input.promptId.length > 64 ||
-      typeof input.accepted !== "boolean" ||
-      !["PROMPT", "CAPTURE"].includes(String(input.action))
-    )
-      throw new BadRequestException("Invalid fixture SMS request.");
-    const claims = this.credentials.verifySession(input.sessionToken);
+    fixtureSmsInput(input);
+    const claims = this.credentials.verifySession(input.sessionToken as string);
     const now = this.clock();
     if (
       !Number.isSafeInteger(now) ||
@@ -67,56 +62,17 @@ export class FixtureSmsConsent {
       throw new ConflictException("Fixture session expired.");
     for (const [key, value] of this.entries)
       if (value.expiresAt <= now) this.entries.delete(key);
-    const source = this.source(claims);
-    if (
-      !source ||
-      source.fixtureOnly !== true ||
-      source.active !== true ||
-      source.tenantId !== claims.tenantId ||
-      source.sessionId !== claims.sessionId ||
-      source.phone !== input.phone ||
-      !Number.isSafeInteger(source.phoneRevision) ||
-      source.phoneRevision < 0 ||
-      typeof source.version !== "string" ||
-      !source.version ||
-      source.version.length > 100 ||
-      typeof source.sender !== "string" ||
-      !source.sender ||
-      source.sender.length > 120 ||
-      typeof source.disclosure !== "string" ||
-      !source.disclosure ||
-      source.disclosure.length > 2000 ||
-      typeof source.optedOut !== "boolean"
-    )
-      throw new ConflictException("Fixture SMS policy unavailable.");
-    // Copy primitive policy fields so external mutation cannot rewrite a prompt.
-    const policy: FixtureSmsPolicy = {
-      fixtureOnly: true,
-      tenantId: source.tenantId,
-      sessionId: source.sessionId,
-      phone: source.phone,
-      phoneRevision: source.phoneRevision,
-      version: source.version,
-      sender: source.sender,
-      disclosure: source.disclosure,
-      optedOut: source.optedOut,
-      active: true,
-    };
-    const binding = JSON.stringify([
-      claims.tenantId,
-      claims.conversationId,
-      claims.sessionId,
-      claims.jti,
-    ]);
-    const flags = {
-      fixtureOnly: true,
-      deliveryAuthorized: false,
-      liveConsentRecorded: false,
-    };
+    const policy = fixtureSmsPolicy(
+      this.source(claims),
+      claims,
+      input.phone as string,
+    );
+    const binding = fixtureSmsBinding(claims);
+    const flags = FIXTURE_SMS_FLAGS;
     if (input.action === "PROMPT") {
       if (input.promptId !== "" || input.accepted !== false)
         throw new BadRequestException("Invalid prompt request.");
-      if (source.optedOut) return { ...flags, state: "UNAVAILABLE" };
+      if (policy.optedOut) return { ...flags, state: "UNAVAILABLE" };
       if (this.entries.size >= 256)
         throw new ServiceUnavailableException(
           "Fixture prompt capacity reached.",
@@ -136,7 +92,7 @@ export class FixtureSmsConsent {
         termsPath: "/fixture-sms-terms",
       };
     }
-    const entry = this.entries.get(input.promptId);
+    const entry = this.entries.get(input.promptId as string);
     if (
       !entry ||
       entry.binding !== binding ||

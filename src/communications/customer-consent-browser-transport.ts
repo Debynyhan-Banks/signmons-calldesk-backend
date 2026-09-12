@@ -64,7 +64,9 @@ export type CustomerBrowserRequest = {
 type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
 type Ports = {
   fixtureSms?: {
-    handle(input: Record<string, unknown>): Record<string, unknown>;
+    handle(
+      input: Record<string, unknown>,
+    ): Record<string, unknown> | Promise<Record<string, unknown>>;
   };
   lifecycle?: { end(sessionToken: string): Promise<Record<string, unknown>> };
   correction?: {
@@ -305,7 +307,7 @@ export class CustomerConsentBrowserTransport {
     if (operation === "sms") {
       if (this.binding?.fixtureLoopback !== true || !ports.fixtureSms)
         fail(503);
-      const value = ports.fixtureSms.handle(input);
+      const value = await ports.fixtureSms.handle(input);
       if (
         value.fixtureOnly !== true ||
         value.deliveryAuthorized !== false ||

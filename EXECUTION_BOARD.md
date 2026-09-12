@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## APP-013 durable fixture SMS evidence — 2026-09-12
+
+Owner accepted the prior fixture interaction and approved durable evidence/current-policy/recipient checks. Encrypted local PostgreSQL fixture capture and audit now commit atomically; restart, exact retry, rollback, deadline crossing and stale/foreign/opt-out checks are evidenced. No live consent or sending authority. Evidence: evidence/APP-013/durable-fixture-sms-consent/README.md. Build/lint/architecture passed; 101 suites/1,917 tests passed (three skips); production audit zero; 14 database groups and mobile/desktop QA passed. Migration ran only in disposable local DB, now removed. Review-ready; APP-013 Now and 3/8 accepted unchanged. Production policy/source/lifecycle and activation remain gated.
+
 ## APP-013 fixture-only SMS prompt/capture — 2026-09-12
 
 Review-ready: existing intake now exercises injected fictional policy prompt/capture, tenant/session/phone/revision/version checks, opt-out refusal and exact receipt retry. Temporary in-memory evidence only; no live consent, database persistence or sending authority. Evidence: evidence/APP-013/fixture-sms-consent/README.md. Build/lint/architecture passed; 100 suites/1,906 tests passed, three skips; production audit zero. Mobile/desktop enabled and default-unavailable branches passed. APP-013 Now; 3/8 accepted unchanged. Durable production consent and approved policy/provider activation remain separate gates.

@@ -312,6 +312,7 @@ model Conversation {
   communicationEvents CommunicationEvent[]
   jobLinks            ConversationJobLink[]
   emailConsentScopes  AppointmentEmailConsentScope[]
+  fixtureSmsConsentState FixtureSmsConsentState?
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -786,6 +787,36 @@ model SmsConsentRecord {
   @@index([tenantId, status])
 }
 
+// Inactive isolated fixture evidence. Never read by production SMS eligibility.
+model FixtureSmsConsentState {
+  tenantId String @db.Uuid
+  conversationId String @db.Uuid
+  conversation Conversation @relation(fields: [conversationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  sessionId String @db.VarChar(64)
+  encryptedPolicy String
+  revision Int @default(1)
+  prompts FixtureSmsConsentPrompt[]
+  @@id([tenantId, conversationId])
+  @@unique([conversationId, tenantId])
+  @@unique([tenantId, conversationId, sessionId])
+}
+
+model FixtureSmsConsentPrompt {
+  id String @id @db.Uuid
+  tenantId String @db.Uuid
+  conversationId String @db.Uuid
+  sessionId String @db.VarChar(64)
+  state FixtureSmsConsentState @relation(fields: [tenantId, conversationId, sessionId], references: [tenantId, conversationId, sessionId], onDelete: Restrict)
+  encryptedSnapshot String
+  issuedAt DateTime
+  expiresAt DateTime
+  recordedAt DateTime?
+  sourceAuditId String? @db.Uuid
+  sourceAudit AuditLog? @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@unique([sourceAuditId, tenantId])
+  @@index([tenantId, conversationId, expiresAt])
+}
+
 
 // =====================================================
 // AUDIT
@@ -909,6 +940,7 @@ model AuditLog {
   appointmentEmailIntents AppointmentEmailIntent[]
   createdAt   DateTime @default(now())
   emailConsentEvidence AppointmentEmailConsentEvidence[]
+  fixtureSmsConsentPrompts FixtureSmsConsentPrompt[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
