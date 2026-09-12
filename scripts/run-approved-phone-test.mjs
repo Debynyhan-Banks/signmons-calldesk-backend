@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {createHmac,randomUUID} from 'node:crypto';
 import {createRequire} from 'node:module';
+import {normalizeUsPhone, privateDialog} from './private-phone-input.mjs';
 const require=createRequire(import.meta.url);
 const {Client}=require('pg');
 const {CustomerConsentCredentials}=require('../dist/communications/customer-consent-credentials.js');
@@ -12,10 +13,9 @@ const base='https://phone-preflight---signmons-calldesk-staging-p572d6wipq-ul.a.
 const image='us-east5-docker.pkg.dev/signmons/signmons/signmons-calldesk-backend@sha256:25e194acfd96299bb670de84e63b932d9dc69528e6f421ae42699f80fc9b3d75';
 const gc=(...a)=>execFileSync('gcloud',a,{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:180000}).trim();
 const secret=(name,version='latest')=>gc('secrets','versions','access',version,'--secret='+name,'--project=signmons');
-const dialog=(prompt)=>execFileSync('osascript',['-e',`text returned of (display dialog "${prompt}" default answer "" with hidden answer buttons {"Cancel", "Continue"} default button "Continue" giving up after 120)`],{encoding:'utf8',stdio:['ignore','pipe','pipe'],timeout:125000}).trim();
-export async function runApprovedPhoneTest(idToken) {
-  const phone=dialog('Signmons: enter your approved US mobile in +1 format, ending 3183. One verification text only; no automatic resend.');
-  assert(/^\+1[2-9]\d{9}$/.test(phone)&&phone.endsWith('3183'));
+const dialog=(prompt)=>{const r=privateDialog(prompt);if(r.status!=='VALUE')throw Error('Private code input: '+r.status);return r.value.trim();};
+export async function runApprovedPhoneTest(idToken, phone) {
+  assert(normalizeUsPhone(phone)===phone&&phone.endsWith('3183'));
   const request=async(body,path='/operations')=>{const r=await fetch(base+'/communications/staging-phone-test'+path,{method:'POST',headers:{Authorization:'Bearer '+idToken,'content-type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(30000)});const x=await r.json();return {status:r.status,result:x};};
   const refused=await request({operation:{}});assert.equal(refused.status,503);
   console.log('Correct DTO reached disabled-service refusal: 503.');

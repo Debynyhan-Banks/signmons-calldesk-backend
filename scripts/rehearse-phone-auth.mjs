@@ -2,10 +2,13 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { collectApprovedPhone } from './private-phone-input.mjs';
 const require = createRequire(import.meta.url);
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
 if (process.argv[2] !== '--approved-single-sms') throw Error('Approval required');
+// Fail/cancel before credentials, IAM, identity changes or propagation waits.
+const approvedPhone = collectApprovedPhone();
 const uid = 'staging-phone-owner-20260912';
 const tenantId = 'a1adcfd4-15be-404b-9ac3-5edb1fda20f0';
 const sa = 'signmons-calldesk-runtime@signmons.iam.gserviceaccount.com';
@@ -81,7 +84,7 @@ try {
   assert.equal(claims.uid,uid);assert.equal(claims.tenantId,tenantId);assert.equal(claims.role,'owner');
   console.log('Firebase token signature, project, UID, tenant and role verified; tokens not printed.');
   const {runApprovedPhoneTest}=await import('./run-approved-phone-test.mjs');
-  await runApprovedPhoneTest(idToken);
+  await runApprovedPhoneTest(idToken, approvedPhone);
 } catch(e) { console.log('Rehearsal failed safely: '+(e instanceof assert.AssertionError?'assertion mismatch':String(e.message).startsWith('API refused')?e.message:'operation failed (details suppressed)'));process.exitCode=1; }
 finally {
   for(const [label,fn] of [
