@@ -1,5 +1,11 @@
 # Signmons Backend Execution Board
 
+## Current: disabled Google coverage evaluator implemented — 2026-09-12
+
+Backend src/communications/google-service-area.ts reuses the existing Google address adapter for fictional in-memory coverage proposals. Default disabled; explicit FIXTURE_ONLY mode, current confirmation bindings, unit/physical-address checks and consistent structured Ohio county evidence required. All downstream authority stays false. No route registration, provider I/O, persistence, schema or UI change. Evidence: backend evidence/APP-013/google-service-area.md.
+
+County GIS is not a launch gate. Next remains qualification of actual Google field formats/signals and permitted transient/derived-field handling before controlled live composition; fixture three-digit codes are hypotheses, not provider acceptance. No additional generic evaluator or automatic live activation. APP-013/2B Now; 3/8 (37.5%) unchanged, approved queue unchanged, phone test closed.
+
 ## Current: Google-only coverage policy approved — 2026-09-12
 
 Owner approved governance GOOGLE_ONLY_SERVICE_AREA_POLICY.md: replace mandatory independent CEGIS qualification with Google-based business service-area qualification, not parcel certification. Valid confirmed physical address/unit plus consistent structured county/state/country and current bindings required; uncertainty preserves draft and refuses automatic admission. Old CEGIS digest retention exceptions do not apply to Google-derived content. Runtime unchanged, no live calls or acceptance claim.
