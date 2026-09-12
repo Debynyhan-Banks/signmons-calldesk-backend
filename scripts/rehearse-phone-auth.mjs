@@ -5,12 +5,12 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
-if (process.argv[2] !== '--approved-diagnostic-retry') throw Error('Approval required');
+if (process.argv[2] !== '--approved-propagation-retry') throw Error('Approval required');
 const uid = 'staging-phone-owner-20260912';
 const tenantId = 'a1adcfd4-15be-404b-9ac3-5edb1fda20f0';
 const sa = 'signmons-calldesk-runtime@signmons.iam.gserviceaccount.com';
 const role = 'projects/signmons/roles/stagingPhoneTokenSigner';
-const condition = 'expression=request.time >= timestamp("2026-09-12T20:10:00Z") && request.time < timestamp("2026-09-12T20:25:00Z"),title=staging-phone-one-session';
+const condition = 'expression=request.time >= timestamp("2026-09-12T21:41:00Z") && request.time < timestamp("2026-09-12T21:56:00Z"),title=staging-phone-one-session';
 const gc = (...args) => execFileSync('gcloud', args, {encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const jsonGc = (...args) => JSON.parse(gc(...args,'--format=json'));
 let roleAttempted=false, grantAttempted=false, identityAttempted=false, idToken;
@@ -29,7 +29,7 @@ async function api(url, body, customHeaders=headers) {
 const identity=(action,body)=>api(`https://identitytoolkit.googleapis.com/v1/projects/signmons/accounts:${action}`,body);
 const bindingArgs=['--project=signmons',`--member=user:debynyhan@signmons.com`,`--role=${role}`,`--condition=${condition}`];
 try {
-  assert(Date.now()>=Date.parse('2026-09-12T20:10:00Z') && Date.now()<Date.parse('2026-09-12T20:20:00Z'));
+  assert(Date.now()>=Date.parse('2026-09-12T21:41:00Z') && Date.now()<Date.parse('2026-09-12T21:44:00Z'));
   assert.equal(gc('auth','list','--filter=status:ACTIVE','--format=value(account)'),'debynyhan@signmons.com');
   const priorRole=jsonGc('iam','roles','describe','stagingPhoneTokenSigner','--project=signmons');
   assert.equal(priorRole.stage,'DISABLED');
@@ -51,6 +51,10 @@ try {
   assert.deepEqual(policy.bindings[0].members,['user:debynyhan@signmons.com']);
   assert.equal(policy.bindings[0].condition.title,'staging-phone-one-session');
   console.log('Conditional signBlob-only grant verified.');
+  for(let elapsed=0;elapsed<420;elapsed+=30) {
+    await new Promise(r=>setTimeout(r,30000));
+    console.log(`Propagation wait ${elapsed+30}/420 seconds; no signing attempted.`);
+  }
   let ready=false;
   for(let attempt=0;attempt<12;attempt++) {
     const checked=await api(`https://iam.googleapis.com/v1/projects/signmons/serviceAccounts/${sa}:testIamPermissions`,{permissions:['iam.serviceAccounts.signBlob']});
@@ -59,6 +63,7 @@ try {
     await new Promise(r=>setTimeout(r,10000));
   }
   assert(ready,'Permission propagation did not complete');
+  assert(Date.now()<Date.parse('2026-09-12T21:54:00Z'),'Insufficient cleanup window');
   console.log('Effective signBlob permission observed.');
   const now=Math.floor(Date.now()/1000);
   const encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');

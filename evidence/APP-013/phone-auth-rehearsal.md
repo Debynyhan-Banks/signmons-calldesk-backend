@@ -1,5 +1,13 @@
 # Authentication-only rehearsal — 2026-09-12
 
+## Seven-minute propagation retry — authentication succeeded
+
+Owner approved same limited grant with seven-minute wait. Conditional window 2026-09-12T21:41:00Z to 21:56:00Z; retained role re-enabled, exact grant verified, full 420 seconds elapsed before one signing request. Signing and custom-token exchange succeeded. Firebase signature/project/UID/tenant/owner claims verified without token disclosure. This supports propagation delay as the explanation for earlier refusals; no broader permission or condition removal was needed.
+
+Temporarily enabled only isolated operator. Authenticated POST {} returned 400/private no-store, not expected 503: controller DTO requires an operation object, so malformed empty input is refused before service binding. Harness exited 1 on this assertion. This is an authentication success and input-refusal observation, NOT proof of authenticated disabled-service refusal. No HMAC session or valid operation supplied, no provider call. Source inspection confirms the validation ordering; do not relabel this as full test acceptance or silently claim the expected 503.
+
+Finally disabled operator/revoked refresh credentials (validSince 1789249709), removed exact binding, disabled role. Readback: disabled=true, no bindings, role DISABLED. Reusing the same issued ID token against candidate returned 401 after cleanup. No tenant/session/customer/conversation write, deployment, SMS/payment/calendar action. Phone flag and other safety flags were checked false before rehearsal and never mutated. Authentication blocker is resolved; no additional signing rehearsal is proposed solely for the malformed probe. Next supervised activation must use the proper request DTO and verify disabled-service refusal before enabling sending. Exact single-SMS activation remains separately approved. Fixed walkthrough remains 3/8 (37.5%). Script syntax passes; no runtime change or full-runtime rerun claimed.
+
 ## Owner-approved single diagnostic retry
 
 Reused exact disabled role and same 20:10–20:25 UTC condition; no broader permission or new role. Updated script requires --approved-diagnostic-retry, validates prior disabled/one-permission role, polls read-only testIamPermissions before signing and prints only allowlisted error metadata. Syntax check passed.
