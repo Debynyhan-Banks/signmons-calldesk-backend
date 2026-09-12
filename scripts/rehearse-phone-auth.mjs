@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
-if (process.argv[2] !== '--approved-auth-only') throw Error('Approval required');
+if (process.argv[2] !== '--approved-diagnostic-retry') throw Error('Approval required');
 const uid = 'staging-phone-owner-20260912';
 const tenantId = 'a1adcfd4-15be-404b-9ac3-5edb1fda20f0';
 const sa = 'signmons-calldesk-runtime@signmons.iam.gserviceaccount.com';
@@ -19,7 +19,11 @@ const headers={Authorization:`Bearer ${accessToken}`,'content-type':'application
 async function api(url, body, customHeaders=headers) {
   const r=await fetch(url,{method:body?'POST':'GET',headers:customHeaders,body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(15000)});
   const x=await r.json();
-  if(!r.ok) throw Error(`API refused HTTP ${r.status}`);
+  if(!r.ok) {
+    const safe = v => typeof v === 'string' && /^[A-Za-z0-9_.-]{1,120}$/.test(v) ? v : undefined;
+    console.log(JSON.stringify({apiFailure:{host:new URL(url).hostname,status:r.status,code:safe(x.error?.status),reasons:x.error?.details?.map(d=>({reason:safe(d.reason),permission:safe(d.metadata?.permission),service:safe(d.metadata?.service)}))}}));
+    throw Error(`API refused HTTP ${r.status}`);
+  }
   return x;
 }
 const identity=(action,body)=>api(`https://identitytoolkit.googleapis.com/v1/projects/signmons/accounts:${action}`,body);
@@ -27,8 +31,9 @@ const bindingArgs=['--project=signmons',`--member=user:debynyhan@signmons.com`,`
 try {
   assert(Date.now()>=Date.parse('2026-09-12T20:10:00Z') && Date.now()<Date.parse('2026-09-12T20:20:00Z'));
   assert.equal(gc('auth','list','--filter=status:ACTIVE','--format=value(account)'),'debynyhan@signmons.com');
-  const roles=jsonGc('iam','roles','list','--project=signmons');
-  assert(!roles.some(r=>r.name===role));
+  const priorRole=jsonGc('iam','roles','describe','stagingPhoneTokenSigner','--project=signmons');
+  assert.equal(priorRole.stage,'DISABLED');
+  assert.deepEqual(priorRole.includedPermissions,['iam.serviceAccounts.signBlob']);
   const baseline=jsonGc('iam','service-accounts','get-iam-policy',sa,'--project=signmons');
   assert.equal((baseline.bindings||[]).length,0);
   const rev=jsonGc('run','revisions','describe','signmons-calldesk-staging-phone-d33ecd0','--project=signmons','--region=us-east5');
@@ -37,7 +42,7 @@ try {
   assert.equal(before.length,1); assert.equal(before[0].disabled,true);
   assert.deepEqual(JSON.parse(before[0].customAttributes),{tenantId,role:'owner',stagingOnly:true});
   roleAttempted=true;
-  gc('iam','roles','create','stagingPhoneTokenSigner','--project=signmons','--title=Staging phone token signer','--permissions=iam.serviceAccounts.signBlob','--stage=GA');
+  gc('iam','roles','update','stagingPhoneTokenSigner','--project=signmons','--stage=GA');
   grantAttempted=true;
   gc('iam','service-accounts','add-iam-policy-binding',sa,...bindingArgs);
   const policy=jsonGc('iam','service-accounts','get-iam-policy',sa,'--project=signmons');
@@ -46,8 +51,15 @@ try {
   assert.deepEqual(policy.bindings[0].members,['user:debynyhan@signmons.com']);
   assert.equal(policy.bindings[0].condition.title,'staging-phone-one-session');
   console.log('Conditional signBlob-only grant verified.');
-  // Short propagation allowance, never widen or extend permission.
-  await new Promise(r=>setTimeout(r,10000));
+  let ready=false;
+  for(let attempt=0;attempt<12;attempt++) {
+    const checked=await api(`https://iam.googleapis.com/v1/projects/signmons/serviceAccounts/${sa}:testIamPermissions`,{permissions:['iam.serviceAccounts.signBlob']});
+    if(checked.permissions?.includes('iam.serviceAccounts.signBlob')) {ready=true;break;}
+    console.log('Waiting for permission propagation; no signing attempted.');
+    await new Promise(r=>setTimeout(r,10000));
+  }
+  assert(ready,'Permission propagation did not complete');
+  console.log('Effective signBlob permission observed.');
   const now=Math.floor(Date.now()/1000);
   const encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
   const unsigned=encode({alg:'RS256',typ:'JWT'})+'.'+encode({iss:sa,sub:sa,aud:'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',iat:now,exp:now+300,uid});

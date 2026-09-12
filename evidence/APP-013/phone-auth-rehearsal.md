@@ -1,5 +1,13 @@
 # Authentication-only rehearsal — 2026-09-12
 
+## Owner-approved single diagnostic retry
+
+Reused exact disabled role and same 20:10–20:25 UTC condition; no broader permission or new role. Updated script requires --approved-diagnostic-retry, validates prior disabled/one-permission role, polls read-only testIamPermissions before signing and prints only allowlisted error metadata. Syntax check passed.
+
+Conditional binding verified; testIamPermissions reported effective signBlob. The one signing attempt nevertheless returned HTTP 403, status PERMISSION_DENIED, reason IAM_PERMISSION_DENIED, permission iam.serviceAccounts.signBlob from iamcredentials.googleapis.com. This is a verified discrepancy between permission precheck and service enforcement, not proof that a broader role is needed or that propagation is resolved everywhere. No signature or token exchange; identity enable step never reached.
+
+Cleanup readback again shows no bindings, custom role DISABLED, operator disabled with unchanged validSince. Runtime service-account describe does not show disabled=true. Bounded IAM Credentials audit query returned no entries. No new deployment, database record, secret change, SMS or identity activation. Stop further mutation retries. Next: read-only IAM policy/condition/propagation diagnosis or support escalation with this redacted error; do not remove the condition or substitute Token Creator as a workaround. Any support contact remains separately authorized. Authentication is not accepted; 3/8 walkthrough unchanged.
+
 Owner explicitly approved temporary signing grant, one isolated token exchange attempt, disabled endpoint check and cleanup; no SMS or tenant activation. Exact bounded script: scripts/rehearse-phone-auth.mjs. This records the attempted run, not a reusable authorization (fixed UTC window and absent-role precondition).
 
 Created projects/signmons/roles/stagingPhoneTokenSigner with only iam.serviceAccounts.signBlob. Bound only on signmons-calldesk-runtime to user:debynyhan@signmons.com under a 2026-09-12T20:10:00Z inclusive to 20:25:00Z exclusive condition. Policy version 3, exact member/role and one binding verified. Candidate six false flags and exact disabled operator/claims checked before mutation.
