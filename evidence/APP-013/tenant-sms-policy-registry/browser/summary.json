@@ -1,0 +1,23 @@
+{
+  "mode": "REAL_DURABLE_FIXTURE_AND_TRANSPORT_MOCK_INTAKE",
+  "persistentDatabaseWrites": "isolated local database; counted by parent harness",
+  "providerCalls": 0,
+  "checks": [
+    {
+      "width": 390,
+      "capture": true,
+      "lostResponseReplay": true,
+      "skipWithoutWrite": true,
+      "previewWithoutSms": true,
+      "deliveryAuthorized": false
+    },
+    {
+      "width": 1280,
+      "capture": true,
+      "lostResponseReplay": true,
+      "skipWithoutWrite": true,
+      "previewWithoutSms": true,
+      "deliveryAuthorized": false
+    }
+  ]
+}

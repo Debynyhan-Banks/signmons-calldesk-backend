@@ -73,6 +73,8 @@ model TenantOrganization {
   communicationEvents     CommunicationEvent[]
   communicationContents   CommunicationContent[]
   smsConsentRecords       SmsConsentRecord[]
+  smsPolicyVersions       TenantSmsPolicyVersion[]
+  smsPolicyHead           TenantSmsPolicyHead?
   smsEnqueueIntents        SmsEnqueueIntent[]
   appointmentEmailIntents AppointmentEmailIntent[]
   appointmentCancellationSnapshots AppointmentCancellationSnapshot[]
@@ -787,6 +789,30 @@ model SmsConsentRecord {
   @@index([tenantId, status])
 }
 
+// P1 inactive policy registry. No consent or send authority.
+model TenantSmsPolicyVersion {
+  id String @id @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  content Json
+  digest String @db.Char(64)
+  createdAt DateTime @default(now())
+  heads TenantSmsPolicyHead[]
+  @@unique([id, tenantId])
+}
+
+model TenantSmsPolicyHead {
+  tenantId String @id @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  versionId String @db.Uuid
+  version TenantSmsPolicyVersion @relation(fields: [versionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  revision Int
+  state String @db.VarChar(32)
+  publicationRef String? @db.VarChar(120)
+  lastAuditId String @db.Uuid
+  lastAudit AuditLog @relation(fields: [lastAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
+}
+
 // Inactive isolated fixture evidence. Never read by production SMS eligibility.
 model FixtureSmsConsentState {
   tenantId String @db.Uuid
@@ -941,6 +967,7 @@ model AuditLog {
   createdAt   DateTime @default(now())
   emailConsentEvidence AppointmentEmailConsentEvidence[]
   fixtureSmsConsentPrompts FixtureSmsConsentPrompt[]
+  smsPolicyHeads TenantSmsPolicyHead[]
 
   @@unique([id, tenantId])
   @@index([tenantId])

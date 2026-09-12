@@ -5,6 +5,7 @@ import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import { userInfo } from "node:os";
 import { createRequire } from "node:module";
 import { verifyFixtureSmsBrowser } from "./verify-fixture-sms-consent.mjs";
+import { verifyTenantSmsPolicyRegistry } from "./verify-tenant-sms-policy-registry.mjs";
 const require = createRequire(import.meta.url);
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
@@ -458,14 +459,38 @@ try {
   });
   await assert.rejects(make().handle(blocked.input));
   checks.push("suspended organization refuses");
-  await assert.rejects(prisma.fixtureSmsConsentState.create({data:{
-    tenantId:foreign.claims.tenantId,conversationId:f.claims.conversationId,
-    sessionId:f.claims.sessionId,encryptedPolicy:envelope(f.claims,f.policy)}}));
-  await assert.rejects(prisma.fixtureSmsConsentPrompt.create({data:{
-    id:randomUUID(),tenantId:foreign.claims.tenantId,conversationId:f.claims.conversationId,
-    sessionId:f.claims.sessionId,encryptedSnapshot:"invalid foreign fixture",
-    issuedAt:new Date(),expiresAt:new Date(Date.now()+60000)}}));
-  checks.push("database composite foreign keys refuse cross-tenant state and prompts");
+  await assert.rejects(
+    prisma.fixtureSmsConsentState.create({
+      data: {
+        tenantId: foreign.claims.tenantId,
+        conversationId: f.claims.conversationId,
+        sessionId: f.claims.sessionId,
+        encryptedPolicy: envelope(f.claims, f.policy),
+      },
+    }),
+  );
+  await assert.rejects(
+    prisma.fixtureSmsConsentPrompt.create({
+      data: {
+        id: randomUUID(),
+        tenantId: foreign.claims.tenantId,
+        conversationId: f.claims.conversationId,
+        sessionId: f.claims.sessionId,
+        encryptedSnapshot: "invalid foreign fixture",
+        issuedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60000),
+      },
+    }),
+  );
+  checks.push(
+    "database composite foreign keys refuse cross-tenant state and prompts",
+  );
+  checks.push(
+    ...(await verifyTenantSmsPolicyRegistry({
+      prisma,
+      out: out + "/registry",
+    })),
+  );
   await verifyFixtureSmsBrowser({
     out: out + "/browser",
     factory: async ({ claims, policy, credentials: creds }) => {

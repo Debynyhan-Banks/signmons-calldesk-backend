@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## APP-013 P1 tenant SMS policy registry — 2026-09-12
+
+Owner-approved P1 implemented locally: immutable policy versions, versioned lifecycle/current pointer, owner/admin tenant access, audited atomic transitions, exact safe URL allowlist and fixture-only publication attestation. Transaction-scoped reader rechecks current state/time/proof and rejects superseded bindings; no production registration or live capture connection. Evidence: evidence/APP-013/tenant-sms-policy-registry/README.md. Final build/lint/architecture/audit passed; 1,941 tests, six registry plus fourteen regression groups and 390px/1280px existing-flow QA passed. Earlier Jest exit 139 passed on unchanged rerun; retained as runner risk. Local migration only; disposable DB removed. Review-ready; next proposed P2 consent/suppression integration, no sending. APP-013 Now; 3/8 milestones unchanged.
+
 ## APP-013 production-policy/SMS activation readiness — 2026-09-12
 
 Planning-only reconciliation of runtime c081fb0 completed. Governance PILOT_SMS_ACTIVATION_READINESS.md maps completed fixture durability to P1 tenant policy registry, P2 production consent/suppression integration and existing 3C controlled-send gates. No new milestone or fixture rewrite. Next proposed implementation: P1 only after approval, no publication/sending. Public policy, retention/key lifecycle, live source/suppression and provider/release approvals remain gates. No runtime/account/data change or fresh runtime test claim. APP-013 Now; current 2B; accepted 3/8 (37.5% milestones), not overall MVP completion.
