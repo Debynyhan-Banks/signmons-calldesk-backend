@@ -1,16 +1,16 @@
-// Exact owner-approved authentication rehearsal; no SMS, tenant writes or deployment.
+// Exact owner-approved supervised single-SMS runner; fixed window, no automatic retry.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { initializeApp } = require('firebase-admin/app');
 const { getAuth } = require('firebase-admin/auth');
-if (process.argv[2] !== '--approved-propagation-retry') throw Error('Approval required');
+if (process.argv[2] !== '--approved-single-sms') throw Error('Approval required');
 const uid = 'staging-phone-owner-20260912';
 const tenantId = 'a1adcfd4-15be-404b-9ac3-5edb1fda20f0';
 const sa = 'signmons-calldesk-runtime@signmons.iam.gserviceaccount.com';
 const role = 'projects/signmons/roles/stagingPhoneTokenSigner';
-const condition = 'expression=request.time >= timestamp("2026-09-12T21:41:00Z") && request.time < timestamp("2026-09-12T21:56:00Z"),title=staging-phone-one-session';
+const condition = 'expression=request.time >= timestamp("2026-09-12T21:53:00Z") && request.time < timestamp("2026-09-12T22:08:00Z"),title=staging-phone-one-session';
 const gc = (...args) => execFileSync('gcloud', args, {encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
 const jsonGc = (...args) => JSON.parse(gc(...args,'--format=json'));
 let roleAttempted=false, grantAttempted=false, identityAttempted=false, idToken;
@@ -29,7 +29,7 @@ async function api(url, body, customHeaders=headers) {
 const identity=(action,body)=>api(`https://identitytoolkit.googleapis.com/v1/projects/signmons/accounts:${action}`,body);
 const bindingArgs=['--project=signmons',`--member=user:debynyhan@signmons.com`,`--role=${role}`,`--condition=${condition}`];
 try {
-  assert(Date.now()>=Date.parse('2026-09-12T21:41:00Z') && Date.now()<Date.parse('2026-09-12T21:44:00Z'));
+  assert(Date.now()>=Date.parse('2026-09-12T21:53:00Z') && Date.now()<Date.parse('2026-09-12T21:55:00Z'));
   assert.equal(gc('auth','list','--filter=status:ACTIVE','--format=value(account)'),'debynyhan@signmons.com');
   const priorRole=jsonGc('iam','roles','describe','stagingPhoneTokenSigner','--project=signmons');
   assert.equal(priorRole.stage,'DISABLED');
@@ -63,7 +63,7 @@ try {
     await new Promise(r=>setTimeout(r,10000));
   }
   assert(ready,'Permission propagation did not complete');
-  assert(Date.now()<Date.parse('2026-09-12T21:54:00Z'),'Insufficient cleanup window');
+  assert(Date.now()<Date.parse('2026-09-12T22:05:00Z'),'Insufficient cleanup window');
   console.log('Effective signBlob permission observed.');
   const now=Math.floor(Date.now()/1000);
   const encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
@@ -80,10 +80,8 @@ try {
   const claims=await auth.verifyIdToken(idToken);
   assert.equal(claims.uid,uid);assert.equal(claims.tenantId,tenantId);assert.equal(claims.role,'owner');
   console.log('Firebase token signature, project, UID, tenant and role verified; tokens not printed.');
-  const r=await fetch('https://phone-preflight---signmons-calldesk-staging-p572d6wipq-ul.a.run.app/communications/staging-phone-test/operations',{method:'POST',headers:{Authorization:`Bearer ${idToken}`,'content-type':'application/json'},body:'{}',signal:AbortSignal.timeout(15000)});
-  await r.text();
-  console.log(JSON.stringify({authenticatedCandidateStatus:r.status,cache:r.headers.get('cache-control')}));
-  assert.equal(r.status,503);
+  const {runApprovedPhoneTest}=await import('./run-approved-phone-test.mjs');
+  await runApprovedPhoneTest(idToken);
 } catch(e) { console.log('Rehearsal failed safely: '+(e instanceof assert.AssertionError?'assertion mismatch':String(e.message).startsWith('API refused')?e.message:'operation failed (details suppressed)'));process.exitCode=1; }
 finally {
   for(const [label,fn] of [
