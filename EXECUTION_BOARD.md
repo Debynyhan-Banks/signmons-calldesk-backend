@@ -1,5 +1,16 @@
 # Signmons Backend Execution Board
 
+
+## 2B OAuth address transport — owner-approved bounded implementation, 2026-09-12
+
+Owner approved an OAuth-backed transport after read-only Cloud Run inspection. This is a prerequisite inside existing 2B, not another walkthrough section. GoogleAddressOAuthTransport is default-disabled, unregistered and disconnected from the fixture adapter, controllers and admission. Fixed US/OH wire contract, fixed Google HTTPS destination, ADC OAuth, explicit Signmons quota project, one POST/no retry, eight-second overall deadline, redirect refusal, 64 KiB streamed response bound and sanitized failure. A RESPONSE is internal transient content, never address/county/admission proof. No live credentials acquired or provider calls in this section.
+
+Evidence: backend evidence/APP-013/google-address-oauth/README.md. Reconcile this newer owner approval over older read-only-only or parked SMS next-work wording. Stop for review; remaining 2B prerequisites are controlled operation/budget composition, minimal IAM permission qualification and explicit staging release/test approval, plus county-source qualification. Do not enable the constructor, promote fixture proof or treat quotas as total test authorization. No IAM, secrets, infrastructure, deployment, production data or billing changes during this implementation.
+
+Account context from preceding verified read-only work: Cloud Run signmons-calldesk-staging, us-east5, runtime identity signmons-calldesk-runtime@signmons.iam.gserviceaccount.com; no static-egress/VPC annotations. Google console confirmed quota reductions to 10/day and 5/minute in a separately authorized preceding turn. County inquiry is now user-reported sent, response pending; older claims that it was never sent or must be located are superseded, not independently sent-item verified. Twilio service created by owner; USA-only restrictions user-reported, not acceptance of OTP delivery.
+
+APP-013 sole Now; Next empty; FE-014 paused. Fixed walkthrough acceptance remains 3/8 (37.5%), five acceptances remaining, not whole-MVP completion or ETA. No UI changed; this isolated server transport has no browser surface.
+
 ## Owner-approved five-section focus — 2026-09-12
 
 Follow governance PAYMENT_BOOKING_TEXT_STEEL_THREAD.md: remaining acceptance order is 2B verified intake/job, 3A Sandbox payment, 3B test-calendar scheduling, 3C received confirmation text, 3D changes/recovery. Owner approved prioritizing 2B blockers. Older next-P2/provider-replay recommendations below are parked as 3C subtasks, not current execution instructions. No new acceptance section/material expansion without owner-approved baseline change. Do not rebuild fixtures or substitute SMS hardening for blocked verification.
