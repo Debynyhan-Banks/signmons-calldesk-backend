@@ -1,0 +1,19 @@
+{
+  "mode": "DISPOSABLE_POSTGRES_ONLY",
+  "checks": [
+    "missing consent refuses queue creation; START without prior opt-out leaves no consent row",
+    "STOP overrides initial legacy grant; stale verbal retry is refused without changing row or customer",
+    "concurrent START has one restoration; repeated STOP and status change-back advance revision",
+    "concurrent STOP lock holder defeats stale verbal capture",
+    "post-write failure rolls back status, revision, customer flag and audit together",
+    "unknown STOP commit and reconstructed retry remain suppressed; database prevents revision rollback",
+    "tenant-bound hashes remain isolated; outbound consumer refuses suppressed recipient with zero queues/providers"
+  ],
+  "localFixtureConsentRows": 2,
+  "finalOptedInRows": 0,
+  "providerCalls": 0,
+  "deliveryEvents": 0,
+  "productionWrites": 0,
+  "captureEnabled": false,
+  "remaining": "P2 policy-bound capture evidence bridge and provider event replay identity; legacy keyword retries are suppressive, not audit-deduplicated"
+}

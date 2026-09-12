@@ -315,6 +315,7 @@ model Conversation {
   jobLinks            ConversationJobLink[]
   emailConsentScopes  AppointmentEmailConsentScope[]
   fixtureSmsConsentState FixtureSmsConsentState?
+  smsPolicyCaptures SmsPolicyCapture[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -799,6 +800,7 @@ model TenantSmsPolicyVersion {
   digest String @db.Char(64)
   createdAt DateTime @default(now())
   heads TenantSmsPolicyHead[]
+  captures SmsPolicyCapture[]
   @@unique([id, tenantId])
 }
 
@@ -842,6 +844,30 @@ model FixtureSmsConsentPrompt {
   sourceAudit AuditLog? @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
   @@unique([sourceAuditId, tenantId])
   @@index([tenantId, conversationId, expiresAt])
+}
+
+// Inactive production-shaped provenance. DRY_RUN is enforced by a database constraint.
+model SmsPolicyCapture {
+  id String @id @db.Uuid
+  tenantId String @db.Uuid
+  conversationId String @db.Uuid
+  sessionId String @db.VarChar(64)
+  conversation Conversation @relation(fields: [conversationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  policyVersionId String @db.Uuid
+  policyVersion TenantSmsPolicyVersion @relation(fields: [policyVersionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  policyRevision Int
+  phoneHash String @db.Char(64)
+  hashKeyVersion String @db.VarChar(64)
+  consentRevision Int
+  mode String @default("DRY_RUN") @db.VarChar(16)
+  encryptedSnapshot String
+  issuedAt DateTime
+  expiresAt DateTime
+  recordedAt DateTime?
+  sourceAuditId String? @db.Uuid
+  sourceAudit AuditLog? @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@unique([sourceAuditId, tenantId])
+  @@index([tenantId, conversationId, sessionId])
 }
 
 
@@ -969,6 +995,7 @@ model AuditLog {
   emailConsentEvidence AppointmentEmailConsentEvidence[]
   fixtureSmsConsentPrompts FixtureSmsConsentPrompt[]
   smsPolicyHeads TenantSmsPolicyHead[]
+  smsPolicyCaptures SmsPolicyCapture[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
