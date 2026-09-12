@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Interval } from "@nestjs/schedule";
+import { backgroundWorkersEnabled } from "../config/background-workers";
 import { LoggingService } from "../logging/logging.service";
 import { SmsDeliveryService } from "./sms-delivery.service";
 import { SmsEnqueueIntentService } from "./sms-enqueue-intent.service";
@@ -16,6 +17,7 @@ export class SmsDeliveryWorker {
 
   @Interval(60_000)
   async processDue(): Promise<void> {
+    if (!backgroundWorkersEnabled()) return;
     if (this.running) return;
     this.running = true;
     try {

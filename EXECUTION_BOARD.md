@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: candidate worker isolation — 2026-09-12
+
+Owner-approved callback guard is review-ready. BACKGROUND_WORKERS_ENABLED=false prevents both scheduled workers from accessing database/recovery/delivery services; omission preserves existing revisions. See evidence/APP-013/background-worker-isolation.md. 2,080 tests passed, three existing skips; lint/build/architecture/Prisma/audit passed. No deployment/provider/configuration action. Next is review and explicit disabled candidate release authorization, not another feature section. APP-013/2B remains Now, 3/8 (37.5%) walkthrough acceptance unchanged.
+
 ## Current: default-disabled phone-only execution — 2026-09-12
 
 Owner-reviewed packet implemented as an authenticated staging-only operations/stop connection to existing durable verification, with exact participant binding, atomic retained phone liabilities, expiry and database approval revocation. Default off; no release or SMS. See evidence/APP-013/phone-only-execution.md. Next: read-only exact release/configuration packet, then explicit deployment/test approval. Address/job admission remain off; Google/county gates persist. APP-013/2B Now, 3/8 (37.5%) walkthrough accepted; approved queue unchanged.
