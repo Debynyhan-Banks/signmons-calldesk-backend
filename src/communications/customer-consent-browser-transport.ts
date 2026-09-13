@@ -136,7 +136,21 @@ export class CustomerConsentBrowserTransport {
     }
   }
 
-  async handle(request: CustomerBrowserRequest) {
+  handle(request: CustomerBrowserRequest) {
+    return this.handleBody(request);
+  }
+
+  handleStream(
+    request: Omit<CustomerBrowserRequest, "body">,
+    source: AsyncIterable<Uint8Array>,
+  ) {
+    return this.handleBody({ ...request, body: Buffer.alloc(0) }, source);
+  }
+
+  private async handleBody(
+    request: CustomerBrowserRequest,
+    source?: AsyncIterable<Uint8Array>,
+  ) {
     let operation: CustomerBrowserOperation | "unknown" = "unknown";
     let release: (() => void) | undefined;
     let status = 503,
@@ -187,6 +201,8 @@ export class CustomerConsentBrowserTransport {
         ports.budget.acquire(request.peerAddress, operation) ?? undefined;
       if (!release) fail(429);
       if (typeof release !== "function") fail(503);
+      if (source)
+        request = { ...request, body: await readCustomerBrowserBody(source) };
       if (
         !Buffer.isBuffer(request.body) ||
         request.body.length > CUSTOMER_BROWSER_MAX_BYTES

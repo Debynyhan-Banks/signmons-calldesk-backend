@@ -490,6 +490,26 @@ describe("inactive same-origin browser transport", () => {
     expect((await asActor(() => transport.handle(request))).status).toBe(403);
     expect(submit).not.toHaveBeenCalled();
   });
+  it("checks ingress before consuming streams and bounds streamed bodies", async () => {
+    const read = jest.fn();
+    async function* bytes() {
+      await Promise.resolve();
+      read();
+      yield Buffer.alloc(16385, 32);
+    }
+    const bad = req();
+    bad.method = "GET";
+    expect(
+      (await asActor(() => model().handleStream(bad, bytes()))).status,
+    ).toBe(403);
+    expect(read).not.toHaveBeenCalled();
+    expect(
+      (await asActor(() => model().handleStream(req(), bytes()))).status,
+    ).toBe(413);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(start).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalled();
+  });
   it("submits an explicit review request and projects only its pending receipt", async () => {
     const input = { ...draftInput(), requestId: randomUUID(), confirmed: true };
     const receipt = {
