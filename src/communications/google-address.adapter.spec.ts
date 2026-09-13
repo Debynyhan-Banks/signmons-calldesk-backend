@@ -1,4 +1,7 @@
-import { GoogleAddressAdapter } from "./google-address.adapter";
+import {
+  GoogleAddressAdapter,
+  reviewGoogleAddressResponse,
+} from "./google-address.adapter";
 
 describe("disabled Google address adapter", () => {
   const input = {
@@ -52,6 +55,39 @@ describe("disabled Google address adapter", () => {
       admissionAuthorized: false,
     });
   });
+  it("reviews a supplied response without transport or fixture provenance", () => {
+    const value = response();
+    const before = JSON.stringify(value);
+    const reviewed = reviewGoogleAddressResponse(input, value);
+    expect(reviewed.status).toBe("REVIEW");
+    expect(reviewed).not.toHaveProperty("fixtureOnly");
+    expect(reviewed).toMatchObject({
+      addressVerified: false,
+      admissionAuthorized: false,
+    });
+    expect(JSON.stringify(reviewed)).not.toContain("never-return-this");
+    expect(JSON.stringify(value)).toBe(before);
+    reviewed.candidate!.addressLines[0] = "changed";
+    expect(JSON.stringify(value)).toBe(before);
+  });
+  it.each([null, {}, { ...input, street: "" }, { ...input, unit: 2 }])(
+    "direct review refuses malformed input %j",
+    (value) =>
+      expect(reviewGoogleAddressResponse(value, response()).status).toBe(
+        "INVALID_INPUT",
+      ),
+  );
+  it.each([null, {}, { error: "private-provider-error" }])(
+    "direct review strips unavailable responses %j",
+    (value) => {
+      expect(reviewGoogleAddressResponse(input, value)).toEqual({
+        status: "UNKNOWN",
+        candidate: null,
+        addressVerified: false,
+        admissionAuthorized: false,
+      });
+    },
+  );
   it("maps only the minimal direct US/OH request and strips provider content", async () => {
     const mock = jest.fn().mockResolvedValue(response());
     const result = await new GoogleAddressAdapter(mock).validate(input);

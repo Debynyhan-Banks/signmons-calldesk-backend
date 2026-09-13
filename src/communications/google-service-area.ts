@@ -1,4 +1,4 @@
-import { GoogleAddressAdapter } from "./google-address.adapter";
+import { reviewGoogleAddressResponse } from "./google-address.adapter";
 
 type Binding = {
   tenantId: string;
@@ -64,9 +64,9 @@ export async function evaluateGoogleServiceArea(
     )
       return result("UNKNOWN");
 
-    const preview = await new GoogleAddressAdapter(() =>
-      Promise.resolve(snapshot.response),
-    ).preview(snapshot.input);
+    const preview = await Promise.resolve(
+      reviewGoogleAddressResponse(snapshot.input, snapshot.response),
+    );
     if (preview.status !== "REVIEW") return result("UNKNOWN");
     const body = record(record(snapshot.response).result);
     const usps = record(body.uspsData);

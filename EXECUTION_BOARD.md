@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: transport-free transient address parser extracted — 2026-09-12
+
+Backend evidence/APP-013/transient-address-review.md records reviewGoogleAddressResponse, reusing existing semantics without a fixture transport or provenance claim. Fixture wrapper stays disabled/fixture-only; county evaluator reuses the shared parser. No provider call/storage/route/release. Next is controlled semantic-test composition with fresh execution approval, not another connectivity test; prior response is unavailable and retained claim must remain. APP-013/2B Now; 3/8 (37.5%) unchanged.
+
 ## Current: documented Google wire semantics corrected — 2026-09-12
 
 Backend evidence/APP-013/google-wire-semantics.md records official example support for three-digit county codes and a protobuf-default correction: omitted USPS poBoxOnlyPostalCode is accepted as false, while optional metadata.poBox remains UNKNOWN when absent. Other address/county/unit/authority guards unchanged. No second paid request or live inspection; retained connectivity claim untouched. Next is permitted transient semantic/correction handling before separately approved semantic testing, not another connectivity request. APP-013/2B Now; 3/8 (37.5%) unchanged.
