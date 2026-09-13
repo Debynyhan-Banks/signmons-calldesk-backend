@@ -20,7 +20,7 @@ const record = (value: unknown): Record<string, unknown> =>
     : {};
 
 /** Local fixture evaluation only. Not registered with a route or live provider.
- * County formats below are fixture hypotheses, not qualified live formats.
+ * Three-digit county format is documented in Google's examples, not live-qualified here.
  * Returned classifications are transient proposals, never durable proof.
  */
 export async function evaluateGoogleServiceArea(
@@ -71,11 +71,13 @@ export async function evaluateGoogleServiceArea(
     const body = record(record(snapshot.response).result);
     const usps = record(body.uspsData);
     const metadata = record(body.metadata);
-    // Explicit physical-address signals; absent flags are not false.
+    // Optional metadata.poBox is UNKNOWN when absent. In contrast the USPS
+    // proto3 scalar below omits its false default in normal ProtoJSON output.
     if (
       metadata.poBox !== false ||
       usps.dpvCmra !== "N" ||
-      usps.poBoxOnlyPostalCode !== false ||
+      (usps.poBoxOnlyPostalCode !== undefined &&
+        usps.poBoxOnlyPostalCode !== false) ||
       usps.addressRecordType !== "H" ||
       (usps.pmbNumber !== undefined && usps.pmbNumber !== "") ||
       (usps.pmbDesignator !== undefined && usps.pmbDesignator !== "")

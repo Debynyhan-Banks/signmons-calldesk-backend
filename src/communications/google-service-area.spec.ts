@@ -172,6 +172,21 @@ describe("Google service-area fixture evaluator", () => {
     Reflect.deleteProperty(r.result.metadata, "poBox");
     expect((await run(r)).coverage).toBe("UNKNOWN");
   });
+  it("accepts omitted proto3 false without treating optional metadata as false", async () => {
+    const r = response();
+    Reflect.deleteProperty(r.result.uspsData, "poBoxOnlyPostalCode");
+    expect((await run(r)).coverage).toBe("IN_AREA");
+    Reflect.deleteProperty(r.result.metadata, "poBox");
+    expect((await run(r)).coverage).toBe("UNKNOWN");
+  });
+  it.each([null, 0, "", "false", {}, []])(
+    "refuses malformed PO-box scalar %j",
+    async (value) => {
+      const r = response();
+      Object.assign(r.result.uspsData, { poBoxOnlyPostalCode: value });
+      expect((await run(r)).coverage).toBe("UNKNOWN");
+    },
+  );
   it.each([null, {}, { error: "provider failure" }])(
     "refuses unavailable responses",
     async (r) => {

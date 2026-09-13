@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: documented Google wire semantics corrected — 2026-09-12
+
+Backend evidence/APP-013/google-wire-semantics.md records official example support for three-digit county codes and a protobuf-default correction: omitted USPS poBoxOnlyPostalCode is accepted as false, while optional metadata.poBox remains UNKNOWN when absent. Other address/county/unit/authority guards unchanged. No second paid request or live inspection; retained connectivity claim untouched. Next is permitted transient semantic/correction handling before separately approved semantic testing, not another connectivity request. APP-013/2B Now; 3/8 (37.5%) unchanged.
+
 ## Current: default-disabled one-shot runner implemented — 2026-09-12
 
 Backend evidence/APP-013/google-address-one-shot.md records local exclusive durable claim before the existing transport, one packet/request, bounded approval window/liability, timeout/no-retry and content stripping. No CLI/route/credential/live call. This local claim does not promote the fixture database ledger or enforce distributed/account budgets. Exact credential, private input and stable protected claim directory remain qualification gates; no executable live test claimed. Next is that bounded connection/qualification, not another evaluator or waiting exclusively on support. APP-013/2B Now; 3/8 (37.5%) unchanged; no live authority.
