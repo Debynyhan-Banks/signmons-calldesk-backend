@@ -760,14 +760,11 @@ export async function verifyOperatorIntakeAdmission({
     VerificationBudgetAdmission,
   } = require("../dist/communications/verification-budget-admission.js");
   const {
-    AddressOperationLedger,
-  } = require("../dist/communications/address-operation-ledger.js");
-  const {
     GoogleAddressOAuthTransport,
   } = require("../dist/communications/google-address-oauth.transport.js");
   const {
-    ControlledIntakeVerificationService,
-  } = require("../dist/communications/controlled-intake-verification.service.js");
+    ControlledIntakeComposition,
+  } = require("../dist/communications/controlled-intake-composition.js");
   let connectedJobs = 0,
     syntheticPhoneCalls = 0,
     syntheticAddressCalls = 0;
@@ -867,16 +864,6 @@ export async function verifyOperatorIntakeAdmission({
         startOperationId: start.operationId,
       });
     }
-    const reader = controlled.controlledSubmissionReader(
-      connectedInput,
-      binding,
-    );
-    const scope = {
-      tenantId,
-      integrationId: binding.integrationId,
-      origin: binding.origin,
-      serviceCategoryId: category.id,
-    };
     const addressAccount = randomUUID();
     const addressPolicy = {
       mode: "CONTROLLED_ADDRESS_V1",
@@ -890,25 +877,6 @@ export async function verifyOperatorIntakeAdmission({
       tenant: { micros: 100, requests: 10 },
       session: { micros: 20, requests: 2 },
     };
-    const ledger = new AddressOperationLedger(prisma, credentials, undefined, {
-      accountId: addressAccount,
-      authority,
-      capability: binding.capability,
-      scope,
-      readBinding: async (tx, suppliedScope) => {
-        assert.equal(suppliedScope.sessionId, connectedScope.sessionId);
-        const loaded = await reader(
-          tx,
-          connectedScope,
-          connectedInput.requestId,
-        );
-        return {
-          intentId: loaded.intentId,
-          revision: loaded.revision,
-          policy: addressPolicy,
-        };
-      },
-    });
     const transport = new GoogleAddressOAuthTransport(true, {
       token: async () => "synthetic-token",
       fetch: async () => {
@@ -958,46 +926,41 @@ export async function verifyOperatorIntakeAdmission({
         );
       },
     });
-    const connectedBinding = {
-      ...binding,
-      verification: (loadedReader) =>
-        new ControlledIntakeVerificationService({
-          prisma,
-          credentials,
-          authority,
-          capability: binding.capability,
-          phone: durable,
-          ledger,
-          transport,
-          readSubmission: loadedReader,
-        }),
-    };
+    const composition = new ControlledIntakeComposition({
+      prisma,
+      credentials,
+      intake: controlled,
+      tenantId,
+      integrationId: binding.integrationId,
+      origin: binding.origin,
+      authority,
+      capability: binding.capability,
+      phone: durable,
+      transport,
+      addressAccountId: addressAccount,
+      readAddressPolicy: async (_tx, loaded) => {
+        assert.equal(loaded.authorityScope.serviceCategoryId, category.id);
+        return addressPolicy;
+      },
+    });
     const priorJobs = await prisma.job.count(),
       priorCalls = syntheticAddressCalls;
     if (mode === "missing-phone") {
-      await assert.rejects(
-        controlled.submitControlled(connectedInput, connectedBinding),
-      );
+      await assert.rejects(composition.submit(connectedInput));
       assert.equal(syntheticAddressCalls, priorCalls);
     } else if (mode === "revoked") {
-      const outcome = await controlled
-        .submitControlled(connectedInput, connectedBinding)
+      const outcome = await composition
+        .submit(connectedInput)
         .catch(() => null);
       assert.notEqual(outcome?.status, "ADMITTED");
       activation.enabled = true;
     } else {
-      const outcome = await controlled.submitControlled(
-        connectedInput,
-        connectedBinding,
-      );
+      const outcome = await composition.submit(connectedInput);
       if (mode === "accepted") {
         assert.equal(outcome.status, "ADMITTED");
         connectedJobs++;
         const calls = [syntheticPhoneCalls, syntheticAddressCalls];
-        assert.deepEqual(
-          await controlled.submitControlled(connectedInput, connectedBinding),
-          outcome,
-        );
+        assert.deepEqual(await composition.submit(connectedInput), outcome);
         assert.deepEqual([syntheticPhoneCalls, syntheticAddressCalls], calls);
         const stored = await prisma.job.findUnique({
           where: { id: outcome.jobId },
@@ -1058,7 +1021,7 @@ export async function verifyOperatorIntakeAdmission({
     where: { id: { in: phoneLiabilities.map((row) => row.id) } },
   });
   checks.push(
-    "P04 connected actual durable phone+budget, address ledger/transport, verification, current reader and writer: accepted one job, provider-free replay, missing phone/outside/unknown/revocation no job; held liability retained; synthetic external SDK/fetch only",
+    "P04/P05 actual ControlledIntakeComposition connects durable phone+budget, address ledger/transport, verification, current reader and writer: accepted one job, provider-free replay, missing phone/outside/unknown/revocation no job; held liability retained; synthetic external SDK/fetch only",
   );
   await prisma.tenantOrganization.update({
     where: { id: tenantId },

@@ -272,7 +272,9 @@ export class CustomerIntakeContinuationService {
         reader: ReturnType<
           CustomerIntakeContinuationService["controlledSubmissionReader"]
         >,
-      ) => ControlledIntakeVerificationService;
+      ) =>
+        | ControlledIntakeVerificationService
+        | Promise<ControlledIntakeVerificationService>;
     },
   ) {
     const input = controlledIntakeSubmission(value);
@@ -285,80 +287,79 @@ export class CustomerIntakeContinuationService {
     // Fail before the verification factory/provider path when the session is closed.
     try {
       await this.transaction((tx) => reader(tx, session, input.requestId));
-      const result = await binding
-        .verification(reader)
-        .run(
-          { sessionToken: input.sessionToken, requestId: input.requestId },
-          (check, beforeCommit) =>
-            this.transaction(async (tx) => {
-              await check(tx);
-              const snapshot = await reader(tx, session, input.requestId);
-              const current = await this.readControlledCurrentState(
-                tx,
-                snapshot.authorityScope,
-              );
-              const actor = await binding.authority.check(
-                binding.capability,
-                tx,
-                snapshot.authorityScope,
-              );
-              const controlled: ControlledWrite = {
-                requestId: input.requestId,
-                submissionDigest: snapshot.submissionDigest,
-                transcriptRevision: input.expectedRevision,
-                customerConfirmedAt: new Date(current.nowMs).toISOString(),
-                actorId: actor.actorId,
-                policyVersion: actor.policyVersion,
-                organizationApprovedAt: current.organizationApprovedAt,
-                organizationDigest: current.organizationDigest,
-                paymentApprovedAt: current.paymentApprovedAt,
-                paymentDigest: current.paymentDigest,
-                priorityPolicy: actor.priorityPolicy,
-              };
-              await tx.auditLog.create({
-                data: {
-                  tenantId: session.tenantId,
-                  entityType: "Conversation",
-                  entityId: session.conversationId,
-                  actorType: "CUSTOMER",
-                  actorId: session.sessionId,
-                  action: "customer_intake.controlled_submitted",
-                  metadata: {
-                    version: 2,
-                    requestId: input.requestId,
-                    transcriptRevision: input.expectedRevision,
-                    customerConfirmedAt: controlled.customerConfirmedAt,
-                  },
+      const verification = await binding.verification(reader);
+      const result = await verification.run(
+        { sessionToken: input.sessionToken, requestId: input.requestId },
+        (check, beforeCommit) =>
+          this.transaction(async (tx) => {
+            await check(tx);
+            const snapshot = await reader(tx, session, input.requestId);
+            const current = await this.readControlledCurrentState(
+              tx,
+              snapshot.authorityScope,
+            );
+            const actor = await binding.authority.check(
+              binding.capability,
+              tx,
+              snapshot.authorityScope,
+            );
+            const controlled: ControlledWrite = {
+              requestId: input.requestId,
+              submissionDigest: snapshot.submissionDigest,
+              transcriptRevision: input.expectedRevision,
+              customerConfirmedAt: new Date(current.nowMs).toISOString(),
+              actorId: actor.actorId,
+              policyVersion: actor.policyVersion,
+              organizationApprovedAt: current.organizationApprovedAt,
+              organizationDigest: current.organizationDigest,
+              paymentApprovedAt: current.paymentApprovedAt,
+              paymentDigest: current.paymentDigest,
+              priorityPolicy: actor.priorityPolicy,
+            };
+            await tx.auditLog.create({
+              data: {
+                tenantId: session.tenantId,
+                entityType: "Conversation",
+                entityId: session.conversationId,
+                actorType: "CUSTOMER",
+                actorId: session.sessionId,
+                action: "customer_intake.controlled_submitted",
+                metadata: {
+                  version: 2,
+                  requestId: input.requestId,
+                  transcriptRevision: input.expectedRevision,
+                  customerConfirmedAt: controlled.customerConfirmedAt,
                 },
-              });
-              const receipt = await this.persistAdmission(
-                tx,
-                session,
-                input.draft,
-                null,
-                null,
-                snapshot.submissionDigest,
-                input.expectedRevision,
-                undefined,
-                {
-                  metadata: controlled,
-                  categoryId: snapshot.authorityScope.serviceCategoryId,
-                },
-              );
-              await beforeCommit(tx);
-              return {
-                status: "ADMITTED" as const,
-                requestId: input.requestId,
-                jobId: receipt.jobId,
-                state: receipt.status,
-                jobCreated: true as const,
-                paymentAuthorized: false as const,
-                bookingAuthorized: false as const,
-                dispatchAuthorized: false as const,
-                deliveryAuthorized: false as const,
-              };
-            }),
-        );
+              },
+            });
+            const receipt = await this.persistAdmission(
+              tx,
+              session,
+              input.draft,
+              null,
+              null,
+              snapshot.submissionDigest,
+              input.expectedRevision,
+              undefined,
+              {
+                metadata: controlled,
+                categoryId: snapshot.authorityScope.serviceCategoryId,
+              },
+            );
+            await beforeCommit(tx);
+            return {
+              status: "ADMITTED" as const,
+              requestId: input.requestId,
+              jobId: receipt.jobId,
+              state: receipt.status,
+              jobCreated: true as const,
+              paymentAuthorized: false as const,
+              bookingAuthorized: false as const,
+              dispatchAuthorized: false as const,
+              deliveryAuthorized: false as const,
+            };
+          }),
+      );
       return result.status === "CONSUMED" ? result.value : result;
     } catch (error) {
       const recovered = await replay();
