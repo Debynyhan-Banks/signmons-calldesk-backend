@@ -302,6 +302,194 @@ describe("inactive same-origin browser transport", () => {
         expect(previewDraft).not.toHaveBeenCalled();
     }
   });
+  const controlledInput = () => ({
+    ...draftInput(),
+    version: 2,
+    requestId: randomUUID(),
+    confirmed: true,
+    confirmedAddress: {
+      street: "123 Fictional Lane",
+      unit: "",
+      city: "Example",
+      postalCode: "44101",
+    },
+    draft: {
+      ...draftDetails,
+      address: "123 Fictional Lane, Example, OH 44101",
+    },
+  });
+  const denied = {
+    paymentAuthorized: false,
+    bookingAuthorized: false,
+    dispatchAuthorized: false,
+    deliveryAuthorized: false,
+  };
+  it.each(["ADMITTED", "REFUSED", "UNCERTAIN", "CORRECTION_REQUIRED"])(
+    "projects controlled %s without invoking legacy review or exposing private data",
+    async (status) => {
+      const input = controlledInput();
+      const candidate = {
+        addressLines: ["124 Fictional Lane"],
+        city: "Example",
+        postalCode: "44101",
+        country: "US",
+        state: "OH",
+      };
+      const expected = {
+        status,
+        requestId: input.requestId,
+        jobCreated: status === "ADMITTED",
+        ...denied,
+        ...(status === "ADMITTED"
+          ? { jobId: randomUUID(), state: "CREATED" }
+          : {}),
+        ...(status === "CORRECTION_REQUIRED" ? { candidate } : {}),
+      };
+      const submit = jest.fn().mockResolvedValue({
+        ...expected,
+        secret: "DO_NOT_LEAK",
+        ...(status === "CORRECTION_REQUIRED"
+          ? { candidate: { ...candidate, responseId: "DO_NOT_LEAK" } }
+          : {}),
+      });
+      const submitReview = jest.fn();
+      const transport = new CustomerConsentBrowserTransport(
+        { origin, tenantId },
+        { ...ports, controlled: { submit }, review: { submitReview } },
+      );
+      const result = await asActor(() =>
+        transport.handle(req("submit", input)),
+      );
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual(expected);
+      expect(result.headers["Cache-Control"]).toContain("no-store");
+      expect(submit).toHaveBeenCalledTimes(1);
+      expect(submit).toHaveBeenCalledWith(input);
+      expect(submitReview).not.toHaveBeenCalled();
+    },
+  );
+  it("refuses missing controlled port and malformed inputs without legacy fallback", async () => {
+    const input = controlledInput(),
+      submitReview = jest.fn(),
+      submit = jest.fn();
+    const disabled = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, review: { submitReview } },
+    );
+    expect(
+      (await asActor(() => disabled.handle(req("submit", input)))).status,
+    ).toBe(503);
+    expect(submitReview).not.toHaveBeenCalled();
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, controlled: { submit } },
+    );
+    for (const change of [
+      { version: 1 },
+      { confirmed: false },
+      { tenantId },
+      { policy: "forged" },
+      { expectedRevision: 0 },
+      { requestId: "bad" },
+      { confirmedAddress: { ...input.confirmedAddress, county: "035" } },
+      { draft: { ...input.draft, address: "Different" } },
+    ]) {
+      expect(
+        (
+          await asActor(() =>
+            transport.handle(req("submit", { ...input, ...change })),
+          )
+        ).status,
+      ).toBe(400);
+    }
+    expect(submit).not.toHaveBeenCalled();
+  });
+  it("rejects malformed or over-authorized controlled receipts", async () => {
+    const input = controlledInput();
+    const good = {
+      status: "ADMITTED",
+      requestId: input.requestId,
+      jobId: randomUUID(),
+      state: "CREATED",
+      jobCreated: true,
+      ...denied,
+    };
+    const submit = jest.fn();
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, controlled: { submit } },
+    );
+    for (const value of [
+      null,
+      {},
+      { ...good, status: "CONSUMED" },
+      { ...good, jobId: "bad" },
+      { ...good, state: "BOOKED" },
+      { ...good, requestId: randomUUID() },
+      { ...good, jobCreated: false },
+      ...Object.keys(denied).flatMap((key) => [
+        { ...good, [key]: true },
+        { ...good, [key]: undefined },
+      ]),
+      { status: "UNCERTAIN", jobCreated: true },
+      { status: "REFUSED", jobCreated: false, paymentAuthorized: true },
+      ...[
+        null,
+        {},
+        {
+          addressLines: ["bad\nline"],
+          city: "Example",
+          postalCode: "44101",
+          country: "US",
+          state: "OH",
+        },
+        {
+          addressLines: ["123 Fictional Lane"],
+          city: "Example",
+          postalCode: "44101",
+          country: "CA",
+          state: "OH",
+        },
+      ].map((candidate) => ({
+        status: "CORRECTION_REQUIRED",
+        jobCreated: false,
+        candidate,
+      })),
+    ]) {
+      submit.mockResolvedValue(value);
+      const result = await asActor(() =>
+        transport.handle(req("submit", input)),
+      );
+      expect(result.status).toBe(503);
+      expect(result.body).not.toHaveProperty("jobId");
+    }
+  });
+  it("keeps controlled submit behind tenant and origin guards", async () => {
+    const submit = jest.fn();
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, controlled: { submit } },
+    );
+    const input = controlledInput();
+    const foreign = credentials.issueSession({
+      tenantId: randomUUID(),
+      conversationId: randomUUID(),
+      sessionId: randomUUID(),
+    });
+    expect(
+      (
+        await asActor(() =>
+          transport.handle(req("submit", { ...input, sessionToken: foreign })),
+        )
+      ).status,
+    ).toBe(403);
+    const request = req("submit", input);
+    request.rawHeaders = request.rawHeaders.map((s) =>
+      s === origin ? "https://foreign.invalid" : s,
+    );
+    expect((await asActor(() => transport.handle(request))).status).toBe(403);
+    expect(submit).not.toHaveBeenCalled();
+  });
   it("submits an explicit review request and projects only its pending receipt", async () => {
     const input = { ...draftInput(), requestId: randomUUID(), confirmed: true };
     const receipt = {

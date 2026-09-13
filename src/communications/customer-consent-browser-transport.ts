@@ -16,6 +16,11 @@ import { CustomerConsentCaptureService } from "./customer-consent-capture.servic
 import { CustomerConsentResponseService } from "./customer-consent-response.service";
 import { CustomerIntakeContinuationService } from "./customer-intake-continuation.service";
 import { validateCustomerIntakeDraft } from "./customer-intake-draft";
+import {
+  controlledIntakeSubmission,
+  ControlledIntakeRequest,
+} from "./controlled-intake-submission";
+import { controlledIntakeBrowserResult } from "./controlled-intake-browser-result";
 
 export const CUSTOMER_BROWSER_MAX_BYTES = 16384;
 export const CUSTOMER_BROWSER_HEADERS = Object.freeze({
@@ -91,6 +96,7 @@ type Ports = {
   continuation?: Pick<CustomerIntakeContinuationService, "continue">;
   draft?: Pick<CustomerIntakeContinuationService, "previewDraft">;
   review?: Pick<CustomerIntakeContinuationService, "submitReview">;
+  controlled?: { submit(input: ControlledIntakeRequest): Promise<unknown> };
   diagnostic?: (entry: {
     operation: CustomerBrowserOperation | "unknown";
     status: number;
@@ -220,9 +226,11 @@ export class CustomerConsentBrowserTransport {
         draft: Object.prototype.hasOwnProperty.call(input, "addressSelection")
           ? "addressSelection,draft,expectedRevision,sessionToken"
           : "draft,expectedRevision,sessionToken",
-        submit: Object.prototype.hasOwnProperty.call(input, "addressSelection")
-          ? "addressSelection,confirmed,draft,expectedRevision,requestId,sessionToken"
-          : "confirmed,draft,expectedRevision,requestId,sessionToken",
+        submit: Object.prototype.hasOwnProperty.call(input, "version")
+          ? "confirmed,confirmedAddress,draft,expectedRevision,requestId,sessionToken,version"
+          : Object.prototype.hasOwnProperty.call(input, "addressSelection")
+            ? "addressSelection,confirmed,draft,expectedRevision,requestId,sessionToken"
+            : "confirmed,draft,expectedRevision,requestId,sessionToken",
         respond: "mailboxConfirmed,promptToken,response,sessionToken",
       };
       if (Object.keys(input).sort().join(",") !== keys[operation]) fail(400);
@@ -340,6 +348,14 @@ export class CustomerConsentBrowserTransport {
       return ports.localPhone.handle(input);
     }
     if (operation === "submit") {
+      if (Object.prototype.hasOwnProperty.call(input, "version")) {
+        const submission = controlledIntakeSubmission(input);
+        if (!ports.controlled) fail(503);
+        return controlledIntakeBrowserResult(
+          await ports.controlled.submit(submission),
+          submission.requestId,
+        );
+      }
       if (!ports.review) fail(503);
       if (
         input.addressSelection !== undefined &&
