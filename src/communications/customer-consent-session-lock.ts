@@ -2,7 +2,10 @@ import { ConflictException, ForbiddenException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { getRequestContext } from "../common/context/request-context";
 import { lockConversationSession } from "../conversations/conversation-session-lock";
-import { ConsentSessionClaims } from "./customer-consent-credentials";
+import {
+  ConsentSessionClaims,
+  CustomerConsentCredentials,
+} from "./customer-consent-credentials";
 import { lifecycle, sessionCleanupDue } from "./verification-retention";
 export type CustomerSessionScope = Pick<
   ConsentSessionClaims,
@@ -17,6 +20,26 @@ export async function lockCustomerConsentSession(
   tx: Prisma.TransactionClient,
   session: CustomerSessionScope,
   receiptOnly = false,
+) {
+  return lockSession(tx, session, receiptOnly);
+}
+
+/** Exact receipt lookup only; never use this mode to authorize a new write. */
+export async function lockCustomerConsentReceipt(
+  tx: Prisma.TransactionClient,
+  token: string,
+  credentials: CustomerConsentCredentials,
+) {
+  const session = credentials.verifySession(token);
+  const row = await lockSession(tx, session, true);
+  credentials.verifySession(token, Number(row.nowMs));
+  return row;
+}
+
+async function lockSession(
+  tx: Prisma.TransactionClient,
+  session: CustomerSessionScope,
+  receiptOnly: boolean,
 ) {
   if (getRequestContext()?.impersonatedTenantId)
     throw new ForbiddenException(

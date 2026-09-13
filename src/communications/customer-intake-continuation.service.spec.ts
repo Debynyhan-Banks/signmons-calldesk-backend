@@ -11,7 +11,10 @@ import {
   PROTECTED_INTAKE_REVIEW,
 } from "./customer-intake-continuation.service";
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
-import { lockCustomerConsentSession } from "./customer-consent-session-lock";
+import {
+  lockCustomerConsentSession,
+  lockCustomerConsentReceipt,
+} from "./customer-consent-session-lock";
 import { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.service";
 import appConfig from "../config/app.config";
 import {
@@ -20,6 +23,7 @@ import {
 } from "../common/context/request-context";
 jest.mock("./customer-consent-session-lock", () => ({
   lockCustomerConsentSession: jest.fn(),
+  lockCustomerConsentReceipt: jest.fn(),
 }));
 
 describe("inactive credential-bound transcript continuation", () => {
@@ -201,6 +205,9 @@ describe("inactive credential-bound transcript continuation", () => {
   });
   beforeEach(() => {
     jest.resetAllMocks();
+    jest
+      .mocked(lockCustomerConsentReceipt)
+      .mockResolvedValue({ status: "ONGOING" } as never);
     jest.mocked(lockCustomerConsentSession).mockResolvedValue({
       status: "ONGOING",
       sessionId: scope.sessionId,

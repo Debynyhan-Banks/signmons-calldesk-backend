@@ -14,6 +14,7 @@ import { AppointmentEmailConsentEvidenceStore } from "./appointment-email-consen
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
 import {
   lockCustomerConsentSession,
+  lockCustomerConsentReceipt,
   CustomerSessionScope,
 } from "./customer-consent-session-lock";
 import { validateCustomerIntakeDraft } from "./customer-intake-draft";
@@ -258,8 +259,8 @@ export class CustomerIntakeContinuationService {
     };
   }
 
-  /** Unregistered controlled writer. Exact committed replay is not exposed yet;
-   * closed/repeated requests refuse through the normal session lock. */
+  /** Unregistered controlled writer. Exact authenticated receipt replay precedes
+   * verification; every new write still requires the normal session lock. */
   async submitControlled(
     value: unknown,
     binding: {
@@ -276,10 +277,14 @@ export class CustomerIntakeContinuationService {
   ) {
     const input = controlledIntakeSubmission(value);
     const session = this.credentials.verifySession(input.sessionToken);
+    const replay = () =>
+      this.transaction((tx) => this.controlledReplay(tx, input, binding));
+    const committed = await replay();
+    if (committed) return committed;
     const reader = this.controlledSubmissionReader(input, binding);
     // Fail before the verification factory/provider path when the session is closed.
-    await this.transaction((tx) => reader(tx, session, input.requestId));
     try {
+      await this.transaction((tx) => reader(tx, session, input.requestId));
       const result = await binding
         .verification(reader)
         .run(
@@ -356,12 +361,122 @@ export class CustomerIntakeContinuationService {
         );
       return result.status === "CONSUMED" ? result.value : result;
     } catch (error) {
+      const recovered = await replay();
+      if (recovered) return recovered;
       if (error instanceof HttpException && error.getStatus() < 500)
         throw error;
       throw new ServiceUnavailableException(
         "Intake outcome unconfirmed. Do not resubmit a different request; use authorized recovery.",
       );
     }
+  }
+
+  private async controlledReplay(
+    tx: Prisma.TransactionClient,
+    input: ReturnType<typeof controlledIntakeSubmission>,
+    binding: { integrationId: string; origin: string },
+  ) {
+    const session = this.credentials.verifySession(input.sessionToken);
+    const row = await lockCustomerConsentReceipt(
+      tx,
+      input.sessionToken,
+      this.credentials,
+    );
+    const prior = await tx.job.findUnique({
+      where: {
+        tenantId_intakeSessionId: {
+          tenantId: session.tenantId,
+          intakeSessionId: session.sessionId,
+        },
+      },
+      include: { conversationLinks: true, emailConsentBinding: true },
+    });
+    if (!prior) return null;
+    const a = object(object(prior.policySnapshot)?.intakeAdmission);
+    if (
+      row.status !== "COMPLETED" ||
+      prior.deletedAt ||
+      !a ||
+      a.version !== 2 ||
+      Object.keys(a).sort().join() !==
+        "actorId,customerConfirmedAt,emailChoice,organizationApprovedAt,organizationDigest,paymentApprovedAt,paymentDigest,policyVersion,priorityPolicy,requestId,submissionDigest,transcriptRevision,version" ||
+      a.requestId !== input.requestId ||
+      a.transcriptRevision !== input.expectedRevision ||
+      a.actorId !== "signmons-intake-admission-v1" ||
+      a.priorityPolicy !== "AUTO_INTAKE_STANDARD_V1" ||
+      typeof a.policyVersion !== "string" ||
+      !a.policyVersion ||
+      ![
+        a.organizationApprovedAt,
+        a.paymentApprovedAt,
+        a.customerConfirmedAt,
+      ].every((v) => typeof v === "string" && Number.isFinite(Date.parse(v))) ||
+      ![a.organizationDigest, a.paymentDigest, a.submissionDigest].every(
+        (v) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v),
+      ) ||
+      prior.conversationLinks.length !== 1 ||
+      prior.conversationLinks[0].conversationId !== session.conversationId ||
+      prior.conversationLinks[0].tenantId !== session.tenantId ||
+      prior.conversationLinks[0].relationType !== "CREATED_FROM" ||
+      !["NOT_RECORDED", "GRANTED", "DECLINED", "REVOKED"].includes(
+        String(a.emailChoice),
+      ) ||
+      (a.emailChoice !== "NOT_RECORDED" &&
+        (!prior.emailConsentBinding ||
+          prior.emailConsentBinding.tenantId !== session.tenantId ||
+          prior.emailConsentBinding.jobCustomerId !== prior.customerId ||
+          prior.emailConsentBinding.originLinkId !==
+            prior.conversationLinks[0].id))
+    )
+      throw changed();
+    const history = await this.history(tx, session, true, true);
+    if (
+      history.turns.length !== input.expectedRevision ||
+      !history.organization ||
+      history.organization.approvedAt !== a.organizationApprovedAt ||
+      history.organization.digest !== a.organizationDigest
+    )
+      throw changed();
+    const submissionDigest = createHash("sha256")
+      .update(
+        JSON.stringify({
+          tenantId: session.tenantId,
+          conversationId: session.conversationId,
+          sessionId: session.sessionId,
+          requestId: input.requestId,
+          revision: input.expectedRevision,
+          transcriptDigest: history.digest,
+          draft: input.draft,
+          confirmedAddress: input.confirmedAddress,
+          confirmed: input.confirmed,
+          policyVersion: a.policyVersion,
+          priorityPolicy: a.priorityPolicy,
+          organizationApprovedAt: a.organizationApprovedAt,
+          organizationDigest: a.organizationDigest,
+          paymentApprovedAt: a.paymentApprovedAt,
+          paymentDigest: a.paymentDigest,
+          authorityScope: {
+            tenantId: session.tenantId,
+            integrationId: binding.integrationId,
+            origin: binding.origin,
+            serviceCategoryId: prior.serviceCategoryId,
+          },
+        }),
+      )
+      .digest("hex");
+    if (submissionDigest !== a.submissionDigest) throw changed();
+    await lockCustomerConsentReceipt(tx, input.sessionToken, this.credentials);
+    return {
+      status: "ADMITTED" as const,
+      requestId: input.requestId,
+      jobId: prior.id,
+      state: prior.status,
+      jobCreated: true as const,
+      paymentAuthorized: false as const,
+      bookingAuthorized: false as const,
+      dispatchAuthorized: false as const,
+      deliveryAuthorized: false as const,
+    };
   }
 
   /** Customer-only durable submission. Does not store the bearer or authorize a job. */
@@ -1476,18 +1591,20 @@ export class CustomerIntakeContinuationService {
     tx: Prisma.TransactionClient,
     session: CustomerSessionScope,
     sessionAlreadyLocked = false,
+    historicalReceipt = false,
   ) {
     const row = sessionAlreadyLocked
       ? { status: "ONGOING" }
       : await lockCustomerConsentSession(tx, session);
     if (row.status !== "ONGOING") throw changed();
     if (
-      await tx.conversationJobLink.count({
+      !historicalReceipt &&
+      (await tx.conversationJobLink.count({
         where: {
           tenantId: session.tenantId,
           conversationId: session.conversationId,
         },
-      })
+      }))
     )
       throw changed();
     const rows = await tx.communicationEvent.findMany({
@@ -1575,12 +1692,17 @@ export class CustomerIntakeContinuationService {
       throw changed();
     if (organizationTurns) {
       if (organizationTurns !== turns.length) throw changed();
-      const currentOrganization = await this.organization(tx, session.tenantId);
-      if (
-        currentOrganization.digest !== boundOrganization!.digest ||
-        currentOrganization.approvedAt !== boundOrganization!.approvedAt
-      )
-        throw changed();
+      if (!historicalReceipt) {
+        const currentOrganization = await this.organization(
+          tx,
+          session.tenantId,
+        );
+        if (
+          currentOrganization.digest !== boundOrganization!.digest ||
+          currentOrganization.approvedAt !== boundOrganization!.approvedAt
+        )
+          throw changed();
+      }
     }
     return {
       turns,

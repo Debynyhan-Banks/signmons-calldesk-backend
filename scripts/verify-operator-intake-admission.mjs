@@ -524,7 +524,54 @@ export async function verifyOperatorIntakeAdmission({
       "emailChoice",
     ].sort(),
   );
-  await assert.rejects(controlled.submitControlled(cs, binding)); // Replay is still closed, never a second job.
+  const noProviderBinding = {
+    ...binding,
+    verification: () => {
+      throw Error("Replay must not invoke verification");
+    },
+  };
+  assert.deepEqual(
+    await controlled.submitControlled(cs, noProviderBinding),
+    created,
+  );
+  assert.deepEqual(
+    await new Intake(
+      prisma,
+      cipher,
+      credentials,
+      undefined,
+      consent,
+    ).submitControlled(cs, noProviderBinding),
+    created,
+  );
+  await assert.rejects(
+    controlled.submitControlled(
+      { ...cs, draft: { ...cs.draft, customerName: "Changed" } },
+      noProviderBinding,
+    ),
+  );
+  await assert.rejects(
+    controlled.submitControlled(
+      { ...cs, requestId: randomUUID() },
+      noProviderBinding,
+    ),
+  );
+  activation.enabled = false;
+  await prisma.tenantOrganization.update({
+    where: { id: tenantId },
+    data: { settings: tenant.settings },
+  });
+  assert.deepEqual(
+    await controlled.submitControlled(cs, noProviderBinding),
+    created,
+  );
+  await prisma.tenantOrganization.update({
+    where: { id: tenantId },
+    data: {
+      settings: { ...tenant.settings, organizationPaymentPolicyV1: payment },
+    },
+  });
+  activation.enabled = true;
   assert.deepEqual(await counts(), ca);
   const raceFixture = controlledInput(await fresh());
   const raceBefore = await counts();
@@ -532,8 +579,36 @@ export async function verifyOperatorIntakeAdmission({
     controlled.submitControlled(raceFixture, binding),
     controlled.submitControlled(raceFixture, binding),
   ]);
-  assert.equal(race.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(race.filter((r) => r.status === "fulfilled").length, 2);
+  assert.deepEqual(race[0].value, race[1].value);
   assert.equal((await counts()).jobs, raceBefore.jobs + 1);
+  const lostInput = controlledInput(await fresh());
+  const lostBefore = await counts();
+  let acknowledgementLost = false;
+  const lostPrisma = {
+    $transaction: async (fn, ...args) => {
+      const result = await prisma.$transaction(fn, ...args);
+      if (!acknowledgementLost && result?.status === "ADMITTED") {
+        acknowledgementLost = true;
+        throw Error("fixture commit acknowledgement lost");
+      }
+      return result;
+    },
+  };
+  const recovered = await new Intake(
+    lostPrisma,
+    cipher,
+    credentials,
+    undefined,
+    consent,
+  ).submitControlled(lostInput, binding);
+  assert.equal(acknowledgementLost, true);
+  assert.equal(recovered.status, "ADMITTED");
+  assert.equal((await counts()).jobs, lostBefore.jobs + 1);
+  assert.deepEqual(
+    await controlled.submitControlled(lostInput, noProviderBinding),
+    recovered,
+  );
   for (const fault of ["audit", "consent", "finish"]) {
     const failedInput = controlledInput(await fresh("GRANTED"));
     const beforeFault = await counts();
@@ -596,7 +671,7 @@ export async function verifyOperatorIntakeAdmission({
   }
   failFinish = false;
   checks.push(
-    "P04 injected-verification writer: exact v2 record, SYSTEM_AI actor, granted-consent binding, one job under race; audit/consent/post-write failure rollback; duplicate safely refuses pending replay",
+    "P04 injected-verification writer: exact v2 record, SYSTEM_AI actor, granted-consent binding, one job and identical receipts under race; restart/exact replay without verification despite removed current policy; changed input refuses; audit/consent/post-write failure rollback",
   );
   await prisma.tenantOrganization.update({
     where: { id: tenantId },
@@ -608,7 +683,7 @@ export async function verifyOperatorIntakeAdmission({
       {
         checks,
         credentialAccesses,
-        newFictionalJobs: 5,
+        newFictionalJobs: 6,
         providerCalls: 0,
         browserAdmission: false,
         identity: "fixture context; no production identity acceptance",

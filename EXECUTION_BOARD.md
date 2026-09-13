@@ -1,8 +1,8 @@
 # Signmons Backend Execution Board
 
-## Current: P04 active — atomic writer validated; replay pending
+## Current: P04 active — customer receipt replay validated
 
-evidence/APP-013/p04-atomic-writer.md records controlled submit/shared atomic version2 writer, SYSTEM_AI/ STANDARD unassessed, customer audit and same-transaction P03 post-write expiry guard. Seven new tests; 2,263 total passed (3 skipped). Disposable database writer proof uses injected verification callbacks: one job under race, audit/consent/post-write rollback, no downstream authority. No route/live activation or full connected provider acceptance. P04 remains ACTIVE: exact committed replay, lost-response/restart and full controlled connection proof remain in the same package. Duplicates currently refuse safely rather than returning a receipt. No new package, acceptance or timing sample. APP-013/2B Now; walkthrough 3/8 (37.5%) unchanged. No scope deviation.
+evidence/APP-013/p04-receipt-replay.md records exact credential-valid customer replay before verification, original transcript/policy binding, concurrent identical receipts/one job and lost-ack/service-restart recovery. 2,269 tests passed (3 skipped), database/browser regressions passed. Writer verification callbacks remain injected. Full controlled connection and v2 operator receipt recovery after customer expiry remain in the SAME P04; no live registration or P04 completion. Walkthrough 3/8 (37.5%), remaining-plan accepted 2/60 unchanged; no completed timing sample or scope deviation.
 
 ## Historical: P03 controlled verification review-ready — 2026-09-13
 
