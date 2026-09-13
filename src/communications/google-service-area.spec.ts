@@ -1,4 +1,7 @@
-import { evaluateGoogleServiceArea } from "./google-service-area";
+import {
+  evaluateGoogleServiceArea,
+  reviewGoogleServiceArea,
+} from "./google-service-area";
 
 describe("Google service-area fixture evaluator", () => {
   const input = {
@@ -61,6 +64,25 @@ describe("Google service-area fixture evaluator", () => {
   it("defaults disabled", async () => {
     expect(
       (await evaluateGoogleServiceArea(input, response(), context())).coverage,
+    ).toBe("UNKNOWN");
+  });
+  it("shares review semantics without claiming fixture or live acceptance", async () => {
+    const reviewed = await reviewGoogleServiceArea(
+      input,
+      response(),
+      context(),
+      "REVIEW_ONLY",
+    );
+    expect(reviewed.coverage).toBe("IN_AREA");
+    expect(reviewed).not.toHaveProperty("fixtureOnly");
+    expect(reviewed).toMatchObject({
+      realVerificationAccepted: false,
+      admissionAuthorized: false,
+      bookingAuthorized: false,
+      deliveryAuthorized: false,
+    });
+    expect(
+      (await reviewGoogleServiceArea(input, response(), context())).coverage,
     ).toBe("UNKNOWN");
   });
   it("proposes inside without granting authority or exposing content", async () => {

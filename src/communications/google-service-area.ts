@@ -19,26 +19,25 @@ const record = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
-/** Local fixture evaluation only. Not registered with a route or live provider.
+/** Authority-neutral in-memory review. Not registered with an application route.
  * Three-digit county format is documented in Google's examples, not live-qualified here.
  * Returned classifications are transient proposals, never durable proof.
  */
-export async function evaluateGoogleServiceArea(
+export async function reviewGoogleServiceArea(
   input: unknown,
   response: unknown,
   context: Context,
-  mode: "DISABLED" | "FIXTURE_ONLY" = "DISABLED",
+  mode: "DISABLED" | "REVIEW_ONLY" = "DISABLED",
 ) {
   const result = (coverage: "UNKNOWN" | "IN_AREA" | "OUT_OF_AREA") => ({
     coverage,
-    fixtureOnly: true as const,
     realVerificationAccepted: false as const,
     admissionAuthorized: false as const,
     bookingAuthorized: false as const,
     deliveryAuthorized: false as const,
   });
-  if (mode !== "FIXTURE_ONLY") return result("UNKNOWN");
-  // Copy caller-owned input before the adapter's asynchronous fixture seam.
+  if (mode !== "REVIEW_ONLY") return result("UNKNOWN");
+  // Copy caller-owned input before yielding during shared semantic review.
   try {
     const snapshot = structuredClone({ input, response, context });
     const c = record(snapshot.context);
@@ -103,4 +102,22 @@ export async function evaluateGoogleServiceArea(
   } catch {
     return result("UNKNOWN");
   }
+}
+
+/** Compatibility wrapper: existing fixture callers retain their provenance. */
+export async function evaluateGoogleServiceArea(
+  input: unknown,
+  response: unknown,
+  context: Context,
+  mode: "DISABLED" | "FIXTURE_ONLY" = "DISABLED",
+) {
+  return {
+    ...(await reviewGoogleServiceArea(
+      input,
+      response,
+      context,
+      mode === "FIXTURE_ONLY" ? "REVIEW_ONLY" : "DISABLED",
+    )),
+    fixtureOnly: true as const,
+  };
 }
