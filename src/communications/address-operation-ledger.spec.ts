@@ -26,6 +26,16 @@ describe("disabled address operation ledger", () => {
     ).rejects.toThrow();
     expect($transaction).not.toHaveBeenCalled();
   });
+  it("controlled entry also defaults off without database access", async () => {
+    const $transaction = jest.fn();
+    await expect(
+      new AddressOperationLedger(
+        { $transaction },
+        credentials,
+      ).executeControlled(request),
+    ).rejects.toThrow();
+    expect($transaction).not.toHaveBeenCalled();
+  });
   it.each([
     { ...request, address: "private street" },
     { ...request, requestId: "invalid" },

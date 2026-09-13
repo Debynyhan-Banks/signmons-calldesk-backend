@@ -3,6 +3,10 @@ import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  ControlledIntakeAuthority,
+  ControlledIntakeScope,
+} from "./controlled-intake-authority";
+import {
   checkStagingAddressReservation,
   StagingBudgetConfiguration,
 } from "./staging-address-budget-reader";
@@ -32,6 +36,17 @@ export type AddressOperationBinding = {
   revision: number;
   policy: AddressOperationPolicy;
 };
+export type ControlledAddressOperationPolicy = Omit<
+  AddressOperationPolicy,
+  "mode" | "execution"
+> & {
+  mode: "CONTROLLED_ADDRESS_V1";
+  execution: "CONTROLLED_8S_2_ATTEMPTS";
+};
+export type ControlledAddressOperationBinding = Omit<
+  AddressOperationBinding,
+  "policy"
+> & { policy: ControlledAddressOperationPolicy };
 const uuid = (v: unknown): v is string =>
   typeof v === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -73,7 +88,50 @@ export class AddressOperationLedger {
         decision: "RETAIN_LIABILITY";
       } | null>;
     },
+    private readonly controlled?: {
+      accountId: string;
+      authority: ControlledIntakeAuthority;
+      capability: Readonly<object>;
+      scope: ControlledIntakeScope;
+      readBinding: (
+        tx: Prisma.TransactionClient,
+        scope: CustomerSessionScope,
+      ) => Promise<ControlledAddressOperationBinding | null>;
+    },
   ) {}
+
+  executeControlled(input: {
+    sessionToken: string;
+    requestId: string;
+    action: "reserve" | "claim" | "cancel";
+  }) {
+    return this.perform(input, undefined, true);
+  }
+
+  completeControlled(input: {
+    sessionToken: string;
+    requestId: string;
+    attemptId: string;
+    state: "OBSERVED" | "UNCERTAIN";
+  }) {
+    if (
+      !input ||
+      Object.keys(input).sort().join() !==
+        "attemptId,requestId,sessionToken,state" ||
+      !uuid(input.attemptId) ||
+      !["OBSERVED", "UNCERTAIN"].includes(input.state)
+    )
+      throw refuse();
+    return this.perform(
+      {
+        sessionToken: input.sessionToken,
+        requestId: input.requestId,
+        action: "claim",
+      },
+      { attemptId: input.attemptId, state: input.state },
+      true,
+    );
+  }
 
   async execute(input: {
     sessionToken: string;
@@ -114,7 +172,9 @@ export class AddressOperationLedger {
       action: "reserve" | "claim" | "cancel";
     },
     completion?: { attemptId: string; state: "OBSERVED" | "UNCERTAIN" },
+    controlled = false,
   ) {
+    const configuration = controlled ? this.controlled : this.fixture;
     if (
       !input ||
       Object.keys(input).sort().join(",") !== "action,requestId,sessionToken" ||
@@ -122,25 +182,27 @@ export class AddressOperationLedger {
       !uuid(input.requestId) ||
       typeof input.sessionToken !== "string" ||
       input.sessionToken.length > 4096 ||
-      !this.fixture ||
-      !uuid(this.fixture.accountId)
+      !configuration ||
+      !uuid(configuration.accountId)
     )
       throw refuse();
     input = { ...input };
     const scope = this.credentials.verifySession(input.sessionToken);
     const ctx = getRequestContext();
     if (
-      ctx?.tenantId !== scope.tenantId ||
-      ctx.role !== "webchat_integration" ||
-      !ctx.userId?.startsWith("integration:") ||
-      ctx.impersonatedTenantId
+      !controlled &&
+      (ctx?.tenantId !== scope.tenantId ||
+        ctx.role !== "webchat_integration" ||
+        !ctx.userId?.startsWith("integration:") ||
+        ctx.impersonatedTenantId)
     )
       throw refuse();
     const fixture = {
-      ...this.fixture,
-      stagingReview: this.fixture.stagingReview
-        ? structuredClone(this.fixture.stagingReview)
-        : undefined,
+      ...configuration,
+      stagingReview:
+        !controlled && this.fixture?.stagingReview
+          ? structuredClone(this.fixture.stagingReview)
+          : undefined,
     };
     if (
       fixture.stagingReview &&
@@ -157,6 +219,7 @@ export class AddressOperationLedger {
         );
       if ((await lockCustomerConsentSession(tx, scope)).status !== "ONGOING")
         throw refuse();
+      if (controlled) await this.authorizeControlled(tx, scope);
       const binding = structuredClone(await fixture.readBinding(tx, scope));
       const clock = { now: await databaseClock(tx) };
       const now = clock?.now?.getTime();
@@ -172,10 +235,12 @@ export class AddressOperationLedger {
       const p = binding.policy;
       if (
         !p ||
-        p.mode !== "FIXTURE_ONLY" ||
+        p.mode !== (controlled ? "CONTROLLED_ADDRESS_V1" : "FIXTURE_ONLY") ||
         p.approved !== true ||
-        (p.execution !== undefined &&
-          p.execution !== "VO2_FIXTURE_8S_3_ATTEMPTS_30S") ||
+        (controlled
+          ? p.execution !== "CONTROLLED_8S_2_ATTEMPTS" || p.session.requests > 2
+          : p.execution !== undefined &&
+            p.execution !== "VO2_FIXTURE_8S_3_ATTEMPTS_30S") ||
         !Number.isFinite(p.validUntil) ||
         p.validUntil <= now ||
         ![p.version, p.rateVersion].every(
@@ -195,26 +260,10 @@ export class AddressOperationLedger {
       )
         throw refuse();
       // Explicit field order; this digest covers policy only, never customer input.
-      const policyHash = createHash("sha256")
-        .update(
-          JSON.stringify([
-            p.version,
-            p.rateVersion,
-            p.validUntil,
-            p.costMicros,
-            p.account.micros,
-            p.account.requests,
-            p.tenant.micros,
-            p.tenant.requests,
-            p.session.micros,
-            p.session.requests,
-            ...(p.execution ? [p.execution] : []),
-            ...(fixture.stagingReview
-              ? ["STAGING_REVIEW_ONLY", fixture.stagingReview.packetDigest]
-              : []),
-          ]),
-        )
-        .digest("hex");
+      const policyHash = addressPolicyHash(
+        p,
+        fixture.stagingReview?.packetDigest,
+      );
       const where = {
         accountId: fixture.accountId,
         tenantId: scope.tenantId,
@@ -244,7 +293,7 @@ export class AddressOperationLedger {
             tx,
             fixture.stagingReview,
             scope,
-            p,
+            p as AddressOperationPolicy,
             now,
             operation ?? undefined,
           );
@@ -260,8 +309,10 @@ export class AddressOperationLedger {
               take: 3,
             });
             if (
-              prior.length >= 3 ||
-              (prior[0] && now - prior[0].createdAt.getTime() < 30000)
+              prior.length >= (controlled ? 2 : 3) ||
+              (!controlled &&
+                prior[0] &&
+                now - prior[0].createdAt.getTime() < 30000)
             )
               throw refuse();
           }
@@ -300,7 +351,7 @@ export class AddressOperationLedger {
               heldMicros: BigInt(p.costMicros),
             },
           });
-          await this.audit(tx, scope, operation.id, "reserved");
+          await this.audit(tx, scope, operation.id, "reserved", controlled);
         }
         // Bound aliases too; repeated UUIDs cannot grow storage without limit.
         if (
@@ -318,7 +369,7 @@ export class AddressOperationLedger {
           tx,
           fixture.stagingReview,
           scope,
-          p,
+          p as AddressOperationPolicy,
           now,
           operation ?? undefined,
         );
@@ -341,7 +392,7 @@ export class AddressOperationLedger {
                   : completion.state,
             },
           });
-          await this.audit(tx, scope, operation.id, "observed");
+          await this.audit(tx, scope, operation.id, "observed", controlled);
           completed = true;
         }
       } else if (input.action === "claim" && operation.state === "RESERVED") {
@@ -355,7 +406,7 @@ export class AddressOperationLedger {
               : null,
           },
         });
-        await this.audit(tx, scope, operation.id, "claimed");
+        await this.audit(tx, scope, operation.id, "claimed", controlled);
         claimed = true;
       } else if (input.action === "cancel") {
         if (!["RESERVED", "CANCELLED"].includes(operation.state))
@@ -365,10 +416,11 @@ export class AddressOperationLedger {
             where: { id: operation.id },
             data: { state: "CANCELLED", heldMicros: 0n },
           });
-          await this.audit(tx, scope, operation.id, "cancelled");
+          await this.audit(tx, scope, operation.id, "cancelled", controlled);
         }
       }
       this.credentials.verifySession(input.sessionToken);
+      if (controlled) await this.authorizeControlled(tx, scope);
       const finished = { now: await databaseClock(tx) };
       if (
         !Number.isFinite(finished?.now?.getTime()) ||
@@ -388,6 +440,7 @@ export class AddressOperationLedger {
       }
       return {
         operationId: operation.id,
+        policyHash,
         intentId: binding.intentId,
         revision: binding.revision,
         state: operation.state,
@@ -395,7 +448,7 @@ export class AddressOperationLedger {
         completed,
         attemptId: operation.attemptId,
         executionDeadline: operation.executionDeadline?.getTime() ?? null,
-        fixtureOnly: true,
+        fixtureOnly: !controlled,
         dispatchAuthorized: false,
         addressVerified: false,
         admissionAuthorized: false,
@@ -403,6 +456,72 @@ export class AddressOperationLedger {
         deliveryAuthorized: false,
       } as const;
     });
+  }
+
+  private async authorizeControlled(
+    tx: Prisma.TransactionClient,
+    scope: CustomerSessionScope,
+  ) {
+    const c = this.controlled;
+    if (!c || c.scope.tenantId !== scope.tenantId) throw refuse();
+    await c.authority.check(c.capability, tx, c.scope);
+  }
+
+  /** Used only while the caller holds the final session/tenant locks. No I/O. */
+  async checkControlledObservation(
+    tx: Prisma.TransactionClient,
+    input: {
+      sessionToken: string;
+      requestId: string;
+      operationId: string;
+      attemptId: string;
+      intentId: string;
+      revision: number;
+      policyHash: string;
+      executionDeadline: number;
+    },
+  ) {
+    const scope = this.credentials.verifySession(input.sessionToken);
+    if ((await lockCustomerConsentSession(tx, scope)).status !== "ONGOING")
+      throw refuse();
+    await this.authorizeControlled(tx, scope);
+    const c = this.controlled!;
+    const binding = await c.readBinding(tx, scope);
+    const alias = await tx.addressVerificationRequest.findUnique({
+      where: { id: input.requestId },
+      include: { operation: true },
+    });
+    const row = alias?.operation;
+    if (
+      !row ||
+      !binding ||
+      binding.policy.mode !== "CONTROLLED_ADDRESS_V1" ||
+      binding.policy.approved !== true ||
+      binding.policy.execution !== "CONTROLLED_8S_2_ATTEMPTS" ||
+      binding.policy.session.requests > 2 ||
+      binding.intentId !== input.intentId ||
+      binding.revision !== input.revision ||
+      row.id !== input.operationId ||
+      row.attemptId !== input.attemptId ||
+      row.accountId !== c.accountId ||
+      row.tenantId !== scope.tenantId ||
+      row.conversationId !== scope.conversationId ||
+      row.sessionId !== scope.sessionId ||
+      row.intentId !== input.intentId ||
+      row.revision !== input.revision ||
+      row.policyHash !== input.policyHash ||
+      addressPolicyHash(binding.policy) !== input.policyHash ||
+      row.state !== "OBSERVED" ||
+      row.executionDeadline?.getTime() !== input.executionDeadline
+    )
+      throw refuse();
+    const now = (await databaseClock(tx)).getTime();
+    if (
+      now >= input.executionDeadline ||
+      now >= binding.policy.validUntil ||
+      now >= scope.expiresAt
+    )
+      throw refuse();
   }
 
   /** Inactive operator recovery: retain liability only. No refund, resend or proof.
@@ -522,6 +641,7 @@ export class AddressOperationLedger {
     scope: CustomerSessionScope,
     id: string,
     transition: string,
+    controlled = false,
   ) {
     return tx.auditLog.create({
       data: {
@@ -531,8 +651,32 @@ export class AddressOperationLedger {
         actorType: "CUSTOMER",
         actorId: "address-operation-session",
         action: "conversation.address_operation_" + transition,
-        metadata: { version: 1, operationId: id, fixtureOnly: true },
+        metadata: { version: 1, operationId: id, fixtureOnly: !controlled },
       },
     });
   }
+}
+
+function addressPolicyHash(
+  p: AddressOperationPolicy | ControlledAddressOperationPolicy,
+  packetDigest?: string,
+) {
+  return createHash("sha256")
+    .update(
+      JSON.stringify([
+        p.version,
+        p.rateVersion,
+        p.validUntil,
+        p.costMicros,
+        p.account.micros,
+        p.account.requests,
+        p.tenant.micros,
+        p.tenant.requests,
+        p.session.micros,
+        p.session.requests,
+        ...(p.execution ? [p.execution] : []),
+        ...(packetDigest ? ["STAGING_REVIEW_ONLY", packetDigest] : []),
+      ]),
+    )
+    .digest("hex");
 }

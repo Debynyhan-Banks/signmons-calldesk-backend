@@ -84,6 +84,10 @@ export class TwilioVerifyAdapter {
   start(input: Record<string, unknown>) {
     return this.invoke("START", input);
   }
+  /** Server composition provenance only; never a customer receipt or credential. */
+  controlledBinding() {
+    return this.factory && this.binding ? this.binding : null;
+  }
   check(input: Record<string, unknown>) {
     return this.invoke("CHECK", input);
   }

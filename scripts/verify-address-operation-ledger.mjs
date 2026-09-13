@@ -6,6 +6,9 @@ const {
   AddressOperationLedger,
 } = require("../dist/communications/address-operation-ledger.js");
 const {
+  ControlledIntakeAuthority,
+} = require("../dist/communications/controlled-intake-authority.js");
+const {
   requestContextMiddleware,
   setAuthContext,
 } = require("../dist/common/context/request-context.js");
@@ -287,6 +290,403 @@ export async function verifyAddressOperationLedger({
     data: { status: "COMPLETED" },
   });
   await assert.rejects(a.run({ ...a.request, action: "claim" }));
+  // Controlled entry reuses the same real tables/locks, with no fake request role.
+  const controlledCustomer = await customer();
+  const controlledScope = credentials.verifySession(
+    controlledCustomer.request.sessionToken,
+  );
+  const category = randomUUID();
+  const approvedAt = new Date(Date.now() - 1000).toISOString();
+  const activation = {
+    version: 1,
+    enabled: true,
+    tenantId: controlledScope.tenantId,
+    integrationId: "controlled-test",
+    origin: "https://example.invalid",
+    policyVersion: "v1",
+    organizationApprovedAt: approvedAt,
+    organizationDigest: "a".repeat(64),
+    paymentApprovedAt: approvedAt,
+    paymentDigest: "b".repeat(64),
+    allowedServiceCategoryIds: [category],
+    priorityPolicy: "AUTO_INTAKE_STANDARD_V1",
+    validFrom: approvedAt,
+    validUntil: new Date(Date.now() + 60000).toISOString(),
+    packetId: randomUUID(),
+  };
+  const authority = new ControlledIntakeAuthority(
+    () => activation,
+    async (tx) => {
+      const [clock] = await tx.$queryRawUnsafe(
+        "SELECT floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint AS ms",
+      );
+      return {
+        tenantId: controlledScope.tenantId,
+        tenantActive: true,
+        serviceCategoryId: category,
+        categoryActive: true,
+        organizationApprovedAt: approvedAt,
+        organizationDigest: activation.organizationDigest,
+        paymentApprovedAt: approvedAt,
+        paymentDigest: activation.paymentDigest,
+        nowMs: Number(clock.ms),
+      };
+    },
+  );
+  const controlledConfig = {
+    accountId: randomUUID(),
+    authority,
+    capability: authority.issue(),
+    scope: {
+      tenantId: controlledScope.tenantId,
+      integrationId: activation.integrationId,
+      origin: activation.origin,
+      serviceCategoryId: category,
+    },
+    readBinding: async () => bindings.get(controlledScope.sessionId),
+  };
+  const controlledPolicy = {
+    ...policy(),
+    mode: "CONTROLLED_ADDRESS_V1",
+    execution: "CONTROLLED_8S_2_ATTEMPTS",
+    account: { micros: 100, requests: 10 },
+    tenant: { micros: 100, requests: 10 },
+    session: { micros: 20, requests: 2 },
+  };
+  bindings.set(controlledScope.sessionId, {
+    intentId: randomUUID(),
+    revision: 1,
+    policy: controlledPolicy,
+  });
+  const controlled = new AddressOperationLedger(
+    prisma,
+    credentials,
+    undefined,
+    controlledConfig,
+  );
+  const controlledRequest = {
+    sessionToken: controlledCustomer.request.sessionToken,
+    requestId: controlledCustomer.request.requestId,
+  };
+  await controlled.executeControlled({
+    ...controlledRequest,
+    action: "reserve",
+  });
+  const raced = await Promise.all(
+    [0, 1].map(() =>
+      controlled.executeControlled({ ...controlledRequest, action: "claim" }),
+    ),
+  );
+  assert.equal(raced.filter((x) => x.claimed).length, 1);
+  const claim = raced.find((x) => x.claimed);
+  assert.equal(claim.fixtureOnly, false);
+  const restarted = new AddressOperationLedger(
+    prisma,
+    credentials,
+    undefined,
+    controlledConfig,
+  );
+  assert.equal(
+    (
+      await restarted.executeControlled({
+        ...controlledRequest,
+        action: "claim",
+      })
+    ).claimed,
+    false,
+  );
+  await controlled.completeControlled({
+    ...controlledRequest,
+    attemptId: claim.attemptId,
+    state: "OBSERVED",
+  });
+  const observation = {
+    ...controlledRequest,
+    operationId: claim.operationId,
+    attemptId: claim.attemptId,
+    intentId: claim.intentId,
+    revision: claim.revision,
+    policyHash: claim.policyHash,
+    executionDeadline: claim.executionDeadline,
+  };
+  await prisma.$transaction((tx) =>
+    controlled.checkControlledObservation(tx, observation),
+  );
+  controlledPolicy.approved = false;
+  await assert.rejects(
+    prisma.$transaction((tx) =>
+      controlled.checkControlledObservation(tx, observation),
+    ),
+  );
+  controlledPolicy.approved = true;
+  controlledPolicy.rateVersion = "changed-rate";
+  await assert.rejects(
+    prisma.$transaction((tx) =>
+      controlled.checkControlledObservation(tx, observation),
+    ),
+  );
+  controlledPolicy.rateVersion = "not-a-price";
+  bindings.set(controlledScope.sessionId, {
+    intentId: randomUUID(),
+    revision: 2,
+    policy: controlledPolicy,
+  });
+  const secondRequest = { ...controlledRequest, requestId: randomUUID() };
+  await controlled.executeControlled({ ...secondRequest, action: "reserve" });
+  const secondClaim = await controlled.executeControlled({
+    ...secondRequest,
+    action: "claim",
+  });
+  await controlled.completeControlled({
+    ...secondRequest,
+    attemptId: secondClaim.attemptId,
+    state: "UNCERTAIN",
+  });
+  bindings.set(controlledScope.sessionId, {
+    intentId: randomUUID(),
+    revision: 3,
+    policy: controlledPolicy,
+  });
+  await assert.rejects(
+    controlled.executeControlled({
+      ...controlledRequest,
+      requestId: randomUUID(),
+      action: "reserve",
+    }),
+  );
+  assert.equal(
+    (
+      await prisma.addressVerificationOperation.aggregate({
+        where: { accountId: controlledConfig.accountId },
+        _sum: { heldMicros: true },
+      })
+    )._sum.heldMicros,
+    20n,
+  );
+  activation.enabled = false;
+  await assert.rejects(
+    controlled.executeControlled({ ...secondRequest, action: "claim" }),
+  );
+  // Connected controlled core on the same disposable database, a separate fictional
+  // account budget, real encrypted phone ledger, and synthetic SDK/Google transport.
+  // Phone spend admission is explicitly substituted here; existing phone-cap harness
+  // runs separately. This proves no live pricing/consent/release authority.
+  activation.enabled = true;
+  const {
+    DurableVerificationService,
+  } = require("../dist/communications/durable-verification.service.js");
+  const {
+    TwilioVerifyAdapter,
+  } = require("../dist/communications/twilio-verify.adapter.js");
+  const {
+    ConversationMemoryCipher,
+  } = require("../dist/logging/conversation-memory-cipher.service.js");
+  const {
+    GoogleAddressOAuthTransport,
+  } = require("../dist/communications/google-address-oauth.transport.js");
+  const {
+    ControlledIntakeVerificationService,
+  } = require("../dist/communications/controlled-intake-verification.service.js");
+  const phone = "+12025550123",
+    accountSid = "AC" + "a".repeat(32),
+    serviceSid = "VA" + "b".repeat(32);
+  let syntheticPhoneCalls = 0,
+    syntheticAddressCalls = 0;
+  const phoneRaw = (status) => ({
+    status,
+    accountSid,
+    serviceSid,
+    sid: "VE" + "c".repeat(32),
+    to: phone,
+    channel: "sms",
+  });
+  const adapter = new TwilioVerifyAdapter(
+    { tenantId: controlledScope.tenantId, accountSid, serviceSid },
+    () => ({
+      verify: {
+        v2: {
+          services: () => ({
+            verifications: {
+              create: async () => {
+                syntheticPhoneCalls++;
+                return phoneRaw("pending");
+              },
+            },
+            verificationChecks: {
+              create: async () => {
+                syntheticPhoneCalls++;
+                return phoneRaw("approved");
+              },
+            },
+          }),
+        },
+      },
+    }),
+  );
+  const durable = new DurableVerificationService(
+    prisma,
+    new ConversationMemoryCipher({
+      conversationDataEncryptionKey: "8".repeat(64),
+    }),
+    credentials,
+    Buffer.alloc(32, 8),
+    adapter,
+    { lock: async () => {}, reserve: async () => {}, check: async () => {} },
+    undefined,
+    async () => ({
+      mode: "CONTROLLED_VERIFY_V1",
+      version: "v1",
+      accountSid,
+      serviceSid,
+      noticeVersion: "synthetic",
+      businessPolicyVersion: approvedAt,
+      lifetimeMs: 1800000,
+    }),
+  );
+  const start = {
+    sessionToken: controlledRequest.sessionToken,
+    operationId: randomUUID(),
+    kind: "START",
+    phone,
+    code: "",
+    startOperationId: "",
+  };
+  await durable.execute(start);
+  await durable.execute({
+    ...start,
+    operationId: randomUUID(),
+    kind: "CHECK",
+    code: "123456",
+    startOperationId: start.operationId,
+  });
+  const connectedBinding = {
+    intentId: randomUUID(),
+    revision: 4,
+    policy: { ...controlledPolicy },
+  };
+  bindings.set(controlledScope.sessionId, connectedBinding);
+  const connectedLedger = new AddressOperationLedger(
+    prisma,
+    credentials,
+    undefined,
+    {
+      ...controlledConfig,
+      accountId: randomUUID(),
+      capability: authority.issue(),
+    },
+  );
+  const googleBody = {
+    responseId: "P03_SENTINEL_NO_STORAGE",
+    result: {
+      verdict: { addressComplete: true, validationGranularity: "PREMISE" },
+      address: {
+        postalAddress: {
+          regionCode: "US",
+          administrativeArea: "OH",
+          locality: "Example",
+          postalCode: "44101",
+          addressLines: ["123 Fictional Street"],
+        },
+        addressComponents: Object.entries({
+          street_number: "123",
+          route: "Fictional Street",
+          locality: "Example",
+          administrative_area_level_1: "Ohio",
+          postal_code: "44101",
+          country: "United States",
+        }).map(([componentType, text]) => ({
+          componentType,
+          componentName: { text },
+          confirmationLevel: "CONFIRMED",
+        })),
+      },
+      uspsData: {
+        dpvConfirmation: "Y",
+        dpvCmra: "N",
+        addressRecordType: "H",
+        fipsCountyCode: "035",
+        county: "Cuyahoga",
+      },
+      metadata: { poBox: false },
+    },
+  };
+  const transport = new GoogleAddressOAuthTransport(true, {
+    token: async () => "synthetic-not-a-credential",
+    fetch: async () => {
+      syntheticAddressCalls++;
+      return new Response(JSON.stringify(googleBody), {
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+  const verification = new ControlledIntakeVerificationService({
+    prisma,
+    credentials,
+    authority,
+    capability: authority.issue(),
+    phone: durable,
+    ledger: connectedLedger,
+    transport,
+    readSubmission: async () => ({
+      intentId: connectedBinding.intentId,
+      revision: connectedBinding.revision,
+      submissionDigest: "e".repeat(64),
+      policyVersion: "v1",
+      organizationApprovedAt: approvedAt,
+      phone,
+      address: {
+        street: "123 Fictional Street",
+        city: "Example",
+        postalCode: "44101",
+        unit: "",
+      },
+      authorityScope: controlledConfig.scope,
+    }),
+  });
+  const connectedRequest = {
+    sessionToken: controlledRequest.sessionToken,
+    requestId: randomUUID(),
+  };
+  let captured;
+  assert.deepEqual(
+    await verification.run(connectedRequest, (check) =>
+      prisma.$transaction(async (tx) => {
+        captured = check;
+        await check(tx);
+        return { noJobWrite: true };
+      }),
+    ),
+    { status: "CONSUMED", value: { noJobWrite: true } },
+  );
+  await assert.rejects(prisma.$transaction((tx) => captured(tx)));
+  assert.deepEqual(
+    await verification.run(connectedRequest, () => {
+      throw Error("must not replay callback");
+    }),
+    { status: "UNCERTAIN", jobCreated: false },
+  );
+  assert.equal(syntheticPhoneCalls, 2);
+  assert.equal(syntheticAddressCalls, 1);
+  const persisted = JSON.stringify(
+    await prisma.conversation.findUnique({
+      where: { id: controlledScope.conversationId },
+      select: { collectedData: true },
+    }),
+  );
+  const audit = JSON.stringify(
+    await prisma.auditLog.findMany({
+      where: { tenantId: controlledScope.tenantId },
+    }),
+  );
+  for (const sentinel of [
+    "P03_SENTINEL_NO_STORAGE",
+    "fipsCountyCode",
+    "Cuyahoga",
+    "123 Fictional Street",
+  ]) {
+    assert.ok(!persisted.includes(sentinel));
+    assert.ok(!audit.includes(sentinel));
+  }
   return {
     checks: [
       "identical intent aliases reserve once",
@@ -302,6 +702,10 @@ export async function verifyAddressOperationLedger({
       "claim versus cancel race cannot release claimed liability",
       "closed session refuses",
       "no customer or provider payload columns",
+      "controlled capability with real ledger locks: concurrent claim once, restart no reclaim, exact observed read",
+      "controlled changed policy refuses final observation; two-request cap and unknown liability retained",
+      "controlled activation revocation refuses without fake operator context",
+      "connected real encrypted CHECK ledger, claimed synthetic Google evaluation and final database transaction; no provider-content persistence or replay",
     ],
     liveProviderCalls: 0,
     dispatchAuthorized: false,

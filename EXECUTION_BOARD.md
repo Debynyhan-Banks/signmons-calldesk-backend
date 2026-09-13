@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: P02 controlled authority review-ready — 2026-09-13
+## Current: P03 controlled verification review-ready — 2026-09-13
+
+evidence/APP-013/p03-controlled-verification.md records controlled encrypted phone CHECK proof, existing durable address caps with a separate authority-gated entry, transient Google evaluation and a single-use transaction check. Full tests and connected disposable PostgreSQL/synthetic-provider proof passed; no live call or job creation. Owner accepted P02; P03 R, P04 atomic job/current-draft/replay integration next under the P01 card. APP-013/2B Now; walkthrough 3/8 (37.5%) unchanged; remaining-plan accepted packages 2/60, not whole-app progress. No scope deviation or external action.
+
+## Historical: P02 controlled authority review-ready — 2026-09-13
 
 evidence/APP-013/p02-controlled-authority.md records the disabled, unregistered P01 authority implementation and local refusal tests. P01 owner-accepted; P02 review-ready, not integrated admission or live acceptance. Next P03 current verification integration, then P04 atomic job, P05 customer wiring, P06 separately authorized live acceptance. APP-013/2B remains Now; walkthrough 3/8 (37.5%) unchanged, accepted remaining-plan packages 1/60, not whole-MVP progress. No scope deviation or external action. Older current headings below are historical where superseded by governance's current pointer.
 

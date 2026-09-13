@@ -10,6 +10,14 @@ import { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
 import { lockCustomerConsentSession } from "./customer-consent-session-lock";
 import {
+  ControlledPhonePolicy,
+  ControlledPhoneProof,
+  validControlledPhonePolicy,
+  sameControlledPhonePolicy,
+  createControlledPhoneProof,
+  controlledPhoneProofCurrent,
+} from "./controlled-phone-proof";
+import {
   createVerificationProof,
   sameFreshnessPolicy,
   validFreshnessPolicy,
@@ -39,6 +47,8 @@ type Entry = {
   result: VerifyAdapterResult | null;
   proof?: VerificationProof | null;
   freshnessPolicy?: VerificationFreshnessPolicy;
+  controlledPolicy?: ControlledPhonePolicy;
+  controlledProof?: ControlledPhoneProof | null;
 };
 type Ledger = { version: 1; entries: Entry[] };
 const unavailable = () =>
@@ -68,6 +78,10 @@ export class DurableVerificationService {
       tx: Prisma.TransactionClient,
       tenantId: string,
     ) => Promise<VerificationFreshnessPolicy | null>,
+    private readonly controlledPolicy?: (
+      tx: Prisma.TransactionClient,
+      tenantId: string,
+    ) => Promise<ControlledPhonePolicy | null>,
   ) {
     if (!Buffer.isBuffer(key) || key.length !== 32)
       throw Error("Explicit verification digest key required.");
@@ -121,6 +135,7 @@ export class DurableVerificationService {
       fresh: boolean;
       verificationSid?: string;
       policy?: VerificationFreshnessPolicy | null;
+      controlledPolicy?: ControlledPhonePolicy | null;
     };
     try {
       reservation = await this.prisma.$transaction(async (tx) => {
@@ -139,6 +154,15 @@ export class DurableVerificationService {
           return { entry: prior, fresh: false };
         }
         const policy = await this.freshnessPolicy?.(tx, session.tenantId);
+        const controlledPolicy = await this.currentControlledPolicy(
+          tx,
+          session.tenantId,
+        );
+        if (
+          this.controlledPolicy &&
+          (!controlledPolicy || this.freshnessPolicy)
+        )
+          throw unavailable();
         if (this.freshnessPolicy && !validFreshnessPolicy(policy))
           throw new ConflictException(
             "Current verification freshness policy required.",
@@ -165,6 +189,12 @@ export class DurableVerificationService {
           if (
             !start ||
             start.proof === null ||
+            start.controlledProof === null ||
+            (this.controlledPolicy &&
+              !sameControlledPhonePolicy(
+                start.controlledPolicy,
+                controlledPolicy,
+              )) ||
             (this.freshnessPolicy &&
               !sameFreshnessPolicy(start.freshnessPolicy, policy)) ||
             start.phoneDigest !== phoneDigest ||
@@ -190,6 +220,9 @@ export class DurableVerificationService {
           startId: input.startOperationId as string,
           reservedAt: new Date().toISOString(),
           result: null,
+          ...(controlledPolicy
+            ? { controlledPolicy: { ...controlledPolicy } }
+            : {}),
           ...(this.freshnessPolicy && policy
             ? { freshnessPolicy: { ...policy } }
             : {}),
@@ -232,6 +265,7 @@ export class DurableVerificationService {
           fresh: true,
           verificationSid,
           policy: policy ? { ...policy } : null,
+          controlledPolicy,
         };
       });
     } catch (error) {
@@ -285,6 +319,28 @@ export class DurableVerificationService {
         )
           throw new ConflictException();
         entry.result = observed;
+        if (observed.outcome === "APPROVED" && this.controlledPolicy) {
+          const policy = await this.currentControlledPolicy(
+            tx,
+            session.tenantId,
+          );
+          const now = await this.clock(tx);
+          entry.controlledProof =
+            entry.controlledProof !== null &&
+            policy &&
+            sameControlledPhonePolicy(reservation.controlledPolicy, policy)
+              ? createControlledPhoneProof(
+                  {
+                    tenantId: session.tenantId,
+                    sessionId: session.sessionId,
+                    revision: phoneDigest,
+                    expiresAt: session.expiresAt,
+                  },
+                  policy,
+                  now,
+                )
+              : null;
+        }
         if (observed.outcome === "APPROVED" && this.freshnessPolicy) {
           const policy = await this.freshnessPolicy(tx, session.tenantId);
           const now = await this.clock(tx);
@@ -351,6 +407,7 @@ export class DurableVerificationService {
 
   /** Read/revoke under the same session lock as observation. No provider or budget mutation.
    * Old successful receipts without proof metadata never acquire fresh authority on replay.
+   * Explicit revoke clears both proof kinds; status here remains fixture-only.
    */
   async freshness(input: {
     sessionToken: string;
@@ -400,7 +457,10 @@ export class DurableVerificationService {
           ? [entry]
           : [];
       if (revoke.length) {
-        for (const e of revoke) e.proof = null;
+        for (const e of revoke) {
+          e.proof = null;
+          e.controlledProof = null;
+        }
         await this.write(tx, session, ledger);
         await tx.auditLog.create({
           data: {
@@ -430,6 +490,85 @@ export class DurableVerificationService {
     if (!Number.isSafeInteger(now)) throw unavailable();
     return now;
   }
+  private async currentControlledPolicy(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+  ) {
+    if (
+      !this.controlledPolicy ||
+      !(this.adapter instanceof TwilioVerifyAdapter)
+    )
+      return null;
+    const binding = this.adapter.controlledBinding();
+    const policy = await this.controlledPolicy(tx, tenantId);
+    if (
+      !validControlledPhonePolicy(policy) ||
+      !binding ||
+      binding.tenantId !== tenantId ||
+      binding.accountSid !== policy.accountSid ||
+      binding.serviceSid !== policy.serviceSid
+    )
+      return null;
+    return { ...policy };
+  }
+
+  /** Current transaction/locks, no provider or new proof. Old phone-only/fixture
+   * receipts have no controlledProof and cannot be promoted. Caller owns commit.
+   * The edit path must call freshness(revoke:true) before replacing a phone.
+   */
+  async readControlledCurrent(
+    tx: Prisma.TransactionClient,
+    input: {
+      sessionToken: string;
+      phone: string;
+      businessPolicyVersion: string;
+    },
+  ) {
+    const session = this.credentials.verifySession(input.sessionToken);
+    if (!/^\+1[2-9]\d{9}$/.test(input.phone)) return null;
+    const ledger = await this.read(tx, input.sessionToken);
+    const policy = await this.currentControlledPolicy(tx, session.tenantId);
+    if (!policy || policy.businessPolicyVersion !== input.businessPolicyVersion)
+      return null;
+    const revision = this.hash(input.phone);
+    const entry = ledger.entries.find(
+      (e) =>
+        e.kind === "CHECK" &&
+        e.phoneDigest === revision &&
+        e.result?.outcome === "APPROVED",
+    );
+    const start = ledger.entries.find(
+      (e) => e.kind === "START" && e.id === entry?.startId,
+    );
+    const now = await this.clock(tx);
+    if (
+      !entry ||
+      !start ||
+      start.result?.outcome !== "PENDING" ||
+      start.controlledProof === null ||
+      entry.controlledProof === null ||
+      start.phoneDigest !== revision ||
+      start.result?.verificationSid !== entry.result?.verificationSid ||
+      !sameControlledPhonePolicy(start.controlledPolicy, policy) ||
+      !controlledPhoneProofCurrent(
+        entry.controlledProof,
+        {
+          tenantId: session.tenantId,
+          sessionId: session.sessionId,
+          revision,
+          expiresAt: session.expiresAt,
+        },
+        policy,
+        now,
+      )
+    )
+      return null;
+    this.credentials.verifySession(input.sessionToken);
+    return Object.freeze({
+      checkedAt: entry.controlledProof!.checkedAt,
+      expiresAt: entry.controlledProof!.expiresAt,
+    });
+  }
   private async read(
     tx: Prisma.TransactionClient,
     token: string,
@@ -456,12 +595,22 @@ export class DurableVerificationService {
         (e) =>
           e &&
           Object.keys(e)
-            .filter((key) => key !== "proof" && key !== "freshnessPolicy")
+            .filter(
+              (key) =>
+                ![
+                  "proof",
+                  "freshnessPolicy",
+                  "controlledPolicy",
+                  "controlledProof",
+                ].includes(key),
+            )
             .sort()
             .join(",") ===
             "attemptId,digest,id,kind,phoneDigest,reservedAt,result,startId" &&
           (e.freshnessPolicy === undefined ||
             validFreshnessPolicy(e.freshnessPolicy)) &&
+          (e.controlledPolicy === undefined ||
+            validControlledPhonePolicy(e.controlledPolicy)) &&
           UUID.test(e.id) &&
           UUID.test(e.attemptId) &&
           /^[a-f0-9]{64}$/.test(e.digest) &&
