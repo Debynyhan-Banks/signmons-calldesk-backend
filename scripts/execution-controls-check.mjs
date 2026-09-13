@@ -2,7 +2,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync,existsSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-export const anchor='5d971c8cd91ecef2840868d3f28d5c87bf9a29b4';
+export const anchor='468af8c36844aad177249ee5f42d47ff488cf71b'; // Owner-approved amendment: docs/SOLO_OWNER_CONTROL_CHANGE.md
 export const files=["AGENTS.md",".github/CODEOWNERS"];
 export const normalize=s=>s.replace(/\r\n/g,'\n').replace(/^- \[[ xX]\] /gm,'- [ ] ').trim();
 export function compare(current,baseline) {
