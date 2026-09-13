@@ -320,6 +320,30 @@ describe("request-local controlled verification connection", () => {
     });
     await expect(retained(tx)).rejects.toThrow();
   });
+  it("post-write guard requires the checked transaction and remains request-local", async () => {
+    let retained!: (tx: Prisma.TransactionClient) => Promise<void>;
+    await service.run(input, async (check, finish) => {
+      await expect(finish(tx)).rejects.toThrow();
+      await check(tx);
+      await expect(finish({} as Prisma.TransactionClient)).rejects.toThrow();
+      await finish(tx);
+      retained = finish;
+    });
+    await expect(retained(tx)).rejects.toThrow();
+  });
+  it.each(["deadline", "revocation"])(
+    "post-write %s refuses before commit",
+    async (kind) => {
+      await expect(
+        service.run(input, async (check, finish) => {
+          await check(tx);
+          if (kind === "deadline") clock = now + 8000;
+          else enabled = false;
+          await finish(tx);
+        }),
+      ).rejects.toThrow();
+    },
+  );
   it("a skipped or swallowed failed check cannot produce CONSUMED", async () => {
     await expect(service.run(input, async () => "unchecked")).rejects.toThrow();
     checkObservation.mockRejectedValue(Error("stale"));

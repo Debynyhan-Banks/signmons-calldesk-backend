@@ -1,6 +1,6 @@
 // Requires the parent verifier's disposable local database; never accepts a URL.
 import assert from "node:assert/strict";
-import { randomUUID, createHmac } from "node:crypto";
+import { randomUUID, createHmac, createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { writeFile } from "node:fs/promises";
 const require = createRequire(import.meta.url);
@@ -353,13 +353,262 @@ export async function verifyOperatorIntakeAdmission({
   });
   assert.ok(!JSON.stringify(audit).includes(first.draft.phone));
   assert.ok(!JSON.stringify(audit).includes(first.session.sessionToken));
+  // P04 persistence-only proof: real reader/authority/database; verification
+  // callbacks are explicitly injected. Not a live or full P03-provider proof.
+  const {
+    ControlledIntakeAuthority,
+  } = require("../dist/communications/controlled-intake-authority.js");
+  const tenant = await prisma.tenantOrganization.findUnique({
+    where: { id: tenantId },
+  });
+  const paymentDraft = {
+    currency: "usd",
+    serviceFeeRequired: true,
+    serviceFeeCents: 100,
+    depositRequired: false,
+    depositPolicy: { kind: "none" },
+    emergencyFeePolicy: { kind: "none" },
+    paymentGateMode: "fail_closed",
+    webhookValidationRequired: true,
+  };
+  const payment = {
+    version: 1,
+    draft: paymentDraft,
+    approved: {
+      draft: paymentDraft,
+      actorId: "fictional-owner",
+      approvedAt: new Date().toISOString(),
+    },
+  };
+  await prisma.tenantOrganization.update({
+    where: { id: tenantId },
+    data: {
+      settings: { ...tenant.settings, organizationPaymentPolicyV1: payment },
+    },
+  });
+  const organizationApproved =
+    require("../dist/tenants/organization-profile.js").profile(
+      tenant.settings.organizationProfileV1,
+    ).approved;
+  const paymentApproved =
+    require("../dist/tenants/organization-payment-policy.js").profile(
+      payment,
+    ).approved;
+  const category = await prisma.serviceCategory.findFirst({
+    where: { tenantId, name: "COOLING" },
+  });
+  const hash = (value) =>
+    createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  const activation = {
+    version: 1,
+    enabled: true,
+    tenantId,
+    integrationId: "fixture",
+    origin: "https://example.invalid",
+    policyVersion: "p04-fixture",
+    organizationApprovedAt: organizationApproved.approvedAt,
+    organizationDigest: hash(organizationApproved),
+    paymentApprovedAt: paymentApproved.approvedAt,
+    paymentDigest: hash(paymentApproved),
+    allowedServiceCategoryIds: [category.id],
+    priorityPolicy: "AUTO_INTAKE_STANDARD_V1",
+    validFrom: paymentApproved.approvedAt,
+    validUntil: new Date(Date.now() + 60000).toISOString(),
+    packetId: randomUUID(),
+  };
+  const controlled = new Intake(
+    prisma,
+    cipher,
+    credentials,
+    undefined,
+    consent,
+  );
+  const authority = new ControlledIntakeAuthority(
+    () => activation,
+    (tx, scope) => controlled.readControlledCurrentState(tx, scope),
+  );
+  let failFinish = false,
+    finishReached = false;
+  const binding = {
+    integrationId: "fixture",
+    origin: "https://example.invalid",
+    authority,
+    capability: authority.issue(),
+    verification: (reader) => ({
+      run: async (input, consume) => ({
+        status: "CONSUMED",
+        value: await consume(
+          (tx) =>
+            reader(
+              tx,
+              credentials.verifySession(input.sessionToken),
+              input.requestId,
+            ).then(() => undefined),
+          async () => {
+            finishReached = true;
+            if (failFinish) throw Error("fixture post-write expiry");
+          },
+        ),
+      }),
+    }),
+  };
+  const controlledInput = (fixture) => ({
+    version: 2,
+    confirmed: true,
+    sessionToken: fixture.session.sessionToken,
+    requestId: fixture.input.requestId,
+    expectedRevision: 1,
+    draft: {
+      ...fixture.draft,
+      address: "173 Fictional Lane, Example, OH 44101",
+    },
+    confirmedAddress: {
+      street: "173 Fictional Lane",
+      unit: "",
+      city: "Example",
+      postalCode: "44101",
+    },
+  });
+  const cf = await fresh("GRANTED");
+  const cs = controlledInput(cf),
+    cb = await counts();
+  const created = await controlled.submitControlled(cs, binding);
+  assert.equal(created.status, "ADMITTED");
+  assert.equal(created.paymentAuthorized, false);
+  assert.equal(created.dispatchAuthorized, false);
+  assert.equal(created.deliveryAuthorized, false);
+  const cj = await prisma.job.findUnique({
+    where: { id: created.jobId },
+    include: { propertyAddress: true },
+  });
+  assert.equal(cj.urgency, "STANDARD");
+  assert.equal(cj.propertyAddress.googlePlaceId, null);
+  assert.equal(cj.propertyAddress.latitude, null);
+  assert.equal(cj.propertyAddress.longitude, null);
+  assert.equal(cj.policySnapshot.intakeAdmission.emailChoice, "GRANTED");
+  const ca = await counts();
+  assert.equal(ca.jobs, cb.jobs + 1);
+  assert.equal(ca.bindings, cb.bindings + 1);
+  const controlledAudit = await prisma.auditLog.findMany({
+    where: { entityId: cj.id },
+  });
+  assert.equal(controlledAudit[0].actorType, "SYSTEM_AI");
+  assert.equal(controlledAudit[0].actorId, "signmons-intake-admission-v1");
+  for (const forbidden of [
+    "humanReviewed",
+    "OPERATOR_OVERRIDE",
+    "currentProof",
+    "county",
+    "addressVerification",
+    "fixtureOnly",
+    cs.sessionToken,
+  ])
+    assert.ok(
+      !JSON.stringify([cj.policySnapshot, controlledAudit]).includes(forbidden),
+    );
+  assert.deepEqual(
+    Object.keys(cj.policySnapshot.intakeAdmission).sort(),
+    [
+      "version",
+      "requestId",
+      "submissionDigest",
+      "transcriptRevision",
+      "customerConfirmedAt",
+      "actorId",
+      "policyVersion",
+      "organizationApprovedAt",
+      "organizationDigest",
+      "paymentApprovedAt",
+      "paymentDigest",
+      "priorityPolicy",
+      "emailChoice",
+    ].sort(),
+  );
+  await assert.rejects(controlled.submitControlled(cs, binding)); // Replay is still closed, never a second job.
+  assert.deepEqual(await counts(), ca);
+  const raceFixture = controlledInput(await fresh());
+  const raceBefore = await counts();
+  const race = await Promise.allSettled([
+    controlled.submitControlled(raceFixture, binding),
+    controlled.submitControlled(raceFixture, binding),
+  ]);
+  assert.equal(race.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal((await counts()).jobs, raceBefore.jobs + 1);
+  for (const fault of ["audit", "consent", "finish"]) {
+    const failedInput = controlledInput(await fresh("GRANTED"));
+    const beforeFault = await counts();
+    let faultReached = false;
+    const faultPrisma = {
+      $transaction: (fn, ...args) =>
+        prisma.$transaction(
+          (tx) =>
+            fn(
+              new Proxy(tx, {
+                get(target, key) {
+                  if (key === "auditLog" && fault === "audit")
+                    return {
+                      ...target.auditLog,
+                      create: (args) => {
+                        if (
+                          args.data.action === "job.customer_intake_admitted"
+                        ) {
+                          faultReached = true;
+                          throw Error("fixture audit failure");
+                        }
+                        return target.auditLog.create(args);
+                      },
+                    };
+                  const v = target[key];
+                  return typeof v === "function" ? v.bind(target) : v;
+                },
+              }),
+            ),
+          ...args,
+        ),
+    };
+    const failureConsent =
+      fault === "consent"
+        ? {
+            bindJob: async () => {
+              faultReached = true;
+              throw Error("fixture binding failure");
+            },
+          }
+        : consent;
+    const failingWriter = new Intake(
+      faultPrisma,
+      cipher,
+      credentials,
+      undefined,
+      failureConsent,
+    );
+    failFinish = fault === "finish";
+    finishReached = false;
+    await assert.rejects(failingWriter.submitControlled(failedInput, binding));
+    assert.ok(fault === "finish" ? finishReached : faultReached);
+    assert.deepEqual(await counts(), beforeFault);
+    const conversation = await prisma.conversation.findUnique({
+      where: {
+        id: credentials.verifySession(failedInput.sessionToken).conversationId,
+      },
+    });
+    assert.equal(conversation.status, "ONGOING");
+  }
+  failFinish = false;
+  checks.push(
+    "P04 injected-verification writer: exact v2 record, SYSTEM_AI actor, granted-consent binding, one job under race; audit/consent/post-write failure rollback; duplicate safely refuses pending replay",
+  );
+  await prisma.tenantOrganization.update({
+    where: { id: tenantId },
+    data: { settings: tenant.settings },
+  });
   await writeFile(
     evidence + "/operator-admission-summary.json",
     JSON.stringify(
       {
         checks,
         credentialAccesses,
-        newFictionalJobs: 3,
+        newFictionalJobs: 5,
         providerCalls: 0,
         browserAdmission: false,
         identity: "fixture context; no production identity acceptance",

@@ -18,7 +18,10 @@ import {
 } from "./customer-consent-session-lock";
 import { validateCustomerIntakeDraft } from "./customer-intake-draft";
 import { controlledIntakeSubmission } from "./controlled-intake-submission";
-import { ControlledIntakeSubmission } from "./controlled-intake-verification.service";
+import {
+  ControlledIntakeSubmission,
+  ControlledIntakeVerificationService,
+} from "./controlled-intake-verification.service";
 import {
   ControlledIntakeAuthority,
   ControlledIntakeScope,
@@ -50,6 +53,19 @@ const UUID =
 const changed = () =>
   new ConflictException("Customer intake changed or is unavailable.");
 const reviewRoles = new Set(["owner", "admin", "dispatcher"]);
+type ControlledWrite = {
+  requestId: string;
+  submissionDigest: string;
+  transcriptRevision: number;
+  customerConfirmedAt: string;
+  actorId: "signmons-intake-admission-v1";
+  policyVersion: string;
+  organizationApprovedAt: string;
+  organizationDigest: string;
+  paymentApprovedAt: string;
+  paymentDigest: string;
+  priorityPolicy: "AUTO_INTAKE_STANDARD_V1";
+};
 function text(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -240,6 +256,112 @@ export class CustomerIntakeContinuationService {
         authorityScope,
       };
     };
+  }
+
+  /** Unregistered controlled writer. Exact committed replay is not exposed yet;
+   * closed/repeated requests refuse through the normal session lock. */
+  async submitControlled(
+    value: unknown,
+    binding: {
+      integrationId: string;
+      origin: string;
+      authority: ControlledIntakeAuthority;
+      capability: Readonly<object>;
+      verification: (
+        reader: ReturnType<
+          CustomerIntakeContinuationService["controlledSubmissionReader"]
+        >,
+      ) => ControlledIntakeVerificationService;
+    },
+  ) {
+    const input = controlledIntakeSubmission(value);
+    const session = this.credentials.verifySession(input.sessionToken);
+    const reader = this.controlledSubmissionReader(input, binding);
+    // Fail before the verification factory/provider path when the session is closed.
+    await this.transaction((tx) => reader(tx, session, input.requestId));
+    try {
+      const result = await binding
+        .verification(reader)
+        .run(
+          { sessionToken: input.sessionToken, requestId: input.requestId },
+          (check, beforeCommit) =>
+            this.transaction(async (tx) => {
+              await check(tx);
+              const snapshot = await reader(tx, session, input.requestId);
+              const current = await this.readControlledCurrentState(
+                tx,
+                snapshot.authorityScope,
+              );
+              const actor = await binding.authority.check(
+                binding.capability,
+                tx,
+                snapshot.authorityScope,
+              );
+              const controlled: ControlledWrite = {
+                requestId: input.requestId,
+                submissionDigest: snapshot.submissionDigest,
+                transcriptRevision: input.expectedRevision,
+                customerConfirmedAt: new Date(current.nowMs).toISOString(),
+                actorId: actor.actorId,
+                policyVersion: actor.policyVersion,
+                organizationApprovedAt: current.organizationApprovedAt,
+                organizationDigest: current.organizationDigest,
+                paymentApprovedAt: current.paymentApprovedAt,
+                paymentDigest: current.paymentDigest,
+                priorityPolicy: actor.priorityPolicy,
+              };
+              await tx.auditLog.create({
+                data: {
+                  tenantId: session.tenantId,
+                  entityType: "Conversation",
+                  entityId: session.conversationId,
+                  actorType: "CUSTOMER",
+                  actorId: session.sessionId,
+                  action: "customer_intake.controlled_submitted",
+                  metadata: {
+                    version: 2,
+                    requestId: input.requestId,
+                    transcriptRevision: input.expectedRevision,
+                    customerConfirmedAt: controlled.customerConfirmedAt,
+                  },
+                },
+              });
+              const receipt = await this.persistAdmission(
+                tx,
+                session,
+                input.draft,
+                null,
+                null,
+                snapshot.submissionDigest,
+                input.expectedRevision,
+                undefined,
+                {
+                  metadata: controlled,
+                  categoryId: snapshot.authorityScope.serviceCategoryId,
+                },
+              );
+              await beforeCommit(tx);
+              return {
+                status: "ADMITTED" as const,
+                requestId: input.requestId,
+                jobId: receipt.jobId,
+                state: receipt.status,
+                jobCreated: true as const,
+                paymentAuthorized: false as const,
+                bookingAuthorized: false as const,
+                dispatchAuthorized: false as const,
+                deliveryAuthorized: false as const,
+              };
+            }),
+        );
+      return result.status === "CONSUMED" ? result.value : result;
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500)
+        throw error;
+      throw new ServiceUnavailableException(
+        "Intake outcome unconfirmed. Do not resubmit a different request; use authorized recovery.",
+      );
+    }
   }
 
   /** Customer-only durable submission. Does not store the bearer or authorize a job. */
@@ -870,8 +992,8 @@ export class CustomerIntakeContinuationService {
     tx: Prisma.TransactionClient,
     session: CustomerSessionScope,
     draft: ReturnType<typeof validateCustomerIntakeDraft>,
-    review: ReturnType<CustomerIntakeContinuationService["review"]>,
-    context: ReturnType<CustomerIntakeContinuationService["operator"]>,
+    review: ReturnType<CustomerIntakeContinuationService["review"]> | null,
+    context: ReturnType<CustomerIntakeContinuationService["operator"]> | null,
     admissionDigest: string,
     expectedRevision: number,
     requestBinding?: {
@@ -880,12 +1002,22 @@ export class CustomerIntakeContinuationService {
       digest: string;
       proof?: Awaited<ReturnType<typeof consumeCurrentAdmissionProof>>;
     },
+    controlled?: { metadata: ControlledWrite; categoryId: string },
   ) {
+    if (
+      controlled
+        ? review !== null || context !== null || requestBinding !== undefined
+        : !review || !context
+    )
+      throw changed();
+    const urgency = controlled ? "STANDARD" : review!.urgency;
     const consent = await this.consentState(tx, session);
-    const category = await tx.serviceCategory.findFirst({
-      where: { tenantId: session.tenantId, name: draft.issueCategory },
-      select: { id: true },
-    });
+    const category = controlled
+      ? { id: controlled.categoryId }
+      : await tx.serviceCategory.findFirst({
+          where: { tenantId: session.tenantId, name: draft.issueCategory },
+          select: { id: true },
+        });
     if (!category)
       throw new ConflictException(
         "The reviewed service category is not available for this business.",
@@ -932,7 +1064,7 @@ export class CustomerIntakeContinuationService {
         serviceCategoryId: category.id,
         serviceCategoryTenantId: session.tenantId,
         status: "CREATED",
-        urgency: review.urgency,
+        urgency,
         description: draft.description,
         intakeSessionId: session.sessionId,
         pricingSnapshot: {},
@@ -940,33 +1072,46 @@ export class CustomerIntakeContinuationService {
           propertyType: draft.propertyType,
           serviceIntent: draft.serviceIntent,
           leadAttribution: { channel: "website_chat" },
-          urgencyDecision: {
-            source: "OPERATOR_OVERRIDE",
-            level: review.urgency,
-            reasonCodes: ["HUMAN_INTAKE_REVIEW"],
-            confidenceNote:
-              "Authorized operator reviewed customer-stated intake.",
-          },
-          intakeAdmission: {
-            version: 1,
-            digest: admissionDigest,
-            transcriptRevision: expectedRevision,
-            reviewReasonCode: review.reasonCode,
-            humanReviewed: true,
-            contactVerification: "NOT_VERIFIED",
-            addressVerification: "NOT_VERIFIED",
-            emailChoice: consent.choice,
-            ...(requestBinding
-              ? {
-                  requestId: requestBinding.requestId,
-                  organizationApprovedAt: requestBinding.approvedAt,
-                  organizationDigest: requestBinding.digest,
-                  ...(requestBinding.proof
-                    ? { currentProof: requestBinding.proof }
-                    : {}),
-                }
-              : {}),
-          },
+          urgencyDecision: controlled
+            ? {
+                source: "DETERMINISTIC_POLICY",
+                level: "STANDARD",
+                reasonCodes: ["AUTO_INTAKE_STANDARD_V1"],
+                confidenceNote: "Operational default; safety not assessed.",
+              }
+            : {
+                source: "OPERATOR_OVERRIDE",
+                level: urgency,
+                reasonCodes: ["HUMAN_INTAKE_REVIEW"],
+                confidenceNote:
+                  "Authorized operator reviewed customer-stated intake.",
+              },
+          intakeAdmission: controlled
+            ? {
+                version: 2,
+                ...controlled.metadata,
+                emailChoice: consent.choice,
+              }
+            : {
+                version: 1,
+                digest: admissionDigest,
+                transcriptRevision: expectedRevision,
+                reviewReasonCode: review!.reasonCode,
+                humanReviewed: true,
+                contactVerification: "NOT_VERIFIED",
+                addressVerification: "NOT_VERIFIED",
+                emailChoice: consent.choice,
+                ...(requestBinding
+                  ? {
+                      requestId: requestBinding.requestId,
+                      organizationApprovedAt: requestBinding.approvedAt,
+                      organizationDigest: requestBinding.digest,
+                      ...(requestBinding.proof
+                        ? { currentProof: requestBinding.proof }
+                        : {}),
+                    }
+                  : {}),
+              },
         } satisfies Prisma.InputJsonValue,
       },
       select: { id: true, status: true, urgency: true },
@@ -999,26 +1144,36 @@ export class CustomerIntakeContinuationService {
         tenantId: session.tenantId,
         entityType: "Job",
         entityId: job.id,
-        actorType: "USER",
-        actorId: context.actorId,
+        actorType: controlled ? "SYSTEM_AI" : "USER",
+        actorId: controlled ? controlled.metadata.actorId : context!.actorId,
         action: "job.customer_intake_admitted",
-        metadata: {
-          version: 1,
-          transcriptRevision: expectedRevision,
-          urgency: review.urgency,
-          reviewReasonCode: review.reasonCode,
-          humanReviewed: true,
-          customerStatementsVerified: false,
-          consentEvidence: consent.scopeId ? "BOUND" : "NOT_RECORDED",
-          originLinkId: link.id,
-          ...(requestBinding
-            ? {
-                requestId: requestBinding.requestId,
-                organizationApprovedAt: requestBinding.approvedAt,
-              }
-            : {}),
-        } satisfies Prisma.InputJsonValue,
-        traceId: context.traceId,
+        metadata: controlled
+          ? {
+              version: 2,
+              ...controlled.metadata,
+              emailChoice: consent.choice,
+              decisionSource: "DETERMINISTIC_POLICY",
+              urgency: "STANDARD",
+              originLinkId: link.id,
+              consentEvidence: consent.scopeId ? "BOUND" : "NOT_RECORDED",
+            }
+          : ({
+              version: 1,
+              transcriptRevision: expectedRevision,
+              urgency,
+              reviewReasonCode: review!.reasonCode,
+              humanReviewed: true,
+              customerStatementsVerified: false,
+              consentEvidence: consent.scopeId ? "BOUND" : "NOT_RECORDED",
+              originLinkId: link.id,
+              ...(requestBinding
+                ? {
+                    requestId: requestBinding.requestId,
+                    organizationApprovedAt: requestBinding.approvedAt,
+                  }
+                : {}),
+            } satisfies Prisma.InputJsonValue),
+        traceId: context?.traceId,
       },
     });
     const closed = await tx.conversation.updateMany({
@@ -1035,6 +1190,7 @@ export class CustomerIntakeContinuationService {
       id: job.id,
       status: job.status,
       urgency: job.urgency,
+      humanReviewed: !controlled,
       transcriptRevision: expectedRevision,
       consentEvidence: consent.scopeId ? "BOUND" : "NOT_RECORDED",
     });
@@ -1568,6 +1724,7 @@ export class CustomerIntakeContinuationService {
     id: string;
     status: string;
     urgency: string;
+    humanReviewed?: boolean;
     transcriptRevision: number;
     consentEvidence: "BOUND" | "NOT_RECORDED";
   }) {
@@ -1576,7 +1733,7 @@ export class CustomerIntakeContinuationService {
       status: input.status,
       urgency: input.urgency,
       transcriptRevision: input.transcriptRevision,
-      humanReviewed: true as const,
+      humanReviewed: input.humanReviewed ?? true,
       consentEvidence: input.consentEvidence,
       jobCreated: true as const,
       bookingAuthorized: false as const,

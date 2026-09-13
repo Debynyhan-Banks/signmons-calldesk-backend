@@ -2,6 +2,7 @@ import { randomUUID, createHash } from "node:crypto";
 import { BadRequestException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { ControlledIntakeAuthority } from "./controlled-intake-authority";
+import { ControlledIntakeVerificationService } from "./controlled-intake-verification.service";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -519,6 +520,122 @@ describe("inactive credential-bound transcript continuation", () => {
         },
       };
     }
+    function writer(
+      f: ReturnType<typeof fixture>,
+      beforeCommit = jest.fn().mockResolvedValue(undefined),
+    ) {
+      const run: ControlledIntakeVerificationService["run"] = async (
+        _input,
+        consume,
+      ) => ({
+        status: "CONSUMED",
+        value: await consume(async () => {
+          await f.read();
+        }, beforeCommit),
+      });
+      const verification = jest.fn(
+        () => ({ run }) as ControlledIntakeVerificationService,
+      );
+      return {
+        submit: () =>
+          f.intake.submitControlled(f.submitted, {
+            ...f.binding,
+            verification,
+          }),
+        verification,
+        beforeCommit,
+      };
+    }
+    it("writes the controlled allowlist and service actor without human or downstream authority", async () => {
+      const f = fixture(),
+        w = writer(f);
+      expect(await w.submit()).toEqual({
+        status: "ADMITTED",
+        requestId: f.submitted.requestId,
+        jobId: "44444444-4444-4444-8444-444444444444",
+        state: "CREATED",
+        jobCreated: true,
+        paymentAuthorized: false,
+        bookingAuthorized: false,
+        dispatchAuthorized: false,
+        deliveryAuthorized: false,
+      });
+      const calls = tx.job.create.mock.calls as [
+        {
+          data: {
+            urgency: string;
+            policySnapshot: { intakeAdmission: Record<string, unknown> };
+          };
+        },
+      ][];
+      const data = calls[0][0].data;
+      expect(data.urgency).toBe("STANDARD");
+      expect(data.policySnapshot.intakeAdmission).toMatchObject({
+        version: 2,
+        actorId: "signmons-intake-admission-v1",
+        emailChoice: "NOT_RECORDED",
+      });
+      expect(Object.keys(data.policySnapshot.intakeAdmission).sort()).toEqual(
+        [
+          "version",
+          "requestId",
+          "submissionDigest",
+          "transcriptRevision",
+          "customerConfirmedAt",
+          "actorId",
+          "policyVersion",
+          "organizationApprovedAt",
+          "organizationDigest",
+          "paymentApprovedAt",
+          "paymentDigest",
+          "priorityPolicy",
+          "emailChoice",
+        ].sort(),
+      );
+      const serialized = JSON.stringify(tx.auditLog.create.mock.calls);
+      expect(serialized).toContain('"actorType":"SYSTEM_AI"');
+      expect(serialized).toContain('"actorType":"CUSTOMER"');
+      for (const forbidden of [
+        "OPERATOR_OVERRIDE",
+        "humanReviewed",
+        "currentProof",
+        "county",
+        "addressVerification",
+        "fixtureOnly",
+        f.submitted.sessionToken,
+      ]) {
+        expect(JSON.stringify(data.policySnapshot) + serialized).not.toContain(
+          forbidden,
+        );
+      }
+      expect(w.beforeCommit.mock.invocationCallOrder[0]).toBeGreaterThan(
+        tx.conversation.updateMany.mock.invocationCallOrder[0],
+      );
+    });
+    it("propagates post-write refusal without reporting admission", async () => {
+      const w = writer(
+        fixture(),
+        jest.fn().mockRejectedValue(new BadRequestException("expired")),
+      );
+      await expect(w.submit()).rejects.toThrow("expired");
+      // Actual rollback is proved in the disposable database harness, not this mock.
+    });
+    it("closed request refuses before the verification factory; replay remains unimplemented", async () => {
+      const w = writer(fixture());
+      jest
+        .mocked(lockCustomerConsentSession)
+        .mockResolvedValue({ status: "COMPLETED" } as never);
+      await expect(w.submit()).rejects.toThrow();
+      expect(w.verification).not.toHaveBeenCalled();
+    });
+    it("safety interruption reaches no controlled writer or verification factory", async () => {
+      const f = fixture(),
+        w = writer(f);
+      f.turn.content.payload.encryptedInput = cipher.encrypt("I smell gas");
+      await expect(w.submit()).rejects.toThrow();
+      expect(w.verification).not.toHaveBeenCalled();
+      expect(tx.job.create).not.toHaveBeenCalled();
+    });
     it("loads actual approved inputs repeatedly without writing or exposing credentials/history", async () => {
       const f = fixture();
       const result = await f.read();

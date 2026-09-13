@@ -62,6 +62,7 @@ export class ControlledIntakeVerificationService {
     input: { sessionToken: string; requestId: string },
     consume: (
       check: (tx: Prisma.TransactionClient) => Promise<void>,
+      beforeCommit: (tx: Prisma.TransactionClient) => Promise<void>,
     ) => Promise<T>,
   ) {
     const p = this.ports;
@@ -189,6 +190,29 @@ export class ControlledIntakeVerificationService {
     let active = true;
     let checked = false;
     let passed = false;
+    let checkedTx: Prisma.TransactionClient | undefined;
+    let phoneExpiresAt = 0;
+    const beforeCommit = async (tx: Prisma.TransactionClient) => {
+      if (!active || !passed || tx !== checkedTx) throw refuse();
+      await p.authority.check(
+        p.capability,
+        tx,
+        initial.snapshot.authorityScope,
+      );
+      const [clock] = await tx.$queryRaw<{ ms: bigint }[]>(
+        Prisma.sql`SELECT floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint AS ms`,
+      );
+      const now = Number(clock?.ms);
+      if (
+        !Number.isSafeInteger(now) ||
+        now < value.checkedAt ||
+        now >= value.claim.executionDeadline! ||
+        now >= phoneExpiresAt ||
+        now >= session.expiresAt
+      )
+        throw refuse();
+      p.credentials.verifySession(input.sessionToken, now);
+    };
     try {
       const result = await consume(async (tx) => {
         if (!active || checked) throw refuse();
@@ -226,7 +250,9 @@ export class ControlledIntakeVerificationService {
         )
           throw refuse();
         passed = true;
-      });
+        checkedTx = tx;
+        phoneExpiresAt = current.phone.expiresAt;
+      }, beforeCommit);
       if (!passed) throw refuse();
       return { status: "CONSUMED" as const, value: result };
     } finally {

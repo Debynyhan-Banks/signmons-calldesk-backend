@@ -1,8 +1,8 @@
 # Signmons Backend Execution Board
 
-## Current: P04 active — current submission reader validated
+## Current: P04 active — atomic writer validated; replay pending
 
-evidence/APP-013/p04-current-submission.md records the request-local P03 reader using real encrypted history, current locked organization/payment/category state, database time, P02 authority and existing safety refusal. Fifteen new tests, 2,256 total passed (3 skipped), real disposable database lock/revocation checks and existing browser regressions passed. No route or controlled job writer connected. P04 remains ACTIVE: atomic version2 persistence, exact receipt replay and controlled duplicate/rollback/recovery proof remain in this same package. No new package, acceptance or completed timing sample. APP-013/2B Now; walkthrough 3/8 (37.5%) unchanged. No scope deviation or external action.
+evidence/APP-013/p04-atomic-writer.md records controlled submit/shared atomic version2 writer, SYSTEM_AI/ STANDARD unassessed, customer audit and same-transaction P03 post-write expiry guard. Seven new tests; 2,263 total passed (3 skipped). Disposable database writer proof uses injected verification callbacks: one job under race, audit/consent/post-write rollback, no downstream authority. No route/live activation or full connected provider acceptance. P04 remains ACTIVE: exact committed replay, lost-response/restart and full controlled connection proof remain in the same package. Duplicates currently refuse safely rather than returning a receipt. No new package, acceptance or timing sample. APP-013/2B Now; walkthrough 3/8 (37.5%) unchanged. No scope deviation.
 
 ## Historical: P03 controlled verification review-ready — 2026-09-13
 
