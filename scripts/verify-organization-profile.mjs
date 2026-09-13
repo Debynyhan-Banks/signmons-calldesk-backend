@@ -418,6 +418,7 @@ try {
   console.log(
     JSON.stringify({
       operatorAdmission: await verifyOperatorIntakeAdmission({
+        browser,
         prisma,
         tenantId: tenant.id,
         otherTenantId: other.id,

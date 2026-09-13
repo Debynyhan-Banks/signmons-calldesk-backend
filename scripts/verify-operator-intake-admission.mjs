@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { randomUUID, createHmac, createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { writeFile } from "node:fs/promises";
+import { verifyControlledIntakeConnectedBrowser } from "./verify-controlled-intake-connected-browser.mjs";
 const require = createRequire(import.meta.url);
 const {
   CustomerIntakeContinuationService: Intake,
@@ -28,6 +29,7 @@ const {
 } = require("../dist/common/context/request-context.js");
 
 export async function verifyOperatorIntakeAdmission({
+  browser,
   prisma,
   tenantId,
   otherTenantId,
@@ -769,14 +771,27 @@ export async function verifyOperatorIntakeAdmission({
     syntheticPhoneCalls = 0,
     syntheticAddressCalls = 0;
   const connectedConversationIds = [];
-  for (const mode of [
+  for (const scenario of [
     "missing-phone",
     "accepted",
     "outside",
     "unknown",
     "revoked",
+    "browser-accepted-390",
+    "browser-accepted-1440",
+    "browser-outside-390",
+    "browser-unknown-1440",
+    "browser-outside-1440",
+    "browser-unknown-390",
+    "browser-correction-390",
+    "browser-correction-1440",
   ]) {
-    const connectedInput = controlledInput(await fresh());
+    const browserCase = scenario.startsWith("browser-");
+    const mode = browserCase ? scenario.split("-")[1] : scenario;
+    const fixture = await fresh();
+    // Browser cases use a new genuine, empty conversation; no fabricated transcript.
+    if (browserCase) fixture.session = await scoped(() => responses.start());
+    const connectedInput = controlledInput(fixture);
     const connectedScope = credentials.verifySession(
       connectedInput.sessionToken,
     );
@@ -897,10 +912,14 @@ export async function verifyOperatorIntakeAdmission({
                   administrativeArea: "OH",
                   locality: "Example",
                   postalCode: "44101",
-                  addressLines: ["173 Fictional Lane"],
+                  addressLines: [
+                    mode === "correction"
+                      ? "174 Fictional Lane"
+                      : "173 Fictional Lane",
+                  ],
                 },
                 addressComponents: Object.entries({
-                  street_number: "173",
+                  street_number: mode === "correction" ? "174" : "173",
                   route: "Fictional Lane",
                   locality: "Example",
                   administrative_area_level_1: "Ohio",
@@ -955,12 +974,27 @@ export async function verifyOperatorIntakeAdmission({
       assert.notEqual(outcome?.status, "ADMITTED");
       activation.enabled = true;
     } else {
-      const outcome = await composition.submit(connectedInput);
-      if (mode === "accepted") {
+      const outcome = browserCase
+        ? await verifyControlledIntakeConnectedBrowser({
+            browser,
+            credentials,
+            session: fixture.session,
+            tenantId,
+            intake,
+            responses,
+            capture,
+            composition,
+            mode,
+            width: Number(scenario.split("-")[2]),
+            evidence,
+          })
+        : await composition.submit(connectedInput);
+      if (mode === "accepted" || mode === "correction") {
         assert.equal(outcome.status, "ADMITTED");
         connectedJobs++;
         const calls = [syntheticPhoneCalls, syntheticAddressCalls];
-        assert.deepEqual(await composition.submit(connectedInput), outcome);
+        if (!browserCase)
+          assert.deepEqual(await composition.submit(connectedInput), outcome);
         assert.deepEqual([syntheticPhoneCalls, syntheticAddressCalls], calls);
         const stored = await prisma.job.findUnique({
           where: { id: outcome.jobId },
@@ -985,15 +1019,18 @@ export async function verifyOperatorIntakeAdmission({
     }
     assert.equal(
       await prisma.job.count(),
-      priorJobs + (mode === "accepted" ? 1 : 0),
+      priorJobs + (["accepted", "correction"].includes(mode) ? 1 : 0),
     );
     if (mode !== "missing-phone") {
       const operations = await prisma.addressVerificationOperation.findMany({
         where: { accountId: addressAccount },
       });
-      assert.equal(operations.length, 1);
-      assert.equal(operations[0].heldMicros, 10n);
-      assert.notEqual(operations[0].state, "CANCELLED");
+      assert.equal(operations.length, mode === "correction" ? 2 : 1);
+      assert.ok(
+        operations.every(
+          (op) => op.heldMicros === 10n && op.state !== "CANCELLED",
+        ),
+      );
       assert.ok(
         !JSON.stringify(operations, (_key, value) =>
           typeof value === "bigint" ? value.toString() : value,
@@ -1001,8 +1038,8 @@ export async function verifyOperatorIntakeAdmission({
       );
     }
   }
-  assert.equal(syntheticPhoneCalls, 8);
-  assert.equal(syntheticAddressCalls, 4);
+  assert.equal(syntheticPhoneCalls, 24);
+  assert.equal(syntheticAddressCalls, 14);
   const phoneLiabilities = await prisma.auditLog.findMany({
     where: {
       tenantId,
@@ -1010,7 +1047,7 @@ export async function verifyOperatorIntakeAdmission({
       action: "conversation.verification_budget_reserved",
     },
   });
-  assert.equal(phoneLiabilities.length, 4);
+  assert.equal(phoneLiabilities.length, 12);
   assert.ok(
     phoneLiabilities.every((row) => row.metadata.reservedMicros === 10),
   );
@@ -1022,6 +1059,7 @@ export async function verifyOperatorIntakeAdmission({
   });
   checks.push(
     "P04/P05 actual ControlledIntakeComposition connects durable phone+budget, address ledger/transport, verification, current reader and writer: accepted one job, provider-free replay, missing phone/outside/unknown/revocation no job; held liability retained; synthetic external SDK/fetch only",
+    "P05 connected existing page through HTTP mount and real transport/services/database: accepted with post-commit acknowledgment failure and exact retry, outside refusal, uncertain transport, explicit correction then admission at 390/1440; no added calls on replay, no browser storage, reload clears and no false booking",
   );
   await prisma.tenantOrganization.update({
     where: { id: tenantId },
@@ -1037,7 +1075,9 @@ export async function verifyOperatorIntakeAdmission({
         syntheticPhoneCalls,
         syntheticAddressCalls,
         providerCalls: 0,
-        browserAdmission: false,
+        browserAdmission: true,
+        connectedBrowserScenarios: 8,
+        liveBrowserAcceptance: false,
         identity: "fixture context; no production identity acceptance",
         bookingAuthorized: false,
         deliveryAuthorized: false,
