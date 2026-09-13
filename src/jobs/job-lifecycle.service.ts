@@ -5,6 +5,14 @@ import {
 } from "@nestjs/common";
 import { AuditActorType, JobStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  unfinishedCalendarOperations,
+  noUnfinishedCalendarOperations,
+} from "../scheduling/calendar-operation-guard";
+import {
+  jobReservationSnapshot,
+  requireJobCalendarSettled,
+} from "./job-calendar-guard";
 
 export interface CompleteJobRequest {
   tenantId: string;
@@ -36,12 +44,18 @@ export class JobLifecycleService {
           id: true,
           status: true,
           completedAt: true,
+          updatedAt: true,
+          calendarEventId: true,
+          serviceWindowStart: true,
+          serviceWindowEnd: true,
+          calendarOperations: unfinishedCalendarOperations,
         },
       });
 
       if (!job) {
         throw new NotFoundException("Job was not found.");
       }
+      requireJobCalendarSettled(job);
 
       if (job.status === JobStatus.COMPLETED) {
         if (!job.completedAt) {
@@ -64,11 +78,16 @@ export class JobLifecycleService {
           id: job.id,
           tenantId: request.tenantId,
           deletedAt: null,
-          status: job.status,
+          ...jobReservationSnapshot(job),
+          updatedAt: job.updatedAt,
+          calendarOperations: noUnfinishedCalendarOperations,
         },
         data: {
           status: JobStatus.COMPLETED,
           completedAt,
+          updatedAt: new Date(
+            Math.max(completedAt.getTime(), job.updatedAt.getTime() + 1),
+          ),
         },
       });
 
@@ -83,9 +102,14 @@ export class JobLifecycleService {
             id: true,
             status: true,
             completedAt: true,
+            calendarEventId: true,
+            serviceWindowStart: true,
+            serviceWindowEnd: true,
+            calendarOperations: unfinishedCalendarOperations,
           },
         });
         if (current?.status === JobStatus.COMPLETED && current.completedAt) {
+          requireJobCalendarSettled(current);
           return this.toResult(current.id, current.completedAt, false);
         }
         throw new ConflictException("Job status changed before completion.");

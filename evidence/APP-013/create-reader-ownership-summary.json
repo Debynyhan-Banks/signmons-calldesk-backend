@@ -1,0 +1,152 @@
+{
+  "checkpoint": "APP-013 CREATE reader attempt-ownership safeguard",
+  "baseline": {
+    "backend": "7026d08",
+    "governance": "159b3fe"
+  },
+  "runtimeFiles": [
+    "src/scheduling/calendar-create-reconciliation.service.ts"
+  ],
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 689,
+      "suites": 56,
+      "skippedTests": 3,
+      "focusedTests": 53,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "lintTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14
+    },
+    "database": {
+      "migrations": 15,
+      "priorProcessCrashCases": 11,
+      "newCrashCases": 0,
+      "earlyReaderScenarios": 4,
+      "earlyReadsPerScenario": 2,
+      "delayedReaderConcurrentExecutionCases": 1,
+      "providerCalls": 0,
+      "cleanupVerified": true
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "viewports": [
+      1440,
+      390
+    ],
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 46,
+    "technicianRequests": 26,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "artifacts": "/private/tmp/signmons-reader-ownership-regression.rq83L8/evidence/APP-013",
+    "screenshotsReviewed": [
+      "calendar-hold-customer-desktop.png",
+      "calendar-hold-technician-mobile.png"
+    ]
+  },
+  "audits": {
+    "ownershipBackendFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "ownershipBackendProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "ownershipUiFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    },
+    "ownershipUiProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    }
+  },
+  "limits": [
+    "Inactive service; no booking entry point, provider, worker or release activation",
+    "PENDING reader does not discover, expire or repair reservations",
+    "UNCERTAIN does not distinguish in-flight execution from crashed execution; coordination remains open",
+    "No automatic repair or global serialization; no new crash coverage"
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

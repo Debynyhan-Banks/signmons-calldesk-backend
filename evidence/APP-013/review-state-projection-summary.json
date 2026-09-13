@@ -1,0 +1,209 @@
+{
+  "ticket": "APP-013",
+  "date": "2026-09-09",
+  "section": "Privacy-safe Calendar review-state projection",
+  "status": "review-ready; inactive",
+  "baselines": {
+    "backend": "91aae55f7b7d0bda9344ee50a76cb4d46583614b",
+    "governance": "ce558058e87a970430d6a39bf49f5bd8b6816acd"
+  },
+  "files": [
+    "src/scheduling/calendar-review-state.service.ts",
+    "src/scheduling/calendar-review-state.service.spec.ts",
+    "scripts/verify-calendar-review-state.mjs",
+    "scripts/verify-sms-enqueue-intents.mjs"
+  ],
+  "contract": {
+    "authority": "Existing trusted user/tenant context, owner/admin only; future invocation requires RequestAuthGuard/TenantGuard",
+    "methods": [
+      "listForJob({jobId})",
+      "read({operationId})"
+    ],
+    "history": {
+      "maximumQueryRows": 101,
+      "maximumReturnedRows": 100,
+      "order": [
+        "createdAt DESC",
+        "id DESC"
+      ],
+      "truncation": "hasMore",
+      "pagination": false
+    },
+    "fields": [
+      "snapshotOnly",
+      "operationId",
+      "jobId",
+      "action",
+      "status",
+      "createdAt",
+      "updatedAt",
+      "finishedAt",
+      "pendingHoldReviewCandidate"
+    ],
+    "candidate": "Observed CREATE/PENDING/unfinished only, never authority or provider truth",
+    "errors": {
+      "invalidReference": 400,
+      "missingIdentity": 401,
+      "roleRefusal": 403,
+      "missingOrCrossTenantOperation": 404,
+      "unknownReadOrProjectionFailure": 503
+    },
+    "writes": false,
+    "providerReads": false,
+    "activeWiring": false
+  },
+  "validation": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 810,
+      "passingSuites": 59,
+      "existingSkippedTests": 3,
+      "existingSkippedSuites": 1,
+      "newTests": 29,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "database": {
+      "result": "PASS",
+      "migrations": 15,
+      "priorActualProcessCrashes": 11,
+      "newActualProcessCrashes": 0,
+      "checks": [
+        "Owner/admin and tenant/role boundaries",
+        "101 real rows verify cap/truncation and deterministic tied-timestamp UUID ordering",
+        "Exact lookup locates old PENDING outside history cap",
+        "All actions/statuses and explicit allowlist",
+        "Exact job/journal snapshots plus audit/intent/message counts unchanged by reads",
+        "Projected version feeds reviewed hold; refresh observes NEEDS_REVIEW and no candidate",
+        "Later committed UNCERTAIN makes stale projected hold fail 409; exact winner and audit count preserved"
+      ],
+      "providerCalls": 0,
+      "cleanup": "Parent-owned random Unix-socket fixture removed; independent calldesk_app013_intents_% query returned no rows",
+      "initialFixtureFailures": "Two local fixture runs hit existing reserved-window uniqueness; distinct fictional windows and prior reschedule window corrected the fixture. Runtime unchanged."
+    },
+    "ui": {
+      "changed": false,
+      "lintAndTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "build": "PASS"
+    },
+    "browser": {
+      "result": "PASS",
+      "kind": "Unchanged synthetic static-export regression, not new review UI or authenticated acceptance",
+      "viewports": [
+        1440,
+        390
+      ],
+      "artifacts": "/private/tmp/signmons-review-state-qa.2vNu1U/evidence/APP-013",
+      "framework": {
+        "routes": 22,
+        "navigations": 12,
+        "staticManifest": true,
+        "externalRequests": 0,
+        "errors": 0,
+        "failedResources": 0
+      },
+      "customerDispatch": {
+        "requests": 46,
+        "syntheticPosts": 22,
+        "dispatchWrites": 0,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "technician": {
+        "requests": 26,
+        "syntheticConflictPosts": 2,
+        "initialHeldMutationPosts": 0,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "policy": {
+        "requests": 8,
+        "syntheticConflictPosts": 4,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "notification": {
+        "requests": 95,
+        "syntheticPosts": 14,
+        "result": "PASS"
+      },
+      "screenshotVisualInspection": false
+    },
+    "audits": {
+      "backendFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "backendProd": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiProd": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    }
+  },
+  "limits": [
+    "No new route/module/worker activation, schema/dependency/provider configuration or production action",
+    "Synthetic request contexts are not Firebase/HTTP/live-owner acceptance",
+    "History can omit older unfinished operations; empty history does not exclude legacy/provider work",
+    "Snapshot is not a lock, current booking receipt, orphan detector or recovery authority",
+    "No audit, job/journal/payment/message mutation by projection"
+  ],
+  "remaining": [
+    "Attempted-operation recovery ownership",
+    "Protected review UI/API acceptance",
+    "Blocked-customer payment handoff",
+    "Post-read/payment/provider/clock risks",
+    "Legacy inventory/repair/retention",
+    "RESCHEDULE/CANCEL and SENDING recovery",
+    "Dependency override maintenance and live acceptance"
+  ],
+  "planningEstimates": {
+    "app013Percent": 85,
+    "app006ThroughApp016Percent": 81,
+    "note": "Unchanged planning estimates, not release readiness"
+  },
+  "warnings": [
+    "Existing pg concurrent-query deprecation",
+    "Existing Next lint/workspace-root warnings",
+    "Intentional PostCSS fixture warning"
+  ],
+  "reviewInstructions": "evidence/APP-013/readiness-report.md"
+}

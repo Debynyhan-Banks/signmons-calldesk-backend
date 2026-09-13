@@ -1,0 +1,9 @@
+# Candidate worker isolation — 2026-09-12
+
+Owner approved the bounded safety fix. BACKGROUND_WORKERS_ENABLED=false returns before collaborator access in CallLogCleanupService.cleanupIdleSessions and SmsDeliveryWorker.processDue, covering cleanup, SMS enqueue recovery and delivery. These are the only @Cron/@Interval/@Timeout callbacks found in src.
+
+Omission/exact true preserves existing behavior. Startup validation accepts exact true/false only; malformed values also refuse direct worker invocation. Revision-local control is not an HTTP kill switch or cancellation of in-flight work. Set false before candidate startup. Existing serving revisions and request-driven authorization remain unchanged.
+
+Validation: 15 focused tests passed (11 new), proving repeated disabled ticks make zero database/recovery/delivery/logging collaborator calls, enabled cleanup writes and recovery ordering remain, and malformed configuration is rejected. Full Jest: 2,080 passed, three existing skips, 110 passing suites and one skipped. Lint/build/architecture/Prisma passed; production audit zero vulnerabilities. Initial lint formatting errors corrected and gates rerun. No schema/UI change; browser QA and live database/provider tests not applicable to the callback guard. Mock evidence is not deployed isolation evidence.
+
+Review: npm test -- --runInBand src/config/background-workers.spec.ts src/communications/sms-delivery.worker.spec.ts. Inspect both entry guards, env validation and .env.example. Release must pin corrected source and BACKGROUND_WORKERS_ENABLED=false and verify deployed settings separately. No deployment, migration, cloud configuration, IAM, billing or provider call. APP-013/2B Now; 3/8 (37.5%) walkthrough accepted, not overall MVP completion. Next: review and explicit disabled candidate release authorization, not a new feature section.

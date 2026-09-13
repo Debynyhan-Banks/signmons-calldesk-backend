@@ -1,0 +1,150 @@
+{
+  "checkpoint": "APP-013 CREATE persisted-deadline safeguard",
+  "baseline": {
+    "backend": "738c1f6",
+    "governance": "fe1382a"
+  },
+  "runtimeFiles": [
+    "src/scheduling/calendar-event-creator.ts",
+    "src/scheduling/calendar-create-execution.service.ts",
+    "src/scheduling/google-calendar-event-creator.ts"
+  ],
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 703,
+      "suites": 56,
+      "skippedTests": 3,
+      "focusedTests": 48,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "lintTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14
+    },
+    "database": {
+      "migrations": 15,
+      "priorProcessCrashCases": 11,
+      "newCrashCases": 0,
+      "clockAdvancedDelayCases": 2,
+      "providerCalls": 0,
+      "cleanupVerified": true
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "viewports": [
+      1440,
+      390
+    ],
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 46,
+    "technicianRequests": 26,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "artifacts": "/private/tmp/signmons-absolute-deadline.66dSGe/evidence/APP-013",
+    "uiChanged": false
+  },
+  "audits": {
+    "deadlineBackendFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "deadlineBackendProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "deadlineUiFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    },
+    "deadlineUiProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    }
+  },
+  "limits": [
+    "Inactive services; legacy booking entry point unchanged",
+    "Clock-advanced database delays are deterministic models, not new crash cases",
+    "Client abort does not prove provider rollback or absence",
+    "Clock skew/suspension, guarded integration, office review and legacy repair remain open",
+    "No production action or release"
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

@@ -7,6 +7,7 @@ describe("UrgencyReviewService", () => {
   const jobId = "8ed72154-fe35-45a2-b3b5-e5218d5026f9";
   const now = new Date("2026-08-31T15:00:00.000Z");
   const baseJob = {
+    calendarOperations: [],
     id: jobId,
     tenantId,
     customerId: "customer-1",
@@ -55,7 +56,7 @@ describe("UrgencyReviewService", () => {
       job: {
         findMany: jest.fn(),
         findFirst: jest.fn(),
-        update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       auditLog: {
         findMany: jest.fn(),
@@ -80,6 +81,99 @@ describe("UrgencyReviewService", () => {
       ),
     };
   };
+
+  it.each(["HIGH", "EMERGENCY"] as const)(
+    "holds a %s override before same-value replay or mutation",
+    async (urgency) => {
+      const { prisma, service, notifications } = createHarness();
+      prisma.job.findFirst.mockResolvedValue({
+        ...baseJob,
+        calendarOperations: [{ id: "private-operation" }],
+      });
+      await expect(
+        service.override({
+          tenantId,
+          jobId,
+          actorId: "dispatcher-1",
+          urgency,
+          reason: "Synthetic review",
+        }),
+      ).rejects.toThrow("Calendar synchronization is unfinished");
+      expect(prisma.job.updateMany).not.toHaveBeenCalled();
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+      expect(notifications.notifyUrgencyEscalation).not.toHaveBeenCalled();
+    },
+  );
+
+  it("claims the observed version and advances same-millisecond timestamps without losing unrelated policy", async () => {
+    jest.useFakeTimers().setSystemTime(now);
+    try {
+      const { prisma, service } = createHarness();
+      prisma.job.findFirst.mockResolvedValue({
+        ...baseJob,
+        policySnapshot: {
+          ...baseJob.policySnapshot,
+          paymentGateException: { active: true },
+          depositRequired: true,
+        },
+      });
+      prisma.auditLog.create.mockResolvedValue({ id: "audit", createdAt: now });
+      await service.override({
+        tenantId,
+        jobId,
+        actorId: "dispatcher-1",
+        urgency: "STANDARD",
+        reason: "Synthetic review",
+      });
+      expect(prisma.job.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: jobId,
+          tenantId,
+          deletedAt: null,
+          updatedAt: now,
+          calendarOperations: { none: { finishedAt: null } },
+        },
+        data: expect.objectContaining({
+          updatedAt: new Date(now.getTime() + 1),
+          policySnapshot: expect.objectContaining({
+            paymentGateException: { active: true },
+            depositRequired: true,
+          }),
+        }),
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("rejects a concurrent policy or Calendar reservation without an audit", async () => {
+    const { prisma, service } = createHarness();
+    prisma.job.findFirst.mockResolvedValue(baseJob);
+    prisma.job.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      service.override({
+        tenantId,
+        jobId,
+        actorId: "dispatcher-1",
+        urgency: "STANDARD",
+        reason: "Synthetic review",
+      }),
+    ).rejects.toThrow("Job changed while urgency");
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps the existing operations escalation path available during a Calendar hold", async () => {
+    const { prisma, service, notifications } = createHarness();
+    prisma.job.findFirst.mockResolvedValue({
+      ...baseJob,
+      calendarOperations: [{ id: "held" }],
+    });
+    notifications.notifyUrgencyEscalation.mockResolvedValue([]);
+    prisma.auditLog.create.mockResolvedValue({ id: "audit", createdAt: now });
+    await service.escalate({ tenantId, jobId, actorId: "dispatcher-1" });
+    expect(notifications.notifyUrgencyEscalation).toHaveBeenCalledTimes(1);
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+  });
 
   it("returns privacy-safe rationale and orders higher urgency first", async () => {
     const { prisma, service } = createHarness();
@@ -106,7 +200,7 @@ describe("UrgencyReviewService", () => {
   it("updates urgency and records the mandatory reason atomically", async () => {
     const { prisma, service } = createHarness();
     prisma.job.findFirst.mockResolvedValue(baseJob);
-    prisma.job.update.mockResolvedValue({ ...baseJob, urgency: "EMERGENCY" });
+    prisma.job.updateMany.mockResolvedValue({ count: 1 });
     prisma.auditLog.create.mockResolvedValue({ id: "audit-1", createdAt: now });
 
     const result = await service.override({
@@ -117,7 +211,7 @@ describe("UrgencyReviewService", () => {
       reason: "Customer reported a qualifying safety condition.",
     });
 
-    expect(prisma.job.update).toHaveBeenCalledWith(
+    expect(prisma.job.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ urgency: "EMERGENCY" }),
       }),
@@ -151,7 +245,7 @@ describe("UrgencyReviewService", () => {
     });
 
     expect(result).toMatchObject({ changed: false, override: null });
-    expect(prisma.job.update).not.toHaveBeenCalled();
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
     expect(prisma.auditLog.create).not.toHaveBeenCalled();
   });
 

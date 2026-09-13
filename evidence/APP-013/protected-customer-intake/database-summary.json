@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "checks": [
+    "both legacy controller paths refuse protected session before AI, transcript, capture, job or scheduling work",
+    "direct legacy capture and question paths refuse without mutation",
+    "concurrent credential capture and legacy replay serialize; one encrypted capture/audit preserves server marker",
+    "fresh service retry preserves ciphertext, timestamp and audit; replacement refuses",
+    "cross-tenant/session, raw identifier and expired credentials refuse capture",
+    "failure after capture and audit insertion rolls back both",
+    "session expiry after persistence rolls back capture and audit",
+    "customer operations refuse absent or malformed marker; legacy refuses every present marker",
+    "explicit null capture is not silently treated as absent",
+    "lost session restart creates a new scope; caller cannot adopt the old conversation"
+  ],
+  "checkCount": 10,
+  "forbiddenDownstreamCalls": 0,
+  "browser": {
+    "result": "PASS",
+    "viewports": [
+      1440,
+      390
+    ],
+    "counts": {
+      "GET": 4,
+      "POST": 10
+    },
+    "freshScopes": 6,
+    "errors": [],
+    "external": [],
+    "storageWrites": 0,
+    "providerCalls": 0,
+    "limits": "Fictional HTTP/BFF fixture only; no production route, real transport/CSRF or full protected AI intake acceptance."
+  },
+  "newMigrations": 0,
+  "providerCalls": 0,
+  "deliveryAuthorized": false,
+  "productionActions": 0
+}

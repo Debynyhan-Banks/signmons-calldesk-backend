@@ -15,11 +15,20 @@ import {
   Prisma,
 } from "@prisma/client";
 import appConfig from "../config/app.config";
+import { AppointmentReschedulingService } from "./appointment-rescheduling.service";
 import { JobNotificationService } from "../jobs/job-notification.service";
 import type { JobRecord } from "../jobs/interfaces/job-repository.interface";
 import { LoggingService } from "../logging/logging.service";
 import { PaymentRequestsService } from "../payments/payment-requests.service";
+import { evaluatePaymentGate } from "../payments/payment-gate.policy";
 import { PrismaService } from "../prisma/prisma.service";
+import { AppointmentConfirmationService } from "./appointment-confirmation.service";
+import { AppointmentCancellationService } from "./appointment-cancellation.service";
+import {
+  unfinishedCalendarOperations,
+  noUnfinishedCalendarOperations,
+  requireCalendarOperationSettled,
+} from "./calendar-operation-guard";
 
 export interface AppointmentSlot {
   token: string;
@@ -27,6 +36,20 @@ export interface AppointmentSlot {
   end: string;
   label: string;
 }
+
+export interface InitialConfirmationInput {
+  tenantId: string;
+  sessionId: string;
+  jobId: string;
+  slotToken: string;
+}
+
+// Server-derived only. A new execution needs its exact finalized journal;
+// an existing settled replay must still match the just-observed job version.
+export type InitialConfirmationReceiptProof = { calendarEventId: string } & (
+  | { operationId: string; expectedUpdatedAt?: never }
+  | { expectedUpdatedAt: Date; operationId?: never }
+);
 
 interface SignedSlot {
   tenantId: string;
@@ -51,6 +74,7 @@ interface BusyPeriod {
 
 type AppointmentJob = Prisma.JobGetPayload<{
   include: {
+    calendarOperations: typeof unfinishedCalendarOperations;
     customer: true;
     propertyAddress: true;
     serviceCategory: true;
@@ -97,6 +121,9 @@ export class SchedulingService {
     private readonly notifications: JobNotificationService,
     private readonly loggingService: LoggingService,
     private readonly paymentRequests: PaymentRequestsService,
+    private readonly rescheduling: AppointmentReschedulingService,
+    private readonly confirmation: AppointmentConfirmationService,
+    private readonly cancellation: AppointmentCancellationService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
   ) {}
@@ -163,12 +190,11 @@ export class SchedulingService {
       }));
   }
 
-  async confirmAppointment(input: {
-    tenantId: string;
-    sessionId: string;
-    jobId: string;
-    slotToken: string;
-  }) {
+  /** Internal admission shared by legacy booking and inactive journal composition.
+   * Contains private canonical records; never expose this result from a route.
+   * Admission is a snapshot, not a reservation or reusable authorization token.
+   */
+  async prepareInitialConfirmation(input: InitialConfirmationInput) {
     if (!this.config.schedulingEnabled) {
       throw new ServiceUnavailableException(
         "Instant appointment booking is temporarily unavailable.",
@@ -186,12 +212,24 @@ export class SchedulingService {
         intakeSessionId: input.sessionId,
       },
       include: {
+        calendarOperations: unfinishedCalendarOperations,
         customer: true,
         propertyAddress: true,
         serviceCategory: true,
+        payment: { select: { id: true, status: true, updatedAt: true } },
       },
     });
     if (!job) throw new BadRequestException("Service request not found.");
+    requireCalendarOperationSettled(job);
+    if (
+      job.deletedAt ||
+      job.status === JobStatus.CANCELLED ||
+      job.status === JobStatus.COMPLETED
+    ) {
+      throw new ConflictException(
+        "This request is no longer available for appointment confirmation.",
+      );
+    }
     const record = this.mapJob(job);
     if (!this.isInstantBookingEligible(record)) {
       throw new BadRequestException(
@@ -213,7 +251,24 @@ export class SchedulingService {
       job.serviceWindowStart?.getTime() === start.getTime() &&
       job.serviceWindowEnd?.getTime() === end.getTime()
     ) {
-      return this.confirmedResponse(this.mapJob(job));
+      if (!job.calendarEventId) {
+        throw new ConflictException(
+          "This reservation is awaiting finalization. Please contact the office before booking again.",
+        );
+      }
+      return {
+        kind: "replay" as const,
+        response: this.confirmedResponse(this.mapJob(job)),
+      };
+    }
+
+    // Replays above create no reservation. New bookings must satisfy the same
+    // persisted payment policy used for dispatch, never a browser return value.
+    const paymentGate = evaluatePaymentGate(job.policySnapshot, job.payment);
+    if (paymentGate.state === "LOCKED") {
+      throw new ConflictException(
+        "Required payment must be completed or an authorized exception approved before booking. Please contact the office.",
+      );
     }
 
     const busy = await this.fetchBusy(start, end);
@@ -223,19 +278,53 @@ export class SchedulingService {
       );
     }
 
+    return {
+      kind: "ready" as const,
+      job,
+      record,
+      start,
+      end,
+      paymentGate,
+      label: this.formatWindow(start, end),
+    };
+  }
+
+  async confirmAppointment(input: InitialConfirmationInput) {
+    const prepared = await this.prepareInitialConfirmation(input);
+    if (prepared.kind === "replay") return prepared.response;
+    const { job, record, start, end, paymentGate, label } = prepared;
+
     try {
       const reservation = await this.prisma.job.updateMany({
         where: {
           id: job.id,
           tenantId: job.tenantId,
+          status: job.status,
+          updatedAt: job.updatedAt,
+          calendarOperations: noUnfinishedCalendarOperations,
+          deletedAt: null,
+          calendarEventId: null,
           serviceWindowStart: null,
           serviceWindowEnd: null,
+          // A refund/replacement during availability lookup invalidates the
+          // observed payment evidence. This is a snapshot CAS, not a provider lock.
+          payment:
+            paymentGate.reasonCode === "PAYMENT_SUCCEEDED"
+              ? {
+                  is: {
+                    id: job.payment!.id,
+                    tenantId: job.tenantId,
+                    status: PaymentStatus.SUCCEEDED,
+                    updatedAt: job.payment!.updatedAt,
+                  },
+                }
+              : undefined,
         },
         data: {
           status: JobStatus.ACCEPTED,
           serviceWindowStart: start,
           serviceWindowEnd: end,
-          preferredTimeText: this.formatWindow(start, end),
+          preferredTimeText: label,
         },
       });
       if (reservation.count !== 1) {
@@ -255,43 +344,68 @@ export class SchedulingService {
       throw error;
     }
 
+    let calendarEventId: string;
     try {
-      const calendarEventId = await this.insertCalendarEvent(
-        record,
-        start,
-        end,
-      );
-      const confirmed = await this.prisma.job.update({
-        where: { id: job.id },
-        data: { calendarEventId },
-        include: {
-          customer: true,
-          propertyAddress: true,
-          serviceCategory: true,
-        },
-      });
-      const confirmedRecord = this.mapJob(confirmed);
-      this.notifications.enqueueAppointmentConfirmed(confirmedRecord);
-      return this.confirmedResponse(confirmedRecord);
-    } catch (error) {
-      await this.prisma.job.updateMany({
-        where: { id: job.id, tenantId: job.tenantId, calendarEventId: null },
-        data: {
-          status: JobStatus.CREATED,
-          serviceWindowStart: null,
-          serviceWindowEnd: null,
-          preferredTimeText: null,
-        },
-      });
-      this.loggingService.error(
-        `Calendar reservation failed for job ${job.id}.`,
-        error instanceof Error ? error : undefined,
-        SchedulingService.name,
-      );
+      calendarEventId = await this.insertCalendarEvent(record, start, end);
+    } catch {
+      // A timeout, rejected response or malformed acknowledgment cannot prove
+      // that Calendar did not insert. Keep the local reservation, including any
+      // newer concurrent state; never compensate or authorize another insert.
+      // Legacy attempts have no durable event ID and require office review.
+      try {
+        this.loggingService.error(
+          `appointment_calendar_insert_review_required tenant=${job.tenantId} job=${job.id}`,
+          undefined,
+          SchedulingService.name,
+        );
+      } catch {
+        /* Logging must not replace the safe, non-retry booking response. */
+      }
       throw new ServiceUnavailableException(
-        "We could not reserve that time. Please try another appointment.",
+        "The calendar reservation needs confirmation by the office. Please contact the office before booking again.",
       );
     }
+
+    // Once the calendar acknowledges insertion, do not release this reservation
+    // on a failed/ambiguous database commit. Calendar reconciliation is required.
+    let confirmedRecord: JobRecord;
+    try {
+      const confirmed = await this.confirmation.finalize({
+        tenantId: job.tenantId,
+        jobId: job.id,
+        start,
+        end,
+        calendarEventId,
+      });
+      confirmedRecord = this.mapJob(confirmed);
+    } catch {
+      try {
+        this.loggingService.error(
+          `appointment_finalization_review_required tenant=${job.tenantId} job=${job.id}`,
+          undefined,
+          SchedulingService.name,
+        );
+      } catch {
+        /* Preserve the reservation even when logging is unavailable. */
+      }
+      throw new ServiceUnavailableException(
+        "The calendar reservation needs confirmation by the office. Please contact the office before booking again.",
+      );
+    }
+    try {
+      this.notifications.enqueueAppointmentConfirmed(confirmedRecord);
+    } catch {
+      try {
+        this.loggingService.error(
+          `appointment_operations_notification_failed tenant=${job.tenantId} job=${job.id}`,
+          undefined,
+          SchedulingService.name,
+        );
+      } catch {
+        /* Notification logging must not undo a finalized booking. */
+      }
+    }
+    return this.confirmedResponse(confirmedRecord);
   }
 
   async manageAppointment(input: {
@@ -313,6 +427,19 @@ export class SchedulingService {
       input.expectedTenantId,
     );
     const job = await this.loadAppointment(authority.tenantId, authority.jobId);
+    requireCalendarOperationSettled(job);
+    // Legacy CREATE can persist its reservation before Calendar insertion or
+    // finalization fails, without a journal row. A signed link is authority to
+    // access the job, not evidence that this provisional window was confirmed.
+    if (
+      job.status === JobStatus.ACCEPTED &&
+      !job.calendarEventId?.trim() &&
+      (job.serviceWindowStart || job.serviceWindowEnd)
+    ) {
+      throw new ConflictException(
+        "The calendar reservation needs confirmation by the office. Appointment details and actions are on hold; please contact the office before making plans or changes.",
+      );
+    }
     const record = this.mapJob(job);
 
     if (input.action === "view") {
@@ -359,6 +486,77 @@ export class SchedulingService {
       throw new BadRequestException("Choose a new appointment time.");
     }
     return this.rescheduleAppointment(job, record, input.slotToken);
+  }
+
+  /** Read-only receipt boundary for the inactive journaled booking path.
+   * Revalidate request authority and current local settlement before minting a
+   * management token. Never call availability, reserve, execute or recover here.
+   */
+  async readInitialConfirmationReceipt(
+    input: InitialConfirmationInput,
+    proof: InitialConfirmationReceiptProof,
+  ) {
+    const slot = this.verifySlot(input.slotToken);
+    const start = new Date(slot.start),
+      end = new Date(slot.end);
+    if (
+      slot.tenantId !== input.tenantId ||
+      slot.jobId !== input.jobId ||
+      !Number.isFinite(start.getTime()) ||
+      !Number.isFinite(end.getTime()) ||
+      start >= end
+    )
+      throw new BadRequestException("This appointment choice is invalid.");
+    if (
+      !proof.calendarEventId?.trim() ||
+      (proof.operationId !== undefined
+        ? !proof.operationId.trim()
+        : !(proof.expectedUpdatedAt instanceof Date) ||
+          !Number.isFinite(proof.expectedUpdatedAt.getTime()))
+    )
+      throw new ConflictException(
+        "Appointment confirmation needs office review.",
+      );
+    const job = await this.prisma.job.findFirst({
+      where: {
+        id: input.jobId,
+        tenantId: input.tenantId,
+        intakeSessionId: input.sessionId,
+        deletedAt: null,
+        status: JobStatus.ACCEPTED,
+        calendarEventId: proof.calendarEventId,
+        serviceWindowStart: start,
+        serviceWindowEnd: end,
+        updatedAt: proof.expectedUpdatedAt,
+        AND: [
+          { calendarOperations: noUnfinishedCalendarOperations },
+          ...(proof.operationId !== undefined
+            ? [
+                {
+                  calendarOperations: {
+                    some: {
+                      id: proof.operationId,
+                      tenantId: input.tenantId,
+                      action: "CREATE" as const,
+                      status: "FINALIZED" as const,
+                      finishedAt: { not: null },
+                      calendarEventId: proof.calendarEventId,
+                      desiredWindowStart: start,
+                      desiredWindowEnd: end,
+                    },
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+      include: { customer: true, propertyAddress: true, serviceCategory: true },
+    });
+    if (!job)
+      throw new ConflictException(
+        "Appointment confirmation needs office review.",
+      );
+    return this.confirmedResponse(this.mapJob(job));
   }
 
   private confirmedResponse(job: JobRecord) {
@@ -620,16 +818,36 @@ export class SchedulingService {
     action: (typeof CUSTOMER_APPOINTMENT_ACTIONS)[number],
     metadata: Prisma.InputJsonObject,
   ): Promise<void> {
-    await this.prisma.auditLog.create({
-      data: {
-        tenantId: job.tenantId,
-        action,
-        actorType: AuditActorType.CUSTOMER,
-        actorId: `customer:${job.customerId}`,
-        entityType: "Job",
-        entityId: job.id,
-        metadata,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.job.updateMany({
+        where: {
+          id: job.id,
+          tenantId: job.tenantId,
+          deletedAt: null,
+          updatedAt: job.updatedAt,
+          calendarOperations: noUnfinishedCalendarOperations,
+        },
+        data: {
+          updatedAt: new Date(
+            Math.max(Date.now(), job.updatedAt.getTime() + 1),
+          ),
+        },
+      });
+      if (claimed.count !== 1)
+        throw new ConflictException(
+          "Appointment changed. Refresh before responding.",
+        );
+      await tx.auditLog.create({
+        data: {
+          tenantId: job.tenantId,
+          action,
+          actorType: AuditActorType.CUSTOMER,
+          actorId: `customer:${job.customerId}`,
+          entityType: "Job",
+          entityId: job.id,
+          metadata,
+        },
+      });
     });
   }
 
@@ -661,6 +879,7 @@ export class SchedulingService {
       job.serviceWindowStart?.getTime() === start.getTime() &&
       job.serviceWindowEnd?.getTime() === end.getTime()
     ) {
+      await this.rescheduling.assertFinalized(job);
       return {
         status: "appointment_rescheduled" as const,
         reference: this.reference(job.id),
@@ -676,112 +895,78 @@ export class SchedulingService {
 
     const originalStart = job.serviceWindowStart!;
     const originalEnd = job.serviceWindowEnd!;
-    const originalTimeText = job.preferredTimeText;
     const calendarEventId = job.calendarEventId;
     if (!calendarEventId) {
       throw new ConflictException(
         "This appointment can no longer be changed online. Please call Eternity.",
       );
     }
-    let reservationChanged = false;
-    let calendarChanged = false;
+    let claim;
+    const appointmentLabel = this.formatWindow(start, end);
     try {
-      const reservation = await this.prisma.job.updateMany({
-        where: {
-          id: job.id,
-          tenantId: job.tenantId,
-          status: JobStatus.ACCEPTED,
-          calendarEventId,
-          serviceWindowStart: originalStart,
-          serviceWindowEnd: originalEnd,
-        },
-        data: {
-          serviceWindowStart: start,
-          serviceWindowEnd: end,
-          preferredTimeText: this.formatWindow(start, end),
-        },
-      });
-      if (reservation.count !== 1) {
-        throw new ConflictException(
-          "This appointment changed while you were viewing it. Please refresh.",
-        );
-      }
-      reservationChanged = true;
-      await this.updateCalendarEvent(calendarEventId, start, end);
-      calendarChanged = true;
-      const updatedRecord: JobRecord = {
-        ...record,
-        serviceWindowStart: start,
-        serviceWindowEnd: end,
-        preferredTimeText: this.formatWindow(start, end),
-        updatedAt: new Date(),
-      };
-      await this.recordCustomerAction(job, "appointment.customer_rescheduled", {
-        previousAppointmentLabel: this.formatWindow(originalStart, originalEnd),
-        appointmentLabel: this.formatWindow(start, end),
-      });
-      this.notifications.enqueueAppointmentRescheduled(updatedRecord);
-      return {
-        status: "appointment_rescheduled" as const,
-        reference: this.reference(job.id),
-        appointment: this.appointmentSummary(updatedRecord),
-      };
+      claim = await this.rescheduling.claim(job, start, end, appointmentLabel);
     } catch (error) {
-      let calendarRestored = !calendarChanged;
-      if (calendarChanged) {
-        try {
-          await this.updateCalendarEvent(
-            calendarEventId,
-            originalStart,
-            originalEnd,
-          );
-          calendarRestored = true;
-        } catch (rollbackError) {
-          this.loggingService.error(
-            `Calendar rollback failed for job ${job.id}.`,
-            rollbackError instanceof Error ? rollbackError : undefined,
-            SchedulingService.name,
-          );
-        }
-      }
-      if (reservationChanged && calendarRestored) {
-        await this.prisma.job.updateMany({
-          where: {
-            id: job.id,
-            tenantId: job.tenantId,
-            calendarEventId,
-            serviceWindowStart: start,
-            serviceWindowEnd: end,
-          },
-          data: {
-            serviceWindowStart: originalStart,
-            serviceWindowEnd: originalEnd,
-            preferredTimeText: originalTimeText,
-          },
-        });
-      }
       if (error instanceof ConflictException) throw error;
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
-      ) {
+      )
         throw new ConflictException(
           "That appointment was just taken. Please choose another time.",
         );
-      }
-      this.loggingService.error(
-        `Appointment reschedule failed for job ${job.id}.`,
-        error instanceof Error ? error : undefined,
-        SchedulingService.name,
-      );
+      this.rescheduling.logDeferred(job.id);
       throw new ServiceUnavailableException(
-        "We could not change that appointment. Your original time is still reserved.",
+        "This reschedule could not be confirmed. Please contact the office before trying again.",
       );
     }
+    try {
+      await this.updateCalendarEvent(calendarEventId, start, end);
+    } catch {
+      // Retain pre-acknowledgment compensation only for this exact local claim.
+      // An unknown Calendar outcome still requires office reconciliation.
+      try {
+        await this.rescheduling.restore(claim, job);
+      } catch {
+        this.rescheduling.logDeferred(job.id);
+      }
+      throw new ServiceUnavailableException(
+        "This reschedule could not be confirmed. Please contact the office before trying again.",
+      );
+    }
+    try {
+      await this.rescheduling.finalize(
+        claim,
+        this.formatWindow(originalStart, originalEnd),
+        appointmentLabel,
+      );
+    } catch {
+      this.rescheduling.logDeferred(job.id);
+      throw new ServiceUnavailableException(
+        "This reschedule needs confirmation by the office. Please contact the office before trying again.",
+      );
+    }
+    const updatedRecord: JobRecord = {
+      ...record,
+      serviceWindowStart: start,
+      serviceWindowEnd: end,
+      preferredTimeText: appointmentLabel,
+      updatedAt: new Date(),
+    };
+    try {
+      this.notifications.enqueueAppointmentRescheduled(updatedRecord);
+    } catch {
+      this.rescheduling.logDeferred(job.id);
+    }
+    return {
+      status: "appointment_rescheduled" as const,
+      reference: this.reference(job.id),
+      appointment: this.appointmentSummary(updatedRecord),
+    };
   }
 
   private async cancelAppointment(job: AppointmentJob) {
     if (job.status === JobStatus.CANCELLED) {
+      await this.cancellation.assertFinalized(job);
       return {
         status: "appointment_cancelled" as const,
         reference: this.reference(job.id),
@@ -803,31 +988,31 @@ export class SchedulingService {
     const originalEnd = job.serviceWindowEnd;
     const originalTimeText =
       job.preferredTimeText ?? this.formatWindow(originalStart, originalEnd);
-    const cancellation = await this.prisma.job.updateMany({
-      where: {
-        id: job.id,
-        tenantId: job.tenantId,
-        status: JobStatus.ACCEPTED,
-        calendarEventId: eventId,
-        serviceWindowStart: originalStart,
-        serviceWindowEnd: originalEnd,
-      },
-      data: {
-        status: JobStatus.CANCELLED,
-        calendarEventId: null,
-        serviceWindowStart: null,
-        serviceWindowEnd: null,
-        preferredTimeText: originalTimeText,
-      },
-    });
-    if (cancellation.count !== 1) {
-      throw new ConflictException(
-        "This appointment changed while you were viewing it. Please refresh.",
-      );
-    }
+    const claim = await this.cancellation.claim(job, originalTimeText);
 
     try {
       await this.deleteCalendarEvent(eventId);
+    } catch {
+      // Preserve the existing pre-acknowledgment compensation, version-bound.
+      // A failed/unknown calendar result is not evidence the event still exists.
+      try {
+        await this.cancellation.restore(claim, job);
+      } catch {
+        this.cancellation.logDeferred(job.id);
+      }
+      throw new ServiceUnavailableException(
+        "Cancellation could not be confirmed. Please contact the office before trying again.",
+      );
+    }
+    try {
+      await this.cancellation.finalize(claim);
+    } catch {
+      this.cancellation.logDeferred(job.id);
+      throw new ServiceUnavailableException(
+        "Cancellation needs confirmation by the office. Please contact the office before trying again.",
+      );
+    }
+    try {
       this.notifications.enqueueAppointmentCancelled({
         ...this.mapJob(job),
         status: "CANCELLED",
@@ -837,35 +1022,13 @@ export class SchedulingService {
         preferredTimeText: originalTimeText,
         updatedAt: new Date(),
       });
-      return {
-        status: "appointment_cancelled" as const,
-        reference: this.reference(job.id),
-      };
-    } catch (error) {
-      await this.prisma.job.updateMany({
-        where: {
-          id: job.id,
-          tenantId: job.tenantId,
-          status: JobStatus.CANCELLED,
-          calendarEventId: null,
-        },
-        data: {
-          status: JobStatus.ACCEPTED,
-          calendarEventId: eventId,
-          serviceWindowStart: originalStart,
-          serviceWindowEnd: originalEnd,
-          preferredTimeText: originalTimeText,
-        },
-      });
-      this.loggingService.error(
-        `Appointment cancellation failed for job ${job.id}.`,
-        error instanceof Error ? error : undefined,
-        SchedulingService.name,
-      );
-      throw new ServiceUnavailableException(
-        "We could not cancel that appointment. It remains scheduled; please call Eternity.",
-      );
+    } catch {
+      this.cancellation.logDeferred(job.id);
     }
+    return {
+      status: "appointment_cancelled" as const,
+      reference: this.reference(job.id),
+    };
   }
 
   private buildCandidates(now: Date) {
@@ -1029,8 +1192,9 @@ export class SchedulingService {
     jobId: string,
   ): Promise<AppointmentJob> {
     const job = await this.prisma.job.findFirst({
-      where: { id: jobId, tenantId },
+      where: { id: jobId, tenantId, deletedAt: null },
       include: {
+        calendarOperations: unfinishedCalendarOperations,
         customer: true,
         propertyAddress: true,
         serviceCategory: true,
@@ -1048,7 +1212,10 @@ export class SchedulingService {
         },
       },
     });
-    if (!job) throw new BadRequestException("Appointment not found.");
+    // A formerly valid bearer link cannot authorize access to a deleted job.
+    // Keep the same response as a missing record; do not expose deletion state.
+    if (!job || job.deletedAt)
+      throw new BadRequestException("Appointment not found.");
     return job;
   }
 

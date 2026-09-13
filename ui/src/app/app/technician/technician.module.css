@@ -31,7 +31,7 @@
 
 .brand strong {
   font-size: 18px;
-  letter-spacing: .01em;
+  letter-spacing: 0.01em;
 }
 
 .brand small,
@@ -39,7 +39,7 @@
   color: #60738a;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: .09em;
+  letter-spacing: 0.09em;
 }
 
 .identity {
@@ -89,15 +89,15 @@
   color: #d55d20;
   font-size: 12px;
   font-weight: 850;
-  letter-spacing: .13em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
 }
 
 .titleRow h1 {
   margin: 0;
   font-size: clamp(36px, 6vw, 58px);
-  letter-spacing: -.045em;
-  line-height: .98;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
 }
 
 .titleRow p:not(.eyebrow) {
@@ -146,18 +146,18 @@
   margin-left: 5px;
   padding: 0 5px;
   border-radius: 99px;
-  background: rgba(8, 41, 77, .09);
+  background: rgba(8, 41, 77, 0.09);
 }
 
 .tabs .activeTab {
   background: #fff;
   color: #0b294c;
-  box-shadow: 0 2px 8px rgba(8, 41, 77, .08);
+  box-shadow: 0 2px 8px rgba(8, 41, 77, 0.08);
 }
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(280px, .8fr) minmax(420px, 1.35fr);
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.35fr);
   gap: 18px;
   align-items: flex-start;
 }
@@ -166,6 +166,16 @@
 .detail {
   display: grid;
   gap: 12px;
+}
+
+.calendarHold {
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid #efbc91;
+  border-radius: 12px;
+  background: #fff3e9;
+  color: #703500;
+  line-height: 1.5;
 }
 
 .jobCard,
@@ -189,7 +199,7 @@
 
 .jobCard.selected {
   border-color: #ff7a36;
-  box-shadow: 0 0 0 2px rgba(255, 122, 54, .16);
+  box-shadow: 0 0 0 2px rgba(255, 122, 54, 0.16);
 }
 
 .cardTop {
@@ -251,7 +261,7 @@
 .detailHeader h2 {
   margin: 0;
   font-size: clamp(27px, 4vw, 38px);
-  letter-spacing: -.035em;
+  letter-spacing: -0.035em;
 }
 
 .callout {
@@ -268,7 +278,7 @@
   color: #b8cae0;
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: .1em;
+  letter-spacing: 0.1em;
 }
 
 .details {
@@ -288,7 +298,7 @@
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: 0.06em;
 }
 
 .details dd {
@@ -336,7 +346,7 @@
 
 .actions button:disabled,
 .refresh:disabled {
-  opacity: .55;
+  opacity: 0.55;
   cursor: wait;
 }
 
@@ -410,8 +420,8 @@
     padding: 10px;
     margin: 18px -10px -10px;
     border-radius: 16px;
-    background: rgba(255, 255, 255, .96);
-    box-shadow: 0 -7px 22px rgba(8, 41, 77, .1);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -7px 22px rgba(8, 41, 77, 0.1);
   }
 }
 

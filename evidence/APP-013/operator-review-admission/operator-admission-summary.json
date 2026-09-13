@@ -1,0 +1,19 @@
+{
+  "checks": [
+    "concurrent exact operator admission creates one job; lost-ack/service-restart replay returns same receipt; changed actor/decision refuses",
+    "request and organization binding persisted with job/audit/session close; no customer credential access",
+    "granted and declined histories bind atomically without becoming send permission; missing evidence remains NOT_RECORDED",
+    "binding failure rolls back job/address/link/audit/session outcome and leaves request reviewable",
+    "audit failure rolls back job and consent binding in real transaction",
+    "role, foreign tenant and customer-token injection refuse without writes",
+    "expired review cannot create a job",
+    "new organization approval refuses old reviewed version without writes"
+  ],
+  "credentialAccesses": 0,
+  "newFictionalJobs": 3,
+  "providerCalls": 0,
+  "browserAdmission": false,
+  "identity": "fixture context; no production identity acceptance",
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false
+}

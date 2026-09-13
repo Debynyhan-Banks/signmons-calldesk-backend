@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Local protected intake journey</title>
+  <style>
+    body {
+      font: 18px system-ui;
+      max-width: 42rem;
+      margin: 24px;
+      padding: 12px;
+      color: #183044;
+      background: #f5f8fa;
+    }
+    input,
+    textarea,
+    select,
+    button {
+      font: inherit;
+      box-sizing: border-box;
+      max-width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+    }
+    input,
+    textarea,
+    select {
+      display: block;
+      width: 100%;
+    }
+    input[type="checkbox"] {
+      display: inline;
+      width: auto;
+    }
+    p,
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    section {
+      margin: 24px 0;
+    }
+    [hidden] {
+      display: none;
+    }
+    #smsPreference p,
+    #durableVerification p,
+    #addressVerification p {
+      white-space: normal;
+    }
+    #durableVerification label[for],
+    #addressVerification label[for] {
+      display: block;
+      margin-top: 16px;
+    }
+  </style>
+  <h1>Review your service request</h1>
+  <p>
+    Fictional local test. Automated replies are scripted. This customer page
+    does not create a job or appointment. Sending remains disabled.
+  </p>
+  <button id="start">Start a new request</button>
+  <section id="conversation" hidden>
+    <label for="message">Describe the fictional issue</label
+    ><textarea id="message" maxlength="400"></textarea
+    ><button id="continue">Continue conversation</button>
+  </section>
+  <p id="reply"></p>
+  <section id="email" hidden>
+    <h2>Optional appointment email</h2>
+    <p>
+      Email is optional. Skipping or declining does not block your draft.
+      Entering an address alone does not give permission to send.
+    </p>
+    <label for="mailboxInput">Email address</label
+    ><input id="mailboxInput" type="email" autocomplete="off" /><button
+      id="capture"
+    >
+      Retain this address</button
+    ><button id="skip">Continue without email</button>
+  </section>
+  <section id="promptStep" hidden>
+    <p>Address retained privately. Permission has not been recorded.</p>
+    <button id="prompt">Review email permission</button>
+  </section>
+  <section id="consent" hidden>
+    <p id="mailbox"></p>
+    <p id="permissionText"></p>
+    <label
+      ><input id="confirmed" type="checkbox" /> I confirm this is my email
+      address.</label
+    ><button id="grant">Allow appointment emails</button
+    ><button id="decline">No thanks</button>
+  </section>
+  <section id="details" hidden>
+    <h2>Customer-stated draft details</h2>
+    <p>
+      Please review these details. Urgency has not been assessed. This is not a
+      booking or a verified service address.
+    </p>
+    <label for="customerName">Name</label
+    ><input id="customerName" maxlength="120" autocomplete="off" />
+    <label for="phone">Phone, including country code</label
+    ><input
+      id="phone"
+      type="tel"
+      placeholder="+12025550123"
+      autocomplete="off"
+    />
+    <div id="phoneVerification" hidden>
+      <h3>Phone code — local demonstration</h3>
+      <p>
+        No text is sent. Use test code 123456. This does not prove real phone
+        access.
+      </p>
+      <button id="phoneRequest">Request / resend test code</button>
+      <label for="phoneCode" style="display: block">Six-digit test code</label>
+      <input
+        id="phoneCode"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6"
+      />
+      <button id="phoneCheck">Check test code</button>
+      <button id="phoneChange">Change phone number</button>
+      <p id="phoneStatus" role="status">Not verified.</p>
+    </div>
+    <div id="durableVerification" hidden>
+      <h3>Request a verification code — local test</h3>
+      <p>
+        No text is sent. Use fictional number +12025550123 and test code 123456.
+        This demonstration cannot verify real phone access.
+      </p>
+      <button id="verifyNotice">Review code request</button>
+      <div id="verifyConsent" hidden>
+        <p id="verifyNoticeText"></p>
+        <p>
+          Fixture legal links only:
+          <a id="verifyTerms" target="_blank" rel="noopener noreferrer"
+            >Terms</a
+          >
+          ·
+          <a id="verifyPrivacy" target="_blank" rel="noopener noreferrer"
+            >Privacy</a
+          >
+        </p>
+        <label
+          ><input id="verifyRequested" type="checkbox" /> I request the test
+          code for <span id="verifyNumber"></span>.</label
+        >
+      </div>
+      <button id="verifyStart">Request test code</button>
+      <label for="verifyCode">Six-digit test code</label>
+      <input
+        id="verifyCode"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6"
+      />
+      <button id="verifyCheck">Check test code</button>
+      <button id="verifyRefresh">Check proof freshness (no new code)</button>
+      <button id="verifyChange">Change phone number</button>
+      <p id="verifyStatus" role="status">
+        Not verified. Review the code request first.
+      </p>
+    </div>
+    <label for="address">Service address</label
+    ><input id="address" maxlength="200" autocomplete="off" />
+    <div id="addressVerification" hidden>
+      <p>
+        Draft review rechecks this selection and copies the fictional address
+        and customer-stated unit into your review-only draft. No job address is
+        changed.
+      </p>
+      <h3>Address and service area — local test</h3>
+      <p>
+        Use "Fictional" to find test addresses. No real address, occupancy or
+        booking is verified.
+      </p>
+      <label for="addressUnit">Unit / apartment (optional)</label>
+      <input id="addressUnit" maxlength="40" autocomplete="off" />
+      <button id="addressSuggest">Find test addresses</button>
+      <label for="addressCandidate">Select the intended test address</label>
+      <select id="addressCandidate">
+        <option value="">Choose a test address</option>
+      </select>
+      <label
+        ><input id="addressConfirmed" type="checkbox" /> I confirm this test
+        address and unit.</label
+      >
+      <button id="addressConfirm">Confirm and check service area</button>
+      <button id="addressRefresh">Refresh saved check</button>
+      <button id="addressClear">Clear saved test address</button>
+      <p id="addressStatus" role="status">Address and coverage not checked.</p>
+    </div>
+    <div id="correctionReview" hidden>
+      <h3>Review address correction — local test</h3>
+      <p>
+        Fictional demonstration only. Confirming does not verify the address,
+        county, occupancy or eligibility and cannot create a job.
+      </p>
+      <label for="correctionCity">City</label
+      ><input id="correctionCity" maxlength="100" autocomplete="off" />
+      <label for="correctionPostal">ZIP code</label
+      ><input id="correctionPostal" maxlength="10" autocomplete="off" />
+      <button id="correctionPropose">Review suggested correction</button>
+      <div
+        id="correctionComparison"
+        hidden
+        style="
+          grid-template-columns: repeat(
+            auto-fit,
+            minmax(min(100%, 16rem), 1fr)
+          );
+          gap: 16px;
+        "
+      >
+        <section aria-labelledby="correctionEnteredHeading">
+          <h4 id="correctionEnteredHeading">You entered</h4>
+          <p id="correctionEntered"></p>
+        </section>
+        <section aria-labelledby="correctionSuggestedHeading">
+          <h4 id="correctionSuggestedHeading">Suggested address</h4>
+          <p id="correctionCandidate"></p>
+        </section>
+      </div>
+      <p>
+        Your entered address stays unchanged until you choose what to do. Review
+        every field, including the apartment or unit.
+      </p>
+      <label
+        ><input id="correctionChecked" type="checkbox" /> I confirm this exact
+        displayed address.</label
+      >
+      <button id="correctionConfirm">Confirm displayed correction</button>
+      <button id="correctionEdit" type="button">Edit my entered address</button>
+      <button id="correctionCancel" type="button">Cancel correction</button>
+      <p id="correctionStatus" role="status">No correction reviewed.</p>
+    </div>
+    <label for="description">Issue summary</label
+    ><textarea id="description" maxlength="400"></textarea>
+    <label for="issueCategory">Service category</label
+    ><select id="issueCategory">
+      <option value="">Choose a category</option>
+      <option>HEATING</option>
+      <option>COOLING</option>
+      <option>PLUMBING</option>
+      <option>ELECTRICAL</option>
+      <option>DRAINS</option>
+      <option>GENERAL</option>
+      <option>BOILER</option>
+      <option>REFRIGERATION</option>
+      <option>COMMERCIAL_HVAC</option>
+      <option>COMMERCIAL_REFRIGERATION</option>
+    </select>
+    <label for="propertyType">Property type</label
+    ><select id="propertyType">
+      <option value="">Choose a property type</option>
+      <option>RESIDENTIAL</option>
+      <option>COMMERCIAL</option>
+      <option>MANAGED</option>
+    </select>
+    <label for="serviceIntent">Service requested</label
+    ><select id="serviceIntent">
+      <option value="">Choose a service</option>
+      <option>DIAGNOSTIC</option>
+      <option>REPAIR</option>
+      <option>INSTALLATION</option>
+      <option>MAINTENANCE</option>
+      <option>OTHER</option>
+    </select>
+    <fieldset id="smsPreference" aria-describedby="smsUnavailable">
+      <legend>Optional appointment texts</legend>
+      <button id="smsReview" type="button" hidden>
+        Review test SMS permission
+      </button>
+      <p id="smsDisclosure" hidden></p>
+      <p id="smsPolicies" hidden>
+        <a href="/fixture-sms-privacy">Fictional Privacy Notice</a>
+        · <a href="/fixture-sms-terms">Fictional Messaging Terms</a>
+      </p>
+      <label for="smsRequested" style="display: block">
+        <input id="smsRequested" type="checkbox" disabled />
+        Send me service-related appointment texts
+      </label>
+      <button id="smsSave" type="button" hidden>
+        Save test text preference
+      </button>
+      <button id="smsSkip" type="button" hidden>Continue without texts</button>
+      <p id="smsStatus" role="status"></p>
+      <p id="smsUnavailable">
+        Text enrollment is unavailable until this business's approved SMS
+        disclosure, Privacy Policy and Messaging Terms are configured. You can
+        continue without texts. No live SMS consent will be recorded.
+      </p>
+      <p>
+        Phone verification is separate from appointment-text consent. This
+        choice does not book an appointment or authorize payment.
+      </p>
+    </fieldset>
+    <label
+      ><input id="reviewed" type="checkbox" /> I reviewed these details.</label
+    ><button id="draft">Preview validated draft</button>
+  </section>
+  <section id="preview" hidden>
+    <h2>Draft only — human review required</h2>
+    <pre id="summary"></pre>
+    <button id="editDraft">Edit draft</button>
+    <button id="submitReview" hidden>Submit for operator review</button>
+    <p>
+      No job created, no appointment booked, no message sent. The draft is not
+      saved and is not an admission receipt.
+    </p>
+  </section>
+  <section id="submitted" hidden>
+    <h2>Submitted for operator review</h2>
+    <p id="requestReceipt"></p>
+    <p>
+      No job or appointment has been created by this submission. An authorized
+      operator must review it before the original deadline.
+    </p>
+  </section>
+  <button id="retry" hidden>Retry the same request</button
+  ><button id="forget" hidden>Clear private session</button>
+  <p id="status" role="status"></p>
+  <p>
+    Clearing or reloading loses private browser state but does not undo
+    previously saved conversation, consent or review requests. Contact the
+    office to check an existing request or appointment.
+  </p>
+  <script src="/journey.js"></script>
+</html>

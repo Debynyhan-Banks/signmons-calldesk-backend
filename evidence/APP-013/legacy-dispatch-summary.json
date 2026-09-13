@@ -1,0 +1,155 @@
+{
+  "checkpoint": "APP-013 legacy CREATE dispatch safeguard",
+  "baseline": {
+    "backend": "a8154f7",
+    "governance": "4472e58"
+  },
+  "runtimeFiles": [
+    "src/jobs/dispatch-calendar-guard.ts",
+    "src/jobs/dispatch-board.service.ts"
+  ],
+  "scope": "Dispatch summary/recommendation and assignment/cancellation guards for ACCEPTED reserved jobs without nonblank Calendar reference; mutations bind observed booking fields and versions.",
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 674,
+      "suites": 56,
+      "skippedTests": 3,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "lintAndTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14
+    },
+    "database": {
+      "migrations": 15,
+      "priorChildProcessCrashes": 11,
+      "newCrashCases": 0,
+      "newDispatchSnapshots": 18,
+      "heldMutationRefusals": 54,
+      "competingWriteCases": 2,
+      "providerCalls": 0,
+      "cleanupVerified": true
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "viewports": [
+      1440,
+      390
+    ],
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 46,
+    "customerPosts": 22,
+    "dispatchPosts": 0,
+    "technicianRequests": 14,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "artifacts": "/private/tmp/signmons-legacy-dispatch-regression.FEPhB5/evidence/APP-013",
+    "screenshotsReviewed": [
+      "legacy-dispatch-assigned-desktop.png",
+      "legacy-dispatch-unassigned-mobile.png"
+    ]
+  },
+  "audits": {
+    "dispatchBackendFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "dispatchBackendProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "dispatchUiFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    },
+    "dispatchUiProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    }
+  },
+  "limits": [
+    "Technician/lifecycle legacy guards and repair remain",
+    "No global serialization or Calendar verification",
+    "Link generation, routing audit and operations escalation unchanged",
+    "No production action, provider call, real-data mutation or activation"
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

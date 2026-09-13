@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Local protected intake test</title>
+  <style>
+    body {
+      font: 18px system-ui;
+      max-width: 36rem;
+      margin: 24px;
+      padding: 12px;
+    }
+    button,
+    input {
+      font: inherit;
+      max-width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin: 8px 0;
+    }
+    p {
+      overflow-wrap: anywhere;
+    }
+    [hidden] {
+      display: none;
+    }
+  </style>
+  <h1>Protected customer session</h1>
+  <p>Fictional local test. Collection is not live and sending is disabled.</p>
+  <p>
+    If you reload or lose this session, start a new request. This does not
+    recover or change an existing appointment. Contact the office for existing
+    appointment help.
+  </p>
+  <button id="start">Start a new request</button>
+  <section id="form" hidden>
+    <label for="email">Optional email for this new request</label
+    ><input id="email" type="email" autocomplete="off" /><button id="capture">
+      Retain this address
+    </button>
+  </section>
+  <p id="status" role="status"></p>
+  <script>
+    let sessionToken,
+      busy = false;
+    const start = document.querySelector("#start"),
+      form = document.querySelector("#form"),
+      email = document.querySelector("#email"),
+      capture = document.querySelector("#capture"),
+      status = document.querySelector("#status");
+    const clear = () => {
+      sessionToken = undefined;
+      email.value = "";
+      form.hidden = true;
+      start.hidden = false;
+    };
+    const call = async (path, body) => {
+      const r = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        cache: "no-store",
+      });
+      if (!r.ok) throw Error("Refused");
+      return r.json();
+    };
+    const run = async (fn) => {
+      if (busy) return;
+      busy = true;
+      start.disabled = capture.disabled = true;
+      try {
+        await fn();
+      } catch {
+        clear();
+        status.textContent =
+          "Session unavailable. Start a new request; your previous appointment is not changed.";
+      } finally {
+        busy = false;
+        start.disabled = capture.disabled = false;
+      }
+    };
+    start.onclick = () =>
+      run(async () => {
+        clear();
+        const result = await call("/start", {});
+        sessionToken = result.sessionToken;
+        start.hidden = true;
+        form.hidden = false;
+        status.textContent = "";
+      });
+    capture.onclick = () =>
+      run(async () => {
+        await call("/capture", { sessionToken, email: email.value });
+        clear();
+        status.textContent =
+          "Address retained for this new request. No permission granted; sending is disabled.";
+      });
+  </script>
+</html>

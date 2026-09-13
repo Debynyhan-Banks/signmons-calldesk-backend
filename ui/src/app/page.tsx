@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import styles from "./page.module.css";
 import {
   ApiError,
@@ -214,6 +215,9 @@ export default function Home() {
         <div className={styles.brand}>
           <p className={styles.kicker}>Signmons CallDesk</p>
           <h1 className={styles.title}>Dispatch sandbox</h1>
+          <Link href="/app/organization" prefetch={false}>
+            Organization setup and approved-answer preview
+          </Link>
           <p className={styles.subtle}>
             Requests are pointed at <code>{apiBase}</code>.
           </p>

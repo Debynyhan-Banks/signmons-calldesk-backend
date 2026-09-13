@@ -13,6 +13,17 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  unfinishedCalendarOperations,
+  noUnfinishedCalendarOperations,
+} from "../scheduling/calendar-operation-guard";
+import {
+  jobCalendarPending,
+  jobReservationSnapshot,
+  requireJobCalendarSettled,
+} from "./job-calendar-guard";
+import { LoggingService } from "../logging/logging.service";
+import { SmsEnqueueIntentService } from "../communications/sms-enqueue-intent.service";
 import { TechnicianJobAction } from "./dto/update-technician-job.dto";
 import {
   TechnicianLinkService,
@@ -27,6 +38,7 @@ const OPEN_JOB_STATUSES = [
 ];
 
 const JOB_INCLUDE = {
+  calendarOperations: unfinishedCalendarOperations,
   customer: {
     select: { fullName: true, phone: true, email: true },
   },
@@ -53,6 +65,8 @@ export class TechnicianWorkflowService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly links: TechnicianLinkService,
+    private readonly messaging: SmsEnqueueIntentService,
+    private readonly logging: LoggingService,
   ) {}
 
   async list(rawToken: string | undefined) {
@@ -65,6 +79,7 @@ export class TechnicianWorkflowService {
         assignedUserTenantId: access.tenantId,
         deletedAt: null,
         OR: [
+          { calendarOperations: { some: { finishedAt: null } } },
           { status: { in: OPEN_JOB_STATUSES } },
           {
             status: JobStatus.COMPLETED,
@@ -127,8 +142,9 @@ export class TechnicianWorkflowService {
     const access = this.links.verify(input.rawToken);
     await this.activeTechnician(access);
     const expectedUpdatedAt = new Date(input.expectedUpdatedAt);
+    let intentId: string | undefined;
 
-    return this.prisma.$transaction(async (transaction) => {
+    const result = await this.prisma.$transaction(async (transaction) => {
       const job = await transaction.job.findFirst({
         where: {
           id: input.jobId,
@@ -140,6 +156,7 @@ export class TechnicianWorkflowService {
         include: JOB_INCLUDE,
       });
       if (!job) throw new NotFoundException("Assigned job was not found.");
+      requireJobCalendarSettled(job);
       if (job.status === JobStatus.CANCELLED) {
         throw new ConflictException("Cancelled jobs cannot be updated.");
       }
@@ -155,7 +172,9 @@ export class TechnicianWorkflowService {
         );
       }
 
-      const changedAt = new Date();
+      const changedAt = new Date(
+        Math.max(Date.now(), job.updatedAt.getTime() + 1),
+      );
       const releaseAssignment =
         input.action === "decline" || input.action === "cannot_take";
       const updateData: Prisma.JobUncheckedUpdateManyInput = releaseAssignment
@@ -181,6 +200,8 @@ export class TechnicianWorkflowService {
         }
         if (!job.acceptedAt) updateData.acceptedAt = changedAt;
       }
+
+      updateData.updatedAt = changedAt;
       if (input.action === "in_progress") {
         updateData.status = JobStatus.IN_PROGRESS;
       }
@@ -196,6 +217,9 @@ export class TechnicianWorkflowService {
           assignedUserId: access.technicianId,
           assignedUserTenantId: access.tenantId,
           updatedAt: expectedUpdatedAt,
+          AND: [{ updatedAt: job.updatedAt }],
+          ...jobReservationSnapshot(job),
+          calendarOperations: noUnfinishedCalendarOperations,
           deletedAt: null,
         },
         data: updateData,
@@ -245,8 +269,38 @@ export class TechnicianWorkflowService {
       if (!changed) {
         throw new ConflictException("Updated job could not be reloaded.");
       }
+      if (input.action === "on_my_way") {
+        const intent = await this.messaging.recordDeparture(transaction, {
+          tenantId: access.tenantId,
+          jobId: job.id,
+        });
+        intentId = intent.id;
+      }
       return { ...this.toDetail(changed), changed: true };
     });
+
+    if (intentId) {
+      try {
+        await this.messaging.processOne({
+          tenantId: access.tenantId,
+          intentId,
+        });
+      } catch {
+        try {
+          this.logging.warn(
+            {
+              event: "technician_on_the_way_queue_failed",
+              tenantId: access.tenantId,
+              jobId: input.jobId,
+            },
+            TechnicianWorkflowService.name,
+          );
+        } catch {
+          // A notification or logging failure cannot undo committed field status.
+        }
+      }
+    }
+    return result;
   }
 
   private async activeTechnician(access: VerifiedTechnicianLink) {
@@ -293,6 +347,7 @@ export class TechnicianWorkflowService {
 
   private toSummary(job: TechnicianJob) {
     const technicianStatus = this.currentTechnicianStatus(job);
+    const calendarSyncPending = jobCalendarPending(job);
     return {
       jobId: job.id,
       reference: job.id.replace(/-/g, "").slice(0, 8).toUpperCase(),
@@ -302,7 +357,13 @@ export class TechnicianWorkflowService {
       serviceWindowEnd: job.serviceWindowEnd?.toISOString() ?? null,
       urgency: job.urgency,
       technicianStatus,
-      availableActions: TRANSITIONS[technicianStatus],
+      calendarSyncPending,
+      availableActions:
+        calendarSyncPending ||
+        job.status === JobStatus.CANCELLED ||
+        job.status === JobStatus.COMPLETED
+          ? []
+          : TRANSITIONS[technicianStatus],
       updatedAt: job.updatedAt.toISOString(),
     };
   }

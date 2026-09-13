@@ -1,0 +1,451 @@
+{
+  "date": "2026-09-08",
+  "baselineBackend": "54b613f922ffecc84652c6bee81b1952b44d24f3",
+  "baselineGovernance": "ed21a09d9103f91c38ba5a1dc1196a3119c912b3",
+  "scope": "Scoped Nest 11/Multer 2.3.0 dependency remediation; no upload route activation",
+  "before": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 9,
+      "critical": 0,
+      "total": 17
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ]
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "@nestjs/core",
+        "severity": "high",
+        "via": [
+          "@nestjs/platform-express"
+        ]
+      },
+      {
+        "name": "@nestjs/platform-express",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "multer"
+        ]
+      },
+      {
+        "name": "@nestjs/schedule",
+        "severity": "high",
+        "via": [
+          "@nestjs/core"
+        ]
+      },
+      {
+        "name": "@nestjs/testing",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "@nestjs/platform-express"
+        ]
+      },
+      {
+        "name": "@prisma/client",
+        "severity": "high",
+        "via": [
+          "prisma"
+        ]
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "via": [
+          "deepmerge-ts"
+        ]
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "range": "<8.0.0"
+          }
+        ]
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ]
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ]
+      },
+      {
+        "name": "multer",
+        "severity": "high",
+        "via": [
+          {
+            "title": "multer vulnerable to Denial of Service via crafted multipart field names",
+            "url": "https://github.com/advisories/GHSA-wc9g-mqfw-jrwm",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via file descriptor leak on aborted uploads",
+            "url": "https://github.com/advisories/GHSA-qfvm-cv95-jqjf",
+            "range": "=2.2.0"
+          },
+          {
+            "title": "multer vulnerable to file size limit bypass via async fileFilter race condition",
+            "url": "https://github.com/advisories/GHSA-qvfw-j98x-7q72",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via oversized array index in field names",
+            "url": "https://github.com/advisories/GHSA-535w-7cp7-47q4",
+            "range": "<2.3.0"
+          }
+        ]
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "via": [
+          "@prisma/config"
+        ]
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ]
+      }
+    ]
+  },
+  "after": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 4,
+      "critical": 0,
+      "total": 12
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ]
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "@prisma/client",
+        "severity": "high",
+        "via": [
+          "prisma"
+        ]
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "via": [
+          "deepmerge-ts"
+        ]
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "range": "<8.0.0"
+          }
+        ]
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ]
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ]
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "via": [
+          "@prisma/config"
+        ]
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ]
+      }
+    ]
+  },
+  "omitDevAfter": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 4,
+      "critical": 0,
+      "total": 12
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ]
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "@prisma/client",
+        "severity": "high",
+        "via": [
+          "prisma"
+        ]
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "via": [
+          "deepmerge-ts"
+        ]
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "range": "<8.0.0"
+          }
+        ]
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ]
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ]
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "via": [
+          "@prisma/config"
+        ]
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ]
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ]
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ]
+      }
+    ]
+  },
+  "uiFull": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "uiOmitDev": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "lockChanges": [
+    {
+      "package": "multer",
+      "from": "2.2.0",
+      "to": "2.3.0"
+    }
+  ],
+  "verification": {
+    "cleanInstall": true,
+    "nativeTests": 12,
+    "jestAutomaticWrapper": true,
+    "backendSuites": 53,
+    "backendTests": 613,
+    "existingSkippedTests": 3,
+    "uiTests": 60,
+    "staticPages": 14,
+    "disposableMigrations": 15,
+    "existingProcessCrashCases": 11,
+    "realProviderCalls": 0,
+    "databaseAbsenceIndependentlyVerified": true,
+    "browser": {
+      "routeChecks": 22,
+      "homeNavigations": 12,
+      "mockedRequests": [
+        14,
+        14,
+        8,
+        92
+      ],
+      "viewports": [
+        1440,
+        390
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "visualReview": [
+        "framework-missing-link-mobile.png",
+        "reschedule-intents-desktop.png"
+      ],
+      "temporaryEvidence": "/private/tmp/signmons-multer-regression.1h9yTV/evidence/APP-013"
+    }
+  },
+  "limits": [
+    "No upload handler found in application source; dependency presence is not proof of public exploitability.",
+    "Array index limit is opt-in. Future upload routes require explicit fieldArrayIndexLimit plus other size/count/depth limits.",
+    "Nest 11 lacks built-in HTTP mappings for new Multer array-index/invalid-field errors; tested array-index rejection is a plain Error. Resolve mapping before future route activation.",
+    "Only the two-field sparse-length/invalid-push case is reproduced on the patched release; never iterate or serialize the sparse array. No old-version negative reproduction or resource-exhausting stress test.",
+    "Disk fixture exercises real diskStorage pipeline destruction, close and unlink with a synthetic stream error, not a full network-disconnect acceptance test.",
+    "Full backend audit still fails; no risk acceptance, deployment or production action."
+  ],
+  "overrideRetirement": "APP-013 owns @nestjs/platform-express@^11.2.3 -> multer 2.3.0. Test requires Nest 11.2.3; re-review each framework change. Remove when native resolution is patched and multipart/application/browser gates pass.",
+  "riskAcceptance": false
+}

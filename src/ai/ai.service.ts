@@ -21,6 +21,10 @@ import { SanitizationService } from "../sanitization/sanitization.service";
 import { ToolSelectorService } from "./tools/tool-selector.service";
 import { CallLogService } from "../logging/call-log.service";
 import { ConversationsService } from "../conversations/conversations.service";
+import {
+  ConversationEmailService,
+  EMAIL_QUESTION,
+} from "../conversations/conversation-email.service";
 import appConfig from "../config/app.config";
 import { getRequestContext } from "../common/context/request-context";
 import { LifeSafetyService } from "./safety/life-safety.service";
@@ -64,6 +68,7 @@ export class AiService {
     private readonly jobNotificationService: JobNotificationService,
     @Inject(appConfig.KEY)
     private readonly config: ConfigType<typeof appConfig>,
+    private readonly emailCapture: ConversationEmailService,
   ) {
     try {
       const promptPath = join(__dirname, "prompts", "calldeskSystemPrompt.txt");
@@ -134,6 +139,15 @@ export class AiService {
         return safetyEscalation;
       }
       const tenantContextPrompt = tenantContext.prompt;
+      const emailScope = {
+        tenantId: safeTenantId,
+        sessionId: safeSessionId,
+        conversationId: conversation.id,
+      };
+      const emailState = await this.emailCapture.observe(
+        emailScope,
+        userMessage,
+      );
       const recentMessages = await this.callLogService.getRecentMessages(
         safeTenantId,
         safeSessionId,
@@ -153,6 +167,10 @@ export class AiService {
         { role: "system", content: tenantContextPrompt },
         {
           role: "system",
+          content: `Optional email capture state: ${emailState.status}. The application asks for email at most once. Never ask for email, repeat an email address, invent one, put email in create_job arguments or claim an email was sent. Missing or declined email must not block intake.`,
+        },
+        {
+          role: "system",
           content: this.buildIntakeMemoryPrompt(intakeSnapshot),
         },
         ...conversationHistory,
@@ -166,6 +184,12 @@ export class AiService {
       const shouldCreateResidentialBooking =
         Boolean(createJobTool) &&
         this.isResidentialBookingReady(intakeSnapshot);
+      if (
+        shouldCreateResidentialBooking &&
+        (await this.emailCapture.requestOnce(emailScope))
+      ) {
+        return this.emailQuestion(emailScope, safeUserMessage);
+      }
       const response = await this.aiProviderService.createCompletion({
         messages,
         tools: tools.length ? tools : undefined,
@@ -268,6 +292,19 @@ export class AiService {
         openAIResponseId,
       });
     }
+  }
+
+  private async emailQuestion(
+    scope: { tenantId: string; sessionId: string; conversationId: string },
+    message: string,
+  ) {
+    await this.callLogService.createLog({
+      ...scope,
+      transcript: message,
+      aiResponse: EMAIL_QUESTION,
+      metadata: { responseType: "optional_email_question" },
+    });
+    return { status: "reply" as const, reply: EMAIL_QUESTION };
   }
 
   private looksLikeSubmissionClaim(reply: string): boolean {
@@ -479,6 +516,8 @@ export class AiService {
     snapshot: IntakeSnapshot,
   ): string {
     const normalized = reply.toLowerCase();
+    if (/\be-?mail\b/i.test(reply) || reply.includes("@"))
+      return this.nextMissingQuestion(snapshot);
     const asksQuestion =
       reply.includes("?") ||
       /\b(?:please provide|can you|could you|what is|what's|let me know|tell me|is this)\b/.test(
@@ -618,6 +657,7 @@ export class AiService {
         forced.model ?? params.responseModel,
         params.leadAttribution,
       );
+      if (result?.status === "reply") return result;
       this.loggingService.log(
         {
           event: "intake_auto_finalized",
@@ -713,6 +753,18 @@ export class AiService {
     }
 
     try {
+      if (
+        await this.emailCapture.requestOnce({
+          tenantId,
+          sessionId,
+          conversationId,
+        })
+      ) {
+        return this.emailQuestion(
+          { tenantId, sessionId, conversationId },
+          userMessage ?? "",
+        );
+      }
       const job = await this.jobsRepository.createJobFromToolCall({
         tenantId,
         sessionId,

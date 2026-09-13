@@ -1,0 +1,297 @@
+{
+  "ticket": "APP-013",
+  "date": "2026-09-09",
+  "section": "Inactive read-only Calendar review UI/client contract",
+  "status": "review-ready; unlinked and inactive",
+  "baselines": {
+    "backend": "d1512b459a20db2a0cda5c74d8ed92ddd227f301",
+    "governance": "7bb1c07127a892847239eebdb10a897a1f083d25"
+  },
+  "files": [
+    "ui/src/calendar-review/contract.ts",
+    "ui/src/calendar-review/client.ts",
+    "ui/src/calendar-review/review-panel.tsx",
+    "ui/src/calendar-review/review-panel.module.css",
+    "ui/src/calendar-review/review.test.ts",
+    "ui/scripts/calendar-review-preview-loader.cjs",
+    "ui/scripts/calendar-review-preview.tsx",
+    "ui/scripts/calendar-review-preview.mjs",
+    "ui/scripts/calendar-review-ui-qa.mjs",
+    "ui/scripts/run-tests.mjs",
+    "ui/tsconfig.json"
+  ],
+  "contract": {
+    "views": [
+      "Job operation history",
+      "Exact operation snapshot",
+      "Recovery request history"
+    ],
+    "parentInputs": "Non-secret session-generation key, owner/admin display role and injected ReviewReader; not bearer authentication or tenant authority",
+    "readerInputs": [
+      "resource: job|operation|requests",
+      "reference: canonical lowercase UUID",
+      "signal: AbortSignal"
+    ],
+    "readerOutput": "HTTP-style status and unknown body",
+    "states": [
+      "idle",
+      "loading",
+      "ready",
+      "error"
+    ],
+    "timeoutsMs": 15000,
+    "automaticReadRetryOrPolling": false,
+    "defaultNetworkAdapter": false,
+    "credentialsOrBrowserStorage": false,
+    "mutationOrProviderMethods": false,
+    "activeRoute": false,
+    "validation": [
+      "Exact snapshotOnly/requestOnly flags and canonical UUID/timestamp/enums",
+      "Job/exact-operation reference correspondence",
+      "Explicit field projection drops private/unknown fields",
+      "Candidate/state consistency without client-clock hint promotion",
+      "Boolean hasMore, <=100 items, duplicate-ID rejection and full cap when truncated"
+    ],
+    "invalidation": [
+      "New read clears old view; duplicate same-view requests ignored",
+      "Session/role/reference/reader transitions cancel requests and clear snapshots",
+      "Unique pending ownership ignores late responses even if cancellation is ignored",
+      "401/403 cancels sibling reads and clears all views; denied session cannot be restored by reference edit",
+      "Other failures remain view-local; fixed safe errors, no raw response/diagnostics"
+    ],
+    "semantics": "Separate snapshots, request-not-completion history, empty/capped history not exhaustive; terminal journal state not current booking/provider truth"
+  },
+  "validation": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 962,
+      "passingSuites": 63,
+      "existingSkippedTests": 3,
+      "existingSkippedSuites": 1,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "lintAndTypecheck": "PASS",
+      "tests": 99,
+      "newFocusedTests": 39,
+      "build": "PASS",
+      "staticPages": 14,
+      "newAppRoutes": 0
+    },
+    "componentBrowser": {
+      "result": "PASS",
+      "actualUnlinkedReactComponent": true,
+      "syntheticReader": true,
+      "viewports": [
+        1440,
+        390
+      ],
+      "checks": [
+        "Ready/empty/truncated 100 rows",
+        "Independent partial errors",
+        "Malformed/network/404/429/503 safe failures",
+        "Late reference/session/clear results discarded",
+        "Owner/admin display access and denied-role clearing",
+        "Keyboard focus and 200% root-font-size no horizontal overflow",
+        "No local/session storage or private-field display",
+        "Actual 15-second timeout with late-result discard"
+      ],
+      "externalRequests": 0,
+      "mutationRequests": 0,
+      "pageAndConsoleErrors": 0,
+      "finalMobileFixtureInjectedReadCalls": 17,
+      "screenshots": [
+        "calendar-review-ui/review-ready-1440.png",
+        "calendar-review-ui/review-ready-390.png",
+        "calendar-review-ui/review-partial-1440.png",
+        "calendar-review-ui/review-partial-390.png"
+      ],
+      "visuallyInspected": [
+        "review-ready-1440.png",
+        "review-ready-390.png",
+        "review-partial-390.png"
+      ],
+      "preview": "Loopback-only temporary webpack bundle using installed dependencies; production Next export stays unchanged"
+    },
+    "existingBrowserRegressions": {
+      "artifacts": "/private/tmp/signmons-review-ui-regression.2TciEv/evidence/APP-013",
+      "framework": {
+        "result": "PASS",
+        "routeChecks": 22,
+        "homeNavigations": 12,
+        "staticManifest": true,
+        "externalRequests": 0,
+        "errors": 0,
+        "failedResources": 0
+      },
+      "customerDispatch": {
+        "result": "PASS",
+        "viewports": [
+          1440,
+          390
+        ],
+        "requests": 46,
+        "customerSyntheticPosts": 22,
+        "dispatchMutationPosts": 0,
+        "pageErrors": [],
+        "externalRequests": 0
+      },
+      "technician": {
+        "result": "PASS",
+        "viewports": [
+          1440,
+          390
+        ],
+        "requests": 26,
+        "syntheticConflictPosts": 2,
+        "initialHeldMutationPosts": 0,
+        "legacyHeldStates": [
+          "ASSIGNED",
+          "IN_PROGRESS",
+          "COMPLETED"
+        ],
+        "pageErrors": [],
+        "externalRequests": 0
+      },
+      "policy": {
+        "result": "PASS",
+        "viewports": [
+          1440,
+          390
+        ],
+        "requests": 8,
+        "syntheticConflictPosts": 4,
+        "externalRequests": 0,
+        "pageErrors": [],
+        "operationsEscalationRemainsAvailable": true
+      },
+      "notifications": {
+        "result": "PASS",
+        "apiRequests": 95,
+        "syntheticPosts": 14,
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "checks": [
+          "legacy reservation hold visible without retry controls or new POSTs at desktop/390px",
+          "desktop",
+          "390px no overflow",
+          "status and job filters",
+          "invalid UUID",
+          "empty",
+          "403",
+          "500",
+          "loading",
+          "independent partial failures",
+          "intent status and loaded-subset job filters",
+          "late responses after token edit, job edit and session clear",
+          "no credential storage",
+          "PII omission",
+          "keyboard order",
+          "no page errors",
+          "verified capability fail-closed and dispatcher read-only",
+          "review focus, cancellation, reason and acknowledgment required",
+          "one synthetic POST for duplicate click with exact reviewed version",
+          "400/401/403/404/409/429 rejection and refresh required",
+          "500/network/malformed/15-second-timeout uncertainty without automatic retry",
+          "late POST after token edit, job edit and session clear"
+        ],
+        "screenshots": [
+          "legacy-message-hold-desktop.png",
+          "legacy-message-hold-mobile.png",
+          "reschedule-intents-desktop.png",
+          "reschedule-intents-mobile.png",
+          "reschedule-retry-desktop.png",
+          "reschedule-retry-mobile.png"
+        ]
+      }
+    },
+    "database": {
+      "result": "PASS",
+      "kind": "Unchanged underlying disposable PostgreSQL regression",
+      "migrations": 16,
+      "newMigrations": 0,
+      "priorActualProcessCrashes": 11,
+      "newProcessCrashes": 0,
+      "realProviderCalls": 0,
+      "cleanup": "Removed; independent calldesk_app013_intents_% query returned no rows"
+    },
+    "audits": {
+      "backendfull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "backendprod": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uifull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiprod": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    }
+  },
+  "limits": [
+    "Client role is display gating only; future adapter must verify existing bearer/tenant authority server-side",
+    "Session-generation key must change on every credential/user/tenant transition; never pass token as key",
+    "Synthetic component reader is not integrated Firebase/HTTP-to-real-DB/deployed proxy/CORS/live owner acceptance",
+    "No active app or API route, network adapter, provider, mutation or recovery control",
+    "No schema/dependency/provider configuration, production migration/real-data/message/payment/secret/IAM/billing action, merge or deployment"
+  ],
+  "remainingRisks": [
+    "Inactive HTTP adapter/session binding and cross-layer contract tests",
+    "Mutation transport and truthful receipts",
+    "Clock skew/forward jumps/delayed provider completion",
+    "Customer/payment handoff and post-read races",
+    "Legacy inventory/repair/retention",
+    "RESCHEDULE/CANCEL and SENDING recovery",
+    "Dependency overrides and migration/release ordering"
+  ],
+  "planningEstimates": {
+    "app013Percent": 85,
+    "app006ThroughApp016Percent": 81,
+    "note": "Unchanged planning estimates, not release readiness"
+  },
+  "warnings": [
+    "Existing pg concurrent-query deprecation",
+    "Existing Next lint/workspace-root warnings",
+    "Intentional PostCSS fixture warning"
+  ],
+  "nextProposedSection": "Inactive read-only HTTP adapter/session binding with isolated cross-layer tests; no route registration/recovery controls/live access",
+  "reviewInstructions": "evidence/APP-013/readiness-report.md"
+}

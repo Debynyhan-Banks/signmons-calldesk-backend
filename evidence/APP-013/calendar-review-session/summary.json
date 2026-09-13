@@ -1,0 +1,109 @@
+{
+  "result": "PASS",
+  "checks": [
+    "owner-a: three real GETs, exact CORS/no-store, privacy, keyboard, 1440px and 200% text; same-token rebind clears",
+    "admin-a: three real GETs, exact CORS/no-store, privacy, keyboard, 390px and 200% text; same-token rebind clears",
+    "Tenant B sees empty job and operation/history 404; no audit read for missing operation",
+    "Forged owner display role rejected server-side, invalid token and missing tenant refused before reads; denial survives remount",
+    "Real sanitized 503, no automatic retry, explicit bind/manual refresh succeeds",
+    "Real delayed GET discarded after reference; no obsolete data after server completion",
+    "Real delayed GET discarded after rebind; no obsolete data after server completion",
+    "Real delayed GET discarded after signout; no obsolete data after server completion",
+    "Real delayed GET discarded after clear; no obsolete data after server completion",
+    "Real delayed GET discarded after unmount; no obsolete data after server completion",
+    "Real delayed GET discarded after replace; no obsolete data after server completion"
+  ],
+  "metrics": {
+    "gets": 20,
+    "preflights": 20,
+    "reads": 19,
+    "delayedStarted": 6,
+    "delayedFinished": 6,
+    "cancelledGets": 6,
+    "forbiddenHeaders": 0,
+    "mutations": 0,
+    "statuses": {
+      "200": 8,
+      "204": 20,
+      "401": 2,
+      "403": 1,
+      "404": 2,
+      "503": 1
+    }
+  },
+  "pageErrors": [],
+  "external": [],
+  "mutations": [],
+  "expectedHttpConsoleErrors": 6,
+  "syntheticSeams": [
+    "Firebase verifier",
+    "Prisma read-only double"
+  ],
+  "real": "React session-panel/client/adapter -> browser fetch/CORS -> Nest guards/context/service/filter",
+  "providerCalls": 0,
+  "productionRegistration": false,
+  "screenshots": "evidence/APP-013/calendar-review-session",
+  "validation": {
+    "backend": {
+      "tests": 962,
+      "passingSuites": 63,
+      "skippedTests": 3,
+      "skippedSuites": 1,
+      "build": "PASS",
+      "lint": "PASS",
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "tests": 135,
+      "newNodeTests": 0,
+      "newBrowserScenarioGroups": 11,
+      "lint": "PASS",
+      "build": "PASS",
+      "staticPages": 14
+    },
+    "nativeHttp": {
+      "gets": 16,
+      "readDoubleQueries": 15,
+      "result": "PASS"
+    },
+    "database": {
+      "existingMigrations": 16,
+      "existingProcessCrashes": 11,
+      "newMigrations": 0,
+      "providerCalls": 0,
+      "removedAndAbsenceVerified": true
+    },
+    "audits": {
+      "backendFull": 0,
+      "backendProduction": 0,
+      "uiFull": 0,
+      "uiProduction": 0
+    },
+    "browserRegressions": {
+      "framework": "PASS",
+      "customer": "PASS",
+      "technician": "PASS",
+      "policy": "PASS",
+      "notifications": "PASS",
+      "standaloneReviewPanel": "PASS",
+      "artifacts": "/private/tmp/signmons-session-regressions.ExYZns"
+    },
+    "visuallyInspected": [
+      "http-ready-1440.png",
+      "http-ready-390.png",
+      "http-error-390.png"
+    ]
+  },
+  "nextStep": "After review, APP-013 acceptance-gap assessment and user-facing workflow prioritization; no automatic further remediation or activation.",
+  "estimates": {
+    "app013": 85,
+    "calldesk": 81,
+    "basis": "Unchanged provisional planning estimates; reassess against demonstrated workflows, not test counts."
+  },
+  "limits": [
+    "Synthetic Firebase verifier and read-only Prisma doubles, not real identity/HTTP-to-database/deployed API acceptance",
+    "No active UI route, module, worker, provider configuration or production actions",
+    "Local test CORS and CSP only; no deployed configuration changes"
+  ]
+}

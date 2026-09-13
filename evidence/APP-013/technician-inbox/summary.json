@@ -1,0 +1,36 @@
+{
+  "result": "PASS",
+  "methods": {
+    "GET": 13,
+    "OPTIONS": 13
+  },
+  "real": [
+    "React inbox",
+    "browser fetch/CORS",
+    "Nest controller/throttle/filter",
+    "HMAC link verification",
+    "active-role/current-assignment SQL join",
+    "disposable PostgreSQL"
+  ],
+  "providerCalls": 0,
+  "mutationsFromInbox": 0,
+  "checks": [
+    "privacy projection",
+    "current tenant/assignment isolation",
+    "disabled/non-tech link denial",
+    "forged link denial",
+    "deleted/unassigned/other-tech/other-tenant events omitted",
+    "non-Job, unknown, old and future audit omitted",
+    "100-row cap and deterministic ordering",
+    "desktop/mobile and 200 percent no overflow",
+    "clear and token change discard late real HTTP responses",
+    "reassignment disappears on refresh",
+    "denial survives clear",
+    "safe HTTP 500 and explicit refresh",
+    "real 15-second read timeout discards late response",
+    "no cookie/storage/private metadata"
+  ],
+  "errors": [],
+  "external": [],
+  "forbidden": []
+}

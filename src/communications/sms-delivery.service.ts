@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { customerSmsAllowed } from "./customer-messaging-policy";
 import {
   BadRequestException,
   ConflictException,
@@ -22,6 +23,12 @@ import {
   SmsProviderError,
   type SmsProvider,
 } from "./sms-provider.interface";
+import {
+  evaluateTransactionalMessageState,
+  parseTransactionalMessageTemplateKey,
+  transactionalMessageJobSelect,
+  transactionalMessageStateHash,
+} from "./transactional-message-state";
 
 const MAX_ATTEMPTS = 3;
 
@@ -42,6 +49,10 @@ export class SmsDeliveryService {
     body: string;
     idempotencyKey: string;
     jobId?: string;
+    templateId?: string;
+    templateKey?: string;
+    templateVersion?: number;
+    lifecycleStateHash?: string;
   }): Promise<{ id: string; status: CommunicationStatus }> {
     if (
       !input.body.trim() ||
@@ -61,7 +72,15 @@ export class SmsDeliveryService {
     const keyHash = this.hash(input.tenantId, input.idempotencyKey);
     const requestHash = this.hash(
       input.tenantId,
-      JSON.stringify({ to: input.to, body: input.body, jobId: input.jobId }),
+      JSON.stringify({
+        to: input.to,
+        body: input.body,
+        jobId: input.jobId,
+        templateId: input.templateId,
+        templateKey: input.templateKey,
+        templateVersion: input.templateVersion,
+        lifecycleStateHash: input.lifecycleStateHash,
+      }),
     );
     const event = await this.prisma.communicationEvent.upsert({
       where: {
@@ -83,10 +102,18 @@ export class SmsDeliveryService {
         content: {
           create: {
             tenantId: input.tenantId,
+            templateId: input.templateId,
             payload: {
               kind: "transactional_sms",
               recipientHash: this.hash(input.tenantId, input.to),
               requestHash,
+              ...(input.templateKey ? { templateKey: input.templateKey } : {}),
+              ...(input.templateVersion
+                ? { templateVersion: input.templateVersion }
+                : {}),
+              ...(input.lifecycleStateHash
+                ? { lifecycleStateHash: input.lifecycleStateHash }
+                : {}),
             },
             encryptedRaw: this.cipher.encrypt(
               JSON.stringify({ to: input.to, body: input.body }),
@@ -113,6 +140,54 @@ export class SmsDeliveryService {
       );
     }
     return { id: event.id, status: event.status };
+  }
+
+  async listHistory(input: {
+    tenantId: string;
+    jobId?: string;
+    limit: number;
+  }) {
+    const events = await this.prisma.communicationEvent.findMany({
+      where: {
+        tenantId: input.tenantId,
+        channel: CommunicationChannel.SMS,
+        ...(input.jobId ? { jobId: input.jobId } : {}),
+      },
+      orderBy: { occurredAt: "desc" },
+      take: input.limit,
+      select: {
+        id: true,
+        jobId: true,
+        direction: true,
+        status: true,
+        attemptCount: true,
+        lastErrorCode: true,
+        occurredAt: true,
+        terminalAt: true,
+        content: { select: { templateId: true, payload: true } },
+      },
+    });
+
+    return events.map((event) => {
+      const payload = this.asPayload(event.content?.payload);
+      return {
+        id: event.id,
+        jobId: event.jobId,
+        direction: event.direction,
+        status: event.status,
+        attemptCount: event.attemptCount,
+        lastErrorCode: event.lastErrorCode,
+        occurredAt: event.occurredAt,
+        terminalAt: event.terminalAt,
+        templateId: event.content?.templateId ?? null,
+        templateKey:
+          typeof payload?.templateKey === "string" ? payload.templateKey : null,
+        templateVersion:
+          typeof payload?.templateVersion === "number"
+            ? payload.templateVersion
+            : null,
+      };
+    });
   }
 
   async processDue(limit = 25): Promise<number> {
@@ -261,6 +336,7 @@ export class SmsDeliveryService {
           in: [CommunicationStatus.QUEUED, CommunicationStatus.FAILED],
         },
         attemptCount: { lt: MAX_ATTEMPTS },
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }],
       },
       data: {
         status: CommunicationStatus.SENDING,
@@ -274,6 +350,32 @@ export class SmsDeliveryService {
       where: { id_tenantId: { id: eventId, tenantId } },
       include: { content: true },
     });
+    const lifecycleError = await this.lifecycleError(event);
+    if (lifecycleError === "calendar_sync_pending") {
+      // No provider attempt occurred. Release only our claim without spending a retry.
+      const released = await this.prisma.communicationEvent.updateMany({
+        where: {
+          id: eventId,
+          tenantId,
+          status: CommunicationStatus.SENDING,
+          attemptCount: event.attemptCount,
+        },
+        data: {
+          status: CommunicationStatus.QUEUED,
+          attemptCount: { decrement: 1 },
+          lastErrorCode: lifecycleError,
+          nextAttemptAt: new Date(Date.now() + 60_000),
+        },
+      });
+      if (released.count !== 1)
+        throw new ConflictException(
+          "SMS delivery claim changed while on hold.",
+        );
+      return CommunicationStatus.QUEUED;
+    }
+    if (lifecycleError) {
+      return this.deadLetter(tenantId, eventId, lifecycleError);
+    }
     const raw = event.content?.encryptedRaw
       ? this.cipher.decrypt(event.content.encryptedRaw)
       : null;
@@ -385,6 +487,44 @@ export class SmsDeliveryService {
     return CommunicationStatus.DEAD_LETTER;
   }
 
+  private async lifecycleError(event: {
+    tenantId: string;
+    jobId: string | null;
+    content: { payload: unknown } | null;
+  }): Promise<string | null> {
+    const payload = this.asPayload(event.content?.payload);
+    if (payload?.kind !== "transactional_sms") return null;
+    const templateKey = parseTransactionalMessageTemplateKey(
+      payload.templateKey,
+    );
+    const expectedHash = payload.lifecycleStateHash;
+    if (
+      !event.jobId ||
+      !templateKey ||
+      typeof expectedHash !== "string" ||
+      !/^[0-9a-f]{64}$/i.test(expectedHash)
+    ) {
+      return "lifecycle_state_unavailable";
+    }
+    const job = await this.prisma.job.findUnique({
+      where: {
+        id_tenantId: { id: event.jobId, tenantId: event.tenantId },
+      },
+      select: transactionalMessageJobSelect,
+    });
+    if (job && !customerSmsAllowed(job.tenant.settings, templateKey))
+      return "suppressed_tenant_preference";
+    if (
+      evaluateTransactionalMessageState(templateKey, job) === "CALENDAR_PENDING"
+    )
+      return "calendar_sync_pending";
+    return job &&
+      evaluateTransactionalMessageState(templateKey, job) === "AVAILABLE" &&
+      transactionalMessageStateHash(templateKey, job) === expectedHash
+      ? null
+      : "stale_lifecycle_state";
+  }
+
   private identity(tenantId: string) {
     const matches = this.config.twilioTenantIdentities.filter(
       (item) =>
@@ -395,6 +535,12 @@ export class SmsDeliveryService {
     if (matches.length !== 1)
       throw new BadRequestException("Tenant SMS identity is unavailable.");
     return matches[0];
+  }
+
+  private asPayload(value: unknown): Record<string, unknown> | null {
+    return value !== null && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   }
 
   private hash(tenantId: string, value: string): string {

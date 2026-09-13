@@ -1,0 +1,151 @@
+{
+  "checkpoint": "APP-013 guarded CREATE fresh-receipt boundary (inactive)",
+  "date": "2026-09-09",
+  "baseline": {
+    "backend": "a092344f816a114333c12911d6e5da331100384e",
+    "governance": "7b567d3add6c75313ba5ffc7d47f84e64ee9c420"
+  },
+  "runtimeFiles": [
+    "src/scheduling/scheduling.service.ts",
+    "src/scheduling/journaled-appointment-booking.service.ts"
+  ],
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 754,
+      "suites": 57,
+      "skippedTests": 3,
+      "newTests": 12,
+      "architecture": "PASS",
+      "prisma": "PASS",
+      "formatting": "PASS"
+    },
+    "database": {
+      "result": "PASS",
+      "migrations": 15,
+      "priorProcessCrashes": 11,
+      "newProcessCrashes": 0,
+      "postFinalizationReceiptRaces": 7,
+      "replayVersionRaces": 1,
+      "receiptAuthorityProofRefusals": 4,
+      "winningRowsAndCommittedIntentAuditPreserved": true,
+      "readOnlyReceipt": true,
+      "realProviderCalls": 0,
+      "cleanupIndependentlyVerified": true
+    },
+    "ui": {
+      "lintTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "changed": false
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "suites": 5,
+    "viewports": [
+      1440,
+      390
+    ],
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 46,
+    "technicianRequests": 26,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "artifacts": "/private/tmp/signmons-create-receipt-qa.faH9SJ/evidence/APP-013",
+    "newJournalEndpointAcceptance": false
+  },
+  "audits": {
+    "Backend-full": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 393,
+        "dev": 733,
+        "optional": 95,
+        "peer": 3,
+        "peerOptional": 0,
+        "total": 1195
+      }
+    },
+    "Backend-prod": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 393,
+        "dev": 733,
+        "optional": 95,
+        "peer": 3,
+        "peerOptional": 0,
+        "total": 1195
+      }
+    },
+    "Ui-full": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 16,
+        "dev": 309,
+        "optional": 61,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 362
+      }
+    },
+    "Ui-prod": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 16,
+        "dev": 309,
+        "optional": 61,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 362
+      }
+    }
+  },
+  "limits": [
+    "Inactive journal path only; no route/module/worker activation or legacy confirmation behavior change.",
+    "Receipt is a local query snapshot, not a new provider observation or lock against later changes.",
+    "Existing JobRecord/appointment/management-token contract retained; no new raw journal/policy/payment serialization.",
+    "Failed receipt preserves committed booking, journal, audit and notification intent; no retry/compensation/rearm/clearing.",
+    "Recovery/office-review ownership including PENDING restart, customer payment handoff, post-read/post-claim/provider/clock risks, legacy repair/retention and acceptance remain open.",
+    "No schema/dependency, provider configuration, payment-policy/charge/refund, real data, production migration, merge/deploy or activation."
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

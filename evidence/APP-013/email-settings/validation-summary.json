@@ -1,0 +1,74 @@
+{
+  "date": "2026-09-09",
+  "baseBackendCommit": "540cbc7245cf169df88bfaa4ee8b45a8cd663c25",
+  "baseGovernanceCommit": "e7ef4f941eaf881662cd73105ece75582d77c794",
+  "scope": "Independent default-off customer appointment email preferences, no delivery",
+  "newBackendTests": 29,
+  "backend": {
+    "tests": 1157,
+    "suites": 69,
+    "existingSkippedTests": 3,
+    "existingSkippedSuites": 1,
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "prisma": "PASS"
+  },
+  "ui": {
+    "newTests": 11,
+    "tests": 170,
+    "lint": "PASS",
+    "build": "PASS",
+    "staticPages": 15
+  },
+  "dependencyFindings": {
+    "backendFull": 0,
+    "backendProduction": 0,
+    "uiFull": 0,
+    "uiProduction": 0
+  },
+  "database": {
+    "result": "PASS",
+    "migrations": 16,
+    "existingProcessCrashCases": 11,
+    "newMigrations": 0,
+    "providerCalls": 0,
+    "cleanupVerified": true,
+    "checks": [
+      "Default off and independent SMS preservation",
+      "Active tenant, role and impersonation refusals",
+      "Cross-channel concurrent single-winner save",
+      "Atomic audit rollback",
+      "Lost commit acknowledgment and stale replay refusal",
+      "No message, intent, job or Calendar count changes during email preferences"
+    ]
+  },
+  "browser": {
+    "result": "PASS",
+    "detail": "browser-summary.json",
+    "screenshotsVisuallyInspected": [
+      "settings-1440.png",
+      "settings-390.png",
+      "email-invalid-mobile.png"
+    ],
+    "liveFirebaseAcceptance": false
+  },
+  "regression": {
+    "staticBrowserSuites": 5,
+    "result": "PASS",
+    "compositionGetRequests": 15,
+    "staticArtifacts": "/private/tmp/signmons-email-settings-browser.Z2eWB0/evidence/APP-013",
+    "compositionArtifacts": "/private/tmp/signmons-email-policy-composition-regression"
+  },
+  "limitations": [
+    "No delivery consumer or queue activation",
+    "Preferences are not consent, mailbox ownership or finalized-event proof",
+    "Unknown stored policy requires administrator review, not silent overwrite",
+    "No external messaging or release acceptance",
+    "Low local disk space remains"
+  ],
+  "app013ScopeCoveragePercent": 50,
+  "formalAcceptance": "0/12",
+  "pilotSectionAllowance": [20, 35],
+  "estimateConfidence": "low; unequal sections, not an ETA"
+}

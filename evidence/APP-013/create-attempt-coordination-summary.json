@@ -1,0 +1,49 @@
+{
+  "ticket": "APP-013",
+  "checkpoint": "create-active-attempt-coordination",
+  "date": "2026-09-09",
+  "status": "review-ready",
+  "scope": {
+    "pendingOwner": "executor",
+    "attemptStatus": "UNCERTAIN",
+    "handoffStatus": "APPLIED",
+    "adapterTimeoutMs": 8000,
+    "readerGraceMs": 10000,
+    "retryOrRearmAdded": false,
+    "registeredOrActivated": false
+  },
+  "validation": {
+    "focusedSuites": 3,
+    "focusedTestsPassed": 72,
+    "backendSuitesPassed": 56,
+    "backendTestsPassed": 692,
+    "existingBackendTestsSkipped": 3,
+    "disposableMigrations": 15,
+    "priorProcessCrashCases": 11,
+    "providerCalls": 0,
+    "uiTestsPassed": 60,
+    "staticPages": 14,
+    "browserSuitesPassed": 5,
+    "auditFindings": {
+      "backendFull": 0,
+      "backendProduction": 0,
+      "uiFull": 0,
+      "uiProduction": 0
+    }
+  },
+  "proof": [
+    "PENDING readers perform no job, Calendar or persistence work",
+    "fresh UNCERTAIN blocks a competing reader during a paused executor attempt",
+    "adapter exit conditionally hands UNCERTAIN to APPLIED before read-back",
+    "deadline begins before credential acquisition and prevents a delayed late fetch",
+    "crashed UNCERTAIN blocks fresh reads and permits read-only recovery after grace",
+    "no execution replay, journal rearm or reservation release is added"
+  ],
+  "remaining": [
+    "guarded authorized CREATE integration",
+    "office review, legacy repair and retention policy",
+    "provider eventual-consistency and later external mutation races",
+    "reschedule and cancellation reconciliation",
+    "SENDING recovery and remaining APP-013 acceptance"
+  ]
+}

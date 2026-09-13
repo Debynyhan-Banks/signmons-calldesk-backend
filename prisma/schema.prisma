@@ -1,3 +1,30 @@
+// Inactive VO-1 ledger. No provider payload or customer-input digest retained.
+model AddressVerificationOperation {
+  id             String                       @id @db.Uuid
+  accountId      String                       @db.Uuid
+  tenantId       String                       @db.Uuid
+  conversationId String                       @db.Uuid
+  sessionId      String                       @db.Uuid
+  intentId       String                       @db.Uuid
+  revision       Int
+  policyHash     String
+  state          String                       @default("RESERVED")
+  heldMicros     BigInt
+  createdAt      DateTime                     @default(now()) @db.Timestamptz(3)
+  attemptId      String?                      @db.Uuid
+  executionDeadline DateTime? @db.Timestamptz(3)
+  requests       AddressVerificationRequest[]
+
+  @@unique([accountId, tenantId, sessionId, intentId, revision, policyHash], map: "AddressOperation_binding_key")
+  @@index([accountId, state])
+}
+
+model AddressVerificationRequest {
+  id          String                       @id @db.Uuid
+  operationId String                       @db.Uuid
+  operation   AddressVerificationOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+}
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -46,7 +73,14 @@ model TenantOrganization {
   communicationEvents     CommunicationEvent[]
   communicationContents   CommunicationContent[]
   smsConsentRecords       SmsConsentRecord[]
+  smsPolicyVersions       TenantSmsPolicyVersion[]
+  smsPolicyHead           TenantSmsPolicyHead?
+  smsEnqueueIntents        SmsEnqueueIntent[]
+  appointmentEmailIntents AppointmentEmailIntent[]
+  appointmentCancellationSnapshots AppointmentCancellationSnapshot[]
+  calendarOperations      CalendarOperation[]
   conversationJobLinks    ConversationJobLink[]
+  emailConsentScopes      AppointmentEmailConsentScope[]
   jobOffers               JobOffer[]
   userAvailabilityBlocks  UserAvailabilityBlock[]
   userServiceCapabilities UserServiceCapability[]
@@ -279,6 +313,9 @@ model Conversation {
 
   communicationEvents CommunicationEvent[]
   jobLinks            ConversationJobLink[]
+  emailConsentScopes  AppointmentEmailConsentScope[]
+  fixtureSmsConsentState FixtureSmsConsentState?
+  smsPolicyCaptures SmsPolicyCapture[]
 
   @@unique([id, tenantId])
   @@index([tenantId])
@@ -363,6 +400,11 @@ model Job {
   ledgerEntries       LedgerEntry[]
   communicationEvents CommunicationEvent[]
   conversationLinks   ConversationJobLink[]
+  emailConsentBinding AppointmentEmailConsentBinding?
+  smsEnqueueIntents    SmsEnqueueIntent[]
+  appointmentEmailIntents AppointmentEmailIntent[]
+  appointmentCancellationSnapshots AppointmentCancellationSnapshot[]
+  calendarOperations  CalendarOperation[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, intakeSessionId])
@@ -620,6 +662,7 @@ model CommunicationEvent {
   createdAt      DateTime @default(now())
 
   content CommunicationContent?
+  enqueueIntents SmsEnqueueIntent[]
 
   @@unique([id, tenantId])
   @@unique([tenantId, idempotencyKeyHash])
@@ -628,6 +671,86 @@ model CommunicationEvent {
   @@index([status, nextAttemptAt])
   @@index([conversationId, conversationTenantId, occurredAt])
   @@index([jobId, jobTenantId, occurredAt])
+}
+
+enum CalendarOperationAction {
+  CREATE
+  RESCHEDULE
+  CANCEL
+}
+
+enum CalendarOperationStatus {
+  PENDING
+  UNCERTAIN
+  APPLIED
+  NEEDS_REVIEW
+  FINALIZED
+  ABORTED
+}
+
+// Persistence foundation only. The migration also owns CHECK constraints and
+// a partial unique index permitting only one unfinished operation per job.
+model CalendarOperation {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  jobId String @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  action CalendarOperationAction
+  status CalendarOperationStatus @default(PENDING)
+  calendarId String @db.VarChar(1024)
+  calendarEventId String @db.VarChar(256)
+  timeZone String @db.VarChar(128)
+  expectedUpdatedAt DateTime
+  claimedUpdatedAt DateTime
+  previousStatus JobStatus
+  previousCalendarEventId String? @db.VarChar(256)
+  previousWindowStart DateTime?
+  previousWindowEnd DateTime?
+  previousTimeText String? @db.VarChar(160)
+  desiredWindowStart DateTime?
+  desiredWindowEnd DateTime?
+  desiredTimeText String? @db.VarChar(160)
+  // Frozen when reviewed UNCERTAIN admission advances updatedAt. Null legacy
+  // rows retain the updatedAt + grace fallback; never a provider-write lease.
+  readbackNotBefore DateTime?
+  finishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, tenantId])
+  @@index([tenantId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum SmsEnqueueIntentStatus {
+  PENDING
+  QUEUED
+  STALE
+  FAILED
+}
+
+model SmsEnqueueIntent {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId String @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  templateKey String @db.VarChar(64)
+  stateHash String @db.VarChar(64)
+  status SmsEnqueueIntentStatus @default(PENDING)
+  attemptCount Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  lastErrorCode String? @db.VarChar(64)
+  communicationEventId String? @db.Uuid
+  communicationEvent CommunicationEvent? @relation(fields: [communicationEventId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, jobId, templateKey, stateHash])
+  @@index([status, nextAttemptAt])
+  @@index([tenantId, createdAt])
 }
 
 model CommunicationContent {
@@ -656,6 +779,7 @@ model SmsConsentRecord {
   tenant   TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   phoneHash         String
+  revision          Int              @default(1)
   status            SmsConsentStatus
   source            SmsConsentSource
   disclosureVersion String
@@ -667,10 +791,188 @@ model SmsConsentRecord {
   @@index([tenantId, status])
 }
 
+// P1 inactive policy registry. No consent or send authority.
+model TenantSmsPolicyVersion {
+  id String @id @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  content Json
+  digest String @db.Char(64)
+  createdAt DateTime @default(now())
+  heads TenantSmsPolicyHead[]
+  captures SmsPolicyCapture[]
+  @@unique([id, tenantId])
+}
+
+model TenantSmsPolicyHead {
+  tenantId String @id @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  versionId String @db.Uuid
+  version TenantSmsPolicyVersion @relation(fields: [versionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  revision Int
+  state String @db.VarChar(32)
+  publicationRef String? @db.VarChar(120)
+  lastAuditId String @db.Uuid
+  lastAudit AuditLog @relation(fields: [lastAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
+}
+
+// Inactive isolated fixture evidence. Never read by production SMS eligibility.
+model FixtureSmsConsentState {
+  tenantId String @db.Uuid
+  conversationId String @db.Uuid
+  conversation Conversation @relation(fields: [conversationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  sessionId String @db.VarChar(64)
+  encryptedPolicy String
+  revision Int @default(1)
+  prompts FixtureSmsConsentPrompt[]
+  @@id([tenantId, conversationId])
+  @@unique([conversationId, tenantId])
+  @@unique([tenantId, conversationId, sessionId])
+}
+
+model FixtureSmsConsentPrompt {
+  id String @id @db.Uuid
+  tenantId String @db.Uuid
+  conversationId String @db.Uuid
+  sessionId String @db.VarChar(64)
+  state FixtureSmsConsentState @relation(fields: [tenantId, conversationId, sessionId], references: [tenantId, conversationId, sessionId], onDelete: Restrict)
+  encryptedSnapshot String
+  issuedAt DateTime
+  expiresAt DateTime
+  recordedAt DateTime?
+  sourceAuditId String? @db.Uuid
+  sourceAudit AuditLog? @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@unique([sourceAuditId, tenantId])
+  @@index([tenantId, conversationId, expiresAt])
+}
+
+// Inactive production-shaped provenance. DRY_RUN is enforced by a database constraint.
+model SmsPolicyCapture {
+  id String @id @db.Uuid
+  tenantId String @db.Uuid
+  conversationId String @db.Uuid
+  sessionId String @db.VarChar(64)
+  conversation Conversation @relation(fields: [conversationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  policyVersionId String @db.Uuid
+  policyVersion TenantSmsPolicyVersion @relation(fields: [policyVersionId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  policyRevision Int
+  phoneHash String @db.Char(64)
+  hashKeyVersion String @db.VarChar(64)
+  consentRevision Int
+  mode String @default("DRY_RUN") @db.VarChar(16)
+  encryptedSnapshot String
+  issuedAt DateTime
+  expiresAt DateTime
+  recordedAt DateTime?
+  sourceAuditId String? @db.Uuid
+  sourceAudit AuditLog? @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  @@unique([sourceAuditId, tenantId])
+  @@index([tenantId, conversationId, sessionId])
+}
+
 
 // =====================================================
 // AUDIT
 // =====================================================
+
+// A claim snapshot is not a finalized event or a delivery instruction.
+model AppointmentCancellationSnapshot {
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId String @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  claimedUpdatedAt DateTime
+  previousUpdatedAt DateTime
+  customerId String @db.Uuid
+  intakeSessionId String? @db.VarChar(64)
+  windowStart DateTime
+  windowEnd DateTime
+  calendarEventHash String @db.Char(64)
+  createdAt DateTime @default(now())
+
+  @@id([tenantId, jobId, claimedUpdatedAt])
+}
+
+// Inactive evidence foundation. No customer collection, verification or delivery.
+model AppointmentEmailConsentScope {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversationId String @db.Uuid
+  conversation Conversation @relation(fields: [conversationId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  sessionId String @db.VarChar(64)
+  intakeCustomerId String @db.Uuid
+  createdAt DateTime @default(now())
+  evidence AppointmentEmailConsentEvidence[]
+  binding AppointmentEmailConsentBinding?
+
+  @@unique([id, tenantId])
+  @@unique([tenantId, conversationId])
+  @@unique([tenantId, sessionId])
+}
+
+model AppointmentEmailConsentEvidence {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  scopeId String @db.Uuid
+  scope AppointmentEmailConsentScope @relation(fields: [scopeId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  sourceAuditId String @db.Uuid
+  sourceAudit AuditLog @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  revision Int
+  decision String @db.VarChar(16)
+  purpose String @default("APPOINTMENT_UPDATES_V1") @db.VarChar(32)
+  promptVersion String @db.VarChar(32)
+  interactionId String @db.Uuid
+  encryptedEmail String
+  mailboxFingerprint String @db.Char(64)
+  fingerprintKeyVersion String @db.VarChar(32)
+  createdAt DateTime @default(now())
+
+  @@unique([scopeId, revision])
+  @@unique([sourceAuditId, tenantId])
+  @@unique([tenantId, interactionId])
+}
+
+model AppointmentEmailConsentBinding {
+  scopeId String @id @db.Uuid
+  tenantId String @db.Uuid
+  scope AppointmentEmailConsentScope @relation(fields: [scopeId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  jobId String @unique @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Restrict)
+  jobCustomerId String @db.Uuid
+  originLinkId String @db.Uuid
+  createdAt DateTime @default(now())
+  @@unique([scopeId, tenantId])
+  @@unique([jobId, tenantId])
+}
+
+model AppointmentEmailIntent {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant TenantOrganization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  jobId String @db.Uuid
+  job Job @relation(fields: [jobId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  sourceAuditId String @db.Uuid
+  sourceAudit AuditLog @relation(fields: [sourceAuditId, tenantId], references: [id, tenantId], onDelete: Cascade)
+  version Int @default(1)
+  kind String @default("APPOINTMENT_CONFIRMED") @db.VarChar(64)
+  state String @default("RECORDED") @db.VarChar(32)
+  source String @db.VarChar(32)
+  calendarOperationId String? @db.Uuid
+  customerId String @db.Uuid
+  intakeSessionId String? @db.VarChar(64)
+  jobUpdatedAt DateTime
+  windowStart DateTime
+  windowEnd DateTime
+  calendarEventHash String @db.Char(64)
+  tenantSettingsUpdatedAt DateTime
+  preference String @db.VarChar(16)
+  createdAt DateTime @default(now())
+
+  @@unique([sourceAuditId, tenantId])
+  @@unique([tenantId, jobId, kind, jobUpdatedAt])
+  @@index([tenantId, createdAt])
+}
 
 model AuditLog {
   id        String   @id @default(uuid()) @db.Uuid
@@ -688,7 +990,12 @@ model AuditLog {
   entityId    String
   metadata    Json?
   traceId     String?
+  appointmentEmailIntents AppointmentEmailIntent[]
   createdAt   DateTime @default(now())
+  emailConsentEvidence AppointmentEmailConsentEvidence[]
+  fixtureSmsConsentPrompts FixtureSmsConsentPrompt[]
+  smsPolicyHeads TenantSmsPolicyHead[]
+  smsPolicyCaptures SmsPolicyCapture[]
 
   @@unique([id, tenantId])
   @@index([tenantId])

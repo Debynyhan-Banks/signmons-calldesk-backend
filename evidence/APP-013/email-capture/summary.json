@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "real": [
+    "serialized conversation creation",
+    "encrypted capture and audit transactions",
+    "AiService orchestration",
+    "JobsService",
+    "CallLogService",
+    "tenant-scoped conversation/job links",
+    "disposable PostgreSQL"
+  ],
+  "synthetic": [
+    "scripted model",
+    "tenant prompt",
+    "notification sink",
+    "no Calendar availability"
+  ],
+  "checks": [
+    "concurrent first session yields one conversation",
+    "one prompt reservation under concurrent requests",
+    "first captured value wins",
+    "fresh service and closed-history retries do not re-ask",
+    "separate Node process retains encrypted capture without another question",
+    "cross-tenant/session/deleted refusal",
+    "legacy duplicate session refuses",
+    "audit rollback",
+    "lost commit acknowledgment preserves capture once",
+    "optional email prompt before model/job creation",
+    "capture linked to actual created job without customer-master overwrite",
+    "skip continues job creation",
+    "volunteered email avoids prompt",
+    "no address in public job response or audit metadata"
+  ],
+  "modelCalls": 4,
+  "notificationRequests": 4,
+  "providerCalls": 0,
+  "newMigrations": 0
+}

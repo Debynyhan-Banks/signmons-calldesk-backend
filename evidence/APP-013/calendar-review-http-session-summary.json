@@ -1,0 +1,331 @@
+{
+  "ticket": "APP-013",
+  "date": "2026-09-09",
+  "section": "Inactive Calendar review HTTP adapter/session binding",
+  "status": "review-ready; no activation",
+  "baselines": {
+    "backend": "0e276f9f005afd4a3ab78e3d3fff140f1ff99179",
+    "governance": "3bffee481ddb54d1224f3b01b48f8ff63bfb181b"
+  },
+  "files": [
+    "ui/src/calendar-review/http-session.ts",
+    "ui/src/calendar-review/http-session.test.ts",
+    "ui/scripts/run-tests.mjs",
+    "scripts/verify-calendar-review-http-session.mjs"
+  ],
+  "governanceRepair": {
+    "issue": "Prior Backend row and numbered next steps were misplaced; same APP-013 scope remained clear in ticket and both boards",
+    "resolution": "Restored row to global pointer Repo Status and sequential 1-4 handoff actions before coding",
+    "regressionFiles": [
+      "scripts/execution-placement.mjs",
+      "scripts/execution-placement.test.mjs",
+      "scripts/docs-consistency-check.mjs"
+    ],
+    "tests": 4
+  },
+  "contract": {
+    "construction": "Explicit trusted API origin and injected fetch; no default URL or registration",
+    "originPolicy": "HTTPS or exact loopback HTTP only; no URL credentials/query/hash/path",
+    "session": "Private in-memory bearer token; fresh non-secret generation on every bind; invalid binding/clear/dispose/rejection erases credentials; subscribe/getSnapshot expose only sessionKey/role/read",
+    "consumerRequirement": "Parent subscribes to every descriptor and replaces/clears client/panel. This remains unwired; display role never establishes server authority",
+    "requests": {
+      "method": "GET",
+      "paths": [
+        "/scheduling/calendar-review/jobs/:uuid/operations",
+        "/scheduling/calendar-review/operations/:uuid",
+        "/scheduling/calendar-review/operations/:uuid/recovery-requests"
+      ],
+      "headers": [
+        "Accept: application/json",
+        "Authorization: Bearer <in-memory credential>"
+      ],
+      "credentials": "omit",
+      "cache": "no-store",
+      "redirect": "error",
+      "referrerPolicy": "no-referrer",
+      "body": false
+    },
+    "response": {
+      "deadlineMs": 15000,
+      "maximumBytes": 262144,
+      "requires": [
+        "No redirect / exact returned URL when populated",
+        "JSON content type",
+        "no-store cache directive",
+        "Valid bounded UTF-8 JSON body"
+      ],
+      "errorBodies": "Cancelled and omitted; no parsing/return/logging",
+      "authFailures": "401/403 clear credential, rotate denied descriptor and cancel siblings",
+      "cancellation": "Generation checks and abort before/after awaits; late response bodies released even if fetch ignores abort",
+      "automaticRetries": false
+    },
+    "appWiring": false,
+    "mutations": false
+  },
+  "validation": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 962,
+      "passingSuites": 63,
+      "existingSkippedTests": 3,
+      "existingSkippedSuites": 1,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "lintAndTypecheck": "PASS",
+      "tests": 135,
+      "newAdapterSessionTests": 36,
+      "build": "PASS",
+      "staticPages": 14,
+      "activeRouteChanges": 0
+    },
+    "crossLayer": {
+      "result": "PASS",
+      "requests": 16,
+      "readQueries": 15,
+      "realComponents": [
+        "Adapter/session",
+        "Client/parser",
+        "Native fetch and loopback HTTP",
+        "Nest controller and auth/tenant/role/throttle guards",
+        "Request context",
+        "Review service and sanitized filters"
+      ],
+      "syntheticSeams": [
+        "Firebase verifier",
+        "Prisma read-only double"
+      ],
+      "checks": [
+        "All three owner/admin fixed GETs",
+        "Forged display role, invalid token and missing tenant refused before queries",
+        "New tenant clears earlier views; missing operation/history refuse before audit query",
+        "Bounded sanitized 503 and explicit manual refresh",
+        "Actual in-flight HTTP session replacement discards old data"
+      ],
+      "providerCalls": 0,
+      "mutationRequests": 0,
+      "fixture": "Loopback Nest fixture closed; no AppModule composition"
+    },
+    "database": {
+      "result": "PASS",
+      "kind": "Unchanged real PostgreSQL regression, separate from cross-layer read doubles",
+      "migrations": 16,
+      "newMigrations": 0,
+      "priorActualProcessCrashes": 11,
+      "newProcessCrashes": 0,
+      "providerCalls": 0,
+      "cleanup": "Removed and independently confirmed absent via calldesk_app013_intents_% query"
+    },
+    "audits": {
+      "backendfull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "backendprod": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uifull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiprod": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    },
+    "browsers": {
+      "kind": "Five unchanged static UI suites plus separate unlinked synthetic-reader component; no new adapter browser/CORS acceptance",
+      "artifacts": "/private/tmp/signmons-review-session-qa.VAxZH1",
+      "visualInspectionClaim": false,
+      "framework": {
+        "result": "PASS",
+        "routeChecks": 22,
+        "homeNavigations": 12,
+        "staticManifest": true,
+        "externalRequests": 0,
+        "errors": 0,
+        "failedResources": 0
+      },
+      "customerDispatch": {
+        "result": "PASS",
+        "viewports": [
+          1440,
+          390
+        ],
+        "requests": 46,
+        "customerSyntheticPosts": 22,
+        "dispatchMutationPosts": 0,
+        "pageErrors": [],
+        "externalRequests": 0
+      },
+      "technician": {
+        "result": "PASS",
+        "viewports": [
+          1440,
+          390
+        ],
+        "requests": 26,
+        "syntheticConflictPosts": 2,
+        "initialHeldMutationPosts": 0,
+        "legacyHeldStates": [
+          "ASSIGNED",
+          "IN_PROGRESS",
+          "COMPLETED"
+        ],
+        "pageErrors": [],
+        "externalRequests": 0
+      },
+      "policy": {
+        "result": "PASS",
+        "viewports": [
+          1440,
+          390
+        ],
+        "requests": 8,
+        "syntheticConflictPosts": 4,
+        "externalRequests": 0,
+        "pageErrors": [],
+        "operationsEscalationRemainsAvailable": true
+      },
+      "notifications": {
+        "result": "PASS",
+        "apiRequests": 95,
+        "syntheticPosts": 14,
+        "methods": [
+          "GET",
+          "POST"
+        ],
+        "checks": [
+          "legacy reservation hold visible without retry controls or new POSTs at desktop/390px",
+          "desktop",
+          "390px no overflow",
+          "status and job filters",
+          "invalid UUID",
+          "empty",
+          "403",
+          "500",
+          "loading",
+          "independent partial failures",
+          "intent status and loaded-subset job filters",
+          "late responses after token edit, job edit and session clear",
+          "no credential storage",
+          "PII omission",
+          "keyboard order",
+          "no page errors",
+          "verified capability fail-closed and dispatcher read-only",
+          "review focus, cancellation, reason and acknowledgment required",
+          "one synthetic POST for duplicate click with exact reviewed version",
+          "400/401/403/404/409/429 rejection and refresh required",
+          "500/network/malformed/15-second-timeout uncertainty without automatic retry",
+          "late POST after token edit, job edit and session clear"
+        ],
+        "screenshots": [
+          "legacy-message-hold-desktop.png",
+          "legacy-message-hold-mobile.png",
+          "reschedule-intents-desktop.png",
+          "reschedule-intents-mobile.png",
+          "reschedule-retry-desktop.png",
+          "reschedule-retry-mobile.png"
+        ]
+      },
+      "unlinkedComponent": {
+        "result": "PASS",
+        "checks": [
+          {
+            "width": 1440,
+            "ready": true,
+            "privacy": true,
+            "emptyAndCap": true,
+            "partialFailure": true,
+            "errors": true,
+            "lateReferenceSessionAndClear": true,
+            "accessDenied": true,
+            "keyboard": true,
+            "doubleTextNoOverflow": true
+          },
+          {
+            "width": 390,
+            "ready": true,
+            "privacy": true,
+            "emptyAndCap": true,
+            "partialFailure": true,
+            "errors": true,
+            "lateReferenceSessionAndClear": true,
+            "accessDenied": true,
+            "keyboard": true,
+            "doubleTextNoOverflow": true
+          }
+        ],
+        "timeoutAndLateDiscard": true,
+        "errors": [],
+        "external": [],
+        "mutations": [],
+        "injectedReadCalls": 17,
+        "screenshots": "/private/tmp/signmons-review-session-qa.VAxZH1/component"
+      }
+    },
+    "governance": {
+      "consistency": "PASS",
+      "placementTests": 4,
+      "diffCheck": "PASS"
+    }
+  },
+  "remainingRisks": [
+    "Inactive subscribed panel/session composition and browser-to-loopback acceptance",
+    "Real Firebase/HTTP-to-real-DB/deployed CORS/owner acceptance",
+    "Parent subscription and credential lifetime; abort cannot retract server-received GET",
+    "Mutation/receipt semantics and recovery controls",
+    "Clock/provider/payment races and customer handoff",
+    "Legacy repair/retention, RESCHEDULE/CANCEL and SENDING recovery",
+    "Dependency overrides and migration/release ordering"
+  ],
+  "limits": [
+    "No source app-route or controller registration, real provider credentials or changes",
+    "No production migration/backfill, real customer/appointment/payment/message/charge/refund or secret/IAM/billing action",
+    "No merge or deployment; source feature branch only"
+  ],
+  "warnings": [
+    "Unused test import and TypeScript closure-narrowing build error corrected; final gates pass",
+    "Existing pg concurrent-query deprecation",
+    "Existing Next lint/workspace-root warning",
+    "Intentional PostCSS fixture warning"
+  ],
+  "planningEstimates": {
+    "app013Percent": 85,
+    "app006ThroughApp016Percent": 81,
+    "note": "Unchanged planning estimates, not release readiness"
+  },
+  "nextProposedSection": "Inactive subscribed panel/session composition with browser-to-loopback HTTP acceptance using synthetic identity/data; no live registration or recovery controls",
+  "reviewInstructions": "evidence/APP-013/readiness-report.md"
+}

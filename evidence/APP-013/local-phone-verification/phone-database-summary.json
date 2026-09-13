@@ -1,0 +1,14 @@
+{
+  "checks": [
+    "concurrent request/exact retry writes once",
+    "new service instance restores encrypted state",
+    "changed retry refused",
+    "fixture success never grants phone authority",
+    "real audit failure rolls back",
+    "explicit correction revokes proof",
+    "cross-session destination limit persists",
+    "cross-session attempt budget persists",
+    "cooldown then corrected-number request; expired code refused",
+    "forged session scope refuses"
+  ]
+}

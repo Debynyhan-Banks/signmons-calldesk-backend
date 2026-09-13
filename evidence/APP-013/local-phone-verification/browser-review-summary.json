@@ -1,0 +1,25 @@
+{
+  "checks": [
+    "local phone request, wrong code, successful fixture check and explicit correction invalidate proof without sending",
+    "customer explicitly submits immutable review request; lost acknowledgment exact retry creates no job",
+    "operator reads by opaque reference with role/tenant enforcement, selects urgency and explicitly approves",
+    "lost approval acknowledgment exact retry returns one committed CREATED job without customer credentials",
+    "created job opens read-only readiness; missing policy/window/verification and required-payment refusal; no false confirmation or writes",
+    "owner browser saves and separately approves payment policy; reviewed job binds exact approved snapshot once; draft changes do not alter approval or job; required payment remains locked",
+    "actual operator browser save and lost-response exact retry",
+    "real audit failure rolls back preference and job version",
+    "fresh reload removes only missing preference blocker",
+    "stale and foreign/role/authority inputs refuse",
+    "concurrent identical correction commits once",
+    "closed request read refuses visibly without offering a replacement admission",
+    "separate customer/operator contexts, no browser storage, mobile fit, private clear and zero page errors"
+  ],
+  "newFictionalJobs": 1,
+  "status": "CREATED",
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false,
+  "operatorCustomerCredentialAccesses": 0,
+  "browserErrors": [],
+  "identity": "explicit local fixture guard; not production authentication acceptance",
+  "productionRegistered": false
+}

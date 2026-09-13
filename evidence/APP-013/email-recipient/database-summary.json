@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "database": "disposable Unix-socket fixture",
+  "successfulReads": 6,
+  "refusedReads": 26,
+  "checks": [
+    "recipient: actual retained capture and placeholder-to-job customer binding",
+    "recipient: one-statement tenant/session/origin scope and no contact fallback",
+    "recipient: auth, lifecycle, Calendar hold, stale and ambiguous origin refusals",
+    "recipient: deleted/inactive records and malformed ciphertext fail closed",
+    "recipient: private snapshot only, no ownership or delivery authorization",
+    "recipient: all resolver invocations leave business rows and side-effect counts unchanged"
+  ],
+  "providerCalls": 0,
+  "deliveryAuthorized": false,
+  "httpAuthenticationTested": false
+}

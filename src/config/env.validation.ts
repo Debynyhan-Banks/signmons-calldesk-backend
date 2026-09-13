@@ -1,6 +1,9 @@
 import * as Joi from "joi";
 
 export const envValidationSchema = Joi.object({
+  BACKGROUND_WORKERS_ENABLED: Joi.string()
+    .valid("true", "false")
+    .default("true"),
   NODE_ENV: Joi.string()
     .valid("development", "production", "test")
     .default("development"),

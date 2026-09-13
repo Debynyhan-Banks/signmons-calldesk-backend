@@ -1,0 +1,19 @@
+{
+  "checks": [
+    "two sessions cannot read or clear each other's correction",
+    "committed closure refuses proof despite purge rollback",
+    "server sweep clears cache without browser keepalive",
+    "new cleanup instance retries failed deletion",
+    "only abandoned matching draft payload removed; unrelated/foreign/submitted preserved",
+    "restart cannot redispatch an observed address operation",
+    "restored expired snapshot refuses and is purged",
+    "seven-day-or-earlier abandoned draft sweep and concurrent audit once",
+    "legacy records untouched and malformed lifecycle refused",
+    "ninety-day resolved alias purge retains younger and uncertain references",
+    "reference purge audit failure rolls back; foreign tenant sweep removes nothing",
+    "accounting rows, request counts and holds unchanged"
+  ],
+  "mockCalls": 2,
+  "liveProviderCalls": 0,
+  "productionRegistered": false
+}

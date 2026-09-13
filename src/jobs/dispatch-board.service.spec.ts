@@ -19,6 +19,7 @@ describe("DispatchBoardService", () => {
   const techId = "2f2ecce7-6bb1-4aaa-a946-a660c80bb6c5";
   const now = new Date("2026-08-31T15:00:00.000Z");
   const baseJob = {
+    calendarOperations: [],
     id: jobId,
     tenantId,
     customerId: "customer-1",
@@ -331,8 +332,10 @@ describe("DispatchBoardService", () => {
     const { prisma, service } = createHarness();
     prisma.job.findFirst
       .mockResolvedValueOnce({
+        ...baseJob,
         id: jobId,
         assignedUserId: techId,
+        calendarOperations: [],
         updatedAt: now,
       })
       .mockResolvedValueOnce({
@@ -366,6 +369,184 @@ describe("DispatchBoardService", () => {
         }),
       }),
     );
+  });
+
+  it("holds recommendations and overrides, including same-technician replay", async () => {
+    const { prisma, service } = createHarness();
+    const job = {
+      ...baseJob,
+      assignedUserId: techId,
+      calendarOperations: [{ id: "pending" }],
+    };
+    prisma.job.findFirst.mockResolvedValue(job);
+    prisma.user.findMany.mockResolvedValue([qualifiedTech]);
+    prisma.auditLog.findMany.mockResolvedValue([]);
+    const result = await service.get(tenantId, jobId);
+    expect(result).toMatchObject({
+      queue: "ESCALATED",
+      calendarSyncPending: true,
+      recommendation: null,
+    });
+    expect(result.candidates[0]).toMatchObject({
+      eligible: false,
+      reasonCodes: expect.arrayContaining(["CALENDAR_SYNC_PENDING"]),
+    });
+    await expect(
+      service.assign({
+        tenantId,
+        jobId,
+        technicianId: techId,
+        expectedUpdatedAt: now.toISOString(),
+        actorId: "fixture",
+        reason: "An override cannot bypass this hold",
+      }),
+    ).rejects.toThrow("Calendar synchronization is unfinished");
+    await expect(
+      service.cancelAssignment({
+        tenantId,
+        jobId,
+        expectedUpdatedAt: now.toISOString(),
+        actorId: "fixture",
+        reason: "Fixture cancellation",
+      }),
+    ).rejects.toThrow("Calendar synchronization is unfinished");
+    expect(prisma.job.updateMany).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it.each([null, "", " \t "])(
+    "holds legacy dispatch with reference %j across partial windows and assignment states",
+    async (calendarEventId) => {
+      for (const window of [
+        {
+          serviceWindowStart: baseJob.serviceWindowStart,
+          serviceWindowEnd: baseJob.serviceWindowEnd,
+        },
+        {
+          serviceWindowStart: baseJob.serviceWindowStart,
+          serviceWindowEnd: null,
+        },
+        {
+          serviceWindowStart: null,
+          serviceWindowEnd: baseJob.serviceWindowEnd,
+        },
+      ]) {
+        for (const assignedUserId of [null, techId]) {
+          const { prisma, service } = createHarness();
+          const job = {
+            ...baseJob,
+            ...window,
+            calendarEventId,
+            assignedUserId,
+          };
+          prisma.job.findFirst.mockResolvedValue(job);
+          prisma.job.findMany.mockResolvedValue([job]);
+          prisma.user.findMany.mockResolvedValue([qualifiedTech]);
+          prisma.auditLog.findMany.mockResolvedValue([]);
+          expect((await service.list(tenantId))[0]).toMatchObject({
+            calendarSyncPending: true,
+            queue: "ESCALATED",
+          });
+          const detail = await service.get(tenantId, jobId);
+          expect(detail).toMatchObject({
+            calendarSyncPending: true,
+            queue: "ESCALATED",
+            recommendation: null,
+          });
+          expect(detail.candidates[0]).toMatchObject({
+            eligible: false,
+            reasonCodes: expect.arrayContaining(["CALENDAR_SYNC_PENDING"]),
+          });
+          expect(JSON.stringify(detail)).not.toContain("calendarEventId");
+          for (const technicianId of [techId, "another-tech"]) {
+            await expect(
+              service.assign({
+                tenantId,
+                jobId,
+                technicianId,
+                expectedUpdatedAt: now.toISOString(),
+                actorId: "fixture",
+                reason: "Approved override cannot bypass reservation hold",
+              }),
+            ).rejects.toBeInstanceOf(ConflictException);
+          }
+          await expect(
+            service.cancelAssignment({
+              tenantId,
+              jobId,
+              expectedUpdatedAt: now.toISOString(),
+              actorId: "fixture",
+              reason: "Do not clear an uncertain reservation",
+            }),
+          ).rejects.toBeInstanceOf(ConflictException);
+          expect(prisma.job.updateMany).not.toHaveBeenCalled();
+          expect(prisma.auditLog.create).not.toHaveBeenCalled();
+        }
+      }
+    },
+  );
+
+  it.each(["assign", "cancelAssignment"] as const)(
+    "%s binds the mutation to the observed version and reservation fields",
+    async (method) => {
+      const { prisma, service } = createHarness();
+      const job = {
+        ...baseJob,
+        assignedUserId: method === "assign" ? null : techId,
+      };
+      prisma.job.findFirst.mockResolvedValue(job);
+      prisma.user.findMany.mockResolvedValue([qualifiedTech]);
+      prisma.job.updateMany.mockResolvedValue({ count: 0 });
+      const expectedUpdatedAt = new Date(now.getTime() + 1000);
+      await expect(
+        service[method]({
+          tenantId,
+          jobId,
+          technicianId: techId,
+          expectedUpdatedAt: expectedUpdatedAt.toISOString(),
+          actorId: "fixture",
+          reason: "Synthetic stale snapshot test",
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.job.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            updatedAt: expectedUpdatedAt,
+            AND: [{ updatedAt: now }],
+            status: job.status,
+            calendarEventId: job.calendarEventId,
+            serviceWindowStart: job.serviceWindowStart,
+            serviceWindowEnd: job.serviceWindowEnd,
+            deletedAt: null,
+            calendarOperations: { none: { finishedAt: null } },
+          }),
+        }),
+      );
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it("preserves unscheduled dispatch and terminal history without declaring them provisional", async () => {
+    for (const status of [
+      JobStatus.ACCEPTED,
+      JobStatus.CANCELLED,
+      JobStatus.COMPLETED,
+    ]) {
+      const { prisma, service } = createHarness();
+      prisma.job.findFirst.mockResolvedValue({
+        ...baseJob,
+        status,
+        calendarEventId: null,
+        serviceWindowStart:
+          status === JobStatus.ACCEPTED ? null : baseJob.serviceWindowStart,
+        serviceWindowEnd: null,
+      });
+      prisma.user.findMany.mockResolvedValue([]);
+      prisma.auditLog.findMany.mockResolvedValue([]);
+      expect((await service.get(tenantId, jobId)).calendarSyncPending).toBe(
+        false,
+      );
+    }
   });
 
   it("uses the same not-found boundary for cross-tenant jobs", async () => {

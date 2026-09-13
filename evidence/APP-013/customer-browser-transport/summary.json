@@ -1,0 +1,43 @@
+{
+  "result": "PASS",
+  "checks": [
+    "real HTTP origin/metadata/custom-header/cookie/integration-header refusals leave database untouched",
+    "query credentials, oversized stream and duplicate JSON refuse with fixed private responses",
+    "application failure is sanitized without retry or customer creation",
+    "valid signature for another tenant cannot cross the fixed browser binding",
+    "desktop/mobile browser bootstrap, capture, prompt and explicit grant/decline persist through the actual transport/services/database",
+    "real second-origin simple POST and JSON/custom-header preflight fail without application work",
+    "private browser state clears after completion; no cookies, web storage, URL credentials or external traffic",
+    "unavailable quota refuses before customer creation; local budget concurrency/window limits have unit proof",
+    "diagnostics contain fixed operation/status only; raw errors, URLs, mailboxes and bearer credentials are absent"
+  ],
+  "checkCount": 9,
+  "calls": {
+    "start": 3,
+    "capture": 2,
+    "prompt": 2,
+    "respond": 2
+  },
+  "diagnosticCount": 23,
+  "httpStatuses": {
+    "200": 8,
+    "400": 1,
+    "403": 12,
+    "413": 1,
+    "503": 1
+  },
+  "viewports": [
+    1440,
+    390
+  ],
+  "pageErrors": [],
+  "external": [],
+  "providerCalls": 0,
+  "productionActions": 0,
+  "deliveryAuthorized": false,
+  "limitations": [
+    "Explicit loopback HTTP fixture, not production TLS/proxy/access-log acceptance",
+    "Local budget resets on restart and is not distributed protection",
+    "No production route, key loader, collection, full protected AI intake or sending"
+  ]
+}

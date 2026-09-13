@@ -1,0 +1,223 @@
+{
+  "ticket": "APP-013",
+  "date": "2026-09-09",
+  "section": "Privacy-safe recovery readiness and request history",
+  "status": "review-ready; inactive",
+  "baselines": {
+    "backend": "1e389842494a730e21568d885b4db280a5fd0e44",
+    "governance": "5ecd0575bc13bcd82dd4a96d138dc3b1920bc72c"
+  },
+  "files": [
+    "src/scheduling/calendar-review-state.service.ts",
+    "src/scheduling/calendar-review-state.service.spec.ts",
+    "src/scheduling/calendar-recovery-request-history.spec.ts",
+    "scripts/verify-calendar-review-state.mjs"
+  ],
+  "contract": {
+    "authority": "Existing trusted user/tenant context and normalized owner/admin role; future RequestAuthGuard/TenantGuard required",
+    "readinessFields": [
+      "recoveryReviewCandidate: applied_create|uncertain_create|null",
+      "recoveryReadbackNotBefore: canonical ISO|null"
+    ],
+    "readinessMeaning": "Local unfinished-CREATE state/timing hint only; shared persisted/fallback boundary, recomputed on reads, not admission authority or provider/job eligibility",
+    "historyMethod": "listRecoveryRequests({operationId})",
+    "historyFilters": [
+      "Exact tenant/operation existence before audit access",
+      "tenantId",
+      "entityType CalendarOperation",
+      "exact entityId",
+      "actorType USER",
+      "APPLIED/UNCERTAIN readback-request actions only"
+    ],
+    "selectedAuditFields": [
+      "id",
+      "action",
+      "createdAt"
+    ],
+    "historyItemFields": [
+      "requestId",
+      "kind",
+      "requestedAt"
+    ],
+    "historyFlags": {
+      "snapshotOnly": true,
+      "requestOnly": true,
+      "hasMore": "true if more than 100 query rows"
+    },
+    "limits": {
+      "queryRows": 101,
+      "returnedRows": 100,
+      "order": [
+        "createdAt DESC",
+        "id DESC"
+      ],
+      "pagination": false
+    },
+    "excluded": [
+      "Actor identity",
+      "Raw audit metadata",
+      "Trace IDs",
+      "Customer/payment/provider related records"
+    ],
+    "writes": false,
+    "recoveryCalls": false,
+    "activeWiring": false
+  },
+  "validation": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 917,
+      "passingSuites": 62,
+      "existingSkippedTests": 3,
+      "existingSkippedSuites": 1,
+      "newTests": 30,
+      "newReadinessTests": 11,
+      "newHistoryTests": 19,
+      "focusedTests": 59,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "database": {
+      "result": "PASS",
+      "migrations": 16,
+      "newMigrations": 0,
+      "priorActualProcessCrashes": 11,
+      "newActualProcessCrashes": 0,
+      "checks": [
+        "101 real request audits capped at 100 with deterministic tied-date UUID ordering",
+        "Tenant/operation/entity/actor/action decoys excluded; missing/cross-tenant uniformly refuse",
+        "Private actor/metadata/trace content absent from outputs",
+        "Readiness crosses saved deadline and reverses on clock rollback without writes",
+        "Real UNCERTAIN admission lost acknowledgment exposes one request-only audit, newer version and same deadline with no recovery call",
+        "Full job/journal snapshots and audit/intent/message counts unchanged by projection/history reads"
+      ],
+      "realProviderCalls": 0,
+      "cleanup": "Parent-owned random Unix-socket DB removed; independent calldesk_app013_intents_% query returned no rows"
+    },
+    "ui": {
+      "changed": false,
+      "lintAndTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "build": "PASS"
+    },
+    "browser": {
+      "result": "PASS",
+      "kind": "Unchanged synthetic static-export regressions, no new UI or authenticated/provider acceptance",
+      "viewports": [
+        1440,
+        390
+      ],
+      "artifacts": "/private/tmp/signmons-readiness-history-qa.a0Arjy/evidence/APP-013",
+      "framework": {
+        "routes": 22,
+        "navigations": 12,
+        "staticManifest": true,
+        "externalRequests": 0,
+        "errors": 0,
+        "failedResources": 0
+      },
+      "customerDispatch": {
+        "requests": 46,
+        "syntheticPosts": 22,
+        "dispatchWrites": 0,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "technician": {
+        "requests": 26,
+        "syntheticConflictPosts": 2,
+        "initialHeldMutationPosts": 0,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "policy": {
+        "requests": 8,
+        "syntheticConflictPosts": 4,
+        "pageErrors": 0,
+        "externalRequests": 0
+      },
+      "notifications": {
+        "requests": 95,
+        "syntheticPosts": 14,
+        "result": "PASS"
+      },
+      "visualScreenshotInspection": false
+    },
+    "audits": {
+      "backendFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "backendProd": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiFull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiProd": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    }
+  },
+  "limits": [
+    "Readiness/history are separate snapshots, not atomic combined receipt or mutation authority",
+    "Request rows are not proof of recovery execution/success; empty/truncated history is not complete history",
+    "No route/module/worker activation or recovery/provider call",
+    "No schema/dependency/provider configuration or production action",
+    "Prior nullable migration still requires separately approved release ordering",
+    "Synthetic contexts and provider seams; no new Firebase/HTTP/live-owner or process-crash acceptance"
+  ],
+  "remainingRisks": [
+    "Protected read-only review API boundary and UI/acceptance",
+    "Mutation transport and receipt semantics",
+    "Clock skew/forward jumps and delayed provider completion",
+    "Customer/payment handoff and post-read/provider/payment races",
+    "Legacy inventory/repair/retention",
+    "RESCHEDULE/CANCEL and SENDING recovery",
+    "Dependency overrides and migration/release approval"
+  ],
+  "planningEstimates": {
+    "app013Percent": 85,
+    "app006ThroughApp016Percent": 81,
+    "note": "Unchanged planning estimates, not release readiness"
+  },
+  "warnings": [
+    "Existing pg concurrent-query deprecation",
+    "Existing Next lint/workspace-root warnings",
+    "Intentional PostCSS fixture warning"
+  ],
+  "reviewInstructions": "evidence/APP-013/readiness-report.md"
+}

@@ -1,0 +1,47 @@
+{
+  "date": "2026-09-10",
+  "backend": {
+    "newTests": 19,
+    "admissionAndReplayTests": 17,
+    "closedSessionConsentTests": 2,
+    "testsPassed": 1471,
+    "suitesPassed": 80,
+    "testsSkipped": 3,
+    "suitesSkipped": 1,
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "prismaValidate": "PASS"
+  },
+  "ui": {
+    "runtimeChanged": false,
+    "testsPassed": 170,
+    "lint": "PASS",
+    "build": "PASS",
+    "staticPages": 15
+  },
+  "audits": {
+    "backendFull": 0,
+    "backendProduction": 0,
+    "uiFull": 0,
+    "uiProduction": 0
+  },
+  "database": {
+    "existingMigrations": 19,
+    "newMigrations": 0,
+    "newAdmissionCheckGroups": 9,
+    "priorProcessCrashCases": 19,
+    "newProcessCrashCases": 0,
+    "cleanup": "no matching databases"
+  },
+  "browser": {
+    "newSurface": false,
+    "existingDesktopMobileRegressions": "PASS",
+    "reason": "No rendered UI or production route changed"
+  },
+  "providerCalls": 0,
+  "productionActions": 0,
+  "jobStatus": "CREATED",
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false
+}

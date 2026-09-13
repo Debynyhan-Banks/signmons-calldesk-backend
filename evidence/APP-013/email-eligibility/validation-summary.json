@@ -1,0 +1,61 @@
+{
+  "result": "PASS",
+  "date": "2026-09-09",
+  "baseBackendCommit": "949e44896efc5b56263f7199a0eb9e156512d002",
+  "backend": {
+    "tests": 1232,
+    "suites": 72,
+    "skippedTests": 3,
+    "skippedSuites": 1,
+    "newTests": 42,
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "prisma": "PASS"
+  },
+  "ui": {
+    "changed": false,
+    "tests": 170,
+    "exportedPages": 15,
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "dependencyAudits": {
+    "backendFull": 0,
+    "backendProduction": 0,
+    "uiFull": 0,
+    "uiProduction": 0
+  },
+  "database": {
+    "migrations": 18,
+    "processCrashScenarios": 19,
+    "newMigrations": 0,
+    "newCrashScenarios": 0,
+    "invariantCheckedReads": 23,
+    "tablesComparedPerRead": 11,
+    "consistentSnapshotRevocationRace": "PASS",
+    "postgresReadOnlyWriteRefusal": "PASS",
+    "cleanupIndependentlyVerified": true
+  },
+  "browser": {
+    "staticRegressionScripts": 5,
+    "settingsAndInboxDatabaseChecks": "PASS",
+    "compositionGetRequests": 15,
+    "newUi": false,
+    "providerAcceptance": false,
+    "visuallyInspected": ["email settings mobile"],
+    "staticArtifacts": "/private/tmp/signmons-eligibility-browser.Dl1InR/evidence/APP-013",
+    "compositionArtifacts": "/private/tmp/signmons-eligibility-composition"
+  },
+  "admittedEvents": 0,
+  "providerCalls": 0,
+  "productionActions": 0,
+  "limitations": [
+    "Inactive owner/admin diagnostic only",
+    "Missing consent and expiry authority always refuses",
+    "A coherent read snapshot cannot authorize a later send",
+    "No credentials, queue or transport",
+    "Prior migration/release and Calendar risks remain",
+    "Low disk and existing tooling warnings"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "result": "PASS",
+  "scope": "Initial confirmation only; recorded event, not delivery admission",
+  "preferenceCases": 3,
+  "freshProcessReads": 3,
+  "newProcessCrashes": 2,
+  "providerCalls": 0,
+  "checks": [
+    "No event before finalization",
+    "Exact immutable event/window/version snapshots",
+    "Default-off/permitted/invalid preference snapshots",
+    "Old receipt backfill refused",
+    "Database UPDATE and cross-tenant FK refused",
+    "Later job/policy edits do not rewrite snapshots",
+    "Intent failure rolls back job/SMS/audit",
+    "Concurrent finalization single winner",
+    "Before/after commit process exits retain zero/one atomic event; replay stays one"
+  ]
+}

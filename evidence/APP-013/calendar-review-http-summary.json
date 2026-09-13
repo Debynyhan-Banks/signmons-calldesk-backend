@@ -1,0 +1,217 @@
+{
+  "ticket": "APP-013",
+  "date": "2026-09-09",
+  "section": "Protected read-only Calendar review HTTP boundary",
+  "status": "review-ready; inactive",
+  "baselines": {
+    "backend": "911df72a3f77ef3caa42477f72fc3bacb1cfa27d",
+    "governance": "24a0336a96ea7d30a48d903e65cfcfb16184a527"
+  },
+  "files": [
+    "src/scheduling/calendar-review.controller.ts",
+    "src/scheduling/calendar-review-access.guard.ts",
+    "src/scheduling/calendar-review-http.filter.ts",
+    "src/scheduling/calendar-review.http.spec.ts"
+  ],
+  "contract": {
+    "routes": [
+      "GET /scheduling/calendar-review/jobs/:jobId/operations",
+      "GET /scheduling/calendar-review/operations/:operationId",
+      "GET /scheduling/calendar-review/operations/:operationId/recovery-requests"
+    ],
+    "guards": [
+      "RequestAuthGuard",
+      "TenantGuard",
+      "CalendarReviewAccessGuard"
+    ],
+    "roles": [
+      "owner",
+      "admin"
+    ],
+    "input": "UUID paths; all query parameters rejected; no body/header identity authority",
+    "projection": "Existing snapshotOnly/requestOnly/hasMore DTOs unchanged; query 101, return 100; separate reads not atomic",
+    "cacheControl": "private, no-store on success and matched-controller errors",
+    "errors": "Existing generic sanitized HTTP body; 401/403/400/404/503/429, no raw database/verifier diagnostics",
+    "throttle": {
+      "limit": 30,
+      "ttlMs": 60000,
+      "scope": "Existing per-route local/IP tracker; global guards precede auth, not distributed tenant-wide quota"
+    },
+    "applicationRegistration": false,
+    "mutations": false,
+    "recoveryProviderDependencies": false
+  },
+  "validation": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 962,
+      "passingSuites": 63,
+      "existingSkippedTests": 3,
+      "existingSkippedSuites": 1,
+      "newHttpTests": 45,
+      "architecture": "PASS",
+      "prisma": "PASS",
+      "diffCheck": "PASS"
+    },
+    "http": {
+      "result": "PASS",
+      "realComponents": [
+        "Controller",
+        "auth/tenant/role/global throttle guards",
+        "request-context middleware",
+        "CalendarReviewStateService",
+        "scoped and existing sanitized filters"
+      ],
+      "syntheticSeams": [
+        "Firebase verifyIdToken",
+        "Prisma reads"
+      ],
+      "checks": [
+        "Owner/admin exact DTO mapping and private-field omission on all routes",
+        "Missing/invalid/blank identity, issuer/audience, roles and dev headers reject before reads",
+        "UUID/query rejection; no submitted identity authority",
+        "Tenant/missing-operation isolation before audit; empty unknown-job history",
+        "Concurrent request-context separation and subsequent anonymous refusal",
+        "Caps/request-only semantics and fresh changed-version conditional reads",
+        "Bounded sanitized query/projection failures without retry or private logger diagnostic",
+        "30 reads then 429 for all three local route trackers",
+        "No POST transport and absent from every application module"
+      ]
+    },
+    "database": {
+      "result": "PASS",
+      "kind": "Unchanged underlying real PostgreSQL regression, separate from synthetic HTTP suite",
+      "migrations": 16,
+      "newMigrations": 0,
+      "priorActualProcessCrashes": 11,
+      "newProcessCrashes": 0,
+      "realProviderCalls": 0,
+      "cleanup": "Removed; independent calldesk_app013_intents_% query returned no rows"
+    },
+    "ui": {
+      "changed": false,
+      "lintAndTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "build": "PASS"
+    },
+    "browser": {
+      "result": "PASS",
+      "kind": "Five unchanged synthetic static-export regressions; no new UI or real Firebase/deployed API/provider acceptance",
+      "viewports": [
+        1440,
+        390
+      ],
+      "artifacts": "/private/tmp/signmons-review-http-qa.Imp5Et/evidence/APP-013",
+      "framework": {
+        "routes": 22,
+        "navigations": 12,
+        "externalRequests": 0,
+        "errors": 0,
+        "failedResources": 0
+      },
+      "customerDispatch": {
+        "requests": 46,
+        "syntheticPosts": 22,
+        "dispatchWrites": 0,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "technician": {
+        "requests": 26,
+        "syntheticConflictPosts": 2,
+        "initialHeldMutationPosts": 0,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "policy": {
+        "requests": 8,
+        "syntheticConflictPosts": 4,
+        "externalRequests": 0,
+        "pageErrors": 0
+      },
+      "notifications": {
+        "requests": 95,
+        "syntheticPosts": 14,
+        "result": "PASS"
+      },
+      "visualScreenshotInspection": false
+    },
+    "audits": {
+      "backendfull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "backendprod": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uifull": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      },
+      "uiprod": {
+        "exitCode": 0,
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        }
+      }
+    }
+  },
+  "limits": [
+    "Controller unregistered outside test composition",
+    "No real Firebase/deployed proxy/CORS/HTTP-to-real-DB acceptance",
+    "Snapshot hints and request audits are not authority/provider truth/completion receipts",
+    "Existing local route/IP throttle is not distributed tenant quota",
+    "Future composition must preserve requestContextMiddleware, auth dependencies, LoggingService and global throttler guards",
+    "No schema/dependency/provider configuration, new crash case or production action"
+  ],
+  "remainingRisks": [
+    "Review UI/acceptance and mutation transport/receipt semantics",
+    "Clock skew/forward jumps/delayed provider completion",
+    "Customer/payment handoff and post-read races",
+    "Legacy inventory/repair/retention",
+    "RESCHEDULE/CANCEL and SENDING recovery",
+    "Dependency overrides and migration/release ordering"
+  ],
+  "planningEstimates": {
+    "app013Percent": 85,
+    "app006ThroughApp016Percent": 81,
+    "note": "Unchanged planning estimates, not release readiness"
+  },
+  "warnings": [
+    "Test-only typing/require-await lint errors corrected without rule suppression; full gates subsequently passed",
+    "Existing pg concurrent-query deprecation",
+    "Existing Next lint/workspace-root warnings",
+    "Intentional PostCSS fixture warning"
+  ],
+  "nextProposedSection": "Inactive owner/admin review UI contract and read-only client state handling using synthetic responses; no live API registration or recovery controls",
+  "reviewInstructions": "evidence/APP-013/readiness-report.md"
+}

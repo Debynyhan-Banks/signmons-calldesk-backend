@@ -1,0 +1,27 @@
+{
+  "result": "PASS",
+  "checks": [
+    "customer submission commits one encrypted draft/event/audit with original expiry and no bearer storage",
+    "fresh-instance exact replay preserves one request/audit; replacement or second request refuses",
+    "operator reads by request ID with own verified identity and zero access to any customer credential method",
+    "wrong role/tenant and customer bearer in operator DTO refuse without job or consent mutation",
+    "concurrent identical submissions serialize to one durable request and receipt",
+    "failure after actual encrypted content/event/audit writes rolls back submission atomically",
+    "lost post-commit acknowledgment recovers only through original exact customer request",
+    "new transcript invalidates pending review rather than silently reviewing stale statements",
+    "operator review expires with original session deadline without renewing or reconstructing a bearer",
+    "closed-session refusal and unchanged jobs/consent/bindings/intents; no admission or delivery authority"
+  ],
+  "checkCount": 10,
+  "providerCalls": 0,
+  "productionActions": 0,
+  "newMigrations": 0,
+  "jobCreated": false,
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false,
+  "limits": [
+    "Inactive submit/read foundation only; no operator admission or browser/UI integration",
+    "Expires at original session deadline; no renewal, replacement or withdrawal flow",
+    "Application serialization, not new database immutability/retention constraints"
+  ]
+}

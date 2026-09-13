@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Local protected intake continuation</title>
+  <style>
+    body {
+      font: 18px system-ui;
+      max-width: 40rem;
+      margin: 24px;
+      padding: 12px;
+      color: #183044;
+      background: #f5f8fa;
+    }
+    button,
+    textarea {
+      font: inherit;
+      box-sizing: border-box;
+      max-width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+    }
+    textarea {
+      width: 100%;
+      min-height: 110px;
+    }
+    button {
+      cursor: pointer;
+    }
+    p,
+    li {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+    [hidden] {
+      display: none;
+    }
+    li {
+      margin: 16px 0;
+    }
+  </style>
+  <h1>Private intake conversation</h1>
+  <p>
+    Fictional local test. Replies are scripted. No booking, live collection or
+    sending.
+  </p>
+  <button id="start">Start a new request</button>
+  <section id="intake" hidden>
+    <ol id="turns" aria-label="Conversation"></ol>
+    <label for="message">Describe the fictional issue</label>
+    <textarea
+      id="message"
+      maxlength="2000"
+      autocomplete="off"
+      spellcheck="false"
+    ></textarea>
+    <button id="send">Submit message</button>
+    <button id="retry" hidden>Retry the same message</button>
+  </section>
+  <button id="forget" hidden>Clear private session</button>
+  <p id="status" role="status" aria-live="polite"></p>
+  <p>
+    Reloading or clearing loses this session. It does not undo a saved message.
+    For an existing appointment, contact the office.
+  </p>
+  <script src="/intake.js"></script>
+</html>

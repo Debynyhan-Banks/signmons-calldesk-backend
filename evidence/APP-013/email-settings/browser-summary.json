@@ -1,0 +1,26 @@
+{
+  "result": "PASS",
+  "channel": "email",
+  "methods": {
+    "GET": 11,
+    "PUT": 5,
+    "OPTIONS": 13
+  },
+  "real": "React browser fetch/CORS -> Nest verified-role/tenant boundary -> settings service -> disposable PostgreSQL",
+  "synthetic": [
+    "Firebase verifier"
+  ],
+  "persistedSaves": 3,
+  "defaultOff": true,
+  "strictBody": true,
+  "channelSwitchDiscardsLateResponse": true,
+  "committedButLostResponseRequiresReload": true,
+  "unknownVersionSaveDisabled": true,
+  "staleSaveRefused": true,
+  "desktopMobile": true,
+  "providerCalls": 0,
+  "pageErrors": [],
+  "external": [],
+  "forbiddenHeaders": [],
+  "evidence": "/private/tmp/signmons-app013-messaging.R4Ep40/evidence/APP-013/email-settings"
+}

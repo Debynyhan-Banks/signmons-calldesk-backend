@@ -17,6 +17,11 @@ import {
   SubscriptionStatus,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  unfinishedCalendarOperations,
+  noUnfinishedCalendarOperations,
+  requireCalendarOperationSettled,
+} from "../scheduling/calendar-operation-guard";
 import type { PaymentCheckoutProvider } from "./interfaces/payment-checkout-provider.interface";
 import { PAYMENT_CHECKOUT_PROVIDER } from "./payments.constants";
 
@@ -120,10 +125,12 @@ export class PaymentRequestsService {
           status: true,
           updatedAt: true,
           policySnapshot: true,
+          calendarOperations: unfinishedCalendarOperations,
           payment: { select: { status: true } },
         },
       });
       if (!job) throw new NotFoundException("Job was not found.");
+      requireCalendarOperationSettled(job);
       if (
         job.status === JobStatus.COMPLETED ||
         job.status === JobStatus.CANCELLED
@@ -183,15 +190,20 @@ export class PaymentRequestsService {
             : "No active payment exception exists.",
         );
       }
-      const changedAt = new Date();
+      const changedAt = new Date(
+        Math.max(Date.now(), job.updatedAt.getTime() + 1),
+      );
       const updated = await transaction.job.updateMany({
         where: {
           tenantId: input.tenantId,
           id: input.jobId,
           updatedAt: job.updatedAt,
+          status: job.status,
+          calendarOperations: noUnfinishedCalendarOperations,
           deletedAt: null,
         },
         data: {
+          updatedAt: changedAt,
           policySnapshot: {
             ...snapshot,
             paymentGateException: active

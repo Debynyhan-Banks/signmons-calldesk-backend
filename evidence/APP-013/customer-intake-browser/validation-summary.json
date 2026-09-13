@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-09",
+  "backend": {
+    "newTests": 14,
+    "testsPassed": 1425,
+    "suitesPassed": 80,
+    "testsSkipped": 3,
+    "suitesSkipped": 1,
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "prismaValidate": "PASS"
+  },
+  "ui": {
+    "testsPassed": 170,
+    "lint": "PASS",
+    "build": "PASS",
+    "staticPages": 15
+  },
+  "audits": {
+    "backendFull": 0,
+    "backendProduction": 0,
+    "uiFull": 0,
+    "uiProduction": 0
+  },
+  "browser": {
+    "newCheckGroups": 9,
+    "viewports": [
+      1440,
+      390
+    ],
+    "mobileScreenshotsInspected": true,
+    "pageErrors": 0,
+    "externalRequests": 0,
+    "scope": "actual inactive transport/service/database with scripted replies; existing Settings/Inbox/consent/browser regressions"
+  },
+  "database": {
+    "existingMigrations": 19,
+    "newMigrations": 0,
+    "priorTranscriptChecks": 12,
+    "priorProcessCrashCases": 19,
+    "newProcessCrashCases": 0,
+    "cleanup": "no matching fixture databases"
+  },
+  "providerCalls": 0,
+  "productionActions": 0,
+  "deliveryAuthorized": false
+}

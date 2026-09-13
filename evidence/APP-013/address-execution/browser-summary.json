@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "unknown result retains draft and held cost",
+    "exact retry uses same operation with no new mock call",
+    "confirmation unavailable",
+    "private reset",
+    "mobile and desktop"
+  ],
+  "liveProviderCalls": 0
+}

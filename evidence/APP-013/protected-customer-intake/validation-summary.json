@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-09",
+  "baselineBackend": "abd9b5a2f65506b12839d4b7252b2f865c2531c0",
+  "baselineGovernance": "fe2dd496d989b7fba2a3f083af76d3bf71586abd",
+  "result": "PASS",
+  "newUnitTests": 26,
+  "backend": { "passedTests": 1331, "passedSuites": 77, "skippedTests": 3, "skippedSuites": 1, "lint": "PASS", "build": "PASS", "architecture": "PASS", "prisma": "PASS" },
+  "ui": { "changed": false, "passedTests": 170, "staticPages": 15, "lint": "PASS", "build": "PASS" },
+  "audits": { "backendFull": 0, "backendProduction": 0, "uiFull": 0, "uiProduction": 0 },
+  "database": { "migrations": 19, "newMigrations": 0, "newProtectedIntakeChecks": 10, "priorSessionChecks": 18, "priorConsentChecks": 24, "existingProcessCrashCases": 19, "newProcessCrashCases": 0, "eligibilityReads": 23, "fixtureCleanup": "PASS" },
+  "browser": { "newProtectedIntake": "PASS", "priorConsentPrompt": "PASS", "localSettingsInbox": "PASS", "mobileScreenshotInspected": true, "unrelatedStaticScripts": "NOT_RERUN", "emailComposition": "NOT_RERUN" },
+  "productionActions": 0,
+  "providerCalls": 0,
+  "deliveryAuthorized": false,
+  "warnings": ["Existing Next lint deprecation and multiple-lockfile root warning", "Existing pg concurrent-query deprecation", "Production transport and full protected AI intake are not implemented"],
+  "completion": { "app013ScopeCoveragePercent": 50, "formalAcceptance": "0/12", "remainingApp013UnequalSections": "7-12", "remainingPilotUnequalSections": "20-35", "confidence": "low", "overallMvpPercent": null }
+}

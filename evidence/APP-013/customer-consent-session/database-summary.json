@@ -1,0 +1,42 @@
+{
+  "result": "PASS",
+  "checks": [
+    "verified integration required only for fresh-session bootstrap",
+    "server-generated new sessions cannot adopt existing intake identifiers",
+    "integration secret or session ID cannot authenticate a customer response",
+    "prompt binds exact text and ciphertext snapshot without mailbox in token",
+    "cross-session, inferred response and caller authority overrides refused",
+    "grant requires separate boolean mailbox confirmation",
+    "concurrent identical response creates one receipt; conflicting replay refuses",
+    "completed question is not repeated",
+    "decline completes once; another issued prompt cannot regrant",
+    "mailbox replacement after display invalidates the response token",
+    "post-insert failure rolls back receipt, evidence and new scope",
+    "expiry while persistence is awaited rolls back all consent writes",
+    "expired session and retired signing key refuse",
+    "deleted session cannot display private mailbox",
+    "verified response evidence retains one-time job binding without sending",
+    "signed but cross-tenant conversation binding refuses",
+    "existing finalized events remain unchanged and unbound",
+    "ordinary audit contains no mailbox or bearer credential"
+  ],
+  "checkCount": 18,
+  "providerCalls": 0,
+  "productionActions": 0,
+  "newMigrations": 0,
+  "deliveryAuthorized": false,
+  "fictionalKeysOnly": true,
+  "browser": {
+    "result": "PASS",
+    "counts": {
+      "GET": 2,
+      "POST": 6
+    },
+    "viewports": [1440, 390],
+    "errors": [],
+    "external": [],
+    "providerCalls": 0,
+    "storageWrites": 0,
+    "limits": "Fictional localhost UI and bootstrap; not a production route, cookie/CSRF acceptance or mailbox verification."
+  }
+}

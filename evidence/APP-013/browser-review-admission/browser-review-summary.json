@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "customer explicitly submits immutable review request; lost acknowledgment exact retry creates no job",
+    "operator reads by opaque reference with role/tenant enforcement, selects urgency and explicitly approves",
+    "lost approval acknowledgment exact retry returns one committed CREATED job without customer credentials",
+    "closed request read refuses visibly without offering a replacement admission",
+    "separate customer/operator contexts, no browser storage, mobile fit, private clear and zero page errors"
+  ],
+  "newFictionalJobs": 1,
+  "status": "CREATED",
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false,
+  "operatorCustomerCredentialAccesses": 0,
+  "browserErrors": [],
+  "identity": "explicit local fixture guard; not production authentication acceptance",
+  "productionRegistered": false
+}

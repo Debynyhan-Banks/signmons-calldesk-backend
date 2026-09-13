@@ -1,0 +1,134 @@
+{
+  "date": "2026-09-08",
+  "baselineBackend": "d1a18ff15309d4c551e05e584031d173ea8d4cfd",
+  "baselineGovernance": "4d5ab999bdd3422dbef7275d70f2881d89bc3716",
+  "scope": "Exclude soft-deleted jobs from management links; uniform missing/deleted refusal; stale browser data cleanup",
+  "verification": {
+    "backendTests": 656,
+    "backendSuites": 55,
+    "addedUnitCases": 12,
+    "existingSkippedTests": 3,
+    "databaseJobs": 3,
+    "databaseStates": [
+      "ACCEPTED",
+      "CANCELLED",
+      "COMPLETED"
+    ],
+    "lookupVariants": [
+      "deleted",
+      "missing",
+      "cross-tenant"
+    ],
+    "databaseActionRefusals": 63,
+    "actions": [
+      "view",
+      "confirm",
+      "request_reschedule",
+      "continue_payment",
+      "availability",
+      "reschedule",
+      "cancel"
+    ],
+    "databaseProof": [
+      "view succeeds before fixture deletion",
+      "uniform 400 response body after deletion/missing/cross-tenant lookup",
+      "exact deleted row unchanged by all actions",
+      "no new audit, intent or communication event"
+    ],
+    "localMigrations": 15,
+    "existingProcessCrashCases": 11,
+    "newProcessCrashCases": 0,
+    "realProviderCalls": 0,
+    "fixtureDatabaseAbsenceIndependentlyVerified": true,
+    "uiTests": 60,
+    "staticPages": 14,
+    "browser": {
+      "harnesses": 5,
+      "routeChecks": 22,
+      "homeNavigations": 12,
+      "mockedRequests": [
+        30,
+        14,
+        8,
+        92
+      ],
+      "customerSyntheticPosts": 22,
+      "viewports": [
+        1440,
+        390
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "newChecks": [
+        "initial missing/deleted refusal",
+        "stale action clears booking details and controls",
+        "stale payment clears booking and closes blank popup"
+      ],
+      "visualReview": [
+        "deleted-booking-customer-desktop.png",
+        "deleted-booking-customer-mobile.png"
+      ],
+      "temporaryEvidence": "/private/tmp/signmons-deleted-booking-regression.2Cjhxc/evidence/APP-013"
+    }
+  },
+  "audits": {
+    "backend": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "backendOmitDev": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "ui": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "uiOmitDev": {
+      "exitCode": 0,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    }
+  },
+  "limits": [
+    "Already-deleted-at-load boundary, not push revocation or serialization against in-flight deletion races.",
+    "Existing HTTP 400 missing-record response preserved; deleted state not disclosed.",
+    "Other HTTP 400 action errors now also clear the stale booking conservatively.",
+    "No new deletion API, hard-delete, real job deletion, key rotation, token revocation mechanism or data-retention change.",
+    "Legacy dispatch/technician/message guards/repair, authorized CREATE recovery ownership, external races, reschedule/cancel and SENDING recovery remain open.",
+    "Browser APIs intercepted; no real Calendar/payment/provider action. No production migration, merge, deployment or activation."
+  ],
+  "estimates": {
+    "app013": 85,
+    "governedApp006ThroughApp016": 81,
+    "basis": "Unchanged planning estimates, not release readiness"
+  },
+  "riskAcceptance": false
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ApiError,
@@ -291,14 +292,17 @@ export default function DispatchPage() {
   return (
     <main className={base.shell}>
       <aside className={base.nav}>
-        <a className={base.brand} href="/">
+        <Link className={base.brand} href="/" prefetch={false}>
           <span className={base.mark}>S</span>
           <span>
             <strong>Signmons</strong>
             <small>CallDesk</small>
           </span>
-        </a>
+        </Link>
         <nav aria-label="CallDesk">
+          <a className={base.disabledNav} href="/app/notifications">
+            <span aria-hidden="true">05</span> Notification center
+          </a>
           <a className={base.disabledNav} href="/app/intake-review">
             <span aria-hidden="true">01</span> Intake review
           </a>
@@ -322,6 +326,9 @@ export default function DispatchPage() {
           <div>
             <p className={base.eyebrow}>Operations / Dispatch</p>
             <h1>Assignment board</h1>
+            <a className={styles.notificationsLink} href="/app/notifications">
+              View notification center →
+            </a>
             <p>
               Match qualified technicians, explain overrides and keep control.
             </p>
@@ -601,6 +608,13 @@ function DispatchDetail({
         <QueueBadge queue={detail.queue} />
       </header>
 
+      {detail.calendarSyncPending ? (
+        <p className={styles.calendarHold} role="status">
+          Calendar synchronization is unfinished. The displayed reservation is
+          provisional; assignment changes are on hold. Contact the office for
+          review.
+        </p>
+      ) : null}
       <section className={styles.currentAssignment}>
         <span>Current assignment</span>
         <strong>{detail.assignedTechnician?.fullName ?? "Unassigned"}</strong>
@@ -759,8 +773,9 @@ function DispatchDetail({
           </ol>
         ) : (
           <p>
-            The secure customer link is active. Confirmation or a reschedule
-            request will appear here without exposing the link token.
+            {detail.calendarSyncPending
+              ? "Customer appointment details and actions are on hold for Calendar review."
+              : "The secure customer link is active. Confirmation or a reschedule request will appear here without exposing the link token."}
           </p>
         )}
       </section>
@@ -781,6 +796,11 @@ function DispatchDetail({
               <li key={reasonLabel}>{reasonLabel}</li>
             ))}
           </ul>
+        ) : detail.calendarSyncPending ? (
+          <p>
+            Recommendations are on hold for Calendar review. An operator reason
+            cannot override this hold.
+          </p>
         ) : detail.paymentGate.state === "LOCKED" ? (
           <p>
             Dispatch recommendations are paused while the required payment gate
@@ -834,7 +854,10 @@ function DispatchDetail({
         <label>
           Technician
           <select
-            disabled={detail.paymentGate.state === "LOCKED"}
+            disabled={
+              detail.calendarSyncPending ||
+              detail.paymentGate.state === "LOCKED"
+            }
             value={technicianId}
             onChange={(event) => setTechnicianId(event.target.value)}
           >
@@ -876,6 +899,7 @@ function DispatchDetail({
         <button
           className={styles.assignButton}
           disabled={
+            detail.calendarSyncPending ||
             detail.paymentGate.state === "LOCKED" ||
             !technicianId ||
             acting ||
@@ -884,13 +908,15 @@ function DispatchDetail({
           onClick={() => onAssign(technicianId, reason.trim() || undefined)}
           type="button"
         >
-          {detail.paymentGate.state === "LOCKED"
-            ? "Payment required before assignment"
-            : acting
-              ? "Saving…"
-              : detail.assignedTechnician
-                ? "Save reassignment"
-                : "Confirm assignment"}
+          {detail.calendarSyncPending
+            ? "Calendar review required"
+            : detail.paymentGate.state === "LOCKED"
+              ? "Payment required before assignment"
+              : acting
+                ? "Saving…"
+                : detail.assignedTechnician
+                  ? "Save reassignment"
+                  : "Confirm assignment"}
         </button>
       </section>
 
@@ -900,7 +926,9 @@ function DispatchDetail({
         </button>
         {detail.assignedTechnician ? (
           <button
-            disabled={acting || reason.trim().length < 10}
+            disabled={
+              detail.calendarSyncPending || acting || reason.trim().length < 10
+            }
             onClick={() => onCancel(reason.trim())}
             type="button"
           >

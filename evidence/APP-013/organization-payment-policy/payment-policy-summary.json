@@ -1,0 +1,13 @@
+{
+  "approvedServiceFeeCents": 7500,
+  "unapprovedDraftServiceFeeCents": 9500,
+  "jobSnapshotPreserved": true,
+  "exactReplayNoWrites": true,
+  "realPolicyAndBindingAuditRollback": true,
+  "concurrentApprovalCommitsOnce": true,
+  "supersededApprovalReplayRefused": true,
+  "paymentRecords": 0,
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false,
+  "productionRegistered": false
+}

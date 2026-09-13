@@ -1,0 +1,13 @@
+# Disabled Google service-area evaluator
+
+Owner approved implementation after adopting Google-only business coverage policy. New google-service-area.ts reuses GoogleAddressAdapter.preview with a cloned in-memory response, not a new client. Default mode refuses classification; FIXTURE_ONLY permits transient proposals. Every result has fixtureOnly=true and realVerificationAccepted/admissionAuthorized/bookingAuthorized/deliveryAuthorized=false.
+
+Exact confirmation/current tenant, session, address revision and policy plus bounded check/expiry time required. Existing parser enforces address completeness, confirmed components, US/OH, unit and DPV semantics. Additional explicit physical record/mailbox flags and code/name consistency precede classification. Missing/unknown flags or codes refuse. Fictional code table covers Cuyahoga and Lorain/Medina/Summit only; all others UNKNOWN, not assumed outside. No numeric coercion, ZIP inference or parcel certification.
+
+Three-digit USPS code representation and physical flag combination are fixture hypotheses pending actual approved source qualification, not a live supported-data claim. Other valid counties/record types may return UNKNOWN. No registration, environment flag, API call, persistence, database migration, credential or deployment. Caller bindings are local test inputs, not trusted runtime authority. A future integration must load/recheck current bindings at admission; this proposal cannot replace that check or reuse the closed phone proof.
+
+Review: run npm test -- --runInBand google-service-area; inspect default-disabled and authority-false output, negative fixtures and absence of imports from routes/storage/provider clients. 38 focused cases include inside/adjacent same ZIP, malformed codes, conflicts, missing units, confirmed unit, mailbox, stale bindings/time, correction, unavailable response and snapshot mutation isolation. Browser QA not applicable: no UI/route change.
+
+APP-013/2B remains Now; walkthrough 3/8 (37.5%) unchanged. Next is actual field/retention qualification before live composition, not county GIS or another generic evaluator. Google content/derived outcomes gain no durable permission from the former CEGIS contract.
+
+Final validation: 111 suites / 2,118 tests passed, three existing skipped tests; lint, build (including Prisma generation), architecture and whitespace passed. Governance consistency and all eight governance regression tests passed. Initial lint findings in the new file were corrected before this final run. No new dependency or schema change; no browser/live-provider acceptance claimed.

@@ -91,6 +91,16 @@
   border-radius: 12px;
 }
 
+.calendarHold {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #efbc91;
+  border-radius: 12px;
+  background: #fff3e9;
+  color: #703500;
+  line-height: 1.5;
+}
+
 .fieldLinkActions {
   grid-column: 1 / -1;
   display: flex;
@@ -512,4 +522,11 @@
   .sectionHeading {
     flex-direction: column;
   }
+}
+.notificationsLink {
+  display: inline-block;
+  color: #08294f;
+  text-decoration: underline;
+  padding: 12px 0;
+  font-weight: 700;
 }

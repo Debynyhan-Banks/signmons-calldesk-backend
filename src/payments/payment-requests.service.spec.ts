@@ -342,6 +342,118 @@ describe("PaymentRequestsService", () => {
     expect(prisma.stripeEvent.findMany).not.toHaveBeenCalled();
   });
 
+  it.each(["APPROVE", "REVOKE"] as const)(
+    "holds payment exception %s before entitlement, write or provider access",
+    async (action) => {
+      transaction.job.findFirst.mockResolvedValue(
+        jobRecord({ calendarOperations: [{ id: "private-operation" }] }),
+      );
+      await expect(
+        service.governException({
+          tenantId,
+          jobId,
+          actorId,
+          traceId,
+          action,
+          reason: "Synthetic review",
+          expectedJobUpdatedAt: updatedAt.toISOString(),
+        }),
+      ).rejects.toThrow("Calendar synchronization is unfinished");
+      expect(transaction.tenantSubscription.findFirst).not.toHaveBeenCalled();
+      expect(transaction.job.updateMany).not.toHaveBeenCalled();
+      expect(transaction.auditLog.create).not.toHaveBeenCalled();
+      expect(transaction.payment.updateMany).not.toHaveBeenCalled();
+      expect(provider.createCheckout).not.toHaveBeenCalled();
+    },
+  );
+
+  it("fails closed if the unfinished-operation selection is missing", async () => {
+    transaction.job.findFirst.mockResolvedValue(
+      jobRecord({ calendarOperations: undefined }),
+    );
+    await expect(
+      service.governException({
+        tenantId,
+        jobId,
+        actorId,
+        traceId,
+        action: "REVOKE",
+        reason: "Synthetic review",
+        expectedJobUpdatedAt: updatedAt.toISOString(),
+      }),
+    ).rejects.toThrow("Calendar synchronization is unfinished");
+    expect(transaction.job.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("preserves unrelated urgency policy and advances the version before exception audit", async () => {
+    jest.useFakeTimers().setSystemTime(updatedAt);
+    try {
+      transaction.job.findFirst.mockResolvedValue(
+        jobRecord({
+          policySnapshot: {
+            depositRequired: true,
+            urgencyDecision: { level: "HIGH" },
+            paymentGateException: { active: true },
+          },
+        }),
+      );
+      await service.governException({
+        tenantId,
+        jobId,
+        actorId,
+        traceId,
+        action: "REVOKE",
+        reason: "Synthetic review",
+        expectedJobUpdatedAt: updatedAt.toISOString(),
+      });
+      expect(transaction.job.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: jobId,
+          tenantId,
+          deletedAt: null,
+          status: JobStatus.CREATED,
+          updatedAt,
+          calendarOperations: { none: { finishedAt: null } },
+        },
+        data: expect.objectContaining({
+          updatedAt: new Date(updatedAt.getTime() + 1),
+          policySnapshot: expect.objectContaining({
+            depositRequired: true,
+            urgencyDecision: { level: "HIGH" },
+          }),
+        }),
+      });
+      expect(transaction.payment.updateMany).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("rejects a lost exception claim without audit or payment mutation", async () => {
+    transaction.job.findFirst.mockResolvedValue(
+      jobRecord({
+        policySnapshot: {
+          depositRequired: true,
+          paymentGateException: { active: true },
+        },
+      }),
+    );
+    transaction.job.updateMany.mockResolvedValue({ count: 0 });
+    await expect(
+      service.governException({
+        tenantId,
+        jobId,
+        actorId,
+        traceId,
+        action: "REVOKE",
+        reason: "Synthetic review",
+        expectedJobUpdatedAt: updatedAt.toISOString(),
+      }),
+    ).rejects.toThrow("Job changed while the payment exception");
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+    expect(transaction.payment.updateMany).not.toHaveBeenCalled();
+  });
+
   it("approves a governed Growth payment exception without falsifying payment status", async () => {
     transaction.job.findFirst.mockResolvedValue(
       jobRecord({
@@ -373,6 +485,7 @@ describe("PaymentRequestsService", () => {
         updatedAt,
       }),
       data: {
+        updatedAt: expect.any(Date),
         policySnapshot: expect.objectContaining({
           depositRequired: true,
           paymentGateMode: "manual_override",
@@ -451,6 +564,7 @@ describe("PaymentRequestsService", () => {
     expect(transaction.job.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: {
+          updatedAt: expect.any(Date),
           policySnapshot: expect.objectContaining({
             paymentGateException: expect.objectContaining({ active: false }),
           }),
@@ -573,6 +687,7 @@ function createInput() {
 
 function jobRecord(overrides: Record<string, unknown> = {}) {
   return {
+    calendarOperations: [],
     id: jobId,
     status: JobStatus.CREATED,
     updatedAt,

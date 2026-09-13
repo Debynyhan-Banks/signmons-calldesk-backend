@@ -31,15 +31,115 @@ describe("JobLifecycleService", () => {
     traceId: "request-1",
   };
 
+  it.each([null, "", " \t "])(
+    "refuses legacy completion with reference %j and full or partial windows",
+    async (calendarEventId) => {
+      for (const window of [
+        { serviceWindowStart: completedAt, serviceWindowEnd: completedAt },
+        { serviceWindowStart: completedAt, serviceWindowEnd: null },
+        { serviceWindowStart: null, serviceWindowEnd: completedAt },
+      ]) {
+        const { service, transaction } = createHarness();
+        transaction.job.findFirst.mockResolvedValue({
+          id: request.jobId,
+          status: JobStatus.ACCEPTED,
+          completedAt: null,
+          updatedAt: completedAt,
+          calendarOperations: [],
+          calendarEventId,
+          ...window,
+        });
+        await expect(service.completeJob(request)).rejects.toThrow(
+          "Calendar synchronization is unfinished",
+        );
+        expect(transaction.job.updateMany).not.toHaveBeenCalled();
+        expect(transaction.auditLog.create).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it.each([
+    JobStatus.ACCEPTED,
+    JobStatus.IN_PROGRESS,
+    JobStatus.COMPLETED,
+    JobStatus.CANCELLED,
+  ])("holds %s before completion or replay", async (status) => {
+    const { service, transaction } = createHarness();
+    transaction.job.findFirst.mockResolvedValue({
+      id: request.jobId,
+      status,
+      completedAt,
+      updatedAt: completedAt,
+      calendarOperations: [{ id: "pending" }],
+    });
+    await expect(service.completeJob(request)).rejects.toThrow(
+      "Calendar synchronization is unfinished",
+    );
+    expect(transaction.job.updateMany).not.toHaveBeenCalled();
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("does not reinterpret a lost claim as a completed replay while Calendar is held", async () => {
+    const { service, transaction } = createHarness();
+    transaction.job.findFirst
+      .mockResolvedValueOnce({
+        id: request.jobId,
+        status: "ACCEPTED",
+        completedAt: null,
+        updatedAt: completedAt,
+        calendarOperations: [],
+      })
+      .mockResolvedValueOnce({
+        id: request.jobId,
+        status: "COMPLETED",
+        completedAt,
+        calendarOperations: [{ id: "pending" }],
+      });
+    transaction.job.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.completeJob(request)).rejects.toThrow(
+      "Calendar synchronization is unfinished",
+    );
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a newer nonterminal version without audit", async () => {
+    const { service, transaction } = createHarness();
+    transaction.job.findFirst.mockResolvedValue({
+      id: request.jobId,
+      status: "ACCEPTED",
+      completedAt: null,
+      updatedAt: completedAt,
+      calendarOperations: [],
+    });
+    transaction.job.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.completeJob(request)).rejects.toThrow(
+      "changed before completion",
+    );
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+    expect(transaction.job.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          updatedAt: completedAt,
+          calendarOperations: { none: { finishedAt: null } },
+        }),
+      }),
+    );
+  });
+
   it.each([JobStatus.ACCEPTED, JobStatus.IN_PROGRESS])(
     "atomically completes an %s job and writes one privacy-safe audit entry",
     async (status) => {
       jest.useFakeTimers().setSystemTime(completedAt);
       const { service, prisma, transaction } = createHarness();
       transaction.job.findFirst.mockResolvedValue({
+        calendarOperations: [],
+        updatedAt: completedAt,
         id: request.jobId,
         status,
         completedAt: null,
+        calendarEventId: null,
+        serviceWindowStart: null,
+        serviceWindowEnd: null,
       });
       transaction.job.updateMany.mockResolvedValue({ count: 1 });
       transaction.auditLog.create.mockResolvedValue({ id: "audit-1" });
@@ -58,7 +158,20 @@ describe("JobLifecycleService", () => {
           tenantId: request.tenantId,
           deletedAt: null,
         },
-        select: { id: true, status: true, completedAt: true },
+        select: {
+          id: true,
+          status: true,
+          completedAt: true,
+          updatedAt: true,
+          calendarEventId: true,
+          serviceWindowStart: true,
+          serviceWindowEnd: true,
+          calendarOperations: {
+            where: { finishedAt: null },
+            select: { id: true },
+            take: 1,
+          },
+        },
       });
       expect(transaction.job.updateMany).toHaveBeenCalledWith({
         where: {
@@ -66,8 +179,17 @@ describe("JobLifecycleService", () => {
           tenantId: request.tenantId,
           deletedAt: null,
           status,
+          calendarEventId: null,
+          serviceWindowStart: null,
+          serviceWindowEnd: null,
+          updatedAt: completedAt,
+          calendarOperations: { none: { finishedAt: null } },
         },
-        data: { status: JobStatus.COMPLETED, completedAt },
+        data: {
+          status: JobStatus.COMPLETED,
+          completedAt,
+          updatedAt: new Date(completedAt.getTime() + 1),
+        },
       });
       expect(transaction.auditLog.create).toHaveBeenCalledWith({
         data: {
@@ -91,6 +213,8 @@ describe("JobLifecycleService", () => {
   it("returns an idempotent replay without another mutation or audit", async () => {
     const { service, transaction } = createHarness();
     transaction.job.findFirst.mockResolvedValue({
+      calendarOperations: [],
+      updatedAt: completedAt,
       id: request.jobId,
       status: JobStatus.COMPLETED,
       completedAt,
@@ -115,6 +239,8 @@ describe("JobLifecycleService", () => {
   ])("rejects the %s transition", async (status) => {
     const { service, transaction } = createHarness();
     transaction.job.findFirst.mockResolvedValue({
+      calendarOperations: [],
+      updatedAt: completedAt,
       id: request.jobId,
       status,
       completedAt: null,
@@ -142,11 +268,15 @@ describe("JobLifecycleService", () => {
     const { service, transaction } = createHarness();
     transaction.job.findFirst
       .mockResolvedValueOnce({
+        calendarOperations: [],
+        updatedAt: completedAt,
         id: request.jobId,
         status: JobStatus.ACCEPTED,
         completedAt: null,
       })
       .mockResolvedValueOnce({
+        calendarOperations: [],
+        updatedAt: completedAt,
         id: request.jobId,
         status: JobStatus.COMPLETED,
         completedAt,

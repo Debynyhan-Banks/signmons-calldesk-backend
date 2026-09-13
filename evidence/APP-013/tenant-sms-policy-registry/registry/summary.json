@@ -1,0 +1,34 @@
+{
+  "mode": "DISPOSABLE_POSTGRES_POLICY_REGISTRY",
+  "checks": [
+    "unauthenticated, wrong role, impersonation and foreign allowlist writes refused",
+    "ordered lifecycle, exact public projection and no real publication or capture authority",
+    "read tenant/role boundaries, current attestation/allowlist and safe suspension",
+    "immutable history, rollback, unknown commit reload and stale replacement binding",
+    "composite foreign keys, suspended tenant, future-effective and expired policy refusal",
+    "original policy expiry refuses an otherwise eligible unchanged binding"
+  ],
+  "versions": 4,
+  "auditRecords": 16,
+  "publicProjection": {
+    "fixtureOnly": true,
+    "liveCaptureEnabled": false,
+    "deliveryAuthorized": false,
+    "versionId": "95cba54a-1f3d-4c5f-9404-7e18a23a33a6",
+    "revision": 4,
+    "legalSender": "Fictional Heating",
+    "purpose": "APPOINTMENT_UPDATES_V1",
+    "supportEmail": "support@example.invalid",
+    "disclosure": "Optional service texts only. STOP to opt out. HELP for help.",
+    "disclosureVersion": "v1",
+    "privacyUrl": "https://policy.example.invalid/privacy",
+    "privacyVersion": "v1",
+    "termsUrl": "https://policy.example.invalid/terms",
+    "termsVersion": "v1",
+    "effectiveAt": "2026-09-12T13:59:59.457Z",
+    "expiresAt": "2026-09-12T15:00:59.457Z"
+  },
+  "providerCalls": 0,
+  "liveConsentWrites": 0,
+  "productionDatabaseWrites": 0
+}

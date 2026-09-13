@@ -1,0 +1,160 @@
+{
+  "checkpoint": "APP-013 guarded CREATE composition (inactive)",
+  "date": "2026-09-09",
+  "baseline": {
+    "backend": "bb8859431fbb90525940fe41cc6278d6d659995c",
+    "governance": "cc241dab6d6c70459611cf61e32a202672d31f4f"
+  },
+  "runtimeFiles": [
+    "src/scheduling/scheduling.service.ts",
+    "src/scheduling/journaled-appointment-booking.service.ts"
+  ],
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 742,
+      "suites": 57,
+      "skippedTests": 3,
+      "newTests": 14,
+      "architecture": "PASS",
+      "prisma": "PASS",
+      "formatting": "PASS"
+    },
+    "database": {
+      "result": "PASS",
+      "migrations": 15,
+      "priorProcessCrashes": 11,
+      "newProcessCrashes": 0,
+      "composedServices": [
+        "signed admission",
+        "journal",
+        "executor",
+        "read-back finalizer"
+      ],
+      "checks": [
+        "invalid token/tenant/session, disabled, unpaid, busy, deleted/closed refusal",
+        "payment refund during availability refused before reservation",
+        "normal and thrown-acknowledgment read-back success with one intent/audit and replay",
+        "unavailable/absent provider proof retains hold; requests cannot take over",
+        "lost reservation acknowledgment leaves PENDING with no execute",
+        "concurrent composed requests create one journal/attempt/intent/audit"
+      ],
+      "realProviderCalls": 0,
+      "cleanupIndependentlyVerified": true
+    },
+    "ui": {
+      "lintTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14,
+      "changed": false
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "suites": 5,
+    "viewports": [
+      1440,
+      390
+    ],
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 46,
+    "technicianRequests": 26,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "artifacts": "/private/tmp/signmons-create-composition-qa.dkvowo/evidence/APP-013",
+    "newJournalEndpointAcceptance": false
+  },
+  "audits": {
+    "Backend-full": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 393,
+        "dev": 733,
+        "optional": 95,
+        "peer": 3,
+        "peerOptional": 0,
+        "total": 1195
+      }
+    },
+    "Backend-prod": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 393,
+        "dev": 733,
+        "optional": 95,
+        "peer": 3,
+        "peerOptional": 0,
+        "total": 1195
+      }
+    },
+    "Ui-full": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 16,
+        "dev": 309,
+        "optional": 61,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 362
+      }
+    },
+    "Ui-prod": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "dependencies": {
+        "prod": 16,
+        "dev": 309,
+        "optional": 61,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 362
+      }
+    }
+  },
+  "limits": [
+    "Internal service unregistered/unrouted/unscheduled; live legacy confirm uses shared preparation only.",
+    "Private preparation is not public DTO or reusable authorization; internal processing statuses are not public current-booking receipts.",
+    "No new automatic operations notification, enqueue/send, recovery scan, PENDING takeover, fallback insert, clear or rearm.",
+    "Request auth, shared payment policy and canonical reservation guards unchanged; post-claim/provider/clock races not serialized.",
+    "Public receipt handling, customer handoff, explicit recovery/office-review and PENDING restart ownership, legacy repair/retention, reschedule/cancel and SENDING recovery and acceptance remain open.",
+    "No schema/dependency/provider configuration, real data, payment/charge, production migration, merge/deploy or activation."
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

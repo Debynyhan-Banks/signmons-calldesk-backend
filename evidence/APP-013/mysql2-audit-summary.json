@@ -1,0 +1,1063 @@
+{
+  "date": "2026-09-08",
+  "baselineBackendCommit": "9eb43e5e8ec3eab1d6ab85c4b5a06ef3b1959165",
+  "baselineGovernanceCommit": "dc1d318ef8bbc3b19f03d457696a40bd65481e31",
+  "scope": "Prisma 7.10.0 scoped mysql2 3.24.4 compatibility/security override",
+  "before": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 9,
+      "critical": 0,
+      "total": 17
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/core",
+        "severity": "high",
+        "via": [
+          "@nestjs/platform-express"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/core",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/platform-express",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "multer"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/schedule",
+        "severity": "high",
+        "via": [
+          "@nestjs/core"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/schedule",
+          "version": "2.2.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/testing",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "@nestjs/platform-express"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "via": [
+          "deepmerge-ts"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "range": "<8.0.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "multer",
+        "severity": "high",
+        "via": [
+          {
+            "title": "multer vulnerable to Denial of Service via crafted multipart field names",
+            "url": "https://github.com/advisories/GHSA-wc9g-mqfw-jrwm",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via file descriptor leak on aborted uploads",
+            "url": "https://github.com/advisories/GHSA-qfvm-cv95-jqjf",
+            "range": "=2.2.0"
+          },
+          {
+            "title": "multer vulnerable to file size limit bypass via async fileFilter race condition",
+            "url": "https://github.com/advisories/GHSA-qvfw-j98x-7q72",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via oversized array index in field names",
+            "url": "https://github.com/advisories/GHSA-535w-7cp7-47q4",
+            "range": "<2.3.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "mysql2",
+        "severity": "high",
+        "via": [
+          {
+            "title": "MySQL2: Auth Plugin Downgrade to mysql_clear_password Leaks Plaintext Credentials",
+            "url": "https://github.com/advisories/GHSA-3f6p-5ww8-9rcr",
+            "range": "<3.22.0"
+          },
+          {
+            "title": "MySQL2: Unbounded zlib inflate in compressed MySQL protocol handler allows decompression-bomb DoS",
+            "url": "https://github.com/advisories/GHSA-rgwj-5xj2-c3m3",
+            "range": "<=3.23.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "via": [
+          "@prisma/config",
+          "mysql2"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.19.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "after": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 9,
+      "critical": 0,
+      "total": 17
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/core",
+        "severity": "high",
+        "via": [
+          "@nestjs/platform-express"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/core",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/platform-express",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "multer"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/schedule",
+        "severity": "high",
+        "via": [
+          "@nestjs/core"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/schedule",
+          "version": "2.2.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/testing",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "@nestjs/platform-express"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@prisma/client",
+        "severity": "high",
+        "via": [
+          "prisma"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "via": [
+          "deepmerge-ts"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "range": "<8.0.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "multer",
+        "severity": "high",
+        "via": [
+          {
+            "title": "multer vulnerable to Denial of Service via crafted multipart field names",
+            "url": "https://github.com/advisories/GHSA-wc9g-mqfw-jrwm",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via file descriptor leak on aborted uploads",
+            "url": "https://github.com/advisories/GHSA-qfvm-cv95-jqjf",
+            "range": "=2.2.0"
+          },
+          {
+            "title": "multer vulnerable to file size limit bypass via async fileFilter race condition",
+            "url": "https://github.com/advisories/GHSA-qvfw-j98x-7q72",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via oversized array index in field names",
+            "url": "https://github.com/advisories/GHSA-535w-7cp7-47q4",
+            "range": "<2.3.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "via": [
+          "@prisma/config"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "omitDevAfter": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 8,
+      "critical": 0,
+      "total": 16
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/core",
+        "severity": "high",
+        "via": [
+          "@nestjs/platform-express"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/core",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/platform-express",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "multer"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/core",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/schedule",
+        "severity": "high",
+        "via": [
+          "@nestjs/core"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/schedule",
+          "version": "2.2.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@prisma/client",
+        "severity": "high",
+        "via": [
+          "prisma"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "via": [
+          "deepmerge-ts"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "range": "<8.0.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "multer",
+        "severity": "high",
+        "via": [
+          {
+            "title": "multer vulnerable to Denial of Service via crafted multipart field names",
+            "url": "https://github.com/advisories/GHSA-wc9g-mqfw-jrwm",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via file descriptor leak on aborted uploads",
+            "url": "https://github.com/advisories/GHSA-qfvm-cv95-jqjf",
+            "range": "=2.2.0"
+          },
+          {
+            "title": "multer vulnerable to file size limit bypass via async fileFilter race condition",
+            "url": "https://github.com/advisories/GHSA-qvfw-j98x-7q72",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via oversized array index in field names",
+            "url": "https://github.com/advisories/GHSA-535w-7cp7-47q4",
+            "range": "<2.3.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/core",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "via": [
+          "@prisma/config"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "14.3.0",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "uiFull": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "findings": []
+  },
+  "uiOmitDev": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "findings": []
+  },
+  "previousCheckpointCounts": {
+    "high": 4,
+    "moderate": 8
+  },
+  "baselineChange": "Fresh audit before modification newly reports Multer/Nest findings: 9 high/8 moderate, superseding prior 4 high/8 moderate. No production exploitability established.",
+  "lockChanges": [
+    [
+      "mysql2",
+      "3.15.3",
+      "3.24.4"
+    ],
+    [
+      "lru.min",
+      "1.1.3",
+      "1.1.5"
+    ],
+    [
+      "sql-escaper",
+      null,
+      "1.5.1"
+    ],
+    [
+      "sqlstring",
+      "2.3.3",
+      null
+    ],
+    [
+      "denque",
+      "2.1.0",
+      null
+    ],
+    [
+      "seq-queue",
+      "0.0.5",
+      null
+    ]
+  ],
+  "verification": {
+    "cleanInstall": true,
+    "nativeProtocolTests": 10,
+    "jestAutomaticWrapper": true,
+    "backendSuites": 52,
+    "backendTests": 612,
+    "existingSkippedTests": 3,
+    "uiTests": 60,
+    "staticPages": 14,
+    "localMigrations": 15,
+    "existingProcessCrashCases": 11,
+    "fixtureDatabaseAbsenceVerified": true,
+    "realProviderCalls": 0,
+    "browser": {
+      "routeChecks": 22,
+      "homeNavigations": 12,
+      "requests": [
+        14,
+        14,
+        8,
+        92
+      ],
+      "viewports": [
+        1440,
+        390
+      ],
+      "externalRequests": 0,
+      "pageErrors": 0,
+      "visualReview": [
+        "framework-missing-link-mobile.png",
+        "reschedule-intents-desktop.png"
+      ],
+      "temporaryEvidence": "/private/tmp/signmons-mysql2-regression.Z2xacd/evidence/APP-013"
+    }
+  },
+  "limits": [
+    "No old-version negative reproduction.",
+    "No live MySQL/Prisma Studio acceptance; application PostgreSQL path regression-tested.",
+    "Cleartext auth opt-in and custom/legacy plugin escape hatches remain possible; patch does not enforce TLS universally.",
+    "Bounded in-memory packets at most 18 KB; no resource-exhaustion load test.",
+    "Full backend audit remains failing and unaccepted; no release or provider activation."
+  ],
+  "overrideRetirement": "APP-013 owns this exception. Re-review on the next Prisma update; tests intentionally require current Prisma 7.10.0. Remove when native dependency resolution is patched and protocol/PostgreSQL/application/browser gates pass.",
+  "riskAcceptance": false,
+  "afterCleanInstall": {
+    "counts": {
+      "info": 0,
+      "low": 0,
+      "moderate": 8,
+      "high": 8,
+      "critical": 0,
+      "total": 16
+    },
+    "findings": [
+      {
+        "name": "@google-cloud/firestore",
+        "severity": "moderate",
+        "via": [
+          "google-gax"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@google-cloud/storage",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/core",
+        "severity": "high",
+        "via": [
+          "@nestjs/platform-express"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/core",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/platform-express",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "multer"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/schedule",
+        "severity": "high",
+        "via": [
+          "@nestjs/core"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/schedule",
+          "version": "2.2.3",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@nestjs/testing",
+        "severity": "high",
+        "via": [
+          "@nestjs/core",
+          "@nestjs/platform-express"
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "@prisma/config",
+        "severity": "high",
+        "via": [
+          "deepmerge-ts"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "deepmerge-ts",
+        "severity": "high",
+        "via": [
+          {
+            "title": "DeepmergeTS has stack exhaustion when merging recursive object graphs",
+            "url": "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+            "range": "<8.0.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "firebase-admin",
+        "severity": "moderate",
+        "via": [
+          "@google-cloud/firestore",
+          "@google-cloud/storage"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "gaxios",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": true
+      },
+      {
+        "name": "google-gax",
+        "severity": "moderate",
+        "via": [
+          "retry-request",
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "multer",
+        "severity": "high",
+        "via": [
+          {
+            "title": "multer vulnerable to Denial of Service via crafted multipart field names",
+            "url": "https://github.com/advisories/GHSA-wc9g-mqfw-jrwm",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via file descriptor leak on aborted uploads",
+            "url": "https://github.com/advisories/GHSA-qfvm-cv95-jqjf",
+            "range": "=2.2.0"
+          },
+          {
+            "title": "multer vulnerable to file size limit bypass via async fileFilter race condition",
+            "url": "https://github.com/advisories/GHSA-qvfw-j98x-7q72",
+            "range": "<2.3.0"
+          },
+          {
+            "title": "multer vulnerable to Denial of Service via oversized array index in field names",
+            "url": "https://github.com/advisories/GHSA-535w-7cp7-47q4",
+            "range": "<2.3.0"
+          }
+        ],
+        "fixAvailable": {
+          "name": "@nestjs/testing",
+          "version": "7.5.5",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "prisma",
+        "severity": "high",
+        "via": [
+          "@prisma/config"
+        ],
+        "fixAvailable": {
+          "name": "prisma",
+          "version": "6.12.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "retry-request",
+        "severity": "moderate",
+        "via": [
+          "teeny-request"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "teeny-request",
+        "severity": "moderate",
+        "via": [
+          "uuid"
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      },
+      {
+        "name": "uuid",
+        "severity": "moderate",
+        "via": [
+          {
+            "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+            "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+            "range": "<11.1.1"
+          }
+        ],
+        "fixAvailable": {
+          "name": "firebase-admin",
+          "version": "10.3.0",
+          "isSemVerMajor": true
+        }
+      }
+    ]
+  },
+  "auditTimingNote": "Before modifications: 9 high/8 moderate. Immediately after clean install: 8 high/8 moderate. Final post-validation: full 9 high/8 moderate, omit-dev 8 high/8 moderate. Final audit additionally propagates existing deepmerge-ts risk to @prisma/client through its optional Prisma peer. Metadata/aggregation changed during this run; do not claim net overall count reduction. mysql2 is absent from every post-update snapshot."
+}

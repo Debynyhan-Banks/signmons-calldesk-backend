@@ -1,0 +1,28 @@
+{
+  "result": "PASS",
+  "checks": [
+    "one encrypted input/reply pair and privacy-safe audit commit together without delivery status",
+    "fresh instance replays exact interaction without collaborator/write; altered input refuses",
+    "raw session identifier, cross-tenant credential and occupied interaction from another session refuse",
+    "legacy message/metadata cannot become authenticated history; legacy reader cannot expose protected pair",
+    "scripted collaborator receives only correctly scoped decrypted prior turns",
+    "concurrent identical interactions commit one pair; duplicate scripted computation is not provider exactly-once",
+    "competing different turns cannot persist a reply based on stale transcript history",
+    "failure after real event/content/audit writes rolls back all records",
+    "credential expiring during scripted computation cannot append a turn",
+    "conversation closed between read and write refuses persistence",
+    "lost commit acknowledgment recovers by same-interaction replay without another append",
+    "continuation creates no jobs, consent, finalized email intents or delivery authority"
+  ],
+  "checkCount": 12,
+  "scriptedReplyCalls": 7,
+  "providerCalls": 0,
+  "productionActions": 0,
+  "newMigrations": 0,
+  "deliveryAuthorized": false,
+  "limits": [
+    "No browser/AI/booking activation",
+    "Only new encrypted protected turns are trusted, not legacy caller-ID history",
+    "Application locks/history check are not database immutability or retention integration"
+  ]
+}

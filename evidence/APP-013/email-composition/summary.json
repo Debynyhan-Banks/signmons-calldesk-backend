@@ -1,0 +1,16 @@
+{
+  "date": "2026-09-09",
+  "scope": "Inactive fixed appointment-email composition and fictional previews",
+  "baselineBackend": "ce6b0b57877a040ca287e07efbb58dd1d85b1737",
+  "baselineGovernance": "7c857813fb86132aea9458487f219b9e0e8ce6a5",
+  "result": "PASS",
+  "backend": { "tests": 1075, "newTests": 55, "passingSuites": 67, "existingSkippedTests": 3, "existingSkippedSuites": 1, "lint": "PASS", "build": "PASS", "architecture": "PASS", "prismaValidation": "PASS" },
+  "ui": { "sourceChanged": false, "tests": 159, "lint": "PASS", "build": "PASS", "staticPages": 15 },
+  "audits": { "backendFull": 0, "backendProduction": 0, "uiFull": 0, "uiProduction": 0 },
+  "browser": { "summary": "browser-summary.json", "viewports": [1440, 390], "visuallyInspected": ["confirmed-1440.png", "confirmed-390.png", "rescheduled-390.png", "cancelled-390.png", "operator-390.png"], "providerCalls": 0, "externalRequests": 0, "mutations": 0, "emailClientAcceptance": false, "calendarImportAcceptance": false },
+  "existingRegressions": { "staticBrowserSuites": 5, "result": "PASS", "artifacts": "/private/tmp/signmons-email-composition-regression.Z6ATAi/evidence/APP-013", "disposableDatabase": "PASS", "migrations": 16, "newMigrations": 0, "priorProcessCrashCases": 11, "newCrashCases": 0, "providerCalls": 0, "databaseRemoved": true, "absenceIndependentlyVerified": true, "settingsBrowser": "7 GET / 3 PUT / 10 OPTIONS", "inboxBrowser": "13 GET / 13 OPTIONS", "emailCaptureRestart": "PASS" },
+  "completion": { "criterion6": "partial: composed content, no dispatch or delivery", "criterion7": "partial: composed change notices, no dispatch or delivery", "localDemonstrated": 1, "partial": 10, "missingEndToEnd": 1, "score": 6, "criteria": 12, "scopeCoveragePercent": 50, "formalAcceptanceSignedOff": 0, "meaning": "Equal-weight checklist coverage only; not effort, whole-MVP completion or production readiness" },
+  "notPerformed": ["application route or module registration", "recipient resolution", "actual credential issuance or verification", "canonical database/provider-state validation by renderer", "email sending", "delivery ledger or retry integration", "provider configuration", "production migration", "real customer data or appointments", "merge", "deployment", "billing, charges, secrets or IAM changes"],
+  "remainingRisks": ["future trusted snapshot, recipient and management-origin binding", "live consent and send-time eligibility", "email-client/MIME and calendar import compatibility", "calendar file is a copy, not synchronized or automatically replaced", "duplicate and unknown delivery outcomes", "existing Calendar/release and retention gates", "existing toolchain/pg warnings and dependency override maintenance"],
+  "nextProposed": "One bounded tenant-scoped email eligibility and recipient snapshot adapter with local proof, without credential issuance or sending; owner review required."
+}

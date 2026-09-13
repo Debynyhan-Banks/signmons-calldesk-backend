@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "../auth/auth.module";
+import { CommunicationsModule } from "../communications/communications.module";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { JOB_REPOSITORY } from "./jobs.constants";
 import { JobsService } from "./jobs.service";
@@ -15,13 +16,19 @@ import { UrgencyReviewService } from "./urgency-review.service";
 import { DispatchAccessGuard } from "./dispatch-access.guard";
 import { DispatchBoardService } from "./dispatch-board.service";
 import { TechnicianController } from "./technician.controller";
+import { TechnicianNotificationsController } from "./technician-notifications.controller";
+import { TechnicianNotificationsService } from "./technician-notifications.service";
 import { TechnicianLinkService } from "./technician-link.service";
 import { TechnicianWorkflowService } from "./technician-workflow.service";
 import { RoutingService } from "./routing.service";
 
 @Module({
-  imports: [AuthModule],
-  controllers: [JobsController, TechnicianController],
+  imports: [AuthModule, CommunicationsModule],
+  controllers: [
+    JobsController,
+    TechnicianController,
+    TechnicianNotificationsController,
+  ],
   providers: [
     JobsService,
     JobNotificationService,
@@ -35,6 +42,7 @@ import { RoutingService } from "./routing.service";
     DispatchBoardService,
     TechnicianLinkService,
     TechnicianWorkflowService,
+    TechnicianNotificationsService,
     RoutingService,
     TenantGuard,
     {

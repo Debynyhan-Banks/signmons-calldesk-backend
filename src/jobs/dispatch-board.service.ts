@@ -17,6 +17,15 @@ import {
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
+  unfinishedCalendarOperations,
+  noUnfinishedCalendarOperations,
+} from "../scheduling/calendar-operation-guard";
+import {
+  jobCalendarPending,
+  jobReservationSnapshot,
+  requireJobCalendarSettled,
+} from "./job-calendar-guard";
+import {
   evaluatePaymentGate,
   type PaymentGateDecision,
 } from "../payments/payment-gate.policy";
@@ -30,6 +39,7 @@ export type DispatchQueue =
 
 type DispatchJob = Prisma.JobGetPayload<{
   include: {
+    calendarOperations: typeof unfinishedCalendarOperations;
     tenant: {
       select: {
         timezone: true;
@@ -103,9 +113,13 @@ export class DispatchBoardService {
       where: {
         tenantId,
         deletedAt: null,
-        status: { in: ACTIVE_JOB_STATUSES },
+        OR: [
+          { status: { in: ACTIVE_JOB_STATUSES } },
+          { calendarOperations: { some: { finishedAt: null } } },
+        ],
       },
       include: {
+        calendarOperations: unfinishedCalendarOperations,
         tenant: { select: { timezone: true } },
         serviceCategory: true,
         payment: {
@@ -199,6 +213,7 @@ export class DispatchBoardService {
       const job = await transaction.job.findFirst({
         where: { id: input.jobId, tenantId: input.tenantId, deletedAt: null },
         include: {
+          calendarOperations: unfinishedCalendarOperations,
           tenant: { select: { timezone: true } },
           serviceCategory: true,
           payment: {
@@ -215,6 +230,7 @@ export class DispatchBoardService {
         },
       });
       if (!job) throw new NotFoundException("Dispatch job was not found.");
+      requireJobCalendarSettled(job);
       if (
         job.status === JobStatus.COMPLETED ||
         job.status === JobStatus.CANCELLED
@@ -278,6 +294,9 @@ export class DispatchBoardService {
           id: job.id,
           tenantId: input.tenantId,
           updatedAt: expectedUpdatedAt,
+          AND: [{ updatedAt: job.updatedAt }],
+          ...jobReservationSnapshot(job),
+          calendarOperations: noUnfinishedCalendarOperations,
           deletedAt: null,
         },
         data: {
@@ -343,9 +362,19 @@ export class DispatchBoardService {
     return this.prisma.$transaction(async (transaction) => {
       const job = await transaction.job.findFirst({
         where: { id: input.jobId, tenantId: input.tenantId, deletedAt: null },
-        select: { id: true, assignedUserId: true, updatedAt: true },
+        select: {
+          id: true,
+          assignedUserId: true,
+          updatedAt: true,
+          status: true,
+          calendarEventId: true,
+          serviceWindowStart: true,
+          serviceWindowEnd: true,
+          calendarOperations: unfinishedCalendarOperations,
+        },
       });
       if (!job) throw new NotFoundException("Dispatch job was not found.");
+      requireJobCalendarSettled(job);
       if (!job.assignedUserId) {
         return {
           changed: false,
@@ -359,6 +388,9 @@ export class DispatchBoardService {
           id: job.id,
           tenantId: input.tenantId,
           updatedAt: expectedUpdatedAt,
+          AND: [{ updatedAt: job.updatedAt }],
+          ...jobReservationSnapshot(job),
+          calendarOperations: noUnfinishedCalendarOperations,
           deletedAt: null,
         },
         data: {
@@ -405,6 +437,7 @@ export class DispatchBoardService {
     const job = await this.prisma.job.findFirst({
       where: { id: jobId, tenantId, deletedAt: null },
       include: {
+        calendarOperations: unfinishedCalendarOperations,
         tenant: { select: { timezone: true } },
         serviceCategory: true,
         payment: {
@@ -530,6 +563,7 @@ export class DispatchBoardService {
         if (paymentGate.state === "LOCKED") {
           reasonCodes.push("PAYMENT_GATE_LOCKED");
         }
+        if (jobCalendarPending(job)) reasonCodes.push("CALENDAR_SYNC_PENDING");
         const proficiencyScore =
           capability?.proficiency === ProficiencyLevel.EXPERT
             ? 30
@@ -557,7 +591,8 @@ export class DispatchBoardService {
               (!routing.requirements.requireAvailable ||
                 (available && !unavailable)) &&
               (!routing.requirements.requireOnCall || user.isOnCall) &&
-              paymentGate.state !== "LOCKED",
+              paymentGate.state !== "LOCKED" &&
+              !jobCalendarPending(job),
           ),
           reasonCodes,
           score:
@@ -586,6 +621,7 @@ export class DispatchBoardService {
     return {
       jobId: job.id,
       reference: job.id.replace(/-/g, "").slice(0, 8).toUpperCase(),
+      calendarSyncPending: jobCalendarPending(job),
       queue: this.queue(job, escalated, paymentGate),
       serviceCategory: job.serviceCategory.name,
       urgency: job.urgency,
@@ -614,6 +650,7 @@ export class DispatchBoardService {
     escalated: boolean,
     paymentGate: PaymentGateDecision,
   ): DispatchQueue {
+    if (jobCalendarPending(job)) return "ESCALATED";
     if (job.assignedUserId) return "ASSIGNED";
     if (escalated) return "ESCALATED";
     if (paymentGate.state === "LOCKED") return "NEW_REQUEST";
@@ -740,6 +777,8 @@ export class DispatchBoardService {
       SERVICE_AREA_ALLOWED: "Job is inside the applicable service area",
       SERVICE_AREA_BLOCKED: "Job is outside the applicable service area",
       PAYMENT_GATE_LOCKED: "Required payment must clear before assignment",
+      CALENDAR_SYNC_PENDING:
+        "Calendar synchronization is unfinished; contact the office",
     };
     return labels[code] ?? "Operational factor recorded";
   }

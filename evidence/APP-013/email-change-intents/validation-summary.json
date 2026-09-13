@@ -1,0 +1,58 @@
+{
+  "result": "PASS",
+  "date": "2026-09-09",
+  "baseBackendCommit": "b7c979e017a1fd9d5bc561451630072f30c89f97",
+  "backend": {
+    "tests": 1190,
+    "suites": 71,
+    "skippedTests": 3,
+    "skippedSuites": 1,
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "prisma": "PASS"
+  },
+  "ui": {
+    "changed": false,
+    "tests": 170,
+    "exportedPages": 15,
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "dependencyAudits": {
+    "backendFull": 0,
+    "backendProduction": 0,
+    "uiFull": 0,
+    "uiProduction": 0
+  },
+  "database": {
+    "migrations": 18,
+    "processCrashScenarios": 19,
+    "newCrashScenarios": 6,
+    "newFreshProcessReads": 12,
+    "cleanupIndependentlyVerified": true
+  },
+  "browser": {
+    "staticRegressionScripts": 5,
+    "settingsAndInboxDatabaseChecks": "PASS",
+    "compositionGetRequests": 15,
+    "newUi": false,
+    "providerAcceptance": false,
+    "visuallyInspected": [
+      "email settings mobile",
+      "cancellation composition mobile"
+    ],
+    "staticArtifacts": "/private/tmp/signmons-email-changes-browser.wMWJAm/evidence/APP-013",
+    "compositionArtifacts": "/private/tmp/signmons-email-changes-composition"
+  },
+  "providerCalls": 0,
+  "productionActions": 0,
+  "limitations": [
+    "Claim snapshot is not provider finalization proof",
+    "No email admission, credentials or delivery",
+    "No legacy backfill; old unversioned or snapshotless cancellation requires office review",
+    "Migration must precede separately approved code release",
+    "Calendar unknown-outcome and pre-finalization gaps remain",
+    "Low disk and existing tooling warnings"
+  ]
+}

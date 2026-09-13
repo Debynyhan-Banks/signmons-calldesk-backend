@@ -1,0 +1,17 @@
+{
+  "checks": [
+    "concurrent stale-version writers commit once",
+    "real transaction rolls back draft on audit failure",
+    "durable save/reopen and immutable approved snapshot across draft edits",
+    "controller unauthorized/role/tenant isolation and private no-store responses",
+    "browser stale save blocks further writes until reload",
+    "desktop/mobile real-controller save approve FAQ/fallback preview and clear-session browser flow",
+    "privacy-safe audit and zero job/provider side effects"
+  ],
+  "migrations": 19,
+  "browserErrors": [],
+  "providerCalls": 0,
+  "jobCount": 0,
+  "identity": "explicit fixture guard, not Firebase acceptance",
+  "runtimeConnected": false
+}

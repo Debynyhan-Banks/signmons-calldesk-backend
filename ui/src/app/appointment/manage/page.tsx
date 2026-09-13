@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   ApiError,
@@ -63,6 +64,11 @@ export default function CustomerBookingPage() {
       );
       if (action === "request_reschedule") setRescheduleOpen(false);
     } catch (actionError) {
+      if (
+        actionError instanceof ApiError &&
+        [400, 409].includes(actionError.status)
+      )
+        setBooking(null);
       setError(errorMessage(actionError));
     } finally {
       setActing(false);
@@ -86,6 +92,11 @@ export default function CustomerBookingPage() {
       checkoutWindow.location.replace(result.checkoutUrl);
     } catch (paymentError) {
       checkoutWindow.close();
+      if (
+        paymentError instanceof ApiError &&
+        [400, 409].includes(paymentError.status)
+      )
+        setBooking(null);
       setError(errorMessage(paymentError));
     } finally {
       setPaymentOpening(false);
@@ -95,13 +106,13 @@ export default function CustomerBookingPage() {
   return (
     <main className={styles.page}>
       <header className={styles.brandBar}>
-        <a href="/" aria-label="Signmons CallDesk home">
+        <Link href="/" aria-label="Signmons CallDesk home" prefetch={false}>
           <span className={styles.brandMark}>S</span>
           <span>
             <strong>Signmons</strong>
             <small>CallDesk</small>
           </span>
-        </a>
+        </Link>
         <span className={styles.secureLabel} aria-label="Secure booking link">
           <span className={styles.secureFull}>Secure booking link</span>
           <span className={styles.secureShort} aria-hidden="true">
@@ -358,7 +369,9 @@ function ErrorPanel({ message }: { message: string }) {
       <span>!</span>
       <h1>We could not open this booking</h1>
       <p>{message}</p>
-      <small>Ask the service company to resend your secure booking link.</small>
+      <small>
+        Contact the service company for help before making plans or changes.
+      </small>
     </div>
   );
 }

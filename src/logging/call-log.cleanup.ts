@@ -14,6 +14,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { backgroundWorkersEnabled } from "../config/background-workers";
 
 const DEFAULT_IDLE_MINUTES = 30;
 
@@ -33,6 +34,7 @@ export class CallLogCleanupService implements OnModuleInit, OnModuleDestroy {
 
   @Cron(CronExpression.EVERY_30_MINUTES)
   async cleanupIdleSessions() {
+    if (!backgroundWorkersEnabled()) return;
     const idleMinutes = Number(
       process.env.CALL_LOG_IDLE_MINUTES ?? DEFAULT_IDLE_MINUTES,
     );

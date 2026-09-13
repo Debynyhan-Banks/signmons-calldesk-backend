@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CallDesk local operator review</title>
+  <style>
+    body {
+      font: 18px system-ui;
+      max-width: 46rem;
+      margin: 24px;
+      padding: 12px;
+      color: #183044;
+      background: #f5f8fa;
+    }
+    label,
+    input,
+    select,
+    button {
+      display: block;
+      font: inherit;
+      box-sizing: border-box;
+      max-width: 100%;
+      margin: 12px 0;
+      padding: 8px;
+    }
+    input {
+      width: 100%;
+    }
+    input[type="checkbox"] {
+      width: auto;
+      display: inline;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    button:disabled {
+      opacity: 0.5;
+    }
+    :focus-visible {
+      outline: 3px solid #b44a12;
+    }
+    section {
+      border: 1px solid #9cafbf;
+      background: white;
+      padding: 16px;
+      margin: 20px 0;
+    }
+    [hidden] {
+      display: none !important;
+    }
+  </style>
+  <h1>Review a customer request</h1>
+  <p>
+    Fictional local walkthrough. Approval creates a review-ready job, not a
+    booking, payment, dispatch or message.
+  </p>
+  <label for="operatorToken">Operator ID token</label
+  ><input id="operatorToken" type="password" autocomplete="off" />
+  <section id="paymentSetup">
+    <h2>Organization payment policy — local review</h2>
+    <p>
+      Owner/admin only. Fixed USD amounts in cents; no emergency surcharge or
+      payment exception. Saving a draft does not approve it. Applying an
+      approved policy does not charge, book or send.
+    </p>
+    <button id="loadPolicy">Load policy</button>
+    <label
+      ><input id="feeRequired" type="checkbox" /> Service fee required</label
+    >
+    <label for="feeCents">Service fee (USD cents)</label
+    ><input id="feeCents" type="number" min="1" max="100000000" step="1" />
+    <label
+      ><input id="depositRequired" type="checkbox" /> Fixed deposit
+      required</label
+    >
+    <label for="depositCents">Deposit (USD cents)</label
+    ><input id="depositCents" type="number" min="1" max="100000000" step="1" />
+    <button id="savePolicy" disabled>Save draft</button>
+    <label
+      ><input id="policyAck" type="checkbox" /> I reviewed the saved policy and
+      its payment requirements.</label
+    >
+    <button id="approvePolicy" disabled>Approve saved policy</button>
+    <p id="policySummary"></p>
+    <details>
+      <summary>Saved and approved version details</summary>
+      <pre id="policySnapshot"></pre>
+    </details>
+    <label
+      ><input id="applyPolicyAck" type="checkbox" /> Apply this approved policy
+      to the job from the latest readiness review.</label
+    >
+    <button id="applyPolicy" disabled>Apply reviewed policy to job</button>
+    <button id="retryPolicy" hidden>Retry exact policy request</button>
+    <p id="policyStatus" role="status"></p>
+  </section>
+  <label for="requestId">Review reference</label
+  ><input id="requestId" autocomplete="off" />
+  <button id="load">Load request</button
+  ><button id="clear">Clear private session</button>
+  <section id="review" hidden>
+    <h2>Customer-stated facts — unverified</h2>
+    <pre id="facts"></pre>
+    <p id="version"></p>
+    <label for="urgency">Human-reviewed urgency</label
+    ><select id="urgency">
+      <option value="">Choose after review</option>
+      <option>STANDARD</option>
+      <option>HIGH</option>
+      <option>EMERGENCY</option>
+    </select>
+    <label
+      ><input id="ack" type="checkbox" /> I reviewed these customer-stated facts
+      and made the urgency decision. Contact and address remain
+      unverified.</label
+    >
+    <button id="approve">Approve and create one job</button>
+  </section>
+  <button id="retry" hidden>Retry exact approval</button>
+  <section id="result" hidden>
+    <h2>Job created — not booked</h2>
+    <pre id="receipt"></pre>
+    <button id="openReadiness">Open job booking readiness</button>
+    <section id="windowReview" hidden>
+      <h2>Review the customer's preferred service window</h2>
+      <p>
+        Record the customer's words. This does not check availability, reserve
+        time or promise an appointment.
+      </p>
+      <label for="windowPreference"
+        >Preferred service window (up to 500 characters)</label
+      ><input id="windowPreference" maxlength="500" autocomplete="off" />
+      <label
+        ><input id="windowAck" type="checkbox" /> I reviewed this preference
+        with the customer; it is not a confirmed appointment.</label
+      >
+      <button id="saveWindow" disabled>Save reviewed preference</button>
+      <button id="retryWindow" hidden>Retry exact preference save</button>
+      <p id="windowStatus" role="status"></p>
+    </section>
+    <section id="readiness" hidden>
+      <h2>Booking readiness — read-only snapshot</h2>
+      <pre id="readinessFacts"></pre>
+      <h3>Confirmation preview</h3>
+      <p id="confirmationPreview"></p>
+      <p>
+        No booking or sending controls are enabled. Resolve blockers through
+        authorized workflows, then reload this snapshot.
+      </p>
+    </section>
+  </section>
+  <p id="status" role="status" aria-live="polite"></p>
+  <p>
+    After an uncertain result, retry only the exact decision before the original
+    deadline. If it is expired or changed, ask the operator to check existing
+    job history; do not create a replacement request automatically.
+  </p>
+  <script src="/operator-review.js"></script>
+  <script src="/payment-policy.js"></script>
+  <script src="/window-review.js"></script>
+</html>

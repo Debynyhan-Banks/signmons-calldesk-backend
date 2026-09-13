@@ -1,0 +1,25 @@
+{
+  "mode": "DISPOSABLE_POSTGRES_FIXTURE_ONLY",
+  "checks": [
+    "concurrent capture, service/client restart, one original receipt and audit",
+    "encrypted exact disclosure/recipient evidence with atomic audit reference",
+    "decline writes no capture and no audit",
+    "current policy, recipient, revision, suspension, opt-out and change-restore fencing",
+    "actual current customer phone must still match locked fixture policy",
+    "cross-tenant prompt and encrypted source substitution refused",
+    "audit failure and post-write rollback; unknown committed outcome recovers once",
+    "deadline crossing during write rolls back both capture and audit",
+    "corrupt policy and prompt fail closed",
+    "expired prompt and closed session refuse even historical receipt",
+    "missing configured state refuses",
+    "suspended organization refuses",
+    "database composite foreign keys refuse cross-tenant state and prompts",
+    "mobile/desktop real durable port, keyboard choice, no overflow, lost response and skip"
+  ],
+  "capturedEvidence": 5,
+  "captureAudits": 5,
+  "liveConsentRecords": 0,
+  "deliveryEvents": 0,
+  "providerCalls": 0,
+  "productionDatabaseWrites": 0
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Local customer browser security test</title>
+  <style>
+    body {
+      font: 18px system-ui;
+      max-width: 38rem;
+      margin: 24px;
+      padding: 12px;
+    }
+    button,
+    input {
+      font: inherit;
+      max-width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin: 8px 0;
+    }
+    p {
+      overflow-wrap: anywhere;
+    }
+    [hidden] {
+      display: none;
+    }
+  </style>
+  <h1>Private customer connection</h1>
+  <p>Local test only. Collection is not live. Sending remains disabled.</p>
+  <button id="start">Start a new request</button>
+  <section id="address" hidden>
+    <label for="email">Email for this request</label
+    ><input id="email" type="email" autocomplete="off" /><button id="capture">
+      Retain this address
+    </button>
+  </section>
+  <section id="permission" hidden>
+    <p id="mailbox"></p>
+    <p id="prompt"></p>
+    <label
+      ><input id="confirmed" type="checkbox" /> I confirm this is my email
+      address.</label
+    ><button id="grant" disabled>Allow appointment emails</button
+    ><button id="decline">No thanks</button>
+  </section>
+  <p id="status" role="status"></p>
+  <script src="/fixture.js"></script>
+</html>

@@ -1,0 +1,23 @@
+{
+  "result": "PASS",
+  "scope": "Inactive read-only eligibility diagnostic; zero admitted events",
+  "invariantCheckedReads": 23,
+  "kinds": 3,
+  "atomicSnapshotRace": true,
+  "databaseWriteRefused": true,
+  "providerCalls": 0,
+  "migrationsAdded": 0,
+  "checks": [
+    "All three actual finalizer events plus CREATE read-back bind retained recipient; consent and expiry missing always refuse",
+    "Pending Calendar and deleted job refuse",
+    "Every ordinary review leaves eleven business tables unchanged",
+    "Wrong tenant/role/impersonation and suspended tenant refuse",
+    "Event-time blocked/invalid never resurrected by current permission",
+    "Current policy revocation/invalid state refuses",
+    "Changed version/provider/session and invalid audit refuse",
+    "Declined/wrong-session/ambiguous recipient refuses",
+    "RepeatableRead retains one snapshot across committed policy/recipient revocation; fresh review sees revocation",
+    "Read-only transaction enforces no writes",
+    "No address, credentials, body or raw provider reference returned"
+  ]
+}

@@ -1,0 +1,13 @@
+# Approved single-SMS attempt — 2026-09-12
+
+## Owner-approved restart, 22:07–22:22 UTC
+
+Repeated the seven-minute limited-grant sequence; Firebase signing/exchange succeeded. Private number validation again failed before the corrected DTO probe, tenant activation, session creation, deployment or START. No SMS sent. The private value was not logged, so its format is not asserted. Cleanup verified: no binding, role disabled, operator disabled/revoked (validSince 1789251300), token reuse 401.
+
+Do not repeat the expensive permission wait for another strict-format prompt. The next operational improvement should validate/normalize private US number input before requesting temporary access, explicitly distinguish cancellation/timeout and accept 10 digits, 11 digits beginning 1, or +1 format while enforcing the approved destination. No widening participant scope. No further retry is performed in this checkpoint. Walkthrough remains 3/8. Current scripts still contain the strict input behavior; improvement is not claimed implemented.
+
+Owner explicitly approved one SMS to the private destination ending 3183, USD 0.50 application ceiling, no resend and access cleanup. Preflight read verified exact tenant SUSPENDED with phone approval disabled; current Twilio credential read the expected service (HTTP 200, account matched, six digits, custom code false). No provider configuration changed. No actual provider SMS call occurred.
+
+Operational scripts rehearse-phone-auth.mjs and run-approved-phone-test.mjs prepare the supervised flow with private native dialogs; no credentials or destinations printed. Signing window 21:53–22:08 UTC, same retained signBlob-only role, 420-second propagation wait. Signing/exchange and exact Firebase token signature/project/UID/tenant/role succeeded. Private phone dialog did not return a value passing strict +1 format and suffix 3183 validation. The script did not retain a reason distinguishing timeout/blank/invalid input; do not assert the owner entered a wrong number. Stopped at that assertion, before corrected DTO HTTP probe, database session/customer creation, tenant activation, candidate deployment or SMS START.
+
+Finally: operator disabled and refresh credentials revoked (validSince 1789250511), exact grant removed, custom role disabled. Readback no bindings; same issued token returned 401. No SMS, OTP check, liability reservation, session or deployment. Original candidate remains unchanged by this attempt. Script syntax checks passed; runtime/UX acceptance not claimed and full runtime suite not rerun. No automatic retry. Next: owner-ready private input and a renewed supervised execution window, not another feature milestone. APP-013/2B remains Now; 3/8 (37.5%) unchanged.

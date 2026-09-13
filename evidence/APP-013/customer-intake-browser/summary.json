@@ -1,0 +1,30 @@
+{
+  "result": "PASS",
+  "checks": [
+    "1440/390 browser bootstrap and scripted continuation persist encrypted turns through actual transport/service/database",
+    "literal text rendering does not interpret scripted HTML",
+    "lost HTTP acknowledgment retains immutable pending input; explicit same-ID replay adds no write or scripted call",
+    "stale conversation returns 409 and clears private state without a new turn",
+    "expired server credential returns 401 before persistence and clears private state",
+    "clear during in-flight work prevents late reply publication in a new session; abort does not retract a committed turn",
+    "client deadline refuses and clears without renewing authority; reload cannot recover/adopt old state",
+    "no cookies, web storage, credential URLs, horizontal overflow, page errors or external requests",
+    "no jobs, consent, finalized intents or delivery authority; diagnostics omit messages and credentials"
+  ],
+  "checkCount": 9,
+  "viewports": [
+    1440,
+    390
+  ],
+  "scriptedCalls": 6,
+  "providerCalls": 0,
+  "productionActions": 0,
+  "deliveryAuthorized": false,
+  "pageErrors": [],
+  "external": [],
+  "limitations": [
+    "Local loopback fixture only, no production route or AI/booking activation",
+    "Client abort cannot undo server persistence",
+    "No credential recovery, renewal, distributed limiter or retention implementation"
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "checkpoint": "APP-013 legacy CREATE technician/lifecycle safeguard",
+  "baseline": {
+    "backend": "8450113",
+    "governance": "1113464"
+  },
+  "runtimeFiles": [
+    "src/jobs/job-calendar-guard.ts",
+    "src/jobs/dispatch-board.service.ts",
+    "src/jobs/technician-workflow.service.ts",
+    "src/jobs/job-lifecycle.service.ts"
+  ],
+  "gates": {
+    "backend": {
+      "build": "PASS",
+      "lint": "PASS",
+      "tests": 684,
+      "suites": 56,
+      "skippedTests": 3,
+      "architecture": "PASS",
+      "prisma": "PASS"
+    },
+    "ui": {
+      "lintTypecheck": "PASS",
+      "tests": 60,
+      "staticPages": 14
+    },
+    "database": {
+      "migrations": 15,
+      "priorProcessCrashCases": 11,
+      "newCrashCases": 0,
+      "fieldSnapshots": 45,
+      "fieldRefusals": 270,
+      "completionRefusals": 9,
+      "competingWriteCases": 2,
+      "providerCalls": 0,
+      "cleanupVerified": true
+    }
+  },
+  "browser": {
+    "syntheticOnly": true,
+    "viewports": [
+      1440,
+      390
+    ],
+    "frameworkRoutes": 22,
+    "homeNavigations": 12,
+    "customerDispatchRequests": 46,
+    "dispatchPosts": 0,
+    "technicianRequests": 26,
+    "technicianConflictPosts": 2,
+    "initialHeldPosts": 0,
+    "policyRequests": 8,
+    "notificationRequests": 95,
+    "artifacts": "/private/tmp/signmons-legacy-field-regression.LIIJhX/evidence/APP-013",
+    "screenshotsReviewed": [
+      "legacy-field-hold-assigned-desktop.png",
+      "legacy-field-hold-completed-mobile.png"
+    ]
+  },
+  "audits": {
+    "fieldBackendFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "fieldBackendProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 393,
+          "dev": 733,
+          "optional": 95,
+          "peer": 3,
+          "peerOptional": 0,
+          "total": 1195
+        }
+      }
+    },
+    "fieldUiFull": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    },
+    "fieldUiProd": {
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 16,
+          "dev": 309,
+          "optional": 61,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 362
+        }
+      }
+    }
+  },
+  "limits": [
+    "Legacy predicate remains Job.status ACCEPTED with a reservation and missing nonblank reference",
+    "Already-IN_PROGRESS and terminal Job history not reclassified",
+    "No automatic repair, global serialization or Calendar verification",
+    "No live acceptance, activation, provider action, release or real-data mutation"
+  ],
+  "estimates": {
+    "APP013Percent": 85,
+    "APP006ThroughAPP016Percent": 81,
+    "releaseReadiness": false
+  }
+}

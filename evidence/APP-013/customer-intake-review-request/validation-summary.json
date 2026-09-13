@@ -1,0 +1,45 @@
+{
+  "date": "2026-09-10",
+  "backend": {
+    "newTests": 21,
+    "testsPassed": 1492,
+    "suitesPassed": 80,
+    "testsSkipped": 3,
+    "suitesSkipped": 1,
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "prismaValidate": "PASS",
+    "initialSandboxRun": "HTTP listeners refused EPERM; approved listener-enabled rerun passed"
+  },
+  "ui": {
+    "testsPassed": 170,
+    "lint": "PASS",
+    "build": "PASS",
+    "staticPages": 15
+  },
+  "audits": {
+    "backendFull": 0,
+    "backendProduction": 0,
+    "uiFull": 0,
+    "uiProduction": 0
+  },
+  "database": {
+    "newCheckGroups": 10,
+    "existingMigrations": 19,
+    "newMigrations": 0,
+    "priorProcessCrashCases": 19,
+    "newProcessCrashCases": 0,
+    "cleanup": "no matching databases"
+  },
+  "browser": {
+    "newSurface": false,
+    "existingDesktopMobileRegressions": "PASS"
+  },
+  "operatorCredentialAccesses": 0,
+  "providerCalls": 0,
+  "productionActions": 0,
+  "jobCreated": false,
+  "bookingAuthorized": false,
+  "deliveryAuthorized": false
+}

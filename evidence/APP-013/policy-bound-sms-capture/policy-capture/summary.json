@@ -1,0 +1,21 @@
+{
+  "mode": "DISPOSABLE_POSTGRES_DRY_RUN",
+  "checks": [
+    "registry public projection, encrypted tenant/session/policy/recipient provenance, concurrent exact receipt replay and skip without grant/revoke",
+    "foreign tenant/role/token instance/key version and forged authority refused; database scope/live-mode/immutable evidence constraints",
+    "atomic post-write rollback and unknown-commit reconstruction return one original capture/audit",
+    "uncaptured skip leaves no audit; missing consent authority refuses prompt/capture; session capacity refuses another prompt",
+    "existing STOP suppresses pending capture; later START cannot revive its stale suppression revision",
+    "STOP holding shared recipient lock defeats overlapping policy-bound capture without deadlock or grant",
+    "recipient change-back, closed session and policy replacement invalidate both pending capture and old receipt replay",
+    "publication authority revoked during write and actual policy expiry roll back capture plus audit",
+    "dry-run capture evidence cannot authorize existing delivery consumers; zero grants, queues and providers"
+  ],
+  "capturedEvidence": 2,
+  "captureAudits": 2,
+  "providerCalls": 0,
+  "deliveryEvents": 0,
+  "finalTenantOptedInRecords": 0,
+  "liveCaptureEnabled": false,
+  "productionWrites": 0
+}
