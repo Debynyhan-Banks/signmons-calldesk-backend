@@ -17,6 +17,18 @@ import {
   CustomerSessionScope,
 } from "./customer-consent-session-lock";
 import { validateCustomerIntakeDraft } from "./customer-intake-draft";
+import { controlledIntakeSubmission } from "./controlled-intake-submission";
+import { ControlledIntakeSubmission } from "./controlled-intake-verification.service";
+import {
+  ControlledIntakeAuthority,
+  ControlledIntakeScope,
+} from "./controlled-intake-authority";
+import { ConsentSessionClaims } from "./customer-consent-credentials";
+import { LifeSafetyService } from "../ai/safety/life-safety.service";
+import {
+  ORGANIZATION_PAYMENT_POLICY,
+  profile as paymentProfile,
+} from "../tenants/organization-payment-policy";
 import { LocalAddressService } from "./local-address.service";
 import { localAddressReviewSnapshot } from "./local-address-review-snapshot";
 import {
@@ -81,6 +93,154 @@ export class CustomerIntakeContinuationService {
     >,
     private readonly admissionProof?: CurrentProofSource,
   ) {}
+
+  /** P02 current-state port. Called under the caller's transaction; no cached
+   * approval, writes or browser-supplied positive authority. Category has no
+   * active flag: existence in the active tenant is its current catalog state. */
+  async readControlledCurrentState(
+    tx: Prisma.TransactionClient,
+    scope: ControlledIntakeScope,
+  ) {
+    const tenants = await tx.$queryRaw<{ settings: unknown }[]>(Prisma.sql`
+      SELECT settings FROM "TenantOrganization"
+      WHERE id=${scope.tenantId}::uuid AND status='ACTIVE' FOR SHARE`);
+    const categories = await tx.$queryRaw<
+      { id: string; name: string }[]
+    >(Prisma.sql`
+      SELECT id, name FROM "ServiceCategory" WHERE id=${scope.serviceCategoryId}::uuid
+      AND "tenantId"=${scope.tenantId}::uuid FOR SHARE`);
+    if (tenants.length !== 1 || categories.length !== 1) throw changed();
+    const settings = object(tenants[0].settings);
+    const organization = profile(settings?.[ORGANIZATION_PROFILE])?.approved;
+    const payment = paymentProfile(
+      settings?.[ORGANIZATION_PAYMENT_POLICY],
+    )?.approved;
+    const [clock] = await tx.$queryRaw<{ ms: bigint }[]>(Prisma.sql`
+      SELECT floor(extract(epoch FROM clock_timestamp()) * 1000)::bigint AS ms`);
+    const nowMs = Number(clock?.ms);
+    if (
+      !organization ||
+      !payment ||
+      !Number.isSafeInteger(nowMs) ||
+      Date.parse(organization.approvedAt) > nowMs ||
+      Date.parse(payment.approvedAt) > nowMs
+    )
+      throw changed();
+    const digest = (value: unknown) =>
+      createHash("sha256").update(JSON.stringify(value)).digest("hex");
+    return {
+      tenantId: scope.tenantId,
+      tenantActive: true,
+      serviceCategoryId: scope.serviceCategoryId,
+      categoryActive: true,
+      categoryName: categories[0].name,
+      organizationApprovedAt: organization.approvedAt,
+      organizationDigest: digest(organization),
+      paymentApprovedAt: payment.approvedAt,
+      paymentDigest: digest(payment),
+      nowMs,
+    };
+  }
+
+  /** Request-local P03 reader. Captures copied customer input, not proof. The
+   * server supplies integration/origin and its opaque capability. No durable
+   * draft, token, provider output or positive authorization cache is created. */
+  controlledSubmissionReader(
+    value: unknown,
+    binding: {
+      integrationId: string;
+      origin: string;
+      authority: ControlledIntakeAuthority;
+      capability: Readonly<object>;
+    },
+  ) {
+    const input = controlledIntakeSubmission(value);
+    const owner = this.credentials.verifySession(input.sessionToken);
+    const { integrationId, origin, authority, capability } = binding;
+    return async (
+      tx: Prisma.TransactionClient,
+      session: ConsentSessionClaims,
+      requestId: string,
+    ): Promise<ControlledIntakeSubmission> => {
+      this.credentials.verifySession(input.sessionToken);
+      if (
+        requestId !== input.requestId ||
+        session.tenantId !== owner.tenantId ||
+        session.conversationId !== owner.conversationId ||
+        session.sessionId !== owner.sessionId ||
+        session.jti !== owner.jti
+      )
+        throw changed();
+      const history = await this.history(tx, owner);
+      if (
+        !history.organization ||
+        history.turns.length !== input.expectedRevision
+      )
+        throw changed();
+      const safety = new LifeSafetyService();
+      const escalation = [
+        ...history.turns.map((turn) => turn.message),
+        input.draft.description,
+      ]
+        .map((message) => safety.assess(message))
+        .find((result) => result !== null);
+      if (escalation)
+        throw new ConflictException({ ...escalation, jobCreated: false });
+      const categories = await tx.serviceCategory.findMany({
+        where: { tenantId: owner.tenantId, name: input.draft.issueCategory },
+        select: { id: true },
+        take: 2,
+      });
+      if (categories.length !== 1) throw changed();
+      const authorityScope = {
+        tenantId: owner.tenantId,
+        integrationId,
+        origin,
+        serviceCategoryId: categories[0].id,
+      };
+      const current = await this.readControlledCurrentState(tx, authorityScope);
+      this.credentials.verifySession(input.sessionToken, current.nowMs);
+      if (
+        current.categoryName !== input.draft.issueCategory ||
+        current.organizationDigest !== history.organization.digest ||
+        current.organizationApprovedAt !== history.organization.approvedAt
+      )
+        throw changed();
+      const actor = await authority.check(capability, tx, authorityScope);
+      const submissionDigest = createHash("sha256")
+        .update(
+          JSON.stringify({
+            tenantId: owner.tenantId,
+            conversationId: owner.conversationId,
+            sessionId: owner.sessionId,
+            requestId,
+            revision: input.expectedRevision,
+            transcriptDigest: history.digest,
+            draft: input.draft,
+            confirmedAddress: input.confirmedAddress,
+            confirmed: input.confirmed,
+            policyVersion: actor.policyVersion,
+            priorityPolicy: actor.priorityPolicy,
+            organizationApprovedAt: current.organizationApprovedAt,
+            organizationDigest: current.organizationDigest,
+            paymentApprovedAt: current.paymentApprovedAt,
+            paymentDigest: current.paymentDigest,
+            authorityScope,
+          }),
+        )
+        .digest("hex");
+      return {
+        intentId: requestId,
+        revision: input.expectedRevision,
+        submissionDigest,
+        policyVersion: actor.policyVersion,
+        organizationApprovedAt: current.organizationApprovedAt,
+        phone: input.draft.phone,
+        address: { ...input.confirmedAddress },
+        authorityScope,
+      };
+    };
+  }
 
   /** Customer-only durable submission. Does not store the bearer or authorize a job. */
   async submitReview(input: {

@@ -1,8 +1,8 @@
 # Signmons Backend Execution Board
 
-## Current: P04 active — approved address binding implemented
+## Current: P04 active — current submission reader validated
 
-evidence/APP-013/p04-address-binding.md records the version2 customer-confirmed address validator and 17 new tests. Owner-approved contract amendment only; legacy format unchanged, no route or job writer connected. P04 remains ACTIVE, with actual current-draft/policy loader, atomic job/safety/replay and database tests pending in this same package. No new package, acceptance or completed timing sample. APP-013/2B Now; walkthrough 3/8 (37.5%) unchanged. No additional scope deviation or external action.
+evidence/APP-013/p04-current-submission.md records the request-local P03 reader using real encrypted history, current locked organization/payment/category state, database time, P02 authority and existing safety refusal. Fifteen new tests, 2,256 total passed (3 skipped), real disposable database lock/revocation checks and existing browser regressions passed. No route or controlled job writer connected. P04 remains ACTIVE: atomic version2 persistence, exact receipt replay and controlled duplicate/rollback/recovery proof remain in this same package. No new package, acceptance or completed timing sample. APP-013/2B Now; walkthrough 3/8 (37.5%) unchanged. No scope deviation or external action.
 
 ## Historical: P03 controlled verification review-ready — 2026-09-13
 

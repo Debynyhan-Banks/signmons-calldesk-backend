@@ -1,5 +1,7 @@
 import { randomUUID, createHash } from "node:crypto";
 import { BadRequestException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { ControlledIntakeAuthority } from "./controlled-intake-authority";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -38,6 +40,7 @@ describe("inactive credential-bound transcript continuation", () => {
     message: "Fictional private intake text",
   });
   const tx = {
+    $queryRaw: jest.fn(),
     tenantOrganization: { findFirst: jest.fn() },
     communicationEvent: {
       findFirst: jest.fn(),
@@ -47,7 +50,7 @@ describe("inactive credential-bound transcript continuation", () => {
     },
     conversationJobLink: { count: jest.fn(), create: jest.fn() },
     job: { findUnique: jest.fn(), create: jest.fn() },
-    serviceCategory: { findFirst: jest.fn() },
+    serviceCategory: { findFirst: jest.fn(), findMany: jest.fn() },
     customer: { upsert: jest.fn() },
     propertyAddress: { create: jest.fn() },
     conversation: { updateMany: jest.fn() },
@@ -401,6 +404,265 @@ describe("inactive credential-bound transcript continuation", () => {
     await expect(service().continue(input())).rejects.toThrow("unconfirmed");
     tx.auditLog.create.mockRejectedValueOnce(new Error("PRIVATE_DATABASE"));
     await expect(service().continue(input())).rejects.toThrow("unconfirmed");
+  });
+  describe("controlled request-local current submission reader", () => {
+    function fixture() {
+      const intake = service(false);
+      const categoryId = randomUUID();
+      const organizationRow = organization();
+      const paymentDraft = {
+        currency: "usd",
+        serviceFeeRequired: true,
+        serviceFeeCents: 100,
+        depositRequired: false,
+        depositPolicy: { kind: "none" },
+        emergencyFeePolicy: { kind: "none" },
+        paymentGateMode: "fail_closed",
+        webhookValidationRequired: true,
+      };
+      const payment = {
+        version: 1,
+        draft: paymentDraft,
+        approved: {
+          draft: paymentDraft,
+          actorId: "owner",
+          approvedAt: "2026-01-01T00:00:00.000Z",
+        },
+      };
+      const settings = {
+        ...organizationRow.settings,
+        organizationPaymentPolicyV1: payment,
+      };
+      const hash = (v: unknown) =>
+        createHash("sha256").update(JSON.stringify(v)).digest("hex");
+      const approved = settings.organizationProfileV1.approved;
+      const turn = saved();
+      Object.assign(turn.content.payload, {
+        version: 2,
+        organizationApprovedAt: approved.approvedAt,
+        organizationDigest: hash(approved),
+      });
+      tx.communicationEvent.findMany.mockResolvedValue([turn]);
+      tx.tenantOrganization.findFirst.mockResolvedValue({ settings });
+      tx.serviceCategory.findMany.mockResolvedValue([{ id: categoryId }]);
+      let clock = Date.now();
+      tx.$queryRaw.mockImplementation((sql: Prisma.Sql) => {
+        const query = sql.strings.join("");
+        if (query.includes('"TenantOrganization"'))
+          return Promise.resolve([{ settings }]);
+        if (query.includes('"ServiceCategory"'))
+          return Promise.resolve([{ id: categoryId, name: "COOLING" }]);
+        return Promise.resolve([{ ms: BigInt(clock) }]);
+      });
+      const activation = {
+        version: 1,
+        enabled: true,
+        tenantId: scope.tenantId,
+        integrationId: "intake",
+        origin: "https://example.invalid",
+        policyVersion: "v1",
+        organizationApprovedAt: approved.approvedAt,
+        organizationDigest: hash(approved),
+        paymentApprovedAt: payment.approved.approvedAt,
+        paymentDigest: hash(payment.approved),
+        allowedServiceCategoryIds: [categoryId],
+        priorityPolicy: "AUTO_INTAKE_STANDARD_V1",
+        validFrom: approved.approvedAt,
+        validUntil: new Date(clock + 60000).toISOString(),
+        packetId: randomUUID(),
+      };
+      const authority = new ControlledIntakeAuthority(
+        () => activation,
+        (db, requested) => intake.readControlledCurrentState(db, requested),
+      );
+      const binding = {
+        integrationId: "intake",
+        origin: "https://example.invalid",
+        authority,
+        capability: authority.issue(),
+      };
+      const submitted = {
+        version: 2,
+        sessionToken: input().sessionToken,
+        requestId: randomUUID(),
+        expectedRevision: 1,
+        confirmed: true,
+        draft: { ...draft, address: "123 Fictional Lane, Example, OH 44101" },
+        confirmedAddress: {
+          street: "123 Fictional Lane",
+          unit: "",
+          city: "Example",
+          postalCode: "44101",
+        },
+      };
+      const claims = credentials.verifySession(submitted.sessionToken);
+      clock = Math.max(clock, claims.issuedAt);
+      const reader = intake.controlledSubmissionReader(submitted, binding);
+      const read = () =>
+        reader(
+          tx as unknown as Prisma.TransactionClient,
+          claims,
+          submitted.requestId,
+        );
+      return {
+        intake,
+        binding,
+        submitted,
+        claims,
+        reader,
+        read,
+        turn,
+        settings,
+        activation,
+        setClock: (ms: number) => {
+          clock = ms;
+        },
+      };
+    }
+    it("loads actual approved inputs repeatedly without writing or exposing credentials/history", async () => {
+      const f = fixture();
+      const result = await f.read();
+      expect(await f.read()).toEqual(result);
+      expect(result).toMatchObject({
+        intentId: f.submitted.requestId,
+        revision: 1,
+        policyVersion: "v1",
+        phone: draft.phone,
+        address: f.submitted.confirmedAddress,
+      });
+      expect(result.submissionDigest).toMatch(/^[a-f0-9]{64}$/);
+      expect(JSON.stringify(result)).not.toContain(f.submitted.sessionToken);
+      expect(JSON.stringify(result)).not.toContain("private intake text");
+      expect(tx.job.create).not.toHaveBeenCalled();
+      expect(tx.communicationEvent.create).not.toHaveBeenCalled();
+      expect(tx.auditLog.create).not.toHaveBeenCalled();
+    });
+    it("copies submitted values; a later new submission produces a different binding", async () => {
+      const f = fixture();
+      const initial = await f.read();
+      f.submitted.draft.customerName = "Changed customer";
+      expect(await f.read()).toEqual(initial);
+      const changedReader = f.intake.controlledSubmissionReader(
+        f.submitted,
+        f.binding,
+      );
+      expect(
+        (
+          await changedReader(
+            tx as unknown as Prisma.TransactionClient,
+            f.claims,
+            f.submitted.requestId,
+          )
+        ).submissionDigest,
+      ).not.toBe(initial.submissionDigest);
+    });
+    it("binds trusted transcript content as well as its revision", async () => {
+      const f = fixture();
+      const initial = await f.read();
+      f.turn.content.payload.encryptedInput = cipher.encrypt(
+        "A different routine issue",
+      );
+      expect((await f.read()).submissionDigest).not.toBe(
+        initial.submissionDigest,
+      );
+    });
+    it.each(["tenantId", "conversationId", "sessionId", "jti"] as const)(
+      "rejects foreign %s",
+      async (key) => {
+        const f = fixture();
+        await expect(
+          f.reader(
+            tx as unknown as Prisma.TransactionClient,
+            { ...f.claims, [key]: randomUUID() },
+            f.submitted.requestId,
+          ),
+        ).rejects.toThrow();
+      },
+    );
+    it("rejects another request and absent/stale history", async () => {
+      const f = fixture();
+      await expect(
+        f.reader(
+          tx as unknown as Prisma.TransactionClient,
+          f.claims,
+          randomUUID(),
+        ),
+      ).rejects.toThrow();
+      tx.communicationEvent.findMany.mockResolvedValue([]);
+      await expect(f.read()).rejects.toThrow();
+      tx.communicationEvent.findMany.mockResolvedValue([saved()]);
+      await expect(f.read()).rejects.toThrow();
+    });
+    it.each([
+      { rows: [] },
+      { rows: [{ id: randomUUID() }, { id: randomUUID() }] },
+    ])("rejects missing/ambiguous category %j", async ({ rows }) => {
+      const f = fixture();
+      tx.serviceCategory.findMany.mockResolvedValue(rows);
+      await expect(f.read()).rejects.toThrow();
+    });
+    it("rejects changed organization and payment approvals", async () => {
+      const f = fixture();
+      f.settings.organizationPaymentPolicyV1.approved.draft.serviceFeeCents = 200;
+      await expect(f.read()).rejects.toThrow();
+      f.settings.organizationPaymentPolicyV1.approved.draft.serviceFeeCents = 100;
+      f.settings.organizationProfileV1.approved.draft.greeting = "New policy";
+      await expect(f.read()).rejects.toThrow();
+    });
+    it("rejects revoked, foreign-origin and forged authority", async () => {
+      const f = fixture();
+      f.activation.enabled = false;
+      await expect(f.read()).rejects.toThrow();
+      f.activation.enabled = true;
+      for (const override of [
+        { origin: "https://other.invalid" },
+        { capability: {} },
+      ]) {
+        const read = f.intake.controlledSubmissionReader(f.submitted, {
+          ...f.binding,
+          ...override,
+        });
+        await expect(
+          read(
+            tx as unknown as Prisma.TransactionClient,
+            f.claims,
+            f.submitted.requestId,
+          ),
+        ).rejects.toThrow();
+      }
+    });
+    it("uses database time for activation and credential expiry", async () => {
+      const f = fixture();
+      f.setClock(Date.parse(f.activation.validUntil));
+      await expect(f.read()).rejects.toThrow();
+      f.setClock(f.claims.expiresAt);
+      await expect(f.read()).rejects.toThrow();
+    });
+    it("keeps earlier customer safety warning sticky despite routine latest description", async () => {
+      const f = fixture();
+      f.turn.content.payload.encryptedInput = cipher.encrypt("I smell gas");
+      await expect(f.read()).rejects.toMatchObject({
+        response: {
+          status: "safety_escalation",
+          jobCreated: false,
+          requiresHumanHandoff: true,
+        },
+      });
+      expect(tx.serviceCategory.findMany).not.toHaveBeenCalled();
+      expect(tx.job.create).not.toHaveBeenCalled();
+    });
+    it("checks the confirmed description for safety too", async () => {
+      const f = fixture();
+      f.submitted.draft.description = "There are sparks";
+      const read = f.intake.controlledSubmissionReader(f.submitted, f.binding);
+      await expect(
+        read(
+          tx as unknown as Prisma.TransactionClient,
+          f.claims,
+          f.submitted.requestId,
+        ),
+      ).rejects.toThrow();
+    });
   });
   const draft = {
     customerName: "Fictional Customer",

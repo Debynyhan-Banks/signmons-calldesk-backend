@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { createServer } from "node:http";
 import { readFile, writeFile } from "node:fs/promises";
@@ -7,6 +7,9 @@ const require = createRequire(import.meta.url);
 const {
   CustomerIntakeContinuationService: Intake,
 } = require("../dist/communications/customer-intake-continuation.service.js");
+const {
+  ControlledIntakeAuthority,
+} = require("../dist/communications/controlled-intake-authority.js");
 const {
   CustomerConsentCredentials: Credentials,
 } = require("../dist/communications/customer-consent-credentials.js");
@@ -264,6 +267,132 @@ export async function verifyOrganizationIntake({
     checks.push(
       "encrypted version-bound exact replay and scripted-mode isolation",
     );
+    // P04 real current-state reader in the same disposable database. It creates
+    // no job and calls no provider; browser automatic admission remains P05.
+    const tenantBefore = await prisma.tenantOrganization.findUnique({
+      where: { id: tenantId },
+    });
+    const paymentDraft = {
+      currency: "usd",
+      serviceFeeRequired: true,
+      serviceFeeCents: 100,
+      depositRequired: false,
+      depositPolicy: { kind: "none" },
+      emergencyFeePolicy: { kind: "none" },
+      paymentGateMode: "fail_closed",
+      webhookValidationRequired: true,
+    };
+    const payment = {
+      version: 1,
+      draft: paymentDraft,
+      approved: {
+        draft: paymentDraft,
+        actorId: "fictional-owner",
+        approvedAt: new Date().toISOString(),
+      },
+    };
+    await prisma.tenantOrganization.update({
+      where: { id: tenantId },
+      data: {
+        settings: {
+          ...tenantBefore.settings,
+          organizationPaymentPolicyV1: payment,
+        },
+      },
+    });
+    const category = await prisma.serviceCategory.create({
+      data: { tenantId, name: "COOLING" },
+    });
+    const fresh = await integration(() => responses.start());
+    await intake.continueOrganization({
+      sessionToken: fresh.sessionToken,
+      interactionId: randomUUID(),
+      message: "Routine cooling issue",
+    });
+    const claims = credentials.verifySession(fresh.sessionToken);
+    const hash = (value) =>
+      createHash("sha256").update(JSON.stringify(value)).digest("hex");
+    const approved = require("../dist/tenants/organization-profile.js").profile(
+      tenantBefore.settings.organizationProfileV1,
+    ).approved;
+    const approvedPayment =
+      require("../dist/tenants/organization-payment-policy.js").profile(
+        payment,
+      ).approved;
+    const activation = {
+      version: 1,
+      enabled: true,
+      tenantId,
+      integrationId: "fictional",
+      origin: "https://example.invalid",
+      policyVersion: "p04-fixture",
+      organizationApprovedAt: approved.approvedAt,
+      organizationDigest: hash(approved),
+      paymentApprovedAt: payment.approved.approvedAt,
+      paymentDigest: hash(approvedPayment),
+      allowedServiceCategoryIds: [category.id],
+      priorityPolicy: "AUTO_INTAKE_STANDARD_V1",
+      validFrom: payment.approved.approvedAt,
+      validUntil: new Date(Date.now() + 60000).toISOString(),
+      packetId: randomUUID(),
+    };
+    const authority = new ControlledIntakeAuthority(
+      () => activation,
+      (tx, scope) => intake.readControlledCurrentState(tx, scope),
+    );
+    const submission = {
+      version: 2,
+      confirmed: true,
+      expectedRevision: 1,
+      requestId: randomUUID(),
+      sessionToken: fresh.sessionToken,
+      draft: { ...draft, address: "123 Fictional Lane, Example, OH 44101" },
+      confirmedAddress: {
+        street: "123 Fictional Lane",
+        unit: "",
+        city: "Example",
+        postalCode: "44101",
+      },
+    };
+    const reader = intake.controlledSubmissionReader(submission, {
+      integrationId: "fictional",
+      origin: "https://example.invalid",
+      authority,
+      capability: authority.issue(),
+    });
+    const read = () =>
+      prisma.$transaction((tx) => reader(tx, claims, submission.requestId));
+    const initial = await read();
+    const concurrent = await Promise.all([read(), read()]);
+    assert.deepEqual(concurrent, [initial, initial]);
+    assert.equal(initial.intentId, submission.requestId);
+    assert.equal(await prisma.job.count({ where: { tenantId } }), 0);
+    assert.ok(!JSON.stringify(initial).includes(submission.sessionToken));
+    // The reader's tenant share lock must block a policy writer until it exits.
+    await prisma.$transaction(async (tx) => {
+      await reader(tx, claims, submission.requestId);
+      await assert.rejects(
+        prisma.$transaction(async (writer) => {
+          await writer.$executeRawUnsafe("SET LOCAL lock_timeout='100ms'");
+          await writer.tenantOrganization.update({
+            where: { id: tenantId },
+            data: { settings: tenantBefore.settings },
+          });
+        }),
+        /lock timeout/,
+      );
+    });
+    // No positive cache: removing approval after the transaction refuses the next read.
+    await prisma.tenantOrganization.update({
+      where: { id: tenantId },
+      data: { settings: tenantBefore.settings },
+    });
+    await assert.rejects(read());
+    await prisma.serviceCategory.delete({ where: { id: category.id } });
+    checks.push(
+      "P04 current reader: real encrypted transcript, approved policy/category, concurrent repeat reads, policy lock and revoked-approval refusal; zero jobs/providers",
+    );
+    const countAfterReader = await prisma.communicationEvent.count();
     let state = await asOwner(() => organizationService.read());
     state = await asOwner(() =>
       organizationService.write({
@@ -282,7 +411,7 @@ export async function verifyOrganizationIntake({
       asOwner(() => operator.readReview({ requestId: request.requestId })),
     );
     await assert.rejects(intake.continueOrganization(replay));
-    assert.equal(await prisma.communicationEvent.count(), count);
+    assert.equal(await prisma.communicationEvent.count(), countAfterReader);
     checks.push(
       "new approval refuses stale review and replay; draft-only changes do not invalidate",
     );
