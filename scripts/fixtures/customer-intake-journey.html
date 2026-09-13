@@ -55,7 +55,7 @@
     }
   </style>
   <h1>Review your service request</h1>
-  <p>
+  <p id="journeyNotice">
     Fictional local test. Automated replies are scripted. This customer page
     does not create a job or appointment. Sending remains disabled.
   </p>
@@ -166,6 +166,22 @@
     </div>
     <label for="address">Service address</label
     ><input id="address" maxlength="200" autocomplete="off" />
+    <fieldset id="controlledAddress" hidden>
+      <legend>Confirm your service address — Ohio, United States</legend>
+      <label for="controlledStreet">Street address</label
+      ><input id="controlledStreet" maxlength="150" autocomplete="off" />
+      <label for="controlledUnit">Apartment or unit (optional)</label
+      ><input id="controlledUnit" maxlength="30" autocomplete="off" />
+      <label for="controlledCity">City</label
+      ><input id="controlledCity" maxlength="60" autocomplete="off" />
+      <label for="controlledPostal">ZIP code</label
+      ><input id="controlledPostal" maxlength="10" autocomplete="off" />
+      <p id="controlledSuggestion" role="status"></p>
+      <p>
+        Review all address parts. A suggested address is not confirmation or a
+        booking.
+      </p>
+    </fieldset>
     <div id="addressVerification" hidden>
       <p>
         Draft review rechecks this selection and copies the fictional address
@@ -303,7 +319,7 @@
     ><button id="draft">Preview validated draft</button>
   </section>
   <section id="preview" hidden>
-    <h2>Draft only — human review required</h2>
+    <h2 id="previewHeading">Draft only — human review required</h2>
     <pre id="summary"></pre>
     <button id="editDraft">Edit draft</button>
     <button id="submitReview" hidden>Submit for operator review</button>
@@ -313,9 +329,9 @@
     </p>
   </section>
   <section id="submitted" hidden>
-    <h2>Submitted for operator review</h2>
+    <h2 id="submittedHeading">Submitted for operator review</h2>
     <p id="requestReceipt"></p>
-    <p>
+    <p id="submittedExplanation">
       No job or appointment has been created by this submission. An authorized
       operator must review it before the original deadline.
     </p>

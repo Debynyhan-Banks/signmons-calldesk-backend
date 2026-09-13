@@ -1,4 +1,4 @@
-// Local integrated fixture only. No provider, job creation or automatic retries.
+// Existing local journey page. Controlled presentation does not grant server authority.
 (() => {
   const el = (id) => document.getElementById(id),
     fields = [
@@ -23,6 +23,7 @@
     phoneLocked = false,
     phoneExpiryTimer,
     reviewedDraft,
+    reviewedControlledAddress,
     reviewedAddressSelection,
     expires = 0,
     revision = 0,
@@ -37,7 +38,18 @@
   const status = (value) => {
     el("status").textContent = value;
   };
+  const controlledMode = () =>
+    document.documentElement.dataset.controlledIntake === "true";
   function paint() {
+    el("controlledAddress").hidden = !controlledMode();
+    if (controlledMode()) {
+      el("journeyNotice").textContent =
+        "Local controlled-intake preview. The server must verify eligibility before creating a job. This is not a live service or appointment confirmation.";
+      el("address").readOnly = true;
+      el("previewHeading").textContent =
+        "Review before submitting your request";
+      el("submitReview").textContent = "Confirm details and submit request";
+    }
     el("correctionReview").hidden =
       document.documentElement.dataset.correctionFixture !== "true";
     el("addressVerification").hidden =
@@ -87,7 +99,8 @@
     el("grant").disabled = busy || !!pending || !el("confirmed").checked;
     el("draft").disabled = busy || !!pending || !el("reviewed").checked;
     el("submitReview").hidden =
-      document.documentElement.dataset.reviewSubmit !== "true" ||
+      (!controlledMode() &&
+        document.documentElement.dataset.reviewSubmit !== "true") ||
       step !== "preview";
     el("retry").hidden = !pending || busy;
     el("retry").disabled = busy;
@@ -146,6 +159,8 @@
     el("phoneStatus").textContent = "Not verified.";
     token = promptToken = email = pending = reviewedDraft = undefined;
     reviewedAddressSelection = undefined;
+    reviewedControlledAddress = undefined;
+    el("controlledSuggestion").textContent = "";
     expires = revision = 0;
     step = "start";
     busy = false;
@@ -652,6 +667,98 @@
             : undefined;
           break;
         case "submit":
+          if (request.body.version === 2) {
+            if (
+              value.requestId !== request.body.requestId ||
+              [
+                "paymentAuthorized",
+                "bookingAuthorized",
+                "dispatchAuthorized",
+                "deliveryAuthorized",
+              ].some((key) => value[key] !== false)
+            )
+              throw Error("Invalid controlled receipt");
+            if (value.status === "ADMITTED") {
+              if (
+                value.jobCreated !== true ||
+                typeof value.jobId !== "string" ||
+                !/^[0-9a-f-]{36}$/i.test(value.jobId) ||
+                ![
+                  "CREATED",
+                  "OFFERED",
+                  "ACCEPTED",
+                  "DECLINED",
+                  "EXPIRED",
+                  "IN_PROGRESS",
+                  "COMPLETED",
+                  "CANCELLED",
+                ].includes(value.state)
+              )
+                throw Error("Invalid created receipt");
+              el("submittedHeading").textContent =
+                "Job created — this receipt does not confirm a booking";
+              el("submittedExplanation").textContent =
+                "No payment, appointment, dispatch or message is authorized by this receipt. Contact the office for the current appointment status.";
+              el("requestReceipt").textContent =
+                "Request reference: " +
+                value.requestId +
+                ". Job reference: " +
+                value.jobId +
+                ". Recorded job state: " +
+                value.state;
+              pending = undefined;
+              step = "submitted";
+              status(
+                "Job created. No appointment confirmed or payment authorized.",
+              );
+            } else if (
+              value.status === "UNCERTAIN" &&
+              value.jobCreated === false
+            ) {
+              status(
+                "Outcome unconfirmed. Your draft is retained. Retry this exact request only; do not start another request to bypass limits. Reference: " +
+                  request.body.requestId,
+              );
+            } else if (
+              ["REFUSED", "CORRECTION_REQUIRED"].includes(value.status) &&
+              value.jobCreated === false
+            ) {
+              if (value.status === "CORRECTION_REQUIRED") {
+                const c = value.candidate;
+                if (
+                  !c ||
+                  c.country !== "US" ||
+                  c.state !== "OH" ||
+                  !Array.isArray(c.addressLines) ||
+                  c.addressLines.length < 1 ||
+                  c.addressLines.length > 3 ||
+                  !c.addressLines.every(
+                    (s) =>
+                      typeof s === "string" && s.length > 0 && s.length <= 200,
+                  ) ||
+                  typeof c.city !== "string" ||
+                  c.city.length > 60 ||
+                  !/^\d{5}(-\d{4})?$/.test(c.postalCode)
+                )
+                  throw Error("Invalid correction");
+                el("controlledSuggestion").textContent =
+                  "Suggested address: " +
+                  c.addressLines.join(", ") +
+                  ", " +
+                  c.city +
+                  ", OH " +
+                  c.postalCode +
+                  ". Enter the correct address above, then review and explicitly submit again. Nothing is adopted automatically.";
+              }
+              pending = reviewedDraft = reviewedControlledAddress = undefined;
+              el("reviewed").checked = false;
+              step = "details";
+              status(
+                "No job created. Your fields are retained. Review the address or contact the office; do not restart to bypass verification limits.",
+              );
+            } else throw Error("Invalid controlled state");
+            return;
+          }
           if (
             value.requestId !== request.body.requestId ||
             value.state !== "PENDING_REVIEW" ||
@@ -683,7 +790,13 @@
           "Start outcome unconfirmed. No automatic retry or adoption. Start a new request explicitly.",
         );
       else if (!alive()) return;
-      else if (
+      else if (request.operation === "submit" && request.body.version === 2) {
+        status(
+          "Submission outcome unavailable. Your draft and exact request are retained. Retry only this request or contact the office with reference " +
+            request.body.requestId +
+            ". Do not create a replacement request.",
+        );
+      } else if (
         request.operation === "address" &&
         [400, 409, 429].includes(error?.status)
       ) {
@@ -1079,10 +1192,30 @@
       });
   el("draft").onclick = () => {
     if (!el("reviewed").checked) return;
+    if (controlledMode()) {
+      const address = {
+        street: el("controlledStreet").value.trim(),
+        unit: el("controlledUnit").value.trim(),
+        city: el("controlledCity").value.trim(),
+        postalCode: el("controlledPostal").value.trim(),
+      };
+      if (
+        !address.street ||
+        !address.city ||
+        !/^\d{5}(-\d{4})?$/.test(address.postalCode)
+      ) {
+        status("Enter and review your street, city and ZIP code.");
+        return;
+      }
+      reviewedControlledAddress = Object.freeze(address);
+      el("address").value =
+        `${address.street}${address.unit ? ", " + address.unit : ""}, ${address.city}, OH ${address.postalCode}`;
+    }
     const draft = Object.freeze(
       Object.fromEntries(fields.map((key) => [key, el(key).value.trim()])),
     );
     const addressMode =
+      !controlledMode() &&
       document.documentElement.dataset.addressFixture === "true";
     if (addressMode && !el("addressCandidate").value) {
       status("Find and confirm a test address before draft review.");
@@ -1107,6 +1240,7 @@
   el("editDraft").onclick = () => {
     reviewedDraft = undefined;
     reviewedAddressSelection = undefined;
+    reviewedControlledAddress = undefined;
     el("summary").textContent = "";
     el("reviewed").checked = false;
     step = "details";
@@ -1119,7 +1253,9 @@
     if (
       step !== "preview" ||
       !reviewedDraft ||
-      document.documentElement.dataset.reviewSubmit !== "true"
+      (controlledMode() && !reviewedControlledAddress) ||
+      (!controlledMode() &&
+        document.documentElement.dataset.reviewSubmit !== "true")
     )
       return;
     submit("submit", {
@@ -1128,6 +1264,9 @@
       expectedRevision: revision,
       draft: reviewedDraft,
       confirmed: true,
+      ...(controlledMode()
+        ? { version: 2, confirmedAddress: reviewedControlledAddress }
+        : {}),
       ...(reviewedAddressSelection
         ? { addressSelection: reviewedAddressSelection }
         : {}),
