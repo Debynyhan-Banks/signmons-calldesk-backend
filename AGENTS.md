@@ -28,7 +28,7 @@ Every handoff includes either **No scope deviation** or an explicit deviation pr
 No merge, deployment, production migration, IAM/secrets/provider configuration, billing/charges, customer contact/data/appointments, or training without the required explicit approval. Planning/implementation approval does not imply external action approval. Do not automatically rerun paid tests or reset cost holds.
 
 ## Required checks
-Run `node scripts/execution-controls-check.mjs`. Do not change the pinned baseline merely to pass. GitHub requires @Debynyhan code-owner review; never submit an approval as that account on the owner's behalf.
+Run `node scripts/execution-controls-check.mjs`. Do not change the pinned baseline merely to pass. Owner-approved solo-owner setup: Debynyhan-Banks authorizes merges explicitly in the conversation; the agent must not infer approval. GitHub enforces required checks and branch protections, not independent human approval. No separate reviewer or impersonated approval is required or permitted.
 
 ## Existing project checks
 Run the current governance docs-consistency check and any existing alignment/placement checks; use the resolved backend path for cross-repository checks when supported. Required product gates come from the approved section card. Do not run a nonexistent script or weaken this guard to work around unavailable history. Run git diff --check in both repositories. For controls-only work, test this guard and existing governance checks; no runtime/browser acceptance is claimed.
