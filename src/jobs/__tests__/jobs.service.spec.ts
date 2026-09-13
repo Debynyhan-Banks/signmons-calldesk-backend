@@ -129,6 +129,15 @@ describe("JobsService", () => {
 
     expect(result.id).toBe(jobRecord.id);
     expect(prisma.job.create).toHaveBeenCalled();
+    expect(prisma.propertyAddress.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          googlePlaceId: null,
+          latitude: null,
+          longitude: null,
+        }),
+      }),
+    );
     expect(jobNotificationService.enqueueJobCreated).toHaveBeenCalledWith(
       expect.objectContaining({ id: jobRecord.id }),
     );

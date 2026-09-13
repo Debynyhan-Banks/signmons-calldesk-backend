@@ -537,6 +537,15 @@ describe("inactive credential-bound transcript continuation", () => {
         deliveryAuthorized: false,
       });
       expect(tx.job.create).toHaveBeenCalledTimes(1);
+      expect(tx.propertyAddress.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            googlePlaceId: null,
+            latitude: null,
+            longitude: null,
+          }),
+        }),
+      );
       expect(JSON.stringify(tx.job.create.mock.calls)).toContain(
         input.requestId,
       );

@@ -1,0 +1,13 @@
+# 2B nullable property location — review-ready
+
+Owner approved local implementation after the 3de3d50/8b5c84e schema proposal. Three PropertyAddress fields are nullable: googlePlaceId, latitude, longitude. Both existing job writers now write null instead of random provider IDs and 0,0 coordinates. Customer-confirmed address text, existing rows, relations and tenant/place uniqueness are unchanged. No backfill, automatic admission activation or remote migration.
+
+Files: prisma/schema.prisma; prisma/migrations/20260913180000_nullable_property_location/migration.sql; src/jobs/jobs.service.ts and its existing spec; src/communications/customer-intake-continuation.service.ts and its existing spec; scripts/verify-nullable-property-location.mjs. Runtime/UI consumer search found no coordinate/place-ID readers beyond these writers in src/ui source. Generated Prisma types and full build passed. No UI change; browser QA not applicable to this storage-only slice, not waived for future integrated admission.
+
+Validation: 112 Jest suites passed, one skipped; 2,151 tests passed, three skipped. Build, lint, architecture, cross-repository consistency and frozen baseline passed; 21 governance regressions passed. npm audit reported zero findings for the installed locked backend dependency tree. No claim about untested deployment or all historical dependency risks.
+
+Targeted migration test: LOCAL_POSTGRES_BIN=/opt/homebrew/opt/postgresql@16/bin node scripts/verify-nullable-property-location.mjs. The script creates its own temporary socket-only PostgreSQL instance, ignores DATABASE_URL and applies the exact migration to a representative pre-migration table. It proves existing real values survive, two null-location rows coexist, same-tenant duplicate real place ID fails and another tenant can use that ID. It stops the instance afterward. This is not a full migration-chain or staging test.
+
+Review: inspect the three DROP NOT NULL statements (no UPDATE/DELETE); inspect both null writes and assertions; rerun the command above, npm run build, npm run lint, npm test -- --runInBand and both governance gates. Migration deployment needs separate approval; rolling back NOT NULL after null rows exist is unsafe without a separately reviewed data plan. Do not substitute coordinates during rollback.
+
+Remaining 2B: service authority/activation and urgency policy, permitted final verification/admission evidence lifecycle, integrated automatic path and separately approved controlled acceptance. Accepted walkthrough stays 3/8 (37.5%), not whole-MVP completion. Approved narrow schema change; no additional scope deviation. No staging/production database touched, no provider request, billing, merge or deployment.

@@ -214,11 +214,11 @@ model PropertyAddress {
   customerTenantId  String   @db.Uuid
   customer          Customer @relation(fields: [customerId, customerTenantId], references: [id, tenantId], onDelete: Cascade)
 
-  googlePlaceId     String
+  googlePlaceId     String?
   formattedAddress  String
   addressComponents Json
-  latitude          Float
-  longitude         Float
+  latitude          Float?
+  longitude         Float?
   accessNotes       String?
 
   createdAt         DateTime @default(now())
