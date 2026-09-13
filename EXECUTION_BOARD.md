@@ -1,8 +1,8 @@
 # Signmons Backend Execution Board
 
-## Current: P04 active — operator recovery validated; connection proof remains
+## Current: P04 locally review-ready — connected proof passed
 
-evidence/APP-013/p04-operator-recovery.md records read-only v2 operator receipt recovery without customer credentials or writes, preserving owner/admin/dispatcher, tenant and impersonation guards. 2,275 tests passed (3 skipped), database/browser regressions passed. ONE remaining P04 item: full controlled verification-to-writer proof, then final review. No live route, new package or acceptance; walkthrough 3/8 (37.5%), remaining-plan 2/60 unchanged. No scope deviation.
+P04 is locally review-ready (R), not owner-accepted. The final existing connection proof now uses actual durable phone verification and fixture-priced database budget admission, address ledger/transport, P03 verification, current reader and atomic writer, with synthetic SDK/fetch only. Five cases prove one eligible job, provider-free exact replay, missing-phone refusal, outside-area refusal, unknown-transport refusal and in-flight revocation refusal; job/audit exclude provider proof and held liabilities are asserted. Full disposable database/browser regressions passed; 2,275 unit tests passed (3 skipped), build/lint/architecture and both dependency audits passed. Backend evidence/APP-013/p04-connected-admission.md. No further P04 implementation item is proposed; owner review is next. P05/P06 remain unchanged and are not activated. Walkthrough 3/8 (37.5%), remaining-plan accepted 2/60 unchanged. No new completed timing sample or forecast change; no scope deviation or live activation.
 
 ## Historical: P03 controlled verification review-ready — 2026-09-13
 

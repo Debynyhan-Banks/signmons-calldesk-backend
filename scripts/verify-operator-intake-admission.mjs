@@ -747,6 +747,319 @@ export async function verifyOperatorIntakeAdmission({
   checks.push(
     "P04 injected-verification writer: exact v2 record, SYSTEM_AI actor, granted-consent binding, one job and identical receipts under race; restart/exact replay without verification despite removed current policy; changed input refuses; audit/consent/post-write failure rollback",
   );
+  // Final P04 connection: real service/ledger/reader/writer stack. Only external
+  // SDK/fetch responses and local fixture pricing are synthetic; no positive
+  // verification callback is substituted.
+  const {
+    DurableVerificationService,
+  } = require("../dist/communications/durable-verification.service.js");
+  const {
+    TwilioVerifyAdapter,
+  } = require("../dist/communications/twilio-verify.adapter.js");
+  const {
+    VerificationBudgetAdmission,
+  } = require("../dist/communications/verification-budget-admission.js");
+  const {
+    AddressOperationLedger,
+  } = require("../dist/communications/address-operation-ledger.js");
+  const {
+    GoogleAddressOAuthTransport,
+  } = require("../dist/communications/google-address-oauth.transport.js");
+  const {
+    ControlledIntakeVerificationService,
+  } = require("../dist/communications/controlled-intake-verification.service.js");
+  let connectedJobs = 0,
+    syntheticPhoneCalls = 0,
+    syntheticAddressCalls = 0;
+  const connectedConversationIds = [];
+  for (const mode of [
+    "missing-phone",
+    "accepted",
+    "outside",
+    "unknown",
+    "revoked",
+  ]) {
+    const connectedInput = controlledInput(await fresh());
+    const connectedScope = credentials.verifySession(
+      connectedInput.sessionToken,
+    );
+    connectedConversationIds.push(connectedScope.conversationId);
+    const phone = connectedInput.draft.phone,
+      accountSid = "AC" + "a".repeat(32),
+      serviceSid = "VA" + "b".repeat(32);
+    const raw = (status) => ({
+      status,
+      accountSid,
+      serviceSid,
+      sid: "VE" + "c".repeat(32),
+      to: phone,
+      channel: "sms",
+    });
+    const adapter = new TwilioVerifyAdapter(
+      { tenantId, accountSid, serviceSid },
+      () => ({
+        verify: {
+          v2: {
+            services: () => ({
+              verifications: {
+                create: async () => {
+                  syntheticPhoneCalls++;
+                  return raw("pending");
+                },
+              },
+              verificationChecks: {
+                create: async () => {
+                  syntheticPhoneCalls++;
+                  return raw("approved");
+                },
+              },
+            }),
+          },
+        },
+      }),
+    );
+    const phoneBudget = new VerificationBudgetAdmission({
+      mode: "FIXTURE_ONLY",
+      tenantId,
+      noticeVersion: "local-p04",
+      noticeText: "Fictional local verification",
+      termsUrl: "https://example.invalid/terms",
+      privacyUrl: "https://example.invalid/privacy",
+      rateVersion: "not-a-real-rate",
+      flowUpperBoundUsdMicros: 10,
+    });
+    const durable = new DurableVerificationService(
+      prisma,
+      cipher,
+      credentials,
+      Buffer.alloc(32, 8),
+      adapter,
+      phoneBudget,
+      undefined,
+      async () => ({
+        mode: "CONTROLLED_VERIFY_V1",
+        version: "local-p04",
+        accountSid,
+        serviceSid,
+        noticeVersion: "local-p04",
+        businessPolicyVersion: organizationApproved.approvedAt,
+        lifetimeMs: 1800000,
+      }),
+    );
+    if (mode !== "missing-phone") {
+      const start = {
+        sessionToken: connectedInput.sessionToken,
+        operationId: randomUUID(),
+        kind: "START",
+        phone,
+        code: "",
+        startOperationId: "",
+      };
+      await durable.execute(start, {
+        requested: true,
+        noticeVersion: "local-p04",
+      });
+      await durable.execute({
+        ...start,
+        operationId: randomUUID(),
+        kind: "CHECK",
+        code: "123456",
+        startOperationId: start.operationId,
+      });
+    }
+    const reader = controlled.controlledSubmissionReader(
+      connectedInput,
+      binding,
+    );
+    const scope = {
+      tenantId,
+      integrationId: binding.integrationId,
+      origin: binding.origin,
+      serviceCategoryId: category.id,
+    };
+    const addressAccount = randomUUID();
+    const addressPolicy = {
+      mode: "CONTROLLED_ADDRESS_V1",
+      execution: "CONTROLLED_8S_2_ATTEMPTS",
+      approved: true,
+      version: "local-p04",
+      rateVersion: "not-a-real-rate",
+      validUntil: Date.now() + 60000,
+      costMicros: 10,
+      account: { micros: 100, requests: 10 },
+      tenant: { micros: 100, requests: 10 },
+      session: { micros: 20, requests: 2 },
+    };
+    const ledger = new AddressOperationLedger(prisma, credentials, undefined, {
+      accountId: addressAccount,
+      authority,
+      capability: binding.capability,
+      scope,
+      readBinding: async (tx, suppliedScope) => {
+        assert.equal(suppliedScope.sessionId, connectedScope.sessionId);
+        const loaded = await reader(
+          tx,
+          connectedScope,
+          connectedInput.requestId,
+        );
+        return {
+          intentId: loaded.intentId,
+          revision: loaded.revision,
+          policy: addressPolicy,
+        };
+      },
+    });
+    const transport = new GoogleAddressOAuthTransport(true, {
+      token: async () => "synthetic-token",
+      fetch: async () => {
+        syntheticAddressCalls++;
+        if (mode === "unknown") throw Error("synthetic transport uncertainty");
+        if (mode === "revoked") activation.enabled = false;
+        return new Response(
+          JSON.stringify({
+            responseId: "P04_PROVIDER_SENTINEL",
+            result: {
+              verdict: {
+                addressComplete: true,
+                validationGranularity: "PREMISE",
+              },
+              address: {
+                postalAddress: {
+                  regionCode: "US",
+                  administrativeArea: "OH",
+                  locality: "Example",
+                  postalCode: "44101",
+                  addressLines: ["173 Fictional Lane"],
+                },
+                addressComponents: Object.entries({
+                  street_number: "173",
+                  route: "Fictional Lane",
+                  locality: "Example",
+                  administrative_area_level_1: "Ohio",
+                  postal_code: "44101",
+                  country: "United States",
+                }).map(([componentType, text]) => ({
+                  componentType,
+                  componentName: { text },
+                  confirmationLevel: "CONFIRMED",
+                })),
+              },
+              uspsData: {
+                dpvConfirmation: "Y",
+                dpvCmra: "N",
+                addressRecordType: "H",
+                fipsCountyCode: mode === "outside" ? "093" : "035",
+                county: mode === "outside" ? "Lorain" : "Cuyahoga",
+              },
+              metadata: { poBox: false },
+            },
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      },
+    });
+    const connectedBinding = {
+      ...binding,
+      verification: (loadedReader) =>
+        new ControlledIntakeVerificationService({
+          prisma,
+          credentials,
+          authority,
+          capability: binding.capability,
+          phone: durable,
+          ledger,
+          transport,
+          readSubmission: loadedReader,
+        }),
+    };
+    const priorJobs = await prisma.job.count(),
+      priorCalls = syntheticAddressCalls;
+    if (mode === "missing-phone") {
+      await assert.rejects(
+        controlled.submitControlled(connectedInput, connectedBinding),
+      );
+      assert.equal(syntheticAddressCalls, priorCalls);
+    } else if (mode === "revoked") {
+      const outcome = await controlled
+        .submitControlled(connectedInput, connectedBinding)
+        .catch(() => null);
+      assert.notEqual(outcome?.status, "ADMITTED");
+      activation.enabled = true;
+    } else {
+      const outcome = await controlled.submitControlled(
+        connectedInput,
+        connectedBinding,
+      );
+      if (mode === "accepted") {
+        assert.equal(outcome.status, "ADMITTED");
+        connectedJobs++;
+        const calls = [syntheticPhoneCalls, syntheticAddressCalls];
+        assert.deepEqual(
+          await controlled.submitControlled(connectedInput, connectedBinding),
+          outcome,
+        );
+        assert.deepEqual([syntheticPhoneCalls, syntheticAddressCalls], calls);
+        const stored = await prisma.job.findUnique({
+          where: { id: outcome.jobId },
+        });
+        const audits = await prisma.auditLog.findMany({
+          where: { entityId: outcome.jobId },
+        });
+        for (const forbidden of [
+          "P04_PROVIDER_SENTINEL",
+          "fipsCountyCode",
+          "Cuyahoga",
+          "currentProof",
+          "fixtureOnly",
+          "addressVerification",
+        ])
+          assert.ok(
+            !JSON.stringify([stored.policySnapshot, audits]).includes(
+              forbidden,
+            ),
+          );
+      } else assert.equal(outcome.jobCreated, false);
+    }
+    assert.equal(
+      await prisma.job.count(),
+      priorJobs + (mode === "accepted" ? 1 : 0),
+    );
+    if (mode !== "missing-phone") {
+      const operations = await prisma.addressVerificationOperation.findMany({
+        where: { accountId: addressAccount },
+      });
+      assert.equal(operations.length, 1);
+      assert.equal(operations[0].heldMicros, 10n);
+      assert.notEqual(operations[0].state, "CANCELLED");
+      assert.ok(
+        !JSON.stringify(operations, (_key, value) =>
+          typeof value === "bigint" ? value.toString() : value,
+        ).includes("P04_PROVIDER_SENTINEL"),
+      );
+    }
+  }
+  assert.equal(syntheticPhoneCalls, 8);
+  assert.equal(syntheticAddressCalls, 4);
+  const phoneLiabilities = await prisma.auditLog.findMany({
+    where: {
+      tenantId,
+      entityId: { in: connectedConversationIds },
+      action: "conversation.verification_budget_reserved",
+    },
+  });
+  assert.equal(phoneLiabilities.length, 4);
+  assert.ok(
+    phoneLiabilities.every((row) => row.metadata.reservedMicros === 10),
+  );
+  // Teardown only these asserted synthetic reservations in the guarded disposable
+  // database. The following budget-boundary regression requires an empty budget.
+  // This is not reconciliation or a runtime liability-release operation.
+  await prisma.auditLog.deleteMany({
+    where: { id: { in: phoneLiabilities.map((row) => row.id) } },
+  });
+  checks.push(
+    "P04 connected actual durable phone+budget, address ledger/transport, verification, current reader and writer: accepted one job, provider-free replay, missing phone/outside/unknown/revocation no job; held liability retained; synthetic external SDK/fetch only",
+  );
   await prisma.tenantOrganization.update({
     where: { id: tenantId },
     data: { settings: tenant.settings },
@@ -757,7 +1070,9 @@ export async function verifyOperatorIntakeAdmission({
       {
         checks,
         credentialAccesses,
-        newFictionalJobs: 6,
+        newFictionalJobs: 6 + connectedJobs,
+        syntheticPhoneCalls,
+        syntheticAddressCalls,
         providerCalls: 0,
         browserAdmission: false,
         identity: "fixture context; no production identity acceptance",
