@@ -311,6 +311,19 @@
             )
               throw Error("Invalid candidate");
             correction = value;
+            const entered = correctionInput();
+            el("correctionEntered").textContent = [
+              entered.street,
+              entered.unit,
+              entered.city,
+              "OH",
+              entered.postalCode,
+              "US",
+            ]
+              .filter(Boolean)
+              .join(", ");
+            el("correctionComparison").hidden = false;
+            el("correctionComparison").style.display = "grid";
             clearTimeout(correctionTimer);
             correctionTimer = setTimeout(
               () => {
@@ -782,6 +795,9 @@
         }),
       }).catch(() => {});
     correction = undefined;
+    el("correctionComparison").hidden = true;
+    el("correctionComparison").style.display = "";
+    el("correctionEntered").textContent = "";
     el("correctionCandidate").textContent = "";
     el("correctionChecked").checked = false;
     el("correctionStatus").textContent =
@@ -798,6 +814,21 @@
       paint();
     });
   el("correctionChecked").onchange = paint;
+  el("correctionEdit").onclick = () => {
+    if (busy || pending) return;
+    clearCorrection();
+    el("correctionStatus").textContent =
+      "Edit your entered address, then request a new correction review. Your draft is retained.";
+    el("address").focus();
+    paint();
+  };
+  el("correctionCancel").onclick = () => {
+    if (busy || pending) return;
+    clearCorrection();
+    el("correctionStatus").textContent =
+      "Correction cancelled. Your entered address and draft are unchanged. Nothing was verified or booked.";
+    paint();
+  };
   el("correctionPropose").onclick = () => {
     if (document.documentElement.dataset.correctionFixture !== "true") return;
     clearCorrection();

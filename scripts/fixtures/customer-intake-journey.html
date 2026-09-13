@@ -204,12 +204,37 @@
       <label for="correctionPostal">ZIP code</label
       ><input id="correctionPostal" maxlength="10" autocomplete="off" />
       <button id="correctionPropose">Review suggested correction</button>
-      <p id="correctionCandidate"></p>
+      <div
+        id="correctionComparison"
+        hidden
+        style="
+          grid-template-columns: repeat(
+            auto-fit,
+            minmax(min(100%, 16rem), 1fr)
+          );
+          gap: 16px;
+        "
+      >
+        <section aria-labelledby="correctionEnteredHeading">
+          <h4 id="correctionEnteredHeading">You entered</h4>
+          <p id="correctionEntered"></p>
+        </section>
+        <section aria-labelledby="correctionSuggestedHeading">
+          <h4 id="correctionSuggestedHeading">Suggested address</h4>
+          <p id="correctionCandidate"></p>
+        </section>
+      </div>
+      <p>
+        Your entered address stays unchanged until you choose what to do. Review
+        every field, including the apartment or unit.
+      </p>
       <label
         ><input id="correctionChecked" type="checkbox" /> I confirm this exact
         displayed address.</label
       >
       <button id="correctionConfirm">Confirm displayed correction</button>
+      <button id="correctionEdit" type="button">Edit my entered address</button>
+      <button id="correctionCancel" type="button">Cancel correction</button>
       <p id="correctionStatus" role="status">No correction reviewed.</p>
     </div>
     <label for="description">Issue summary</label
