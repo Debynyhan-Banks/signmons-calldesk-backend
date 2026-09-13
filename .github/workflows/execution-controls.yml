@@ -1,0 +1,19 @@
+name: execution-controls
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  execution-controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/execution-controls-check.mjs
+      - run: node --test scripts/execution-controls-check.test.mjs
