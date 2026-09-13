@@ -54,7 +54,7 @@ describe("inactive credential-bound transcript continuation", () => {
       create: jest.fn(),
     },
     conversationJobLink: { count: jest.fn(), create: jest.fn() },
-    job: { findUnique: jest.fn(), create: jest.fn() },
+    job: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn() },
     serviceCategory: { findFirst: jest.fn(), findMany: jest.fn() },
     customer: { upsert: jest.fn() },
     propertyAddress: { create: jest.fn() },
@@ -826,6 +826,42 @@ describe("inactive credential-bound transcript continuation", () => {
         action().then(resolve, reject);
       });
     });
+  it.each([
+    {},
+    { requestId: "bad" },
+    { requestId: randomUUID(), sessionToken: "forbidden" },
+  ])("operator recovery refuses malformed input %j", async (value) => {
+    await expect(
+      asOperator(() =>
+        service(false).readControlledReceipt(value as { requestId: string }),
+      ),
+    ).rejects.toThrow();
+    expect(tx.job.findMany).not.toHaveBeenCalled();
+  });
+  it.each(["technician", "webchat_integration"])(
+    "operator recovery refuses role %s before database",
+    async (role) => {
+      await expect(
+        asOperator(
+          () =>
+            service(false).readControlledReceipt({ requestId: randomUUID() }),
+          { role },
+        ),
+      ).rejects.toThrow();
+      expect(tx.job.findMany).not.toHaveBeenCalled();
+    },
+  );
+  it("operator recovery refuses absent and ambiguous records", async () => {
+    for (const rows of [[], [{ id: "one" }, { id: "two" }]]) {
+      tx.job.findMany.mockResolvedValue(rows);
+      await expect(
+        asOperator(() =>
+          service(false).readControlledReceipt({ requestId: randomUUID() }),
+        ),
+      ).rejects.toThrow();
+    }
+    expect(tx.job.create).not.toHaveBeenCalled();
+  });
   const submission = () => ({
     sessionToken: input().sessionToken,
     requestId: randomUUID(),

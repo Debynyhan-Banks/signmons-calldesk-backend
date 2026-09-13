@@ -1,8 +1,8 @@
 # Signmons Backend Execution Board
 
-## Current: P04 active — customer receipt replay validated
+## Current: P04 active — operator recovery validated; connection proof remains
 
-evidence/APP-013/p04-receipt-replay.md records exact credential-valid customer replay before verification, original transcript/policy binding, concurrent identical receipts/one job and lost-ack/service-restart recovery. 2,269 tests passed (3 skipped), database/browser regressions passed. Writer verification callbacks remain injected. Full controlled connection and v2 operator receipt recovery after customer expiry remain in the SAME P04; no live registration or P04 completion. Walkthrough 3/8 (37.5%), remaining-plan accepted 2/60 unchanged; no completed timing sample or scope deviation.
+evidence/APP-013/p04-operator-recovery.md records read-only v2 operator receipt recovery without customer credentials or writes, preserving owner/admin/dispatcher, tenant and impersonation guards. 2,275 tests passed (3 skipped), database/browser regressions passed. ONE remaining P04 item: full controlled verification-to-writer proof, then final review. No live route, new package or acceptance; walkthrough 3/8 (37.5%), remaining-plan 2/60 unchanged. No scope deviation.
 
 ## Historical: P03 controlled verification review-ready — 2026-09-13
 

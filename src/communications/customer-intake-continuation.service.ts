@@ -669,6 +669,112 @@ export class CustomerIntakeContinuationService {
   }
 
   /** Operator-only read. Never accepts, verifies, issues or reconstructs a customer token. */
+  /** Read-only operator recovery of a committed v2 receipt. Customer credentials
+   * are deliberately never consulted; this cannot authorize a new admission. */
+  async readControlledReceipt(input: { requestId: string }) {
+    if (
+      !input ||
+      typeof input !== "object" ||
+      Array.isArray(input) ||
+      Object.keys(input).join() !== "requestId" ||
+      typeof input.requestId !== "string" ||
+      !UUID.test(input.requestId)
+    )
+      throw new BadRequestException("Invalid receipt request.");
+    const operator = this.operator();
+    try {
+      return await this.transaction(async (tx) => {
+        const read = () =>
+          tx.job.findMany({
+            where: {
+              tenantId: operator.tenantId,
+              deletedAt: null,
+              policySnapshot: {
+                path: ["intakeAdmission", "requestId"],
+                equals: input.requestId,
+              },
+            },
+            include: { conversationLinks: true, emailConsentBinding: true },
+            take: 2,
+          });
+        const before = await read();
+        if (
+          before.length !== 1 ||
+          !before[0].intakeSessionId ||
+          before[0].conversationLinks.length !== 1
+        )
+          throw changed();
+        const scope = {
+          tenantId: operator.tenantId,
+          sessionId: before[0].intakeSessionId,
+          conversationId: before[0].conversationLinks[0].conversationId,
+        };
+        const locked = await lockCustomerConsentSession(tx, scope, true);
+        const rows = await read();
+        if (
+          locked.status !== "COMPLETED" ||
+          rows.length !== 1 ||
+          JSON.stringify(rows) !== JSON.stringify(before)
+        )
+          throw changed();
+        const job = rows[0],
+          a = object(object(job.policySnapshot)?.intakeAdmission),
+          link = job.conversationLinks[0];
+        if (
+          !a ||
+          a.version !== 2 ||
+          a.requestId !== input.requestId ||
+          Object.keys(a).sort().join() !==
+            "actorId,customerConfirmedAt,emailChoice,organizationApprovedAt,organizationDigest,paymentApprovedAt,paymentDigest,policyVersion,priorityPolicy,requestId,submissionDigest,transcriptRevision,version" ||
+          a.actorId !== "signmons-intake-admission-v1" ||
+          a.priorityPolicy !== "AUTO_INTAKE_STANDARD_V1" ||
+          !Number.isSafeInteger(a.transcriptRevision) ||
+          Number(a.transcriptRevision) < 1 ||
+          Number(a.transcriptRevision) > 20 ||
+          typeof a.policyVersion !== "string" ||
+          !a.policyVersion ||
+          ![
+            a.customerConfirmedAt,
+            a.organizationApprovedAt,
+            a.paymentApprovedAt,
+          ].every(
+            (v) => typeof v === "string" && Number.isFinite(Date.parse(v)),
+          ) ||
+          ![a.submissionDigest, a.organizationDigest, a.paymentDigest].every(
+            (v) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v),
+          ) ||
+          link.tenantId !== operator.tenantId ||
+          link.jobId !== job.id ||
+          link.relationType !== "CREATED_FROM" ||
+          !["NOT_RECORDED", "GRANTED", "DECLINED", "REVOKED"].includes(
+            String(a.emailChoice),
+          ) ||
+          (a.emailChoice !== "NOT_RECORDED" &&
+            (!job.emailConsentBinding ||
+              job.emailConsentBinding.tenantId !== operator.tenantId ||
+              job.emailConsentBinding.jobCustomerId !== job.customerId ||
+              job.emailConsentBinding.originLinkId !== link.id))
+        )
+          throw changed();
+        return {
+          status: "ADMITTED" as const,
+          requestId: input.requestId,
+          jobId: job.id,
+          state: job.status,
+          jobCreated: true as const,
+          paymentAuthorized: false as const,
+          bookingAuthorized: false as const,
+          dispatchAuthorized: false as const,
+          deliveryAuthorized: false as const,
+        };
+      });
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() < 500)
+        throw error;
+      throw new ServiceUnavailableException("Intake receipt unavailable.");
+    }
+  }
+
   async readReview(input: { requestId: string }) {
     if (
       !input ||

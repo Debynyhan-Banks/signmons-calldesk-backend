@@ -76,12 +76,15 @@ export async function verifyOperatorIntakeAdmission({
   const scoped = (fn, overrides = {}) =>
     new Promise((resolve, reject) =>
       requestContextMiddleware({ headers: {} }, {}, () => {
-        setAuthContext({
-          tenantId,
-          userId: "integration:fixture",
-          role: "webchat_integration",
-          ...overrides,
-        });
+        setAuthContext(
+          {
+            tenantId,
+            userId: "integration:fixture",
+            role: "webchat_integration",
+            ...overrides,
+          },
+          overrides.impersonatedTenantId,
+        );
         Promise.resolve().then(fn).then(resolve, reject);
       }),
     );
@@ -670,6 +673,77 @@ export async function verifyOperatorIntakeAdmission({
     assert.equal(conversation.status, "ONGOING");
   }
   failFinish = false;
+  const recoveryCounts = await counts();
+  for (const role of ["owner", "admin", "dispatcher"]) {
+    assert.deepEqual(
+      await scoped(
+        () => operator.readControlledReceipt({ requestId: cs.requestId }),
+        { role, userId: "fictional-staff" },
+      ),
+      created,
+    );
+  }
+  // Credentials are unavailable to this operator instance. Separately prove the
+  // original customer token refuses at its exact expiry; recovery does not renew it.
+  const originalClaims = credentials.verifySession(cs.sessionToken);
+  assert.throws(() =>
+    credentials.verifySession(cs.sessionToken, originalClaims.expiresAt),
+  );
+  assert.deepEqual(
+    await asOwner(() =>
+      operator.readControlledReceipt({ requestId: cs.requestId }),
+    ),
+    created,
+  );
+  for (const override of [
+    { role: "technician" },
+    { role: "webchat_integration" },
+    { role: "owner", tenantId: otherTenantId },
+    { role: "owner", impersonatedTenantId: tenantId },
+  ]) {
+    await assert.rejects(
+      scoped(
+        () => operator.readControlledReceipt({ requestId: cs.requestId }),
+        override,
+      ),
+    );
+  }
+  await assert.rejects(
+    asOwner(() => operator.readControlledReceipt({ requestId: randomUUID() })),
+  );
+  await assert.rejects(
+    asOwner(() =>
+      operator.readControlledReceipt({
+        requestId: cs.requestId,
+        sessionToken: cs.sessionToken,
+      }),
+    ),
+  );
+  const originalPolicy = cj.policySnapshot;
+  await prisma.job.update({
+    where: { id: cj.id },
+    data: {
+      policySnapshot: {
+        ...originalPolicy,
+        intakeAdmission: {
+          ...originalPolicy.intakeAdmission,
+          actorId: "fake-operator",
+        },
+      },
+    },
+  });
+  await assert.rejects(
+    asOwner(() => operator.readControlledReceipt({ requestId: cs.requestId })),
+  );
+  await prisma.job.update({
+    where: { id: cj.id },
+    data: { policySnapshot: originalPolicy },
+  });
+  assert.equal(credentialAccesses, 0);
+  assert.deepEqual(await counts(), recoveryCounts);
+  checks.push(
+    "P04 operator receipt recovery: owner/admin/dispatcher only, no customer credential access, exact expiry refusal, foreign/impersonated/extra-token/malformed/missing refusal, no writes or providers",
+  );
   checks.push(
     "P04 injected-verification writer: exact v2 record, SYSTEM_AI actor, granted-consent binding, one job and identical receipts under race; restart/exact replay without verification despite removed current policy; changed input refuses; audit/consent/post-write failure rollback",
   );
