@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: Google correction-sequence repair locally review-ready
+## Current: P06 entry packet reconciled — activation disabled
+
+P06 preparation authorized by owner continuation after correction repair 3667cda/7be5f00. Existing APP013_2B_ACTIVATION_PACKET.md now has a reconciled four-item checklist: entry complete; connected runtime wiring, exact disabled release approval, and capped live run/closeout remain. Read-only staging readback confirms unchanged baseline traffic and six disabled candidate flags. Code is not deployed: loader, managed-ingress qualification and non-fixture customer phone-code wiring remain. No blanket Google support-wait gate, no new package or paid/release authority. Backend evidence/APP-013/p06-entry-packet.md. Next: exact source/interface/test card for existing wiring gap, then local same-page proof. Accepted packages 5/60 (8.3%), walkthrough 3/8 (37.5%); provisional 4–8 weeks remaining at 25–30 collaborative hours/week plus external waits, low confidence; update at ten accepted packages. No scope deviation.
+
+## Historical: Google correction-sequence repair locally review-ready
 
 APP-013/2B: owner-approved volatile first-response-ID chaining and cache-loss/expiry refusal; no live activation. See evidence/APP-013/google-correction-sequence.md and governance APP013_GOOGLE_CORRECTION_CARD.md. Existing customer journey and caps preserved, no new package. Earlier owner P03/P05 reviews reconcile accepted packages to 5/60 (8.3%); walkthrough 3/8 (37.5%) unchanged. P06 remains planned and separately gated. Provisional remaining Release A estimate 4–8 weeks at 25–30 collaborative hours/week, low confidence, external waits separate; recalibrate at ten accepted packages. No scope deviation.
 
