@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { managedRuntimeOrigin } from "./controlled-intake-runtime-config";
 import {
   requestContextMiddleware,
   setAuthContext,
@@ -9,6 +10,7 @@ import {
 } from "./customer-consent-browser-transport";
 
 type ServerBinding = Readonly<{
+  security?: object;
   tenantId: string;
   integrationId: string;
   transport: CustomerConsentBrowserTransport;
@@ -16,7 +18,7 @@ type ServerBinding = Readonly<{
 
 /** Mount before CORS and body parsers. Undefined binding is closed. Binding must
  * come from reviewed server composition, never headers/environment defaults.
- * Direct TLS only: managed ingress requires its separately reviewed mapping.
+ * Managed ingress requires an opaque validated startup binding, never a header.
  */
 export function customerSessionHttp(binding?: ServerBinding): RequestHandler {
   const configured = binding ? Object.freeze({ ...binding }) : undefined;
@@ -30,6 +32,12 @@ export function customerSessionHttp(binding?: ServerBinding): RequestHandler {
           .json({ error: "Customer request refused." });
     };
     if (!configured) return refuse();
+    const managedOrigin = managedRuntimeOrigin(configured.security);
+    if (
+      configured.security &&
+      (!managedOrigin || req.headers.host !== new URL(managedOrigin).host)
+    )
+      return refuse();
     // This handler owns its errors and context; downstream Nest guards do not run.
     requestContextMiddleware(req, res, () => {
       setAuthContext({
@@ -46,7 +54,8 @@ export function customerSessionHttp(binding?: ServerBinding): RequestHandler {
             rawHeaders: req.rawHeaders,
             peerAddress: req.socket.remoteAddress ?? "",
             encrypted:
-              "encrypted" in req.socket && req.socket.encrypted === true,
+              Boolean(managedOrigin) ||
+              ("encrypted" in req.socket && req.socket.encrypted === true),
           },
           req,
         )

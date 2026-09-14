@@ -79,6 +79,9 @@ export class ControlledCustomerAdmission implements VerificationAdmission {
       throw deny();
     return p;
   }
+  validatedPolicy() {
+    return Object.freeze({ ...this.configured() });
+  }
   async lock(tx: Prisma.TransactionClient, tenantId: string) {
     const p = this.configured();
     if (tenantId !== p.tenantId) throw deny();

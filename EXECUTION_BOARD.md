@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: P06 phone-spend admission — partial runtime checkpoint
+## Current: P06 runtime configuration and ingress — partial runtime checkpoint
+
+P06 runtime configuration and managed-ingress boundary locally implemented under approved runtime card items 1/3. Exact immutable runtime/packet/tenant/window/budget/secret-version validation and process-local ingress seal; request headers cannot grant TLS authority. Absent configuration remains closed; invalid enabled configuration throws sanitized refusal. No loader, secret fetch, provider client, main registration or deployment. Full 2,331 tests (3 skipped), build/lint/architecture/schema, both audits (zero findings) and existing connected database/browser gates passed; evidence/APP-013/p06-runtime-config-ingress.md. Remaining item 2: server composition loader/current readers and actual same-page browser START/CHECK/close-to-job proof (existing browser harness still prepares phone proof beforehand). Items 3/4 release/run separately gated. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
+
+## Historical: P06 phone-spend admission — partial runtime checkpoint
 
 P06 controlled phone-spend admission locally implemented and connected to actual durable verification in synthetic database/browser harness. Strict current tenant approval digest, participant/session/packet binding, account lock, prior held liabilities and replay checks; no old-hold reset. Full 2,326 tests (3 skipped), build/lint/architecture/audits and connected database/browser gates passed; evidence/APP-013/p06-phone-spend-admission.md. No live policy/rate/setting or activation. Remaining item 2: runtime config/loader/managed ingress and browser START/CHECK/close-to-job proof. Items 3/4 release/run separately gated. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
 
