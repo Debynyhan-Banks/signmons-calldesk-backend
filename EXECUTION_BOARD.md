@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: P06 shared request limits — partial runtime checkpoint
+## Current: P06 phone-spend admission — partial runtime checkpoint
+
+P06 controlled phone-spend admission locally implemented and connected to actual durable verification in synthetic database/browser harness. Strict current tenant approval digest, participant/session/packet binding, account lock, prior held liabilities and replay checks; no old-hold reset. Full 2,326 tests (3 skipped), build/lint/architecture/audits and connected database/browser gates passed; evidence/APP-013/p06-phone-spend-admission.md. No live policy/rate/setting or activation. Remaining item 2: runtime config/loader/managed ingress and browser START/CHECK/close-to-job proof. Items 3/4 release/run separately gated. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
+
+## Historical: P06 shared request limits — partial runtime checkpoint
 
 P06 shared HTTP request limits locally implemented under approved runtime card. PostgreSQL append-only reservations and packet locks survive process loss; authenticated session caps, idempotent release and immutable policy checks; no schema migration or provider-spend authority. Full 2,324 tests (3 skipped), build/lint/architecture/schema/audits and guarded independent-process database tests passed; evidence/APP-013/p06-shared-request-limits.md. Main remains unbound. Remaining item 2: controlled phone monetary admission, runtime loader/managed ingress and actual browser START/CHECK-to-job proof; items 3/4 release/run separately gated. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
 

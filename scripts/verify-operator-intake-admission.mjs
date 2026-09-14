@@ -759,8 +759,8 @@ export async function verifyOperatorIntakeAdmission({
     TwilioVerifyAdapter,
   } = require("../dist/communications/twilio-verify.adapter.js");
   const {
-    VerificationBudgetAdmission,
-  } = require("../dist/communications/verification-budget-admission.js");
+    ControlledCustomerAdmission, controlledCustomerAdmissionDigest,
+  } = require("../dist/communications/controlled-customer-admission.js");
   const {
     GoogleAddressOAuthTransport,
   } = require("../dist/communications/google-address-oauth.transport.js");
@@ -830,16 +830,18 @@ export async function verifyOperatorIntakeAdmission({
         },
       }),
     );
-    const phoneBudget = new VerificationBudgetAdmission({
-      mode: "FIXTURE_ONLY",
+    const phonePolicy = {
+      packetId: randomUUID(), accountSid, serviceSid,
       tenantId,
+      participantHmac: createHmac("sha256", Buffer.alloc(32, 8)).update(phone).digest("hex"),
       noticeVersion: "local-p04",
-      noticeText: "Fictional local verification",
-      termsUrl: "https://example.invalid/terms",
-      privacyUrl: "https://example.invalid/privacy",
       rateVersion: "not-a-real-rate",
-      flowUpperBoundUsdMicros: 10,
-    });
+      startsAt: Date.now()-1000, expiresAt: Date.now()+60000,
+      flowUpperBoundMicros: 10, accountCeilingMicros: 200,
+    };
+    const currentTenant = await prisma.tenantOrganization.findUniqueOrThrow({where:{id:tenantId}});
+    await prisma.tenantOrganization.update({where:{id:tenantId},data:{settings:{...currentTenant.settings,controlledPhoneApproval:{enabled:true,digest:controlledCustomerAdmissionDigest(phonePolicy)}}}});
+    const phoneBudget = new ControlledCustomerAdmission(phonePolicy);
     const durable = new DurableVerificationService(
       prisma,
       cipher,
@@ -1047,19 +1049,14 @@ export async function verifyOperatorIntakeAdmission({
     where: {
       tenantId,
       entityId: { in: connectedConversationIds },
-      action: "conversation.verification_budget_reserved",
+      action: "conversation.controlled_phone_held",
     },
   });
   assert.equal(phoneLiabilities.length, 12);
   assert.ok(
     phoneLiabilities.every((row) => row.metadata.reservedMicros === 10),
   );
-  // Teardown only these asserted synthetic reservations in the guarded disposable
-  // database. The following budget-boundary regression requires an empty budget.
-  // This is not reconciliation or a runtime liability-release operation.
-  await prisma.auditLog.deleteMany({
-    where: { id: { in: phoneLiabilities.map((row) => row.id) } },
-  });
+  // Controlled holds remain intact until the parent drops its disposable database.
   checks.push(
     "P04/P05 actual ControlledIntakeComposition connects durable phone+budget, address ledger/transport, verification, current reader and writer: accepted one job, provider-free replay, missing phone/outside/unknown/revocation no job; held liability retained; synthetic external SDK/fetch only",
     "P05 connected existing page through HTTP mount and real transport/services/database: accepted with post-commit acknowledgment failure and exact retry, outside refusal, uncertain transport, explicit correction then admission at 390/1440; no added calls on replay, no browser storage, reload clears and no false booking",
