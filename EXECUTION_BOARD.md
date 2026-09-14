@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: P06 runtime configuration and ingress — partial runtime checkpoint
+## Current: P06 approved email fingerprint — partial runtime checkpoint
+
+Owner approved the dedicated fingerprint security design; disabled implementation now tested. DedicatedEmailConsentFingerprint uses copied private 32-byte HMAC key, purpose/version/tenant/normalized-mailbox separation and irreversible local retirement; runtime envelope requires dedicated numeric fingerprintKey and fingerprintKeyVersion with cross-purpose resource-alias refusal. Actual adapter replaces the connected local harness fingerprint fixture function (synthetic bytes only). Full 2,336 tests (3 skipped), build/lint/architecture/schema, both zero-finding audits and connected database/browser gate passed; evidence/APP-013/p06-email-fingerprint.md. No secret provision/read, deployment or sending. Design-review pause below is resolved; next remains runtime loader/current readers and actual same-page phone START/CHECK/close-to-job proof. Three remaining P06 items unchanged; accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
+
+## Historical: P06 runtime configuration and ingress — partial runtime checkpoint
 
 Loader entry inspection: paused before implementation for the separately required mailbox-fingerprint security review. Only fixture adapters exist; production key lifecycle/domain separation remains explicitly gated by APP013_CUSTOMER_SESSION_SECURITY_PLAN.md. Proposed dedicated versioned adapter/reference repair is recorded, not approved, in APP013_P06_RUNTIME_WIRING_CARD.md. Owner approves design for disabled implementation; actual key provisioning remains release-gated. No new acceptance section, no runtime code change or live action; same three remaining P06 items.
 

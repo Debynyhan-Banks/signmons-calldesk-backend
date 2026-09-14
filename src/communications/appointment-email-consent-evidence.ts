@@ -53,8 +53,8 @@ export function parseEmailConsentReceipt(value: unknown) {
   };
 }
 
-/** No implementation or key configuration is supplied in this checkpoint.
- * Future adapter must use a separately approved tenant-scoped keyed fingerprint.
+/** DedicatedEmailConsentFingerprint implements the approved keyed design with
+ * injected bytes only. Live key loading/registration remains separately gated.
  * This port is NOT customer authentication, mailbox verification or consent.
  */
 export interface EmailConsentFingerprint {

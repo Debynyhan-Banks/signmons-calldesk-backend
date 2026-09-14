@@ -100,6 +100,9 @@ const config = () => ({
     },
     digestKey: "projects/test-project/secrets/digest/versions/2",
     twilioToken: "projects/test-project/secrets/twilio/versions/3",
+    fingerprintKey:
+      "projects/test-project/secrets/mailbox-fingerprint/versions/4",
+    fingerprintKeyVersion: "mailbox-v1",
   },
 });
 describe("controlled runtime configuration and ingress", () => {
@@ -216,6 +219,37 @@ describe("controlled runtime configuration and ingress", () => {
       expect(() =>
         parseControlledRuntimeConfig(config(), facts(), time),
       ).toThrow("unavailable");
+  });
+  it("requires a dedicated versioned fingerprint reference, never another purpose's secret", () => {
+    for (const ref of [
+      "",
+      "plaintext",
+      "projects/test-project/secrets/mailbox-fingerprint/versions/latest",
+      "projects/other/secrets/mailbox-fingerprint/versions/1",
+      "projects/test-project/secrets/session/versions/99",
+      "projects/test-project/secrets/digest/versions/99",
+      "projects/test-project/secrets/twilio/versions/99",
+    ]) {
+      const v = config();
+      v.secrets.fingerprintKey = ref;
+      expect(() => parseControlledRuntimeConfig(v, facts(), now)).toThrow(
+        "unavailable",
+      );
+    }
+    for (const key of ["fingerprintKey", "fingerprintKeyVersion"]) {
+      const v = config();
+      delete (v.secrets as Record<string, unknown>)[key];
+      expect(() => parseControlledRuntimeConfig(v, facts(), now)).toThrow(
+        "unavailable",
+      );
+    }
+    const v = config();
+    v.secrets.fingerprintKeyVersion = "bad version";
+    expect(() => parseControlledRuntimeConfig(v, facts(), now)).toThrow(
+      "unavailable",
+    );
+    const parsed = parseControlledRuntimeConfig(config(), facts(), now)!;
+    expect(parsed.secrets.fingerprintKeyVersion).toBe("mailbox-v1");
   });
   it("copies and freezes nested policy; only the original unexpired seal qualifies ingress", () => {
     const input = config();

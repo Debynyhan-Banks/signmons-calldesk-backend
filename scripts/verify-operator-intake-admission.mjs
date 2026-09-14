@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { writeFile } from "node:fs/promises";
 import { verifyControlledIntakeConnectedBrowser } from "./verify-controlled-intake-connected-browser.mjs";
 const require = createRequire(import.meta.url);
+const { DedicatedEmailConsentFingerprint } = require("../dist/communications/email-consent-fingerprint.js");
 const {
   CustomerIntakeContinuationService: Intake,
 } = require("../dist/communications/customer-intake-continuation.service.js");
@@ -47,14 +48,7 @@ export async function verifyOperatorIntakeAdmission({
     keys: { fixture: Buffer.alloc(32, 7) },
   });
   const cipher = new Cipher({ conversationDataEncryptionKey: "7".repeat(64) });
-  const consent = new Evidence(cipher, {
-    fingerprint: (tenant, email) => ({
-      digest: createHmac("sha256", Buffer.alloc(32, 6))
-        .update(JSON.stringify([tenant, email]))
-        .digest("hex"),
-      keyVersion: "fixture-only",
-    }),
-  });
+  const consent = new Evidence(cipher, new DedicatedEmailConsentFingerprint({key:Buffer.alloc(32,6),keyVersion:"synthetic-v1"}));
   const responses = new Responses(prisma, cipher, credentials, consent);
   const capture = new Capture(prisma, cipher, credentials);
   const intake = new Intake(prisma, cipher, credentials);

@@ -180,7 +180,10 @@ export function parseControlledRuntimeConfig(
     }
     if (object(a.session).requests !== 2) throw fail();
     const s = object(v.secrets);
-    exact(s, "activeKeyId,sessionKeys,digestKey,twilioToken");
+    exact(
+      s,
+      "activeKeyId,sessionKeys,digestKey,twilioToken,fingerprintKey,fingerprintKeyVersion",
+    );
     const keys = object(s.sessionKeys);
     const reference = (r: unknown) =>
       typeof r === "string" &&
@@ -195,9 +198,31 @@ export function parseControlledRuntimeConfig(
       Object.keys(keys).length < 1 ||
       Object.keys(keys).length > 2 ||
       !Object.keys(keys).every((k) => /^[a-zA-Z0-9_-]{1,32}$/.test(k)) ||
-      ![...Object.values(keys), s.digestKey, s.twilioToken].every(reference) ||
-      new Set([...Object.values(keys), s.digestKey, s.twilioToken]).size !==
-        Object.keys(keys).length + 2
+      ![
+        ...Object.values(keys),
+        s.digestKey,
+        s.twilioToken,
+        s.fingerprintKey,
+      ].every(reference) ||
+      typeof s.fingerprintKeyVersion !== "string" ||
+      !/^[a-zA-Z0-9_-]{1,32}$/.test(s.fingerprintKeyVersion) ||
+      new Set([
+        ...Object.values(keys),
+        s.digestKey,
+        s.twilioToken,
+        s.fingerprintKey,
+      ]).size !==
+        Object.keys(keys).length + 3
+    )
+      throw fail();
+    // A different version of another purpose's secret is still key reuse.
+    const fingerprintResource = (s.fingerprintKey as string).split(
+      "/versions/",
+    )[0];
+    if (
+      [...Object.values(keys), s.digestKey, s.twilioToken].some(
+        (r) => (r as string).split("/versions/")[0] === fingerprintResource,
+      )
     )
       throw fail();
     const security = Object.freeze({
@@ -226,6 +251,8 @@ export function parseControlledRuntimeConfig(
         sessionKeys: Object.freeze(keys) as Readonly<Record<string, string>>,
         digestKey: s.digestKey as string,
         twilioToken: s.twilioToken as string,
+        fingerprintKey: s.fingerprintKey as string,
+        fingerprintKeyVersion: s.fingerprintKeyVersion,
       }),
       security,
       digest: createHash("sha256").update(JSON.stringify(v)).digest("hex"),
