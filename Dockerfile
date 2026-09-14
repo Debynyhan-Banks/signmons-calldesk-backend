@@ -16,5 +16,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
+COPY --from=build /app/scripts/fixtures/customer-intake-journey.html ./customer-intake/customer-intake-journey.html
+COPY --from=build /app/scripts/fixtures/customer-intake-journey.js ./customer-intake/customer-intake-journey.js
 USER node
 CMD ["node", "dist/main"]

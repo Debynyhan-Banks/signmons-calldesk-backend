@@ -9,6 +9,7 @@ import appConfig from "./config/app.config";
 import { PrismaService } from "./prisma/prisma.service";
 import { requestContextMiddleware } from "./common/context/request-context";
 import { customerSessionHttp } from "./communications/customer-session-http";
+import { customerIntakePage } from "./communications/customer-intake-page";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -21,6 +22,7 @@ async function bootstrap() {
   // Closed until reviewed server resources/ingress are explicitly supplied.
   // Intercept before CORS/default parsers; unrelated webhook bytes stay untouched.
   app.use(customerSessionHttp());
+  app.use(customerIntakePage());
   const corsOrigins = config?.corsOrigins ?? [];
   const allowAllOrigins = corsOrigins.includes("*");
   loggingService.log(

@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 const require = createRequire(import.meta.url);
 const express = require("express");
+const { customerIntakePage } = require("../dist/communications/customer-intake-page.js");
 const {
   CustomerConsentBrowserTransport,
 } = require("../dist/communications/customer-consent-browser-transport.js");
@@ -88,10 +89,7 @@ export async function verifyControlledIntakeConnectedBrowser({
   const js = await readFile(
     new URL("./fixtures/customer-intake-journey.js", import.meta.url),
   );
-  app.get("/", (_req, res) => res.type("html").send(html));
-  app.get("/journey.js", (_req, res) =>
-    res.type("application/javascript").send(js),
-  );
+  app.use(customerIntakePage({ html, script: js.toString("utf8") }));
   const context = await browser.newContext({
     viewport: { width, height: 1000 },
   });
@@ -99,7 +97,7 @@ export async function verifyControlledIntakeConnectedBrowser({
   try {
     page = await context.newPage();
     page.on("pageerror", (e) => errors.push(e.message));
-    await page.goto(origin);
+    await page.goto(origin + "/customer-intake");
     await page.locator("#start").click();
     await page.locator("#message").fill("Do you repair heating?");
     await page.locator("#continue").click();
