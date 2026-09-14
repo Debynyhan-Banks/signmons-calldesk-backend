@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { createHash, createHmac, randomUUID } from "node:crypto";
+import { verifyLoadedIntakeBrowser } from "./verify-loaded-intake-browser.mjs";
 const require = createRequire(import.meta.url);
 const {
   loadControlledIntakeRuntime,
@@ -14,6 +15,8 @@ export async function verifyControlledRuntime({
   cipher,
   activation,
   scoped,
+  browser,
+  evidence,
 }) {
   const [db] = await prisma.$queryRawUnsafe(
     "SELECT current_database() AS name, inet_server_addr() AS address",
@@ -350,6 +353,15 @@ export async function verifyControlledRuntime({
         },
       }),
     );
+    await verifyLoadedIntakeBrowser({
+      browser,
+      prisma,
+      cipher,
+      template: config,
+      facts,
+      secrets,
+      evidence,
+    });
   } finally {
     await prisma.tenantOrganization.update({
       where: { id: tenantId },

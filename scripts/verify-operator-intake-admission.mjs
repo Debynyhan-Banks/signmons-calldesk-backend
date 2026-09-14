@@ -416,7 +416,7 @@ export async function verifyOperatorIntakeAdmission({
     validUntil: new Date(Date.now() + 60000).toISOString(),
     packetId: randomUUID(),
   };
-  await verifyControlledRuntime({prisma,cipher,activation,scoped});
+  await verifyControlledRuntime({prisma,cipher,activation,scoped,browser,evidence});
   const controlled = new Intake(
     prisma,
     cipher,

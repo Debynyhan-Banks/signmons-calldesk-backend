@@ -40,6 +40,17 @@ describe("controlled customer verification boundary", () => {
     });
     return { request, receipt, authorize, execute, service };
   };
+  it("projects a bounded immutable server notice without credentials or provider identifiers", () => {
+    const s = setup();
+    const notice = s.service.notice();
+    expect(Object.keys(notice).sort()).toEqual(["noticeText", "noticeVersion"]);
+    expect(notice.noticeVersion).toBe("notice-v1");
+    expect(notice.noticeText).toContain("does not authorize");
+    expect(Object.isFrozen(notice)).toBe(true);
+    expect(() => new ControlledCustomerVerification().notice()).toThrow(
+      "unavailable",
+    );
+  });
   it("defaults closed and authorizes before durable execution; projects only safe receipt", async () => {
     const s = setup();
     await expect(

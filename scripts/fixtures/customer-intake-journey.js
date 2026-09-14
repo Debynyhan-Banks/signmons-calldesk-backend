@@ -12,6 +12,7 @@
     ];
   let token,
     controlledClose = false,
+    controlledVerificationNotice,
     smsPrompt,
     correction,
     correctionTimer,
@@ -56,7 +57,18 @@
     el("addressVerification").hidden =
       document.documentElement.dataset.addressFixture !== "true";
     const durableMode =
-      document.documentElement.dataset.verificationFixture === "true";
+      document.documentElement.dataset.verificationFixture === "true" ||
+      !!controlledVerificationNotice;
+    if (controlledVerificationNotice) {
+      el("verifyHeading").textContent = "Phone access check";
+      el("verifyIntro").textContent =
+        "Request a code only for the phone number you are using for this request. This local preview uses synthetic providers; no real text is sent.";
+      el("verifyLinks").hidden = true;
+      el("verifyRefresh").hidden = true;
+      el("verifyChange").textContent = verifyStart
+        ? "End session to change number"
+        : "Change phone number";
+    }
     el("durableVerification").hidden = !durableMode;
     el("phoneVerification").hidden =
       document.documentElement.dataset.phoneFixture !== "true";
@@ -160,6 +172,7 @@
     el("phoneStatus").textContent = "Not verified.";
     token = promptToken = email = pending = reviewedDraft = undefined;
     controlledClose = false;
+    controlledVerificationNotice = undefined;
     reviewedAddressSelection = undefined;
     reviewedControlledAddress = undefined;
     el("controlledSuggestion").textContent = "";
@@ -435,7 +448,7 @@
         }
         case "verify": {
           if (
-            value.fixtureOnly !== true ||
+            (!controlledVerificationNotice && value.fixtureOnly !== true) ||
             value.phoneAccessAuthorized !== false ||
             value.bookingAuthorized !== false
           )
@@ -497,13 +510,18 @@
             if (request.body.action === "START")
               verifyStart = request.body.operationId;
             verifyState = value.outcome;
-            el("verifyStatus").textContent =
-              value.outcome === "APPROVED"
+            el("verifyStatus").textContent = controlledVerificationNotice
+              ? value.outcome === "APPROVED"
+                ? "Code accepted. The server will recheck phone access before admitting your request. Nothing booked or sent."
+                : value.outcome === "PENDING"
+                  ? "Code check pending. Enter the code; an incorrect code uses an attempt. No automatic resend."
+                  : "Verification unavailable or expired. Draft retained; no automatic resend."
+              : value.outcome === "APPROVED"
                 ? "Test code accepted. Real phone access is NOT verified. No booking or sending permission."
                 : value.outcome === "PENDING"
                   ? "Test request recorded. No SMS sent. Enter 123456; an incorrect code uses an attempt."
                   : "Test verification is unavailable or expired. Your draft is retained; nothing is verified. No automatic resend.";
-            if (value.outcome === "APPROVED")
+            if (value.outcome === "APPROVED" && !controlledVerificationNotice)
               showVerificationProof(value.proof);
           }
           break;
@@ -562,6 +580,20 @@
           token = value.sessionToken;
           controlledClose =
             controlledMode() && value.sessionCloseAvailable === true;
+          if (controlledMode() && value.verificationNotice) {
+            const n = value.verificationNotice;
+            if (
+              Object.keys(n).sort().join() !== "noticeText,noticeVersion" ||
+              typeof n.noticeVersion !== "string" ||
+              !n.noticeVersion ||
+              n.noticeVersion.length > 200 ||
+              typeof n.noticeText !== "string" ||
+              !n.noticeText ||
+              n.noticeText.length > 500
+            )
+              throw Error("Invalid code notice");
+            controlledVerificationNotice = Object.freeze({ ...n });
+          }
           expires = deadline;
           expiryTimer = setTimeout(
             () => alive(),
@@ -986,7 +1018,22 @@
     }
   };
   function submitVerification(action) {
-    if (document.documentElement.dataset.verificationFixture !== "true") return;
+    if (
+      document.documentElement.dataset.verificationFixture !== "true" &&
+      !controlledVerificationNotice
+    )
+      return;
+    if (controlledVerificationNotice && action === "NOTICE") {
+      verifyNotice = controlledVerificationNotice.noticeVersion;
+      el("verifyNoticeText").textContent =
+        controlledVerificationNotice.noticeText;
+      el("verifyNumber").textContent = el("phone").value.trim();
+      el("verifyRequested").checked = false;
+      paint();
+      return;
+    }
+    if (controlledVerificationNotice && !["START", "CHECK"].includes(action))
+      return;
     if (
       action === "START" &&
       (!verifyNotice ||
@@ -1005,8 +1052,9 @@
       phone: action === "NOTICE" ? "" : el("phone").value.trim(),
       code: action === "CHECK" ? el("verifyCode").value.trim() : "",
       startOperationId: action === "CHECK" ? verifyStart : "",
-      requested: action === "START",
-      noticeVersion: action === "START" ? verifyNotice : "",
+      requested: action === "START" || !!controlledVerificationNotice,
+      noticeVersion:
+        action === "START" || controlledVerificationNotice ? verifyNotice : "",
     });
   }
   el("verifyNotice").onclick = () => submitVerification("NOTICE");
@@ -1067,6 +1115,10 @@
   });
   el("verifyChange").onclick = () => {
     if (busy || pending) return;
+    if (controlledVerificationNotice && verifyStart) {
+      submit("end", { sessionToken: token });
+      return;
+    }
     if (verifyStart) {
       submitVerification("REVOKE");
       return;

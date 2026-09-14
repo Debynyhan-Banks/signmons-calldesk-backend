@@ -20,6 +20,16 @@ const unavailable = () =>
 
 /** Server-owned optional boundary. No provider creation, activation or proof issuance. */
 export class ControlledCustomerVerification {
+  notice() {
+    const version = this.resources?.noticeVersion;
+    if (typeof version !== "string" || !version || version.length > 200)
+      throw unavailable();
+    return Object.freeze({
+      noticeVersion: version,
+      noticeText:
+        "I request a one-time code to this phone number to check access for this service request. This does not authorize promotional messages, payment or booking.",
+    });
+  }
   constructor(private readonly resources?: Resources) {
     this.resources = resources ? Object.freeze({ ...resources }) : undefined;
   }

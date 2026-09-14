@@ -78,7 +78,8 @@ type Ports = {
       deliveryAuthorized: boolean;
     }>;
   };
-  controlledVerification?: Pick<ControlledCustomerVerification, "handle">;
+  controlledVerification?: Pick<ControlledCustomerVerification, "handle"> &
+    Partial<Pick<ControlledCustomerVerification, "notice">>;
   fixtureSms?: {
     handle(
       input: Record<string, unknown>,
@@ -340,6 +341,9 @@ export class CustomerConsentBrowserTransport {
         expiresAt: new Date(claims.expiresAt).toISOString(),
         deliveryAuthorized: false,
         ...(ports.controlledLifecycle ? { sessionCloseAvailable: true } : {}),
+        ...(ports.controlledVerification?.notice
+          ? { verificationNotice: ports.controlledVerification.notice() }
+          : {}),
       };
     }
     const sessionToken = input.sessionToken as string;
