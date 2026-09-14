@@ -415,6 +415,8 @@ try {
     ),
   );
   console.log(JSON.stringify({ checks, evidence, providerCalls: 0 }));
+  const { verifySharedBrowserBudget } = await import("./verify-shared-browser-budget.mjs");
+  console.log(JSON.stringify({ sharedBrowserBudget: await verifySharedBrowserBudget({ prisma, tenantId: tenant.id }) }));
   console.log(
     JSON.stringify({
       operatorAdmission: await verifyOperatorIntakeAdmission({

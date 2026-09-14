@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: P06 same-origin assets — partial runtime checkpoint
+## Current: P06 shared request limits — partial runtime checkpoint
+
+P06 shared HTTP request limits locally implemented under approved runtime card. PostgreSQL append-only reservations and packet locks survive process loss; authenticated session caps, idempotent release and immutable policy checks; no schema migration or provider-spend authority. Full 2,324 tests (3 skipped), build/lint/architecture/schema/audits and guarded independent-process database tests passed; evidence/APP-013/p06-shared-request-limits.md. Main remains unbound. Remaining item 2: controlled phone monetary admission, runtime loader/managed ingress and actual browser START/CHECK-to-job proof; items 3/4 release/run separately gated. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
+
+## Historical: P06 same-origin assets — partial runtime checkpoint
 
 Owner approved same-origin backend assets and PostgreSQL-backed shared admission/budgets. Remote P06 source card and preserved local phone-boundary work reconciled without replacing either history. Same-origin asset delivery now locally tested: exact /customer-intake and /customer-intake.js, two Docker-packaged assets, no-store/CSP, default-disabled main mount. Full 2,321 tests (3 skipped), build/lint/architecture, zero-vulnerability audits and existing connected 390/1440 database/browser gate passed. See backend evidence/APP-013/p06-same-origin-assets.md and APP013_P06_RUNTIME_WIRING_CARD.md. P06 item 2 remains partial: PostgreSQL shared limits/phone admission, runtime loader/managed ingress, browser phone-code-to-job proof still required. Next implement the approved shared limits; no new approval needed for routine in-scope work. Release/paid run remains separately gated. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
 

@@ -15,6 +15,9 @@ export type CustomerBrowserOperation =
   | "address"
   | "correction"
   | "respond";
+export type CustomerBrowserRelease = (() => void | Promise<void>) & {
+  bindSession?: (sessionId: string) => Promise<boolean>;
+};
 export interface CustomerBrowserBudget {
   /** Atomic admission; peer comes from the server socket, never forwarded headers.
    * Release is idempotent and must not throw. A shared implementation is required
@@ -23,7 +26,7 @@ export interface CustomerBrowserBudget {
   acquire(
     peer: string,
     operation: CustomerBrowserOperation,
-  ): (() => void) | null;
+  ): CustomerBrowserRelease | null | Promise<CustomerBrowserRelease | null>;
 }
 
 /** Local single-binding model only. No registration or persistent/distributed adapter.

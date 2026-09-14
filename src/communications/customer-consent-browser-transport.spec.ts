@@ -88,6 +88,21 @@ describe("inactive same-origin browser transport", () => {
       );
     });
   const call = (request = req()) => asActor(() => model().handle(request));
+  it("awaits shared admission, binds authenticated session, and releases after refusal", async () => {
+    const release = Object.assign(jest.fn().mockResolvedValue(undefined), {
+      bindSession: jest.fn().mockResolvedValue(false),
+    });
+    acquire.mockResolvedValue(release);
+    const result = await call(
+      req("capture", { sessionToken, email: "fictional@example.invalid" }),
+    );
+    expect(result.status).toBe(429);
+    expect(release.bindSession).toHaveBeenCalledWith(
+      credentials.verifySession(sessionToken).sessionId,
+    );
+    expect(capture).not.toHaveBeenCalled();
+    expect(release).toHaveBeenCalledTimes(1);
+  });
   it("uses an explicit controlled verify boundary without enabling fixture ports", async () => {
     const input = {
       action: "START",

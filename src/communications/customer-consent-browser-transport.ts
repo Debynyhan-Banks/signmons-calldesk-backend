@@ -11,6 +11,7 @@ import {
 import {
   CustomerBrowserBudget,
   CustomerBrowserOperation,
+  CustomerBrowserRelease,
 } from "./customer-consent-browser-budget";
 import { CustomerConsentCaptureService } from "./customer-consent-capture.service";
 import { CustomerConsentResponseService } from "./customer-consent-response.service";
@@ -154,7 +155,7 @@ export class CustomerConsentBrowserTransport {
     source?: AsyncIterable<Uint8Array>,
   ) {
     let operation: CustomerBrowserOperation | "unknown" = "unknown";
-    let release: (() => void) | undefined;
+    let release: CustomerBrowserRelease | undefined;
     let status = 503,
       result: Record<string, unknown> = { error: "Customer request refused." };
     try {
@@ -200,7 +201,8 @@ export class CustomerConsentBrowserTransport {
       if (headers.get("content-type") !== "application/json") fail(415);
       // Validate before parsing; unknown outcomes are not retried by this transport.
       release =
-        ports.budget.acquire(request.peerAddress, operation) ?? undefined;
+        (await ports.budget.acquire(request.peerAddress, operation)) ??
+        undefined;
       if (!release) fail(429);
       if (typeof release !== "function") fail(503);
       if (source)
@@ -258,11 +260,13 @@ export class CustomerConsentBrowserTransport {
           input.sessionToken.length > 4096
         )
           fail(401);
+        const claims = ports.credentials.verifySession(input.sessionToken);
+        if (claims.tenantId !== binding.tenantId) fail(403);
         if (
-          ports.credentials.verifySession(input.sessionToken).tenantId !==
-          binding.tenantId
+          release.bindSession &&
+          !(await release.bindSession(claims.sessionId))
         )
-          fail(403);
+          fail(429);
       }
       result = await this.invoke(operation, input, ports, binding.tenantId);
       status = 200;
@@ -275,7 +279,7 @@ export class CustomerConsentBrowserTransport {
     } finally {
       // A diagnostic/release fault cannot alter a committed application outcome.
       try {
-        release?.();
+        await release?.();
       } catch {
         /* Invalid adapter must be repaired before activation. */
       }
