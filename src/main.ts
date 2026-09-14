@@ -8,8 +8,8 @@ import { LoggingService } from "./logging/logging.service";
 import appConfig from "./config/app.config";
 import { PrismaService } from "./prisma/prisma.service";
 import { requestContextMiddleware } from "./common/context/request-context";
-import { customerSessionHttp } from "./communications/customer-session-http";
-import { customerIntakePage } from "./communications/customer-intake-page";
+import { prepareControlledIntakeStartup } from "./communications/controlled-intake-startup";
+import { ConversationMemoryCipher } from "./logging/conversation-memory-cipher.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -19,10 +19,17 @@ async function bootstrap() {
   const config = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
   const port = config?.port ?? Number(process.env.PORT ?? 3000);
   const loggingService = app.get(LoggingService);
-  // Closed until reviewed server resources/ingress are explicitly supplied.
+  // Default closed. Invalid enabled configuration throws before listen.
   // Intercept before CORS/default parsers; unrelated webhook bytes stay untouched.
-  app.use(customerSessionHttp());
-  app.use(customerIntakePage());
+  const intake = await prepareControlledIntakeStartup(process.env, () => ({
+    prisma: app.get(PrismaService),
+    cipher: app.get(ConversationMemoryCipher),
+  })).catch(async (error: unknown) => {
+    await app.close();
+    throw error;
+  });
+  app.use(intake.session);
+  app.use(intake.page);
   const corsOrigins = config?.corsOrigins ?? [];
   const allowAllOrigins = corsOrigins.includes("*");
   loggingService.log(

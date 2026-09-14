@@ -138,10 +138,11 @@ describe("customer HTTP pre-parser mount", () => {
     expect(b.status).toBe(403);
     expect(s.start).not.toHaveBeenCalled();
   });
-  it("mounts closed before CORS and preserves Nest rawBody", () => {
+  it("mounts default-disabled startup before CORS and preserves Nest rawBody", () => {
     const main = readFileSync("src/main.ts", "utf8");
     expect(main).toContain("rawBody: true");
-    expect(main.indexOf("app.use(customerSessionHttp())")).toBeLessThan(
+    expect(main.indexOf("app.use(intake.session)")).toBeGreaterThan(0);
+    expect(main.indexOf("app.use(intake.session)")).toBeLessThan(
       main.indexOf("app.enableCors("),
     );
   });

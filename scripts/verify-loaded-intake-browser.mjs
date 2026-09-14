@@ -10,17 +10,11 @@ import { randomUUID, createHash } from "node:crypto";
 const require = createRequire(import.meta.url),
   express = require("express");
 const {
-  loadControlledIntakeRuntime,
-} = require("../dist/communications/controlled-intake-runtime.js");
+  prepareControlledIntakeStartup,
+} = require("../dist/communications/controlled-intake-startup.js");
 const {
   controlledCustomerAdmissionDigest,
 } = require("../dist/communications/controlled-customer-admission.js");
-const {
-  customerSessionHttp,
-} = require("../dist/communications/customer-session-http.js");
-const {
-  customerIntakePage,
-} = require("../dist/communications/customer-intake-page.js");
 export async function verifyLoadedIntakeBrowser({
   browser,
   prisma,
@@ -123,87 +117,124 @@ export async function verifyLoadedIntakeBrowser({
             to: "+12165550123",
             channel: "sms",
           });
-          runtime = await loadControlledIntakeRuntime(cfg, facts, {
-            prisma,
-            cipher,
-            secrets,
-            verifyFactory: () => ({
-              verify: {
-                v2: {
-                  services: () => ({
-                    verifications: {
-                      create: async () => {
-                        phoneCalls++;
-                        return raw("pending");
+          runtime = await prepareControlledIntakeStartup(
+            {
+              CONTROLLED_INTAKE_RUNTIME_JSON: JSON.stringify(cfg),
+              CONTROLLED_INTAKE_SECRETS_JSON: JSON.stringify(
+                Object.fromEntries(
+                  Object.entries(secrets).map(([ref, value]) => [
+                    ref,
+                    Buffer.isBuffer(value) ? value.toString("hex") : value,
+                  ]),
+                ),
+              ),
+              NODE_ENV: facts.nodeEnv,
+              GOOGLE_CLOUD_PROJECT: facts.project,
+              K_SERVICE: facts.service,
+              K_CONFIGURATION: facts.configuration,
+              K_REVISION: facts.revision,
+              PORT: facts.port,
+              ...facts.flags,
+            },
+            () => ({
+              prisma,
+              cipher,
+              verifyFactory: () => ({
+                verify: {
+                  v2: {
+                    services: () => ({
+                      verifications: {
+                        create: async () => {
+                          phoneCalls++;
+                          return raw("pending");
+                        },
                       },
-                    },
-                    verificationChecks: {
-                      create: async ({ code }) => {
-                        phoneCalls++;
-                        return raw(code === "123456" ? "approved" : "pending");
+                      verificationChecks: {
+                        create: async ({ code }) => {
+                          phoneCalls++;
+                          return raw(
+                            code === "123456" ? "approved" : "pending",
+                          );
+                        },
                       },
-                    },
-                  }),
+                    }),
+                  },
+                },
+              }),
+              googlePorts: {
+                token: async () => "synthetic",
+                fetch: async (_url, options) => {
+                  const request = JSON.parse(options.body);
+                  assert.equal(
+                    request.previousResponseId,
+                    addressCalls === 0
+                      ? undefined
+                      : "11111111-1111-4111-8111-111111111111",
+                  );
+                  addressCalls++;
+                  if (mode === "unknown") throw Error("Synthetic uncertainty");
+                  const number = mode === "correction" ? "174" : "173";
+                  return new Response(
+                    JSON.stringify({
+                      responseId: "11111111-1111-4111-8111-111111111111",
+                      result: {
+                        verdict: {
+                          addressComplete: true,
+                          validationGranularity: "PREMISE",
+                        },
+                        address: {
+                          postalAddress: {
+                            regionCode: "US",
+                            administrativeArea: "OH",
+                            locality: "Example",
+                            postalCode: "44101",
+                            addressLines: [number + " Fictional Lane"],
+                          },
+                          addressComponents: Object.entries({
+                            street_number: number,
+                            route: "Fictional Lane",
+                            locality: "Example",
+                            administrative_area_level_1: "Ohio",
+                            postal_code: "44101",
+                            country: "United States",
+                          }).map(([componentType, text]) => ({
+                            componentType,
+                            componentName: { text },
+                            confirmationLevel: "CONFIRMED",
+                          })),
+                        },
+                        uspsData: {
+                          dpvConfirmation: "Y",
+                          dpvCmra: "N",
+                          addressRecordType: "H",
+                          fipsCountyCode: mode === "outside" ? "093" : "035",
+                          county: mode === "outside" ? "Lorain" : "Cuyahoga",
+                        },
+                        metadata: { poBox: false },
+                      },
+                    }),
+                    { headers: { "content-type": "application/json" } },
+                  );
                 },
               },
             }),
-            googlePorts: {
-              token: async () => "synthetic",
-              fetch: async (_url, options) => {
-                const request = JSON.parse(options.body);
-                assert.equal(
-                  request.previousResponseId,
-                  addressCalls === 0
-                    ? undefined
-                    : "11111111-1111-4111-8111-111111111111",
-                );
-                addressCalls++;
-                if (mode === "unknown") throw Error("Synthetic uncertainty");
-                const number = mode === "correction" ? "174" : "173";
-                return new Response(
-                  JSON.stringify({
-                    responseId: "11111111-1111-4111-8111-111111111111",
-                    result: {
-                      verdict: {
-                        addressComplete: true,
-                        validationGranularity: "PREMISE",
-                      },
-                      address: {
-                        postalAddress: {
-                          regionCode: "US",
-                          administrativeArea: "OH",
-                          locality: "Example",
-                          postalCode: "44101",
-                          addressLines: [number + " Fictional Lane"],
-                        },
-                        addressComponents: Object.entries({
-                          street_number: number,
-                          route: "Fictional Lane",
-                          locality: "Example",
-                          administrative_area_level_1: "Ohio",
-                          postal_code: "44101",
-                          country: "United States",
-                        }).map(([componentType, text]) => ({
-                          componentType,
-                          componentName: { text },
-                          confirmationLevel: "CONFIRMED",
-                        })),
-                      },
-                      uspsData: {
-                        dpvConfirmation: "Y",
-                        dpvCmra: "N",
-                        addressRecordType: "H",
-                        fipsCountyCode: mode === "outside" ? "093" : "035",
-                        county: mode === "outside" ? "Lorain" : "Cuyahoga",
-                      },
-                      metadata: { poBox: false },
-                    },
-                  }),
-                  { headers: { "content-type": "application/json" } },
-                );
-              },
-            },
-          });
+            async () => ({
+              html: await readFile(
+                new URL(
+                  "./fixtures/customer-intake-journey.html",
+                  import.meta.url,
+                ),
+                "utf8",
+              ),
+              script: await readFile(
+                new URL(
+                  "./fixtures/customer-intake-journey.js",
+                  import.meta.url,
+                ),
+                "utf8",
+              ),
+            }),
+          );
           assert.equal(phoneCalls + addressCalls, 0);
           app.use((_req, res, next) => {
             const json = res.json.bind(res);
@@ -226,25 +257,8 @@ export async function verifyLoadedIntakeBrowser({
             };
             next();
           });
-          app.use(customerSessionHttp(runtime.binding));
-          app.use(
-            customerIntakePage({
-              html: await readFile(
-                new URL(
-                  "./fixtures/customer-intake-journey.html",
-                  import.meta.url,
-                ),
-                "utf8",
-              ),
-              script: await readFile(
-                new URL(
-                  "./fixtures/customer-intake-journey.js",
-                  import.meta.url,
-                ),
-                "utf8",
-              ),
-            }),
-          );
+          app.use(runtime.session);
+          app.use(runtime.page);
           context = await browser.newContext({
             ignoreHTTPSErrors: true,
             viewport: { width, height: 1000 },

@@ -1,5 +1,9 @@
 # Backend Session Handoff
 
+## Current: P06 checklist item 2 locally complete — default-disabled startup
+
+Fixed owner-facing checklist item 2 is locally complete: main now awaits default-disabled startup, binds exact server runtime facts and separately injected material, reads only the two packaged assets, and mounts before CORS/parsers/listen. Absent/disabled configuration reads no intake secrets/resources/assets; malformed enabled configuration refuses startup with sanitized errors. The same eight HTTPS browser cases now run through this startup helper with real services/disposable DB and synthetic external providers; 24 synthetic phone and 10 synthetic address invocations, zero live calls. Full 2,359 tests (3 skipped), build/lint/architecture/schema, both zero-finding audits and complete DB/browser gates passed; evidence/APP-013/p06-startup-wiring.md. Remaining fixed checklist: 3 exact release packet/owner review; 4 separately approved capped staging test/acceptance. Two concrete tasks remain, no new package or rolling section. No deployment, real secret access or provider configuration. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
+
 ## Owner-reviewed dependency alignment
 
 Owner reviewed the proposal and requested dependency correction: see [INTELLIGENCE_ALIGNMENT_REVIEW.md](INTELLIGENCE_ALIGNMENT_REVIEW.md). APP-013/2B stays Now, including BE-001 residual proof. Next is APP-017 → APP-018 → APP-019 → APP-015 → APP-016 → APP-033. Finish full acceptance before promotion; no routine phase-choice question needed. Older dated Next-empty notes are historical. No runtime change, merge, deployment, provider activity or training.
