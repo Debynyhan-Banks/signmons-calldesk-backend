@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: P06 entry packet reconciled — activation disabled
+## Current: P06 controlled phone boundary — partial runtime checkpoint
+
+P06 item 2 partial checkpoint: optional controlled customer verification boundary implemented, unregistered/default-disabled. Existing /customer-session/verify can use a mandatory server-authorized durable executor without enabling fixture ports; strict US/notice/input validation and privacy-safe receipt, no admission authority. 2,318 tests passed (3 skipped), lint/build/architecture and zero-vulnerability audits; no new live or connected database/browser claim. See APP013_P06_RUNTIME_CARD.md and backend evidence/APP-013/p06-phone-boundary.md. Runtime loader/managed ingress and same-page browser START/CHECK-to-job proof remain in item 2; release/run gates remain items 3/4. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), provisional 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
+
+## Historical: P06 entry packet reconciled — activation disabled
 
 P06 preparation authorized by owner continuation after correction repair 3667cda/7be5f00. Existing APP013_2B_ACTIVATION_PACKET.md now has a reconciled four-item checklist: entry complete; connected runtime wiring, exact disabled release approval, and capped live run/closeout remain. Read-only staging readback confirms unchanged baseline traffic and six disabled candidate flags. Code is not deployed: loader, managed-ingress qualification and non-fixture customer phone-code wiring remain. No blanket Google support-wait gate, no new package or paid/release authority. Backend evidence/APP-013/p06-entry-packet.md. Next: exact source/interface/test card for existing wiring gap, then local same-page proof. Accepted packages 5/60 (8.3%), walkthrough 3/8 (37.5%); provisional 4–8 weeks remaining at 25–30 collaborative hours/week plus external waits, low confidence; update at ten accepted packages. No scope deviation.
 

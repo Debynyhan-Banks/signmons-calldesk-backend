@@ -1,4 +1,5 @@
 import { HttpException } from "@nestjs/common";
+import { ControlledCustomerVerification } from "./controlled-customer-verification";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -87,6 +88,47 @@ describe("inactive same-origin browser transport", () => {
       );
     });
   const call = (request = req()) => asActor(() => model().handle(request));
+  it("uses an explicit controlled verify boundary without enabling fixture ports", async () => {
+    const input = {
+      action: "START",
+      code: "",
+      noticeVersion: "v1",
+      operationId: randomUUID(),
+      phone: "+12025550123",
+      requested: true,
+      sessionToken,
+      startOperationId: "",
+    };
+    const legacy = jest.fn();
+    const execute = jest.fn().mockResolvedValue({
+      operationId: input.operationId,
+      state: "OBSERVED",
+      outcome: "PENDING",
+      phoneAccessAuthorized: false,
+      bookingAuthorized: false,
+      deliveryAuthorized: false,
+    });
+    const authorize = jest.fn().mockResolvedValue(undefined);
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      {
+        ...ports,
+        verification: { handle: legacy },
+        controlledVerification: new ControlledCustomerVerification({
+          durable: { execute },
+          authorize,
+          noticeVersion: "v1",
+        }),
+      },
+    );
+    expect(
+      (await asActor(() => transport.handle(req("verify", input)))).status,
+    ).toBe(200);
+    expect(authorize).toHaveBeenCalledWith(sessionToken);
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(legacy).not.toHaveBeenCalled();
+    expect((await call(req("verify", input))).status).toBe(503);
+  });
   it("keeps correction unavailable outside the explicit fixture", async () => {
     const handle = jest.fn();
     const transport = new CustomerConsentBrowserTransport(

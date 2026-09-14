@@ -21,6 +21,7 @@ import {
   ControlledIntakeRequest,
 } from "./controlled-intake-submission";
 import { controlledIntakeBrowserResult } from "./controlled-intake-browser-result";
+import { ControlledCustomerVerification } from "./controlled-customer-verification";
 
 export const CUSTOMER_BROWSER_MAX_BYTES = 16384;
 export const CUSTOMER_BROWSER_HEADERS = Object.freeze({
@@ -68,6 +69,7 @@ export type CustomerBrowserRequest = {
 };
 type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
 type Ports = {
+  controlledVerification?: Pick<ControlledCustomerVerification, "handle">;
   fixtureSms?: {
     handle(
       input: Record<string, unknown>,
@@ -354,6 +356,8 @@ export class CustomerConsentBrowserTransport {
       return ports.address.handle(input);
     }
     if (operation === "verify") {
+      if (ports.controlledVerification)
+        return ports.controlledVerification.handle(input);
       if (this.binding?.fixtureLoopback !== true || !ports.verification)
         fail(503);
       return ports.verification.handle(input);
