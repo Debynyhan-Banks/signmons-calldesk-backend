@@ -65,7 +65,9 @@ export class ControlledCustomerVerification {
         code: input.code,
         startOperationId: input.startOperationId,
       },
-      { requested: true, noticeVersion: p.noticeVersion },
+      input.action === "START"
+        ? { requested: true, noticeVersion: p.noticeVersion }
+        : undefined,
     );
     if (
       receipt.operationId !== input.operationId ||

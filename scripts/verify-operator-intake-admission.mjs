@@ -4,6 +4,7 @@ import { randomUUID, createHmac, createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { writeFile } from "node:fs/promises";
 import { verifyControlledIntakeConnectedBrowser } from "./verify-controlled-intake-connected-browser.mjs";
+import { verifyControlledRuntime } from "./verify-controlled-runtime.mjs";
 const require = createRequire(import.meta.url);
 const { DedicatedEmailConsentFingerprint } = require("../dist/communications/email-consent-fingerprint.js");
 const {
@@ -415,6 +416,7 @@ export async function verifyOperatorIntakeAdmission({
     validUntil: new Date(Date.now() + 60000).toISOString(),
     packetId: randomUUID(),
   };
+  await verifyControlledRuntime({prisma,cipher,activation,scoped});
   const controlled = new Intake(
     prisma,
     cipher,

@@ -90,7 +90,7 @@ describe("controlled customer verification boundary", () => {
         code: "123456",
         startOperationId: request.startOperationId,
       }),
-      expect.any(Object),
+      undefined,
     );
   });
   it.each([
