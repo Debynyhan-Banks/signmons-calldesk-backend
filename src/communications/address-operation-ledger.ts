@@ -440,6 +440,16 @@ export class AddressOperationLedger {
       }
       return {
         operationId: operation.id,
+        priorSessionOperations: controlled
+          ? await tx.addressVerificationOperation.count({
+              where: {
+                accountId: fixture.accountId,
+                tenantId: scope.tenantId,
+                sessionId: scope.sessionId,
+                id: { not: operation.id },
+              },
+            })
+          : 0,
         policyHash,
         intentId: binding.intentId,
         revision: binding.revision,

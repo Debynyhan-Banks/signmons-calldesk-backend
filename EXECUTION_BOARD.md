@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: P05 locally review-ready — connected browser proof passed
+## Current: Google correction-sequence repair locally review-ready
+
+APP-013/2B: owner-approved volatile first-response-ID chaining and cache-loss/expiry refusal; no live activation. See evidence/APP-013/google-correction-sequence.md and governance APP013_GOOGLE_CORRECTION_CARD.md. Existing customer journey and caps preserved, no new package. Earlier owner P03/P05 reviews reconcile accepted packages to 5/60 (8.3%); walkthrough 3/8 (37.5%) unchanged. P06 remains planned and separately gated. Provisional remaining Release A estimate 4–8 weeks at 25–30 collaborative hours/week, low confidence, external waits separate; recalibrate at ten accepted packages. No scope deviation.
+
+## Historical: P05 locally review-ready — connected browser proof passed
 
 P05 locally review-ready (R), not owner-accepted or live-enabled. Final item 4 passed eight connected browser scenarios: accepted/post-commit failed acknowledgment exact replay, outside refusal, uncertain transport, and explicit correction then admission at both 390/1440. Same journey page, actual HTTP mount/transport/composition/current reader/writer and disposable PostgreSQL; phone proof prepared through real durable service with synthetic SDK, address fetch synthetic. No positive admission or draft response mocks. Four browser-created jobs, zero duplicate jobs; whole operator harness 11 fictional jobs, 24 synthetic phone calls, 14 synthetic address calls, zero live calls. No storage/overflow/page errors; reload clearing and truthful not-booked receipt checked. Full 2,294 tests (3 skipped), build/lint/architecture, zero-vulnerability audits, existing database/browser and 12 UI regressions passed. evidence/APP-013/p05-connected-browser.md. All four existing P05 local checklist items addressed; owner review next, no added section. P06 remains planned, with managed ingress/resources/caps/release/live acceptance separately gated. Accepted packages 3/60 (5%), walkthrough 3/8 (37.5%), low-confidence 60–84 productive-day baseline unchanged; no full timing sample. No scope deviation.
 

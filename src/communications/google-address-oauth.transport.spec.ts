@@ -33,6 +33,24 @@ describe("inactive Google address OAuth transport", () => {
     };
   };
   afterEach(() => jest.useRealTimers());
+  it("forwards only a valid correction UUID and omits it initially", async () => {
+    const s = setup();
+    await s.transport.validate(input());
+    expect(
+      JSON.parse(s.send.mock.calls[0][1]!.body as string),
+    ).not.toHaveProperty("previousResponseId");
+    const id = "11111111-1111-4111-8111-111111111111";
+    await s.transport.validate({ ...input(), previousResponseId: id });
+    expect(
+      JSON.parse(s.send.mock.calls[1][1]!.body as string) as unknown,
+    ).toMatchObject({ previousResponseId: id });
+    for (const bad of ["", "provider-content", undefined]) {
+      expect(
+        await s.transport.validate({ ...input(), previousResponseId: bad }),
+      ).toEqual({ status: "INVALID_INPUT" });
+    }
+    expect(s.send).toHaveBeenCalledTimes(2);
+  });
 
   it("refuses an already aborted operation before credentials", async () => {
     const s = setup();

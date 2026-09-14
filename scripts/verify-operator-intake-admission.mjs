@@ -892,15 +892,18 @@ export async function verifyOperatorIntakeAdmission({
       tenant: { micros: 100, requests: 10 },
       session: { micros: 20, requests: 2 },
     };
+    let sequenceCalls = 0;
     const transport = new GoogleAddressOAuthTransport(true, {
       token: async () => "synthetic-token",
-      fetch: async () => {
+      fetch: async (_url, options) => {
+        const request = JSON.parse(options.body);
+        assert.equal(request.previousResponseId, sequenceCalls++ === 0 ? undefined : "11111111-1111-4111-8111-111111111111");
         syntheticAddressCalls++;
         if (mode === "unknown") throw Error("synthetic transport uncertainty");
         if (mode === "revoked") activation.enabled = false;
         return new Response(
           JSON.stringify({
-            responseId: "P04_PROVIDER_SENTINEL",
+            responseId: "11111111-1111-4111-8111-111111111111",
             result: {
               verdict: {
                 addressComplete: true,
@@ -1003,7 +1006,7 @@ export async function verifyOperatorIntakeAdmission({
           where: { entityId: outcome.jobId },
         });
         for (const forbidden of [
-          "P04_PROVIDER_SENTINEL",
+          "11111111-1111-4111-8111-111111111111",
           "fipsCountyCode",
           "Cuyahoga",
           "currentProof",
@@ -1034,7 +1037,7 @@ export async function verifyOperatorIntakeAdmission({
       assert.ok(
         !JSON.stringify(operations, (_key, value) =>
           typeof value === "bigint" ? value.toString() : value,
-        ).includes("P04_PROVIDER_SENTINEL"),
+        ).includes("11111111-1111-4111-8111-111111111111"),
       );
     }
   }

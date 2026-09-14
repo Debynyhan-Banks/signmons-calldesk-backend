@@ -138,7 +138,15 @@ function object(value: unknown): value is Record<string, unknown> {
 function requestBody(input: unknown): string | null {
   if (
     !object(input) ||
-    Object.keys(input).sort().join() !== "address,enableUspsCass" ||
+    ![
+      "address,enableUspsCass",
+      "address,enableUspsCass,previousResponseId",
+    ].includes(Object.keys(input).sort().join()) ||
+    ("previousResponseId" in input &&
+      (typeof input.previousResponseId !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          input.previousResponseId,
+        ))) ||
     input.enableUspsCass !== true ||
     !object(input.address)
   )
@@ -180,5 +188,8 @@ function requestBody(input: unknown): string | null {
       addressLines: [...lines],
     },
     enableUspsCass: true,
+    ...(input.previousResponseId
+      ? { previousResponseId: input.previousResponseId }
+      : {}),
   });
 }

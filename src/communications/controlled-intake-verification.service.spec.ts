@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await -- Synthetic transaction/provider ports, no network. */
 import { randomUUID } from "node:crypto";
+import { GoogleCorrectionSequence } from "./google-correction-sequence";
 import { Prisma } from "@prisma/client";
 import {
   ControlledIntakeVerificationService,
@@ -33,7 +34,7 @@ describe("request-local controlled verification connection", () => {
   const response = () => ({
     status: "RESPONSE",
     body: {
-      responseId: "DO_NOT_PERSIST",
+      responseId: "11111111-1111-4111-8111-111111111111",
       result: {
         verdict: { addressComplete: true, validationGranularity: "PREMISE" },
         geocode: { location: { latitude: 41.1, longitude: -81.1 } },
@@ -146,6 +147,7 @@ describe("request-local controlled verification connection", () => {
       },
     } as PrismaService;
     claim = {
+      priorSessionOperations: 0,
       claimed: true,
       attemptId: randomUUID(),
       operationId: randomUUID(),
@@ -177,6 +179,7 @@ describe("request-local controlled verification connection", () => {
       checkControlledObservation: checkObservation,
     } as unknown as AddressOperationLedger;
     service = new ControlledIntakeVerificationService({
+      corrections: new GoogleCorrectionSequence(),
       prisma,
       credentials,
       authority,
@@ -221,7 +224,7 @@ describe("request-local controlled verification connection", () => {
       checkObservation.mock.calls,
     ]);
     for (const forbidden of [
-      "DO_NOT_PERSIST",
+      response().body.responseId,
       "Cuyahoga",
       "fipsCountyCode",
       "latitude",
@@ -268,7 +271,46 @@ describe("request-local controlled verification connection", () => {
       status: "CORRECTION_REQUIRED",
       jobCreated: false,
     });
-    expect(JSON.stringify(result)).not.toContain("DO_NOT_PERSIST");
+    expect(JSON.stringify(result)).not.toContain(response().body.responseId);
+    expect(consumer).not.toHaveBeenCalled();
+    claim.priorSessionOperations = 1;
+    submission.intentId = randomUUID();
+    claim.intentId = submission.intentId;
+    validate.mockImplementation(async () => response());
+    await service.run({ ...input, requestId: randomUUID() }, consumer);
+    expect((validate.mock.calls as unknown[][])[1][0]).toMatchObject({
+      previousResponseId: "11111111-1111-4111-8111-111111111111",
+    });
+    expect((validate.mock.calls as unknown[][])[0][0]).not.toHaveProperty(
+      "previousResponseId",
+    );
+    const calls = validate.mock.calls.length;
+    expect(
+      await service.run({ ...input, requestId: randomUUID() }, consumer),
+    ).toMatchObject({ status: "REFUSED" });
+    expect(validate).toHaveBeenCalledTimes(calls);
+  });
+  it("refuses a follow-up after cache loss without a provider call", async () => {
+    claim.priorSessionOperations = 1;
+    expect(await service.run(input, consumer)).toMatchObject({
+      status: "REFUSED",
+      jobCreated: false,
+    });
+    expect(validate).not.toHaveBeenCalled();
+  });
+  it("refuses malformed correction response IDs without leaking candidate data", async () => {
+    validate.mockImplementation(async () => {
+      const r = response();
+      r.body.responseId = "invalid-provider-value";
+      r.body.result.address.postalAddress.addressLines = [
+        "125 Fictional Street",
+      ];
+      return r;
+    });
+    expect(await service.run(input, consumer)).toEqual({
+      status: "REFUSED",
+      jobCreated: false,
+    });
     expect(consumer).not.toHaveBeenCalled();
   });
   it.each(["093", "999"])(

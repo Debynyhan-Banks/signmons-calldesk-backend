@@ -1,4 +1,5 @@
 import { ConflictException } from "@nestjs/common";
+import { GoogleCorrectionSequence } from "./google-correction-sequence";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -28,6 +29,7 @@ export type ControlledIntakeSubmission = {
   authorityScope: ControlledIntakeScope;
 };
 type Ports = {
+  corrections?: GoogleCorrectionSequence;
   prisma: Pick<PrismaService, "$transaction">;
   credentials: CustomerConsentCredentials;
   authority: ControlledIntakeAuthority;
@@ -128,6 +130,21 @@ export class ControlledIntakeVerificationService {
         )
           throw refuse();
         const address = initial.snapshot.address;
+        const sequenceKey = JSON.stringify([
+          session.tenantId,
+          session.sessionId,
+          session.conversationId,
+          initial.snapshot.authorityScope.serviceCategoryId,
+          initial.snapshot.policyVersion,
+          initial.snapshot.organizationApprovedAt,
+        ]);
+        const previousResponseId = p.corrections?.take(sequenceKey);
+        if (
+          !Number.isSafeInteger(claim.priorSessionOperations) ||
+          claim.priorSessionOperations < 0 ||
+          (claim.priorSessionOperations > 0 && !previousResponseId)
+        )
+          return { status: "REFUSED" as const };
         const response = await p.transport.validate(
           {
             address: {
@@ -141,16 +158,27 @@ export class ControlledIntakeVerificationService {
               regionCode: "US",
             },
             enableUspsCass: true,
+            ...(claim.priorSessionOperations > 0 ? { previousResponseId } : {}),
           },
           signal,
         );
         if (signal.aborted || response.status !== "RESPONSE") throw refuse();
         const preview = reviewGoogleAddressResponse(address, response.body);
-        if (preview.status === "CORRECTION_REQUIRED")
+        if (preview.status === "CORRECTION_REQUIRED") {
+          if (
+            !previousResponseId &&
+            !p.corrections?.remember(
+              sequenceKey,
+              response.body.responseId,
+              session.expiresAt,
+            )
+          )
+            return { status: "REFUSED" as const };
           return {
             status: "CORRECTION_REQUIRED" as const,
             candidate: preview.candidate,
           };
+        }
         if (preview.status !== "REVIEW") return { status: "REFUSED" as const };
         const checkedAt = Date.now();
         const binding = {

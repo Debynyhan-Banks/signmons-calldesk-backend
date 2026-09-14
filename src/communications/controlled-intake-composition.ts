@@ -1,4 +1,5 @@
 import { ServiceUnavailableException } from "@nestjs/common";
+import { GoogleCorrectionSequence } from "./google-correction-sequence";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
@@ -39,6 +40,7 @@ type Resources = {
  * Receipt replay happens in intake before constructing verification or its ledger.
  */
 export class ControlledIntakeComposition {
+  private readonly corrections = new GoogleCorrectionSequence();
   constructor(private readonly resources?: Resources) {}
 
   async submit(value: unknown) {
@@ -107,6 +109,7 @@ export class ControlledIntakeComposition {
           ledger,
           transport: p.transport,
           readSubmission: reader,
+          corrections: this.corrections,
         });
       },
     });

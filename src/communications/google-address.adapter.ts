@@ -1,4 +1,5 @@
 export type GoogleAddressRequest = {
+  previousResponseId?: string;
   address: {
     regionCode: "US";
     administrativeArea: "OH";
