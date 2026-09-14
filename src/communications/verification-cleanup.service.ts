@@ -12,7 +12,10 @@ import {
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type Scope = { tenantId: string; conversationId: string; sessionId: string };
-/** Inactive fixture-owned lifecycle worker. No scheduler/production registration.
+type CleanupMode =
+  | "FIXTURE_ONLY"
+  | Readonly<{ mode: "CONTROLLED_SESSION_V1"; tenantId: string }>;
+/** Explicit lifecycle service. No scheduler/production registration.
  * Only explicitly marked protected sessions qualify. No bearer is needed by a sweep.
  * Close commits before retryable purge, so failed deletion never restores eligibility.
  */
@@ -20,8 +23,11 @@ export class VerificationCleanupService {
   constructor(
     private readonly prisma: Pick<PrismaService, "$transaction">,
     private readonly credentials: CustomerConsentCredentials,
-    private readonly mode: "FIXTURE_ONLY",
-  ) {}
+    private readonly mode: CleanupMode,
+  ) {
+    this.mode =
+      typeof mode === "object" && mode ? Object.freeze({ ...mode }) : mode;
+  }
   async end(sessionToken: string) {
     const claims = this.credentials.verifySession(sessionToken);
     const scope = {
@@ -39,7 +45,7 @@ export class VerificationCleanupService {
     return {
       state: "CLOSED" as const,
       cleanupPending,
-      fixtureOnly: true,
+      fixtureOnly: this.mode === "FIXTURE_ONLY",
       deliveryAuthorized: false,
     };
   }
@@ -92,7 +98,15 @@ export class VerificationCleanupService {
   }
   private async read(tx: Prisma.TransactionClient, scope: Scope) {
     if (
-      this.mode !== "FIXTURE_ONLY" ||
+      !(
+        this.mode === "FIXTURE_ONLY" ||
+        (this.mode &&
+          typeof this.mode === "object" &&
+          Object.keys(this.mode).sort().join() === "mode,tenantId" &&
+          this.mode.mode === "CONTROLLED_SESSION_V1" &&
+          UUID.test(this.mode.tenantId) &&
+          this.mode.tenantId === scope.tenantId)
+      ) ||
       !Object.values(scope).every((v) => typeof v === "string" && UUID.test(v))
     )
       throw new ConflictException();
@@ -281,7 +295,10 @@ export class VerificationCleanupService {
         entityType: "Conversation",
         entityId: scope.conversationId,
         actorType: "SYSTEM_AI",
-        actorId: "fixture-cleanup",
+        actorId:
+          this.mode === "FIXTURE_ONLY"
+            ? "fixture-cleanup"
+            : "controlled-session-cleanup",
         action: "conversation.verification_session_" + state,
         metadata: { sessionId: scope.sessionId },
       },

@@ -978,6 +978,7 @@ export async function verifyOperatorIntakeAdmission({
       const outcome = browserCase
         ? await verifyControlledIntakeConnectedBrowser({
             browser,
+            prisma,
             credentials,
             session: fixture.session,
             tenantId,

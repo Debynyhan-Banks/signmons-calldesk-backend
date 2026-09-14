@@ -88,6 +88,39 @@ describe("inactive same-origin browser transport", () => {
       );
     });
   const call = (request = req()) => asActor(() => model().handle(request));
+  it("uses controlled close without enabling fixture lifecycle and strips internal fields", async () => {
+    const end = jest.fn().mockResolvedValue({
+      state: "CLOSED",
+      cleanupPending: false,
+      fixtureOnly: false,
+      deliveryAuthorized: false,
+      private: "hidden",
+    });
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, controlledLifecycle: { end } },
+    );
+    const result = await asActor(() =>
+      transport.handle(req("end", { sessionToken })),
+    );
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({
+      state: "CLOSED",
+      cleanupPending: false,
+      fixtureOnly: false,
+      deliveryAuthorized: false,
+    });
+    end.mockResolvedValue({
+      state: "CLOSED",
+      cleanupPending: false,
+      fixtureOnly: true,
+      deliveryAuthorized: false,
+    });
+    expect(
+      (await asActor(() => transport.handle(req("end", { sessionToken }))))
+        .status,
+    ).toBe(503);
+  });
   it("awaits shared admission, binds authenticated session, and releases after refusal", async () => {
     const release = Object.assign(jest.fn().mockResolvedValue(undefined), {
       bindSession: jest.fn().mockResolvedValue(false),

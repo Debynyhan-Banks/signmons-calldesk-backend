@@ -30,6 +30,7 @@ import { SharedCustomerBrowserBudget } from "./shared-customer-browser-budget";
 import { CustomerConsentBrowserTransport } from "./customer-consent-browser-transport";
 import { lockCustomerConsentSession } from "./customer-consent-session-lock";
 import { VERIFICATION_PROOF_MS } from "./verification-freshness";
+import { VerificationCleanupService } from "./verification-cleanup.service";
 
 type Resources = {
   prisma: Pick<PrismaService, "$transaction">;
@@ -235,6 +236,11 @@ export async function loadControlledIntakeRuntime(
           },
           controlled: composition,
           controlledVerification: verification,
+          controlledLifecycle: new VerificationCleanupService(
+            p.prisma,
+            credentials,
+            { mode: "CONTROLLED_SESSION_V1", tenantId: a.tenantId },
+          ),
           budget: {
             acquire: async (peer, operation) => {
               await p.prisma.$transaction(current);

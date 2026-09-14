@@ -70,6 +70,14 @@ export type CustomerBrowserRequest = {
 };
 type Binding = { origin: string; tenantId: string; fixtureLoopback?: boolean };
 type Ports = {
+  controlledLifecycle?: {
+    end(sessionToken: string): Promise<{
+      state: "CLOSED";
+      cleanupPending: boolean;
+      fixtureOnly: boolean;
+      deliveryAuthorized: boolean;
+    }>;
+  };
   controlledVerification?: Pick<ControlledCustomerVerification, "handle">;
   fixtureSms?: {
     handle(
@@ -331,6 +339,7 @@ export class CustomerConsentBrowserTransport {
         sessionToken: value.sessionToken,
         expiresAt: new Date(claims.expiresAt).toISOString(),
         deliveryAuthorized: false,
+        ...(ports.controlledLifecycle ? { sessionCloseAvailable: true } : {}),
       };
     }
     const sessionToken = input.sessionToken as string;
@@ -347,6 +356,22 @@ export class CustomerConsentBrowserTransport {
       return value;
     }
     if (operation === "end") {
+      if (ports.controlledLifecycle) {
+        const result = await ports.controlledLifecycle.end(sessionToken);
+        if (
+          result.state !== "CLOSED" ||
+          result.fixtureOnly !== false ||
+          result.deliveryAuthorized !== false ||
+          typeof result.cleanupPending !== "boolean"
+        )
+          fail(503);
+        return {
+          state: "CLOSED",
+          cleanupPending: result.cleanupPending,
+          fixtureOnly: false,
+          deliveryAuthorized: false,
+        };
+      }
       if (this.binding?.fixtureLoopback !== true || !ports.lifecycle) fail(503);
       return ports.lifecycle.end(sessionToken);
     }

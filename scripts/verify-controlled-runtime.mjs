@@ -229,6 +229,7 @@ export async function verifyControlledRuntime({
     assert.equal(start.status, 200);
     const sessionToken = start.body.sessionToken;
     assert.ok(sessionToken);
+    assert.equal(start.body.sessionCloseAvailable, true);
     const input = {
       action: "START",
       code: "",
@@ -267,6 +268,73 @@ export async function verifyControlledRuntime({
       where: { id: tenantId },
       data: { settings },
     });
+    const {
+      VerificationCleanupService,
+    } = require("../dist/communications/verification-cleanup.service.js");
+    const {
+      CustomerConsentCredentials,
+    } = require("../dist/communications/customer-consent-credentials.js");
+    const credentials = new CustomerConsentCredentials({
+      activeKeyId: "s1",
+      keys: { s1: secrets[config.secrets.sessionKeys.s1] },
+    });
+    const claims = credentials.verifySession(sessionToken);
+    await assert.rejects(
+      new VerificationCleanupService(prisma, credentials, {
+        mode: "CONTROLLED_SESSION_V1",
+        tenantId: randomUUID(),
+      }).end(sessionToken),
+    );
+    let transactions = 0;
+    const failedPurge = new VerificationCleanupService(
+      {
+        $transaction: async (fn) => {
+          if (++transactions === 2) throw Error("Synthetic purge failure");
+          return prisma.$transaction(fn);
+        },
+      },
+      credentials,
+      { mode: "CONTROLLED_SESSION_V1", tenantId },
+    );
+    const pending = await failedPurge.end(sessionToken);
+    assert.equal(pending.cleanupPending, true);
+    const awaitingPurge = await prisma.conversation.findUniqueOrThrow({
+      where: { id: claims.conversationId },
+    });
+    assert.ok(awaitingPurge.collectedData.verificationLifecycle.closedAt);
+    assert.equal(
+      awaitingPurge.collectedData.verificationLifecycle.purgedAt,
+      null,
+    );
+    assert.equal(
+      typeof awaitingPurge.collectedData.verificationOperations,
+      "string",
+    );
+    assert.notEqual((await request("verify", input)).status, 200);
+    assert.equal(calls, 2);
+    const held = await prisma.auditLog.count({
+      where: { action: "conversation.controlled_phone_held" },
+    });
+    const closed = await request("end", { sessionToken });
+    assert.equal(closed.status, 200);
+    assert.equal(closed.body.cleanupPending, false);
+    assert.equal(closed.body.fixtureOnly, false);
+    const repeated = await request("end", { sessionToken });
+    assert.equal(repeated.status, 200);
+    const row = await prisma.conversation.findUniqueOrThrow({
+      where: { id: claims.conversationId },
+    });
+    assert.ok(row.collectedData.verificationLifecycle.closedAt);
+    assert.ok(row.collectedData.verificationLifecycle.purgedAt);
+    assert.equal(row.collectedData.verificationOperations, undefined);
+    assert.equal(
+      await prisma.auditLog.count({
+        where: { action: "conversation.controlled_phone_held" },
+      }),
+      held,
+    );
+    assert.notEqual((await request("verify", input)).status, 200);
+    assert.equal(calls, 2);
     runtime.retire();
     assert.notEqual((await request("verify", input)).status, 200);
     assert.equal(calls, 2);

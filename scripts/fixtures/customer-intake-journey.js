@@ -11,6 +11,7 @@
       "serviceIntent",
     ];
   let token,
+    controlledClose = false,
     smsPrompt,
     correction,
     correctionTimer,
@@ -158,6 +159,7 @@
     el("verifyPrivacy").removeAttribute("href");
     el("phoneStatus").textContent = "Not verified.";
     token = promptToken = email = pending = reviewedDraft = undefined;
+    controlledClose = false;
     reviewedAddressSelection = undefined;
     reviewedControlledAddress = undefined;
     el("controlledSuggestion").textContent = "";
@@ -271,7 +273,7 @@
         case "end":
           if (
             value.state !== "CLOSED" ||
-            value.fixtureOnly !== true ||
+            value.fixtureOnly !== !controlledClose ||
             typeof value.cleanupPending !== "boolean"
           )
             throw Error("Invalid session closure");
@@ -558,6 +560,8 @@
           )
             throw Error("Invalid session");
           token = value.sessionToken;
+          controlledClose =
+            controlledMode() && value.sessionCloseAvailable === true;
           expires = deadline;
           expiryTimer = setTimeout(
             () => alive(),
@@ -1274,7 +1278,8 @@
   };
   el("forget").onclick = () => {
     if (
-      document.documentElement.dataset.lifecycleFixture === "true" &&
+      (controlledClose ||
+        document.documentElement.dataset.lifecycleFixture === "true") &&
       token &&
       !busy &&
       !pending &&

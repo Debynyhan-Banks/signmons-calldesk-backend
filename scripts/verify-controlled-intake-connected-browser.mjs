@@ -5,7 +5,12 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 const require = createRequire(import.meta.url);
 const express = require("express");
-const { customerIntakePage } = require("../dist/communications/customer-intake-page.js");
+const {
+  VerificationCleanupService,
+} = require("../dist/communications/verification-cleanup.service.js");
+const {
+  customerIntakePage,
+} = require("../dist/communications/customer-intake-page.js");
 const {
   CustomerConsentBrowserTransport,
 } = require("../dist/communications/customer-consent-browser-transport.js");
@@ -18,6 +23,7 @@ const {
 
 export async function verifyControlledIntakeConnectedBrowser({
   browser,
+  prisma,
   credentials,
   session,
   tenantId,
@@ -43,6 +49,10 @@ export async function verifyControlledIntakeConnectedBrowser({
       credentials,
       budget: new LocalCustomerBrowserBudget(),
       capture,
+      controlledLifecycle: new VerificationCleanupService(prisma, credentials, {
+        mode: "CONTROLLED_SESSION_V1",
+        tenantId,
+      }),
       responses: {
         start: async () => session,
         prompt: (v) => responses.prompt(v),
@@ -176,6 +186,37 @@ export async function verifyControlledIntakeConnectedBrowser({
       path: `${evidence}/connected-${mode}-${width}.png`,
       fullPage: true,
     });
+    if (mode !== "unknown") {
+      const jobs = await prisma.job.count(),
+        holds = await prisma.auditLog.count({
+          where: { action: "conversation.controlled_phone_held" },
+        });
+      await page.locator("#forget").click();
+      await page.waitForFunction(() =>
+        document
+          .getElementById("status")
+          .textContent.includes("Session closed and verification data cleared"),
+      );
+      assert.equal(await prisma.job.count(), jobs);
+      assert.equal(
+        await prisma.auditLog.count({
+          where: { action: "conversation.controlled_phone_held" },
+        }),
+        holds,
+      );
+      const claims = credentials.verifySession(session.sessionToken);
+      const closed = await prisma.conversation.findUniqueOrThrow({
+        where: { id: claims.conversationId },
+      });
+      assert.ok(closed.collectedData.verificationLifecycle.closedAt);
+      assert.ok(closed.collectedData.verificationLifecycle.purgedAt);
+      assert.equal(closed.collectedData.verificationOperations, undefined);
+      assert.equal(await page.locator("#controlledStreet").inputValue(), "");
+      await page.screenshot({
+        path: `${evidence}/connected-close-${mode}-${width}.png`,
+        fullPage: true,
+      });
+    }
     await page.reload();
     assert.equal(await page.locator("#start").isVisible(), true);
     assert.equal(await page.locator("#controlledStreet").inputValue(), "");
