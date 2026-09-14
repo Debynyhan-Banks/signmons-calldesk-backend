@@ -2,6 +2,8 @@
 
 ## Current: P06 runtime configuration and ingress — partial runtime checkpoint
 
+Loader entry inspection: paused before implementation for the separately required mailbox-fingerprint security review. Only fixture adapters exist; production key lifecycle/domain separation remains explicitly gated by APP013_CUSTOMER_SESSION_SECURITY_PLAN.md. Proposed dedicated versioned adapter/reference repair is recorded, not approved, in APP013_P06_RUNTIME_WIRING_CARD.md. Owner approves design for disabled implementation; actual key provisioning remains release-gated. No new acceptance section, no runtime code change or live action; same three remaining P06 items.
+
 P06 runtime configuration and managed-ingress boundary locally implemented under approved runtime card items 1/3. Exact immutable runtime/packet/tenant/window/budget/secret-version validation and process-local ingress seal; request headers cannot grant TLS authority. Absent configuration remains closed; invalid enabled configuration throws sanitized refusal. No loader, secret fetch, provider client, main registration or deployment. Full 2,331 tests (3 skipped), build/lint/architecture/schema, both audits (zero findings) and existing connected database/browser gates passed; evidence/APP-013/p06-runtime-config-ingress.md. Remaining item 2: server composition loader/current readers and actual same-page browser START/CHECK/close-to-job proof (existing browser harness still prepares phone proof beforehand). Items 3/4 release/run separately gated. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), low-confidence 4–8 weeks at 25–30 collaborative hours/week plus external waits unchanged. No scope deviation.
 
 ## Historical: P06 phone-spend admission — partial runtime checkpoint
