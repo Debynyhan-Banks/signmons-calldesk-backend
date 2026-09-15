@@ -1,0 +1,13 @@
+# P06-R02 encrypted container check
+
+Owner explicitly approved one local2GB encrypted container and privately entered its password in Disk Utility. Created2026-09-15 at /Users/debynyhanbanks/Library/Application Support/Signmons/P06/signmons-p06.dmg.sparsebundle. AES256 selected in UI; APFS, sparse bundle,2GB verified before Save. Filename includes Disk Utility's extra .dmg suffix; no second image exists. hdiutil reports encrypted YES, one passphrase, UUID87BEB98C-8CDC-4DF8-874E-8A1B6B1746D4. Mounted volume UUID A0020084-32EC-412A-B96B-1AA68A2CE61F, capacity1999982592bytes, about14MB allocated at creation. Parent/image directory permissions0700.
+
+Earlier hdiutil attempt without interactive input failed; second prompt appeared in agent-only terminal and was canceled. Owned processes terminated; incomplete image removed by cancellation, parent directory checked empty before GUI creation. No password read, generated, logged or supplied by Codex.
+
+Owner reopened image. Wrote synthetic-storage-check.txt only, mode0600, containing no private/customer/provider data. SHA256 aea3c208e8d604f7499efeaa816aebfafb97318357278c6c7b7c2a1d41055af2 matched after eject and owner reopening. Final readback matched again; exact image device disk4 ejected and mount-path file absence verified. This proves synthetic file persistence across locking/reopening, NOT encrypted database restore or forensic absence of plaintext elsewhere.
+
+Limits: mounted APFS reports Encrypted No because encryption is at outer disk-image layer; hdiutil confirms outer encryption. Owners Disabled on mounted volume: multi-user access controls not qualified. Keychain remember choice not inspected; do not claim every reopen requires a fresh password or independent key custody validated. Time Machine isexcluded reports Included for this exact image. No backup/sync settings changed; no proof it has already been copied. Application Support path is not a claim of exclusion from all third-party sync/backup tools. Backup-copy retention must be resolved before real data, otherwise seven-day local deletion is insufficient.
+
+No Neon connection, real-data export, credential change, migration or application deployment. Image remains locked with synthetic file retained. R02 open, R01 closed,11 remain,added0; accepted5/60 and3/8 unchanged, ETA unvalidated. No scope deviation. Next: owner decision on backup-copy policy, then remaining credential/role and encrypted database-workspace qualification; no real export authority.
+
+Documentation/architecture/frozen/full consistency/21 regression/whitespace checks apply. No runtime change or new application-test claim.

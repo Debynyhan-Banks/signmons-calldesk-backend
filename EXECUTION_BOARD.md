@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 synthetic archive/restore passed — private export still gated
+## Current: R02 encrypted container synthetic check passed — backup retention unresolved
+
+Owner-approved AES2562GB container created; private owner unlock and synthetic-file checksum across eject/reopen verified. Container now locked. See backend evidence/APP-013/p06-encrypted-container-check.md and APP013_P06_PRIVATE_BACKUP_PACKET.md. Time Machine includes image; no backup setting changed. Backup-copy retention, encrypted database-workspace/role qualification and exact real-export approval remain. No Neon/data/credential action. R02 open, R01 closed,11 remain,added0; accepted5/60 and3/8 unchanged, ETA unvalidated. No scope deviation.
+
+## Historical: synthetic archive qualification
 
 Owner-approved local synthetic archive/restore, history/row/catalog/owner/ACL comparison and truncated-archive rollback passed using PostgreSQL18. Existing migration rehearsal also passed; five generated databases removed, private server stopped. See backend evidence/APP-013/p06-synthetic-backup-restore.md, APP013_P06_BACKUP_REHEARSAL_CARD.md and APP013_P06_PRIVATE_BACKUP_PACKET.md. No Neon connection or real export. Encrypted storage/key validation, credential/managed-role compatibility, fresh quotas and exact real-data approval remain; R02 not complete. R01 closed,11 remain,added0; accepted5/60 and3/8 unchanged, ETA unvalidated. No scope deviation.
 
