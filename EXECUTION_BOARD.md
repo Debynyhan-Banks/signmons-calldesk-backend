@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 owner-assisted handoff method accepted
+## Current: R02 working local tooling; legacy privilege omission exposed
+
+See evidence/APP-013/p06-r02-tooling-result.md. Private-input tests and corrected managed metadata/26table shared-snapshot restore pass. Original public-only dump failed on legacy_2025; live proposal remains blocked until non-public source inventory. No live actions. R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation implemented.
+
+## Historical: owner-assisted handoff method accepted
 
 Read-only route qualification documented in evidence/APP-013/p06-r02-execution-proposal.md; no role/reset/export. Actual handoff untested. Next existing local executor qualification: dummy private-input and managed restore/comparison/limits together. No repeat willingness approval. R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
 

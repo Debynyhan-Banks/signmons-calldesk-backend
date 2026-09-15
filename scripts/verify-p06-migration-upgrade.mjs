@@ -39,6 +39,11 @@ if (encryptedWorkspace) {
   assert.equal((await stat(encryptedWorkspace)).mode & 0o077, 0);
 }
 const backupRehearsal = process.env.P06_BACKUP_REHEARSAL === "1";
+const managedRehearsal = process.env.P06_MANAGED_REHEARSAL === "1";
+if (managedRehearsal) {
+  assert.ok(backupRehearsal, "managed check requires backup rehearsal");
+  assert.notEqual(socket, "/tmp");
+}
 if (backupRehearsal)
   assert.notEqual(socket, "/tmp", "backup requires private PG18 socket");
 if (socket !== "/tmp") {
@@ -303,9 +308,35 @@ async function archiveRoundTrip(source) {
     "--no-password",
   ];
   const archive = path.join(temporary, "synthetic.dump");
-  await command("pg_dump", [...connection, "-Fc", "-f", archive, source.name]);
+  const tables = (
+    await source.c.query(
+      "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
+    )
+  ).rows.map((x) => x.tablename);
+  assert.equal(tables.length, 23);
+  if (managedRehearsal) await managedFixture(source, tables);
+  const allTables = (
+    await source.c.query(
+      "SELECT schemaname,tablename FROM pg_tables WHERE schemaname IN ('public','legacy_2025') ORDER BY schemaname,tablename",
+    )
+  ).rows;
+  assert.equal(allTables.length, 26);
+  await source.c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+  const snapshot = (await source.c.query("SELECT pg_export_snapshot() AS id"))
+    .rows[0].id;
+  const dumpConnection = [...connection];
+  if (managedRehearsal) dumpConnection[5] = "p06_backup_reader";
+  await command("pg_dump", [
+    ...dumpConnection,
+    "--snapshot=" + snapshot,
+    "-Fc",
+    "-f",
+    archive,
+    source.name,
+  ]);
   const bytes = await readFile(archive);
   const restored = await database();
+  if (managedRehearsal) await managedTarget(restored);
   await command("pg_restore", [
     ...connection,
     "--exit-on-error",
@@ -316,23 +347,68 @@ async function archiveRoundTrip(source) {
   ]);
   await history(restored.c, 13);
   assert.deepEqual(await catalog(restored.c), await catalog(source.c));
-  for (const table of [
-    "TenantOrganization",
-    "Customer",
-    "PropertyAddress",
-    "SmsConsentRecord",
-    "_prisma_migrations",
-  ]) {
+  for (const { schemaname, tablename } of allTables) {
     assert.deepEqual(
-      (await restored.c.query(`SELECT * FROM "${table}" ORDER BY id`)).rows,
-      (await source.c.query(`SELECT * FROM "${table}" ORDER BY id`)).rows,
+      (
+        await restored.c.query(
+          `SELECT * FROM "${schemaname}"."${tablename}" ORDER BY id`,
+        )
+      ).rows,
+      (
+        await source.c.query(
+          `SELECT * FROM "${schemaname}"."${tablename}" ORDER BY id`,
+        )
+      ).rows,
     );
   }
-  const security = `SELECT c.relname,pg_get_userbyid(c.relowner) AS owner,c.relacl FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','S') ORDER BY c.relname`;
+  const security = `SELECT n.nspname,c.relname,pg_get_userbyid(c.relowner) AS owner,c.relacl FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','legacy_2025') AND c.relkind IN ('r','S') ORDER BY n.nspname,c.relname`;
   assert.deepEqual(
     (await restored.c.query(security)).rows,
     (await source.c.query(security)).rows,
   );
+  if (managedRehearsal) {
+    for (const query of [
+      "SELECT extname,extversion,pg_get_userbyid(extowner) AS owner FROM pg_extension ORDER BY extname",
+      "SELECT pg_get_userbyid(defaclrole) AS owner,defaclnamespace::regnamespace::text AS schema,defaclobjtype,defaclacl::text FROM pg_default_acl ORDER BY owner,schema,defaclobjtype",
+      "SELECT nspname,pg_get_userbyid(nspowner) AS owner,nspacl::text FROM pg_namespace WHERE nspname IN ('public','legacy_2025') ORDER BY nspname",
+    ])
+      assert.deepEqual(
+        (await restored.c.query(query)).rows,
+        (await source.c.query(query)).rows,
+      );
+    report.checks.push({
+      operation:
+        "managed-owner-extension-default-acl-schema-and-26-table-shared-snapshot-roundtrip",
+    });
+  }
+  await source.c.query("ROLLBACK");
+  if (managedRehearsal) {
+    const missingRoleTarget = await database();
+    await command(
+      "pg_restore",
+      [
+        ...connection,
+        "--role=p06_nonexistent_restore_role",
+        "--exit-on-error",
+        "--single-transaction",
+        "-d",
+        missingRoleTarget.name,
+        archive,
+      ],
+      1,
+    );
+    assert.equal(
+      (
+        await missingRoleTarget.c.query(
+          "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'",
+        )
+      ).rows[0].n,
+      0,
+    );
+    report.checks.push({
+      operation: "missing-restore-role-refused-without-tables",
+    });
+  }
   const broken = path.join(temporary, "truncated-synthetic.dump");
   await writeFile(broken, bytes.subarray(0, Math.floor(bytes.length / 2)), {
     mode: 0o600,
@@ -364,6 +440,97 @@ async function archiveRoundTrip(source) {
     bytes: bytes.length,
     sha256: hash(bytes),
   });
+}
+async function managedTarget(db) {
+  // Disposable local database only; no managed administrator capabilities copied.
+  await admin.query(`ALTER DATABASE "${db.name}" OWNER TO neondb_owner`);
+  await db.c.query(
+    "GRANT CREATE ON DATABASE " + '"' + db.name + '"' + " TO cloud_admin",
+  );
+  await db.c.query("DROP EXTENSION plpgsql");
+  await db.c.query("SET ROLE cloud_admin");
+  try {
+    await db.c.query("CREATE EXTENSION plpgsql");
+  } finally {
+    await db.c.query("RESET ROLE");
+  }
+  await db.c.query(
+    "REVOKE CREATE ON DATABASE " + '"' + db.name + '"' + " FROM cloud_admin",
+  );
+}
+async function managedFixture(db, tables) {
+  for (const name of [
+    "neondb_owner",
+    "cloud_admin",
+    "neon_superuser",
+    "p06_backup_reader",
+  ]) {
+    // Collision fails; never adopt or change an existing role.
+    await admin.query(
+      `CREATE ROLE "${name}" ${name === "p06_backup_reader" ? "LOGIN" : "NOLOGIN"} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`,
+    );
+    ownedRoles.push(name);
+  }
+  await managedTarget(db);
+  for (const name of tables)
+    await db.c.query(`ALTER TABLE public."${name}" OWNER TO neondb_owner`);
+  const types = (
+    await db.c.query(
+      "SELECT typname FROM pg_type JOIN pg_namespace n ON n.oid=typnamespace WHERE n.nspname='public' AND typtype='e'",
+    )
+  ).rows;
+  assert.equal(types.length, 34);
+  for (const { typname } of types)
+    await db.c.query(`ALTER TYPE public."${typname}" OWNER TO neondb_owner`);
+  await db.c.query(
+    "ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON TABLES TO neon_superuser WITH GRANT OPTION",
+  );
+  await db.c.query(
+    "ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO neon_superuser WITH GRANT OPTION",
+  );
+  await db.c.query("GRANT USAGE ON SCHEMA public TO p06_backup_reader");
+  await db.c.query(
+    "GRANT SELECT ON ALL TABLES IN SCHEMA public TO p06_backup_reader",
+  );
+  // Full backups include the legacy schema retained by migration 3.
+  await db.c.query("ALTER SCHEMA legacy_2025 OWNER TO neondb_owner");
+  for (const table of ["Tenant", "Job", "CallLog"])
+    await db.c.query(
+      `ALTER TABLE legacy_2025."${table}" OWNER TO neondb_owner`,
+    );
+  for (const type of ["JobStatus", "CallDirection", "CallOutcome"])
+    await db.c.query(`ALTER TYPE legacy_2025."${type}" OWNER TO neondb_owner`);
+  await db.c.query("GRANT USAGE ON SCHEMA legacy_2025 TO p06_backup_reader");
+  await db.c.query(
+    "GRANT SELECT ON ALL TABLES IN SCHEMA legacy_2025 TO p06_backup_reader",
+  );
+  await db.c.query(
+    `INSERT INTO legacy_2025."Tenant"(id,name,"displayName",prompt,"updatedAt") VALUES ('fictional-legacy-tenant','Fictional','Fictional','Fixture only',CURRENT_TIMESTAMP)`,
+  );
+  await db.c.query(
+    `INSERT INTO legacy_2025."Job"(id,"tenantId","customerName",phone,"issueCategory",urgency,"updatedAt") VALUES ('fictional-legacy-job','fictional-legacy-tenant','Fictional','+12025550123','Fixture','Routine',CURRENT_TIMESTAMP)`,
+  );
+  await db.c.query(
+    `INSERT INTO legacy_2025."CallLog"(id,"tenantId","jobId",transcript) VALUES ('fictional-legacy-call','fictional-legacy-tenant','fictional-legacy-job','Fictional only')`,
+  );
+  const c = new Client({
+    ...local,
+    user: "p06_backup_reader",
+    database: db.name,
+  });
+  await c.connect();
+  try {
+    await assert.rejects(
+      c.query('UPDATE "Customer" SET "fullName"="fullName" WHERE false'),
+      (e) => e.code === "42501",
+    );
+    await assert.rejects(
+      c.query("CREATE TABLE public.forbidden_reader_write(id int)"),
+      (e) => e.code === "42501",
+    );
+  } finally {
+    await c.end();
+  }
 }
 async function qualifyRole(db) {
   const owner = "p06_owner_" + randomBytes(8).toString("hex");
@@ -593,7 +760,16 @@ try {
     report.cleanup.push(name);
   }
   for (const name of ownedRoles.reverse()) {
-    assert.match(name, /^p06_(owner|runner)_[0-9a-f]{16}$/);
+    assert.ok(
+      /^p06_(owner|runner)_[0-9a-f]{16}$/.test(name) ||
+        (managedRehearsal &&
+          [
+            "neondb_owner",
+            "cloud_admin",
+            "neon_superuser",
+            "p06_backup_reader",
+          ].includes(name)),
+    );
     await admin.query(`DROP ROLE "${name}"`);
   }
   await admin.end();
