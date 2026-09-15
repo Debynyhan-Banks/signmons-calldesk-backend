@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 one-shot wiring locally tested — live approval pending
+## Current: R02 live test stopped at Console credential handoff
+
+Owner explicitly approved the live staging backup test. Exact child-only two-role/read-only grant transaction committed; both roles remain NOLOGIN with no administrative flags/memberships, and runner has SELECT on26tables with no table-write privileges. The new SQL-created roles do not appear in Neon Console Roles after revisiting, so the approved new-runner reset route could not be verified. Stopped before password reset/handoff, LOGIN, executor or export. Final both-role sessions0; no pgpass/attempt/archive/local cluster; exact encrypted image ejected. Window12:22–12:42UTC cancelled, no automatic reuse/retry. See backend evidence/APP-013/p06-r02-live-handoff-stop.md. Next resolve the demonstrated Console credential-route gap read-only, then review any changed action/packet; never use inherited neondb_owner credentials. R01 closed,R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
+
+## Historical: R02 one-shot wiring locally tested — live approval pending
 
 Owner-approved fixed-target one-shot CLI implemented with existing guards, exclusive attempt marker, scoped private input, snapshot/full backup/restore/two-schema comparisons and explicit cleanup. Same core passed local restricted-reader26-table/20fictional-row restore;20 Node tests and4 private-input tests passed. See backend evidence/APP-013/p06-r02-once-result.md and APP013_P06_R02_RUNBOOK.md. No real Neon adapter/handoff/export executed; next review and freshly bound explicit live packet, including administrator revocation. Do not repeat standalone tests without drift or claim R02 accepted. R01 closed,R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
 
