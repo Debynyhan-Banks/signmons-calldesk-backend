@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 branch created and capped — no migration or credential authority
+## Current: R02 credential/recovery qualification complete — owner decisions required
+
+Read-only inspection of the created P06 child found only inherited `neondb_owner` (created/updated 18 days ago) and no independent Postgres migration credential. Official Neon behavior confirms an unprotected normal child inherits role passwords; this Free-plan parent cannot use paid protected-branch separation. Backup & Restore exposes only a moving six-hour history window sourced from `production`, while snapshots are root-only. No credential, snapshot, restore, migration, connection or data action occurred. R02 remains open pending approval of an exact child-only migration role/secret boundary and one destructive recovery policy; see `evidence/APP-013/p06-r02-credential-recovery-qualification.md`. R01 closed; R02-R12 open (11), added 0. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), P06 unaccepted, ETA unvalidated. No scope deviation.
+
+## Historical: R02 branch created and capped — no migration or credential authority
 
 Owner explicitly approved one standard child and then the brief default-compute interval before immediate capping. Created p06-isolated-staging-v1 (br-sparkling-sun-ay6gr5e8), endpoint ep-jolly-flower-ayc6w9hv, in soft-smoke-54063480 from br-young-term-ayfi7ist. Browser readback: 0.25 CU fixed, five-minute inactivity suspension, expiry Never; parent remains production/default at 0.25–2 CU. No application connection, password/secret change, migration, deployment or paid-plan upgrade. See backend evidence/APP-013/p06-isolated-branch-created.md and APP013_P06_ISOLATED_BRANCH_PROPOSAL.md. R02 remains open for credential/connection isolation and recovery qualification; R01 closed, R02–R12 open (11), added0. Accepted5/60 (8.3%), walkthrough3/8 (37.5%), P06 unaccepted, ETA unvalidated. No scope deviation beyond the expressly approved branch/setup amendment.
 
