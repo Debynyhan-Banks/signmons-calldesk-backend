@@ -1,5 +1,9 @@
 # R02 credential/backup execution proposal
 
+## Current: legacy inventory correction
+
+See p06-r02-legacy-metadata.md for the authorized read-only2026-09-15 inspection. Governance template now covers both user schemas and26tables, not23public-only. No live grants/export. Local TTY and managed-metadata tests subsequently passed per p06-r02-tooling-result.md; older qualification gaps below are historical where superseded. Real-run aggregate storage/deadline enforcement and sanitized streaming comparisons remain unimplemented, actual credential/encrypted mount and backup proof remain gated. R02 open, no task/acceptance change.
+
 ## Owner-assisted handoff qualification update
 
 Owner said yes to handling the future new-role password privately. Read-only existing-child Roles inspection found only neondb_owner and verified Reset password exists in its menu; no reset selected, menu dismissed. Official https://neon.com/docs/manage/roles documents generated-password Console reset and separate SQL-created restricted roles. Supported route is not proof the nonexistent SQL-created NOLOGIN runner exposes it.

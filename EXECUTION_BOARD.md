@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 working local tooling; legacy privilege omission exposed
+## Current: R02 legacy metadata verified; proposal corrected
+
+Read-only child catalog inspection on2026-09-15 confirmed public23tables/34enums plus legacy_2025 three tables/three enums:26tables,37enums total. Proposed backup allowlist now includes both schemas and exactly those26tables; no live grants, credentials or export. See backend evidence/APP-013/p06-r02-legacy-metadata.md. Next qualify aggregate20minute/storage limits and sanitized streaming comparisons for the real runner, then separately approve credential/backup execution. R02 remains open; R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation implemented.
+
+## Historical: R02 working local tooling; legacy privilege omission exposed
 
 See evidence/APP-013/p06-r02-tooling-result.md. Private-input tests and corrected managed metadata/26table shared-snapshot restore pass. Original public-only dump failed on legacy_2025; live proposal remains blocked until non-public source inventory. No live actions. R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation implemented.
 
