@@ -120,7 +120,7 @@ class PrivateInputTests(unittest.TestCase):
 
 
 class AdminPipeTests(unittest.TestCase):
-    def run_forward(self, mode="success", payload=b"FICTIONAL_ADMIN_CANARY\n", backup=False, real_node=False):
+    def run_forward(self, mode="success", payload=b"FICTIONAL_ADMIN_CANARY\n", backup=False, real_node=False, migration=False):
         master, slave = pty.openpty()
         previous = termios.tcgetattr(slave)
         # Child checks transport and leaks a canary on failure deliberately: wrapper must redact it.
@@ -132,7 +132,7 @@ class AdminPipeTests(unittest.TestCase):
                "assert value.rstrip().decode() not in json.dumps([sys.argv,dict(os.environ)]);"
                "assert hashlib.sha256(value).hexdigest()==" + repr(hashlib.sha256(b"FICTIONAL_ADMIN_CANARY\n").hexdigest()) + ";" +
                ("print(value.decode());sys.stderr.write(value.decode());sys.exit(1)"
-                if mode == "failure" else "print(" + repr("BACKUP_COMPLETE" if backup else "HANDOFF_READY") + ",flush=True)"))
+                if mode == "failure" else "print(" + repr("MIGRATION_COMPLETE" if migration else "BACKUP_COMPLETE" if backup else "HANDOFF_READY") + ",flush=True)"))
         )
         command = [sys.executable, "-B", "-c", child]
         if real_node:
@@ -150,7 +150,7 @@ class AdminPipeTests(unittest.TestCase):
             command = [shutil.which("node"), "--input-type=module", "-e", js]
         program = (
             "import sys;sys.path.insert(0,sys.argv[1]);from p06_private_input import forward_admin;"
-            "import json;forward_admin(json.loads(sys.argv[2]),0,1,0.3,backup=" + repr(backup) + ")"
+            "import json;forward_admin(json.loads(sys.argv[2]),0,1,0.3,backup=" + repr(backup) + ",migration=" + repr(migration) + ")"
         )
         proc = subprocess.Popen([sys.executable,"-B","-c",program,str(MODULE.parent),json.dumps(command)],
                                 stdin=slave,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -205,6 +205,14 @@ class AdminPipeTests(unittest.TestCase):
         for mode,payload in [("failure",b"FICTIONAL_ADMIN_CANARY\n"),("early",None),
                              ("success",None),("success","terminate"),("success",b"\x03")]:
             code,_=self.run_forward(mode,payload,backup=True)
+            self.assertNotEqual(code,0)
+
+    def test_migration_protocol_private_success_and_failure(self):
+        code,output=self.run_forward(migration=True)
+        self.assertEqual(code,0)
+        self.assertIn(b"Migration verified",output)
+        for mode,payload in [("failure",b"FICTIONAL_ADMIN_CANARY\n"),("early",None),("success",b"\x03"),("success","terminate")]:
+            code,_=self.run_forward(mode,payload,migration=True)
             self.assertNotEqual(code,0)
 
     def test_real_node_pipe_reader_through_hidden_python_terminal(self):

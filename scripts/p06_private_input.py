@@ -117,7 +117,7 @@ def read_ready(stream, timeout=20):
     raise ValueError("preflight refused")
 
 
-def forward_admin(command, input_fd, output_fd, timeout=60, backup=False):
+def forward_admin(command, input_fd, output_fd, timeout=60, backup=False, migration=False):
     """Fixed CLI supplies command; injected command used only by dummy local tests."""
     if not os.isatty(input_fd) or not 0 < timeout <= 60:
         raise ValueError("private terminal required")
@@ -139,11 +139,11 @@ def forward_admin(command, input_fd, output_fd, timeout=60, backup=False):
         child.stdin.close()
         child.stdin = None
         secret[:] = b"\0" * len(secret)
-        output, _ = child.communicate(timeout=1260 if backup else 125)
-        expected = b"BACKUP_COMPLETE\n" if backup else b"HANDOFF_READY\n"
+        output, _ = child.communicate(timeout=1260 if backup else 660 if migration else 125)
+        expected = b"BACKUP_COMPLETE\n" if backup else b"MIGRATION_COMPLETE\n" if migration else b"HANDOFF_READY\n"
         if child.returncode != 0 or output != expected:
             raise ValueError("handoff refused; inspect fixed status record")
-        os.write(output_fd, b"\nBackup and local cleanup complete.\n" if backup else
+        os.write(output_fd, b"\nMigration verified. Close encrypted image after reviewing status.\n" if migration else b"\nBackup and local cleanup complete.\n" if backup else
                  b"\nPrivate handoff complete. Runner remains NOLOGIN.\n")
     finally:
         secret[:] = b"\0" * len(secret)
@@ -169,18 +169,22 @@ def forward_admin(command, input_fd, output_fd, timeout=60, backup=False):
 if __name__ == "__main__":
     try:
         # No credential arguments/environment, arbitrary host/path or default admin mode.
-        if sys.argv[1:] not in (["--administrator"], ["--existing-admin-backup"]):
+        if sys.argv[1:] not in (["--administrator"], ["--existing-admin-backup"], ["--approved-child-migration"]):
             raise ValueError("explicit administrator mode required")
         executable = shutil.which("node")
         if executable is None:
             raise ValueError("runtime unavailable")
         backup = sys.argv[1:] == ["--existing-admin-backup"]
+        migration = sys.argv[1:] == ["--approved-child-migration"]
         command = ([executable, str(Path(__file__).resolve().with_name("p06-backup-once.mjs")),
                     "--existing-admin-backup", "/Volumes/Signmons-P06/r02-backup-admin-v2/approval.json"]
                    if backup else [executable, str(Path(__file__).resolve().with_name(
                        "p06-private-role-password.mjs")),
                        "/Volumes/Signmons-P06/r02-backup-v2/approval.json"])
-        forward_admin(command, 0, 1, backup=backup)
+        if migration:
+            command = [executable, str(Path(__file__).resolve().with_name("p06-migrate-once.mjs")),
+                       "--approved-child-migration", "/Volumes/Signmons-P06/r04-migration-v1/approval.json"]
+        forward_admin(command, 0, 1, backup=backup, migration=migration)
     except (Exception, KeyboardInterrupt):
         # Never print exception/child payload: it may carry credential material.
         print("Private handoff refused or cancelled; verify closeout before any retry.", file=sys.stderr)

@@ -1,7 +1,6 @@
 // Local synthetic migration rehearsal. Never accepts an external database URL.
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
-import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import {
   mkdtemp,
@@ -22,6 +21,13 @@ import {
   sameMetadata,
 } from "./p06_backup_guards.mjs";
 import { backupCore, expectedHistory } from "./p06-backup-once.mjs";
+import {
+  runPrisma,
+  catalog as migrationCatalog,
+  manifest,
+  migrateCore,
+  OPTIONS,
+} from "./p06-migrate-once.mjs";
 const require = createRequire(import.meta.url);
 const { Client } = require("pg");
 assert.equal(require("prisma/package.json").version, "7.10.0");
@@ -159,48 +165,11 @@ async function deploy(db, inputs, expected = 0) {
     "-c lock_timeout=5s -c statement_timeout=60s",
   );
   const started = Date.now();
-  const result = await new Promise((resolve, reject) => {
-    const child = spawn(
-      process.execPath,
-      [
-        path.join(root, "node_modules/prisma/build/index.js"),
-        "migrate",
-        "deploy",
-        "--config",
-        path.join(inputs, "prisma.config.ts"),
-      ],
-      {
-        cwd: inputs,
-        env: {
-          PATH: process.env.PATH,
-          DATABASE_URL: url.toString(),
-          PRISMA_HIDE_UPDATE_MESSAGE: "1",
-          CHECKPOINT_DISABLE: "1",
-          ...(encryptedWorkspace ? { TMPDIR: temporary } : {}),
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
-    let output = "",
-      timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGKILL");
-    }, 120000);
-    child.stdout.on("data", (x) => {
-      output += x;
-    });
-    child.stderr.on("data", (x) => {
-      output += x;
-    });
-    child.on("error", (error) => {
-      clearTimeout(timer);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ code, output, timedOut });
-    });
+  const result = await runPrisma({
+    url: url.toString(),
+    inputs,
+    milliseconds: 120000,
+    capture: true,
   });
   await writeFile(
     path.join(temporary, `deploy-${db.name}-${report.checks.length}.log`),
@@ -840,6 +809,75 @@ try {
       "preservation-revision-nullability-check-unique-fk-immutability-noop-catalog-parity",
     catalogCounts: upgradedCatalog.map((x) => x.length),
   });
+  if (process.env.P06_MIGRATION_PACKET_REHEARSAL === "1") {
+    const guarded = await database();
+    await deploy(guarded, oldInput);
+    const proof = {
+      files: await manifest(),
+      beforeHash: hash(JSON.stringify(await migrationCatalog(guarded.c))),
+      afterHash: hash(JSON.stringify(await migrationCatalog(fresh.c))),
+    };
+    const url = new URL(
+      `postgresql://${encodeURIComponent(local.user)}@localhost/${guarded.name}`,
+    );
+    url.searchParams.set("host", socket);
+    url.searchParams.set("schema", "public");
+    url.searchParams.set("options", OPTIONS);
+    const verified = await migrateCore({
+      client: guarded.c,
+      proof,
+      database: guarded.name,
+      role: local.user,
+      invoke: () =>
+        runPrisma({
+          url: url.toString(),
+          inputs: fullInput,
+          milliseconds: 120000,
+        }),
+    });
+    assert.equal(verified.status, "MIGRATION_VERIFIED");
+    await assert.rejects(
+      migrateCore({
+        client: guarded.c,
+        proof,
+        database: guarded.name,
+        role: local.user,
+        invoke: () => {
+          throw Error("must not retry");
+        },
+      }),
+    );
+    await writeFile(
+      path.join(temporary, "migration-proof.json"),
+      JSON.stringify(proof, null, 2) + "\n",
+    );
+    // A synthetic-only migration asserts settings inside Prisma's real DDL connection.
+    const settingsInput = await exportInputs("settings", 26);
+    await mkdir(path.join(settingsInput, "migrations/20990101000000_settings"));
+    await writeFile(
+      path.join(
+        settingsInput,
+        "migrations/20990101000000_settings/migration.sql",
+      ),
+      `DO $$ BEGIN IF current_setting('lock_timeout') <> '5s' OR current_setting('statement_timeout') <> '1min' THEN RAISE EXCEPTION 'wrong connection settings'; END IF; END $$;`,
+    );
+    await deploy(guarded, settingsInput);
+    await mkdir(path.join(settingsInput, "migrations/20990102000000_timeout"));
+    await writeFile(
+      path.join(
+        settingsInput,
+        "migrations/20990102000000_timeout/migration.sql",
+      ),
+      "SELECT pg_sleep(65);",
+    );
+    const statementFailure = await deploy(guarded, settingsInput, 1);
+    assert.match(statementFailure, /statement timeout/);
+    report.checks.push({
+      operation:
+        "same-core-guarded-migration-replay-refusal-and-actual-prisma-session-settings",
+      proof: path.join(temporary, "migration-proof.json"),
+    });
+  }
   const blocked = await database();
   await deploy(blocked, oldInput);
   await seed(blocked.c);

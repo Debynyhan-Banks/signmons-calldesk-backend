@@ -1,0 +1,110 @@
+{
+  "files": [
+    {
+      "name": "20251202003832_init_calldesk_schema",
+      "sha256": "ec5655fda1e72e2cfd658c33bf45dc351d5eb05f01c878fe20776632cdc80cd4"
+    },
+    {
+      "name": "20251202153000_add_session_closed_at",
+      "sha256": "05a76a98c3cf7561b6522b002d4e0a496eb43eafb60a12fab4ab44e1faba70ae"
+    },
+    {
+      "name": "20260828000000_canonical_schema_reconciliation",
+      "sha256": "502e6865fd5d186bc91a4ac95c9b035f27556f2a465edf963b555f768721c658"
+    },
+    {
+      "name": "20260829000000_preserve_preferred_time",
+      "sha256": "66de9a0434d05e6e27a2ca0eb08a66e7ed697def4daa5c693468a08124e65b18"
+    },
+    {
+      "name": "20260829010000_add_job_intake_session_id",
+      "sha256": "7fe400200a2e46ad64c22525a0b2418341c1b15d50cc1f59bd5ee6ed97e282c9"
+    },
+    {
+      "name": "20260830000000_add_residential_appointment_booking",
+      "sha256": "41666b14142b3bf7e77c7a5538bc75f5b4a6af7630bf2de708744cb3d460bacd"
+    },
+    {
+      "name": "20260831000000_add_high_job_urgency",
+      "sha256": "51d2a3a5570fb960b0a0e5026016bb87052c49f5e43b205fed2d081b447b26c0"
+    },
+    {
+      "name": "20260831180000_add_technician_job_workflow",
+      "sha256": "9f24b8c1e66131bec7bda259f217d77e6879f3274b38e75d242881092a6daf19"
+    },
+    {
+      "name": "20260902000000_add_routing_rules",
+      "sha256": "ea64435dfcb3230b93e4b1573bcb7419fdce29b54304bb8ccd15fbca2a803cad"
+    },
+    {
+      "name": "20260902130000_add_customer_audit_actor",
+      "sha256": "2b7e55fe64d6c654308db418f5bb1b7986726a1be9fc635f37e838a3c2636e66"
+    },
+    {
+      "name": "20260904100000_add_payment_request_tracking",
+      "sha256": "3d7f01824d08d6aa7173719f62137a0001f8ac804ec2facfbc49868d0476783f"
+    },
+    {
+      "name": "20260907180000_add_sms_consent_records",
+      "sha256": "d10fabf3d7373f89d9b15719ff8dd99bf3638bd0d10ec14daee2fd87c6671db8"
+    },
+    {
+      "name": "20260907220000_add_sms_delivery_state",
+      "sha256": "67a25a6e0147a134342369d6b6226668c9981b692e944012d85e1ff70147db14"
+    },
+    {
+      "name": "20260908120000_add_sms_enqueue_intents",
+      "sha256": "eeb35847aeb6acbedfc53033141f80d146534d0488106293696bb8b1d1bea7d5"
+    },
+    {
+      "name": "20260908180000_add_calendar_operation_journal",
+      "sha256": "83e832525b4cd7218dffcfb5c208658a9dc7dfe1fe39f780427119084e7bccd7"
+    },
+    {
+      "name": "20260909190000_add_appointment_email_intent",
+      "sha256": "f3f391f56340040dc7187ece7e4a1756eddf29426d9ae2fb5fe6ae8e7210ced0"
+    },
+    {
+      "name": "20260909190000_add_calendar_readback_deadline",
+      "sha256": "d7854baab132773274b15362b301a21904eb359f3f0f8c99694dd0b7e3625e85"
+    },
+    {
+      "name": "20260909200000_extend_appointment_email_events",
+      "sha256": "cd471e2c37ecd47306c4b246da40c18cb0df3d41d75c251aa6138129235916ff"
+    },
+    {
+      "name": "20260909210000_add_appointment_email_consent_evidence",
+      "sha256": "25b40ae381facbd65d31edce6577a5bedb220d5d62136e254fd28c31a95fbe22"
+    },
+    {
+      "name": "20260911120000_add_address_operation_liability",
+      "sha256": "15bbe6cbfe8067a7617bc253cf32f5614dc64baa59a6998d9931249841d95570"
+    },
+    {
+      "name": "20260911130000_add_address_execution_deadline",
+      "sha256": "11767be3eaa913720b84231ba79b6b0b17fadf5a99aa2e4b0c308acf37a68481"
+    },
+    {
+      "name": "20260912150000_fixture_sms_consent_evidence",
+      "sha256": "66c69f56d581cefd3de573c7caec92e8b56d8a1f83200718c77462ddbaf6383b"
+    },
+    {
+      "name": "20260912160000_tenant_sms_policy_registry",
+      "sha256": "992e68ae766569711a6bb9aacd989792a461fb40bf0a5957ebc8df6b68fab410"
+    },
+    {
+      "name": "20260912170000_sms_consent_revision",
+      "sha256": "5d0c5d30818592d76c34a0ad30bd3f80c4f129c6fee81b5939b4dd188249a280"
+    },
+    {
+      "name": "20260912180000_sms_policy_capture",
+      "sha256": "84be99e2d9b2ca97389a367cd73e9017c5a1c6f7b22c7ab1db9d8a992c5965b8"
+    },
+    {
+      "name": "20260913180000_nullable_property_location",
+      "sha256": "2c3220ac2d2426c48a404c3d26803f22c4a340c65290aa83ab633054d4841a8e"
+    }
+  ],
+  "beforeHash": "d060ddd0b5ed7ff72977bd0bde5e8cc2ad2c9989e8d5492baafbb12c6e9df9dc",
+  "afterHash": "8765d841516825001c1ff2d822c5a94347d7a175285eedbfab00deeab9a89372"
+}

@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Current: R02 qualification complete — R03 packet next
+## Current: R03 preparation complete — execution approval pending
+
+Owner-approved three-item R03 checklist is complete: exact source-specific command/26-file manifest (13pending); same-command PG18 upgrade, replay refusal, actual5s lock/60s statement timeout, private-input and cancellation tests; one review packet. See governance APP013_P06_R03_PACKET.md and backend evidence/APP-013/p06-r03-review.md. Runner targets only the approved child and existing administrator, never shared secret/old job. Requires explicit bounded execution approval and fresh checks; no live migration has run.
+
+Full2359Jest tests,41focused Node tests,11Python tests passed;3Jest skips and1existing opt-in Node integration skip disclosed. Lint/build/architecture passed. Final real local PG18 proof matches reviewed artifact; generated databases removed, owned server stopped. No product UI changes/browser acceptance claimed. TLS requires Prisma-native require+strict, not libpq verify-full. Actual live TLS remains an execution check; no insecure fallback.
+
+R01/R02closed; R03approval pending,R04-R12not executed/closed by this work;10open,added0. No more R03 preparation subsections planned. R04 remains one separately approved staging migration with partial-failure stop and image closeout. No scope deviation. Accepted packages5/60(8.3%),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated.
+
+## Historical: R02 qualification complete — R03 packet next
 
 Owner approved the existing-administrator preparation route. Final qualification is backend evidence/APP-013/p06-r02-qualified.md: exact child/PG18.6/capable owner, accepted actual recovery, consumer inventory and maintenance boundary complete. Current child metadata:26owned tables,13applied/0unfinished migrations,0other sessions/subscriptions/replication slots. Known Cloud Run consumers retain secret versions createdAugust28 before child creationSeptember14; prior parent mapping plus unchanged references supports separation, with no payload read or universal-client claim. Keep parent consumers unchanged; future unknown child sessions/drift are execution stops.
 
