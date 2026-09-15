@@ -1,5 +1,11 @@
 # P06-R02 encrypted container check
 
+## Current: authorized Time Machine exclusion verified
+
+Owner explicitly approved excluding only /Users/debynyhanbanks/Library/Application Support/Signmons/P06/signmons-p06.dmg.sparsebundle from future Time Machine backups. tmutil addexclusion succeeded; fresh isexcluded changed Included to Excluded on2026-09-15. Existing backup copies were not searched/deleted; no LaCie/global backup setting changed. Exclusion does not prove absence of historical or third-party copies. No real data exported. R02 remains open for encrypted database-workspace/credential qualification and exact export approval;11 remain,added0,accepted5/60 and3/8 unchanged,ETA unvalidated. No scope deviation.
+
+## Historical: initial container validation
+
 Owner explicitly approved one local2GB encrypted container and privately entered its password in Disk Utility. Created2026-09-15 at /Users/debynyhanbanks/Library/Application Support/Signmons/P06/signmons-p06.dmg.sparsebundle. AES256 selected in UI; APFS, sparse bundle,2GB verified before Save. Filename includes Disk Utility's extra .dmg suffix; no second image exists. hdiutil reports encrypted YES, one passphrase, UUID87BEB98C-8CDC-4DF8-874E-8A1B6B1746D4. Mounted volume UUID A0020084-32EC-412A-B96B-1AA68A2CE61F, capacity1999982592bytes, about14MB allocated at creation. Parent/image directory permissions0700.
 
 Earlier hdiutil attempt without interactive input failed; second prompt appeared in agent-only terminal and was canceled. Owned processes terminated; incomplete image removed by cancellation, parent directory checked empty before GUI creation. No password read, generated, logged or supplied by Codex.

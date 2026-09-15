@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 encrypted container synthetic check passed — backup retention unresolved
+## Current: R02 container Time Machine exclusion verified — real export gated
+
+Owner explicitly approved excluding only /Users/debynyhanbanks/Library/Application Support/Signmons/P06/signmons-p06.dmg.sparsebundle from future Time Machine backups. tmutil addexclusion succeeded; fresh isexcluded changed Included to Excluded on2026-09-15. Existing backup copies were not searched/deleted; no LaCie/global backup setting changed. Exclusion does not prove absence of historical or third-party copies. No real data exported. R02 remains open for encrypted database-workspace/credential qualification and exact export approval;11 remain,added0,accepted5/60 and3/8 unchanged,ETA unvalidated. No scope deviation.
+
+## Historical: encrypted container validation
 
 Owner-approved AES2562GB container created; private owner unlock and synthetic-file checksum across eject/reopen verified. Container now locked. See backend evidence/APP-013/p06-encrypted-container-check.md and APP013_P06_PRIVATE_BACKUP_PACKET.md. Time Machine includes image; no backup setting changed. Backup-copy retention, encrypted database-workspace/role qualification and exact real-export approval remain. No Neon/data/credential action. R02 open, R01 closed,11 remain,added0; accepted5/60 and3/8 unchanged, ETA unvalidated. No scope deviation.
 
