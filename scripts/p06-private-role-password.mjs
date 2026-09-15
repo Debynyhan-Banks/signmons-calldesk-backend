@@ -21,7 +21,9 @@ import {
   BackupBudget,
   BackupFailure,
   sameMetadata,
+  readPipe,
 } from "./p06_backup_guards.mjs";
+export { readPipe } from "./p06_backup_guards.mjs";
 
 const exec = promisify(execFile);
 const REPO = fileURLToPath(new URL("../", import.meta.url));
@@ -301,31 +303,6 @@ export async function assignCore({
     );
   } finally {
     secret = undefined;
-  }
-}
-export async function readPipe(stream, budget) {
-  let chunks = [],
-    length = 0;
-  try {
-    const promise = (async () => {
-      for await (const chunk of stream) {
-        length += chunk.length;
-        if (length > 513) throw fail("PRIVATE_INPUT_REFUSED");
-        chunks.push(chunk);
-      }
-      const text = Buffer.concat(chunks).toString("ascii");
-      if (
-        !/^[\x20-\x7e]{1,512}\n$/.test(text) ||
-        chunks.some((c) => [...c].some((b) => b > 127))
-      )
-        throw fail("PRIVATE_INPUT_REFUSED");
-      return text.slice(0, -1);
-    })();
-    return await budget.race(promise);
-  } finally {
-    stream.destroy();
-    for (const c of chunks) c.fill(0);
-    chunks = [];
   }
 }
 export async function runAdmin(packet) {

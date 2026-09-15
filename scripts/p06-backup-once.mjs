@@ -22,6 +22,7 @@ import {
   BackupFailure,
   compareTables,
   sameMetadata,
+  readPipe,
 } from "./p06_backup_guards.mjs";
 
 const exec = promisify(execFile);
@@ -555,7 +556,6 @@ export async function runLive(packet, existingAdmin = false) {
     });
     if (existingAdmin) {
       process.stdout.write("READY\n");
-      const { readPipe } = await import("./p06-private-role-password.mjs");
       password = await readPipe(process.stdin, budget);
       validate(packet, revision);
       passIdentity = await writeAdminPassfile(root, password);

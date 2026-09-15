@@ -14,6 +14,32 @@ export class BackupFailure extends Error {
   }
 }
 const fail = (code) => new BackupFailure(code);
+// Dependency-leaf transport: live entry points must not import each other.
+export async function readPipe(stream, budget) {
+  let chunks = [],
+    length = 0;
+  try {
+    const promise = (async () => {
+      for await (const chunk of stream) {
+        length += chunk.length;
+        if (length > 513) throw fail("PRIVATE_INPUT_REFUSED");
+        chunks.push(chunk);
+      }
+      const text = Buffer.concat(chunks).toString("ascii");
+      if (
+        !/^[\x20-\x7e]{1,512}\n$/.test(text) ||
+        chunks.some((c) => [...c].some((b) => b > 127))
+      )
+        throw fail("PRIVATE_INPUT_REFUSED");
+      return text.slice(0, -1);
+    })();
+    return await budget.race(promise);
+  } finally {
+    stream.destroy();
+    for (const c of chunks) c.fill(0);
+    chunks = [];
+  }
+}
 const inside = (root, target) =>
   target === root || target.startsWith(root + path.sep);
 

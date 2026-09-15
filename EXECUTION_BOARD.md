@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 existing-administrator backup mode locally qualified
+## Current: R02 stalled private-input cycle repaired — cancelled attempt preserved
+
+Owner-approved local repair removes the backup CLI/password-helper circular import by sharing readPipe from the existing dependency-leaf guards module. Regression failed before fix and passes after; real PythonTTY-to-Node dummy transport/cancellation and bounded READY-line tests pass. Current33Node/10Python tests pass, prior opt-in database test skipped; no real credential/mount/export/retry. Admin-v1 live attempt cancelled with no pgpass/archive/result observed, helper processes stopped and image ejected; preserve approval/attempt/closeout records. See backend evidence/APP-013/p06-r02-private-prompt-repair.md and existing exception card. Next freshly authorized unused-path packet/private readiness, not support email or reuse of cancelled attempt. R02 still two acceptance areas; R01closed,R02-R12open11,added0; accepted5/60 and3/8 unchanged; ETAunvalidated. No scope deviation.
+
+## Historical: R02 existing-administrator backup mode locally qualified
 
 Owner approved one supervised backup using the existing administrator credential instead of provisioning/resetting a runner password. Explicit fixed-child mode implemented in the existing backup/input helpers; 32 Node and8 Python tests pass, one prior opt-in integration skipped. No real credential, mount, export or provider change. See APP013_P06_R02_EXISTING_ADMIN_EXCEPTION.md and backend evidence/APP-013/p06-r02-existing-admin-backup.md. Next owner private readiness, fresh bound execution packet and one backup/restore; no support-email dependency or password SQL. Temporary encrypted0600 administrator passfile is removed at closeout; inherited credential remains broadly privileged. R02 still two acceptance areas; recovery unproven and migration-access boundary remains separate. R01closed,R02-R12open11,added0; accepted5/60 and3/8 unchanged; ETAunvalidated. Approved credential-mechanism deviation only; no additional scope deviation.
 

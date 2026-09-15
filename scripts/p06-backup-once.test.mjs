@@ -48,6 +48,27 @@ const packet = () => ({
   noOtherConsumersConfirmed: true,
 });
 const sentinel = "FICTIONAL_PRIVATE_SENTINEL";
+test("live entry point has no circular local module imports before private input", async () => {
+  const visiting = new Set(),
+    done = new Set();
+  async function visit(filename) {
+    assert.ok(
+      !visiting.has(filename),
+      "circular live-entry dependency: " + path.basename(filename),
+    );
+    if (done.has(filename)) return;
+    visiting.add(filename);
+    const text = await readFile(filename, "utf8");
+    const imports = [
+      ...text.matchAll(/(?:from\s*|import\s*\(\s*)["'](\.\/[^"']+\.mjs)["']/g),
+    ];
+    for (const match of imports)
+      await visit(path.resolve(path.dirname(filename), match[1]));
+    visiting.delete(filename);
+    done.add(filename);
+  }
+  await visit(path.resolve("scripts/p06-backup-once.mjs"));
+});
 test("fixed packet and window accepted; no alternate target or expired/unknown allowance", () => {
   assert.equal(validatePacket(packet(), revision, now), 1200000);
   for (const patch of [

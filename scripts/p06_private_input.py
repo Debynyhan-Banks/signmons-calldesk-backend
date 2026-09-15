@@ -98,6 +98,25 @@ def capture(target, input_fd, output_fd, timeout=60):
         os.close(directory)
 
 
+def read_ready(stream, timeout=20):
+    """Bound the complete protocol line, not only arrival of its first byte."""
+    deadline = time.monotonic() + timeout
+    line = bytearray()
+    while len(line) < 64:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or not select.select([stream], [], [], remaining)[0]:
+            raise TimeoutError("preflight timeout")
+        byte = os.read(stream.fileno(), 1)
+        if not byte:
+            raise ValueError("preflight refused")
+        line.extend(byte)
+        if byte == b"\n":
+            if line != b"READY\n":
+                raise ValueError("preflight refused")
+            return
+    raise ValueError("preflight refused")
+
+
 def forward_admin(command, input_fd, output_fd, timeout=60, backup=False):
     """Fixed CLI supplies command; injected command used only by dummy local tests."""
     if not os.isatty(input_fd) or not 0 < timeout <= 60:
@@ -113,10 +132,7 @@ def forward_admin(command, input_fd, output_fd, timeout=60, backup=False):
         previous_signals[number] = signal.signal(number, cancel)
     try:
         # Child preflight must finish before owner is asked to reveal a credential.
-        if not select.select([child.stdout], [], [], 20)[0]:
-            raise TimeoutError("preflight timeout")
-        if child.stdout.readline(64) != b"READY\n":
-            raise ValueError("preflight refused")
+        read_ready(child.stdout)
         secret = private_read(input_fd, output_fd, timeout)
         child.stdin.write(secret)
         child.stdin.write(b"\n")

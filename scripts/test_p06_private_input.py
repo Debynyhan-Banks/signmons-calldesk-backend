@@ -1,8 +1,10 @@
 import importlib.util
 import hashlib
+import json
 import os
 import pty
 import select
+import shutil
 import stat
 import subprocess
 import sys
@@ -118,7 +120,7 @@ class PrivateInputTests(unittest.TestCase):
 
 
 class AdminPipeTests(unittest.TestCase):
-    def run_forward(self, mode="success", payload=b"FICTIONAL_ADMIN_CANARY\n", backup=False):
+    def run_forward(self, mode="success", payload=b"FICTIONAL_ADMIN_CANARY\n", backup=False, real_node=False):
         master, slave = pty.openpty()
         previous = termios.tcgetattr(slave)
         # Child checks transport and leaks a canary on failure deliberately: wrapper must redact it.
@@ -132,11 +134,25 @@ class AdminPipeTests(unittest.TestCase):
                ("print(value.decode());sys.stderr.write(value.decode());sys.exit(1)"
                 if mode == "failure" else "print(" + repr("BACKUP_COMPLETE" if backup else "HANDOFF_READY") + ",flush=True)"))
         )
+        command = [sys.executable, "-B", "-c", child]
+        if real_node:
+            reader = MODULE.with_name("p06_backup_guards.mjs").as_uri()
+            js = (
+                "import {readPipe} from " + json.dumps(reader) + ";"
+                "import {createHash} from 'node:crypto';"
+                "process.stdout.write('READY\\n');"
+                "try { const value=await readPipe(process.stdin,{race:p=>p});"
+                "if(createHash('sha256').update(value+'\\n').digest('hex')!==" +
+                json.dumps(hashlib.sha256(b"FICTIONAL_ADMIN_CANARY\n").hexdigest()) +
+                ") throw Error(); process.stdout.write('BACKUP_COMPLETE\\n');"
+                "} catch {process.exitCode=1;}"
+            )
+            command = [shutil.which("node"), "--input-type=module", "-e", js]
         program = (
             "import sys;sys.path.insert(0,sys.argv[1]);from p06_private_input import forward_admin;"
-            "forward_admin([sys.executable,'-B','-c',sys.argv[2]],0,1,0.3,backup=" + repr(backup) + ")"
+            "import json;forward_admin(json.loads(sys.argv[2]),0,1,0.3,backup=" + repr(backup) + ")"
         )
-        proc = subprocess.Popen([sys.executable,"-B","-c",program,str(MODULE.parent),child],
+        proc = subprocess.Popen([sys.executable,"-B","-c",program,str(MODULE.parent),json.dumps(command)],
                                 stdin=slave,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         observed=b""
         try:
@@ -190,6 +206,26 @@ class AdminPipeTests(unittest.TestCase):
                              ("success",None),("success","terminate"),("success",b"\x03")]:
             code,_=self.run_forward(mode,payload,backup=True)
             self.assertNotEqual(code,0)
+
+    def test_real_node_pipe_reader_through_hidden_python_terminal(self):
+        code,output=self.run_forward(backup=True,real_node=True)
+        self.assertEqual(code,0)
+        self.assertIn(b"Backup and local cleanup complete",output)
+        for payload in (None,b"\x03","terminate"):
+            code,_=self.run_forward(payload=payload,backup=True,real_node=True)
+            self.assertNotEqual(code,0)
+
+    def test_partial_ready_line_is_bounded_and_never_prompts(self):
+        read_fd,write_fd=os.pipe()
+        try:
+            os.write(write_fd,b"REA")
+            with os.fdopen(read_fd,"rb",closefd=False) as stream:
+                started=time.monotonic()
+                with self.assertRaises(TimeoutError):
+                    module.read_ready(stream,timeout=0.05)
+                self.assertLess(time.monotonic()-started,1)
+        finally:
+            os.close(read_fd);os.close(write_fd)
 
 
 if __name__ == "__main__":
