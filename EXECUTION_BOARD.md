@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 stalled private-input cycle repaired — cancelled attempt preserved
+## Current: R02 real recovery demonstrated — manual closeout verified
+
+Owner-approved admin-v2 attempt from backend20a3110 completed one real child backup/local restore:26tables/633rows matched,13migration checksums and catalog checked; archive198833bytes with independently matched SHA256. Dump2026-09-15T14:01:19.919Z, encrypted retention through2026-09-22T14:01:19.919Z. Wrapper reported refusal at final cleanup; retained result says PENDING, not auto-clean success. Independent checks found password file absent/local server stopped; read-only result review followed by manual exact-image detach succeeded, source backup sessions0, both migration rolesNOLOGIN. See backend evidence/APP-013/p06-r02-admin-v2-retry.md. No second export, password reset, source mutation, migration or release. Recovery-area technical evidence ready for owner acceptance; remaining R02 migration-access/consumer boundary separate. Do not repeat recovery proof without invalidating drift/expiry. R01closed,R02-R12open11,added0; accepted5/60 and3/8 unchanged; ETAunvalidated. No scope deviation.
+
+## Historical: R02 stalled private-input cycle repaired — cancelled attempt preserved
 
 Owner-approved local repair removes the backup CLI/password-helper circular import by sharing readPipe from the existing dependency-leaf guards module. Regression failed before fix and passes after; real PythonTTY-to-Node dummy transport/cancellation and bounded READY-line tests pass. Current33Node/10Python tests pass, prior opt-in database test skipped; no real credential/mount/export/retry. Admin-v1 live attempt cancelled with no pgpass/archive/result observed, helper processes stopped and image ejected; preserve approval/attempt/closeout records. See backend evidence/APP-013/p06-r02-private-prompt-repair.md and existing exception card. Next freshly authorized unused-path packet/private readiness, not support email or reuse of cancelled attempt. R02 still two acceptance areas; R01closed,R02-R12open11,added0; accepted5/60 and3/8 unchanged; ETAunvalidated. No scope deviation.
 
