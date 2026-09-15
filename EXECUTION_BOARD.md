@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 local backup limits and private comparison tested
+## Current: R02 ownership-enabled mounted input qualified
+
+Owner-approved administrator ownership change succeeded for the exact Signmons-P06 UUID. Four existing private-input tests passed inside verified ownership-enabled encrypted image using dummy values; test directories removed, existing artifacts preserved, exact image ejected and mount absent. See backend evidence/APP-013/p06-r02-mounted-input.md and APP013_P06_R02_MOUNT_CHECK.md. Next bind tested tooling to exact real invocation/window/cleanup packet before specific new-role/handoff/export approval. No Neon action or real backup. R02 open; R01 closed,R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
+
+## Historical: R02 local backup limits and private comparison tested
 
 Owner-approved safety code implemented in existing local backup rehearsal. Shared20minute budget, pre-write64MiB archive ceiling, monitored768MiB workspace and privacy-safe bounded cursor comparison passed;26tables/20fictional rows matched, concurrent snapshot and refusal tests passed. See backend evidence/APP-013/p06-r02-safety-result.md and APP013_P06_R02_SAFETY_CARD.md. No live credential/export or image change. Next existing R02 gate: ownership-enabled encrypted storage/actual private handoff qualification and filled execution packet, then separately approved real recovery proof. R01 closed; R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
 
