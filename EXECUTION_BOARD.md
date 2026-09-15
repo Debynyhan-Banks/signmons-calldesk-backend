@@ -1,6 +1,11 @@
 # Signmons Backend Execution Board
 
-## Current: R02 credential/recovery qualification complete — owner decisions required
+## Current: R02 recovery recommendation corrected — migration blocked
+
+Owner approved preparation using six-hour recovery, but fresh specific Neon restore documentation says PITR supports root branches only. Current target br-sparkling-sun-ay6gr5e8 is a child; earlier console source was production. Retention is not proof of child self-history recovery. See backend evidence/APP-013/p06-r02-recovery-policy-correction.md. No credentials or provider/database changes. Owner must choose a separately qualified recoverable-root or private logical-backup approach; neither is authorized by the six-hour-policy approval. R02 remains open, R01 closed, R02-R12 open (11), added0; accepted5/60 and3/8 unchanged, ETA unvalidated. Recovery-method deviation proposed, not implemented.
+
+## Historical: prior credential/recovery qualification
+
 
 Read-only inspection of the created P06 child found only inherited `neondb_owner` (created/updated 18 days ago) and no independent Postgres migration credential. Official Neon behavior confirms an unprotected normal child inherits role passwords; this Free-plan parent cannot use paid protected-branch separation. Backup & Restore exposes only a moving six-hour history window sourced from `production`, while snapshots are root-only. No credential, snapshot, restore, migration, connection or data action occurred. R02 remains open pending approval of an exact child-only migration role/secret boundary and one destructive recovery policy; see `evidence/APP-013/p06-r02-credential-recovery-qualification.md`. R01 closed; R02-R12 open (11), added 0. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), P06 unaccepted, ETA unvalidated. No scope deviation.
 
