@@ -21,6 +21,7 @@ import {
   compareTables,
   sameMetadata,
 } from "./p06_backup_guards.mjs";
+import { backupCore, expectedHistory } from "./p06-backup-once.mjs";
 const require = createRequire(import.meta.url);
 const { Client } = require("pg");
 assert.equal(require("prisma/package.json").version, "7.10.0");
@@ -286,6 +287,8 @@ async function archiveRoundTrip(source) {
   if (managedRehearsal) await managedTarget(restored);
   const missingRoleTarget = managedRehearsal ? await database() : null;
   const rejected = await database();
+  const onceRestore = managedRehearsal ? await database() : null;
+  if (onceRestore) await managedTarget(onceRestore);
   const budget = await BackupBudget.create({
     roots: [temporary, path.dirname(socket)],
   });
@@ -307,6 +310,63 @@ async function archiveRoundTrip(source) {
       wrap(rejected),
     );
     await budget.check();
+    if (onceRestore) {
+      const reader = new Client({
+        ...local,
+        user: "p06_backup_reader",
+        database: source.name,
+      });
+      clients.push(reader);
+      await reader.connect();
+      const bin = "/opt/homebrew/opt/postgresql@18/bin/";
+      const env = { PATH: bin, TMPDIR: temporary, LC_ALL: "C" };
+      const result = await backupCore({
+        budget,
+        source: reader,
+        target: onceRestore.c,
+        database: source.name,
+        role: "p06_backup_reader",
+        history: await expectedHistory(),
+        archive: path.join(temporary, "same-core.dump"),
+        dump: (snapshot, archive) =>
+          budget.command(
+            bin + "pg_dump",
+            [
+              "-h",
+              socket,
+              "-U",
+              "p06_backup_reader",
+              "--no-password",
+              "--snapshot=" + snapshot,
+              "-Fc",
+              source.name,
+            ],
+            { env, archive },
+          ),
+        restore: (archive) =>
+          budget.command(
+            bin + "pg_restore",
+            [
+              "-h",
+              socket,
+              "-U",
+              local.user,
+              "--no-password",
+              "--exit-on-error",
+              "--single-transaction",
+              "-d",
+              onceRestore.name,
+              archive,
+            ],
+            { env },
+          ),
+      });
+      report.checks.push({
+        operation:
+          "one-shot-entrypoint-shared-core-readonly-source-full-catalog",
+        ...result,
+      });
+    }
   } finally {
     budget.close();
   }

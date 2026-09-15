@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 command audit — real invocation wiring incomplete
+## Current: R02 one-shot wiring locally tested — live approval pending
+
+Owner-approved fixed-target one-shot CLI implemented with existing guards, exclusive attempt marker, scoped private input, snapshot/full backup/restore/two-schema comparisons and explicit cleanup. Same core passed local restricted-reader26-table/20fictional-row restore;20 Node tests and4 private-input tests passed. See backend evidence/APP-013/p06-r02-once-result.md and APP013_P06_R02_RUNBOOK.md. No real Neon adapter/handoff/export executed; next review and freshly bound explicit live packet, including administrator revocation. Do not repeat standalone tests without drift or claim R02 accepted. R01 closed,R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
+
+## Historical: R02 command audit — real invocation wiring incomplete
 
 Command audit confirms tested helpers have no real-backup entry point; their sole caller creates/mutates fictional databases and must not run against Neon. See APP013_P06_R02_COMMAND_AUDIT.md and backend evidence/APP-013/p06-r02-command-audit.md for fixed source-specific wiring proposal. Earlier packet-only wording understated implementation; no completed command/window invented. Next implementer outcome is tested preflight/snapshot/restore/cleanup wiring, then explicit real handoff/export approval. Storage proof retained; no external action. R01 closed,R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation implemented.
 
