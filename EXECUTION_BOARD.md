@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 execution proposal drafted, not execution-ready
+## Current: R02 owner-assisted handoff method accepted
+
+Read-only route qualification documented in evidence/APP-013/p06-r02-execution-proposal.md; no role/reset/export. Actual handoff untested. Next existing local executor qualification: dummy private-input and managed restore/comparison/limits together. No repeat willingness approval. R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
+
+## Historical: execution proposal drafted
 
 See evidence/APP-013/p06-r02-execution-proposal.md and governance APP013_P06_R02_EXECUTION_PROPOSAL.md. Exact proposed role boundary/order/limits documented; secure credential handoff and concrete managed-role restoration/comparison/enforcement remain unqualified. No external execution. R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged; ETA unvalidated. Sequence refinement proposed, no scope deviation implemented.
 

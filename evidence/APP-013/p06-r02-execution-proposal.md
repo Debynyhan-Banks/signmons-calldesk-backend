@@ -1,5 +1,11 @@
 # R02 credential/backup execution proposal
 
+## Owner-assisted handoff qualification update
+
+Owner said yes to handling the future new-role password privately. Read-only existing-child Roles inspection found only neondb_owner and verified Reset password exists in its menu; no reset selected, menu dismissed. Official https://neon.com/docs/manage/roles documents generated-password Console reset and separate SQL-created restricted roles. Supported route is not proof the nonexistent SQL-created NOLOGIN runner exposes it.
+
+Governance proposal now specifies no automation capture during owner handling, no SQL-history password, private non-echoing encrypted passfile delivery and explicit clipboard risk. No helper or live handoff performed. Remaining local executor qualification must test dummy-secret input plus managed ACL/extension restore, synchronized comparisons and limits. Do not ask owner willingness again or claim the actual handoff passed. No role/password/provider changes, no real data copied. Documentation-only checks apply; no scope deviation or acceptance change.
+
 Entry backend723d850/governance04df44d; focused origins fetched, clean. Owner approved packet preparation only. Governance APP013_P06_R02_EXECUTION_PROPOSAL.md records proposed exact target,23-table SELECT allowlist/two-role creation template, backup-before-ownership order, resource/time limits, retention and stop/cleanup conditions.
 
 No execution occurred. The packet is reviewable but NOT execution-ready: secure owner-assisted new-role password handoff is unverified; managed-role/extension/collation restoration and full-row snapshot comparison/enforced limits need a concrete tested executor; absolute execution dates remain unbound. The existing synthetic test must never be pointed at Neon. Do not claim a new document proves these capabilities.
