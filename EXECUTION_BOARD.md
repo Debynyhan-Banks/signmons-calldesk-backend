@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Current: R04 migration verified — review-ready
+## Current: R05 design review — U01 proposed, not approved
+
+Owner proceeded after R04 evidence. R05 source qualification and three design checklist items are documented in APP013_P06_R05_DESIGN.md: exact startup JSON/numeric provenance, runtime revision/origin/window and two durable approval digests. Recommend preserving runtime via a separately versioned private delivery bundle. Existing approval writers are synthetic fixtures only; do not use them live.
+
+U01 proposes one bounded staging operator tool for protected bundle preparation and transactional activation/revocation/readback. No implementation, secret access, provider/cloud/database mutation or release this turn. Owner must approve design and the explicit added task before coding.74existing focused Jest tests pass; documentation gates recorded in backend p06-r05-design-review.md. Scope deviation proposed, not implemented.
+
+Ledger remains R01-R04closed4/12,R05-R12open8; R05design3/3 documented but review pending. Approved-added0,proposed-added1. If owner accepts R05 and U01: original12+added1=13,closed5,remaining8 (U01 plus R06-R12). Packages5/60(8.3%),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. Smallest decision: approve U01 for local synthetic implementation only; external execution still separately gated.
+
+## Historical: R04 migration verified — review-ready
 
 Owner-authorized fresh attempt P06-R04-child-migration-20260915T230020Z ran from clean backend8ca8818f3e53fade2690e6036a42404b1a2e06f9 within23:00:20–23:10:20UTC, same fixed child/admin/13pending SQL/USD1 allowance. Result23:01:22.635UTC MIGRATION_VERIFIED,26applied; owner independently reported the Terminal success. Browser readback26applied/0unfinished/0other sessions. Runner verified exact history checksums/catalog. Exact encrypted image ejected and mount absent; unchanged baseline livenessok and traffic preserved. No deployment, parent migration, secret change, intake activation or backup repeat.
 
