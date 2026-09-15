@@ -4,6 +4,8 @@
 
 ## Outcome
 
+Continuation qualification (2026-09-14): metadata-only version lists resolved database/admin/conversation encryption to enabled version2, eight other inherited references to version1 except Stripe webhook remains5. Exact names and build-only approval request are in governance APP013_2B_ACTIVATION_PACKET.md. No payload correctness/schema/access claim. Existing build 688616b2 used E2_HIGHCPU_8, 1200s timeout, signmons-build identity/source bucket, about118 seconds. Official build rate USD0.0156/minute yields USD0.312 compute at20 minutes, excluding storage/logging/transfer/tax. Registry is3036.756MB and automatic scanning disabled; no free-credit assumption. Proposed one-attempt build uses immutable source53037fb, existing resources and a USD1 operational allowance (not hard billing cap); owner approval is required. No build/deploy/provider action executed. Directory CLI unavailable; official Google pricing used directly. This is qualification within item3, not a new section. See [Cloud Build](https://cloud.google.com/build/pricing) and [Artifact Registry](https://cloud.google.com/artifact-registry/pricing).
+
 Governance APP013_2B_ACTIVATION_PACKET.md now has a current source-bound draft, verified resource table, proposed disabled-candidate diff, separate enabled-run requirements and named unresolved approval inputs. Its old "implementation has not started" and blanket Google-support-wait wording is explicitly historical. The fixed checklist is unchanged: 1/2 locally complete; 3 packet/review in progress; 4 approved capped run/acceptance pending. A draft with blanks is not an executable release or item 3 completion.
 
 ## Read-only observations
