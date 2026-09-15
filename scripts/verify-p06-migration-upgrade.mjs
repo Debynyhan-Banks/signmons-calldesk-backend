@@ -16,6 +16,11 @@ import {
 import { userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import {
+  BackupBudget,
+  compareTables,
+  sameMetadata,
+} from "./p06_backup_guards.mjs";
 const require = createRequire(import.meta.url);
 const { Client } = require("pg");
 assert.equal(require("prisma/package.json").version, "7.10.0");
@@ -262,52 +267,8 @@ async function catalog(c) {
   return result;
 }
 async function archiveRoundTrip(source) {
-  const bin = "/opt/homebrew/opt/postgresql@18/bin/";
-  async function command(tool, args, expected = 0) {
-    const result = await new Promise((resolve, reject) => {
-      const child = spawn(bin + tool, args, {
-        env: {
-          PATH: bin,
-          LC_ALL: "C",
-          ...(encryptedWorkspace ? { TMPDIR: temporary } : {}),
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      let output = "",
-        timedOut = false;
-      const timer = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGKILL");
-      }, 120000);
-      child.stdout.on("data", (x) => {
-        output += x;
-      });
-      child.stderr.on("data", (x) => {
-        output += x;
-      });
-      child.on("error", (e) => {
-        clearTimeout(timer);
-        reject(e);
-      });
-      child.on("close", (code) => {
-        clearTimeout(timer);
-        resolve({ code, output, timedOut });
-      });
-    });
-    assert.equal(result.timedOut, false);
-    assert.equal(result.code, expected, result.output);
-    return result.output;
-  }
-  const connection = [
-    "-h",
-    socket,
-    "-p",
-    "5432",
-    "-U",
-    local.user,
-    "--no-password",
-  ];
-  const archive = path.join(temporary, "synthetic.dump");
+  // Synthetic fixture creation is not part of a future live backup executor.
+  // Prepare targets before entering the one shared dump/restore/comparison budget.
   const tables = (
     await source.c.query(
       "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
@@ -321,6 +282,61 @@ async function archiveRoundTrip(source) {
     )
   ).rows;
   assert.equal(allTables.length, 26);
+  const restored = await database();
+  if (managedRehearsal) await managedTarget(restored);
+  const missingRoleTarget = managedRehearsal ? await database() : null;
+  const rejected = await database();
+  const budget = await BackupBudget.create({
+    roots: [temporary, path.dirname(socket)],
+  });
+  const wrap = (db) =>
+    db && {
+      ...db,
+      c: {
+        query: (sql) => budget.query(db.c, sql),
+        end: () => db.c.end(),
+      },
+    };
+  try {
+    await guardedArchiveRoundTrip(
+      wrap(source),
+      budget,
+      allTables,
+      wrap(restored),
+      wrap(missingRoleTarget),
+      wrap(rejected),
+    );
+    await budget.check();
+  } finally {
+    budget.close();
+  }
+}
+async function guardedArchiveRoundTrip(
+  source,
+  budget,
+  allTables,
+  restored,
+  missingRoleTarget,
+  rejected,
+) {
+  const bin = "/opt/homebrew/opt/postgresql@18/bin/";
+  async function command(tool, args, expected = 0) {
+    return budget.command(bin + tool, args, {
+      env: { PATH: bin, LC_ALL: "C", TMPDIR: temporary },
+      expected,
+      ...(tool === "pg_dump" ? { archive } : {}),
+    });
+  }
+  const connection = [
+    "-h",
+    socket,
+    "-p",
+    "5432",
+    "-U",
+    local.user,
+    "--no-password",
+  ];
+  const archive = path.join(temporary, "synthetic.dump");
   await source.c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const snapshot = (await source.c.query("SELECT pg_export_snapshot() AS id"))
     .rows[0].id;
@@ -330,13 +346,21 @@ async function archiveRoundTrip(source) {
     ...dumpConnection,
     "--snapshot=" + snapshot,
     "-Fc",
-    "-f",
-    archive,
     source.name,
   ]);
   const bytes = await readFile(archive);
-  const restored = await database();
-  if (managedRehearsal) await managedTarget(restored);
+  // Fictional concurrent writer after dump: source comparator must still see
+  // the exported snapshot, not a later source state.
+  const writer = new Client({ ...local, database: source.name });
+  await writer.connect();
+  try {
+    await budget.query(
+      writer,
+      `UPDATE public."Customer" SET "fullName"='Fictional concurrent update'`,
+    );
+  } finally {
+    await writer.end();
+  }
   await command("pg_restore", [
     ...connection,
     "--exit-on-error",
@@ -346,23 +370,67 @@ async function archiveRoundTrip(source) {
     archive,
   ]);
   await history(restored.c, 13);
-  assert.deepEqual(await catalog(restored.c), await catalog(source.c));
-  for (const { schemaname, tablename } of allTables) {
-    assert.deepEqual(
-      (
-        await restored.c.query(
-          `SELECT * FROM "${schemaname}"."${tablename}" ORDER BY id`,
-        )
-      ).rows,
-      (
-        await source.c.query(
-          `SELECT * FROM "${schemaname}"."${tablename}" ORDER BY id`,
-        )
-      ).rows,
+  sameMetadata(await catalog(restored.c), await catalog(source.c));
+  await budget.query(
+    restored.c,
+    "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY",
+  );
+  const comparison = await compareTables(
+    budget,
+    source.c,
+    restored.c,
+    allTables,
+  );
+  await budget.query(restored.c, "ROLLBACK");
+  report.checks.push({
+    operation: "bounded-private-streaming-comparison",
+    ...comparison,
+  });
+  report.checks.push({
+    operation: "post-dump-concurrent-write-excluded-by-source-snapshot",
+  });
+  // Exercise actual SQL cursor refusal, not only a mocked comparator.
+  await restored.c.query(
+    `UPDATE public."Customer" SET "fullName"='Fictional mismatch'`,
+  );
+  await restored.c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+  try {
+    await assert.rejects(
+      compareTables(budget, source.c, restored.c, [
+        { schemaname: "public", tablename: "Customer" },
+      ]),
+      (error) => error.message === "ROW_MISMATCH" && !error.cause,
     );
+  } finally {
+    // Comparator failures leave cursors in their transactions; explicit rollback
+    // is required before reusing either connection (or close on actual failure).
+    await restored.c.query("ROLLBACK");
+    await source.c.query("CLOSE p06_rows");
   }
+  await restored.c.query(
+    `UPDATE public."Customer" SET "fullName"=repeat('x',1048577)`,
+  );
+  await restored.c.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+  try {
+    await assert.rejects(
+      compareTables(budget, source.c, restored.c, [
+        { schemaname: "public", tablename: "Customer" },
+      ]),
+      (error) => error.message === "ROW_SIZE_LIMIT" && !error.cause,
+    );
+  } finally {
+    await restored.c.query("ROLLBACK");
+    await source.c.query("CLOSE p06_rows");
+  }
+  await restored.c.query(
+    `UPDATE public."Customer" SET "fullName"='Fictional customer'`,
+  );
+  report.checks.push({
+    operation:
+      "actual-cursor-mismatch-and-oversized-row-refused-without-values",
+  });
   const security = `SELECT n.nspname,c.relname,pg_get_userbyid(c.relowner) AS owner,c.relacl FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','legacy_2025') AND c.relkind IN ('r','S') ORDER BY n.nspname,c.relname`;
-  assert.deepEqual(
+  sameMetadata(
     (await restored.c.query(security)).rows,
     (await source.c.query(security)).rows,
   );
@@ -372,7 +440,7 @@ async function archiveRoundTrip(source) {
       "SELECT pg_get_userbyid(defaclrole) AS owner,defaclnamespace::regnamespace::text AS schema,defaclobjtype,defaclacl::text FROM pg_default_acl ORDER BY owner,schema,defaclobjtype",
       "SELECT nspname,pg_get_userbyid(nspowner) AS owner,nspacl::text FROM pg_namespace WHERE nspname IN ('public','legacy_2025') ORDER BY nspname",
     ])
-      assert.deepEqual(
+      sameMetadata(
         (await restored.c.query(query)).rows,
         (await source.c.query(query)).rows,
       );
@@ -383,7 +451,6 @@ async function archiveRoundTrip(source) {
   }
   await source.c.query("ROLLBACK");
   if (managedRehearsal) {
-    const missingRoleTarget = await database();
     await command(
       "pg_restore",
       [
@@ -413,7 +480,6 @@ async function archiveRoundTrip(source) {
   await writeFile(broken, bytes.subarray(0, Math.floor(bytes.length / 2)), {
     mode: 0o600,
   });
-  const rejected = await database();
   await command(
     "pg_restore",
     [

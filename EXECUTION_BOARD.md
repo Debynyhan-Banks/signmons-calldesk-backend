@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 legacy metadata verified; proposal corrected
+## Current: R02 local backup limits and private comparison tested
+
+Owner-approved safety code implemented in existing local backup rehearsal. Shared20minute budget, pre-write64MiB archive ceiling, monitored768MiB workspace and privacy-safe bounded cursor comparison passed;26tables/20fictional rows matched, concurrent snapshot and refusal tests passed. See backend evidence/APP-013/p06-r02-safety-result.md and APP013_P06_R02_SAFETY_CARD.md. No live credential/export or image change. Next existing R02 gate: ownership-enabled encrypted storage/actual private handoff qualification and filled execution packet, then separately approved real recovery proof. R01 closed; R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
+
+## Historical: R02 legacy metadata verified; proposal corrected
 
 Read-only child catalog inspection on2026-09-15 confirmed public23tables/34enums plus legacy_2025 three tables/three enums:26tables,37enums total. Proposed backup allowlist now includes both schemas and exactly those26tables; no live grants, credentials or export. See backend evidence/APP-013/p06-r02-legacy-metadata.md. Next qualify aggregate20minute/storage limits and sanitized streaming comparisons for the real runner, then separately approve credential/backup execution. R02 remains open; R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation implemented.
 
