@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: P06 baseline v1 approved — R01 locally complete
+## Current: R02 target qualification partial — no execution authority
+
+Read-only consumer review found nine tagged revisions and an existing migration job referencing the staging database secret; baseline scheduling and old SMS-test sending flags remain enabled. No actual activity inferred. Neon UI reports PostgreSQL18 versus local rehearsal16.11 and six-hour history without snapshots. Exact evidence: backend p06-target-consumers-recovery.md. R02 stays open pending version/connection, consumer maintenance and recovery qualification; no resource changes. Closed R01, open R02–R12 (11), added0; acceptance5/60 and3/8 unchanged, ETA unvalidated. Stop for material installation/maintenance/recovery decisions. No scope deviation.
+
+## Historical: R01 completion checkpoint
 
 Owner approved P06 baseline v1 (12 fixed tasks). R01 local synthetic migration rehearsal is complete: real Prisma7.10 old13→all26 upgrade, preserved fictional rows, catalog parity, no-op replay, constraints/immutability and deliberate lock-timeout stop/cleanup passed. See backend evidence/APP-013/p06-migration-upgrade-rehearsal.md. Closed R01; open R02–R12 (11 tasks), no added tasks. Next R02 is target/consumer/recovery qualification, not migration execution. R05 secure injection remains an explicit unresolved design. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), P06 unaccepted; ETA unvalidated. No staging/cloud/provider action or scope deviation.
 
