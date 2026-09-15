@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Current: R04 fresh retry prepared — waiting for private-input readiness
+## Current: R04 migration verified — review-ready
+
+Owner-authorized fresh attempt P06-R04-child-migration-20260915T230020Z ran from clean backend8ca8818f3e53fade2690e6036a42404b1a2e06f9 within23:00:20–23:10:20UTC, same fixed child/admin/13pending SQL/USD1 allowance. Result23:01:22.635UTC MIGRATION_VERIFIED,26applied; owner independently reported the Terminal success. Browser readback26applied/0unfinished/0other sessions. Runner verified exact history checksums/catalog. Exact encrypted image ejected and mount absent; unchanged baseline livenessok and traffic preserved. No deployment, parent migration, secret change, intake activation or backup repeat.
+
+See backend evidence/APP-013/p06-r04-verified.md. R01-R04 technically closed4/12; R05-R12open8,added0. R04 evidence awaits owner review; P06 remains unaccepted. Accepted packages5/60(8.3% tracked plan),walkthrough3/8(37.5%),ETAunvalidated. No scope deviation.
+
+Next is existing R05 design qualification: exact private-material delivery/startup JSON, numeric provenance/key separation, runtime/HTTPS origin and activation/revocation mapping. Design output only; no implicit new implementation or external-action authority. Stop this run at R04 review-ready; no migration retry.
+
+## Historical: R04 fresh retry prepared — waiting for private-input readiness
 
 Owner requested "do again". Existing runner/Python binding changed only to unused r04-migration-v2; explicit consumed-v1 rejection tested.8Node/11Python and21governance regressions plus baseline/consistency/architecture/whitespace pass. No migration algorithm, SQL, limit or password protocol change. See backend evidence/APP-013/p06-r04-v2-preparation.md. Prior attempt remains intact.
 
