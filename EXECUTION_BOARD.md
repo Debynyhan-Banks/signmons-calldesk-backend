@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 source metadata verified
+## Current: R02 execution proposal drafted, not execution-ready
+
+See evidence/APP-013/p06-r02-execution-proposal.md and governance APP013_P06_R02_EXECUTION_PROPOSAL.md. Exact proposed role boundary/order/limits documented; secure credential handoff and concrete managed-role restoration/comparison/enforcement remain unqualified. No external execution. R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged; ETA unvalidated. Sequence refinement proposed, no scope deviation implemented.
+
+## Historical: R02 source metadata verified
 
 Owner-authorized read-only child inventory complete; see evidence/APP-013/p06-r02-source-metadata.md. All13 migration checksums match; exact size/encoding/ownership/default ACLs and current known consumers/quotas recorded. Next finalize one credential/private-backup execution proposal, not another inspection approval. No external mutation or acceptance. R01 closed; R02-R12 open11; added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
 
