@@ -21,11 +21,32 @@ const { Client } = require("pg");
 assert.equal(require("prisma/package.json").version, "7.10.0");
 const root = fileURLToPath(new URL("../", import.meta.url));
 const socket = process.env.P06_PG18_SOCKET ?? "/tmp";
+const encryptedWorkspace = process.env.P06_ENCRYPTED_WORKSPACE;
+const roleRehearsal = process.env.P06_ROLE_REHEARSAL === "1";
+if (roleRehearsal)
+  assert.notEqual(
+    socket,
+    "/tmp",
+    "role rehearsal requires private PG18 socket",
+  );
+if (encryptedWorkspace) {
+  assert.match(
+    encryptedWorkspace,
+    /^\/Volumes\/Signmons-P06\/qualification-[A-Za-z0-9]+$/,
+  );
+  assert.equal(await realpath(encryptedWorkspace), encryptedWorkspace);
+  assert.equal(socket, path.join(encryptedWorkspace, "socket"));
+  assert.equal((await stat(encryptedWorkspace)).mode & 0o077, 0);
+}
 const backupRehearsal = process.env.P06_BACKUP_REHEARSAL === "1";
 if (backupRehearsal)
   assert.notEqual(socket, "/tmp", "backup requires private PG18 socket");
 if (socket !== "/tmp") {
-  assert.match(socket, /^\/private\/tmp\/signmons-pg18-[A-Za-z0-9]+\/socket$/);
+  if (!encryptedWorkspace)
+    assert.match(
+      socket,
+      /^\/private\/tmp\/signmons-pg18-[A-Za-z0-9]+\/socket$/,
+    );
   assert.equal(await realpath(socket), socket);
   const info = await stat(socket);
   assert.ok(info.isDirectory());
@@ -47,8 +68,13 @@ const names = (
   .sort();
 assert.equal(names.length, 26);
 assert.equal(names[13], "20260908120000_add_sms_enqueue_intents");
-const temporary = await mkdtemp("/private/tmp/signmons-p06-upgrade-");
+const temporary = await mkdtemp(
+  encryptedWorkspace
+    ? path.join(encryptedWorkspace, "rehearsal-")
+    : "/private/tmp/signmons-p06-upgrade-",
+);
 const owned = [],
+  ownedRoles = [],
   clients = [],
   report = { version: "7.10.0", checks: [], cleanup: [] };
 const hash = (data) => createHash("sha256").update(data).digest("hex");
@@ -113,7 +139,7 @@ async function database() {
 }
 async function deploy(db, inputs, expected = 0) {
   const url = new URL(
-    `postgresql://${encodeURIComponent(local.user)}@localhost/${db.name}`,
+    `postgresql://${encodeURIComponent(db.migrationUser ?? local.user)}@localhost/${db.name}`,
   );
   url.searchParams.set("host", socket);
   url.searchParams.set("schema", "public");
@@ -139,6 +165,7 @@ async function deploy(db, inputs, expected = 0) {
           DATABASE_URL: url.toString(),
           PRISMA_HIDE_UPDATE_MESSAGE: "1",
           CHECKPOINT_DISABLE: "1",
+          ...(encryptedWorkspace ? { TMPDIR: temporary } : {}),
         },
         stdio: ["ignore", "pipe", "pipe"],
       },
@@ -234,7 +261,11 @@ async function archiveRoundTrip(source) {
   async function command(tool, args, expected = 0) {
     const result = await new Promise((resolve, reject) => {
       const child = spawn(bin + tool, args, {
-        env: { PATH: bin, LC_ALL: "C" },
+        env: {
+          PATH: bin,
+          LC_ALL: "C",
+          ...(encryptedWorkspace ? { TMPDIR: temporary } : {}),
+        },
         stdio: ["ignore", "pipe", "pipe"],
       });
       let output = "",
@@ -334,6 +365,80 @@ async function archiveRoundTrip(source) {
     sha256: hash(bytes),
   });
 }
+async function qualifyRole(db) {
+  const owner = "p06_owner_" + randomBytes(8).toString("hex");
+  const runner = "p06_runner_" + randomBytes(8).toString("hex");
+  for (const [name, login] of [
+    [owner, "NOLOGIN"],
+    [runner, "LOGIN"],
+  ]) {
+    await admin.query(
+      `CREATE ROLE "${name}" ${login} NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`,
+    );
+    ownedRoles.push(name);
+  }
+  await db.c.query(`GRANT USAGE, CREATE ON SCHEMA public TO "${runner}"`);
+  await db.c.query(`GRANT ALL ON ALL TABLES IN SCHEMA public TO "${runner}"`);
+  const c = new Client({ ...local, user: runner, database: db.name });
+  await c.connect();
+  try {
+    await assert.rejects(
+      c.query(
+        'ALTER TABLE "PropertyAddress" ALTER COLUMN latitude DROP NOT NULL',
+      ),
+      (e) => e.code === "42501" && /must be owner/.test(e.message),
+    );
+    const flags = (
+      await c.query(
+        "SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=current_user",
+      )
+    ).rows[0];
+    assert.ok(Object.values(flags).every((v) => v === false));
+    await assert.rejects(
+      c.query("CREATE ROLE p06_forbidden_probe"),
+      (e) => e.code === "42501",
+    );
+  } finally {
+    await c.end();
+  }
+  // Explicit fixture object ownership only. Never REASSIGN OWNED on a shared owner.
+  const relations = (
+    await db.c.query(
+      "SELECT relname FROM pg_class JOIN pg_namespace n ON n.oid=relnamespace WHERE n.nspname='public' AND relkind='r' ORDER BY relname",
+    )
+  ).rows;
+  for (const { relname } of relations)
+    await db.c.query(
+      `ALTER TABLE public."${relname.replaceAll('"', '""')}" OWNER TO "${owner}"`,
+    );
+  const types = (
+    await db.c.query(
+      "SELECT typname FROM pg_type JOIN pg_namespace n ON n.oid=typnamespace WHERE n.nspname='public' AND typtype='e'",
+    )
+  ).rows;
+  for (const { typname } of types)
+    await db.c.query(
+      `ALTER TYPE public."${typname.replaceAll('"', '""')}" OWNER TO "${owner}"`,
+    );
+  const functions = (
+    await db.c.query(
+      "SELECT p.oid::regprocedure::text AS signature FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND prokind='f'",
+    )
+  ).rows;
+  for (const { signature } of functions)
+    await db.c.query(`ALTER FUNCTION ${signature} OWNER TO "${owner}"`);
+  await db.c.query(`GRANT USAGE, CREATE ON SCHEMA public TO "${owner}"`);
+  await db.c.query(
+    `REVOKE ALL ON ALL TABLES IN SCHEMA public FROM "${runner}"`,
+  );
+  await admin.query(`GRANT "${owner}" TO "${runner}"`);
+  db.migrationUser = runner;
+  report.checks.push({
+    operation: "table-grants-refuse-alter-isolated-owner-membership-qualified",
+    owner,
+    runner,
+  });
+}
 try {
   await admin.connect();
   assert.equal(
@@ -344,11 +449,24 @@ try {
     await admin.query("SHOW server_version")
   ).rows[0].server_version;
   if (socket !== "/tmp") assert.match(report.server, /^18\./);
+  if (encryptedWorkspace) {
+    const dataDirectory = (await admin.query("SHOW data_directory")).rows[0]
+      .data_directory;
+    assert.equal(
+      await realpath(dataDirectory),
+      path.join(encryptedWorkspace, "data"),
+    );
+    assert.equal(
+      (await admin.query("SHOW listen_addresses")).rows[0].listen_addresses,
+      "",
+    );
+  }
   const upgrade = await database();
   await deploy(upgrade, oldInput);
   await history(upgrade.c, 13);
   await seed(upgrade.c);
   if (backupRehearsal) await archiveRoundTrip(upgrade);
+  if (roleRehearsal) await qualifyRole(upgrade);
   const beforeConsent = (
     await upgrade.c.query('SELECT * FROM "SmsConsentRecord"')
   ).rows[0];
@@ -473,6 +591,10 @@ try {
     assert.match(name, /^calldesk_p06_[0-9a-f]{16}$/);
     await admin.query(`DROP DATABASE "${name}"`);
     report.cleanup.push(name);
+  }
+  for (const name of ownedRoles.reverse()) {
+    assert.match(name, /^p06_(owner|runner)_[0-9a-f]{16}$/);
+    await admin.query(`DROP ROLE "${name}"`);
   }
   await admin.end();
   await writeFile(

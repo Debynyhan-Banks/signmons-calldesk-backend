@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 consolidated closeout review
+## Current: R02 consolidated local qualification passed
+
+See evidence/APP-013/p06-r02-local-qualification.md and governance APP013_P06_R02_EXTERNAL_PACKET.md. Restricted-role migration and encrypted synthetic restore passed; fixture DBs/roles removed, PG stopped, image locked. R02 still requires authorized source metadata and actual credential/recovery proof. No external changes. R01 closed; R02-R12 open11, added0; accepted5/60 and3/8 unchanged, ETA unvalidated. No scope deviation.
+
+## Historical: R02 consolidated closeout review
 
 See evidence/APP-013/p06-r02-closeout-review.md and governance APP013_P06_R02_CLOSEOUT_REVIEW.md. Two unresolved acceptance areas: isolated migration access/consumers and usable backup with restore proof. Grouped preparation proposed, not external execution authority. R01 closed, R02-R12 open11, added0; accepted5/60 and3/8 unchanged, ETA unvalidated. No scope deviation.
 
