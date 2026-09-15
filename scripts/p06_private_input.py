@@ -183,7 +183,7 @@ if __name__ == "__main__":
                        "/Volumes/Signmons-P06/r02-backup-v2/approval.json"])
         if migration:
             command = [executable, str(Path(__file__).resolve().with_name("p06-migrate-once.mjs")),
-                       "--approved-child-migration", "/Volumes/Signmons-P06/r04-migration-v1/approval.json"]
+                       "--approved-child-migration", "/Volumes/Signmons-P06/r04-migration-v2/approval.json"]
         forward_admin(command, 0, 1, backup=backup, migration=migration)
     except (Exception, KeyboardInterrupt):
         # Never print exception/child payload: it may carry credential material.

@@ -16,7 +16,7 @@ import {
 import { readPipe, BackupBudget } from "./p06_backup_guards.mjs";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
-export const RUN = "/Volumes/Signmons-P06/r04-migration-v1";
+export const RUN = "/Volumes/Signmons-P06/r04-migration-v2";
 export const OPTIONS = "-c lock_timeout=5s -c statement_timeout=60s";
 export const RECOVERY = Object.freeze({
   sha256: "8da4d9ce76f8ed4d96f5e33622adab6a4c7cb244689ca645186535ccf26775f9",

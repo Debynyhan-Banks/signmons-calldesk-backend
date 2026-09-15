@@ -54,6 +54,7 @@ test("exact approval passes; wrong scope, privilege, revision, replay window and
     { costCeilingUsd: 2 },
     { remainingCUh: 0 },
     { runDirectory: "/tmp" },
+    { runDirectory: "/Volumes/Signmons-P06/r04-migration-v1" },
     { endUtc: "2026-09-16T12:10:01.000Z" },
     { verifiedAtUtc: "2026-09-16T11:54:00.000Z" },
     { startUtc: "2026-09-17T12:00:00.000Z" },

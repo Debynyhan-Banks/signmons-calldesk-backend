@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Current: R04 first attempt stopped before Prisma — workspace locked
+## Current: R04 fresh retry prepared — waiting for private-input readiness
+
+Owner requested "do again". Existing runner/Python binding changed only to unused r04-migration-v2; explicit consumed-v1 rejection tested.8Node/11Python and21governance regressions plus baseline/consistency/architecture/whitespace pass. No migration algorithm, SQL, limit or password protocol change. See backend evidence/APP-013/p06-r04-v2-preparation.md. Prior attempt remains intact.
+
+Do not start the60second password prompt until owner confirms Ready now and closes any password-reveal screen. Then fresh child/quota/recovery/storage preflight and one absolute10minute window under unchangedUSD1/staging-only limits. Old morning window cannot be reused. No new live approval file, mount, prompt or migration at this preparation checkpoint.
+
+R01-R03closed,R04-R12open9,added0; packages5/60(8.3%),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. Same R04 retry, no added subsection or scope deviation.
+
+## Historical: R04 first attempt stopped before Prisma — workspace locked
 
 Owner approved R03's exact one-attempt child migration packet and confirmed password readiness. Approved sourceeb1dd06/window2026-09-15T14:40–14:50UTC. Fresh child metadata13applied/0unfinished/0other sessions/26owned tables and recovery/storage/quota guards passed. Private attempt reserved14:40:53Z; result14:41:53.745Z REFUSED_OR_PARTIAL. Inputs directory never created, so Prisma/migration DDL was not invoked. Approximate60second duration suggests private-input timeout, not a proven cause; owner final Terminal status still needed. Do not diagnose wrong password/provider rejection without evidence.
 
