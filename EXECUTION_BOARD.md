@@ -1,6 +1,11 @@
 # Signmons Backend Execution Board
 
-## Current: R02 target qualification partial — no execution authority
+## Current: R02 branch created and capped — no migration or credential authority
+
+Owner explicitly approved one standard child and then the brief default-compute interval before immediate capping. Created p06-isolated-staging-v1 (br-sparkling-sun-ay6gr5e8), endpoint ep-jolly-flower-ayc6w9hv, in soft-smoke-54063480 from br-young-term-ayfi7ist. Browser readback: 0.25 CU fixed, five-minute inactivity suspension, expiry Never; parent remains production/default at 0.25–2 CU. No application connection, password/secret change, migration, deployment or paid-plan upgrade. See backend evidence/APP-013/p06-isolated-branch-created.md and APP013_P06_ISOLATED_BRANCH_PROPOSAL.md. R02 remains open for credential/connection isolation and recovery qualification; R01 closed, R02–R12 open (11), added0. Accepted5/60 (8.3%), walkthrough3/8 (37.5%), P06 unaccepted, ETA unvalidated. No scope deviation beyond the expressly approved branch/setup amendment.
+
+## Historical: prior qualification observations
+
 
 Direct Neon endpoint identified from hidden-password connection UI. Baseline b6f1d13 requires non-null location fields; new null writes cannot be assumed compatible with older shared readers. See backend p06-direct-connection-compatibility.md. Proposed isolated-branch investigation versus coordinated shared-target maintenance requires owner direction; no branch/config/data action authorized or performed. R02 open,11 remaining,added0; no acceptance or ETA change.
 
