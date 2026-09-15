@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 private handoff locally qualified — live logging review pending
+## Current: R02 existing-administrator backup mode locally qualified
+
+Owner approved one supervised backup using the existing administrator credential instead of provisioning/resetting a runner password. Explicit fixed-child mode implemented in the existing backup/input helpers; 32 Node and8 Python tests pass, one prior opt-in integration skipped. No real credential, mount, export or provider change. See APP013_P06_R02_EXISTING_ADMIN_EXCEPTION.md and backend evidence/APP-013/p06-r02-existing-admin-backup.md. Next owner private readiness, fresh bound execution packet and one backup/restore; no support-email dependency or password SQL. Temporary encrypted0600 administrator passfile is removed at closeout; inherited credential remains broadly privileged. R02 still two acceptance areas; recovery unproven and migration-access boundary remains separate. R01closed,R02-R12open11,added0; accepted5/60 and3/8 unchanged; ETAunvalidated. Approved credential-mechanism deviation only; no additional scope deviation.
+
+## Historical: R02 private handoff locally qualified — live logging review pending
 
 Owner-approved private handoff adapter and v2 backup receipt binding implemented and locally qualified. Seven Python tests and28Node regressions pass; actual private PG18 dummy-role password proof passed, objects removed and server stopped. No real credential/Neon connection/password/backup or image mount. See backend p06-r02-private-admin-local.md and APP013_P06_R02_PRIVATE_ADMIN_PROCEDURE.md. Next review code and READ-ONLY Neon logging/extension/administrator-authority qualification; provider review/fingerprint and fresh explicit live packet remain absent. Never weaken logging checks or reuse cancelledv1. R02 still has two acceptance areas; R01closed,R02-R12open11,added0; accepted5/60 and3/8 unchanged; ETAunvalidated. Approved credential-mechanism amendment implemented locally only; no additional scope deviation.
 

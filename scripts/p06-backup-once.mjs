@@ -10,6 +10,7 @@ import {
   mkdir,
   unlink,
   statfs,
+  stat,
 } from "node:fs/promises";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
@@ -34,6 +35,8 @@ export const TARGET = Object.freeze({
 });
 export const MOUNT = "/Volumes/Signmons-P06";
 export const RUN = MOUNT + "/r02-backup-v2";
+export const ADMIN_RUN = MOUNT + "/r02-backup-admin-v1";
+export const ADMIN_ROLE = "neondb_owner";
 const IMAGE =
   "/Users/debynyhanbanks/Library/Application Support/Signmons/P06/signmons-p06.dmg.sparsebundle";
 const UUID = "A0020084-32EC-412A-B96B-1AA68A2CE61F";
@@ -125,6 +128,21 @@ export function validatePacket(p, revision, now = Date.now()) {
     throw bad("WINDOW_OR_QUOTA_REFUSED");
   return Math.floor(end - now);
 }
+export function validateExistingAdminPacket(p, revision, now = Date.now()) {
+  if (
+    p?.role !== ADMIN_ROLE ||
+    p.runDirectory !== ADMIN_RUN ||
+    p.existingAdministratorBackupApproved !== true ||
+    p.inheritedCredentialRiskAcknowledged !== true
+  )
+    throw bad("ADMIN_BACKUP_APPROVAL_REFUSED");
+  // Reuse every target/time/quota/retention guard, not a generic bypass.
+  return validatePacket(
+    { ...p, role: TARGET.role, runDirectory: RUN },
+    revision,
+    now,
+  );
+}
 export async function privateFile(filename, maxBytes) {
   const parent = path.dirname(filename);
   if ((await realpath(parent)) !== parent) throw bad("PRIVATE_PATH_REFUSED");
@@ -151,7 +169,8 @@ export async function privateFile(filename, maxBytes) {
     await fd.close();
   }
 }
-export function parsePassfile(text) {
+export function parsePassfile(text, role = TARGET.role) {
+  if (![TARGET.role, ADMIN_ROLE].includes(role)) throw bad("PASSFILE_REFUSED");
   if (
     !text.endsWith("\n") ||
     text.slice(0, -1).includes("\n") ||
@@ -173,11 +192,63 @@ export function parsePassfile(text) {
     escaped ||
     fields.length !== 5 ||
     fields.slice(0, 4).join(":") !==
-      [TARGET.host, "5432", TARGET.database, TARGET.role].join(":") ||
+      [TARGET.host, "5432", TARGET.database, role].join(":") ||
     !/^[\x20-\x7e]{1,512}$/.test(fields[4])
   )
     throw bad("PASSFILE_REFUSED");
   return fields[4];
+}
+export async function writeAdminPassfile(root, password) {
+  if (!/^[\x20-\x7e]{1,512}$/.test(password))
+    throw bad("PRIVATE_INPUT_REFUSED");
+  const dir = await lstat(root);
+  if (
+    !dir.isDirectory() ||
+    dir.uid !== process.getuid() ||
+    (dir.mode & 0o777) !== 0o700 ||
+    (await realpath(root)) !== root
+  )
+    throw bad("PRIVATE_PATH_REFUSED");
+  const escaped = password.replaceAll("\\", "\\\\").replaceAll(":", "\\:");
+  const file = await open(
+    root + "/pgpass",
+    constants.O_WRONLY |
+      constants.O_CREAT |
+      constants.O_EXCL |
+      constants.O_NOFOLLOW,
+    0o600,
+  );
+  const identity = await file.stat();
+  try {
+    await file.writeFile(
+      `${TARGET.host}:5432:${TARGET.database}:${ADMIN_ROLE}:${escaped}\n`,
+    );
+    await file.sync();
+    return { dev: identity.dev, ino: identity.ino };
+  } catch {
+    await unlink(root + "/pgpass");
+    throw bad("PASSFILE_WRITE_FAILED");
+  } finally {
+    await file.close();
+  }
+}
+export function validateSourceFlags(flags, role, database, existingAdmin) {
+  if (
+    !flags ||
+    Object.keys(flags).sort().join() !==
+      "rolbypassrls,rolcreatedb,rolcreaterole,rolreplication,rolsuper" ||
+    Object.values(flags).some((x) => typeof x !== "boolean")
+  )
+    throw bad("SOURCE_ROLE_REFUSED");
+  if (existingAdmin === true) {
+    if (
+      role !== ADMIN_ROLE ||
+      database !== TARGET.database ||
+      flags.rolsuper !== false
+    )
+      throw bad("SOURCE_ROLE_REFUSED");
+  } else if (Object.values(flags).some((x) => x !== false))
+    throw bad("SOURCE_ROLE_REFUSED");
 }
 export async function reserveAttempt(root, packet) {
   const fd = await open(
@@ -243,6 +314,7 @@ export async function backupCore({
   archive,
   dump,
   restore,
+  existingAdmin = false,
 }) {
   await budget.query(source, "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const identity = (
@@ -265,8 +337,7 @@ export async function backupCore({
       "SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=current_user",
     )
   ).rows[0];
-  if (!flags || Object.values(flags).some((x) => x !== false))
-    throw bad("SOURCE_ROLE_REFUSED");
+  validateSourceFlags(flags, role, database, existingAdmin);
   const tables = (
     await budget.query(
       source,
@@ -422,12 +493,15 @@ export async function cleanupOwned({ clients, stop, removePassfile, eject }) {
   }
   if (failed.length) throw bad("CLEANUP_FAILED");
 }
-export async function runLive(packet) {
+export async function runLive(packet, existingAdmin = false) {
+  const root = existingAdmin ? ADMIN_RUN : RUN;
+  const role = existingAdmin ? ADMIN_ROLE : TARGET.role;
+  const validate = existingAdmin ? validateExistingAdminPacket : validatePacket;
   // Packet is an operator record, not a cryptographic substitute for user approval.
   const revision = (
     await commandText("/usr/bin/git", ["-C", REPO, "rev-parse", "HEAD"])
   ).trim();
-  validatePacket(packet, revision);
+  validate(packet, revision);
   if (
     (
       await commandText("/usr/bin/git", ["-C", REPO, "status", "--porcelain"])
@@ -435,62 +509,82 @@ export async function runLive(packet) {
   )
     throw bad("SOURCE_CHECKOUT_DIRTY");
   await inspectStorage();
-  const handoff = JSON.parse(
-    (await privateFile(RUN + "/handoff.json", 8192)).data,
-  );
-  validateHandoff(handoff, packet);
-  const pass = await privateFile(RUN + "/pgpass", 2048);
-  let password = parsePassfile(pass.data);
-  pass.data = undefined;
+  let password, passIdentity;
+  if (!existingAdmin) {
+    const handoff = JSON.parse(
+      (await privateFile(root + "/handoff.json", 8192)).data,
+    );
+    validateHandoff(handoff, packet);
+    const pass = await privateFile(root + "/pgpass", 2048);
+    password = parsePassfile(pass.data);
+    passIdentity = { dev: pass.dev, ino: pass.ino };
+    pass.data = undefined;
+  } else if (!(await stat("/dev/stdin")).isFIFO())
+    throw bad("PRIVATE_PIPE_REQUIRED");
   // All later filesystem operations are confined to this verified private root.
-  const dir = await lstat(RUN);
+  const dir = await lstat(root);
   if (
     dir.uid !== process.getuid() ||
     (dir.mode & 0o777) !== 0o700 ||
-    (await realpath(RUN)) !== RUN
+    (await realpath(root)) !== root
   )
     throw bad("PRIVATE_PATH_REFUSED");
-  for (const name of ["data", "socket", "source.dump", "result.json"]) {
+  for (const name of [
+    "data",
+    "socket",
+    "source.dump",
+    "result.json",
+    ...(existingAdmin ? ["pgpass"] : []),
+  ]) {
     try {
-      await lstat(RUN + "/" + name);
+      await lstat(root + "/" + name);
       throw bad("EXISTING_ARTIFACT_REFUSED");
     } catch (e) {
       if (e.code !== "ENOENT") throw e;
     }
   }
-  await reserveAttempt(RUN, packet);
+  await reserveAttempt(root, packet);
   const clients = [];
   let budget;
   let result;
   let failure;
-  const passIdentity = { dev: pass.dev, ino: pass.ino };
   try {
     budget = await BackupBudget.create({
-      roots: [RUN],
-      milliseconds: validatePacket(packet, revision),
+      roots: [root],
+      milliseconds: validate(packet, revision),
     });
+    if (existingAdmin) {
+      process.stdout.write("READY\n");
+      const { readPipe } = await import("./p06-private-role-password.mjs");
+      password = await readPipe(process.stdin, budget);
+      validate(packet, revision);
+      passIdentity = await writeAdminPassfile(root, password);
+    }
     const source = new pg.Client({
       host: TARGET.host,
       port: 5432,
       database: TARGET.database,
-      user: TARGET.role,
+      user: role,
       password,
       ssl: { rejectUnauthorized: true },
       connectionTimeoutMillis: 5000,
       application_name: "signmons-p06-r02-backup",
+      options: "-c default_transaction_read_only=on",
     });
     password = undefined;
     clients.push(source);
     source.on("error", () => budget.abort("CONNECTION_FAILED"));
     await budget.race(source.connect());
-    const expiry = (
-      await budget.query(
-        source,
-        "SELECT rolvaliduntil::text AS expiry FROM pg_roles WHERE rolname=current_user",
-      )
-    ).rows[0].expiry;
-    if (Date.parse(expiry) !== Date.parse(packet.endUtc))
-      throw bad("ROLE_EXPIRY_REFUSED");
+    if (!existingAdmin) {
+      const expiry = (
+        await budget.query(
+          source,
+          "SELECT rolvaliduntil::text AS expiry FROM pg_roles WHERE rolname=current_user",
+        )
+      ).rows[0].expiry;
+      if (Date.parse(expiry) !== Date.parse(packet.endUtc))
+        throw bad("ROLE_EXPIRY_REFUSED");
+    }
     const sessions = (
       await budget.query(
         source,
@@ -498,13 +592,13 @@ export async function runLive(packet) {
       )
     ).rows[0].count;
     if (sessions !== 0) throw bad("SOURCE_BUSY");
-    await mkdir(RUN + "/socket", { mode: 0o700 });
-    const env = { PATH: BIN, TMPDIR: RUN, LC_ALL: "C" };
+    await mkdir(root + "/socket", { mode: 0o700 });
+    const env = { PATH: BIN, TMPDIR: root, LC_ALL: "C" };
     await budget.command(
       BIN + "initdb",
       [
         "-D",
-        RUN + "/data",
+        root + "/data",
         "--username=p06_local_admin",
         "--encoding=UTF8",
         "--locale=C.UTF-8",
@@ -517,12 +611,12 @@ export async function runLive(packet) {
       BIN + "pg_ctl",
       [
         "-D",
-        RUN + "/data",
+        root + "/data",
         "-l",
-        RUN + "/server.log",
+        root + "/server.log",
         "-o",
         "-c listen_addresses='' -k " +
-          RUN +
+          root +
           "/socket -c log_min_messages=panic -c log_min_error_statement=panic -c log_statement=none -c log_error_verbosity=terse",
         "-w",
         "-t",
@@ -532,7 +626,7 @@ export async function runLive(packet) {
       { env },
     );
     const local = {
-      host: RUN + "/socket",
+      host: root + "/socket",
       port: 5432,
       user: "p06_local_admin",
       connectionTimeoutMillis: 5000,
@@ -569,10 +663,11 @@ export async function runLive(packet) {
       target,
       "REVOKE CREATE ON DATABASE p06_restore FROM cloud_admin",
     );
-    const archive = RUN + "/source.dump";
+    const archive = root + "/source.dump";
     const remoteEnv = {
       ...env,
-      PGPASSFILE: RUN + "/pgpass",
+      PGPASSFILE: root + "/pgpass",
+      PGOPTIONS: "-c default_transaction_read_only=on",
       PGSSLMODE: "verify-full",
       PGSSLROOTCERT: "system",
     };
@@ -581,7 +676,8 @@ export async function runLive(packet) {
       source,
       target,
       database: TARGET.database,
-      role: TARGET.role,
+      role,
+      existingAdmin,
       history: await expectedHistory(),
       archive,
       dump: (snapshot, file) =>
@@ -593,7 +689,7 @@ export async function runLive(packet) {
             "-p",
             "5432",
             "-U",
-            TARGET.role,
+            role,
             "--no-password",
             "--snapshot=" + snapshot,
             "-Fc",
@@ -633,11 +729,13 @@ export async function runLive(packet) {
         Date.parse(result.dumpCompletedUtc) + 7 * 86400000,
       ).toISOString(),
       localCleanup: "PENDING",
-      administratorRevocation: "REQUIRED",
+      administratorRevocation: existingAdmin
+        ? "NOT_APPLICABLE_EXISTING_CREDENTIAL"
+        : "REQUIRED",
       approvalId: packet.approvalId,
       sourceRevision: revision,
     };
-    const output = await open(RUN + "/result.json", "wx", 0o600);
+    const output = await open(root + "/result.json", "wx", 0o600);
     try {
       await output.writeFile(JSON.stringify(result));
       await output.sync();
@@ -647,20 +745,22 @@ export async function runLive(packet) {
   } catch (e) {
     failure = e instanceof BackupFailure ? e : bad("BACKUP_FAILED");
   } finally {
+    password = undefined;
     budget?.close();
     try {
       await cleanupOwned({
         clients,
-        stop: () => localStop(RUN),
+        stop: () => localStop(root),
         removePassfile: async () => {
-          const s = await lstat(RUN + "/pgpass");
+          if (!passIdentity) return;
+          const s = await lstat(root + "/pgpass");
           if (
             s.dev !== passIdentity.dev ||
             s.ino !== passIdentity.ino ||
             s.isSymbolicLink()
           )
             throw bad("PASSFILE_CHANGED");
-          await unlink(RUN + "/pgpass");
+          await unlink(root + "/pgpass");
         },
         eject: async () => {
           const device = await inspectStorage(false);
@@ -681,7 +781,9 @@ export async function runLive(packet) {
   return {
     ...result,
     localCleanup: "PASSED",
-    administratorRevocation: "REQUIRED",
+    administratorRevocation: existingAdmin
+      ? "NOT_APPLICABLE_EXISTING_CREDENTIAL"
+      : "REQUIRED",
   };
 }
 
@@ -703,10 +805,16 @@ if (
 ) {
   process.umask(0o077);
   try {
-    if (process.argv.length !== 3 || process.argv[2] !== RUN + "/approval.json")
+    const existingAdmin = process.argv[2] === "--existing-admin-backup";
+    const filename = existingAdmin ? process.argv[3] : process.argv[2];
+    if (
+      process.argv.length !== (existingAdmin ? 4 : 3) ||
+      filename !== (existingAdmin ? ADMIN_RUN : RUN) + "/approval.json"
+    )
       throw bad("APPROVAL_PACKET_REQUIRED");
-    const packet = JSON.parse((await privateFile(process.argv[2], 8192)).data);
-    console.log(JSON.stringify(await runLive(packet)));
+    const packet = JSON.parse((await privateFile(filename, 8192)).data);
+    const result = await runLive(packet, existingAdmin);
+    console.log(existingAdmin ? "BACKUP_COMPLETE" : JSON.stringify(result));
   } catch (e) {
     console.error(
       JSON.stringify({

@@ -24,6 +24,11 @@ import {
   reserveAttempt,
   backupCore,
   cleanupOwned,
+  ADMIN_RUN,
+  ADMIN_ROLE,
+  validateExistingAdminPacket,
+  validateSourceFlags,
+  writeAdminPassfile,
 } from "./p06-backup-once.mjs";
 const now = Date.parse("2026-09-15T16:00:00.000Z");
 const revision = "a".repeat(40);
@@ -143,6 +148,8 @@ function fakeClient({
   role = "reader",
   history = [],
   failAt = "",
+  database = "fixture",
+  elevated = false,
 } = {}) {
   const queries = [];
   let fetched = false;
@@ -153,7 +160,7 @@ function fakeClient({
       if (failAt && sql.includes(failAt)) throw new Error(sentinel);
       if (sql.includes("current_database() AS"))
         return {
-          rows: [{ database: "fixture", role, version: 180006, bytes: 1000 }],
+          rows: [{ database, role, version: 180006, bytes: 1000 }],
         };
       if (sql.startsWith("SELECT rolsuper"))
         return {
@@ -161,7 +168,7 @@ function fakeClient({
             {
               rolsuper: false,
               rolcreatedb: false,
-              rolcreaterole: false,
+              rolcreaterole: elevated,
               rolreplication: false,
               rolbypassrls: false,
             },
@@ -220,8 +227,9 @@ async function core(options = {}) {
     budget: fakeBudget(),
     source,
     target,
-    database: "fixture",
-    role: "reader",
+    database: options.existingAdmin ? TARGET.database : "fixture",
+    role: options.existingAdmin ? ADMIN_ROLE : "reader",
+    existingAdmin: options.existingAdmin ?? false,
     history: [],
     archive: "not-written",
     async dump() {
@@ -247,6 +255,104 @@ test("same core executes one snapshot/dump/restore and only read-only source sta
     ),
   );
   assert.equal(JSON.stringify(result).includes(sentinel), false);
+});
+test("existing administrator exception is explicit and cannot override target, window or old packet", () => {
+  const p = {
+    ...packet(),
+    role: ADMIN_ROLE,
+    runDirectory: ADMIN_RUN,
+    existingAdministratorBackupApproved: true,
+    inheritedCredentialRiskAcknowledged: true,
+  };
+  assert.equal(validateExistingAdminPacket(p, revision, now), 1200000);
+  assert.throws(() => validatePacket(p, revision, now));
+  for (const patch of [
+    { host: "parent.invalid" },
+    { role: TARGET.role },
+    { runDirectory: RUN },
+    { existingAdministratorBackupApproved: false },
+    { inheritedCredentialRiskAcknowledged: false },
+    { endUtc: p.startUtc },
+    { remainingCUh: 0 },
+    { sourceRevision: "b".repeat(40) },
+  ])
+    assert.throws(() =>
+      validateExistingAdminPacket({ ...p, ...patch }, revision, now),
+    );
+  assert.throws(() => validateExistingAdminPacket(packet(), revision, now));
+});
+test("administrator flags are allowed only under exact exception, never actual superuser", () => {
+  const flags = {
+    rolsuper: false,
+    rolcreatedb: true,
+    rolcreaterole: true,
+    rolreplication: true,
+    rolbypassrls: true,
+  };
+  validateSourceFlags(flags, ADMIN_ROLE, TARGET.database, true);
+  for (const [f, r, d, a] of [
+    [flags, ADMIN_ROLE, TARGET.database, false],
+    [flags, "other", TARGET.database, true],
+    [flags, ADMIN_ROLE, "other", true],
+    [{ ...flags, rolsuper: true }, ADMIN_ROLE, TARGET.database, true],
+    [{ rolsuper: false }, ADMIN_ROLE, TARGET.database, true],
+  ])
+    assert.throws(() => validateSourceFlags(f, r, d, a));
+});
+test("administrator passfile is exclusive, escaped, private and removable without changing credential", async (t) => {
+  const root = await directory(t),
+    secret = "FICTIONAL:admin\\canary";
+  const identity = await writeAdminPassfile(root, secret);
+  const pass = await privateFile(root + "/pgpass", 2048);
+  assert.equal(pass.ino, identity.ino);
+  assert.equal(parsePassfile(pass.data, ADMIN_ROLE), secret);
+  assert.throws(() => parsePassfile(pass.data));
+  await assert.rejects(writeAdminPassfile(root, secret));
+  const { removeRunner } = await import("./p06-private-role-password.mjs");
+  await removeRunner(root, identity);
+  await assert.rejects(stat(root + "/pgpass"), { code: "ENOENT" });
+  await chmod(root, 0o755);
+  await assert.rejects(
+    writeAdminPassfile(root, secret),
+    /PRIVATE_PATH_REFUSED/,
+  );
+});
+test("existing admin core preserves full comparison and only read-only source SQL; mismatches stop", async () => {
+  const source = fakeClient({
+    role: ADMIN_ROLE,
+    database: TARGET.database,
+    elevated: true,
+  });
+  const { result, calls } = await core({ source, existingAdmin: true });
+  assert.equal(result.matched, true);
+  assert.deepEqual(calls, ["dump", "restore"]);
+  assert.ok(
+    source.queries.every((q) =>
+      /^(BEGIN|SELECT|LOCK|SHOW|SET|DECLARE|FETCH|CLOSE|ROLLBACK)/.test(q),
+    ),
+  );
+  assert.ok(source.queries[0].endsWith("READ ONLY"));
+  await assert.rejects(
+    core({
+      source: fakeClient({
+        role: ADMIN_ROLE,
+        database: "parent",
+        elevated: true,
+      }),
+      existingAdmin: true,
+    }),
+  );
+  await assert.rejects(
+    core({
+      source: fakeClient({
+        role: ADMIN_ROLE,
+        database: TARGET.database,
+        elevated: true,
+      }),
+      existingAdmin: true,
+      target: fakeClient({ mismatch: true }),
+    }),
+  );
 });
 test("identity, history, source IO, dump, restore, legacy metadata and row failure refuse", async () => {
   const cases = [

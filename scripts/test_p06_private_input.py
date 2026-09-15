@@ -118,7 +118,7 @@ class PrivateInputTests(unittest.TestCase):
 
 
 class AdminPipeTests(unittest.TestCase):
-    def run_forward(self, mode="success", payload=b"FICTIONAL_ADMIN_CANARY\n"):
+    def run_forward(self, mode="success", payload=b"FICTIONAL_ADMIN_CANARY\n", backup=False):
         master, slave = pty.openpty()
         previous = termios.tcgetattr(slave)
         # Child checks transport and leaks a canary on failure deliberately: wrapper must redact it.
@@ -130,11 +130,11 @@ class AdminPipeTests(unittest.TestCase):
                "assert value.rstrip().decode() not in json.dumps([sys.argv,dict(os.environ)]);"
                "assert hashlib.sha256(value).hexdigest()==" + repr(hashlib.sha256(b"FICTIONAL_ADMIN_CANARY\n").hexdigest()) + ";" +
                ("print(value.decode());sys.stderr.write(value.decode());sys.exit(1)"
-                if mode == "failure" else "print('HANDOFF_READY',flush=True)"))
+                if mode == "failure" else "print(" + repr("BACKUP_COMPLETE" if backup else "HANDOFF_READY") + ",flush=True)"))
         )
         program = (
             "import sys;sys.path.insert(0,sys.argv[1]);from p06_private_input import forward_admin;"
-            "forward_admin([sys.executable,'-B','-c',sys.argv[2]],0,1,0.3)"
+            "forward_admin([sys.executable,'-B','-c',sys.argv[2]],0,1,0.3,backup=" + repr(backup) + ")"
         )
         proc = subprocess.Popen([sys.executable,"-B","-c",program,str(MODULE.parent),child],
                                 stdin=slave,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -176,11 +176,20 @@ class AdminPipeTests(unittest.TestCase):
                 self.assertNotEqual(code,0)
 
     def test_cli_rejects_old_direct_capture_and_non_tty(self):
-        for args in ([],["/tmp/password"],["--administrator"]):
+        for args in ([],["/tmp/password"],["--administrator"],["--existing-admin-backup"]):
             result=subprocess.run([sys.executable,"-B",str(MODULE),*args],
                                   input=b"FICTIONAL_ADMIN_CANARY",capture_output=True)
             self.assertNotEqual(result.returncode,0)
             self.assertNotIn(b"FICTIONAL_ADMIN_CANARY",result.stdout+result.stderr)
+
+    def test_existing_admin_backup_protocol_success_and_abort(self):
+        code,output=self.run_forward(backup=True)
+        self.assertEqual(code,0)
+        self.assertIn(b"Backup and local cleanup complete",output)
+        for mode,payload in [("failure",b"FICTIONAL_ADMIN_CANARY\n"),("early",None),
+                             ("success",None),("success","terminate"),("success",b"\x03")]:
+            code,_=self.run_forward(mode,payload,backup=True)
+            self.assertNotEqual(code,0)
 
 
 if __name__ == "__main__":
