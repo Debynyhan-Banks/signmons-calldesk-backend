@@ -21,6 +21,9 @@ const { Client } = require("pg");
 assert.equal(require("prisma/package.json").version, "7.10.0");
 const root = fileURLToPath(new URL("../", import.meta.url));
 const socket = process.env.P06_PG18_SOCKET ?? "/tmp";
+const backupRehearsal = process.env.P06_BACKUP_REHEARSAL === "1";
+if (backupRehearsal)
+  assert.notEqual(socket, "/tmp", "backup requires private PG18 socket");
 if (socket !== "/tmp") {
   assert.match(socket, /^\/private\/tmp\/signmons-pg18-[A-Za-z0-9]+\/socket$/);
   assert.equal(await realpath(socket), socket);
@@ -226,6 +229,111 @@ async function catalog(c) {
   for (const query of queries) result.push((await c.query(query)).rows);
   return result;
 }
+async function archiveRoundTrip(source) {
+  const bin = "/opt/homebrew/opt/postgresql@18/bin/";
+  async function command(tool, args, expected = 0) {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(bin + tool, args, {
+        env: { PATH: bin, LC_ALL: "C" },
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let output = "",
+        timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        child.kill("SIGKILL");
+      }, 120000);
+      child.stdout.on("data", (x) => {
+        output += x;
+      });
+      child.stderr.on("data", (x) => {
+        output += x;
+      });
+      child.on("error", (e) => {
+        clearTimeout(timer);
+        reject(e);
+      });
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        resolve({ code, output, timedOut });
+      });
+    });
+    assert.equal(result.timedOut, false);
+    assert.equal(result.code, expected, result.output);
+    return result.output;
+  }
+  const connection = [
+    "-h",
+    socket,
+    "-p",
+    "5432",
+    "-U",
+    local.user,
+    "--no-password",
+  ];
+  const archive = path.join(temporary, "synthetic.dump");
+  await command("pg_dump", [...connection, "-Fc", "-f", archive, source.name]);
+  const bytes = await readFile(archive);
+  const restored = await database();
+  await command("pg_restore", [
+    ...connection,
+    "--exit-on-error",
+    "--single-transaction",
+    "-d",
+    restored.name,
+    archive,
+  ]);
+  await history(restored.c, 13);
+  assert.deepEqual(await catalog(restored.c), await catalog(source.c));
+  for (const table of [
+    "TenantOrganization",
+    "Customer",
+    "PropertyAddress",
+    "SmsConsentRecord",
+    "_prisma_migrations",
+  ]) {
+    assert.deepEqual(
+      (await restored.c.query(`SELECT * FROM "${table}" ORDER BY id`)).rows,
+      (await source.c.query(`SELECT * FROM "${table}" ORDER BY id`)).rows,
+    );
+  }
+  const security = `SELECT c.relname,pg_get_userbyid(c.relowner) AS owner,c.relacl FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','S') ORDER BY c.relname`;
+  assert.deepEqual(
+    (await restored.c.query(security)).rows,
+    (await source.c.query(security)).rows,
+  );
+  const broken = path.join(temporary, "truncated-synthetic.dump");
+  await writeFile(broken, bytes.subarray(0, Math.floor(bytes.length / 2)), {
+    mode: 0o600,
+  });
+  const rejected = await database();
+  await command(
+    "pg_restore",
+    [
+      ...connection,
+      "--exit-on-error",
+      "--single-transaction",
+      "-d",
+      rejected.name,
+      broken,
+    ],
+    1,
+  );
+  assert.equal(
+    (
+      await rejected.c.query(
+        "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'",
+      )
+    ).rows[0].n,
+    0,
+  );
+  report.checks.push({
+    operation:
+      "synthetic-archive-restore-history-rows-catalog-owner-acl-and-truncation-refusal",
+    bytes: bytes.length,
+    sha256: hash(bytes),
+  });
+}
 try {
   await admin.connect();
   assert.equal(
@@ -240,6 +348,7 @@ try {
   await deploy(upgrade, oldInput);
   await history(upgrade.c, 13);
   await seed(upgrade.c);
+  if (backupRehearsal) await archiveRoundTrip(upgrade);
   const beforeConsent = (
     await upgrade.c.query('SELECT * FROM "SmsConsentRecord"')
   ).rows[0];

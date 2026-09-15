@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 recovery options compared — direction review
+## Current: R02 synthetic archive/restore passed — private export still gated
+
+Owner-approved local synthetic archive/restore, history/row/catalog/owner/ACL comparison and truncated-archive rollback passed using PostgreSQL18. Existing migration rehearsal also passed; five generated databases removed, private server stopped. See backend evidence/APP-013/p06-synthetic-backup-restore.md, APP013_P06_BACKUP_REHEARSAL_CARD.md and APP013_P06_PRIVATE_BACKUP_PACKET.md. No Neon connection or real export. Encrypted storage/key validation, credential/managed-role compatibility, fresh quotas and exact real-data approval remain; R02 not complete. R01 closed,11 remain,added0; accepted5/60 and3/8 unchanged, ETA unvalidated. No scope deviation.
+
+## Historical: recovery options comparison
 
 Read-only comparison recommends qualifying a private logical backup of the existing child, avoiding a new root target/import. See APP013_P06_RECOVERY_OPTIONS.md and backend evidence/APP-013/p06-recovery-options.md. No export or restore authorized; encrypted storage, role mapping, real restore proof and fresh quotas remain required. Next proposed bounded work is synthetic archive/restore qualification and an exact private-storage approval packet. Root alternative remains available if export is unacceptable. R02 open; R01 closed,11 remain,added0; accepted5/60 and3/8 unchanged, ETA unvalidated. Recovery-method amendment proposed, not implemented.
 
