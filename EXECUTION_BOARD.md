@@ -2,6 +2,8 @@
 
 ## Current: P06 item 3 release packet drafted — not executable
 
+Newest: expressly approved account re-enable succeeded without permission changes. One approved fresh build submission failed source-read403 before build creation; no retry/image/deployment. Build account remains enabled. Read-only inventory found no direct build project/bucket/registry grants; proposed scoped source-read, registry-write and log-write grants require owner approval, as does any next attempt. Exact source objects and proposal in activation packet/evidence. Two fixed items remain; no acceptance or scope change.
+
 Latest: owner approved the USD1 one-attempt build; submission stopped after source upload because existing signmons-build service account is disabled (readback confirmed). No build ID/image/compute execution or retry; uploaded 882435-byte source object retained. No IAM change or deployment. Project owner must approve re-enablement/identity decision and a fresh retry; prior approval does not cover either. Exact evidence in APP013_2B_ACTIVATION_PACKET.md and backend p06-release-packet-review.md. Fixed item3 blocked, item4 unchanged; no scope deviation or acceptance increase.
 
 Qualification update: inherited numeric secret metadata and existing build path/rates verified without payload access. Packet now requests owner approval for one immutable-source image build, existing resources, 1200s timeout, no retries/deploy/provider calls, USD1 operational allowance (not hard billing cap). Build compute at the published rate is USD0.312 for20 minutes; storage/logging/transfer/tax are separate. No build executed; schema and new private-material injection remain unqualified for release. Two fixed items remain; no acceptance change.
