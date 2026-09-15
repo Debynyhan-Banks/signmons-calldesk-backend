@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import os
 import pty
 import select
@@ -114,6 +115,72 @@ class PrivateInputTests(unittest.TestCase):
             os.close(read_fd)
             os.close(write_fd)
         self.assertFalse(self.path.exists())
+
+
+class AdminPipeTests(unittest.TestCase):
+    def run_forward(self, mode="success", payload=b"FICTIONAL_ADMIN_CANARY\n"):
+        master, slave = pty.openpty()
+        previous = termios.tcgetattr(slave)
+        # Child checks transport and leaks a canary on failure deliberately: wrapper must redact it.
+        child = (
+            "import sys,os,stat,json,hashlib;"
+            "assert stat.S_ISFIFO(os.fstat(0).st_mode);"
+            + ("print('REFUSED',flush=True);sys.exit(1)" if mode == "early" else
+               "print('READY',flush=True);value=sys.stdin.buffer.read();"
+               "assert value.rstrip().decode() not in json.dumps([sys.argv,dict(os.environ)]);"
+               "assert hashlib.sha256(value).hexdigest()==" + repr(hashlib.sha256(b"FICTIONAL_ADMIN_CANARY\n").hexdigest()) + ";" +
+               ("print(value.decode());sys.stderr.write(value.decode());sys.exit(1)"
+                if mode == "failure" else "print('HANDOFF_READY',flush=True)"))
+        )
+        program = (
+            "import sys;sys.path.insert(0,sys.argv[1]);from p06_private_input import forward_admin;"
+            "forward_admin([sys.executable,'-B','-c',sys.argv[2]],0,1,0.3)"
+        )
+        proc = subprocess.Popen([sys.executable,"-B","-c",program,str(MODULE.parent),child],
+                                stdin=slave,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        observed=b""
+        try:
+            until=time.monotonic()+5
+            while b"input hidden" not in observed and proc.poll() is None:
+                if time.monotonic()>until:
+                    self.fail("no prompt or refusal")
+                if select.select([proc.stdout],[],[],0.1)[0]:
+                    observed += os.read(proc.stdout.fileno(),4096)
+            if b"input hidden" in observed:
+                self.assertFalse(termios.tcgetattr(slave)[3] & termios.ECHO)
+                if payload == "terminate":
+                    proc.terminate()
+                elif payload is not None:
+                    os.write(master,payload)
+            out,err=proc.communicate(timeout=10)
+            observed+=out+err
+            while select.select([master],[],[],0)[0]:
+                observed+=os.read(master,4096)
+            self.assertEqual(termios.tcgetattr(slave),previous)
+            self.assertNotIn(b"FICTIONAL_ADMIN_CANARY",observed)
+            return proc.returncode,observed
+        finally:
+            if proc.poll() is None:proc.kill();proc.wait()
+            os.close(master);os.close(slave)
+
+    def test_anonymous_pipe_hidden_input_no_secret_output(self):
+        code,output=self.run_forward()
+        self.assertEqual(code,0)
+        self.assertIn(b"Runner remains NOLOGIN",output)
+
+    def test_failures_cancellation_timeout_and_child_failure_redact(self):
+        for mode,payload in [("early",None),("failure",b"FICTIONAL_ADMIN_CANARY\n"),
+                             ("success",None),("success",b"\x03"),("success","terminate")]:
+            with self.subTest(mode=mode,payload=payload):
+                code,_=self.run_forward(mode,payload)
+                self.assertNotEqual(code,0)
+
+    def test_cli_rejects_old_direct_capture_and_non_tty(self):
+        for args in ([],["/tmp/password"],["--administrator"]):
+            result=subprocess.run([sys.executable,"-B",str(MODULE),*args],
+                                  input=b"FICTIONAL_ADMIN_CANARY",capture_output=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertNotIn(b"FICTIONAL_ADMIN_CANARY",result.stdout+result.stderr)
 
 
 if __name__ == "__main__":

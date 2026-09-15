@@ -33,7 +33,7 @@ export const TARGET = Object.freeze({
   role: "p06_migration_runner",
 });
 export const MOUNT = "/Volumes/Signmons-P06";
-export const RUN = MOUNT + "/r02-backup-v1";
+export const RUN = MOUNT + "/r02-backup-v2";
 const IMAGE =
   "/Users/debynyhanbanks/Library/Application Support/Signmons/P06/signmons-p06.dmg.sparsebundle";
 const UUID = "A0020084-32EC-412A-B96B-1AA68A2CE61F";
@@ -435,6 +435,10 @@ export async function runLive(packet) {
   )
     throw bad("SOURCE_CHECKOUT_DIRTY");
   await inspectStorage();
+  const handoff = JSON.parse(
+    (await privateFile(RUN + "/handoff.json", 8192)).data,
+  );
+  validateHandoff(handoff, packet);
   const pass = await privateFile(RUN + "/pgpass", 2048);
   let password = parsePassfile(pass.data);
   pass.data = undefined;
@@ -679,6 +683,18 @@ export async function runLive(packet) {
     localCleanup: "PASSED",
     administratorRevocation: "REQUIRED",
   };
+}
+
+export function validateHandoff(handoff, packet) {
+  if (
+    handoff?.status !== "ASSIGNED_NOLOGIN" ||
+    handoff.approvalId !== packet.approvalId ||
+    handoff.sourceRevision !== packet.sourceRevision ||
+    handoff.endUtc !== packet.endUtc ||
+    handoff.role !== TARGET.role ||
+    handoff.administratorClosed !== true
+  )
+    throw bad("HANDOFF_REFUSED");
 }
 
 if (
