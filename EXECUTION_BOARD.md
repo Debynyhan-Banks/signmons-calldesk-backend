@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Current: R03 preparation complete — execution approval pending
+## Current: R04 first attempt stopped before Prisma — workspace locked
+
+Owner approved R03's exact one-attempt child migration packet and confirmed password readiness. Approved sourceeb1dd06/window2026-09-15T14:40–14:50UTC. Fresh child metadata13applied/0unfinished/0other sessions/26owned tables and recovery/storage/quota guards passed. Private attempt reserved14:40:53Z; result14:41:53.745Z REFUSED_OR_PARTIAL. Inputs directory never created, so Prisma/migration DDL was not invoked. Approximate60second duration suggests private-input timeout, not a proven cause; owner final Terminal status still needed. Do not diagnose wrong password/provider rejection without evidence.
+
+No automatic retry. Exact image detached, mount absent, private helper/migration processes absent; baseline livenessok. Retain attempt/result unchanged. Backend evidence/APP-013/p06-r04-first-attempt.md records actual observations. Smallest next information: final Terminal message/prompt visibility. Fresh unused attempt binding and explicit authority required before retry; do not reopen R02 or add a package.
+
+R01-R03closed3/12; R04-R12open9,added0. R04notcomplete; no migration/deployment/credential changes. Accepted packages5/60(8.3%),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. No scope deviation.
+
+## Historical: R03 preparation complete — execution approval pending
 
 Owner-approved three-item R03 checklist is complete: exact source-specific command/26-file manifest (13pending); same-command PG18 upgrade, replay refusal, actual5s lock/60s statement timeout, private-input and cancellation tests; one review packet. See governance APP013_P06_R03_PACKET.md and backend evidence/APP-013/p06-r03-review.md. Runner targets only the approved child and existing administrator, never shared secret/old job. Requires explicit bounded execution approval and fresh checks; no live migration has run.
 
