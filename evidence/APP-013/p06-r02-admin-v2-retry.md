@@ -1,5 +1,13 @@
 # R02 approved fresh attempt preparation
 
+## Follow-up acceptance and read-only capability inspection — 2026-09-15
+
+Owner's "Great proceed" accepts the recovery proof below; whole R02 remains open for migration connection/consumer boundary. Current child Console query: neondb/neondb_owner, public CREATE=true,26tables all owned,37enums all owned,0other sessions at observation,2migration rolesNOLOGIN. No credentials inspected, grants/DDL/export/migration or source row writes. Left SQL Editor. hdiutil info lists no attached image.
+
+Cloud metadata readback: all48staging revisions and signmons-calldesk-migrate job reference signmons-staging-database-url:latest, no inline DATABASE_URL. Secret payloads not read; these references alone cannot prove the endpoint or exclude every consumer. No cloud changes.
+
+Governance APP013_P06_R02_CLOSEOUT_REVIEW.md proposes extending the existing-admin mechanism to supervised child migration preparation, with explicit owner decision required. Backup-only approval does not authorize it; inherited parent access is a residual risk, not least privilege. No new runner/password/ownership change, no repeated backup, no migration executor readiness claim. Existing R03/R04 gates and frozen counts unchanged.
+
 ## Actual result — recovery demonstrated, manual cleanup completed
 
 ONE approved attempt P06-R02-admin-backup-20260915T140008Z executed from20a31105701ce5b88f53d9f543feb09ebed4c438 inside14:00:08–14:20:08UTC. Owner privately entered existing administrator password; no password inspected or copied into conversation. Executor completed full snapshot/custom archive/local restore and comparison:26tables,633rows,matched=true;13expected migration checksums and both-schema catalog/security metadata checked by backupCore before result creation. Dump completed2026-09-15T14:01:19.919Z. Archive198833bytes; SHA2568da4d9ce76f8ed4d96f5e33622adab6a4c7cb244689ca645186535ccf26775f9 independently rehashed and matched. No second export performed.

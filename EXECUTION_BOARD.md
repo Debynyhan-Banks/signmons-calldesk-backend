@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Current: R02 real recovery demonstrated — manual closeout verified
+## Current: R02 recovery accepted — migration credential decision pending
+
+Owner said "Great proceed" after the successful recovery evidence and manual closeout. Record recovery-area acceptance, not whole R02 acceptance. Read-only child inspection on 2026-09-15 confirmed neondb_owner can CREATE in public, owns all26tables and37enums, other sessions0 at query time, and both migration roles remainNOLOGIN. Cloud48revision and migration-job DATABASE_URL references remain signmons-staging-database-url:latest, no inline values; payloads not inspected, so reference checks are not exhaustive proof of consumer isolation. Encrypted image remains detached.
+
+Proposed mechanism amendment, NOT approved or implemented: reuse the existing administrator privately for one supervised child-only migration instead of enabling a new runner/password and transferring ownership. This avoids the failed credential-provisioning route, but the inherited credential retains parent access; endpoint guards do not make it least-privileged. Owner must approve this exception before implementation. No password reset, privilege change, migration or backup repeat here. Details and finite next steps: APP013_P06_R02_CLOSEOUT_REVIEW.md (governance). Existing R03 execution-packet approval and R04 execution remain separate; live runner is not yet qualified.
+
+R02 has one remaining acceptance area: migration connection and consumer boundary. No added task IDs or acceptance criteria; R01closed,R02-R12open11,added0; accepted5/60(8.3% tracked plan),walkthrough3/8(37.5%),ETAunvalidated. This is a proposed security-mechanism deviation only, not an adopted scope change.
+
+## Historical: R02 real recovery demonstrated — manual closeout verified
 
 Owner-approved admin-v2 attempt from backend20a3110 completed one real child backup/local restore:26tables/633rows matched,13migration checksums and catalog checked; archive198833bytes with independently matched SHA256. Dump2026-09-15T14:01:19.919Z, encrypted retention through2026-09-22T14:01:19.919Z. Wrapper reported refusal at final cleanup; retained result says PENDING, not auto-clean success. Independent checks found password file absent/local server stopped; read-only result review followed by manual exact-image detach succeeded, source backup sessions0, both migration rolesNOLOGIN. See backend evidence/APP-013/p06-r02-admin-v2-retry.md. No second export, password reset, source mutation, migration or release. Recovery-area technical evidence ready for owner acceptance; remaining R02 migration-access/consumer boundary separate. Do not repeat recovery proof without invalidating drift/expiry. R01closed,R02-R12open11,added0; accepted5/60 and3/8 unchanged; ETAunvalidated. No scope deviation.
 
