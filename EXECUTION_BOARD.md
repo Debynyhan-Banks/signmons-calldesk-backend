@@ -2,6 +2,8 @@
 
 ## Current: R02 target qualification partial — no execution authority
 
+PostgreSQL18 local qualification passed under explicit owner approval; see backend p06-pg18-rehearsal.md and APP013_P06_R02_PG18_CARD.md. Installed18.6 without changing existing16/17 services; private no-TCP cluster stopped after unchanged migration rehearsal passed. R02 still open for migration connection, consumer/write isolation and recovery checkpoint/owner. Closed R01; open R02–R12 (11), added0. Accepted5/60 and3/8 unchanged, ETA unvalidated. No staging/resource/provider action; no scope deviation.
+
 Read-only consumer review found nine tagged revisions and an existing migration job referencing the staging database secret; baseline scheduling and old SMS-test sending flags remain enabled. No actual activity inferred. Neon UI reports PostgreSQL18 versus local rehearsal16.11 and six-hour history without snapshots. Exact evidence: backend p06-target-consumers-recovery.md. R02 stays open pending version/connection, consumer maintenance and recovery qualification; no resource changes. Closed R01, open R02–R12 (11), added0; acceptance5/60 and3/8 unchanged, ETA unvalidated. Stop for material installation/maintenance/recovery decisions. No scope deviation.
 
 ## Historical: R01 completion checkpoint

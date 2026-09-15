@@ -10,6 +10,8 @@ import {
   readFile,
   readdir,
   writeFile,
+  stat,
+  realpath,
 } from "node:fs/promises";
 import { userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -18,8 +20,17 @@ const require = createRequire(import.meta.url);
 const { Client } = require("pg");
 assert.equal(require("prisma/package.json").version, "7.10.0");
 const root = fileURLToPath(new URL("../", import.meta.url));
+const socket = process.env.P06_PG18_SOCKET ?? "/tmp";
+if (socket !== "/tmp") {
+  assert.match(socket, /^\/private\/tmp\/signmons-pg18-[A-Za-z0-9]+\/socket$/);
+  assert.equal(await realpath(socket), socket);
+  const info = await stat(socket);
+  assert.ok(info.isDirectory());
+  assert.equal(info.uid, userInfo().uid);
+  assert.equal(info.mode & 0o077, 0, "socket directory must be private");
+}
 const local = {
-  host: "/tmp",
+  host: socket,
   port: 5432,
   user: userInfo().username,
   connectionTimeoutMillis: 5000,
@@ -101,7 +112,7 @@ async function deploy(db, inputs, expected = 0) {
   const url = new URL(
     `postgresql://${encodeURIComponent(local.user)}@localhost/${db.name}`,
   );
-  url.searchParams.set("host", "/tmp");
+  url.searchParams.set("host", socket);
   url.searchParams.set("schema", "public");
   url.searchParams.set(
     "options",
@@ -224,6 +235,7 @@ try {
   report.server = (
     await admin.query("SHOW server_version")
   ).rows[0].server_version;
+  if (socket !== "/tmp") assert.match(report.server, /^18\./);
   const upgrade = await database();
   await deploy(upgrade, oldInput);
   await history(upgrade.c, 13);
