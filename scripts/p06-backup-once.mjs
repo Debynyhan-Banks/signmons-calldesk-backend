@@ -36,7 +36,7 @@ export const TARGET = Object.freeze({
 });
 export const MOUNT = "/Volumes/Signmons-P06";
 export const RUN = MOUNT + "/r02-backup-v2";
-export const ADMIN_RUN = MOUNT + "/r02-backup-admin-v1";
+export const ADMIN_RUN = MOUNT + "/r02-backup-admin-v2";
 export const ADMIN_ROLE = "neondb_owner";
 const IMAGE =
   "/Users/debynyhanbanks/Library/Application Support/Signmons/P06/signmons-p06.dmg.sparsebundle";

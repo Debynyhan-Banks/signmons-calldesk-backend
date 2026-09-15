@@ -176,7 +176,7 @@ if __name__ == "__main__":
             raise ValueError("runtime unavailable")
         backup = sys.argv[1:] == ["--existing-admin-backup"]
         command = ([executable, str(Path(__file__).resolve().with_name("p06-backup-once.mjs")),
-                    "--existing-admin-backup", "/Volumes/Signmons-P06/r02-backup-admin-v1/approval.json"]
+                    "--existing-admin-backup", "/Volumes/Signmons-P06/r02-backup-admin-v2/approval.json"]
                    if backup else [executable, str(Path(__file__).resolve().with_name(
                        "p06-private-role-password.mjs")),
                        "/Volumes/Signmons-P06/r02-backup-v2/approval.json"])

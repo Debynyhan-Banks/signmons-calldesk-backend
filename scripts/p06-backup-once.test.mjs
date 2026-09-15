@@ -287,6 +287,13 @@ test("existing administrator exception is explicit and cannot override target, w
   };
   assert.equal(validateExistingAdminPacket(p, revision, now), 1200000);
   assert.throws(() => validatePacket(p, revision, now));
+  assert.throws(() =>
+    validateExistingAdminPacket(
+      { ...p, runDirectory: "/Volumes/Signmons-P06/r02-backup-admin-v1" },
+      revision,
+      now,
+    ),
+  );
   for (const patch of [
     { host: "parent.invalid" },
     { role: TARGET.role },
