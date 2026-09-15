@@ -1,0 +1,27 @@
+# P06 fixed item 3 — release packet preparation
+
+2026-09-14. Owner said "proceed" after default-disabled startup checkpoint. Source backend 53037fbd118cc4547061dfaf373c45b20a05962b, governance 7e54dd35bf73833ee43ec1efb0a3183281c80766. Existing PR21 open; focused origins fetched, no concurrent branch changes. Documentation/read-only work, no scope deviation.
+
+## Outcome
+
+Governance APP013_2B_ACTIVATION_PACKET.md now has a current source-bound draft, verified resource table, proposed disabled-candidate diff, separate enabled-run requirements and named unresolved approval inputs. Its old "implementation has not started" and blanket Google-support-wait wording is explicitly historical. The fixed checklist is unchanged: 1/2 locally complete; 3 packet/review in progress; 4 approved capped run/acceptance pending. A draft with blanks is not an executable release or item 3 completion.
+
+## Read-only observations
+
+- `gcloud run services describe signmons-calldesk-staging --project signmons --region us-east5` with selected metadata/traffic/image fields: latest created/ready 00065-guw; normal traffic 100% signmons-calldesk-staging-app013bounds; nine existing tags unchanged. Runtime signmons-calldesk-runtime@signmons.iam.gserviceaccount.com; max instances 1.
+- Selected revision metadata: old image sha256:25e194acfd96299bb670de84e63b932d9dc69528e6f421ae42699f80fc9b3d75, port8080, 1 CPU/512Mi. **This is not the new source image.**
+- Revision env projection emitted names, secret references and only six safety flag values: all false. Neither new controlled startup variable exists. Several inherited bindings use latest; old phone-only keys use numeric version1, Stripe webhook version5. No payloads read or emitted.
+- `gcloud secrets list --project signmons --filter='name~signmons-staging-customer' --format='table(name,createTime)'` succeeded with no entries. An initial multi-name filter was rejected for syntax and then corrected; no write occurred. This is metadata visibility evidence, not permission to create or reuse keys.
+- No database/customer query, Twilio/Google validation request, billing change, image build/push, deployment or secret payload access performed.
+
+## Review and remaining gates
+
+Review the current section of governance APP013_2B_ACTIVATION_PACKET.md against source startup and Dockerfile. Confirm the proposed disabled candidate has an explicitly false envelope, no new private intake material, no normal traffic and all existing tags preserved. Proposed revision/tag are not resources already created. The actual new image digest, numeric inherited versions/schema, protected private-JSON injection mapping and current itemized costs remain unqualified. Private mapping cannot be assumed from resource labels or native concatenation of Cloud Run secret bindings.
+
+No additional coding authorized by this draft. The old proposed USD0.70 covers proposed verification liability only, not infrastructure or current spending authority. Next is completing these existing item3 release inputs and obtaining exact external-action approval; item4 remains separately capped/approved. Do not request an unconditional deployment approval for an incomplete packet.
+
+## Checks for this documentation-only change
+
+Backend architecture, cross-repository governance and whitespace checks passed; governance frozen baseline, complete consistency and all 21 regression tests passed. No runtime/browser rerun claimed: prior source 53037fb evidence remains 2,359 tests passed / 3 skipped and eight synthetic-provider startup browser cases. No scope/acceptance denominator change.
+
+Accepted packages 5/60 (8.3%); walkthrough 3/8 (37.5%); provisional 4–8 weeks at 25–30 collaborative hours/week plus external waits, low confidence, unchanged. Both fixed items 3/4 remain until their actual finish conditions pass.
