@@ -2,6 +2,8 @@
 
 ## Current: P06 item 3 release packet drafted — not executable
 
+Migration plan prepared: all 13 pending SQL files reviewed as one staging change set in APP013_P06_STAGING_MIGRATION_PLAN.md; no SQL applied/changed. Existing consent revision and nullable-location behavior, dependencies, lock/failure/recovery risks and staged approval gates documented. Next: synthetic upgrade rehearsal and verified recovery/target inputs before migration execution approval. Still two fixed P06 items; no acceptance increase or scope deviation. Backend evidence: p06-staging-migration-plan.md.
+
 Latest schema check (owner-authorized, read-only): staging has 13/26 expected migration records, 14 missing tables and SmsConsentRecord.revision missing; applied checksums match, no unfinished records. No credential output/customer reads/database changes. Exact evidence: backend p06-staging-schema-readonly.md. Next is review of the 13 existing migrations as one staging-only change proposal, not execution. Image built/not deployed; two fixed items remain, accepted 5/60 and 3/8 unchanged. No scope deviation.
 
 Current build result supersedes blockers below: owner-approved scoped grants and one build succeeded7298b5b6; verified image digest ea47a8371a04f773a5c51fc4f939250b7045eba92d3cbbeb68e49ceb0240be35 from source53037fb. Three temporary grants removed/read back; build account remains enabled. About147s, estimated computeUSD0.0382 plus storage/logging/other charges, not invoice. No deployment/provider call; Cloud Run baseline/tags unchanged. Item3 still needs schema/config/cost/injection qualification and owner release review; item4 separate run. Accepted5/60 and3/8 unchanged. Exact evidence in activation packet and backend release-packet-review. No scope deviation.
