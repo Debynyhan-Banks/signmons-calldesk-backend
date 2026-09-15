@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 recovery recommendation corrected — migration blocked
+## Current: R02 recovery options compared — direction review
+
+Read-only comparison recommends qualifying a private logical backup of the existing child, avoiding a new root target/import. See APP013_P06_RECOVERY_OPTIONS.md and backend evidence/APP-013/p06-recovery-options.md. No export or restore authorized; encrypted storage, role mapping, real restore proof and fresh quotas remain required. Next proposed bounded work is synthetic archive/restore qualification and an exact private-storage approval packet. Root alternative remains available if export is unacceptable. R02 open; R01 closed,11 remain,added0; accepted5/60 and3/8 unchanged, ETA unvalidated. Recovery-method amendment proposed, not implemented.
+
+## Historical: recovery assumption correction
 
 Owner approved preparation using six-hour recovery, but fresh specific Neon restore documentation says PITR supports root branches only. Current target br-sparkling-sun-ay6gr5e8 is a child; earlier console source was production. Retention is not proof of child self-history recovery. See backend evidence/APP-013/p06-r02-recovery-policy-correction.md. No credentials or provider/database changes. Owner must choose a separately qualified recoverable-root or private logical-backup approach; neither is authorized by the six-hour-policy approval. R02 remains open, R01 closed, R02-R12 open (11), added0; accepted5/60 and3/8 unchanged, ETA unvalidated. Recovery-method deviation proposed, not implemented.
 
