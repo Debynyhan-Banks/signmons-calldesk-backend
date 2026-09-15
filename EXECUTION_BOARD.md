@@ -1,6 +1,16 @@
 # Signmons Backend Execution Board
 
-## Current: R05 design review — U01 proposed, not approved
+## Current: U01 locally complete — R06 next
+
+Owner explicitly approved R05 design and the one added U01 local-synthetic tool task. U01 three exits complete: protected numeric-version bundle/provenance, guarded transactional activation/revocation/readback, and synthetic failure/review proof. Backend evidence/APP-013/p06-u01-operator-tool.md records exact interfaces and limitations. No live secret, activation, deployment or provider action. Only project-number metadata read; existing runtime image unchanged.
+
+Validation:2359application tests pass/3existing skips;16Node tests pass; real disposable PG18 with26migrations and eight grouped checks passes; build/lint/architecture and governance gates pass. Created databases removed, owned clusters stopped. Local tool is review-ready, not live qualification or whole-P06 acceptance.
+
+Original12+approved-addedU01=13; R01-R05 andU01 locally closed6, R06-R12open7. No further added task. Packages5/60(8.3%),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. No scope deviation beyond expressly approved U01.
+
+Next existing R06 is read-only run qualification: refresh tenant/integration/category/organization/payment policies, exception identity, provider ownership/restrictions/rates, prior liabilities and participant notice/eligibility; set finite caps and itemize verification/infrastructure costs. R07 reviews the exact release/configuration diff; R08/R10 gate provisioning/run authority. No additional U01 subsection proposed.
+
+## Historical: R05 design review — U01 proposed, not approved
 
 Owner proceeded after R04 evidence. R05 source qualification and three design checklist items are documented in APP013_P06_R05_DESIGN.md: exact startup JSON/numeric provenance, runtime revision/origin/window and two durable approval digests. Recommend preserving runtime via a separately versioned private delivery bundle. Existing approval writers are synthetic fixtures only; do not use them live.
 
