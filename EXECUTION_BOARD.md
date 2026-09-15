@@ -1,8 +1,8 @@
 # Signmons Backend Execution Board
 
-## Current: P06 remaining-task reconciliation — owner review required
+## Current: P06 baseline v1 approved — R01 locally complete
 
-APP013_P06_REMAINING_TASK_BASELINE.md is the proposed authoritative remaining-work inventory: 12 open internal tasks with dependencies, pass/fail exits and explicit approval gates. It supersedes all historical "two items/sections remain" task counts and stale next actions below. Existing implementation/build evidence is preserved; no acceptance increase. R02 recovery/target and R05 protected injection/activation design are unresolved, not hidden coding authority. Review the baseline before execution; no migration, provisioning, deployment or paid test authorized. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%). Prior 4–8 week forecast is unvalidated and withdrawn pending sizing. No scope deviation implemented.
+Owner approved P06 baseline v1 (12 fixed tasks). R01 local synthetic migration rehearsal is complete: real Prisma7.10 old13→all26 upgrade, preserved fictional rows, catalog parity, no-op replay, constraints/immutability and deliberate lock-timeout stop/cleanup passed. See backend evidence/APP-013/p06-migration-upgrade-rehearsal.md. Closed R01; open R02–R12 (11 tasks), no added tasks. Next R02 is target/consumer/recovery qualification, not migration execution. R05 secure injection remains an explicit unresolved design. Accepted 5/60 (8.3%), walkthrough 3/8 (37.5%), P06 unaccepted; ETA unvalidated. No staging/cloud/provider action or scope deviation.
 
 ## Historical status below — superseded where inconsistent with the reconciliation
 
