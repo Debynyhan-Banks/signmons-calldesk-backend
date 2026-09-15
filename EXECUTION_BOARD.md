@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Current: R02 recovery accepted — migration credential decision pending
+## Current: R02 qualification complete — R03 packet next
+
+Owner approved the existing-administrator preparation route. Final qualification is backend evidence/APP-013/p06-r02-qualified.md: exact child/PG18.6/capable owner, accepted actual recovery, consumer inventory and maintenance boundary complete. Current child metadata:26owned tables,13applied/0unfinished migrations,0other sessions/subscriptions/replication slots. Known Cloud Run consumers retain secret versions createdAugust28 before child creationSeptember14; prior parent mapping plus unchanged references supports separation, with no payload read or universal-client claim. Keep parent consumers unchanged; future unknown child sessions/drift are execution stops.
+
+R02 technically complete and review-ready, not newly owner-reviewed. R01/R02closed; R03–R12open10; added0. R03 owns the tested exact migration packet and owner execution approval; R04 owns the one live attempt. Do not extend R02 to include these existing rows. No migration, new credential, ownership change, deployment or backup repeat. Existing administrator retains parent access: approved preparation exception, not least privilege or live execution authority. Recovery expires2026-09-22T14:01:19.919Z unless invalidated earlier.
+
+Accepted packages5/60(8.3% tracked plan),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. No scope deviation beyond explicitly approved credential-mechanism amendment. Next observable result is R03's tested private Prisma7.10 packet with exact13-file manifest, enforced limits, recovery/maintenance/cost/window; no further routine route-selection question.
+
+## Historical: R02 recovery accepted — migration credential decision pending
 
 Owner said "Great proceed" after the successful recovery evidence and manual closeout. Record recovery-area acceptance, not whole R02 acceptance. Read-only child inspection on 2026-09-15 confirmed neondb_owner can CREATE in public, owns all26tables and37enums, other sessions0 at query time, and both migration roles remainNOLOGIN. Cloud48revision and migration-job DATABASE_URL references remain signmons-staging-database-url:latest, no inline values; payloads not inspected, so reference checks are not exhaustive proof of consumer isolation. Encrypted image remains detached.
 
