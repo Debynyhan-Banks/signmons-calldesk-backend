@@ -1,6 +1,10 @@
 # Signmons Backend Execution Board
 
-## Current: R02 ownership-enabled mounted input qualified
+## Current: R02 command audit — real invocation wiring incomplete
+
+Command audit confirms tested helpers have no real-backup entry point; their sole caller creates/mutates fictional databases and must not run against Neon. See APP013_P06_R02_COMMAND_AUDIT.md and backend evidence/APP-013/p06-r02-command-audit.md for fixed source-specific wiring proposal. Earlier packet-only wording understated implementation; no completed command/window invented. Next implementer outcome is tested preflight/snapshot/restore/cleanup wiring, then explicit real handoff/export approval. Storage proof retained; no external action. R01 closed,R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation implemented.
+
+## Historical: R02 ownership-enabled mounted input qualified
 
 Owner-approved administrator ownership change succeeded for the exact Signmons-P06 UUID. Four existing private-input tests passed inside verified ownership-enabled encrypted image using dummy values; test directories removed, existing artifacts preserved, exact image ejected and mount absent. See backend evidence/APP-013/p06-r02-mounted-input.md and APP013_P06_R02_MOUNT_CHECK.md. Next bind tested tooling to exact real invocation/window/cleanup packet before specific new-role/handoff/export approval. No Neon action or real backup. R02 open; R01 closed,R02-R12 open11,added0; accepted5/60 and3/8 unchanged; ETA unvalidated. No scope deviation.
 
