@@ -1,6 +1,22 @@
 # P06 / R08 private-input adaptation — local qualification
 
+## Temporary statistics observation — definitive result, 2026-09-16
+
+Owner approved temporary extension, one synthetic observation and cleanup. Source backend14ba19e/governanced858712; clean focused worktrees, remotes refreshed. Governance frozen/consistency passed from correct root after wrong-cwd invocation reported unavailable; no anchor change. Exact pre-execution card in governance APP013_P06_INITIAL_PASSWORD_REVIEW.md. Same fixed project/child/neondb and administrator; no new compute/paid plan.
+
+08:33EDT preflight: extension and new test role absent; runtime OID163840 NOLOGIN/all elevationfalse/memberships0; top/on tracking. CREATE EXTENSION pg_stat_statements succeeded223ms, metadata identified OID172034/version1.12/public. Created p06_password_canary_20260916b OID172078 at08:34, NOLOGIN/NOINHERIT/all elevated flagsfalse/limit0/memberships0; no app grants or ownership. Metadata query plus exact CREATE ROLE prefix filter restricted by database and current-user OIDs returned positive_control_rows=1. Thus the statistics inspection path was demonstrably working.
+
+One ALTER ROLE PASSWORD with a deliberately public synthetic64hex marker succeeded127ms. At08:35 a separate SELECT filtered only exact `ALTER ROLE p06_password_canary_20260916b PASSWORD ` prefix plus current database/user OIDs; returned assignment_rows=1, assignment_calls=1, synthetic_literal_retained=true. It returned only counts/boolean, no raw other query text or secret catalog. The SELECT itself cannot match the ALTER prefix, so this is not a self-match. No real password, reset, login, customer record or application data used.
+
+Conclusion: functional assignment PASS; raw SQL literal non-retention criterion FAIL under this actual Neon configuration. Earlier server-statistics INCONCLUSIVE is superseded. Browser history retention was separately demonstrated in prior canary. This does not claim any real Signmons credential leaked, any unprivileged tenant can read statistics, or all possible credential mechanisms fail. Using a private client alone would avoid Console history but would not itself solve this observed server-side SQL tracking.
+
+Cleanup08:35: DO block checked exact canaryOID172078/flags/limit/memberships and extensionOID172034/version1.12, then DROP ROLE and DROP EXTENSION RESTRICT; succeeded126ms. Independent readback147ms returned canary_removed=true,extension_removed=true,view_removed=true. Runtime OID163840 NOLOGIN/NOINHERIT/all elevationfalse/limit10/memberships0; trackingtop/on unchanged. Test resources intentionally removed; no real role/object removed. Dropping inspection objects is NOT proof of erasing stored statistics. Synthetic history/statistics may remain, contain no live usable credential, and were not reset or scrubbed. Editor left on read-only verification.
+
+All three finite diagnostic exits complete. No further canary needed to establish this exposure. Existing helper remains fail-closed; no automatic real-password attempt, logging suppression, administrative runtime identity or provider change. Need a qualified alternate credential path or separately reviewed security-policy change before real assignment. Support inquiry already sent; no new contact. No scope/count/acceptance change: R08-R12five; packages5/60(8.3%),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. No scope deviation beyond expressly approved instrumentation. Documentation/architecture gates apply; no app source changed.
+
 ## Owner-approved disposable canary result — 2026-09-16
+
+Temporary-statistics closeout validation: frozen baseline/full consistency,21 governance regressions, backend architecture/baseline and both whitespace checks passed. No application test/build rerun claimed for documentation-only changes.
 
 Entry backend b4ae845 / governance b1b0970; focused remotes fetched, clean worktrees, frozen/full consistency passed before preparation. Owner approved the exact proposed disposable NOLOGIN/no-membership/no-application-grant test; preparation card is governance APP013_P06_INITIAL_PASSWORD_REVIEW.md. Existing R08, not a new task or helper.
 
