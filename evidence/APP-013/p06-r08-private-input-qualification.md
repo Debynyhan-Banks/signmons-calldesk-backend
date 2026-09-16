@@ -1,6 +1,26 @@
 # P06 / R08 private-input adaptation — local qualification
 
+## Owner-approved disposable canary result — 2026-09-16
+
+Entry backend b4ae845 / governance b1b0970; focused remotes fetched, clean worktrees, frozen/full consistency passed before preparation. Owner approved the exact proposed disposable NOLOGIN/no-membership/no-application-grant test; preparation card is governance APP013_P06_INITIAL_PASSWORD_REVIEW.md. Existing R08, not a new task or helper.
+
+Live Console browser at project soft-smoke-54063480 / branch br-sparkling-sun-ay6gr5e8 / neondb, signed-in neondb_owner. At08:27EDT, PG18.6(2078fcb); tracking top/utility on; test name absent; real runtime OID163840 NOLOGIN/memberships0. Metadata-only lookup found no pg_stat_statements, neon or pgaudit extension among those requested and no pg_stat_statements-named relation/function in any schema. No CREATE EXTENSION or telemetry-setting change performed.
+
+At08:28EDT created only p06_password_canary_20260916a, OID172032: NOLOGIN/NOINHERIT, NOSUPERUSER/NOCREATEDB/NOCREATEROLE/NOREPLICATION/NOBYPASSRLS, connection limit0, memberships0. No application grants/ownership assigned; inherited PUBLIC rights were not removed or represented as absent. One ALTER ROLE PASSWORD with deliberately public synthetic64-hex marker succeeded (161ms). Readback confirmed identical OID/flags/limit/memberships. No password/verifier catalog, login attempt, reset API, real credential or customer record accessed. This proves assignment command compatibility, NOT authentication or provider-wide redaction.
+
+At08:29EDT a DO block guarded exact name/OID172032/disabled flags/limit0/memberships0 then DROP ROLE (no CASCADE/DROP OWNED) succeeded (220ms). Final independent SELECT returned canary_removed=true; runtime OID163840 remains NOLOGIN/NOINHERIT/all elevated flagsfalse/limit10/memberships0; tracking remains top/on. The disposable role was intentionally deleted and no longer exists; nothing from the real runtime was removed. Its synthetic value must never be reused as a credential. Console history for exactly that assignment was reopened after cleanup and visibly restored the full synthetic literal. Editor left on the read-only cleanup query, not the mutation.
+
+Result: functional initialization PASS; Console-secret entry unsuitable (literal retained); server statistics redaction INCONCLUSIVE because inspection objects are absent. Absence of the SQL view does NOT prove tracking is off or passwords are protected. No false all-pass claim. No extension install, statistics reset, privilege escalation, real password write, app activation, deployment, support follow-up or paid-plan change. Existing free compute was awakened; no invoice amount inferred.
+
+Documentation-backed option, NOT execution authority: Neon documents CREATE EXTENSION pg_stat_statements to expose the statistics view (https://neon.com/docs/extensions/pg_stat_statements). To close this exact remaining observation gap without waiting for email, propose a separately approved temporary extension installation on this same child, a single fresh synthetic canary with positive tracking control and filtered marker-presence booleans, then exact canary/extension cleanup. Preserve logging and unrelated query text; failure/missing observation stays inconclusive. This is diagnostic instrumentation rather than another product feature, but was excluded from the approved test and therefore not silently installed. No new helper or subsection proposed; no runtime password execution recommendation until the exposure result and residual provider-log risk are reviewed.
+
+Support status correction: approved email sent from debynyhan@signmons.com to security@neon.tech at08:11EDT and confirmed in Sent Items; no human reply or ticket number claimed. Earlier unsent statements below are historical. Owner prefers documentation and finite testing; support is not an automatic acceptance gate.
+
+R08-R12five remain; packages5/60(8.3% tracked plan),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. Three diagnostic exits concluded with the stated inconclusive safety observation; no acceptance credit. No scope deviation beyond the expressly approved diagnostic action. Documentation/architecture/whitespace validation recorded after changes; no new app-runtime tests claimed.
+
 ## Support delivery status after owner send approval
+
+Latest canary documentation validation: frozen baseline, full cross-repository consistency,21 governance regressions, backend architecture/baseline and both git diff --check passed. No app-runtime source changed; build/lint/application tests were not rerun for this documentation-only result.
 
 Approved question delivered to Neon Console AI on2026-09-16; assistant explicitly cannot escalate to human support, and no case number exists. Security-inquiry email fallback verified at Neon's published security page; email remains unsent pending sender choice because connected Outlook is ben@eternityhvacr.com rather than Signmons. Exact status in governance APP013_P06_INITIAL_PASSWORD_REVIEW.md. No credentials/customer records transmitted, no live database/config change, no acceptance/count change. No scope deviation.
 
