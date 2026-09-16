@@ -1,7 +1,14 @@
 // Explicitly approved one-role handoff only. Imports never connect or read secrets.
 import { randomBytes, createHash } from "node:crypto";
 import { constants, fstatSync } from "node:fs";
-import { open, lstat, unlink } from "node:fs/promises";
+import {
+  open,
+  lstat,
+  unlink,
+  readFile,
+  readdir,
+  realpath,
+} from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
@@ -28,6 +35,277 @@ export { readPipe } from "./p06_backup_guards.mjs";
 const exec = promisify(execFile);
 const REPO = fileURLToPath(new URL("../", import.meta.url));
 const fail = (code) => new BackupFailure(code);
+export const RUNTIME_ROLE = "p06_intake_runtime";
+export const RUNTIME_RUN = "/Volumes/Signmons-P06/r08-runtime-password-v1";
+export const runtimeHash = (value) =>
+  createHash("sha256").update(JSON.stringify(value)).digest("hex");
+export const RUNTIME_ROLE_SQL = `SELECT oid::text,rolname,rolcanlogin,rolinherit,rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls,rolconnlimit,rolvaliduntil::text,
+(SELECT count(*)::int FROM pg_auth_members WHERE member=r.oid) AS memberships
+FROM pg_roles r WHERE rolname='p06_intake_runtime'`;
+export const RUNTIME_MIGRATIONS_SQL =
+  'SELECT migration_name,checksum,finished_at IS NOT NULL AND rolled_back_at IS NULL AS complete FROM "_prisma_migrations" ORDER BY migration_name';
+export const RUNTIME_EXTRA_CATALOG = [
+  "SELECT datname,datacl::text,pg_get_userbyid(datdba) AS owner FROM pg_database WHERE datname=current_database()",
+  "SELECT n.nspname,c.relname,a.attname,a.attacl::text FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','legacy_2025') AND a.attnum>0 AND NOT a.attisdropped ORDER BY n.nspname,c.relname,a.attnum",
+];
+export function validateRuntimePacket(p, revision, manifest, now = Date.now()) {
+  if (
+    !p ||
+    p.sourceRevision !== revision ||
+    !/^[a-f0-9]{40}$/.test(revision) ||
+    p.owner !== "Debynyhan Banks" ||
+    !/^P06-R08-[A-Za-z0-9-]{1,64}$/.test(p.approvalId ?? "") ||
+    Object.entries(TARGET).some(
+      ([k, v]) => p[k] !== (k === "role" ? RUNTIME_ROLE : v),
+    ) ||
+    p.runDirectory !== RUNTIME_RUN ||
+    p.initialPasswordAssignmentApproved !== true ||
+    p.inheritedCredentialRiskAcknowledged !== true ||
+    p.providerLoggingReviewApproved !== true ||
+    p.noOtherConsumersConfirmed !== true ||
+    !/^[A-Za-z0-9-]{1,100}$/.test(p.providerLoggingReviewId ?? "") ||
+    !/^[1-9][0-9]*$/.test(p.roleOid ?? "") ||
+    [p.loggingFingerprint, p.stateFingerprint, p.manifestHash].some(
+      (x) => !/^[a-f0-9]{64}$/.test(x ?? ""),
+    ) ||
+    p.manifestHash !== manifest
+  )
+    throw fail("RUNTIME_PACKET_REFUSED");
+  const dates = [p.startUtc, p.endUtc, p.verifiedAtUtc];
+  if (
+    dates.some(
+      (x) =>
+        typeof x !== "string" ||
+        !Number.isFinite(Date.parse(x)) ||
+        new Date(x).toISOString() !== x,
+    )
+  )
+    throw fail("WINDOW_REFUSED");
+  const [start, end, verified] = dates.map(Date.parse);
+  if (
+    now < start ||
+    now >= end ||
+    end - start > 900000 ||
+    end <= start ||
+    verified > now ||
+    now - verified > 300000
+  )
+    throw fail("WINDOW_REFUSED");
+  return Math.min(120000, end - now);
+}
+export async function runtimeManifest() {
+  const root = path.join(REPO, "prisma/migrations");
+  const names = (await readdir(root)).filter((x) => /^[0-9]/.test(x)).sort();
+  if (names.length !== 26) throw fail("MIGRATION_MANIFEST_REFUSED");
+  return Promise.all(
+    names.map(async (migration_name) => ({
+      migration_name,
+      checksum: createHash("sha256")
+        .update(
+          await readFile(path.join(root, migration_name, "migration.sql")),
+        )
+        .digest("hex"),
+      complete: true,
+    })),
+  );
+}
+export async function runtimeState(client, budget) {
+  const role = (await budget.query(client, RUNTIME_ROLE_SQL)).rows;
+  if (
+    role.length !== 1 ||
+    role[0].rolname !== RUNTIME_ROLE ||
+    role[0].rolconnlimit !== 10 ||
+    role[0].memberships !== 0 ||
+    [
+      "rolcanlogin",
+      "rolinherit",
+      "rolsuper",
+      "rolcreatedb",
+      "rolcreaterole",
+      "rolreplication",
+      "rolbypassrls",
+    ].some((k) => role[0][k] !== false)
+  )
+    throw fail("ROLE_STATE_REFUSED");
+  const objects = await catalog(budget, client);
+  for (const query of RUNTIME_EXTRA_CATALOG)
+    objects.push((await budget.query(client, query)).rows);
+  return { role, objects };
+}
+export async function assignRuntimeCore({
+  client,
+  budget,
+  packet,
+  root,
+  manifest,
+}) {
+  let sent = false;
+  try {
+    validateRuntimePacket(packet, packet.sourceRevision, runtimeHash(manifest));
+    await exclusiveJson(root + "/attempt.json", {
+      approvalId: packet.approvalId,
+      sourceRevision: packet.sourceRevision,
+    });
+    const identity = (
+      await budget.query(
+        client,
+        "SELECT current_database() AS database,current_user AS role,current_setting('server_version_num')::int AS version",
+      )
+    ).rows[0];
+    if (
+      identity?.database !== TARGET.database ||
+      identity.role !== "neondb_owner" ||
+      identity.version < 180000 ||
+      identity.version >= 190000
+    )
+      throw fail("ADMIN_IDENTITY_REFUSED");
+    const inspect = async () => {
+      validateRuntimePacket(
+        packet,
+        packet.sourceRevision,
+        runtimeHash(manifest),
+      );
+      const sessions = (
+        await budget.query(
+          client,
+          "SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND backend_type='client backend'",
+        )
+      ).rows[0];
+      if (sessions?.n !== 0) throw fail("OTHER_SESSIONS_REFUSED");
+      sameMetadata(
+        (await budget.query(client, RUNTIME_MIGRATIONS_SQL)).rows,
+        manifest,
+      );
+      const state = await runtimeState(client, budget);
+      if (
+        state.role[0].oid !== packet.roleOid ||
+        runtimeHash(state) !== packet.stateFingerprint
+      )
+        throw fail("RUNTIME_STATE_REFUSED");
+      assertLogging(
+        (await budget.query(client, LOGGING_SQL)).rows,
+        (
+          await budget.query(
+            client,
+            "SELECT extname,extversion FROM pg_extension ORDER BY extname",
+          )
+        ).rows,
+        packet.loggingFingerprint,
+      );
+      return state;
+    };
+    await inspect();
+    await budget.query(client, "BEGIN");
+    const before = await inspect();
+    let secret = randomBytes(32).toString("hex");
+    await exclusiveJson(root + "/runtime-credential.json", {
+      host: TARGET.host,
+      database: TARGET.database,
+      role: RUNTIME_ROLE,
+      password: secret,
+    });
+    budget.assertActive();
+    validateRuntimePacket(packet, packet.sourceRevision, runtimeHash(manifest));
+    sent = true;
+    await budget.query(
+      client,
+      `ALTER ROLE p06_intake_runtime PASSWORD '${secret}'`,
+    );
+    secret = undefined;
+    sameMetadata(await runtimeState(client, budget), before);
+    await budget.query(client, "COMMIT");
+    sameMetadata(await runtimeState(client, budget), before);
+    return { status: "RUNTIME_ASSIGNED_NOLOGIN", role: RUNTIME_ROLE };
+  } catch {
+    // Preserve the only encrypted credential copy even on an uncertain commit.
+    throw fail(
+      sent ? "RUNTIME_ASSIGNMENT_INDETERMINATE" : "RUNTIME_ASSIGNMENT_REFUSED",
+    );
+  }
+}
+export async function runRuntimeAdmin(packet) {
+  const revision = (
+    await exec("/usr/bin/git", ["-C", REPO, "rev-parse", "HEAD"])
+  ).stdout.trim();
+  const manifest = await runtimeManifest();
+  validateRuntimePacket(packet, revision, runtimeHash(manifest));
+  if (
+    (
+      await exec("/usr/bin/git", ["-C", REPO, "status", "--porcelain"])
+    ).stdout.trim()
+  )
+    throw fail("SOURCE_CHECKOUT_DIRTY");
+  if (!fstatSync(0).isFIFO()) throw fail("PRIVATE_PIPE_REQUIRED");
+  await inspectStorage();
+  const dir = await lstat(RUNTIME_RUN);
+  if (
+    (await realpath(RUNTIME_RUN)) !== RUNTIME_RUN ||
+    !dir.isDirectory() ||
+    dir.uid !== process.getuid() ||
+    (dir.mode & 0o777) !== 0o700 ||
+    (await readdir(RUNTIME_RUN)).some((x) => x !== "approval.json")
+  )
+    throw fail("RUNTIME_STORAGE_REFUSED");
+  // Prevent two wrappers prompting against the same approval before core's marker.
+  await exclusiveJson(RUNTIME_RUN + "/handoff-attempt.json", {
+    approvalId: packet.approvalId,
+    sourceRevision: revision,
+  });
+  let client, budget, result, failure;
+  try {
+    budget = await BackupBudget.create({
+      roots: [RUNTIME_RUN],
+      milliseconds: validateRuntimePacket(
+        packet,
+        revision,
+        runtimeHash(manifest),
+      ),
+    });
+    process.stdout.write("READY\n");
+    let password = await readPipe(process.stdin, budget);
+    client = new pg.Client({
+      ...adminConnection(password),
+      application_name: "signmons-p06-r08-private-handoff",
+      statement_timeout: 10000,
+    });
+    password = undefined;
+    client.on("notice", () => {});
+    client.on("error", () => budget.abort("CONNECTION_FAILED"));
+    await connectAdmin(client, budget);
+    result = await assignRuntimeCore({
+      client,
+      budget,
+      packet,
+      root: RUNTIME_RUN,
+      manifest,
+    });
+  } catch (error) {
+    failure =
+      error instanceof BackupFailure
+        ? error.message
+        : "RUNTIME_HANDOFF_REFUSED";
+  } finally {
+    try {
+      await cleanupOwned({
+        clients: client ? [client] : [],
+        stop: async () => {},
+        removePassfile: async () => {},
+        eject: async () => {},
+      });
+    } catch {
+      failure = "RUNTIME_CLOSEOUT_UNCERTAIN";
+    }
+    budget?.close();
+  }
+  await exclusiveJson(RUNTIME_RUN + "/result.json", {
+    status: failure ?? result.status,
+    role: RUNTIME_ROLE,
+    approvalId: packet.approvalId,
+    automaticRetry: false,
+  });
+  if (failure) throw fail(failure);
+  return result;
+}
 export const LOGGING_SQL = `SELECT name,setting FROM pg_settings WHERE name IN
 ('log_statement','log_min_error_statement','log_min_duration_statement',
 'log_min_duration_sample','log_transaction_sample_rate','log_duration',
@@ -428,11 +706,29 @@ if (
 ) {
   process.umask(0o077);
   try {
-    if (process.argv.length !== 3 || process.argv[2] !== RUN + "/approval.json")
-      throw fail("APPROVAL_PACKET_REQUIRED");
-    const packet = JSON.parse((await privateFile(process.argv[2], 8192)).data);
-    await runAdmin(packet);
-    process.stdout.write("HANDOFF_READY\n");
+    const runtime = process.argv[2] === "--runtime-initial-password";
+    if (runtime) {
+      if (
+        process.argv.length !== 4 ||
+        process.argv[3] !== RUNTIME_RUN + "/approval.json"
+      )
+        throw fail("APPROVAL_PACKET_REQUIRED");
+      await runRuntimeAdmin(
+        JSON.parse((await privateFile(process.argv[3], 8192)).data),
+      );
+      process.stdout.write("RUNTIME_HANDOFF_READY\n");
+    } else {
+      if (
+        process.argv.length !== 3 ||
+        process.argv[2] !== RUN + "/approval.json"
+      )
+        throw fail("APPROVAL_PACKET_REQUIRED");
+      const packet = JSON.parse(
+        (await privateFile(process.argv[2], 8192)).data,
+      );
+      await runAdmin(packet);
+      process.stdout.write("HANDOFF_READY\n");
+    }
   } catch (e) {
     process.stdout.write("HANDOFF_REFUSED\n");
     process.exitCode = 1;
