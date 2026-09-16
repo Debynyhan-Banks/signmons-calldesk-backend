@@ -1,6 +1,14 @@
 # Signmons Backend Execution Board
 
-## Current: U01 locally complete — R06 next
+## Current: R06 read-only qualification partial — no activation
+
+R06 refreshed isolated child tenant metadata, prior phone reservation and Cloud Run/Neon resource metadata. Tenant is SUSPENDED, approved organization/payment timestamps are absent and service category count is zero. One prior phone hold reserves USD0.50; retain it. Public rates are planning inputs, not account-specific invoice evidence. See backend evidence/APP-013/p06-r06-qualification.md for exact observations and remaining checks.
+
+R06 remains open: finish provider/account restrictions and liability readback, qualify exact approved tenant policies/category/integration and exception identity, then finalize participant notice and itemized capped run proposal. Safari sign-in is needed for the existing Twilio account. Do not activate the tenant, invent business policies, reset holds, send, provision or deploy. Missing setup is for the existing R07/R08 approval boundaries, not another coding task.
+
+Original12+approved-addedU01=13; R01-R05 andU01 locally closed6, R06-R12open7. Packages5/60(8.3% tracked plan),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. No scope deviation. No further task added.
+
+## Historical: U01 locally complete — R06 next
 
 Owner explicitly approved R05 design and the one added U01 local-synthetic tool task. U01 three exits complete: protected numeric-version bundle/provenance, guarded transactional activation/revocation/readback, and synthetic failure/review proof. Backend evidence/APP-013/p06-u01-operator-tool.md records exact interfaces and limitations. No live secret, activation, deployment or provider action. Only project-number metadata read; existing runtime image unchanged.
 
