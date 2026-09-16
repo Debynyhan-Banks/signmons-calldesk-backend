@@ -1,5 +1,19 @@
 # P06-R06 — partial read-only qualification
 
+## Latest Google quota and exception-identity readback
+
+Entry backend83a4228/governanceca2b7b8; both origins fetched, focused checkouts clean. Read-only requests used existing owner gcloud access token in process memory only, never printed/persisted. No old test runner was executed, no impersonation or provider validation request.
+
+- gcloud services list confirms addressvalidation.googleapis.com enabled.
+- Service Usage consumerQuotaMetrics FULL response HTTP200, no next page: validate_address_requests project effective limits5/minute and10/day. Per-user minute value9223372036854775807 is not an additional practical cap. Feedback quotas are separate and unused. Daily quotas are not one-run allowances and can reset; durable holds/caps remain required.
+- Identity Toolkit accounts:lookup HTTP200 for only staging-phone-owner-20260912: disabled:true, validSince1789253204 unchanged. No email, phone or custom claims retained. This is disabled/revocation-timestamp readback, not a fresh token-replay test.
+- Runtime service-account resource IAM policy bindings empty. Direct project membership for that runtime shows only roles/firebaseauth.viewer. Project get-ancestors returns signmons project only, no parent organization/folder.
+- Effective serviceusage.services.use troubleshooting refused because policytroubleshooter.googleapis.com is disabled. Did not enable API, install CLI components, grant roles or access secret payloads. Beta quota command unavailable without component installation; quota read completed through existing authenticated Service Usage REST instead.
+
+Conclusion: current quota and old exception closure now verified. No usable Address Validation authorization for the runtime has been demonstrated. Project API enablement and owner access do not establish runtime access. R07 must explicitly review the necessary exact least-privilege grant, if required, alongside release configuration; no broad Editor/Owner grant or downloaded key. Do not treat unavailable troubleshooting as proof of every possible effective denial.
+
+Remaining R06 work is final database-liability/binding and itemized infrastructure-cost qualification plus exact runtime-authorization disposition. No further business-price/hour/scope question is pending. R06 not closed;6locally closed/7open, packages5/60,walkthrough3/8. No scope deviation. This was read-only metadata evidence, not successful phone/address/job acceptance.
+
 ## Approved regular-only scope and fresh safety readback
 
 Owner explicitly approved the proposed regular-visit-only controlled test with one USD99 deposit. Governance ETERNITY_PILOT_OPERATING_RULES.md now records exact restricted policy content. Earlier pending-scope language below is historical and superseded; do not ask for this decision again. No tenant/policy write or paid run is authorized.
