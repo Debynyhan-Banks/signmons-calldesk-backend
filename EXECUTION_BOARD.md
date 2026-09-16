@@ -1,12 +1,12 @@
 # Signmons Backend Execution Board
 
-## Current: R06 qualification complete — R07 external-diff review next
+## Current: R07 owner-approved — R08 private setup next
 
-Owner approved preparation of the limited child runtime identity. APP013_P06_RUNTIME_ROLE_REVIEW.md now supplies exact NOLOGIN table/column grants, native private password/secret-entry procedure, bounded login expiry and explicit session termination. Actual restricted-login local PostgreSQL18 proof passed13 denial cases and eight loaded HTTPS browser cases using synthetic providers. See backend evidence/APP-013/p06-r06-runtime-role.md. No live role, credential, secret, IAM, deployment or provider change.
+Owner said "i reviewed and approved proceed" after reviewing the linked consolidated packet and role addendum. R07 adoption in APP013_P06_R06_REVIEW_PACKET.md binds backend3ee0d07/governancef80db1b, exact role SQL, five purpose resources, additive permissions, restricted USD99 profile/policy, fixed child/category/address-account and disabled-release targets. Approved operating envelope USD2.70 plus up to USD0.30/month retained-secret exposure; prior holds remain. This is actual owner approval, not self-approval or a changed requirement.
 
-APP013_P06_R06_REVIEW_PACKET.md plus the role addendum is ready for existing R07 owner review: exact child/SQL/source, secret destination, additive permissions, tenant policy, USD2.70 operating allowance and USD0.30/month retained-secret exposure, execution/cleanup windows. R07 approval is not inferred from preparation approval; R08 setup and R10 paid run remain separate gates. No administrator credential in runtime. U02 remains locally complete/reviewed.
+Fresh cloud metadata matches reviewed traffic/tags, absent proposed resources/revisions and unchanged runtime direct project role. R08 before-write child/schema/role/recovery/private-authentication checks remain; owner is ready for private credential entry. No role/password/secret/IAM/tenant/deployment mutation has occurred. R09 disabled release and R10 final paid-run approval retain their existing gates; no send/payment/booking authority. See backend evidence/APP-013/p06-r07-approval.md.
 
-Original12 + approved U01 + approved U02 =14; R01-R06/U01/U02 locally closed8, R07-R12 remain6. Packages5/60(8.3% tracked plan), walkthrough3/8(37.5%), P06unaccepted, ETAunvalidated. No additional task or scope deviation; preserve original gates and all prior holds.
+Original12 + approved U01 + approved U02 =14; R01-R07/U01/U02 closed9, R08-R12 remain5. Packages5/60(8.3% tracked plan), walkthrough3/8(37.5%), P06unaccepted, ETAunvalidated. No added task or scope deviation. Next observable result is R08 verified limited-role/private-material setup, not another implementation section.
 
 ## Historical: R06 read-only qualification partial — no activation
 
