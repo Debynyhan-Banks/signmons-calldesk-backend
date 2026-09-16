@@ -1,12 +1,12 @@
 # Signmons Backend Execution Board
 
-## Current: R06 cloud diff prepared — limited database identity decision
+## Current: R06 qualification complete — R07 external-diff review next
 
-Owner reviewed U02 and proceeded. APP013_P06_R06_REVIEW_PACKET.md now records exact additive cloud IAM proposal, stable category/address-account and revision/tag bindings, numeric inherited-secret versions, USD2.70 operating allowance proposal plus USD0.30/month retained-secret exposure, and stop controls. Read-only tenant/role refresh found no limited application login; inherited neondb_owner has elevated/parent-capable authority and migration roles remainNOLOGIN. Do not put administrator credentials into runtime by inference. See backend evidence/APP-013/p06-r06-permissions-bindings.md.
+Owner approved preparation of the limited child runtime identity. APP013_P06_RUNTIME_ROLE_REVIEW.md now supplies exact NOLOGIN table/column grants, native private password/secret-entry procedure, bounded login expiry and explicit session termination. Actual restricted-login local PostgreSQL18 proof passed13 denial cases and eight loaded HTTPS browser cases using synthetic providers. See backend evidence/APP-013/p06-r06-runtime-role.md. No live role, credential, secret, IAM, deployment or provider change.
 
-Smallest owner decision: approve preparation of the child-only limited-runtime database-role configuration within existing R06/R07/R08; exact table grants/private handoff/local privilege proof must precede live approval. No new role, credential, code, live tenant change, provisioning, IAM write, deployment or provider call. No scope deviation implemented; restricted-role configuration proposed, not silently authorized. U02 remains locally complete/reviewed.
+APP013_P06_R06_REVIEW_PACKET.md plus the role addendum is ready for existing R07 owner review: exact child/SQL/source, secret destination, additive permissions, tenant policy, USD2.70 operating allowance and USD0.30/month retained-secret exposure, execution/cleanup windows. R07 approval is not inferred from preparation approval; R08 setup and R10 paid run remain separate gates. No administrator credential in runtime. U02 remains locally complete/reviewed.
 
-Original12 + approved U01 + approved U02 =14; R01-R05/U01/U02 locally closed7, R06-R12 remain7. Packages5/60(8.3% tracked plan), walkthrough3/8(37.5%), P06unaccepted, ETAunvalidated. R06/R07 are not execution-ready. No further task added; preserve original gates and all prior holds.
+Original12 + approved U01 + approved U02 =14; R01-R06/U01/U02 locally closed8, R07-R12 remain6. Packages5/60(8.3% tracked plan), walkthrough3/8(37.5%), P06unaccepted, ETAunvalidated. No additional task or scope deviation; preserve original gates and all prior holds.
 
 ## Historical: R06 read-only qualification partial — no activation
 

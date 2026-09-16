@@ -13,7 +13,9 @@ if (process.argv[2] === "worker") {
   const { Pool } = require("pg");
   const { PrismaPg } = require("@prisma/adapter-pg");
   const { PrismaClient } = require("@prisma/client");
-  const pool = new Pool({ host: "/tmp", database: db, user, max: 1 });
+  const socket = process.env.ORGANIZATION_SOCKET_DIR ?? "/tmp";
+  assert.ok(socket === "/tmp" || /^\/private\/tmp\/signmons-runtime-role-[A-Za-z0-9]+\/socket$/.test(socket));
+  const pool = new Pool({ host: socket, database: db, user, max: 1 });
   const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
   const lease = await new SharedCustomerBrowserBudget(prisma, JSON.parse(encoded)).acquire("not-a-client-ip", "start");
   // Deliberately never release: models loss of process after durable admission.

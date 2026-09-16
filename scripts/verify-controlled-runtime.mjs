@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { verifyLoadedIntakeBrowser } from "./verify-loaded-intake-browser.mjs";
+import { qualifyRuntimeRole } from "./verify-p06-runtime-role.mjs";
 const require = createRequire(import.meta.url);
 const {
   loadControlledIntakeRuntime,
@@ -144,8 +145,9 @@ export async function verifyControlledRuntime({
     to: phone,
     channel: "sms",
   });
+  const limited = await qualifyRuntimeRole(prisma);
   const resources = {
-    prisma,
+    prisma: limited.prisma,
     cipher,
     secrets,
     verifyFactory: () => ({
@@ -356,6 +358,7 @@ export async function verifyControlledRuntime({
     await verifyLoadedIntakeBrowser({
       browser,
       prisma,
+      runtimePrisma: limited.prisma,
       cipher,
       template: config,
       facts,
@@ -363,9 +366,13 @@ export async function verifyControlledRuntime({
       evidence,
     });
   } finally {
-    await prisma.tenantOrganization.update({
-      where: { id: tenantId },
-      data: { settings: saved },
-    });
+    try {
+      await prisma.tenantOrganization.update({
+        where: { id: tenantId },
+        data: { settings: saved },
+      });
+    } finally {
+      await limited.close();
+    }
   }
 }

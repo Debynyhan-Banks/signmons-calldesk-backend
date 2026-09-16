@@ -18,6 +18,7 @@ const {
 export async function verifyLoadedIntakeBrowser({
   browser,
   prisma,
+  runtimePrisma = prisma,
   cipher,
   template,
   facts,
@@ -137,7 +138,7 @@ export async function verifyLoadedIntakeBrowser({
               ...facts.flags,
             },
             () => ({
-              prisma,
+              prisma: runtimePrisma,
               cipher,
               verifyFactory: () => ({
                 verify: {

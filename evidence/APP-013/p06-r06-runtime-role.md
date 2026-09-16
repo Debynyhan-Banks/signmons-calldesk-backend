@@ -1,0 +1,22 @@
+# R06 limited runtime login — local qualification complete
+
+Owner approved preparing exact permissions/private setup; no live creation. Entry backend838468c/governance95fbea2, focused remotes fetched; unrelated saved checkout preserved. Pre-code card governance APP013_P06_RUNTIME_ROLE_REVIEW.md fixes three exits: source-mapped grants, actual restricted-role local proof, private setup/revocation procedure. All three now complete. No U03/new task, application/schema/dependency modification or scope deviation.
+
+## Deliverable
+
+scripts/fixtures/p06-runtime-role-review.sql SHA256 a58335957d9892fd3055d48de30c6e89171e349525139976151ed0395cbfd5da creates only proposed NOLOGIN p06_intake_runtime and explicit intake table/column grants. No password, target, LOGIN/expiry or live execution authority. Timestamp-column UPDATE is necessary for PostgreSQL row locks; settings/status/prices cannot be changed. Audit and address-operation holds cannot be deleted. Customer/session/operation writes and narrowly necessary content/request-alias deletion remain application-scoped. No production multi-tenant RLS claim: granted tables can be read across rows; schema PUBLIC rights require live preflight.
+
+scripts/verify-p06-runtime-role.mjs connects as actual restricted current_user AND session_user, not SET ROLE from administrator. Only guarded disposable calldesk_org_* /Unix-socket PG18 accepted. Existing runtime and loaded-browser harness inject this connection for application paths; fixture provisioning and direct state assertions retain separate local administrator. Role collision refuses. Local grants/role/database removed after test; no existing local server stopped. Optional bounded ORGANIZATION_SOCKET_DIR propagated to existing independent-process budget workers; no external database URL accepted.
+
+## Fresh results
+
+- Build and lint pass; full Jest2359passed/3existing skips. Existing operator/migration Node16passed. Final architecture, cross-repository baseline, full governance consistency, frozen baseline,21 governance tests and both whitespace gates passed.
+- Final disposable PG18 proof directory /private/tmp/signmons-runtime-role-UlMTlE/evidence. All existing organization/operator/browser checks passed.13 negative permission cases cover policy/status/price writes, job status, audit update/delete, address-operation delete, Payment/CalendarOperation/pg_authid reads, administrator SET ROLE, role/schema creation. No secrets queried in denial tests (LIMIT0).
+- Actual loader/phone/start-check/revocation/retirement proof used limited connection. Eight loaded HTTPS browser cases: accepted/outside/unknown/correction at390/1440; fresh synthetic phone proof, one address request or two for correction, exactly-one admission/replay, clear-session cleanup; zero live provider calls. Visually inspected mobile accepted receipt: job creation explicitly does not confirm booking/payment/dispatch/message authority.
+- Private psql/Neon TLS/password/Secret Manager upload not executed. Native hidden-input \password procedure is documented for later reviewed R08 use, not a custom password helper or reuse of administrator credential. Owner privately enters the dedicated URL in only the approved new child secret. Password expiry/NOLOGIN do not terminate existing sessions; closeout explicitly revokes runtime authority, closes/purges session, disables login and terminates only that role's neondb connections.
+
+Earlier local failures retained transparently: default /tmp server failed PG18 guard before role creation; dedicated PG18 initially exposed old budget worker's hard-coded /tmp socket (fixed to same bounded optional socket); negative test originally used nonexistent Appointment table (corrected to actual CalendarOperation, still requires permission-denied). No guard/test expectation weakened. Each created fixture database was removed, each owned PG18 server stopped; original local server left running. Existing pg driver concurrent-query deprecation warning remains non-fatal; no dependency change proposed.
+
+## Review and next
+
+Review role SQL + governance role addendum, then the consolidated R06 packet. Next existing task R07 owner review of exact external diffs/caps/windows; no live role/grant/credential/secret/deployment/provider change this turn. R06 qualification locally complete: original12+U01+U02=14, eight locally closed, R07-R12six remaining. Packages5/60(8.3% tracked plan),walkthrough3/8(37.5%),P06unaccepted,ETAunvalidated. No scope deviation.

@@ -36,7 +36,12 @@ assert.ok(
 );
 const database = `calldesk_org_${randomBytes(6).toString("hex")}`;
 assert.match(database, /^calldesk_org_[0-9a-f]{12}$/);
-const local = { host: "/tmp", user: userInfo().username, port: 5432 };
+const socket = process.env.ORGANIZATION_SOCKET_DIR ?? "/tmp";
+assert.ok(
+  socket === "/tmp" ||
+    /^\/private\/tmp\/signmons-runtime-role-[A-Za-z0-9]+\/socket$/.test(socket),
+);
+const local = { host: socket, user: userInfo().username, port: 5432 };
 const admin = new Client({ ...local, database: "postgres" });
 let prisma,
   pool,
