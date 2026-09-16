@@ -1,5 +1,9 @@
 # P06 / R08 private-input adaptation — local qualification
 
+## Authorized method review complete
+
+Owner authorized investigation after the refusal. Governance APP013_P06_INITIAL_PASSWORD_REVIEW.md now records primary-source findings and an unsent focused support question. No verified safe alternative was established: native verifier incompatible; reset failed for this passwordless role; SQL literal route remains logging-gated; provider-created roles have administrative membership whose safe removal was not established; no_login creation does not establish a generated credential. No new code, live query, credential, provider/configuration action or contact in this review. Recommendation is one provider-supported initialization/redaction clarification, not another helper or retry. The review itself is finished; no added subsection/task or acceptance credit. No scope deviation implemented.
+
 ## Live preflight after owner review — stopped before assignment
 
 2026-09-16 approximately11:41UTC, owner reviewed and said proceed. Fetched both focused remotes; clean source859ec4c/governance05607b1. Read-only Neon Console queries against exact child br-sparkling-sun-ay6gr5e8/neondb found log_parameter_max_length=-1 (guard requires0), pg_stat_statements.track=top with track_utility=on (guard refuses active utility tracking). Both parameters have superuser context and has_parameter_privilege(current_user,parameter,'SET') returned false for neondb_owner. No SET/ALTER/GRANT/reset/password statement was executed. Existing reset dialog was cancelled, not submitted.
