@@ -1,6 +1,12 @@
 # Signmons Backend Execution Board
 
-## Current: R07 owner-approved — R08 private setup next
+## Current: R08 custody prepared — owner-only credential handoff pending
+
+Owner approved the recommended limited staging credential method on2026-09-16. See APP013_P06_INITIAL_PASSWORD_REVIEW.md for the exact owner-only guarded bootstrap/reset/private-custody sequence and current evidence. Live21:47/21:50UTC metadata: runtimeOID163840 remainsNOLOGIN/no elevated flags/no memberships/limit10, zero app sessions,26migrations. Statistics save=on/max5000 has no guaranteed expiry; only inspected owner/provider login roles have other-user-statistics privileges, not the runtime. Provider internal logs remain unknown; no secret-free claim.
+
+Created only the approved empty child-database URL secret, added only the named runtime resource-level accessor, enabled Secret Manager DATA_READ auditing without changing project IAM bindings, and verified existing30day audit-log retention. Zero secret versions; no final password/reset/login/activation/deployment. The owner must execute credential-changing steps privately and close value screens before metadata-only continuation. No extra canary/helper or task. R08-R12five remain; packages5/60, walkthrough3/8 unchanged; P06unaccepted. No scope deviation. Next observable result is one completed owner reset and privately saved numeric secret version, then exact readback and existing bounded R08 proof.
+
+## Historical: R07 owner-approved — R08 private setup next
 
 Owner said "i reviewed and approved proceed" after reviewing the linked consolidated packet and role addendum. R07 adoption in APP013_P06_R06_REVIEW_PACKET.md binds backend3ee0d07/governancef80db1b, exact role SQL, five purpose resources, additive permissions, restricted USD99 profile/policy, fixed child/category/address-account and disabled-release targets. Approved operating envelope USD2.70 plus up to USD0.30/month retained-secret exposure; prior holds remain. This is actual owner approval, not self-approval or a changed requirement.
 

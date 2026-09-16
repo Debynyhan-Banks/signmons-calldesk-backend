@@ -1,5 +1,21 @@
 # P06 / R08 private-input adaptation — local qualification
 
+## Approved access/retention and custody preparation — 2026-09-16
+
+Owner approved the staged recommendation. Entry backend a17aa8f / governance4d6d6e6; work on focused codex/p06-r08-approved-password-custody, preserving main and prior worktrees. Governance APP013_P06_INITIAL_PASSWORD_REVIEW.md contains the exact owner-only credential handoff. No agent credential entry/change or payload access.
+
+- Metadata-only Neon SQL21:47:25UTC: neondb/neondb_owner; runtimeOID163840 NOLOGIN/NOINHERIT/no elevated flags/no memberships/limit10/expiryunset. Runtime pg_read_all_stats USAGE/MEMBER false; neondb_owner/cloud_admin/neon_service true. Only provider monitor client besides query. Stats tracktop/utilityon/saveon/max5000; normal statement/duration logs off; log_parameter_max_length=-1. No extension installed. No time-bounded statistics retention or provider-log guarantee.
+- Neon Console: one organizationAdmin, no pending invites; Datadog/OpenTelemetry integrations show Upgrade plan to add. This is a bounded UI inspection, not a provider-internal/API-key/security audit.
+- Metadata-only SQL21:50:44UTC: same role/flags/limit, runtime sessions0, other application sessions0,26completed/0unfinished migrations, public relation/column ACL fingerprint f3d51c1325945002d9af69e412ee1b21. No app/customer records or password/verifier catalogs read.
+- Google resource created21:49:34UTC: projects/845074063310/secrets/signmons-staging-p06-child-database-url, automatic replication. Explicit resource policy only secretAccessor for signmons-calldesk-runtime@signmons.iam.gserviceaccount.com; inherited projectOwner access remains. Versions list empty. Existing projectEditors lack direct payload access but can add versions; broader admin powers are not claimed absent.
+- Added only Secret Manager DATA_READ audit configuration, no exemptions. Exact project IAM bindings before/after equal. Existing _Default logging sink includes data access; active global bucket retention30days. This is independent from Neon statistics retention. No payload access event generated solely to test auditing.
+- Existing Cloud Run traffic remains100%app013bounds with all nine tags preserved. No release, role/password/login change, secret version, new phone/Google request or data mutation.
+- URI template checked against installed pg-connection-string using fictional placeholder only: TLS enabled and rejectUnauthorized not disabled. First attempt failed while printing an unexported package.json subpath after parsing; rerun without that diagnostic succeeded. No live TLS/authentication claim.
+
+Validation: governance frozen baseline/full cross-repository consistency and21 baseline/placement/alignment regressions passed; backend architecture/cross-repository baseline and both whitespace checks passed. No runtime source changed; application tests/build/browser acceptance were not rerun. The owner-only SQL block is prepared, not executed or claimed as live proof.
+
+Browser policy requires owner-operated credential change. Prepared doc block sets a public bootstrap only while retaining NOLOGIN, past expiry and limit0; the owner then resets once in Console and privately stores the final runtime URI in the dedicated secret. Agent has not pasted/executed that block. On return, check metadata only; preserve disabled state until existing R08 login proof is qualified. No current private-input/login window starts while waiting. No new helper, section or acceptance credit; R08-R12five remain, packages5/60 andwalkthrough3/8 unchanged, P06unaccepted. No scope deviation.
+
 ## Control-plane reset qualification — completed,2026-09-16
 
 Handoff documentation checks passed: frozen baseline, complete governance consistency,21 governance regressions, backend architecture and cross-repository baseline, both whitespace checks. No app source change; no app build/lint/runtime test or completed live reset claimed.
