@@ -1,5 +1,13 @@
 # P06-R06 — partial read-only qualification
 
+## Approved regular-only scope and fresh safety readback
+
+Owner explicitly approved the proposed regular-visit-only controlled test with one USD99 deposit. Governance ETERNITY_PILOT_OPERATING_RULES.md now records exact restricted policy content. Earlier pending-scope language below is historical and superseded; do not ask for this decision again. No tenant/policy write or paid run is authorized.
+
+Read-only sanitized jq of the two already-known local Google held files returned project signmons, liabilityMicros100000 each and original claimedAt1789257509515/1789258273539. Both holds remain USD0.20 total; no reset, removal or invoice reconciliation. Requested requestLimit field was absent/null, so no new request-count conclusion. No private address/input files opened. Read-only gcloud IAM role describe returned stagingPhoneTokenSigner stageDISABLED. This does not independently refresh operator disabled/revoked status or other bindings.
+
+Entry backendd3b3633/governance8196055; both origins fetched and focused worktrees clean. R06 still open for current Google access/quota, exception identity, complete DB liability and final infrastructure/binding qualification. Existing R07-R12 unchanged; no new task or scope deviation.
+
 ## Latest owner-policy resolution
 
 Owner supplied USD99 regular diagnosis deposit, USD150 replacement for every after-hours emergency including Sunday, and Eastern hours Mon-Fri07:00-19:00/Sat09:00-17:00/Sunday emergency-only. No immediate dispatch guarantee; otherwise collect for business-hours follow-up. Governance ETERNITY_PILOT_OPERATING_RULES.md is the current business-rule record; earlier missing-input rows below are historical and superseded. No runtime approval timestamp or policy write inferred.
