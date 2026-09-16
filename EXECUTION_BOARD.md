@@ -1,6 +1,12 @@
 # Signmons Backend Execution Board
 
-## Current: R06 read-only qualification partial — no activation
+## Current: U02 local bootstrap complete — R06 remains open
+
+Owner explicitly approved one bounded staging-bootstrap change. APP013_P06_U02_BOOTSTRAP.md records the pre-code card and the added-task decision; backend evidence/APP-013/p06-u02-bootstrap.md records local proof. Three exits complete: strict reviewed packet; atomic existing-service setup with audit/readback/guarded suspension; disposable-database failure/concurrency proof. No endpoint, schema, provider, IAM, secret, deployment or live tenant change. No scope deviation beyond expressly approved U02.
+
+Original12 + approved U01 + approved U02 =14; R01-R05/U01/U02 locally closed7, R06-R12 remain7. Packages5/60(8.3% tracked plan), walkthrough3/8(37.5%), P06unaccepted, ETAunvalidated. U02 completion is not R06 qualification, live setup or customer acceptance. Next: finish R06 exact IAM/cost/binding review using this concrete bootstrap interface, then R07 external-change approval; no further added task authorized.
+
+## Historical: R06 read-only qualification partial — no activation
 
 Consolidated draft: governance APP013_P06_R06_REVIEW_PACKET.md pins verified existing image/targets, five proposed secret resources, scoped access, restricted99USD policy, proposed0.70verification/2.00infrastructure/0.30monthly-secret allowances and stop/closeout boundaries. NOT an executable approval request: exact tenant/category setup/CAS/audit mapping, IAM diff, stable metadata bindings and final cost controls remain unresolved. No provision/deploy/run authority or task-count change. Registry image and Twilio token version1 metadata refreshed; no payload accessed.
 

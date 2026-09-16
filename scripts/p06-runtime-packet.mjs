@@ -253,6 +253,272 @@ export function googleSecretPorts(auth, reserve) {
 }
 
 const databases = new WeakMap();
+
+const bootstrapTenant = "a1adcfd4-15be-404b-9ac3-5edb1fda20f0";
+const bootstrapPayment = Object.freeze({
+  currency: "usd",
+  serviceFeeRequired: false,
+  serviceFeeCents: null,
+  depositRequired: true,
+  depositPolicy: { kind: "fixed", amountCents: 9900 },
+  emergencyFeePolicy: { kind: "none" },
+  paymentGateMode: "fail_closed",
+  webhookValidationRequired: true,
+});
+// Stable JSON digest: PostgreSQL jsonb does not preserve object key order.
+const canonical = (value) =>
+  JSON.stringify(value, function (_key, item) {
+    return plain(item)
+      ? Object.fromEntries(
+          Object.keys(item)
+            .sort()
+            .map((key) => [key, item[key]]),
+        )
+      : item;
+  });
+export const bootstrapSettingsDigest = (settings) => sha(canonical(settings));
+
+/** Nonsecret review only. No CLI, connection, credential or external action. */
+export function reviewBootstrap(packet) {
+  try {
+    const p = structuredClone(packet);
+    exact(
+      p,
+      "version,sourceRevision,tenantId,expectedUpdatedAt,expectedSettingsDigest,categoryId,profile,payment",
+    );
+    assert.equal(p.version, 1);
+    assert.match(p.sourceRevision, /^[a-f0-9]{40}$/);
+    assert.equal(p.tenantId, bootstrapTenant);
+    instant(p.expectedUpdatedAt);
+    assert.ok(digest(p.expectedSettingsDigest) && uuid(p.categoryId));
+    const { draft } = require("../dist/tenants/organization-profile.js");
+    assert.deepEqual(draft(p.profile), p.profile);
+    assert.equal(p.profile.companyName, "Eternity Mechanical Services LLC");
+    assert.equal(p.profile.timezone, "America/New_York");
+    assert.deepEqual(p.payment, bootstrapPayment);
+    return { p, packetDigest: sha(canonical(p)) };
+  } catch {
+    throw safeError("P06_BOOTSTRAP_INVALID");
+  }
+}
+
+/** Separate owner-reviewed bootstrap; shares U01 target/schema guards only.
+ * Services run inside ONE outer transaction, including their own audit writes.
+ * Any thrown result is unconfirmed. Read back; never automatically replay. */
+export async function bootstrap(packet, approval, handle) {
+  return safe(async () => {
+    const r = reviewBootstrap(packet),
+      a = structuredClone(approval);
+    assert.ok(
+      ["bootstrap", "bootstrap-readback", "bootstrap-suspend"].includes(
+        a.action,
+      ),
+    );
+    authorization(a, r, a.action, Date.now());
+    const db = databases.get(handle);
+    assert.ok(db);
+    return db.prisma.$transaction(
+      async (tx) => {
+        await guardDatabase(tx, db);
+        const [row] = await tx.$queryRaw(
+          Prisma.sql`SELECT id,status,settings,"updatedAt" FROM "TenantOrganization" WHERE id=${bootstrapTenant}::uuid FOR UPDATE`,
+        );
+        assert.ok(row && plain(row.settings));
+        const clock = async () => {
+          const [time] = await tx.$queryRawUnsafe(
+            "SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS ms",
+          );
+          authorization(a, r, a.action, Number(time.ms));
+        };
+        await clock();
+        const receipt = await tx.auditLog.findFirst({
+          where: {
+            tenantId: bootstrapTenant,
+            action: "controlled_intake.bootstrap",
+            metadata: { path: ["packetDigest"], equals: r.packetDigest },
+          },
+        });
+        const categories = await tx.serviceCategory.findMany({
+          where: { tenantId: bootstrapTenant },
+        });
+        const categoryMatches =
+          categories.length === 1 &&
+          categories[0].id === r.p.categoryId &&
+          categories[0].name === "Regular initial visit / diagnosis" &&
+          categories[0].basePriceCents === 0 &&
+          categories[0].emergencySurchargeCents === 0 &&
+          categories[0].estimatedDurationMinutes === 60;
+        const matches =
+          categoryMatches &&
+          receipt &&
+          row.updatedAt.toISOString() === receipt.metadata.updatedAt &&
+          bootstrapSettingsDigest(row.settings) ===
+            receipt.metadata.settingsDigest;
+        if (a.action === "bootstrap-readback") {
+          return {
+            status: "READBACK",
+            tenantStatus: row.status,
+            matchingBootstrapAudit: Boolean(receipt),
+            unchangedSetup: Boolean(matches),
+            updatedAt: row.updatedAt.toISOString(),
+            settingsDigest: bootstrapSettingsDigest(row.settings),
+          };
+        }
+        for (const value of Object.values(approvalPair(row.settings))) {
+          if (value !== null) {
+            exact(value, "enabled,digest");
+            assert.equal(value.enabled, false);
+            assert.ok(digest(value.digest));
+          }
+        }
+        assert.equal(
+          await tx.auditLog.count({
+            where: { tenantId: bootstrapTenant, traceId: a.operationId },
+          }),
+          0,
+        );
+        if (a.action === "bootstrap-suspend") {
+          assert.ok(matches);
+          assert.equal(row.status, "ACTIVE");
+          assert.equal(
+            await tx.job.count({ where: { tenantId: bootstrapTenant } }),
+            0,
+          );
+          const changed = await tx.tenantOrganization.updateMany({
+            where: {
+              id: bootstrapTenant,
+              status: "ACTIVE",
+              updatedAt: row.updatedAt,
+            },
+            data: {
+              status: "SUSPENDED",
+              updatedAt: new Date(
+                Math.max(Date.now(), row.updatedAt.getTime() + 1),
+              ),
+            },
+          });
+          assert.equal(changed.count, 1);
+        } else {
+          assert.equal(receipt, null);
+          assert.equal(row.status, "SUSPENDED");
+          assert.equal(row.updatedAt.toISOString(), r.p.expectedUpdatedAt);
+          assert.equal(
+            bootstrapSettingsDigest(row.settings),
+            r.p.expectedSettingsDigest,
+          );
+          assert.equal(row.settings.organizationProfileV1, undefined);
+          assert.equal(row.settings.organizationPaymentPolicyV1, undefined);
+          assert.equal(
+            await tx.serviceCategory.count({
+              where: { tenantId: bootstrapTenant },
+            }),
+            0,
+          );
+          assert.equal(
+            await tx.job.count({ where: { tenantId: bootstrapTenant } }),
+            0,
+          );
+          const updatedAt = new Date(
+            Math.max(Date.now(), row.updatedAt.getTime() + 1),
+          );
+          const changed = await tx.tenantOrganization.updateMany({
+            where: {
+              id: bootstrapTenant,
+              status: "SUSPENDED",
+              updatedAt: row.updatedAt,
+            },
+            data: {
+              status: "ACTIVE",
+              timezone: r.p.profile.timezone,
+              updatedAt,
+            },
+          });
+          assert.equal(changed.count, 1);
+          const {
+            requestContextMiddleware,
+            setAuthContext,
+          } = require("../dist/common/context/request-context.js");
+          const {
+            OrganizationProfileService,
+          } = require("../dist/tenants/organization-profile.service.js");
+          const {
+            OrganizationPaymentPolicyService,
+          } = require("../dist/tenants/organization-payment-policy.service.js");
+          // Do not let service-level transaction callbacks commit independently.
+          const adapter = { $transaction: (callback) => callback(tx) };
+          await new Promise((resolve, reject) => {
+            requestContextMiddleware({ headers: {} }, {}, () => {
+              setAuthContext({
+                userId: a.owner,
+                tenantId: bootstrapTenant,
+                role: "owner",
+              });
+              (async () => {
+                let expectedUpdatedAt = updatedAt.toISOString();
+                for (const [Service, draft] of [
+                  [OrganizationProfileService, r.p.profile],
+                  [OrganizationPaymentPolicyService, r.p.payment],
+                ]) {
+                  const service = new Service(adapter);
+                  const saved = await service.write({
+                    expectedUpdatedAt,
+                    draft,
+                  });
+                  const approved = await service.write(
+                    { expectedUpdatedAt: saved.updatedAt, acknowledged: true },
+                    true,
+                  );
+                  expectedUpdatedAt = approved.updatedAt;
+                }
+              })().then(resolve, reject);
+            });
+          });
+          await tx.serviceCategory.create({
+            data: {
+              id: r.p.categoryId,
+              tenantId: bootstrapTenant,
+              name: "Regular initial visit / diagnosis",
+              basePriceCents: 0,
+              emergencySurchargeCents: 0,
+              estimatedDurationMinutes: 60,
+            },
+          });
+        }
+        const final = await tx.tenantOrganization.findUniqueOrThrow({
+          where: { id: bootstrapTenant },
+        });
+        const metadata = {
+          packetDigest: r.packetDigest,
+          sourceRevision: r.p.sourceRevision,
+          categoryId: r.p.categoryId,
+          updatedAt: final.updatedAt.toISOString(),
+          settingsDigest: bootstrapSettingsDigest(final.settings),
+        };
+        await tx.auditLog.create({
+          data: {
+            tenantId: bootstrapTenant,
+            actorType: "USER",
+            actorId: a.owner,
+            entityType: "TenantOrganization",
+            entityId: bootstrapTenant,
+            traceId: a.operationId,
+            action:
+              a.action === "bootstrap"
+                ? "controlled_intake.bootstrap"
+                : "controlled_intake.bootstrap_suspended",
+            metadata,
+          },
+        });
+        await clock();
+        return {
+          status: a.action === "bootstrap" ? "BOOTSTRAPPED" : "SUSPENDED",
+          ...metadata,
+        };
+      },
+      { maxWait: 5000, timeout: 15000 },
+    );
+  });
+}
 /** Explicit construction; password must arrive privately from the existing
  * hidden-input/anonymous-pipe mechanism. Never from an argument or env dump. */
 export function fixedChildDatabase(password) {

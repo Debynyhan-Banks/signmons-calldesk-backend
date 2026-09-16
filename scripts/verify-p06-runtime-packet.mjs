@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import { userInfo } from "node:os";
 import { createRequire } from "node:module";
 import { fixture, authorization } from "./fixtures/p06-runtime-packet.mjs";
+import { verifyBootstrap } from "./verify-p06-bootstrap.mjs";
 import {
   reviewPacket,
   prepareBundle,
@@ -96,6 +97,7 @@ try {
   pool = new Pool(connection);
   prisma = new PrismaClient({ adapter: new PrismaPg(pool), log: [] });
   operator = syntheticDatabase(connection);
+  await verifyBootstrap(prisma, raw, operator, check);
   const f = fixture(),
     r = reviewPacket(f.packet),
     tenantId = f.packet.envelope.activation.tenantId;
