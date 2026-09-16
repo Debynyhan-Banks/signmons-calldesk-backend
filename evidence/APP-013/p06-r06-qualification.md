@@ -1,5 +1,30 @@
 # P06-R06 — partial read-only qualification
 
+## Latest child ledger and resource-cost worksheet
+
+Entry backendd07f534/governance947384a. Focused origins fetched, no unrelated changes touched. Existing Chrome Neon tab confirmed fixed child br-sparkling-sun-ay6gr5e8 / ep-jolly-flower-ayc6w9hv / neondb before SELECT. Query count/sum across AddressVerificationOperation plus AddressVerificationRequest count returned operations0,held_micros0,request_claims0. No customer rows or payloads read. Returned tab to Dashboard. Prior no-result ambiguity is now resolved; this does not erase the separate prior phoneUSD0.50 or local GoogleUSD0.20 holds.
+
+Cloud Run metadata unchanged: latestReady00065-guw, normal traffic100%app013bounds, nine existing tags retained,1vCPU/512Mi. DEV_AUTH_ENABLED,SCHEDULING_ENABLED,SMS_DELIVERY_ENABLED,BACKGROUND_WORKERS_ENABLED,STAGING_PHONE_TEST_ENABLED allfalse. Other flags are not inferred by this filtered query. Existing13secret names include prior phone/session/digest, not the proposed controlled-intake bundle/customer-purpose keys/child database resource. Secret names/references only; no version payloads. Existing DATABASE_URL reference remains latest; cannot use it as a verified numeric child binding.
+
+### Incremental infrastructure planning (USD, before shared allowances/tax)
+
+| Component | Calculation / treatment |
+| --- | --- |
+| Cloud Run active compute | us-east5 is Tier1.1vCPU/0.5GiB for900billed seconds:900*0.000024+450*0.0000025=0.022725. Per-request price0.40/million. Startup boost, shutdown, repeated cold starts, disabled-candidate validation and closeout add billable time. This is a scenario estimate, not a hard cap. |
+| Secret Manager | Existing worksheet rates: five proposed active versions at0.06/month=0.30/month gross, plus0.03/10000 accesses. Existing13secret resources mean no assumption that free versions remain. Count actual versions in final release packet. |
+| Logging |0.50/GiB ingested beyond50GiB/project/month, includes30days; illustrative10MiB additional logs is0.004883 gross. No claim of actual volume or remaining free quota; do not log private inputs. |
+| Artifact storage |0.000136986/GiB-hour above0.5GiB billing-account allowance. Reusing the approved existing image entails no new build/image upload; pre-existing storage continues. New build would require a revised itemized release proposal. |
+| Image transfer | Same-location repository-to-runtime transfer published free; cross-US/Canada locations0.01/GiB when no free rule applies. Exact repository location/size must be bound in release diff, not assumed. |
+| Neon | Existing Free child0.25CU; displayed1.89/100CUh,0.04/0.5GB,0/5GB transfer.15minutes compute adds0.0625CUh plus setup/closeout. No upgrade or paid plan assumed; dashboard metrics delayed. |
+| External network | Cloud Run outbound to Neon/Twilio follows Premium network pricing; shared North America1GiB allowance cannot be assumed unused. Metered bytes/destinations still required for final allowance. |
+| Excluded actions | No new cloud build, backup, migration, paid tier, phone number, SMS confirmation, Stripe payment, email or AI call in P06 run scope. Existing account recurring charges are not incremental test cost or cancelled by this plan. |
+
+Sources refreshed: https://cloud.google.com/run/pricing (regional tiers and request pricing), https://cloud.google.com/artifact-registry/pricing, https://cloud.google.com/products/observability/pricing. Provider-directory skill checked first; CLI command unavailable; no installation. Public rates do not verify negotiated account charges.
+
+Proposed new verification allowance remains0.70 (phone0.50+address0.20), separate from0.70 prior holds. No new spending permission. A final release allowance must include setup/closeout, network and retained-secret costs, not simply the0.022725 compute example. Do not promote R06 complete or request a paid run yet.
+
+Remaining deliverable: assemble exact nonsecret tenant/category/integration/provenance and runtime access disposition plus total itemized release allowance for R07. Resource creation/numeric versions are R08 actions after exact approval, not facts to fabricate now. No new subsection;6closed/7open unchanged. No scope deviation.
+
 ## Latest Google quota and exception-identity readback
 
 Entry backend83a4228/governanceca2b7b8; both origins fetched, focused checkouts clean. Read-only requests used existing owner gcloud access token in process memory only, never printed/persisted. No old test runner was executed, no impersonation or provider validation request.
