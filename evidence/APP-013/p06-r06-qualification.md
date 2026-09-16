@@ -1,5 +1,11 @@
 # P06-R06 — partial read-only qualification
 
+## Latest owner-policy resolution
+
+Owner supplied USD99 regular diagnosis deposit, USD150 replacement for every after-hours emergency including Sunday, and Eastern hours Mon-Fri07:00-19:00/Sat09:00-17:00/Sunday emergency-only. No immediate dispatch guarantee; otherwise collect for business-hours follow-up. Governance ETERNITY_PILOT_OPERATING_RULES.md is the current business-rule record; earlier missing-input rows below are historical and superseded. No runtime approval timestamp or policy write inferred.
+
+Inspected organization-payment-policy.ts, job-payment-policy.service.ts and payment-requests.service.ts: current fixed-policy implementation has no after-hours selector and adds deposit plus service fee if both are enabled. Never configure99+150. Proposed regular-only first controlled test uses a single9900-cent deposit with service fee disabled; this restriction requires owner approval and does not implement the full emergency rule. Full hours/replacement behavior stays documented for separately approved implementation. No code, charge or deployment in this update. Counts unchanged6closed/7open; R06 remains partial. See governance record for alternatives and future acceptance checks.
+
 Entry sources: backend 291b4483cf846de76960950295099c7462e369da; governance 1eaaf37. Owner requested proceeding after U01. No runtime implementation, migration, secret access, provider setting, tenant mutation or paid verification in this checkpoint. No scope deviation. R06 is NOT closed.
 
 ## Verified observations
