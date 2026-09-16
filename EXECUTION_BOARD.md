@@ -1,10 +1,12 @@
 # Signmons Backend Execution Board
 
-## Current: U02 local bootstrap complete — R06 remains open
+## Current: R06 cloud diff prepared — limited database identity decision
 
-Owner explicitly approved one bounded staging-bootstrap change. APP013_P06_U02_BOOTSTRAP.md records the pre-code card and the added-task decision; backend evidence/APP-013/p06-u02-bootstrap.md records local proof. Three exits complete: strict reviewed packet; atomic existing-service setup with audit/readback/guarded suspension; disposable-database failure/concurrency proof. No endpoint, schema, provider, IAM, secret, deployment or live tenant change. No scope deviation beyond expressly approved U02.
+Owner reviewed U02 and proceeded. APP013_P06_R06_REVIEW_PACKET.md now records exact additive cloud IAM proposal, stable category/address-account and revision/tag bindings, numeric inherited-secret versions, USD2.70 operating allowance proposal plus USD0.30/month retained-secret exposure, and stop controls. Read-only tenant/role refresh found no limited application login; inherited neondb_owner has elevated/parent-capable authority and migration roles remainNOLOGIN. Do not put administrator credentials into runtime by inference. See backend evidence/APP-013/p06-r06-permissions-bindings.md.
 
-Original12 + approved U01 + approved U02 =14; R01-R05/U01/U02 locally closed7, R06-R12 remain7. Packages5/60(8.3% tracked plan), walkthrough3/8(37.5%), P06unaccepted, ETAunvalidated. U02 completion is not R06 qualification, live setup or customer acceptance. Next: finish R06 exact IAM/cost/binding review using this concrete bootstrap interface, then R07 external-change approval; no further added task authorized.
+Smallest owner decision: approve preparation of the child-only limited-runtime database-role configuration within existing R06/R07/R08; exact table grants/private handoff/local privilege proof must precede live approval. No new role, credential, code, live tenant change, provisioning, IAM write, deployment or provider call. No scope deviation implemented; restricted-role configuration proposed, not silently authorized. U02 remains locally complete/reviewed.
+
+Original12 + approved U01 + approved U02 =14; R01-R05/U01/U02 locally closed7, R06-R12 remain7. Packages5/60(8.3% tracked plan), walkthrough3/8(37.5%), P06unaccepted, ETAunvalidated. R06/R07 are not execution-ready. No further task added; preserve original gates and all prior holds.
 
 ## Historical: R06 read-only qualification partial — no activation
 
