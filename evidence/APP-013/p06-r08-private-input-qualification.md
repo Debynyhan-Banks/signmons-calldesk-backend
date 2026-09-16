@@ -1,5 +1,15 @@
 # P06 / R08 private-input adaptation — local qualification
 
+## Live preflight after owner review — stopped before assignment
+
+2026-09-16 approximately11:41UTC, owner reviewed and said proceed. Fetched both focused remotes; clean source859ec4c/governance05607b1. Read-only Neon Console queries against exact child br-sparkling-sun-ay6gr5e8/neondb found log_parameter_max_length=-1 (guard requires0), pg_stat_statements.track=top with track_utility=on (guard refuses active utility tracking). Both parameters have superuser context and has_parameter_privilege(current_user,parameter,'SET') returned false for neondb_owner. No SET/ALTER/GRANT/reset/password statement was executed. Existing reset dialog was cancelled, not submitted.
+
+Fresh role metadata: p06_intake_runtime OID163840, NOLOGIN, NOINHERIT, no elevated flags, connection limit10, memberships0. Exact encrypted mount /Volumes/Signmons-P06 is absent; no mount/unlock requested while logging admission is blocked. No credential read, generated, entered or changed. No executable approval packet/window issued. Console read-only queries may wake the existing capped compute; no metered invoice amount asserted.
+
+Local tests did not prove compatibility with these managed live settings. Live preflight should have preceded implementation of the assumption that these strict settings could be satisfied; this is a qualification gap, not a new product requirement. Do not silently relax SAFE_LOGGING, grant superuser/parameter authority, recreate the role, disable global telemetry or retry the failed Console/native methods. PostgreSQL18 logging and pg_stat_statements documentation and Neon's Manage roles were consulted; they do not establish provider-internal password redaction for this exact managed path. The proposed temporary-session change is not executable with verified current authority.
+
+R08 remains blocked on an explicitly reviewed provider-compatible secret-handling method/risk decision. Existing runtime helper stays fail-closed. No scope deviation implemented, no additional task, no acceptance/ETA change. Smallest decision is whether to authorize a bounded credential-method/security-policy review using the actual Neon path, rather than another password attempt or implementation. This review must prove any proposed password redaction boundary or explicitly present residual exposure; it cannot self-approve weakening the guard.
+
 Owner approved implementation/local testing, not running against Neon. Entry source backend c053a2c / governance4f49c6d; scoped card APP013_P06_INITIAL_PASSWORD_REVIEW.md. This closes the three local method-correction exits inside existing R08; it does not close R08 or add a task.
 
 ## Implemented
