@@ -2,6 +2,8 @@
 
 This backend repo follows governance-first execution.
 
+Governance `SYSTEM_OF_RECORD.md` defines precedence. The historical startup list below is a navigation aid, not an override of that hierarchy. Resolve the current focused checkpoint in `SESSION_HANDOFF.md` before interpreting older main evidence as unfinished work.
+
 ## Canonical Governance Source
 
 - Repo: `/Users/debynyhanbanks/Web Projects/signmons-governance`
@@ -29,3 +31,7 @@ This backend repo follows governance-first execution.
 ## Alignment Rule
 
 If local backend docs and governance docs conflict, governance docs are authoritative.
+
+## Reference Summaries
+
+- [Signmons resume handoff — reviewed summary](docs/SIGNMONS_RESUME_HANDOFF_SUMMARY.md): September 16, 2026 product-direction summary, recorded checkpoint and review limitations; reference-only, not execution or release authority.

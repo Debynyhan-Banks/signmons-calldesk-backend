@@ -3,6 +3,12 @@
 Canonical governance source: `/Users/debynyhanbanks/Web Projects/signmons-governance`.
 Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_EXECUTION_POINTER.md`.
 
+## Documentation reconciliation — September 16, 2026
+
+The queue below adopts the already-approved Intelligence dependency order from governance main `4e34d4b`. APP-013/2B remains sole Now. BE-001 residual consent/replay acceptance remains inside APP-013; removing its separate Next entry does not waive that work. No ticket is promoted or accepted by this documentation change.
+
+The newer focused implementation checkpoint is backend `a17aa8f` / governance `4d6d6e6`, inspected in the existing `signmons-2b-bootstrap-*` worktrees. Its current handoff records P06-R08 private credential setup as the next gate, with R08-R12 remaining and P06 unaccepted. Main has not adopted those runtime changes. See [the reviewed handoff summary](docs/SIGNMONS_RESUME_HANDOFF_SUMMARY.md) for provenance and limitations; do not restart historical 2B design work from main's older notes. Walkthrough acceptance remains 1A/1B/2A, 3/8, not overall MVP completion. No scope deviation.
+
 ## Rules
 
 1. Execute only the ticket listed in `Now`.
@@ -22,7 +28,9 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 - [ ] APP-017 Business rules and automation center (`SCR-APP-026`)
 - [ ] APP-018 Brand voice and AI personality configuration (`SCR-APP-027`)
 - [ ] APP-019 Customer profiles and service history (`SCR-APP-028`)
-- [ ] BE-001 Keyword opt-in/out persistence and telemetry (backend reliability stream)
+- [ ] APP-015 AI quality and failure review (`SCR-APP-020`, `SCR-ADM-005`)
+- [ ] APP-016 Calendar scheduling and appointment integrity (`SCR-APP-025`)
+- [ ] APP-033 Conversational intelligence and voice orchestration
 
 ## Later
 
