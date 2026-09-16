@@ -1,5 +1,15 @@
 # R08 attended staging setup
 
+## Current credential correction preparation
+
+Owner approved inspecting and then trying Console reset for only the existing runtime role. Read-only Console SQL before handoff showed NOLOGIN, no elevated flags, zero memberships and zero other client sessions. Owner subsequently reported `cannot update password for role without password`; no successful reset inferred or secret inspected. User then approved preparing the direct-initialization procedure, not execution.
+
+Source inspection found existing p06-private-role-password.mjs already sends a generated plaintext password within certificate-verified TLS, but is fixed to migration role/backup artifacts; p06_private_input.py has reusable hidden-input/pipe handling but no runtime mode. Neither was run or edited. Proposed exact adaptation/three local exits/logging refusal/private storage/one-attempt and unknown-outcome handling are in governance APP013_P06_INITIAL_PASSWORD_REVIEW.md. Native verifier and Console reset methods are withdrawn for this initial assignment. Provider plaintext acceptance is documented, but logging safety and actual Neon success are not proved by local tests. No new support-email dependency, credential attempt or live mutation during preparation. Terminal computer-use refusal must not be bypassed.
+
+Documentation-only checks apply; no fresh app build/lint/browser claim. Existing14task denominator and five remaining R08-R12 unchanged. Method correction proposed for review, no scope deviation implemented.
+
+## Historical role setup and native-method failure
+
 Authority: owner R07 adoption in governance APP013_P06_R06_REVIEW_PACKET.md and APP013_P06_RUNTIME_ROLE_REVIEW.md; implementation backend2ff2925 (runtime code unchanged from reviewed3ee0d07), governancea0ecfb2. No new section or code. Fixed role manifest SHA256 a58335957d9892fd3055d48de30c6e89171e349525139976151ed0395cbfd5da.
 
 Finite R08 checklist remains: qualify exact target/prestate; apply named limited role/private credentials; provision approved purpose material/permissions with numeric provenance; verify readback/disabled state. This record begins only the role item; no claim of complete R08. No deployment, activation, phone/address request, new migration/backup, parent change or tenant bootstrap in this role step.
