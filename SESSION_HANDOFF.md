@@ -1,13 +1,26 @@
 # Backend Session Handoff
 
-Last Updated: 2026-09-07
+Last Updated: 2026-09-16
 
 ## Current Program Pointer
 
 - Active ticket: `APP-013` Twilio-backed notification center and transactional customer messaging.
 - APP-012 is owner-approved, merged and released from PR `#14` at `068f4c2`.
 - APP-011 is owner-approved, merged and released from PR `#13` at `28d394f`.
-- Keep the WIP limit at one; APP-013 implementation has not started.
+- Keep the WIP limit at one. APP-013 implementation exists on focused work; this main-based documentation update does not adopt its runtime changes.
+
+## Current documentation and resumption checkpoint
+
+Owner confirmed the Intelligence direction and authorized proceeding with the recommendation to align documentation, merge the summary after checks, and resume existing APP-013/2B work. This authorizes this documentation merge, not an inferred new credential-risk decision or live test.
+
+- Completed here: reviewed the supplied handoff, aligned backend Next with governance main `4e34d4b`, and reconciled the newer focused checkpoint. See [the summary](docs/SIGNMONS_RESUME_HANDOFF_SUMMARY.md).
+- Source inspected: backend `a17aa8f362ddcce2ad2a4446d81e78279e06177e` at `/private/tmp/signmons-2b-bootstrap-backend`; governance `4d6d6e6c82091b44cd5e1c7f7c91f599241a1e7e` at `/private/tmp/signmons-2b-bootstrap-gov`. Their current boards/pointer and explicit P01/admission amendments supersede older design alternatives for resumption. These are focused local sources, not a main runtime release.
+- Section: APP-013/2B, internal P06-R08. The focused record reports nine of fourteen internal P06 tasks closed, with R08-R12 remaining. P06 and 2B remain unaccepted; walkthrough acceptance remains 1A/1B/2A, 3/8. These counts are not overall MVP completion.
+- Remaining gate / owner: the latest disposable credential reset test retained a sensitive SCRAM password verifier in observable statistics. The owner must review and accept the measured method's residual exposure and private credential custody before real-runtime assignment. No claim of secret-free provider logging or successful real-runtime authentication follows from that test.
+- Next observable result: review the existing `APP013_P06_INITIAL_PASSWORD_REVIEW.md` and backend `evidence/APP-013/p06-r08-private-input-qualification.md`, then qualify a fresh exact R08 execution packet only under the required credential-method approval. Preserve existing R07 scope; do not repeat completed diagnostics, add helpers, reopen the Google blanket-support gate, or start APP-017.
+- Checks for this Markdown-only update: execution controls, frozen baseline, full governance consistency against the aligned backend board, existing control/placement/alignment regressions, architecture and whitespace. Actual results are recorded in the summary and PR; no fresh runtime/browser/deployment acceptance is claimed.
+
+No scope deviation. All entries below are historical evidence; they do not override this checkpoint or current canonical governance.
 
 ## APP-012 Review Checkpoint
 
@@ -137,7 +150,7 @@ Last Updated: 2026-09-07
 - Firebase Hosting published `/appointment/manage`; live liveness, readiness, CORS and fail-closed secure-link checks passed.
 - Temporary build access was fully revoked and `signmons-build` was disabled after the build.
 
-## Next Actions
+## Historical Next Actions (September 7, 2026)
 
 1. Reconcile APP-013 with its Twilio transport/compliance prerequisites before implementation.
 2. Keep Stripe sandbox and live credentials separated; APP-012 live-mode activation remains separately approval-gated.
