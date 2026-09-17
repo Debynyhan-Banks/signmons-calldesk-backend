@@ -1,5 +1,10 @@
 # P06 / R08 private-input adaptation — local qualification
 
+## Invalid database version retired; encrypted workspace ready
+
+Owner explicitly selected "Destroy invalid version 1". Destroyed only projects/signmons/secrets/signmons-staging-p06-child-database-url/versions/1; metadata readback confirms DESTROYED and version2 remains ENABLED. No password reset or working version change. Four retained purpose versions now exist before the planned bundle, restoring the five-version allowance for its single version. Existing encrypted Signmons-P06 image is mounted; inspectStorage passed exact image/volume identity, permissions, backup exclusion and free-space guards. No private artifact contents read. Bundle and U02 bootstrap remain pending; no new database login window. No scope deviation.
+
+
 ## Current: R08 purpose keys provisioned; R09 disabled command prepared
 
 Owner requested continuation after the closed connection proof. Created exactly the three approved independent32-byte keys as64hex, each numeric version1: signmons-staging-customer-session-key, signmons-staging-customer-digest-key, signmons-staging-customer-email-fingerprint-key. Generated/transmitted only in process memory/anonymous stdin, captured provider output and private readback compared without displaying/persisting values. Created approved signmons-staging-controlled-intake-material resource empty. Resource IAM readback: three source resources have no explicit bindings; only delivery resource adds runtime secretAccessor. Added only approved project serviceusage.serviceUsageConsumer to existing runtime; direct firebaseauth.viewer preserved. Existing child database version2 remains selected. No bundle payload created, no tenant bootstrap or database login change.
