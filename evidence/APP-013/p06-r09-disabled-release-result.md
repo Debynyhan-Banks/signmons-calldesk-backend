@@ -1,0 +1,10 @@
+# P06-R09 disabled release result
+
+## Current: R09 disabled release verified and database window closed
+
+Owner explicitly approved fresh30minute login window. Guarded child activation started2026-09-17 00:16:12.341221UTC, expiry00:46:12.341221UTC. One approved deployment succeeded: signmons-calldesk-staging-app013p06disabled, image sha256:ea47a8371a04f773a5c51fc4f939250b7045eba92d3cbbeb68e49ceb0240be35, Ready00:16:44.152102UTC, provider-reported deployment21.25seconds. Tag URL https://p06-intake-disabled---signmons-calldesk-staging-p572d6wipq-ul.a.run.app . Zero normal traffic; exact prior nine traffic/tag entries preserved, app013bounds100%. Numeric child secret2 and all other13 total references pinned, six safety flagsfalse, controlled envelope disabled, controlled private material absent. No new image, tenant mutation or provider verification call.
+
+Live checks before database shutdown: candidate /health/liveness200, /health/readiness200, /customer-intake503, POST /customer-session/start503, unsigned empty POST /webhooks/stripe400. This establishes unsigned refusal only, not successful signed payment handling. Baseline service liveness200 after shutdown. Administrator restored NOLOGIN/limit0/expiry2000-01-01 and terminated child runtime sessions. Independent00:17:13.047252UTC readback: exactOID163840, loginfalse,limit0,past expiry,sessions0. Candidate database readiness is not promised after deliberate shutdown; future login needs a new window.
+
+P06-R09 complete, as permitted independently of unfinished R08. Original14 tasks: ten closed (R01-R07/R09/U01/U02), four remain (R08/R10/R11/R12). R08 still needs encrypted bundle reservation/preparation, invalid-version retirement or revised allowance, and privileged U02 bootstrap with fresh prestate/private handoff. R10 still requires final explicit paid-run approval. P06unaccepted, accepted packages5/60, walkthrough3/8 unchanged. No scope deviation. No additional action required from owner for this completed deployment window. Evidence is measured release/readback, not whole-MVP acceptance or invoice proof.
+
