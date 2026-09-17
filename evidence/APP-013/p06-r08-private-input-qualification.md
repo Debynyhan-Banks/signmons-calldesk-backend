@@ -1,5 +1,14 @@
 # P06 / R08 private-input adaptation — local qualification
 
+## Current: R08 connection proof completed and closed — 2026-09-17 00:10 UTC
+
+Owner corrected the private URI: Secret Manager version2 created2026-09-16 23:55:06UTC, enabled, exact child/role/database/port/schema/verify-full format validated without emitting values. Version1 remains enabled but invalid and is not selected; no automatic destruction or disablement performed. Owner explicitly confirmed the ten-minute login window and immediate shutdown.
+
+Guarded activation at00:10:14UTC checked child Console context, neondb/neondb_owner, OID163840, NOLOGIN/no inheritance/elevation, limit0/past expiry, existing password, zero role memberships/sessions. Set LOGIN/limit10 with absolute expiry2026-09-17T00:20:14.061Z. One node-postgres connection used numeric secret version2 in memory, fixed child hostname and ssl.rejectUnauthorized=true; no payload/exception text persisted or emitted. Authentication succeeded with current_user=session_user=p06_intake_runtime and database neondb. Elevated flagsfalse, schema CREATEfalse, Customer SELECTtrue, AuditLog DELETEfalse, migration SELECTfalse. Actual zero-row password-catalog and migration-history queries both refused SQLSTATE42501; no private rows read or app writes. Backend pg_stat_ssl returnedfalse; the client explicitly required certificate-validated TLS, but backend metadata does not demonstrate end-to-end TLS through the provider proxy. No claim that every production privilege or application journey was tested.
+
+Immediate shutdown restored NOLOGIN/limit0/expiry2000-01-01 and invoked termination only for this role in neondb. Independent Console readback00:10:54.571743UTC confirms OID163840, loginfalse, limit0, past expiry and sessions0. No deployment, customer data changes or paid verification call. Password unchanged. Credential connection substep complete; R08 overall still open for remaining approved provisioning, R08-R12five, P06unaccepted and walkthrough3/8 unchanged. Next use numeric version2 in the existing approved R08/R09 configuration; no new login window or R10 run approval inherited. No scope deviation. This supersedes earlier invalid-URI blocking status below.
+
+
 ## Approved access/retention and custody preparation — 2026-09-16
 
 Owner approved the staged recommendation. Entry backend a17aa8f / governance4d6d6e6; work on focused codex/p06-r08-approved-password-custody, preserving main and prior worktrees. Governance APP013_P06_INITIAL_PASSWORD_REVIEW.md contains the exact owner-only credential handoff. No agent credential entry/change or payload access.
