@@ -1,0 +1,32 @@
+{
+  "attempt": {
+    "approval": {
+      "owner": "Debynyhan Banks",
+      "action": "bootstrap",
+      "operationId": "fdc7033e-29fe-41a7-8931-4d130da025e3",
+      "packetDigest": "f3a1d3f0fa37ba164b7298a82ab9f5c2361220addd38556389ca5fc2140db45f",
+      "sourceRevision": "e11c8c99fdfb96cef71e901d4bcd3da5c493e5b7",
+      "startUtc": "2026-09-18T13:14:18.882Z",
+      "endUtc": "2026-09-18T13:29:18.882Z"
+    },
+    "ownerDecision": "Explicit approval in current task for one isolated-staging bootstrap transaction and result verification",
+    "prestateCheckedAt": "2026-09-18T13:14:18.870Z",
+    "status": "RESERVED_DO_NOT_RETRY"
+  },
+  "result": {
+    "status": "BOOTSTRAPPED",
+    "packetDigest": "f3a1d3f0fa37ba164b7298a82ab9f5c2361220addd38556389ca5fc2140db45f",
+    "sourceRevision": "e11c8c99fdfb96cef71e901d4bcd3da5c493e5b7",
+    "categoryId": "c8fdb27a-abc6-4c70-86f2-4296a3262dcb",
+    "updatedAt": "2026-09-18T13:14:19.744Z",
+    "settingsDigest": "fd5fa2f95c2a8c1c8c3ad746617488f00e4ccd3698c0272b2ecfb01edae653ae"
+  },
+  "readback": {
+    "status": "READBACK",
+    "tenantStatus": "ACTIVE",
+    "matchingBootstrapAudit": true,
+    "unchangedSetup": true,
+    "updatedAt": "2026-09-18T13:14:19.744Z",
+    "settingsDigest": "fd5fa2f95c2a8c1c8c3ad746617488f00e4ccd3698c0272b2ecfb01edae653ae"
+  }
+}

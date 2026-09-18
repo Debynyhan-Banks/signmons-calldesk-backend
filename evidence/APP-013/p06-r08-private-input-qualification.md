@@ -1,5 +1,13 @@
 # P06 / R08 private-input adaptation — local qualification
 
+## Current: R08 isolated business bootstrap verified — 2026-09-18
+
+Owner explicitly approved the exact isolated-tenant bootstrap and result verification. One transaction from backend e11c8c9 / governance da75db4 succeeded at2026-09-18T13:14:19.744Z; operation fdc7033e-29fe-41a7-8931-4d130da025e3. Tenant a1adcfd4-15be-404b-9ac3-5edb1fda20f0 is ACTIVE with R07-adopted profile, regular USD99 deposit policy and stable regular-diagnosis category. Readback confirms matching bootstrap audit and unchanged setup. Existing U02 implementation reused; no bootstrap replay. Exact source, packet, timestamp correction, private-handling/qualification and sanitized receipts: backend evidence/APP-013/p06-r08-bootstrap-result.md and p06-r08-bootstrap-receipts.json. This supersedes older pending-bootstrap/preparation-only headings below.
+
+Runtime role remains disabled by the unchanged NOLOGIN boundary; no intake/phone activation, secret payload access/upload, provider verification, payment/message, deployment, migration or IAM change. Credential was not retained. Bootstrap approval/window is consumed, not permission for another action. Earlier R09/credential/provisioning/retirement work remains accepted and was not repeated. Original dirty APP-010 checkout preserved; both persistent recovery worktrees remain the working locations.
+
+P06 remains10/14closed (R01–R07,R09,U01,U02); R08/R10/R11/R12 remain open. The live bootstrap part of R08 is complete; delivery bundle preparation/upload remains pending actual approved-policy/runtime/participant bindings and its exact authorization. R10 activation/paid verification and any runtime login/deployment remain separately gated. No invented participant/window, no competing roadmap or new task. APP-013/2B soleNow; packages5/60, walkthrough3/8, P06unaccepted,ETAunvalidated. No scope deviation.
+
 ## Local recovery/preparation evidence — 2026-09-18
 
 Authority: owner requested recovery/reconciliation and local R08 preparation from backend e24a4bb/governance d2b4ee3, explicitly excluding private credential requests, paid/API actions, secrets/IAM, database-login windows, deployment and other external consequences. Traceability: existing P06-R08 private-material setup and U02 bootstrap; no new code, helper, task or acceptance criterion. Recovered worktrees and checkpoint are recorded in the synchronized handoffs. Completed retirement below supersedes older cost-blocker language; R09 completion is in p06-r09-disabled-release-result.md. Preserve 10/14 closed and R08/R10/R11/R12 open.
