@@ -1,0 +1,14 @@
+{
+  "status": "BUNDLE_VERIFIED",
+  "operationId": "60da3dd4-5bd1-473b-a926-2d5c6affa2b1",
+  "packetId": "c538928e-57eb-4288-90d9-38a519bd7720",
+  "packetDigest": "79114793da1229844942db69ce04097fe2ed69353c7752e20453b60e66da442c",
+  "sourceRevision": "59f2dabc022e3c9d91a1233aece6d8c67fe6c3b4",
+  "sourceVersions": [
+    "projects/signmons/secrets/signmons-staging-customer-session-key/versions/1",
+    "projects/signmons/secrets/signmons-staging-customer-digest-key/versions/1",
+    "projects/signmons/secrets/signmons-staging-customer-email-fingerprint-key/versions/1",
+    "projects/signmons/secrets/signmons-staging-twilio-auth-token/versions/1"
+  ],
+  "bundleVersion": "projects/signmons/secrets/signmons-staging-controlled-intake-material/versions/1"
+}

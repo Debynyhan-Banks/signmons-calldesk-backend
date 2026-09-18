@@ -1,5 +1,12 @@
 # P06 / R08 delivery-bundle packet review
 
+## Verified result — 2026-09-18 7:36 PM Eastern
+
+- The owner explicitly approved operation `60da3dd4-5bd1-473b-a926-2d5c6affa2b1` for 7:30–7:45 PM Eastern and manually invoked the guarded wrapper once inside that window.
+- The wrapper emitted `BUNDLE_VERIFIED_NO_ACTIVATION`. The encrypted reservation was created at 7:36:02 PM Eastern, before source access, and records the exact approved operation, source revision and window. The sanitized result was written at 7:36:04 PM Eastern.
+- Private readback verified destination `projects/signmons/secrets/signmons-staging-controlled-intake-material/versions/1` byte-for-byte against the four exact numeric source versions. The sanitized receipt is retained as `p06-r08-bundle-result.json`; its SHA-256 is `e919ef22f1b40b5a36a72fddaa0435335c17657ca8e3c044d104a31221dbd763`. It contains no secret value, phone or participant binding.
+- R08 is complete: the earlier isolated bootstrap and this verified delivery bundle satisfy its approved provisioning boundary. P06 is 11/14 complete; R10, R11 and R12 remain open. The packet's 8:00–8:15 PM runtime envelope does not authorize R10, activation, deployment, LOGIN, paid verification, a verification code, an address request or customer/job action. No scope deviation.
+
 ## Bounded section card — 2026-09-18
 
 - Approved section: APP-013 / P06 / R08, existing U01 delivery-bundle preparation. The owner said `proceed` after reviewing the next governed steps. This authorizes the local/private review checkpoint only; it does not authorize a Secret Manager version write, source-secret payload access, runtime activation, provider verification request, deployment, database LOGIN, SMS or customer action.
