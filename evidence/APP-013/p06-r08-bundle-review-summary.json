@@ -1,0 +1,28 @@
+{
+  "status": "PROPOSED_NOT_AUTHORIZED",
+  "packetId": "106cda89-09c1-42cd-b9cc-dc28341fb994",
+  "packetDigest": "393bbbcd40bbd332a7c48485bf9a5be9afb1e51c060d540bacbdb85b87cc072c",
+  "runtimeDigest": "8f37d4f89d48be56be6c72c9e516667ca1cf3c94239cd255fbbfec5a2191cc7d",
+  "phoneDigest": "b9d14fed0facb72a848209ccc353dfff18a58165839b61d6d2b8d23ee9b76e94",
+  "sourceRevision": "59f2dabc022e3c9d91a1233aece6d8c67fe6c3b4",
+  "revision": "signmons-calldesk-staging-app013p06enabled",
+  "origin": "https://p06-intake-enabled---signmons-calldesk-staging-p572d6wipq-ul.a.run.app",
+  "runtimeStart": "2026-09-18T21:00:00.000Z",
+  "runtimeEnd": "2026-09-18T21:15:00.000Z",
+  "prepareOperationId": "69f927e1-c60c-4ae9-acda-e1b327ee5b96",
+  "prepareStart": "2026-09-18T20:30:00.000Z",
+  "prepareEnd": "2026-09-18T20:45:00.000Z",
+  "sourceVersions": [
+    "projects/signmons/secrets/signmons-staging-customer-session-key/versions/1",
+    "projects/signmons/secrets/signmons-staging-customer-digest-key/versions/1",
+    "projects/signmons/secrets/signmons-staging-customer-email-fingerprint-key/versions/1",
+    "projects/signmons/secrets/signmons-staging-twilio-auth-token/versions/1"
+  ],
+  "bundleResource": "projects/signmons/secrets/signmons-staging-controlled-intake-material",
+  "sourceValueCount": 4,
+  "participantBoundAt": "2026-09-18T16:17:25.267Z",
+  "containsPhone": false,
+  "activationAuthorized": false,
+  "paidVerificationAuthorized": false,
+  "automaticRetryAllowed": false
+}
