@@ -1,5 +1,17 @@
 # Backend Session Handoff
 
+## Current: R08 local recovery and preparation — 2026-09-18
+
+Owner authorized isolated recovery from backend e24a4bb7de3ebde9a1c9b0691fc759ea08d843fa and governance d2b4ee3, reconciliation and local R08 preparation only. New persistent worktrees are `/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery` and `/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery`, both on `codex/p06-r08-recovery-20260918`. The original dirty APP-010 checkout and incomplete temporary directories are preserved. This section supersedes earlier current/status headings below; those records remain historical evidence, not instructions to repeat completed work.
+
+Latest retained backend evidence `evidence/APP-013/p06-r08-private-input-qualification.md` records owner-approved destruction of invalid child secret version 1, with version 2 retained. The old retirement/revised-allowance blocker is resolved: four retained purpose versions precede the planned single bundle version within the existing five-version allowance. Credential setup/correction, connection proof, purpose-key provisioning and R09 disabled deployment/NOLOGIN closeout are completed recorded work; none was repeated or freshly verified against providers this session.
+
+P06 remains 10/14 closed: R01–R07, R09, U01 and U02. R08/R10/R11/R12 remain open. U01/U02 local implementation completion does not mean live bundle/bootstrap completion. Accepted packages remain 5/60; accepted walkthrough 1A/1B/2A remains 3/8; P06 unaccepted and ETA unvalidated. APP-013/2B stays sole Now; approved Next order and all holds remain unchanged.
+
+Local storage metadata preflight passed exact encrypted image/volume identity, enabled permissions, backup exclusion, at least 1 GiB volume and 2 GiB host free space. No private contents were read; no reservation, private packet, credential request, secret/API access, login window, deployment or database operation was performed. Recovery archive presence/expiry is not a new restore or proof of present usability. See backend evidence's recovery/preparation section for exact existing interfaces and unresolved execution bindings.
+
+Next observable result: after explicit permission for the attended external R08 phase, obtain fresh fixed-child prestate/recovery/resource readbacks through the existing private path, bind U02's exact source/state and at-most-15-minute operation authorization, then complete only the reviewed bootstrap/bundle work. No invented current settings digest, policy timestamps, participant binding, packet digest or execution window. Current owner instruction excludes those external actions; R10 paid-run approval remains separate. No scope deviation.
+
 ## Current: P06 item 3 release packet drafted — not executable
 
 Migration plan prepared: all 13 pending SQL files reviewed as one staging change set in APP013_P06_STAGING_MIGRATION_PLAN.md; no SQL applied/changed. Existing consent revision and nullable-location behavior, dependencies, lock/failure/recovery risks and staged approval gates documented. Next: synthetic upgrade rehearsal and verified recovery/target inputs before migration execution approval. Still two fixed P06 items; no acceptance increase or scope deviation. Backend evidence: p06-staging-migration-plan.md.
