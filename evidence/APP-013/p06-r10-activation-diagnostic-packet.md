@@ -17,3 +17,7 @@ The source-bound mode-0600 helper and plan are installed on the existing encrypt
 The operation is limited to the fixed child database and a repeatable-read `READ ONLY` transaction. It emits only one bounded prerequisite stage. It cannot change LOGIN, approvals, roles, data, Cloud Run, Twilio, secrets or IAM and cannot activate, deploy, send a verification code, make an address request, run a customer journey or create a job.
 
 No database connection or external action occurred. P06 remains 11/14 with R10/R11/R12 open. The next observable result requires the owner's exact approval or refusal of this plan. Original dirty APP-010 checkout preserved. No scope deviation.
+
+## Authorized — 2026-09-19
+
+The owner approved this exact plan for one read-only diagnostic from 3:00–3:30 PM Eastern, expressly excluding LOGIN changes, activation, deployment, provider requests, customer actions and retry. The exact mode-0600 authorization was installed and `--check` returned `R10_DIAGNOSTIC_CHECK_PASSED_NO_ACTION`. No reservation or database connection occurred. Next is the owner's single attended `--run` command inside the approved window; its exact final status line must be reported and must not be rerun.
