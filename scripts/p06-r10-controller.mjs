@@ -240,6 +240,7 @@ export async function executeR10ActivateBeforeDeploy(
   const bound = requirePorts(ports, [
     "preflight",
     "reserveActivation",
+    "refreshActivationSnapshot",
     "activate",
     "readActivation",
     "reserveDeployment",
@@ -261,8 +262,11 @@ export async function executeR10ActivateBeforeDeploy(
     });
     stage = "RESERVE_ACTIVATION";
     await bound.reserveActivation(plan);
+    stage = "REFRESH_ACTIVATION_SNAPSHOT";
+    const activationSnapshot = await bound.refreshActivationSnapshot(plan);
+    assert.ok(object(activationSnapshot));
     stage = "ACTIVATE";
-    await bound.activate(plan);
+    await bound.activate(plan, Object.freeze({ ...activationSnapshot }));
     stage = "ACTIVATION_READBACK";
     assert.ok(active(await bound.readActivation(plan), plan));
     stage = "RESERVE_DEPLOYMENT";

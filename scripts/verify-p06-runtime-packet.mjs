@@ -169,6 +169,41 @@ try {
     stage: "CURRENT_STATE_AUTHORITY",
   });
   check("actual activation refusal records only its fixed internal stage");
+  const timestampEvidence = createOperationStageEvidence();
+  await assert.rejects(
+    operateWithStageEvidence(
+      f.packet,
+      authorization(r, "activate"),
+      operator,
+      { ...initial, updatedAt: "2020-01-01T00:00:00.000Z" },
+      timestampEvidence,
+    ),
+  );
+  assert.deepEqual(readOperationStageEvidence(timestampEvidence), {
+    status: "USED",
+    stage: "ACTIVATION_UPDATED_AT",
+  });
+  const approvalEvidence = createOperationStageEvidence();
+  await assert.rejects(
+    operateWithStageEvidence(
+      f.packet,
+      authorization(r, "activate"),
+      operator,
+      {
+        ...initial,
+        approvals: {
+          runtime: { enabled: false, digest: "f".repeat(64) },
+          phone: null,
+        },
+      },
+      approvalEvidence,
+    ),
+  );
+  assert.deepEqual(readOperationStageEvidence(approvalEvidence), {
+    status: "USED",
+    stage: "ACTIVATION_APPROVALS",
+  });
+  check("activation snapshot timestamp and approval mismatches are distinct");
   await prisma.tenantOrganization.update({
     where: { id: tenantId },
     data: { status: "SUSPENDED" },

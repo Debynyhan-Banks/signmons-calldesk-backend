@@ -635,7 +635,8 @@ const OPERATION_STAGES = new Set([
   "READBACK",
   "OPERATION_UNUSED",
   "ACTIVATION_EXPECTED",
-  "ACTIVATION_SNAPSHOT",
+  "ACTIVATION_UPDATED_AT",
+  "ACTIVATION_APPROVALS",
   "PRIOR_APPROVAL_STATE",
   "TENANT_STATUS",
   "RUNTIME_CONFIG_INITIAL",
@@ -731,8 +732,9 @@ async function operateInternal(packet, approval, handle, expected, note) {
         note("ACTIVATION_EXPECTED");
         exact(e, "updatedAt,approvals");
         instant(e.updatedAt);
-        note("ACTIVATION_SNAPSHOT");
+        note("ACTIVATION_UPDATED_AT");
         assert.equal(row.updatedAt.toISOString(), e.updatedAt);
+        note("ACTIVATION_APPROVALS");
         assert.deepEqual(approvalPair(row.settings), e.approvals);
         // Never replace an active or partially active approval.
         note("PRIOR_APPROVAL_STATE");

@@ -49,7 +49,13 @@ const makePorts = (options = {}) => {
         normalTrafficPercent: 100,
       }),
     reserveActivation: () => hit("reserveActivation"),
-    activate: () => hit("activate"),
+    refreshActivationSnapshot: () =>
+      hit("refreshActivationSnapshot", { snapshot: "synthetic" }),
+    activate: (_plan, snapshot) => {
+      assert.deepEqual(snapshot, { snapshot: "synthetic" });
+      assert.equal(Object.isFrozen(snapshot), true);
+      return hit("activate");
+    },
     readActivation: () =>
       hit("readActivation", {
         state: options.activationReadback ?? "ACTIVE",
@@ -164,6 +170,7 @@ test("success activates and reads back before one no-traffic deployment", async 
   assert.deepEqual(calls, [
     "preflight",
     "reserveActivation",
+    "refreshActivationSnapshot",
     "activate",
     "readActivation",
     "reserveDeployment",
@@ -187,6 +194,7 @@ test("deployment readback mismatch closes without a second deployment", async ()
 });
 
 for (const stage of [
+  "refreshActivationSnapshot",
   "activate",
   "readActivation",
   "reserveDeployment",
