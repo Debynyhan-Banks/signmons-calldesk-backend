@@ -577,7 +577,8 @@ function database(connection, synthetic) {
   databases.set(handle, { prisma, connection, synthetic });
   return handle;
 }
-async function guardDatabase(tx, db) {
+async function guardDatabase(tx, db, stage = () => {}) {
+  stage("DATABASE_IDENTITY");
   const [actual] = await tx.$queryRawUnsafe(
     "SELECT current_database() AS name,current_user AS role,inet_server_addr()::text AS address,current_setting('server_version_num')::int AS version",
   );
@@ -590,6 +591,7 @@ async function guardDatabase(tx, db) {
     assert.equal(actual.name, TARGET.database);
     assert.equal(actual.role, "neondb_owner");
   }
+  stage("MIGRATION_HISTORY");
   const history = await tx.$queryRawUnsafe(
     "SELECT migration_name,checksum,finished_at,rolled_back_at FROM public._prisma_migrations ORDER BY migration_name",
   );
@@ -619,152 +621,242 @@ function statePair(settings, r) {
   return pair.runtime.enabled ? "ACTIVE" : "REVOKED";
 }
 
-/** Parameterized row locks/CAS/audit in one transaction. Revocation and readback
- * remain possible after the run expires, with fresh cleanup/read authority.
- * Any error is unconfirmed; never automatically retry a database operation. */
-export async function operate(packet, approval, handle, expected) {
-  return safe(async () => {
-    const r = reviewPacket(packet),
-      a = structuredClone(approval),
-      e = structuredClone(expected);
-    assert.ok(["activate", "revoke", "readback"].includes(a.action));
-    authorization(a, r, a.action, Date.now());
-    const db = databases.get(handle);
-    assert.ok(db);
-    return db.prisma.$transaction(
-      async (tx) => {
-        await guardDatabase(tx, db);
-        const rows = await tx.$queryRaw(
-          Prisma.sql`SELECT id,status,settings,"updatedAt",floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS "nowMs" FROM "TenantOrganization" WHERE id=${r.config.activation.tenantId}::uuid FOR UPDATE`,
-        );
-        assert.equal(rows.length, 1);
-        const row = rows[0];
-        assert.ok(plain(row.settings));
-        authorization(a, r, a.action, Number(row.nowMs));
-        if (a.action === "readback") {
-          exact(e, "operationId");
-          assert.ok(uuid(e.operationId));
-          let state = "OTHER";
-          try {
-            state = statePair(row.settings, r);
-          } catch {
-            /* mismatch remains explicit */
-          }
-          const count = await tx.auditLog.count({
-            where: {
-              tenantId: row.id,
-              traceId: e.operationId,
-              metadata: { path: ["packetDigest"], equals: r.packetDigest },
-              action: {
-                in: ["controlled_intake.activate", "controlled_intake.revoke"],
-              },
-            },
-          });
-          return {
-            status: "READBACK",
-            storedApprovalState: state,
-            tenantStatus: row.status,
-            windowCurrent:
-              Number(row.nowMs) >= Date.parse(r.config.activation.validFrom) &&
-              Number(row.nowMs) < Date.parse(r.config.activation.validUntil),
-            updatedAt: row.updatedAt.toISOString(),
-            matchingOperationAudits: count,
-          };
+const operationEvidence = new WeakMap();
+const OPERATION_STAGES = new Set([
+  "CREATED",
+  "REVIEW_PACKET",
+  "LOCAL_AUTHORIZATION",
+  "DATABASE_HANDLE",
+  "DATABASE_TRANSACTION",
+  "DATABASE_IDENTITY",
+  "MIGRATION_HISTORY",
+  "TENANT_ROW",
+  "DATABASE_AUTHORIZATION",
+  "READBACK",
+  "OPERATION_UNUSED",
+  "ACTIVATION_EXPECTED",
+  "ACTIVATION_SNAPSHOT",
+  "PRIOR_APPROVAL_STATE",
+  "TENANT_STATUS",
+  "RUNTIME_CONFIG_INITIAL",
+  "CURRENT_STATE_AUTHORITY",
+  "REVOCATION_EXPECTED",
+  "FINAL_CLOCK",
+  "FINAL_AUTHORIZATION",
+  "RUNTIME_CONFIG_FINAL",
+  "UPDATE_CAS",
+  "AUDIT_WRITE",
+  "COMPLETE",
+]);
+
+/** Opaque, single-use collector. Only fixed stage names can be read back. */
+export function createOperationStageEvidence() {
+  const evidence = Object.freeze({});
+  operationEvidence.set(evidence, { stage: "CREATED", used: false });
+  return evidence;
+}
+
+export function readOperationStageEvidence(evidence) {
+  const state = operationEvidence.get(evidence);
+  assert.ok(state && OPERATION_STAGES.has(state.stage));
+  return Object.freeze({
+    status: state.used ? "USED" : "UNUSED",
+    stage: state.stage,
+  });
+}
+
+async function operateInternal(packet, approval, handle, expected, note) {
+  note("REVIEW_PACKET");
+  const r = reviewPacket(packet),
+    a = structuredClone(approval),
+    e = structuredClone(expected);
+  assert.ok(["activate", "revoke", "readback"].includes(a.action));
+  note("LOCAL_AUTHORIZATION");
+  authorization(a, r, a.action, Date.now());
+  note("DATABASE_HANDLE");
+  const db = databases.get(handle);
+  assert.ok(db);
+  note("DATABASE_TRANSACTION");
+  const answer = await db.prisma.$transaction(
+    async (tx) => {
+      await guardDatabase(tx, db, note);
+      note("TENANT_ROW");
+      const rows = await tx.$queryRaw(
+        Prisma.sql`SELECT id,status,settings,"updatedAt",floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS "nowMs" FROM "TenantOrganization" WHERE id=${r.config.activation.tenantId}::uuid FOR UPDATE`,
+      );
+      assert.equal(rows.length, 1);
+      const row = rows[0];
+      assert.ok(plain(row.settings));
+      note("DATABASE_AUTHORIZATION");
+      authorization(a, r, a.action, Number(row.nowMs));
+      if (a.action === "readback") {
+        note("READBACK");
+        exact(e, "operationId");
+        assert.ok(uuid(e.operationId));
+        let state = "OTHER";
+        try {
+          state = statePair(row.settings, r);
+        } catch {
+          /* mismatch remains explicit */
         }
-        assert.equal(
-          await tx.auditLog.count({
-            where: { tenantId: row.id, traceId: a.operationId },
-          }),
-          0,
-        );
-        if (a.action === "activate") {
-          exact(e, "updatedAt,approvals");
-          instant(e.updatedAt);
-          assert.equal(row.updatedAt.toISOString(), e.updatedAt);
-          assert.deepEqual(approvalPair(row.settings), e.approvals);
-          // Never replace an active or partially active approval.
-          for (const old of Object.values(e.approvals))
-            assert.ok(
-              old === null ||
-                (plain(old) && old.enabled === false && digest(old.digest)),
-            );
-          assert.equal(row.status, "ACTIVE");
-          parseControlledRuntimeConfig(
-            r.p.envelope,
-            r.p.facts,
-            Number(row.nowMs),
-          );
-          const reader = new CustomerIntakeContinuationService(
-            undefined,
-            undefined,
-            undefined,
-          );
-          const authority = new ControlledIntakeAuthority(
-            () => r.config.activation,
-            (t, scope) => reader.readControlledCurrentState(t, scope),
-          );
-          const capability = authority.issue();
-          for (const serviceCategoryId of r.config.activation
-            .allowedServiceCategoryIds)
-            await authority.check(capability, tx, {
-              tenantId: row.id,
-              integrationId: r.config.activation.integrationId,
-              origin: r.config.origin,
-              serviceCategoryId,
-            });
-        } else {
-          exact(e, "runtimeDigest,phoneDigest");
-          assert.equal(e.runtimeDigest, r.runtimeDigest);
-          assert.equal(e.phoneDigest, r.phoneDigest);
-          assert.equal(statePair(row.settings, r), "ACTIVE");
-        }
-        const [clock] = await tx.$queryRawUnsafe(
-          "SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS ms",
-        );
-        const now = Number(clock.ms);
-        authorization(a, r, a.action, now);
-        if (a.action === "activate")
-          parseControlledRuntimeConfig(r.p.envelope, r.p.facts, now);
-        const enabled = a.action === "activate";
-        const next = {
-          ...row.settings,
-          controlledRuntimeApproval: { enabled, digest: r.runtimeDigest },
-          controlledPhoneApproval: { enabled, digest: r.phoneDigest },
-        };
-        const updatedAt = new Date(Math.max(now, row.updatedAt.getTime() + 1));
-        const updated = await tx.tenantOrganization.updateMany({
-          where: { id: row.id, updatedAt: row.updatedAt },
-          data: { settings: next, updatedAt },
-        });
-        assert.equal(updated.count, 1);
-        await tx.auditLog.create({
-          data: {
+        const count = await tx.auditLog.count({
+          where: {
             tenantId: row.id,
-            action: `controlled_intake.${a.action}`,
-            actorType: "USER",
-            actorId: "owner:Debynyhan-Banks",
-            entityType: "TenantOrganization",
-            entityId: row.id,
-            traceId: a.operationId,
-            metadata: {
-              version: 1,
-              packetId: r.config.activation.packetId,
-              packetDigest: r.packetDigest,
-              runtimeDigest: r.runtimeDigest,
-              phoneDigest: r.phoneDigest,
-              sourceRevision: r.p.sourceRevision,
+            traceId: e.operationId,
+            metadata: { path: ["packetDigest"], equals: r.packetDigest },
+            action: {
+              in: ["controlled_intake.activate", "controlled_intake.revoke"],
             },
           },
         });
         return {
-          status: enabled ? "ACTIVE" : "REVOKED",
-          operationId: a.operationId,
-          updatedAt: updatedAt.toISOString(),
+          status: "READBACK",
+          storedApprovalState: state,
+          tenantStatus: row.status,
+          windowCurrent:
+            Number(row.nowMs) >= Date.parse(r.config.activation.validFrom) &&
+            Number(row.nowMs) < Date.parse(r.config.activation.validUntil),
+          updatedAt: row.updatedAt.toISOString(),
+          matchingOperationAudits: count,
         };
-      },
-      { maxWait: 5000, timeout: 20000 },
-    );
-  });
+      }
+      note("OPERATION_UNUSED");
+      assert.equal(
+        await tx.auditLog.count({
+          where: { tenantId: row.id, traceId: a.operationId },
+        }),
+        0,
+      );
+      if (a.action === "activate") {
+        note("ACTIVATION_EXPECTED");
+        exact(e, "updatedAt,approvals");
+        instant(e.updatedAt);
+        note("ACTIVATION_SNAPSHOT");
+        assert.equal(row.updatedAt.toISOString(), e.updatedAt);
+        assert.deepEqual(approvalPair(row.settings), e.approvals);
+        // Never replace an active or partially active approval.
+        note("PRIOR_APPROVAL_STATE");
+        for (const old of Object.values(e.approvals))
+          assert.ok(
+            old === null ||
+              (plain(old) && old.enabled === false && digest(old.digest)),
+          );
+        note("TENANT_STATUS");
+        assert.equal(row.status, "ACTIVE");
+        note("RUNTIME_CONFIG_INITIAL");
+        parseControlledRuntimeConfig(
+          r.p.envelope,
+          r.p.facts,
+          Number(row.nowMs),
+        );
+        note("CURRENT_STATE_AUTHORITY");
+        const reader = new CustomerIntakeContinuationService(
+          undefined,
+          undefined,
+          undefined,
+        );
+        const authority = new ControlledIntakeAuthority(
+          () => r.config.activation,
+          (t, scope) => reader.readControlledCurrentState(t, scope),
+        );
+        const capability = authority.issue();
+        for (const serviceCategoryId of r.config.activation
+          .allowedServiceCategoryIds)
+          await authority.check(capability, tx, {
+            tenantId: row.id,
+            integrationId: r.config.activation.integrationId,
+            origin: r.config.origin,
+            serviceCategoryId,
+          });
+      } else {
+        note("REVOCATION_EXPECTED");
+        exact(e, "runtimeDigest,phoneDigest");
+        assert.equal(e.runtimeDigest, r.runtimeDigest);
+        assert.equal(e.phoneDigest, r.phoneDigest);
+        assert.equal(statePair(row.settings, r), "ACTIVE");
+      }
+      note("FINAL_CLOCK");
+      const [clock] = await tx.$queryRawUnsafe(
+        "SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS ms",
+      );
+      const now = Number(clock.ms);
+      note("FINAL_AUTHORIZATION");
+      authorization(a, r, a.action, now);
+      if (a.action === "activate") {
+        note("RUNTIME_CONFIG_FINAL");
+        parseControlledRuntimeConfig(r.p.envelope, r.p.facts, now);
+      }
+      const enabled = a.action === "activate";
+      const next = {
+        ...row.settings,
+        controlledRuntimeApproval: { enabled, digest: r.runtimeDigest },
+        controlledPhoneApproval: { enabled, digest: r.phoneDigest },
+      };
+      const updatedAt = new Date(Math.max(now, row.updatedAt.getTime() + 1));
+      note("UPDATE_CAS");
+      const updated = await tx.tenantOrganization.updateMany({
+        where: { id: row.id, updatedAt: row.updatedAt },
+        data: { settings: next, updatedAt },
+      });
+      assert.equal(updated.count, 1);
+      note("AUDIT_WRITE");
+      await tx.auditLog.create({
+        data: {
+          tenantId: row.id,
+          action: `controlled_intake.${a.action}`,
+          actorType: "USER",
+          actorId: "owner:Debynyhan-Banks",
+          entityType: "TenantOrganization",
+          entityId: row.id,
+          traceId: a.operationId,
+          metadata: {
+            version: 1,
+            packetId: r.config.activation.packetId,
+            packetDigest: r.packetDigest,
+            runtimeDigest: r.runtimeDigest,
+            phoneDigest: r.phoneDigest,
+            sourceRevision: r.p.sourceRevision,
+          },
+        },
+      });
+      return {
+        status: enabled ? "ACTIVE" : "REVOKED",
+        operationId: a.operationId,
+        updatedAt: updatedAt.toISOString(),
+      };
+    },
+    { maxWait: 5000, timeout: 20000 },
+  );
+  note("COMPLETE");
+  return answer;
+}
+
+/** Parameterized row locks/CAS/audit in one transaction. Revocation and readback
+ * remain possible after the run expires, with fresh cleanup/read authority.
+ * Any error is unconfirmed; never automatically retry a database operation. */
+export async function operate(packet, approval, handle, expected) {
+  return safe(() =>
+    operateInternal(packet, approval, handle, expected, () => {}),
+  );
+}
+
+/** Same operation with an opaque fixed-code stage collector for the reviewed
+ * private controller. Raw exceptions and database values remain suppressed. */
+export async function operateWithStageEvidence(
+  packet,
+  approval,
+  handle,
+  expected,
+  evidence,
+) {
+  const state = operationEvidence.get(evidence);
+  assert.ok(state && state.used === false);
+  state.used = true;
+  const note = (stage) => {
+    assert.ok(OPERATION_STAGES.has(stage));
+    state.stage = stage;
+  };
+  return safe(() => operateInternal(packet, approval, handle, expected, note));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

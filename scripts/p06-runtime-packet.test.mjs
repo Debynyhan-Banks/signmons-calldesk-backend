@@ -7,6 +7,9 @@ import {
   prepareBundle,
   googleSecretPorts,
   syntheticDatabase,
+  createOperationStageEvidence,
+  readOperationStageEvidence,
+  operateWithStageEvidence,
 } from "./p06-runtime-packet.mjs";
 import { fixture, authorization } from "./fixtures/p06-runtime-packet.mjs";
 const require = createRequire(import.meta.url);
@@ -255,4 +258,43 @@ test("no executable implicit CLI; synthetic constructor rejects URLs or foreign 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /no action performed/);
   assert.equal(result.stdout, "");
+});
+
+test("stage evidence is opaque, single-use and keeps raw failures generic", async () => {
+  const { packet } = fixture();
+  const r = reviewPacket(packet);
+  const evidence = createOperationStageEvidence();
+  assert.deepEqual(readOperationStageEvidence(evidence), {
+    status: "UNUSED",
+    stage: "CREATED",
+  });
+  await assert.rejects(
+    operateWithStageEvidence(
+      packet,
+      authorization(r, "activate"),
+      Object.freeze({}),
+      {
+        updatedAt: new Date().toISOString(),
+        approvals: { runtime: null, phone: null },
+      },
+      evidence,
+    ),
+    (error) =>
+      error.message === "P06_PACKET_REFUSED_OR_UNCONFIRMED" &&
+      !error.cause &&
+      !("stage" in error),
+  );
+  assert.deepEqual(readOperationStageEvidence(evidence), {
+    status: "USED",
+    stage: "DATABASE_HANDLE",
+  });
+  await assert.rejects(
+    operateWithStageEvidence(
+      packet,
+      authorization(r, "activate"),
+      Object.freeze({}),
+      {},
+      evidence,
+    ),
+  );
 });

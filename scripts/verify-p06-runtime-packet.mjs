@@ -13,6 +13,9 @@ import {
   prepareBundle,
   syntheticDatabase,
   operate,
+  createOperationStageEvidence,
+  readOperationStageEvidence,
+  operateWithStageEvidence,
 } from "./p06-runtime-packet.mjs";
 import {
   exportInputs,
@@ -148,6 +151,24 @@ try {
       operate(p, authorization(review, "activate"), operator, initial),
     );
   }
+  const diagnosticPacket = structuredClone(f.packet);
+  diagnosticPacket.envelope.activation.organizationDigest = "f".repeat(64);
+  const diagnosticReview = reviewPacket(diagnosticPacket);
+  const stageEvidence = createOperationStageEvidence();
+  await assert.rejects(
+    operateWithStageEvidence(
+      diagnosticPacket,
+      authorization(diagnosticReview, "activate"),
+      operator,
+      initial,
+      stageEvidence,
+    ),
+  );
+  assert.deepEqual(readOperationStageEvidence(stageEvidence), {
+    status: "USED",
+    stage: "CURRENT_STATE_AUTHORITY",
+  });
+  check("actual activation refusal records only its fixed internal stage");
   await prisma.tenantOrganization.update({
     where: { id: tenantId },
     data: { status: "SUSPENDED" },
