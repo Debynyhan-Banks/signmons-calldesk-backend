@@ -1,5 +1,14 @@
 # P06 / R10 final-run review
 
+## Owner authorization and guarded handoff — 2026-09-18
+
+- Owner explicitly approved R10 plan `b228f87a-ed6e-4253-a62a-b33128bb094a` for database LOGIN 9:25–10:00 PM Eastern, one connected 9:30–9:45 PM run, the no-traffic deployment, capped phone/address/submission journey and mandatory closeout.
+- Mode-0600 owner/activate/activate-readback/revoke/revoke-readback authorization records were created in the encrypted R10 directory. Activation authorizations are valid only 9:30–9:45 PM. Revocation authorizations are valid only 9:45–10:00 PM; this separates the live window from mandatory cleanup while remaining within the owner's approved LOGIN interval. Superseded unused revoke records are retained rather than erased.
+- A private guarded controller and attended hidden-input wrapper reuse production `reviewPacket`, `fixedChildDatabase` and `operate`. They verify the clean source-relative code, all bound build hashes, encrypted storage, exact packet/authorization files, fixed child, current Cloud Run traffic, numeric secret versions, target absence and safety flags. Separate one-time reservations block automatic replay of LOGIN, deployment, activation and closeout.
+- Actual read-only `--check` returned `R10_CHECK_PASSED_NO_ACTION`. It verified the current repository/build, private packet and authorization files, bundle version 1 and child database version 2 metadata, normal traffic on `app013bounds`, disabled candidate as latest Ready and enabled target/tag absent. No database connection, mutation, deployment, activation, provider request or customer action occurred.
+- Manual sequence is now fixed: run the private `--open-login` wrapper at or after 9:25 PM; run guarded `--deploy` at or after 9:30 PM; run the private `--activate` wrapper after successful deployment; perform the browser journey and explicitly end the private session; run private `--closeout` at or after 9:45 PM and before 10:00 PM. Stop and report any refusal/unconfirmed result; never rerun.
+- R10 owner approval is recorded, but R10 is not reported complete until the deployed revision/origin and activation readback match during the authorized window. P06 remains 11/14; R10/R11/R12 remain open. No scope deviation.
+
 ## Exact review packet — 2026-09-18 8:05 PM Eastern
 
 - The owner reported `Twilio signed in; use 9:30 PM Eastern today.` This selects the proposed connected-runtime window; it is not yet authorization for the external actions below.
