@@ -1,5 +1,11 @@
 # P06 / R10 final-run review
 
+## Superseding attempt result and safe closeout — 2026-09-18
+
+The owner-authorized first attempt did not complete R10. The runtime role opened inside the approved interval, but the no-traffic enabled revision failed startup before deployment readback because the application requires the exact database approval during startup while the approved sequence placed activation after a healthy deployment. No activation or R11 action occurred. Mandatory closeout is verified: no active approval, enabled tag absent, normal traffic 100% `app013bounds`, and runtime role `NOLOGIN`/limit0/past-expiry/sessions0. See `p06-r10-first-attempt-closeout.md` and `p06-r10-first-attempt-result.json`.
+
+The consumed packet and expired window must not be retried. P06 remains 11/14; R10/R11/R12 remain open. A fresh activate-before-deploy R10 packet is the smallest proposed correction, but it changes the approved sequence and requires a reviewed change record plus new explicit owner approval. No scope deviation was implemented.
+
 ## Owner authorization and guarded handoff — 2026-09-18
 
 - Owner explicitly approved R10 plan `b228f87a-ed6e-4253-a62a-b33128bb094a` for database LOGIN 9:25–10:00 PM Eastern, one connected 9:30–9:45 PM run, the no-traffic deployment, capped phone/address/submission journey and mandatory closeout.
