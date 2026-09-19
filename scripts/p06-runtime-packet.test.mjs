@@ -274,7 +274,6 @@ test("stage evidence is opaque, single-use and keeps raw failures generic", asyn
       authorization(r, "activate"),
       Object.freeze({}),
       {
-        updatedAt: new Date().toISOString(),
         approvals: { runtime: null, phone: null },
       },
       evidence,

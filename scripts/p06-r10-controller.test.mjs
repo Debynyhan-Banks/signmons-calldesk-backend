@@ -50,9 +50,13 @@ const makePorts = (options = {}) => {
       }),
     reserveActivation: () => hit("reserveActivation"),
     refreshActivationSnapshot: () =>
-      hit("refreshActivationSnapshot", { snapshot: "synthetic" }),
+      hit("refreshActivationSnapshot", {
+        approvals: { runtime: null, phone: null },
+      }),
     activate: (_plan, snapshot) => {
-      assert.deepEqual(snapshot, { snapshot: "synthetic" });
+      assert.deepEqual(snapshot, {
+        approvals: { runtime: null, phone: null },
+      });
       assert.equal(Object.isFrozen(snapshot), true);
       return hit("activate");
     },

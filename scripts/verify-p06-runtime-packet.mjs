@@ -120,7 +120,6 @@ try {
   const expectation = async () => {
     const v = await row();
     return {
-      updatedAt: v.updatedAt.toISOString(),
       approvals: {
         runtime: v.settings.controlledRuntimeApproval ?? null,
         phone: v.settings.controlledPhoneApproval ?? null,
@@ -169,19 +168,23 @@ try {
     stage: "CURRENT_STATE_AUTHORITY",
   });
   check("actual activation refusal records only its fixed internal stage");
-  const timestampEvidence = createOperationStageEvidence();
+  await prisma.tenantOrganization.update({
+    where: { id: tenantId },
+    data: { updatedAt: new Date(Date.now() + 1000) },
+  });
+  const unrelatedTimestampEvidence = createOperationStageEvidence();
   await assert.rejects(
     operateWithStageEvidence(
-      f.packet,
-      authorization(r, "activate"),
+      diagnosticPacket,
+      authorization(diagnosticReview, "activate"),
       operator,
-      { ...initial, updatedAt: "2020-01-01T00:00:00.000Z" },
-      timestampEvidence,
+      initial,
+      unrelatedTimestampEvidence,
     ),
   );
-  assert.deepEqual(readOperationStageEvidence(timestampEvidence), {
+  assert.deepEqual(readOperationStageEvidence(unrelatedTimestampEvidence), {
     status: "USED",
-    stage: "ACTIVATION_UPDATED_AT",
+    stage: "CURRENT_STATE_AUTHORITY",
   });
   const approvalEvidence = createOperationStageEvidence();
   await assert.rejects(
@@ -203,7 +206,7 @@ try {
     status: "USED",
     stage: "ACTIVATION_APPROVALS",
   });
-  check("activation snapshot timestamp and approval mismatches are distinct");
+  check("unrelated timestamp drift passes while approval mismatch refuses");
   await prisma.tenantOrganization.update({
     where: { id: tenantId },
     data: { status: "SUSPENDED" },
