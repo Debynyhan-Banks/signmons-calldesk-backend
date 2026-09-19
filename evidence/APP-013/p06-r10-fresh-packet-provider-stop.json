@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "section": "APP-013/P06/R10",
+  "status": "R10_FRESH_PACKET_BLOCKED_PROVIDER_RESTRICTION",
+  "checkedAt": "2026-09-19T09:58:37.000Z",
+  "planId": "4228c1ff-9407-487c-8c94-87084959aba4",
+  "packetId": "f71f5540-b468-4d6b-a1f7-2f47c0504808",
+  "packetDigest": "4a2ab029ea4fb53011ebf440bcb1136379a15e6f8cd1384bc95af22b57297b2b",
+  "runtimeDigest": "5e06bdf0682560d5ed204fe2cc8f4ffa5ceb6cce2f51ad1b998156756d0240e8",
+  "phoneDigest": "8f8b5fe4f17dd5d561cbf13843376edc856830b68b37f8ac46ca40a2193dea0e",
+  "revision": "signmons-calldesk-staging-app013p06enabled2",
+  "runtimeStart": "2026-09-19T10:35:00.000Z",
+  "runtimeEnd": "2026-09-19T10:50:00.000Z",
+  "closeoutEnd": "2026-09-19T11:00:00.000Z",
+  "cloud": {
+    "checkedAt": "2026-09-19T09:52:59.943Z",
+    "normalTrafficRevision": "signmons-calldesk-staging-app013bounds",
+    "normalTrafficPercent": 100,
+    "latestReadyRevision": "signmons-calldesk-staging-app013p06disabled",
+    "plannedRevisionPresent": false,
+    "targetTagPresent": false,
+    "requiredSecretVersionsEnabled": true,
+    "expectedRuntimeIamOnly": true,
+    "requiredApisEnabled": true,
+    "safetyFlagsAllFalse": true
+  },
+  "twilio": {
+    "accountActive": true,
+    "freeSmsUnitsRemaining": 89,
+    "verifyServiceCount": 1,
+    "smsEnabled": true,
+    "fraudGuardEnabled": true,
+    "unitedStatesSms": "MONITOR_ALL_TRAFFIC_FOR_BLOCKING_FRAUD",
+    "unitedStatesVoice": "DISABLE_ALL_TRAFFIC",
+    "verifiedRecipientCount": 1,
+    "boundParticipantMatchesVerifiedRecipient": false,
+    "unverifiedRecipientRestrictionActive": true
+  },
+  "privatePacketPrepared": true,
+  "privateHelperCreated": false,
+  "authorizationCreated": false,
+  "databaseLoginPerformed": false,
+  "activationPerformed": false,
+  "deploymentPerformed": false,
+  "verificationCodeSent": false,
+  "providerConfigurationChanged": false,
+  "executable": false,
+  "ledger": {
+    "complete": 11,
+    "total": 14,
+    "open": ["R10", "R11", "R12"]
+  }
+}
