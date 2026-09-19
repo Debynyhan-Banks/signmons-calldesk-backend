@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "section": "APP-013/P06/R10",
+  "status": "ATTEMPT_STOPPED_RECOVERY_CLOSEOUT_VERIFIED",
+  "planId": "38fc6f4b-ecd5-4fba-b17b-c459c17d5f36",
+  "connectedRunStopStage": "CONNECTED_RUN_WINDOW",
+  "connectedRunStoppedAt": "2026-09-19T11:05:13.948Z",
+  "closeoutStopStage": "PLAN",
+  "closeoutStoppedAt": "2026-09-19T11:07:58.557Z",
+  "recoveryOperationId": "60b81c1a-54b1-4803-b561-61e4bc4e68cf",
+  "recoveryStatus": "R10_CLOSEOUT_RECOVERY_VERIFIED",
+  "recoveryCheckedAt": "2026-09-19T11:16:07.638Z",
+  "approvalState": "INACTIVE",
+  "runtimeRoleLogin": false,
+  "runtimeRoleConnectionLimit": 0,
+  "runtimeRoleSessions": 0,
+  "normalTrafficRevision": "signmons-calldesk-staging-app013bounds",
+  "normalTrafficPercent": 100,
+  "targetAbsent": true,
+  "activated": false,
+  "deployed": false,
+  "providerRequestMade": false,
+  "automaticRetryPerformed": false,
+  "ledger": {
+    "complete": 11,
+    "total": 14,
+    "open": ["R10", "R11", "R12"]
+  },
+  "scopeDeviation": false
+}
