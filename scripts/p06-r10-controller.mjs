@@ -72,7 +72,7 @@ export function reviewR10ControllerPlan(input) {
     assert.ok(start < end && end < closeoutEnd);
     assert.ok(end - start <= 15 * 60_000);
     assert.ok(closeoutEnd - end <= 15 * 60_000);
-    return Object.freeze({ ...plan, start, end, closeoutEndMs: closeoutEnd });
+    return Object.freeze({ ...plan });
   } catch {
     throw new R10ControllerStop("PLAN", "NOT_STARTED");
   }
@@ -87,7 +87,10 @@ export function requireR10ExecutionWindow(
   try {
     assert.ok(Number.isSafeInteger(now));
     assert.ok(Number.isSafeInteger(reserveMs) && reserveMs >= 0);
-    assert.ok(now >= plan.start && now + reserveMs < plan.end);
+    assert.ok(
+      now >= Date.parse(plan.runtimeStart) &&
+        now + reserveMs < Date.parse(plan.runtimeEnd),
+    );
     return plan;
   } catch {
     throw new R10ControllerStop("EXECUTION_WINDOW", "NOT_STARTED");
@@ -98,7 +101,10 @@ export function requireR10CloseoutWindow(input, now = Date.now()) {
   const plan = reviewR10ControllerPlan(input);
   try {
     assert.ok(Number.isSafeInteger(now));
-    assert.ok(now >= plan.start && now < plan.closeoutEndMs);
+    assert.ok(
+      now >= Date.parse(plan.runtimeStart) &&
+        now < Date.parse(plan.closeoutEnd),
+    );
     return plan;
   } catch {
     throw new R10ControllerStop("CLOSEOUT_WINDOW", "UNCONFIRMED");

@@ -100,10 +100,9 @@ const makePorts = (options = {}) => {
 };
 
 test("fresh bounded plan is accepted and consumed plan/revision are refused", () => {
-  assert.equal(
-    reviewR10ControllerPlan(plan()).revision.endsWith("enabled2"),
-    true,
-  );
+  const reviewed = reviewR10ControllerPlan(plan());
+  assert.equal(reviewed.revision.endsWith("enabled2"), true);
+  assert.deepEqual(Object.keys(reviewed).sort(), Object.keys(plan()).sort());
   assert.throws(
     () =>
       reviewR10ControllerPlan(
@@ -155,7 +154,12 @@ test("exclusive reservation is mode 0600 and refuses reuse", async () => {
 
 test("success activates and reads back before one no-traffic deployment", async () => {
   const { calls, ports } = makePorts();
-  const result = await executeR10ActivateBeforeDeploy(plan(), ports, START, 0);
+  const result = await executeR10ActivateBeforeDeploy(
+    reviewR10ControllerPlan(plan()),
+    ports,
+    START,
+    0,
+  );
   assert.equal(result.status, "READY_FOR_R11");
   assert.deepEqual(calls, [
     "preflight",
@@ -273,7 +277,11 @@ for (const stage of [
 
 test("explicit closeout skips revoke when approval is already inactive", async () => {
   const { calls, ports } = makePorts({ approvalState: "INACTIVE" });
-  const result = await closeR10Runtime(plan(), ports, START);
+  const result = await closeR10Runtime(
+    reviewR10ControllerPlan(plan()),
+    ports,
+    START,
+  );
   assert.equal(result.status, "CLOSED");
   assert.equal(calls.includes("reserveRevocation"), false);
   assert.equal(calls.includes("revoke"), false);

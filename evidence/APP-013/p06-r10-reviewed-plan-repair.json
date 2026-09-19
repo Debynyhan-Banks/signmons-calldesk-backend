@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "section": "APP-013/P06/R10",
+  "status": "LOCAL_REPAIR_COMPLETE_NO_EXTERNAL_ACTION",
+  "defect": "REVIEWED_PLAN_ENUMERABLE_DERIVED_KEYS_REJECTED_ON_REENTRY",
+  "changedFiles": [
+    "scripts/p06-r10-controller.mjs",
+    "scripts/p06-r10-controller.test.mjs"
+  ],
+  "focusedControllerTests": {
+    "passed": 21,
+    "failed": 0
+  },
+  "p06NodeTests": {
+    "passed": 75,
+    "skipped": 2,
+    "failed": 0,
+    "total": 77
+  },
+  "jest": {
+    "passed": 2359,
+    "skipped": 3,
+    "failed": 0,
+    "total": 2362
+  },
+  "build": "PASS",
+  "lint": "PASS",
+  "architecture": "PASS",
+  "prismaValidation": "PASS",
+  "externalAction": false,
+  "packetCreated": false,
+  "privateHelperInstalled": false,
+  "databaseLoginOpened": false,
+  "activated": false,
+  "deployed": false,
+  "ledger": {
+    "complete": 11,
+    "total": 14,
+    "open": ["R10", "R11", "R12"]
+  },
+  "scopeDeviation": false
+}
