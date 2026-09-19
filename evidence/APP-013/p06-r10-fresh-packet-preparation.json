@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "section": "APP-013/P06/R10",
+  "status": "WAITING_FOR_WINDOW_AND_READ_ONLY_REFRESH_AUTHORIZATION",
+  "preparedOn": "2026-09-19",
+  "controllerSource": "158650bb26afeb190c670015a638aec3db46d52c",
+  "governanceSource": "01d98160527299286fff506619874eb39d0c352c",
+  "applicationSource": "59f2dabc022e3c9d91a1233aece6d8c67fe6c3b4",
+  "imageDigest": "sha256:ea47a8371a04f773a5c51fc4f939250b7045eba92d3cbbeb68e49ceb0240be35",
+  "plannedRevision": "signmons-calldesk-staging-app013p06enabled2",
+  "tag": "p06-intake-enabled",
+  "origin": "https://p06-intake-enabled---signmons-calldesk-staging-p572d6wipq-ul.a.run.app",
+  "packetCreated": false,
+  "privateBindingAccessed": false,
+  "providerOrTargetReadPerformed": false,
+  "authorizationCreated": false,
+  "executionAuthorized": false,
+  "runtimeWindow": null,
+  "packetId": null,
+  "packetDigest": null,
+  "runtimeDigest": null,
+  "phoneDigest": null,
+  "operationIds": null,
+  "ledger": {
+    "complete": 11,
+    "total": 14,
+    "open": ["R10", "R11", "R12"]
+  },
+  "nextRequiredAuthorization": "One future attended block plus current read-only provider/target refresh and fresh-packet preparation only; no execution."
+}
