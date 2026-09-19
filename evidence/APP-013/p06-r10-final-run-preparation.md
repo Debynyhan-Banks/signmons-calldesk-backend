@@ -1,5 +1,11 @@
 # P06 / R10 final-run review
 
+## Superseding local controller correction — 2026-09-18
+
+The owner approved the documented alternative1 for local controller repair/testing only. `scripts/p06-r10-controller.mjs` now enforces activate/readback before a single zero-traffic deployment, exact success readback, and at-most-once ordered revoke/tag/role closeout for all failure/ambiguity paths. Twenty-one focused tests, 37 combined Node tests, 14 disposable PG18 operator checks, all 2,359 Jest tests, build/lint/architecture/schema and the complete disposable PG18/browser harness pass. See `p06-r10-controller-repair.md`.
+
+No fresh packet/window, deployment, LOGIN, activation, provider request, verification code or execution occurred. P06 remains 11/14; R10/R11/R12 remain open. Next is separately authorized fresh-packet preparation/review, not execution. Approved sequence deviation only; no other scope deviation.
+
 ## Superseding attempt result and safe closeout — 2026-09-18
 
 The owner-authorized first attempt did not complete R10. The runtime role opened inside the approved interval, but the no-traffic enabled revision failed startup before deployment readback because the application requires the exact database approval during startup while the approved sequence placed activation after a healthy deployment. No activation or R11 action occurred. Mandatory closeout is verified: no active approval, enabled tag absent, normal traffic 100% `app013bounds`, and runtime role `NOLOGIN`/limit0/past-expiry/sessions0. See `p06-r10-first-attempt-closeout.md` and `p06-r10-first-attempt-result.json`.
