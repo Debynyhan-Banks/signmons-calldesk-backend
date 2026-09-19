@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "section": "APP-013/P06/R10",
+  "status": "REVIEW_REQUIRED_NOT_AUTHORIZED",
+  "planId": "38fc6f4b-ecd5-4fba-b17b-c459c17d5f36",
+  "packetId": "67f66545-f0b9-45a7-866e-2e59233c3025",
+  "packetDigest": "00585eaaca8eac49b15630c8e703f8f6efab723cc36943bdac3b668846a4b452",
+  "runtimeDigest": "4ffc733828daefa29c4e6093827bba179c22a2329a67da8bf7bf92d0089c7a1c",
+  "phoneDigest": "c760e2f09e14838f6bda83c2057dd422be536f373e6f752d934c04f1534938c4",
+  "revision": "signmons-calldesk-staging-app013p06enabled2",
+  "databaseLoginStart": "2026-09-19T11:01:00.000Z",
+  "runtimeStart": "2026-09-19T11:06:00.000Z",
+  "runtimeEnd": "2026-09-19T11:21:00.000Z",
+  "closeoutEnd": "2026-09-19T11:31:00.000Z",
+  "participantVerifiedRecipient": true,
+  "containsPhone": false,
+  "privateHelperCreated": false,
+  "authorizationCreated": false,
+  "databaseLoginAuthorized": false,
+  "activationAuthorized": false,
+  "deploymentAuthorized": false,
+  "paidVerificationAuthorized": false,
+  "automaticRetryAllowed": false,
+  "ledger": {
+    "complete": 11,
+    "total": 14,
+    "open": ["R10", "R11", "R12"]
+  }
+}
