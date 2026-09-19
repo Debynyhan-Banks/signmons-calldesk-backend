@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "section": "APP-013/P06/R10",
+  "status": "VERIFIED_RECIPIENT_BOUND_WINDOW_REQUIRED",
+  "boundAt": "2026-09-19T10:06:46.569Z",
+  "sourceRevision": "59f2dabc022e3c9d91a1233aece6d8c67fe6c3b4",
+  "privateDirectory": "/Volumes/Signmons-P06/r10-participant-rebind-20260919",
+  "directoryMode": "0700",
+  "bindingMode": "0600",
+  "participantHmacPresent": true,
+  "participantHmacChanged": true,
+  "accountSidMatched": true,
+  "containsPhone": false,
+  "packetCreated": false,
+  "authorizationCreated": false,
+  "verificationCodeSent": false,
+  "providerConfigurationChanged": false,
+  "executionAuthorized": false,
+  "nextRequiredInput": "One future 30-minute attended block in Eastern time",
+  "ledger": {
+    "complete": 11,
+    "total": 14,
+    "open": ["R10", "R11", "R12"]
+  }
+}
