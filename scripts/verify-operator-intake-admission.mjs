@@ -394,8 +394,8 @@ export async function verifyOperatorIntakeAdmission({
     require("../dist/tenants/organization-payment-policy.js").profile(
       payment,
     ).approved;
-  const category = await prisma.serviceCategory.findFirst({
-    where: { tenantId, name: "COOLING" },
+  const category = await prisma.serviceCategory.create({
+    data: { tenantId, name: "Regular initial visit / diagnosis" },
   });
   const hash = (value) =>
     createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -433,6 +433,7 @@ export async function verifyOperatorIntakeAdmission({
   const binding = {
     integrationId: "fixture",
     origin: "https://example.invalid",
+    serviceCategoryId: category.id,
     authority,
     capability: authority.issue(),
     verification: (reader) => ({
@@ -953,6 +954,7 @@ export async function verifyOperatorIntakeAdmission({
       tenantId,
       integrationId: binding.integrationId,
       origin: binding.origin,
+      serviceCategoryId: category.id,
       authority,
       capability: binding.capability,
       phone: durable,

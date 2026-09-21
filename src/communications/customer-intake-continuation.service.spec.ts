@@ -452,14 +452,16 @@ describe("inactive credential-bound transcript continuation", () => {
       });
       tx.communicationEvent.findMany.mockResolvedValue([turn]);
       tx.tenantOrganization.findFirst.mockResolvedValue({ settings });
-      tx.serviceCategory.findMany.mockResolvedValue([{ id: categoryId }]);
       let clock = Date.now();
+      let categoryRows = [
+        { id: categoryId, name: "Regular initial visit / diagnosis" },
+      ];
       tx.$queryRaw.mockImplementation((sql: Prisma.Sql) => {
         const query = sql.strings.join("");
         if (query.includes('"TenantOrganization"'))
           return Promise.resolve([{ settings }]);
         if (query.includes('"ServiceCategory"'))
-          return Promise.resolve([{ id: categoryId, name: "COOLING" }]);
+          return Promise.resolve(categoryRows);
         return Promise.resolve([{ ms: BigInt(clock) }]);
       });
       const activation = {
@@ -486,6 +488,7 @@ describe("inactive credential-bound transcript continuation", () => {
       const binding = {
         integrationId: "intake",
         origin: "https://example.invalid",
+        serviceCategoryId: categoryId,
         authority,
         capability: authority.issue(),
       };
@@ -522,8 +525,12 @@ describe("inactive credential-bound transcript continuation", () => {
         turn,
         settings,
         activation,
+        categoryId,
         setClock: (ms: number) => {
           clock = ms;
+        },
+        setCategoryRows: (rows: typeof categoryRows) => {
+          categoryRows = rows;
         },
       };
     }
@@ -653,7 +660,9 @@ describe("inactive credential-bound transcript continuation", () => {
         policyVersion: "v1",
         phone: draft.phone,
         address: f.submitted.confirmedAddress,
+        authorityScope: { serviceCategoryId: f.categoryId },
       });
+      expect(tx.serviceCategory.findMany).not.toHaveBeenCalled();
       expect(result.submissionDigest).toMatch(/^[a-f0-9]{64}$/);
       expect(JSON.stringify(result)).not.toContain(f.submitted.sessionToken);
       expect(JSON.stringify(result)).not.toContain("private intake text");
@@ -719,11 +728,36 @@ describe("inactive credential-bound transcript continuation", () => {
     });
     it.each([
       { rows: [] },
-      { rows: [{ id: randomUUID() }, { id: randomUUID() }] },
-    ])("rejects missing/ambiguous category %j", async ({ rows }) => {
+      {
+        rows: [
+          { id: randomUUID(), name: "First category" },
+          { id: randomUUID(), name: "Second category" },
+        ],
+      },
+    ])("rejects missing/ambiguous bound category $rows", async ({ rows }) => {
       const f = fixture();
-      tx.serviceCategory.findMany.mockResolvedValue(rows);
+      f.setCategoryRows(rows);
       await expect(f.read()).rejects.toThrow();
+    });
+    it("rejects malformed and unallowed server-owned category bindings", async () => {
+      const f = fixture();
+      expect(() =>
+        f.intake.controlledSubmissionReader(f.submitted, {
+          ...f.binding,
+          serviceCategoryId: "not-a-uuid",
+        }),
+      ).toThrow();
+      const read = f.intake.controlledSubmissionReader(f.submitted, {
+        ...f.binding,
+        serviceCategoryId: randomUUID(),
+      });
+      await expect(
+        read(
+          tx as unknown as Prisma.TransactionClient,
+          f.claims,
+          f.submitted.requestId,
+        ),
+      ).rejects.toThrow();
     });
     it("rejects changed organization and payment approvals", async () => {
       const f = fixture();

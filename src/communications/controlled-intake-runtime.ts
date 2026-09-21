@@ -203,6 +203,7 @@ export async function loadControlledIntakeRuntime(
         tenantId: a.tenantId,
         integrationId: a.integrationId,
         origin: a.origin,
+        serviceCategoryId: scope.serviceCategoryId,
         authority,
         capability,
         phone: durable,

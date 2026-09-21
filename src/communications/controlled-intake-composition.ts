@@ -24,6 +24,7 @@ type Resources = {
   tenantId: string;
   integrationId: string;
   origin: string;
+  serviceCategoryId: string;
   authority: ControlledIntakeAuthority;
   capability: Readonly<object>;
   phone: Pick<DurableVerificationService, "readControlledCurrent">;
@@ -54,6 +55,7 @@ export class ControlledIntakeComposition {
     return p.intake.submitControlled(input, {
       integrationId: p.integrationId,
       origin: p.origin,
+      serviceCategoryId: p.serviceCategoryId,
       authority: p.authority,
       capability: p.capability,
       verification: async (reader) => {

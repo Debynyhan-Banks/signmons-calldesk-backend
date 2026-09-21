@@ -301,7 +301,7 @@ export async function verifyOrganizationIntake({
       },
     });
     const category = await prisma.serviceCategory.create({
-      data: { tenantId, name: "COOLING" },
+      data: { tenantId, name: "Regular initial visit / diagnosis" },
     });
     const fresh = await integration(() => responses.start());
     await intake.continueOrganization({
@@ -357,6 +357,7 @@ export async function verifyOrganizationIntake({
     const reader = intake.controlledSubmissionReader(submission, {
       integrationId: "fictional",
       origin: "https://example.invalid",
+      serviceCategoryId: category.id,
       authority,
       capability: authority.issue(),
     });

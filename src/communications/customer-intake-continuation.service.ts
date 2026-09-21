@@ -167,13 +167,16 @@ export class CustomerIntakeContinuationService {
     binding: {
       integrationId: string;
       origin: string;
+      serviceCategoryId: string;
       authority: ControlledIntakeAuthority;
       capability: Readonly<object>;
     },
   ) {
     const input = controlledIntakeSubmission(value);
     const owner = this.credentials.verifySession(input.sessionToken);
-    const { integrationId, origin, authority, capability } = binding;
+    const { integrationId, origin, serviceCategoryId, authority, capability } =
+      binding;
+    if (!UUID.test(serviceCategoryId)) throw changed();
     return async (
       tx: Prisma.TransactionClient,
       session: ConsentSessionClaims,
@@ -203,22 +206,15 @@ export class CustomerIntakeContinuationService {
         .find((result) => result !== null);
       if (escalation)
         throw new ConflictException({ ...escalation, jobCreated: false });
-      const categories = await tx.serviceCategory.findMany({
-        where: { tenantId: owner.tenantId, name: input.draft.issueCategory },
-        select: { id: true },
-        take: 2,
-      });
-      if (categories.length !== 1) throw changed();
       const authorityScope = {
         tenantId: owner.tenantId,
         integrationId,
         origin,
-        serviceCategoryId: categories[0].id,
+        serviceCategoryId,
       };
       const current = await this.readControlledCurrentState(tx, authorityScope);
       this.credentials.verifySession(input.sessionToken, current.nowMs);
       if (
-        current.categoryName !== input.draft.issueCategory ||
         current.organizationDigest !== history.organization.digest ||
         current.organizationApprovedAt !== history.organization.approvedAt
       )
@@ -266,6 +262,7 @@ export class CustomerIntakeContinuationService {
     binding: {
       integrationId: string;
       origin: string;
+      serviceCategoryId: string;
       authority: ControlledIntakeAuthority;
       capability: Readonly<object>;
       verification: (

@@ -45,6 +45,7 @@ describe("disabled controlled intake composition", () => {
       validate = jest.fn(),
       readControlledCurrent = jest.fn();
     const capability = Object.freeze({});
+    const serviceCategoryId = randomUUID();
     const authority = new ControlledIntakeAuthority(
       () => undefined,
       () => Promise.reject(Error("not configured")),
@@ -55,6 +56,7 @@ describe("disabled controlled intake composition", () => {
       tenantId,
       integrationId: "test-integration",
       origin: "https://customer.example.invalid",
+      serviceCategoryId,
       intake: {
         submitControlled,
       } as unknown as CustomerIntakeContinuationService,
@@ -74,6 +76,7 @@ describe("disabled controlled intake composition", () => {
       readControlledCurrent,
       capability,
       authority,
+      serviceCategoryId,
     };
   };
   it("refuses without server resources", async () => {
@@ -123,6 +126,7 @@ describe("disabled controlled intake composition", () => {
         capability: s.capability,
         origin: "https://customer.example.invalid",
         integrationId: "test-integration",
+        serviceCategoryId: s.serviceCategoryId,
       }),
     );
     expect(s.transaction).not.toHaveBeenCalled();
