@@ -1,0 +1,7 @@
+# P06 / R11 enabled18 pre-execution window stop
+
+The owner approved plan `8f9bb16d-949a-4ca1-a8bc-6f9995293faf` and exact private helper/authorization installation for database support through 4:00 PM Eastern, one connected runtime through 3:55 PM and mandatory closeout by 4:00 PM on 2026-09-21. The packet-bound files were installed without external action.
+
+At 3:52 PM Eastern, before the owner received or invoked any coordinator command, the local attended-coordinator review refused at `WINDOW_BINDING`: fewer than its required four minutes remained before the 3:55 PM runtime end. A private mode-0600 stop marker records `STOPPED_BEFORE_EXECUTION` and prevents reuse. No coordinator attempt, password input, LOGIN change, database connection or mutation, activation, deployment, traffic change, provider request, verification code, browser/customer action, hold release, secret/IAM change or billing change occurred. Because runtime access was never opened and no external action started, no external closeout was required.
+
+Plan `8f9bb16d-949a-4ca1-a8bc-6f9995293faf` is consumed and must not be run. P06 remains 12/14 with R11 and full R12 open. A future attempt requires a new owner-selected window, fresh read-only qualification and packet preparation, then separate exact execution approval. Original dirty APP-010 checkout preserved. Approved deviations remain the one-command execution process and the consumed packet's ceiling; no other scope deviation.
