@@ -1,5 +1,13 @@
 # Backend Session Handoff
 
+## Current: R11 supervised browser test prepared; new window required — 2026-09-21
+
+Governance reconciliation preserves the verified R10 result/closeout and records P06 consistently at 12/14. `APP013_P06_R11_SUPERVISED_BROWSER_TEST.md` defines the exact browser handoff, accepted terminal states, private-data boundary and mandatory closeout; backend preparation evidence is `evidence/APP-013/p06-r11-supervised-browser-preparation.md`. R11 was not attempted and full R12 remains open. No code, packet, helper, authorization or external action was created. Next input is an owner-selected future 30-minute Eastern window, followed by separately authorized read-only refresh/fresh packet preparation and later exact execution approval. Do not reuse any consumed command. Original dirty APP-010 checkout preserved. No scope deviation.
+
+## Current: R10 succeeded; shutdown verified; R11 browser journey not attempted — 2026-09-21
+
+Exact approved plan `f680291d-f4ae-4f42-8132-654f394b4a66` reached READY_FOR_R11 on enabled8. Closeout is CLOSED with no failures; revocation audit/readback and independent Cloud tag/baseline readback passed. Owner clarified that only Terminal commands were run: the R11 browser journey was not attempted. This resolves the earlier reported-completion ambiguity and is consistent with three GET probes and no POST requests in the inspected logs. P06 remains 12/14: R10 complete, R11/R12 open. Full R12 retention/billing reconciliation and owner acceptance remain pending despite verified shutdown. Next requires a future attended window, fresh packet qualification and separate exact execution approval for the browser journey; do not rerun consumed commands, reopen LOGIN or reset holds. Explicitly guide the participant from READY_FOR_R11 to the browser page before closeout. Backend evidence: `evidence/APP-013/p06-r10-20260921-result-closeout.md`. No scope deviation.
+
 ## Current: R08 isolated business bootstrap verified — 2026-09-18
 
 Owner explicitly approved the exact isolated-tenant bootstrap and result verification. One transaction from backend e11c8c9 / governance da75db4 succeeded at2026-09-18T13:14:19.744Z; operation fdc7033e-29fe-41a7-8931-4d130da025e3. Tenant a1adcfd4-15be-404b-9ac3-5edb1fda20f0 is ACTIVE with R07-adopted profile, regular USD99 deposit policy and stable regular-diagnosis category. Readback confirms matching bootstrap audit and unchanged setup. Existing U02 implementation reused; no bootstrap replay. Exact source, packet, timestamp correction, private-handling/qualification and sanitized receipts: backend evidence/APP-013/p06-r08-bootstrap-result.md and p06-r08-bootstrap-receipts.json. This supersedes older pending-bootstrap/preparation-only headings below.

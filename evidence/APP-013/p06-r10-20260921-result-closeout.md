@@ -1,0 +1,19 @@
+# P06 / R10 September 21 result and closeout
+
+Exact owner-approved plan `f680291d-f4ae-4f42-8132-654f394b4a66` completed activation/readback and deployment/readback for `signmons-calldesk-staging-app013p06enabled8`. Private activation stage is COMPLETE; result ACTIVE; readback ACTIVE with exactly one matching operation audit. Deployment receipt is READY_NO_TRAFFIC and controller result READY_FOR_R11. R10 is technically complete; this is not R11 acceptance.
+
+Owner-operated closeout returned R12_RUNTIME_CLOSEOUT_VERIFIED. The saved result is CLOSED with failures empty. Revocation readback at `2026-09-21T09:56:05.430Z` is REVOKED with exactly one matching operation audit. The source-bound controller's CLOSED predicate requires inactive authority, no enabled tag, runtime NOLOGIN/connection limit zero/sessions zero and baseline traffic 100%. This is controller readback evidence, not a new independent database connection. Independent Cloud Run readback at about 09:57 UTC confirms the enabled tag absent and normal traffic 100% on app013bounds. The enabled8 revision remains latest Ready; tag removal does not delete that revision.
+
+Owner reports completing the browser journey. Current Cloud Logging readback for enabled8 from 09:40–10:00 UTC contains 110 entries, with only three HTTP GET 200 requests and zero POST requests; the query did not hit its limit. These are consistent with the helper's three deployment probes and do not independently establish phone verification, address verification or submission. Logging delay/completeness and the exact browser result are unresolved; do not infer a job, provider charge, successful acceptance or that the owner did not interact with a page. Owner was asked for the exact final non-private status/reference. No raw logs, phone, address, credentials or request bodies are recorded here.
+
+P06 technical tracking advances from 11/14 to 12/14 for R10 only. R11 remains pending correlated connected evidence; R12 shutdown substep is verified but the full closeout/retention/billing reconciliation and owner acceptance remain pending. Package acceptance 5/60 and walkthrough 3/8 are unchanged. No further live run or reopening of database LOGIN is authorized by the consumed plan. Next is reconcile the reported browser result against available evidence; any further privileged read or new run retains its applicable approval boundary.
+
+Owner follow-up reports no final browser status or reference ("none"). Therefore the connected submission is unverified and R11 remains open. Activation and safe shutdown succeeded; neither establishes completion of the customer journey. Next clarify whether the customer-intake page was opened and which last screen was reached, without requesting personal data or replaying the expired run.
+
+## Final owner clarification
+
+Owner clarified: "only run the Terminal commands". This supersedes the earlier report of completing the browser journey. R11 was not attempted; the observed GET-only logs are consistent with deployment checks. There is no browser submission/job acceptance to reconcile for this attempt. R10 and verified shutdown remain successful, P06 remains 12/14, and R11/full R12 remain open. Do not infer zero infrastructure charges or clear existing provider holds from the absence of browser requests.
+
+Next requires a new future attended window and fresh qualification/packet with separate exact execution approval. Preserve all accepted work; do not repeat provisioning, bootstrap or diagnostics. During the next approved run, explicitly guide the owner to open the customer-intake URL after READY_FOR_R11 and complete phone verification, address verification and explicit reviewed submission before mandatory closeout. Existing command/window guards and approval boundaries remain unchanged.
+
+No application code changed. Original dirty checkout and existing uncommitted governance extensibility direction are preserved. No scope deviation.
