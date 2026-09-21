@@ -1,5 +1,9 @@
 # Backend Session Handoff
 
+## Current: bounded R11 refusal-cause log diagnostic prepared — 2026-09-21
+
+Static inspection after the confirmed no-job receipt shows the exact enabled11 HTTP 409 can be classified from the existing sanitized exception diagnostic without reading request bodies or participant fields. Proposed read-only Cloud Logging operation `045140b2-db62-4e3f-a3e5-398aaaf4b477`, 8:20–8:35 AM Eastern, binds project/service/revision and the 15-second event interval. It persists only one allowlisted refusal class and minimal event metadata. No query, authorization, network request or mutation occurred. Exact owner approval or refusal is next. R11/full R12 remain open; P06 stays 12/14. Evidence: `evidence/APP-013/p06-r11-refusal-diagnostic-preparation.md`. Diagnostic preparation only; no scope or acceptance change.
+
 ## Current: R11 receipt classified as no committed job — 2026-09-21
 
 Corrected read-only operation `1922018f-adb5-470a-b2c8-05ef4a985572` returned `R11_RECEIPT_DIAGNOSTIC_NO_COMMITTED_JOB`: zero non-deleted jobs exist for exact request `2f284c84-c8be-42e7-a8e7-c6a7febd6392`. The prior HTTP 409 is now a confirmed truthful refusal, not an uncertain receipt. The operation is consumed and was not retried; no LOGIN change, write, provider mutation or customer action occurred. R11 is not accepted because it requires one correlated protected journey and exactly one job. P06 remains 12/14 with R11/full R12 open. Next is a separately reviewed privacy-safe diagnosis of the 409 refusal cause before any new live journey. Evidence: `evidence/APP-013/p06-r11-receipt-diagnostic-result.md`. No scope or acceptance change.
