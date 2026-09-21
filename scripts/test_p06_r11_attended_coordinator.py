@@ -219,9 +219,16 @@ class LocalReviewTest(unittest.TestCase):
             "runtimeEnd": "2026-09-22T13:30:00.000Z",
             "closeoutEnd": "2026-09-22T13:45:00.000Z",
             "phoneFlowUpperBoundMicros": 500000,
-            "phoneAccountCeilingMicros": 2500000,
-            "retainedPhoneLiabilityMicros": 2000000,
-            "retainedPhoneHoldCount": 4,
+            "phoneAccountCeilingMicros": 3000000,
+            "retainedPhoneLiabilityMicros": 2500000,
+            "retainedPhoneHoldCount": 5,
+            "addressCostMicros": 100000,
+            "addressAccountMicros": 400000,
+            "addressAccountRequestLimit": 4,
+            "addressTenantMicros": 400000,
+            "addressTenantRequestLimit": 4,
+            "addressSessionMicros": 200000,
+            "addressSessionRequestLimit": 2,
             "automaticRetryAllowed": False,
         }
         self.approval = {
@@ -241,7 +248,13 @@ class LocalReviewTest(unittest.TestCase):
                 "revision": self.plan["revision"],
                 "phone": {
                     "flowUpperBoundMicros": 500000,
-                    "accountCeilingMicros": 2500000,
+                    "accountCeilingMicros": 3000000,
+                },
+                "addressPolicy": {
+                    "costMicros": 100000,
+                    "account": {"micros": 400000, "requests": 4},
+                    "tenant": {"micros": 400000, "requests": 4},
+                    "session": {"micros": 200000, "requests": 2},
                 },
             }
         }
@@ -308,19 +321,34 @@ class LocalReviewTest(unittest.TestCase):
         self.assertEqual(caught.exception.stage, "MARKER_REUSE")
 
     def test_wrong_ceiling_or_helper_hash_fails_closed(self):
-        self.plan["phoneAccountCeilingMicros"] = 3000000
+        self.plan["phoneAccountCeilingMicros"] = 2500000
         self.write_private("r10-review-plan.json", self.plan)
         with self.assertRaises(module.CoordinatorStop) as caught:
             self.run_review()
         self.assertEqual(caught.exception.stage, "PLAN_BINDING")
 
-        self.plan["phoneAccountCeilingMicros"] = 2500000
+        self.plan["phoneAccountCeilingMicros"] = 3000000
         self.write_private("r10-review-plan.json", self.plan)
         self.binding["files"]["r10-control.mjs"] = "0" * 64
         self.write_private("helper-binding.json", self.binding)
         with self.assertRaises(module.CoordinatorStop) as caught:
             self.run_review()
         self.assertEqual(caught.exception.stage, "HELPER_BINDING")
+
+    def test_wrong_address_limits_fail_closed(self):
+        self.plan["addressAccountRequestLimit"] = 3
+        self.write_private("r10-review-plan.json", self.plan)
+        with self.assertRaises(module.CoordinatorStop) as caught:
+            self.run_review()
+        self.assertEqual(caught.exception.stage, "PLAN_BINDING")
+
+        self.plan["addressAccountRequestLimit"] = 4
+        self.write_private("r10-review-plan.json", self.plan)
+        self.packet["envelope"]["addressPolicy"]["tenant"]["requests"] = 3
+        self.write_private("runtime-packet.json", self.packet)
+        with self.assertRaises(module.CoordinatorStop) as caught:
+            self.run_review()
+        self.assertEqual(caught.exception.stage, "PLAN_BINDING")
 
     def test_coordinator_reservation_is_private_and_exclusive(self):
         ports = module.ProductionPorts(review(self.root), node=Path(sys.executable))

@@ -31,9 +31,16 @@ TARGET_ORIGIN = (
     "https://p06-intake-enabled---signmons-calldesk-staging-p572d6wipq-ul.a.run.app"
 )
 FLOW_UPPER_BOUND_MICROS = 500_000
-ACCOUNT_CEILING_MICROS = 2_500_000
-RETAINED_LIABILITY_MICROS = 2_000_000
-RETAINED_HOLD_COUNT = 4
+ACCOUNT_CEILING_MICROS = 3_000_000
+RETAINED_LIABILITY_MICROS = 2_500_000
+RETAINED_HOLD_COUNT = 5
+ADDRESS_COST_MICROS = 100_000
+ADDRESS_ACCOUNT_MICROS = 400_000
+ADDRESS_ACCOUNT_REQUESTS = 4
+ADDRESS_TENANT_MICROS = 400_000
+ADDRESS_TENANT_REQUESTS = 4
+ADDRESS_SESSION_MICROS = 200_000
+ADDRESS_SESSION_REQUESTS = 2
 RUN_RESERVE_SECONDS = 4 * 60
 CLOSEOUT_RESERVE_SECONDS = 30
 
@@ -249,15 +256,33 @@ def review_run_directory(
         or plan.get("phoneAccountCeilingMicros") != ACCOUNT_CEILING_MICROS
         or plan.get("retainedPhoneLiabilityMicros") != RETAINED_LIABILITY_MICROS
         or plan.get("retainedPhoneHoldCount") != RETAINED_HOLD_COUNT
+        or plan.get("addressCostMicros") != ADDRESS_COST_MICROS
+        or plan.get("addressAccountMicros") != ADDRESS_ACCOUNT_MICROS
+        or plan.get("addressAccountRequestLimit") != ADDRESS_ACCOUNT_REQUESTS
+        or plan.get("addressTenantMicros") != ADDRESS_TENANT_MICROS
+        or plan.get("addressTenantRequestLimit") != ADDRESS_TENANT_REQUESTS
+        or plan.get("addressSessionMicros") != ADDRESS_SESSION_MICROS
+        or plan.get("addressSessionRequestLimit") != ADDRESS_SESSION_REQUESTS
         or binding.get("planId") != plan_id
     ):
         raise CoordinatorStop("PLAN_BINDING")
 
     envelope = _object(packet.get("envelope"))
     phone = _object(envelope.get("phone"))
+    address = _object(envelope.get("addressPolicy"))
+    address_account = _object(address.get("account"))
+    address_tenant = _object(address.get("tenant"))
+    address_session = _object(address.get("session"))
     if (
         phone.get("flowUpperBoundMicros") != FLOW_UPPER_BOUND_MICROS
         or phone.get("accountCeilingMicros") != ACCOUNT_CEILING_MICROS
+        or address.get("costMicros") != ADDRESS_COST_MICROS
+        or address_account.get("micros") != ADDRESS_ACCOUNT_MICROS
+        or address_account.get("requests") != ADDRESS_ACCOUNT_REQUESTS
+        or address_tenant.get("micros") != ADDRESS_TENANT_MICROS
+        or address_tenant.get("requests") != ADDRESS_TENANT_REQUESTS
+        or address_session.get("micros") != ADDRESS_SESSION_MICROS
+        or address_session.get("requests") != ADDRESS_SESSION_REQUESTS
         or envelope.get("origin") != TARGET_ORIGIN
         or envelope.get("revision") != plan.get("revision")
     ):
