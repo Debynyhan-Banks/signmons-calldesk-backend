@@ -1,0 +1,23 @@
+{
+  "status": "R11_UNCERTAIN_CLOSEOUT_VERIFIED",
+  "planId": "85fc768c-9655-402c-90bd-7d6b3ae99b73",
+  "revision": "signmons-calldesk-staging-app013p06enabled11",
+  "requestId": "2f284c84-c8be-42e7-a8e7-c6a7febd6392",
+  "startStatus": 200,
+  "continueStatus": 200,
+  "verificationRequests": 2,
+  "verificationStatuses": [200, 200],
+  "draftStatus": 200,
+  "submitStatus": 409,
+  "submitAt": "2026-09-21T11:49:41.795439Z",
+  "replacementRequestCreated": false,
+  "automaticRetryAllowed": false,
+  "closeoutStatus": "CLOSED",
+  "closeoutFailures": [],
+  "closeoutReservedAt": "2026-09-21T11:51:42.607Z",
+  "cloudBaselineTrafficPercent": 100,
+  "cloudEnabledTagAbsent": true,
+  "authoritativeDatabaseReceiptRead": false,
+  "p06Complete": 12,
+  "p06Total": 14
+}
