@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 
 const CONSUMED_PLAN_ID = "b228f87a-ed6e-4253-a62a-b33128bb094a";
 const CONSUMED_REVISION = "signmons-calldesk-staging-app013p06enabled";
+const SERVICE_NAME = "signmons-calldesk-staging";
 const NORMAL_REVISION = "signmons-calldesk-staging-app013bounds";
 const TARGET_TAG = "p06-intake-enabled";
 const TARGET_ORIGIN =
@@ -75,6 +76,31 @@ export function reviewR10ControllerPlan(input) {
     return Object.freeze({ ...plan });
   } catch {
     throw new R10ControllerStop("PLAN", "NOT_STARTED");
+  }
+}
+
+export function deriveR10CloudRunRevisionSuffix(input) {
+  const plan = reviewR10ControllerPlan(input);
+  try {
+    const prefix = `${SERVICE_NAME}-`;
+    assert.ok(plan.revision.startsWith(prefix));
+    const suffix = plan.revision.slice(prefix.length);
+    assert.match(suffix, /^app013p06enabled[a-z0-9-]{1,24}$/);
+    assert.equal(`${SERVICE_NAME}-${suffix}`, plan.revision);
+    return suffix;
+  } catch {
+    throw new R10ControllerStop("DEPLOYMENT_BINDING", "NOT_STARTED");
+  }
+}
+
+export function reviewR10CloudRunRevisionSuffix(input, candidate) {
+  const expected = deriveR10CloudRunRevisionSuffix(input);
+  try {
+    assert.equal(typeof candidate, "string");
+    assert.equal(candidate, expected);
+    return expected;
+  } catch {
+    throw new R10ControllerStop("DEPLOYMENT_BINDING", "NOT_STARTED");
   }
 }
 
@@ -198,7 +224,7 @@ async function containR10(plan, ports) {
     } catch {
       failures.push("REVOKE");
     }
-  } else if (!inactive(approvalState)) {
+  } else if (!inactive(approvalState) && !revoked(approvalState, plan)) {
     failures.push("APPROVAL_UNCONFIRMED");
   }
   try {

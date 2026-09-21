@@ -6,10 +6,12 @@ import test from "node:test";
 import {
   R10ControllerStop,
   closeR10Runtime,
+  deriveR10CloudRunRevisionSuffix,
   executeR10ActivateBeforeDeploy,
   requireR10CloseoutWindow,
   requireR10ExecutionWindow,
   reserveR10Operation,
+  reviewR10CloudRunRevisionSuffix,
   reviewR10ControllerPlan,
 } from "./p06-r10-controller.mjs";
 
@@ -81,8 +83,8 @@ const makePorts = (options = {}) => {
     inspectApproval: () =>
       hit("inspectApproval", {
         state: options.approvalState ?? "ACTIVE",
-        runtimeDigest: p.runtimeDigest,
-        phoneDigest: p.phoneDigest,
+        runtimeDigest: options.approvalRuntimeDigest ?? p.runtimeDigest,
+        phoneDigest: options.approvalPhoneDigest ?? p.phoneDigest,
       }),
     reserveRevocation: () => hit("reserveRevocation"),
     revoke: () => hit("revoke"),
@@ -126,6 +128,21 @@ test("fresh bounded plan is accepted and consumed plan/revision are refused", ()
         plan({ revision: "signmons-calldesk-staging-app013p06enabled" }),
       ),
     (error) => error instanceof R10ControllerStop && error.stage === "PLAN",
+  );
+});
+
+test("Cloud Run revision suffix is derived from the reviewed plan and stale copies fail closed", () => {
+  assert.equal(deriveR10CloudRunRevisionSuffix(plan()), "app013p06enabled2");
+  assert.equal(
+    reviewR10CloudRunRevisionSuffix(plan(), "app013p06enabled2"),
+    "app013p06enabled2",
+  );
+  assert.throws(
+    () => reviewR10CloudRunRevisionSuffix(plan(), "app013p06enabled1"),
+    (error) =>
+      error instanceof R10ControllerStop &&
+      error.stage === "DEPLOYMENT_BINDING" &&
+      error.closeoutStatus === "NOT_STARTED",
   );
 });
 
@@ -303,6 +320,24 @@ test("explicit closeout skips revoke when approval is already inactive", async (
     "disableRuntimeRole",
     "readClosedState",
   ]);
+});
+
+test("explicit closeout accepts only the exact matching already-revoked approval", async () => {
+  const exact = makePorts({ approvalState: "REVOKED" });
+  const result = await closeR10Runtime(plan(), exact.ports, START);
+  assert.deepEqual(result, { status: "CLOSED", failures: [] });
+  assert.equal(exact.calls.includes("reserveRevocation"), false);
+  assert.equal(exact.calls.includes("revoke"), false);
+
+  const unrelated = makePorts({
+    approvalState: "REVOKED",
+    approvalRuntimeDigest: "4".repeat(64),
+  });
+  const unrelatedResult = await closeR10Runtime(plan(), unrelated.ports, START);
+  assert.equal(unrelatedResult.status, "CLOSED");
+  assert.deepEqual(unrelatedResult.failures, ["APPROVAL_UNCONFIRMED"]);
+  assert.equal(unrelated.calls.includes("reserveRevocation"), false);
+  assert.equal(unrelated.calls.includes("revoke"), false);
 });
 
 test("preflight mismatch performs containment and never activates", async () => {
