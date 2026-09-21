@@ -1,0 +1,11 @@
+{
+  "status": "BEFORE_ADDRESS_RESERVATION",
+  "operationId": "afd29a7b-b2aa-4c12-b894-76e85265dbec",
+  "requestId": "2f284c84-c8be-42e7-a8e7-c6a7febd6392",
+  "rowCount": 0,
+  "checkedAt": "2026-09-21T12:31:44.709Z",
+  "automaticRetryAllowed": false,
+  "r11Accepted": false,
+  "p06Complete": 12,
+  "p06Total": 14
+}

@@ -1,0 +1,9 @@
+# P06 / R11 address-stage diagnostic result and demonstrated category-binding defect
+
+Owner-approved read-only operation `afd29a7b-b2aa-4c12-b894-76e85265dbec` reserved once at 12:31:32Z and returned `R11_ADDRESS_STAGE_DIAGNOSTIC_BEFORE_ADDRESS_RESERVATION` at 12:31:44Z. The exact request has no `AddressVerificationRequest` alias, proving the HTTP 409 occurred before any address reservation, dispatch or Google Address request. The operation is consumed and was not retried. No LOGIN change, database write, provider request/mutation or customer action occurred.
+
+Static comparison demonstrates the cause without another live read. The accepted bootstrap category `c8fdb27a-abc6-4c70-86f2-4296a3262dcb` is named `Regular initial visit / diagnosis`. The browser and `validateCustomerIntakeDraft` permit only customer-facing enum values such as `HEATING`, `COOLING` and `GENERAL`. `controlledSubmissionReader` incorrectly queries `ServiceCategory.name` using that customer-facing enum and requires exactly one row before address reservation. No allowed browser value can equal the configured internal category name, so the controlled submit deterministically throws the sanitized 409 at this pre-address check.
+
+The narrow repair is to bind the server-owned service-category ID from the reviewed activation/runtime composition into `controlledSubmissionReader`, validate it through the existing current-state/authority checks and keep `draft.issueCategory` as the separate customer-facing classification. This preserves the allowed category ID, customer input validation, current-policy checks and atomic admission path. It requires owner approval under `APP013_P06_R11_CATEGORY_BINDING_CHANGE_REQUEST.md` before implementation.
+
+R11/full R12 remain open and P06 remains 12/14. No new live journey, packet or authorization is prepared. Original dirty APP-010 checkout preserved. Demonstrated defect and proposed change only; no scope deviation implemented.

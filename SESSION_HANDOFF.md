@@ -1,5 +1,9 @@
 # Backend Session Handoff
 
+## Current: R11 pre-address 409 root cause demonstrated; repair decision required — 2026-09-21
+
+Read-only operation `afd29a7b-b2aa-4c12-b894-76e85265dbec` returned `BEFORE_ADDRESS_RESERVATION`; the exact request has no durable address alias, so no Google Address call occurred. Static evidence demonstrates the cause: the live allowed category is `Regular initial visit / diagnosis`, the browser can submit only customer enum values such as `HEATING`/`GENERAL`, and `controlledSubmissionReader` incorrectly looks up the internal `ServiceCategory.name` using that enum. The submit must therefore 409 before address reservation. The consumed diagnostic was not retried and performed no write. Governance change request `APP013_P06_R11_CATEGORY_BINDING_CHANGE_REQUEST.md` proposes passing the server-owned allowed category ID into the reader while retaining the customer classification separately. No repair is implemented. R11/full R12 remain open; P06 stays 12/14. Evidence: `evidence/APP-013/p06-r11-address-stage-result.md`. No scope deviation implemented.
+
 ## Current: R11 log diagnostic unconfirmed; durable address-stage seam identified — 2026-09-21
 
 Approved Cloud Logging operation `045140b2-db62-4e3f-a3e5-398aaaf4b477` executed once and returned zero matching sanitized diagnostics. It is `UNCONFIRMED`, consumed and was not retried; no raw logs were retained. Static inspection shows exact request ID `2f284c84-c8be-42e7-a8e7-c6a7febd6392` would exist as `AddressVerificationRequest.id` only after address reservation. A new fixed-request read-only lookup can classify the durable address stage without participant data. No such database read or authorization exists. R11/full R12 remain open; P06 stays 12/14. Evidence: `evidence/APP-013/p06-r11-refusal-log-diagnostic-result.md`. No scope or acceptance change.
