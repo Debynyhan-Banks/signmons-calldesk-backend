@@ -335,7 +335,11 @@ export async function verifyLoadedIntakeBrowser({
             await page.locator("#details").waitFor({ state: "visible" });
             assert.equal(receipts[0]?.status, "CORRECTION_REQUIRED");
             assert.equal(await prisma.job.count(), jobs);
-            await page.locator("#controlledStreet").fill("174 Fictional Lane");
+            await page.locator("#controlledUseSuggestion").click();
+            assert.equal(
+              await page.locator("#controlledStreet").inputValue(),
+              "174 Fictional Lane",
+            );
             await page.locator("#reviewed").check();
             await page.locator("#draft").click();
             await page.locator("#submitReview").click();

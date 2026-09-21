@@ -31,6 +31,7 @@ try {
     for (const mode of [
       "ADMITTED",
       "CORRECTION_REQUIRED",
+      "CORRECTION_UNSELECTABLE",
       "REFUSED",
       "UNCERTAIN",
       "LOST_ACK",
@@ -80,7 +81,13 @@ try {
           submissions.push(body);
           if (mode === "LOST_ACK" && submissions.length === 1)
             return route.abort();
-          const state = mode === "LOST_ACK" ? "ADMITTED" : mode;
+          const state =
+            mode === "LOST_ACK" ||
+            (mode === "CORRECTION_REQUIRED" && submissions.length > 1)
+              ? "ADMITTED"
+              : mode === "CORRECTION_UNSELECTABLE"
+                ? "CORRECTION_REQUIRED"
+                : mode;
           value = {
             status: state,
             requestId: body.requestId,
@@ -95,9 +102,12 @@ try {
             ...(state === "CORRECTION_REQUIRED"
               ? {
                   candidate: {
-                    addressLines: ["124 Fictional Lane"],
+                    addressLines:
+                      mode === "CORRECTION_UNSELECTABLE"
+                        ? ["X".repeat(151)]
+                        : ["124 Fictional Lane", "Apt 2"],
                     city: "Example",
-                    postalCode: "44101",
+                    postalCode: "44101-1234",
                     country: "US",
                     state: "OH",
                   },
@@ -158,6 +168,12 @@ try {
         await page.locator("#retry").click();
         await page.locator("#submitted").waitFor({ state: "visible" });
         assert.deepEqual(submissions[1], submissions[0]);
+      } else if (mode === "CORRECTION_UNSELECTABLE") {
+        assert.equal(
+          await page.locator("#controlledUseSuggestion").isHidden(),
+          true,
+        );
+        assert.equal(submissions.length, 1);
       } else if (mode === "CORRECTION_REQUIRED") {
         assert.match(
           await page.locator("#controlledSuggestion").textContent(),
@@ -168,16 +184,33 @@ try {
           "123 Fictional Lane",
         );
         assert.equal(await page.locator("#reviewed").isChecked(), false);
-        await page.locator("#controlledStreet").fill("124 Fictional Lane");
+        assert.equal(submissions.length, 1);
+        await page.screenshot({
+          path: `${out}/correction-selection-${width}.png`,
+          fullPage: true,
+        });
+        await page.locator("#controlledUseSuggestion").click();
+        assert.equal(submissions.length, 1);
+        assert.equal(
+          await page.locator("#controlledStreet").inputValue(),
+          "124 Fictional Lane",
+        );
+        assert.equal(await page.locator("#controlledUnit").inputValue(), "Apt 2");
+        assert.equal(
+          await page.locator("#controlledPostal").inputValue(),
+          "44101-1234",
+        );
         await page.locator("#reviewed").check();
         await page.locator("#draft").click();
         await page.locator("#submitReview").click();
-        await page.locator("#details").waitFor({ state: "visible" });
+        await page.locator("#submitted").waitFor({ state: "visible" });
         assert.equal(submissions.length, 2);
         assert.equal(
           submissions[1].confirmedAddress.street,
           "124 Fictional Lane",
         );
+        assert.equal(submissions[1].confirmedAddress.unit, "Apt 2");
+        assert.equal(submissions[1].confirmedAddress.postalCode, "44101-1234");
         assert.notEqual(submissions[1].requestId, submissions[0].requestId);
       } else if (["UNCERTAIN", "MALFORMED"].includes(mode)) {
         assert.equal(await page.locator("#retry").isVisible(), true);

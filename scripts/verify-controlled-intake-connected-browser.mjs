@@ -151,7 +151,11 @@ export async function verifyControlledIntakeConnectedBrowser({
         await page.locator("#controlledSuggestion").textContent(),
         /174 Fictional Lane/,
       );
-      await page.locator("#controlledStreet").fill("174 Fictional Lane");
+      await page.locator("#controlledUseSuggestion").click();
+      assert.equal(
+        await page.locator("#controlledStreet").inputValue(),
+        "174 Fictional Lane",
+      );
       await page.locator("#reviewed").check();
       await page.locator("#draft").click();
       await page.locator("#submitReview").click();

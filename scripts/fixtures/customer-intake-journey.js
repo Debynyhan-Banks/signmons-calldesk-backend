@@ -26,6 +26,7 @@
     phoneExpiryTimer,
     reviewedDraft,
     reviewedControlledAddress,
+    controlledSuggestion,
     reviewedAddressSelection,
     expires = 0,
     revision = 0,
@@ -115,6 +116,10 @@
       (!controlledMode() &&
         document.documentElement.dataset.reviewSubmit !== "true") ||
       step !== "preview";
+    el("controlledUseSuggestion").hidden =
+      !controlledSuggestion || step !== "details";
+    el("controlledUseSuggestion").disabled =
+      busy || !!pending || !controlledSuggestion;
     el("retry").hidden = !pending || busy;
     el("retry").disabled = busy;
     el("addressConfirm").disabled =
@@ -175,6 +180,7 @@
     controlledVerificationNotice = undefined;
     reviewedAddressSelection = undefined;
     reviewedControlledAddress = undefined;
+    controlledSuggestion = undefined;
     el("controlledSuggestion").textContent = "";
     expires = revision = 0;
     step = "start";
@@ -759,6 +765,8 @@
               ["REFUSED", "CORRECTION_REQUIRED"].includes(value.status) &&
               value.jobCreated === false
             ) {
+              controlledSuggestion = undefined;
+              el("controlledSuggestion").textContent = "";
               if (value.status === "CORRECTION_REQUIRED") {
                 const c = value.candidate;
                 if (
@@ -777,6 +785,17 @@
                   !/^\d{5}(-\d{4})?$/.test(c.postalCode)
                 )
                   throw Error("Invalid correction");
+                const suggestedUnit = c.addressLines.slice(1).join(", ");
+                if (
+                  c.addressLines[0].length <= 150 &&
+                  suggestedUnit.length <= 30
+                )
+                  controlledSuggestion = Object.freeze({
+                    street: c.addressLines[0],
+                    unit: suggestedUnit,
+                    city: c.city,
+                    postalCode: c.postalCode,
+                  });
                 el("controlledSuggestion").textContent =
                   "Suggested address: " +
                   c.addressLines.join(", ") +
@@ -784,7 +803,7 @@
                   c.city +
                   ", OH " +
                   c.postalCode +
-                  ". Enter the correct address above, then review and explicitly submit again. Nothing is adopted automatically.";
+                  ". Select Use suggested address below, or enter the correct address above, then review and explicitly submit again. Nothing is adopted automatically.";
               }
               pending = reviewedDraft = reviewedControlledAddress = undefined;
               el("reviewed").checked = false;
@@ -1235,6 +1254,24 @@
     paint();
   };
   el("reviewed").onchange = paint;
+  el("controlledUseSuggestion").onclick = () => {
+    if (busy || pending || !controlledSuggestion) return;
+    const selected = controlledSuggestion;
+    el("controlledStreet").value = selected.street;
+    el("controlledUnit").value = selected.unit;
+    el("controlledCity").value = selected.city;
+    el("controlledPostal").value = selected.postalCode;
+    reviewedDraft = reviewedControlledAddress = undefined;
+    el("reviewed").checked = false;
+    el("summary").textContent = "";
+    controlledSuggestion = undefined;
+    el("controlledSuggestion").textContent =
+      "Suggested address copied. Review every field, then preview and explicitly submit again.";
+    status(
+      "Suggested address copied for your review. Nothing verified, booked or submitted.",
+    );
+    paint();
+  };
   for (const [id, response] of [
     ["grant", "GRANTED"],
     ["decline", "DECLINED"],
