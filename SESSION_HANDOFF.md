@@ -1,5 +1,9 @@
 # Backend Session Handoff
 
+## Current: R11 receipt classified as no committed job — 2026-09-21
+
+Corrected read-only operation `1922018f-adb5-470a-b2c8-05ef4a985572` returned `R11_RECEIPT_DIAGNOSTIC_NO_COMMITTED_JOB`: zero non-deleted jobs exist for exact request `2f284c84-c8be-42e7-a8e7-c6a7febd6392`. The prior HTTP 409 is now a confirmed truthful refusal, not an uncertain receipt. The operation is consumed and was not retried; no LOGIN change, write, provider mutation or customer action occurred. R11 is not accepted because it requires one correlated protected journey and exactly one job. P06 remains 12/14 with R11/full R12 open. Next is a separately reviewed privacy-safe diagnosis of the 409 refusal cause before any new live journey. Evidence: `evidence/APP-013/p06-r11-receipt-diagnostic-result.md`. No scope or acceptance change.
+
 ## Current: first R11 receipt diagnostic consumed; refined helper ready unapproved — 2026-09-21
 
 Operation `b14dffb7-a888-4800-b09a-93ac6061d48f` stopped at `DATABASE_READ_ONLY` with an attempt marker and no result; it was not rerun. Static evidence proves its helper converted `readPipe`'s string to a Buffer while installed pg SCRAM requires a string. Corrected operation `1922018f-adb5-470a-b2c8-05ef4a985572`, proposed 8:05–8:20 AM Eastern, preserves the string and adds fixed safe stage evidence. Local parsing/type/file-set checks pass. Its private directory has exactly four review files and no authorization, attempt or result. Exact new approval or refusal is required before one fixed-request read-only connection. R11 remains uncertain; P06 remains 12/14 with R11/full R12 open. Evidence: `evidence/APP-013/p06-r11-receipt-diagnostic-stop-repair.md`. Local helper repair only; no scope or acceptance change.

@@ -1,0 +1,12 @@
+{
+  "status": "R11_TRUTHFUL_REFUSAL_NO_COMMITTED_JOB",
+  "operationId": "1922018f-adb5-470a-b2c8-05ef4a985572",
+  "requestId": "2f284c84-c8be-42e7-a8e7-c6a7febd6392",
+  "jobCount": 0,
+  "checkedAt": "2026-09-21T12:11:46.391Z",
+  "readOnly": true,
+  "automaticRetryAllowed": false,
+  "r11Accepted": false,
+  "p06Complete": 12,
+  "p06Total": 14
+}

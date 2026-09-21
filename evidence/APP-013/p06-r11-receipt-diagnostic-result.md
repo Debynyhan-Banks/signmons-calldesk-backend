@@ -1,0 +1,7 @@
+# P06 / R11 receipt diagnostic result
+
+Owner-approved corrected operation `1922018f-adb5-470a-b2c8-05ef4a985572` reserved once at 12:11:34Z and returned `R11_RECEIPT_DIAGNOSTIC_NO_COMMITTED_JOB` at 12:11:46Z. The repeatable-read, read-only query found zero non-deleted jobs for the fixed tenant and exact request `2f284c84-c8be-42e7-a8e7-c6a7febd6392`. This authoritatively classifies the prior HTTP 409 browser outcome as a truthful refusal with no committed job. The diagnostic is consumed and must not be rerun.
+
+The initial operation `b14dffb7-a888-4800-b09a-93ac6061d48f` remains consumed without a result. The corrected helper preserved owner-entered hidden input as a string, validated the fixed database, `neondb_owner` and PostgreSQL 18 identity, opened a read-only transaction, queried only the minimal receipt fields and rolled back before writing its sanitized result. No LOGIN change, activation, deployment, provider request, verification code, browser/customer action, write, retry, payment, booking, dispatch or message occurred.
+
+R11 is not accepted because its observable finish requires one successfully correlated protected journey and exactly one job. P06 remains 12/14 with R11 and full R12 open. The exact retained request is not retried or replaced under this operation. Before another live journey, classify the 409 refusal cause through a separately reviewed, privacy-safe diagnostic boundary. Original dirty APP-010 checkout preserved. No scope or acceptance change.
