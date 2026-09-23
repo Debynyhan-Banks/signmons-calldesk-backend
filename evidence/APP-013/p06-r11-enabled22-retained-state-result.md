@@ -1,0 +1,15 @@
+# APP-013/P06 R11 enabled22 retained-state result
+
+Operation `0969cc65-f1ea-4800-88ed-3542ddad16c1` completed once at 2026-09-23T12:31:28.040Z within the approved window. Private result: `/Volumes/Signmons-P06/r11-retained-state-diagnostic-20260923-0830b/result.json`. No stop file. The completion path verifies revision/image/key version, exact database/user/PostgreSQL18, repeatable-read read-only transaction and rollback, conditional one-version decryption in memory, then sanitized result. Operation is consumed; no retry. Original early stop remains preserved.
+
+## Established and limited findings
+
+Fixed request correlated job count is zero, including deleted jobs; address lookup returned no correlated row. Decrypted retained ledger has no matching CHECK with APPROVED outcome. One audit observation is START/PENDING. Session lifecycle numbers indicate open and unexpired at the refusal event. This does not show a completed successful code check or establish why it is missing. Owner answered “No / I’m not sure” when asked whether the six-digit code was entered and “Code accepted” appeared in this latest run.
+
+The saved `POST_EVENT_CHANGE_INCONCLUSIVE` classification has a demonstrated local diagnostic timestamp defect. Its single audit timestamp is 15:49:17.331Z, later than the diagnostic completion at 12:31:28.040Z. AuditLog.createdAt is Prisma DateTime without @db.Timestamptz; node-postgres OID1114 parses naive values in local time. The wrapper does not pin UTC. A synthetic local parser reproduction with input `2026-09-23 11:49:17.331` returns 15:49:17.331Z in America/New_York and 11:49:17.331Z in UTC. This explains a possible four-hour shift; the raw timestamp was deliberately not retained, so do not silently rewrite the saved observation or treat later modification as established. No live query was repeated. Job/address counts and retained approved-check absence do not depend on timestamp decoding. Other false checks such as startPresent are conditioned on the missing approved CHECK; they do not independently prove START is absent.
+
+## Browser source finding and next boundary
+
+At backend `3edd960` (runtime source unchanged from accepted `574f25a`), scripts/fixtures/customer-intake-journey.js paint enables draft based on reviewed checkbox and busy/pending only; draft and submit handlers do not require controlled verifyState APPROVED. The controlled message “Code accepted” is only emitted after APPROVED. Therefore the browser can reach final submit before a successful code check, which the server correctly refuses. This is a demonstrated UX gap, not proof of the exact historical user actions or a broken server verification rule.
+
+Propose local-only phone-step guard and diagnostic time-decoding repair with regression tests before another live run. No implementation yet; see governance `APP013_P06_R11_PHONE_STEP_DIAGNOSTIC_CHANGE_REQUEST.md`. Existing backend authority checks must remain mandatory. P06 stays 12/14, R11/full R12 open; accepted 1A/1B/2A unchanged. Runtime remains closed per previous verified closeout; no new live readback claimed. No scope deviation implemented.
