@@ -13,6 +13,7 @@
   let token,
     controlledClose = false,
     controlledVerificationNotice,
+    controlledVerifiedPhone,
     smsPrompt,
     correction,
     correctionTimer,
@@ -43,6 +44,20 @@
   };
   const controlledMode = () =>
     document.documentElement.dataset.controlledIntake === "true";
+  const controlledPhoneReady = () =>
+    !controlledMode() ||
+    (!!controlledVerificationNotice &&
+      verifyState === "APPROVED" &&
+      !!controlledVerifiedPhone &&
+      controlledVerifiedPhone === el("phone").value.trim() &&
+      Date.now() < expires);
+  function requireControlledPhone() {
+    if (controlledPhoneReady()) return true;
+    status(
+      "Complete the phone code check and wait for Code accepted before reviewing or submitting your request.",
+    );
+    return false;
+  }
   function paint() {
     el("controlledAddress").hidden = !controlledMode();
     if (controlledMode()) {
@@ -111,7 +126,15 @@
       busy || !!pending || !smsPrompt || !el("smsRequested").checked;
     el("smsUnavailable").hidden = !!smsPrompt;
     el("grant").disabled = busy || !!pending || !el("confirmed").checked;
-    el("draft").disabled = busy || !!pending || !el("reviewed").checked;
+    const phoneReady = controlledPhoneReady();
+    for (const id of [
+      "controlledPhoneRequired",
+      "controlledPreviewPhoneRequired",
+    ])
+      el(id).hidden = !controlledMode() || phoneReady;
+    el("draft").disabled =
+      busy || !!pending || !el("reviewed").checked || !phoneReady;
+    el("submitReview").disabled = busy || !!pending || !phoneReady;
     el("submitReview").hidden =
       (!controlledMode() &&
         document.documentElement.dataset.reviewSubmit !== "true") ||
@@ -177,7 +200,7 @@
     el("phoneStatus").textContent = "Not verified.";
     token = promptToken = email = pending = reviewedDraft = undefined;
     controlledClose = false;
-    controlledVerificationNotice = undefined;
+    controlledVerificationNotice = controlledVerifiedPhone = undefined;
     reviewedAddressSelection = undefined;
     reviewedControlledAddress = undefined;
     controlledSuggestion = undefined;
@@ -453,6 +476,7 @@
           break;
         }
         case "verify": {
+          if (controlledMode()) controlledVerifiedPhone = undefined;
           if (
             (!controlledVerificationNotice && value.fixtureOnly !== true) ||
             value.phoneAccessAuthorized !== false ||
@@ -516,6 +540,12 @@
             if (request.body.action === "START")
               verifyStart = request.body.operationId;
             verifyState = value.outcome;
+            if (
+              controlledVerificationNotice &&
+              request.body.action === "CHECK" &&
+              value.outcome === "APPROVED"
+            )
+              controlledVerifiedPhone = request.body.phone;
             el("verifyStatus").textContent = controlledVerificationNotice
               ? value.outcome === "APPROVED"
                 ? "Code accepted. The server will recheck phone access before admitting your request. Nothing booked or sent."
@@ -1126,6 +1156,10 @@
   };
   el("addressConfirmed").onchange = paint;
   el("phone").addEventListener("input", () => {
+    if (controlledMode()) {
+      controlledVerifiedPhone = undefined;
+      verifyState = verifyStart ? "CORRECTION_REQUIRED" : "EMPTY";
+    }
     smsPrompt = undefined;
     el("smsStatus").textContent = "";
     verifyNotice = undefined;
@@ -1135,6 +1169,7 @@
   el("verifyChange").onclick = () => {
     if (busy || pending) return;
     if (controlledVerificationNotice && verifyStart) {
+      controlledVerifiedPhone = undefined;
       submit("end", { sessionToken: token });
       return;
     }
@@ -1284,7 +1319,8 @@
         mailboxConfirmed: el("confirmed").checked,
       });
   el("draft").onclick = () => {
-    if (!el("reviewed").checked) return;
+    if (busy || pending || !el("reviewed").checked) return;
+    if (!requireControlledPhone()) return;
     if (controlledMode()) {
       const address = {
         street: el("controlledStreet").value.trim(),
@@ -1343,10 +1379,13 @@
     if (!busy && pending && alive()) void run();
   };
   el("submitReview").onclick = () => {
+    if (busy || pending || !requireControlledPhone()) return;
     if (
       step !== "preview" ||
       !reviewedDraft ||
-      (controlledMode() && !reviewedControlledAddress) ||
+      (controlledMode() &&
+        (!reviewedControlledAddress ||
+          reviewedDraft.phone !== controlledVerifiedPhone)) ||
       (!controlledMode() &&
         document.documentElement.dataset.reviewSubmit !== "true")
     )

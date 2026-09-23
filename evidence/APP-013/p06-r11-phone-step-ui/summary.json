@@ -1,0 +1,137 @@
+{
+  "checks": [
+    {
+      "width": 390,
+      "mode": "ADMITTED",
+      "submitted": 1
+    },
+    {
+      "width": 390,
+      "mode": "CORRECTION_REQUIRED",
+      "submitted": 2
+    },
+    {
+      "width": 390,
+      "mode": "CORRECTION_UNSELECTABLE",
+      "submitted": 1
+    },
+    {
+      "width": 390,
+      "mode": "REFUSED",
+      "submitted": 1
+    },
+    {
+      "width": 390,
+      "mode": "UNCERTAIN",
+      "submitted": 1
+    },
+    {
+      "width": 390,
+      "mode": "LOST_ACK",
+      "submitted": 2
+    },
+    {
+      "width": 390,
+      "mode": "MALFORMED",
+      "submitted": 1
+    },
+    {
+      "width": 390,
+      "mode": "PHONE_REFUSED",
+      "submitted": 0
+    },
+    {
+      "width": 390,
+      "mode": "PHONE_UNKNOWN",
+      "submitted": 0
+    },
+    {
+      "width": 390,
+      "mode": "PHONE_EXPIRED",
+      "submitted": 0
+    },
+    {
+      "width": 390,
+      "mode": "PHONE_UNAVAILABLE",
+      "submitted": 0
+    },
+    {
+      "width": 390,
+      "mode": "PHONE_CHANGE",
+      "submitted": 0
+    },
+    {
+      "width": 390,
+      "mode": "PHONE_END",
+      "submitted": 0
+    },
+    {
+      "width": 1440,
+      "mode": "ADMITTED",
+      "submitted": 1
+    },
+    {
+      "width": 1440,
+      "mode": "CORRECTION_REQUIRED",
+      "submitted": 2
+    },
+    {
+      "width": 1440,
+      "mode": "CORRECTION_UNSELECTABLE",
+      "submitted": 1
+    },
+    {
+      "width": 1440,
+      "mode": "REFUSED",
+      "submitted": 1
+    },
+    {
+      "width": 1440,
+      "mode": "UNCERTAIN",
+      "submitted": 1
+    },
+    {
+      "width": 1440,
+      "mode": "LOST_ACK",
+      "submitted": 2
+    },
+    {
+      "width": 1440,
+      "mode": "MALFORMED",
+      "submitted": 1
+    },
+    {
+      "width": 1440,
+      "mode": "PHONE_REFUSED",
+      "submitted": 0
+    },
+    {
+      "width": 1440,
+      "mode": "PHONE_UNKNOWN",
+      "submitted": 0
+    },
+    {
+      "width": 1440,
+      "mode": "PHONE_EXPIRED",
+      "submitted": 0
+    },
+    {
+      "width": 1440,
+      "mode": "PHONE_UNAVAILABLE",
+      "submitted": 0
+    },
+    {
+      "width": 1440,
+      "mode": "PHONE_CHANGE",
+      "submitted": 0
+    },
+    {
+      "width": 1440,
+      "mode": "PHONE_END",
+      "submitted": 0
+    }
+  ],
+  "realProviderCalls": 0,
+  "actualJobWrites": 0,
+  "proof": "UI only; mocked transport outcomes"
+}

@@ -36,17 +36,25 @@ try {
       "UNCERTAIN",
       "LOST_ACK",
       "MALFORMED",
+      "PHONE_REFUSED",
+      "PHONE_UNKNOWN",
+      "PHONE_EXPIRED",
+      "PHONE_UNAVAILABLE",
+      "PHONE_CHANGE",
+      "PHONE_END",
     ]) {
       const context = await browser.newContext({
         viewport: { width, height: 1000 },
       });
       const page = await context.newPage();
       const errors = [],
-        submissions = [];
+        submissions = [],
+        requests = [];
       page.on("pageerror", (e) => errors.push(e.message));
       await page.route("**/customer-session/**", async (route) => {
         const op = new URL(route.request().url()).pathname.split("/").pop();
         const body = route.request().postDataJSON();
+        requests.push({ op, body });
         const denied = {
           paymentAuthorized: false,
           bookingAuthorized: false,
@@ -57,6 +65,11 @@ try {
         if (op === "start")
           value = {
             sessionToken: "synthetic-ui-session",
+            sessionCloseAvailable: true,
+            verificationNotice: {
+              noticeVersion: "synthetic-controlled-v1",
+              noticeText: "Synthetic code request.",
+            },
             expiresAt: new Date(Date.now() + 600000).toISOString(),
             deliveryAuthorized: false,
           };
@@ -64,6 +77,32 @@ try {
           value = {
             reply: "Please review your details.",
             revision: 1,
+            deliveryAuthorized: false,
+          };
+        else if (op === "end")
+          value = {
+            state: "CLOSED",
+            fixtureOnly: false,
+            cleanupPending: false,
+            deliveryAuthorized: false,
+          };
+        else if (op === "verify")
+          value = {
+            operationId: body.operationId,
+            state: "OBSERVED",
+            outcome:
+              body.action === "START" || body.code === "123455"
+                ? "PENDING"
+                : [
+                      "PHONE_REFUSED",
+                      "PHONE_UNKNOWN",
+                      "PHONE_EXPIRED",
+                      "PHONE_UNAVAILABLE",
+                    ].includes(mode)
+                  ? mode.slice(6)
+                  : "APPROVED",
+            phoneAccessAuthorized: false,
+            bookingAuthorized: false,
             deliveryAuthorized: false,
           };
         else if (op === "draft")
@@ -141,8 +180,107 @@ try {
       }))
         await page.locator("#" + id).selectOption(value);
       await page.locator("#reviewed").check();
+      const assertBlocked = async () => {
+        assert.equal(await page.locator("#draft").isDisabled(), true);
+        const before = requests.filter((x) =>
+          ["draft", "submit"].includes(x.op),
+        ).length;
+        await page.evaluate(() => {
+          document.getElementById("draft").onclick();
+          document.getElementById("submitReview").onclick();
+        });
+        assert.equal(
+          requests.filter((x) => ["draft", "submit"].includes(x.op)).length,
+          before,
+        );
+      };
+      await assertBlocked();
+      assert.equal(
+        await page.locator("#controlledPhoneRequired").isVisible(),
+        true,
+      );
+      await page.locator("#verifyNotice").click();
+      await page.locator("#verifyRequested").check();
+      await page.locator("#verifyStart").click();
+      await page.waitForFunction(() =>
+        document
+          .getElementById("verifyStatus")
+          .textContent.includes("Code check pending"),
+      );
+      await assertBlocked();
+      await page.locator("#verifyCode").fill("123455");
+      await page.locator("#verifyCheck").click();
+      await page.waitForFunction(
+        () =>
+          document.getElementById("verifyCode").value === "" &&
+          !document.getElementById("verifyCheck").disabled,
+      );
+      await assertBlocked();
+      await page.locator("#verifyCode").fill("123456");
+      await page.locator("#verifyCheck").click();
+      if (
+        [
+          "PHONE_REFUSED",
+          "PHONE_UNKNOWN",
+          "PHONE_EXPIRED",
+          "PHONE_UNAVAILABLE",
+        ].includes(mode)
+      ) {
+        await page.waitForFunction(() =>
+          /unavailable|unconfirmed/.test(
+            document.getElementById("verifyStatus").textContent,
+          ),
+        );
+        await assertBlocked();
+        assert.equal(submissions.length, 0);
+        assert.deepEqual(errors, []);
+        checks.push({ width, mode, submitted: 0 });
+        await context.close();
+        continue;
+      }
+      await page.waitForFunction(() =>
+        document
+          .getElementById("verifyStatus")
+          .textContent.includes("Code accepted"),
+      );
+      assert.equal(
+        await page.locator("#controlledPhoneRequired").isHidden(),
+        true,
+      );
       await page.locator("#draft").click();
-      await page.locator("#submitReview").click();
+      await page.locator("#preview").waitFor({ state: "visible" });
+      if (mode === "PHONE_CHANGE" || mode === "PHONE_END") {
+        if (mode === "PHONE_CHANGE") {
+          await page.evaluate(() => {
+            const p = document.getElementById("phone");
+            p.value = "+12025550124";
+            p.dispatchEvent(new Event("input", { bubbles: true }));
+          });
+          assert.equal(
+            await page.locator("#controlledPreviewPhoneRequired").isVisible(),
+            true,
+          );
+          // Restoring the old number cannot restore cleared acceptance.
+          await page.evaluate(() => {
+            document.getElementById("phone").value = "+12025550123";
+          });
+        } else {
+          await page.locator("#editDraft").click();
+          await page.locator("#verifyChange").click();
+          await page.locator("#start").waitFor({ state: "visible" });
+        }
+        assert.equal(await page.locator("#submitReview").isDisabled(), true);
+        await assertBlocked();
+        assert.equal(submissions.length, 0);
+        assert.deepEqual(errors, []);
+        checks.push({ width, mode, submitted: 0 });
+        await context.close();
+        continue;
+      }
+      await page.evaluate(() => {
+        document.getElementById("submitReview").onclick();
+        document.getElementById("submitReview").onclick();
+      });
       await page.waitForFunction(
         () =>
           !document.querySelector("#status").textContent.includes("Working"),
@@ -195,7 +333,10 @@ try {
           await page.locator("#controlledStreet").inputValue(),
           "124 Fictional Lane",
         );
-        assert.equal(await page.locator("#controlledUnit").inputValue(), "Apt 2");
+        assert.equal(
+          await page.locator("#controlledUnit").inputValue(),
+          "Apt 2",
+        );
         assert.equal(
           await page.locator("#controlledPostal").inputValue(),
           "44101-1234",

@@ -317,6 +317,10 @@
         choice does not book an appointment or authorize payment.
       </p>
     </fieldset>
+    <p id="controlledPhoneRequired" role="status" hidden>
+      Complete the phone code check above and wait for “Code accepted” before
+      previewing your draft.
+    </p>
     <label
       ><input id="reviewed" type="checkbox" /> I reviewed these details.</label
     ><button id="draft">Preview validated draft</button>
@@ -325,6 +329,10 @@
     <h2 id="previewHeading">Draft only — human review required</h2>
     <pre id="summary"></pre>
     <button id="editDraft">Edit draft</button>
+    <p id="controlledPreviewPhoneRequired" role="status" hidden>
+      Phone verification is incomplete. Edit your draft and complete the code
+      check before submitting.
+    </p>
     <button id="submitReview" hidden>Submit for operator review</button>
     <p>
       No job created, no appointment booked, no message sent. The draft is not
