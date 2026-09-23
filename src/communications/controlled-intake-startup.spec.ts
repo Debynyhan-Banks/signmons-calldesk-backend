@@ -217,5 +217,6 @@ describe("controlled intake startup registration", () => {
     );
     expect(main.indexOf("await app.listen(port)")).toBeGreaterThan(startup);
     expect(main).not.toMatch(/verifyFactory|googlePorts|fixtures\//);
+    expect(main).toContain("logging: loggingService");
   });
 });

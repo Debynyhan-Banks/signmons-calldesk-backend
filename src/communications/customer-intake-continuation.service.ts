@@ -40,6 +40,10 @@ import {
   consumeCurrentAdmissionProof,
 } from "./current-proof-admission";
 import {
+  controlledIntakeConflict,
+  markControlledIntakeRefusal,
+} from "./controlled-intake-refusal";
+import {
   ORGANIZATION_PROFILE,
   object,
   profile,
@@ -52,7 +56,10 @@ export const PROTECTED_INTAKE_REVIEW = "protected_intake_review_v1";
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const changed = () =>
-  new ConflictException("Customer intake changed or is unavailable.");
+  controlledIntakeConflict(
+    "INTAKE_STATE_CHANGED",
+    "Customer intake changed or is unavailable.",
+  );
 const reviewRoles = new Set(["owner", "admin", "dispatcher"]);
 type ControlledWrite = {
   requestId: string;
@@ -205,7 +212,10 @@ export class CustomerIntakeContinuationService {
         .map((message) => safety.assess(message))
         .find((result) => result !== null);
       if (escalation)
-        throw new ConflictException({ ...escalation, jobCreated: false });
+        throw controlledIntakeConflict("LIFE_SAFETY_REFUSAL", {
+          ...escalation,
+          jobCreated: false,
+        });
       const authorityScope = {
         tenantId: owner.tenantId,
         integrationId,
@@ -277,15 +287,27 @@ export class CustomerIntakeContinuationService {
     const input = controlledIntakeSubmission(value);
     const session = this.credentials.verifySession(input.sessionToken);
     const replay = () =>
-      this.transaction((tx) => this.controlledReplay(tx, input, binding));
+      this.transaction((tx) => this.controlledReplay(tx, input, binding)).catch(
+        (error: unknown) => {
+          throw markControlledIntakeRefusal(error, "INTAKE_STATE_CHANGED");
+        },
+      );
     const committed = await replay();
     if (committed) return committed;
     const reader = this.controlledSubmissionReader(input, binding);
     // Fail before the verification factory/provider path when the session is closed.
     try {
-      await this.transaction((tx) => reader(tx, session, input.requestId));
-      const verification = await binding.verification(reader);
-      const result = await verification.run(
+      await this.transaction((tx) =>
+        reader(tx, session, input.requestId),
+      ).catch((error: unknown) => {
+        throw markControlledIntakeRefusal(error, "INTAKE_STATE_CHANGED");
+      });
+      const verification = await Promise.resolve()
+        .then(() => binding.verification(reader))
+        .catch((error: unknown) => {
+          throw markControlledIntakeRefusal(error, "INTAKE_STATE_CHANGED");
+        });
+      const resultPromise = verification.run(
         { sessionToken: input.sessionToken, requestId: input.requestId },
         (check, beforeCommit) =>
           this.transaction(async (tx) => {
@@ -357,6 +379,12 @@ export class CustomerIntakeContinuationService {
             };
           }),
       );
+      const result = await resultPromise.catch((error: unknown) => {
+        throw markControlledIntakeRefusal(
+          error,
+          "CURRENT_VERIFICATION_UNAVAILABLE",
+        );
+      });
       return result.status === "CONSUMED" ? result.value : result;
     } catch (error) {
       const recovered = await replay();

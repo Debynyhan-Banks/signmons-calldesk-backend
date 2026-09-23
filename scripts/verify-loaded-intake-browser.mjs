@@ -140,6 +140,7 @@ export async function verifyLoadedIntakeBrowser({
             () => ({
               prisma: runtimePrisma,
               cipher,
+              logging: { warn: () => undefined },
               verifyFactory: () => ({
                 verify: {
                   v2: {

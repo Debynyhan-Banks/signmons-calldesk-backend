@@ -23,6 +23,10 @@ import {
 } from "./controlled-intake-submission";
 import { controlledIntakeBrowserResult } from "./controlled-intake-browser-result";
 import { ControlledCustomerVerification } from "./controlled-customer-verification";
+import {
+  ControlledIntakeRefusalStage,
+  controlledIntakeRefusalStage,
+} from "./controlled-intake-refusal";
 
 export const CUSTOMER_BROWSER_MAX_BYTES = 16384;
 export const CUSTOMER_BROWSER_HEADERS = Object.freeze({
@@ -112,6 +116,7 @@ type Ports = {
   diagnostic?: (entry: {
     operation: CustomerBrowserOperation | "unknown";
     status: number;
+    refusalStage?: ControlledIntakeRefusalStage;
   }) => void;
 };
 
@@ -165,6 +170,7 @@ export class CustomerConsentBrowserTransport {
   ) {
     let operation: CustomerBrowserOperation | "unknown" = "unknown";
     let release: CustomerBrowserRelease | undefined;
+    let refusalStage: ControlledIntakeRefusalStage | undefined;
     let status = 503,
       result: Record<string, unknown> = { error: "Customer request refused." };
     try {
@@ -280,6 +286,7 @@ export class CustomerConsentBrowserTransport {
       result = await this.invoke(operation, input, ports, binding.tenantId);
       status = 200;
     } catch (error) {
+      refusalStage = controlledIntakeRefusalStage(error);
       const candidate =
         error instanceof HttpException ? error.getStatus() : 503;
       status = [400, 401, 403, 409, 413, 415, 429].includes(candidate)
@@ -293,7 +300,11 @@ export class CustomerConsentBrowserTransport {
         /* Invalid adapter must be repaired before activation. */
       }
       try {
-        this.ports?.diagnostic?.({ operation, status });
+        this.ports?.diagnostic?.({
+          operation,
+          status,
+          ...(refusalStage ? { refusalStage } : {}),
+        });
       } catch {
         /* No raw error fallback. */
       }

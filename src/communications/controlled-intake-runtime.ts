@@ -31,10 +31,13 @@ import { CustomerConsentBrowserTransport } from "./customer-consent-browser-tran
 import { lockCustomerConsentSession } from "./customer-consent-session-lock";
 import { VERIFICATION_PROOF_MS } from "./verification-freshness";
 import { VerificationCleanupService } from "./verification-cleanup.service";
+import { LoggingService } from "../logging/logging.service";
+import { recordControlledIntakeRefusal } from "./controlled-intake-refusal";
 
 type Resources = {
   prisma: Pick<PrismaService, "$transaction">;
   cipher: Pick<ConversationMemoryCipher, "encrypt" | "decrypt">;
+  logging: Pick<LoggingService, "warn">;
   /** Exact version-reference -> injected material. Never populated from HTTP. */
   secrets: Readonly<Record<string, Buffer | string>>;
   verifyFactory?: VerifyClientFactory;
@@ -57,7 +60,12 @@ export async function loadControlledIntakeRuntime(
 ) {
   const config = parseControlledRuntimeConfig(value, facts);
   if (!config) return undefined;
-  if (!resources || config.project !== "signmons") throw deny();
+  if (
+    !resources ||
+    config.project !== "signmons" ||
+    typeof resources.logging?.warn !== "function"
+  )
+    throw deny();
   const p = resources,
     a = config.activation;
   let retired = false;
@@ -248,6 +256,8 @@ export async function loadControlledIntakeRuntime(
               return shared.acquire(peer, operation);
             },
           },
+          diagnostic: (entry) =>
+            recordControlledIntakeRefusal(p.logging, entry),
         },
       );
       return Object.freeze({

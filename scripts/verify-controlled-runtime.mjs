@@ -149,6 +149,7 @@ export async function verifyControlledRuntime({
   const resources = {
     prisma: limited.prisma,
     cipher,
+    logging: { warn: () => undefined },
     secrets,
     verifyFactory: () => ({
       verify: {

@@ -14,6 +14,7 @@ import {
   CustomerBrowserRequest,
   readCustomerBrowserBody,
 } from "./customer-consent-browser-transport";
+import { controlledIntakeConflict } from "./controlled-intake-refusal";
 
 describe("inactive same-origin browser transport", () => {
   const tenantId = randomUUID(),
@@ -458,6 +459,37 @@ describe("inactive same-origin browser transport", () => {
       expect(submitReview).not.toHaveBeenCalled();
     },
   );
+  it("reports only a fixed controlled refusal stage and preserves the generic browser response", async () => {
+    const input = controlledInput();
+    const submit = jest
+      .fn()
+      .mockRejectedValue(
+        controlledIntakeConflict(
+          "CURRENT_VERIFICATION_UNAVAILABLE",
+          "PRIVATE_INTERNAL_REASON",
+        ),
+      );
+    const privateDiagnostic = jest.fn();
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      {
+        ...ports,
+        controlled: { submit },
+        diagnostic: privateDiagnostic,
+      },
+    );
+    const result = await asActor(() => transport.handle(req("submit", input)));
+    expect(result.status).toBe(409);
+    expect(result.body).toEqual({ error: "Customer request refused." });
+    expect(privateDiagnostic).toHaveBeenCalledWith({
+      operation: "submit",
+      status: 409,
+      refusalStage: "CURRENT_VERIFICATION_UNAVAILABLE",
+    });
+    expect(
+      JSON.stringify([result, privateDiagnostic.mock.calls]),
+    ).not.toContain("PRIVATE_INTERNAL_REASON");
+  });
   it("refuses missing controlled port and malformed inputs without legacy fallback", async () => {
     const input = controlledInput(),
       submitReview = jest.fn(),

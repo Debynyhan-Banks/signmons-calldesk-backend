@@ -1,4 +1,3 @@
-import { ConflictException } from "@nestjs/common";
 import { GoogleCorrectionSequence } from "./google-correction-sequence";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -17,6 +16,7 @@ import { AddressOperationExecutor } from "./address-operation-executor";
 import { GoogleAddressOAuthTransport } from "./google-address-oauth.transport";
 import { reviewGoogleAddressResponse } from "./google-address.adapter";
 import { reviewGoogleServiceArea } from "./google-service-area";
+import { controlledIntakeConflict } from "./controlled-intake-refusal";
 
 export type ControlledIntakeSubmission = {
   intentId: string;
@@ -45,7 +45,10 @@ type Ports = {
   ) => Promise<ControlledIntakeSubmission | null>;
 };
 const refuse = () =>
-  new ConflictException("Current verification unavailable; no job created.");
+  controlledIntakeConflict(
+    "CURRENT_VERIFICATION_UNAVAILABLE",
+    "Current verification unavailable; no job created.",
+  );
 const uuid = (s: unknown): s is string =>
   typeof s === "string" &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(

@@ -21,6 +21,7 @@ import {
   requestContextMiddleware,
   setAuthContext,
 } from "../common/context/request-context";
+import { controlledIntakeRefusalStage } from "./controlled-intake-refusal";
 jest.mock("./customer-consent-session-lock", () => ({
   lockCustomerConsentSession: jest.fn(),
   lockCustomerConsentReceipt: jest.fn(),
@@ -639,14 +640,26 @@ describe("inactive credential-bound transcript continuation", () => {
       jest
         .mocked(lockCustomerConsentSession)
         .mockResolvedValue({ status: "COMPLETED" } as never);
-      await expect(w.submit()).rejects.toThrow();
+      let error: unknown;
+      try {
+        await w.submit();
+      } catch (value: unknown) {
+        error = value;
+      }
+      expect(controlledIntakeRefusalStage(error)).toBe("INTAKE_STATE_CHANGED");
       expect(w.verification).not.toHaveBeenCalled();
     });
     it("safety interruption reaches no controlled writer or verification factory", async () => {
       const f = fixture(),
         w = writer(f);
       f.turn.content.payload.encryptedInput = cipher.encrypt("I smell gas");
-      await expect(w.submit()).rejects.toThrow();
+      let error: unknown;
+      try {
+        await w.submit();
+      } catch (value: unknown) {
+        error = value;
+      }
+      expect(controlledIntakeRefusalStage(error)).toBe("LIFE_SAFETY_REFUSAL");
       expect(w.verification).not.toHaveBeenCalled();
       expect(tx.job.create).not.toHaveBeenCalled();
     });

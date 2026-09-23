@@ -24,6 +24,7 @@ async function bootstrap() {
   const intake = await prepareControlledIntakeStartup(process.env, () => ({
     prisma: app.get(PrismaService),
     cipher: app.get(ConversationMemoryCipher),
+    logging: loggingService,
   })).catch(async (error: unknown) => {
     await app.close();
     throw error;

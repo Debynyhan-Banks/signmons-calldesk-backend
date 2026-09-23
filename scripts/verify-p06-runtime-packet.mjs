@@ -292,6 +292,7 @@ try {
       cipher: new ConversationMemoryCipher({
         conversationDataEncryptionKey: "09".repeat(32),
       }),
+      logging: { warn: () => undefined },
       verifyFactory: () => {
         throw Error("No provider allowed");
       },

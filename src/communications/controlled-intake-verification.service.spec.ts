@@ -10,6 +10,7 @@ import { ControlledIntakeAuthority } from "./controlled-intake-authority";
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
 import { AddressOperationLedger } from "./address-operation-ledger";
 import { PrismaService } from "../prisma/prisma.service";
+import { controlledIntakeRefusalStage } from "./controlled-intake-refusal";
 
 describe("request-local controlled verification connection", () => {
   const tenantId = randomUUID(),
@@ -234,7 +235,15 @@ describe("request-local controlled verification connection", () => {
   });
   it("missing phone proof refuses before any address dispatch", async () => {
     readPhone.mockResolvedValue(null);
-    await expect(service.run(input, consumer)).rejects.toThrow();
+    let error: unknown;
+    try {
+      await service.run(input, consumer);
+    } catch (value: unknown) {
+      error = value;
+    }
+    expect(controlledIntakeRefusalStage(error)).toBe(
+      "CURRENT_VERIFICATION_UNAVAILABLE",
+    );
     expect(validate).not.toHaveBeenCalled();
   });
   it.each(["revision", "policyVersion", "submissionDigest", "phone"] as const)(
