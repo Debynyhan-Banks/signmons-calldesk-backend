@@ -25,3 +25,11 @@ The consolidated helper is locally prepared under `/private/tmp/r11-enabled22-fo
 ## Approved installation; execution pending
 
 Owner approved plan `790763ef-1f2a-44b7-a690-56bfee9fba9a` for September 23, 8:30–9:15 AM Eastern. Six private files installed under `/Volumes/Signmons-P06/r11-retained-state-diagnostic-20260923-0830`, including exact hash-bound authorization. Inventory, ownership, 0700 directory/0600 files, byte equality with reviewed preparation and installed no-action review passed (`R11_RETAINED_STATE_PREPARED_NO_ACTION`). No attempt, database connection, revision read or secret read occurred. Owner hidden-input execution at or after 8:30 AM is pending; stop results must not be retried. Application runtime source remains unchanged; no root cause or admission outcome is established. No scope deviation.
+
+## Early start stopped before external action
+
+At 08:24 EDT, after the owner reported early execution, the original diagnostic had only `stop.json`: `UNCONFIRMED` / `LOCAL_REVIEW`, automatic retry false. No attempt/result file existed. Source review confirms READY/password handoff and external operations occur later. Preserve the stopped operation; no rerun or stop deletion. Replacement `0969cc65-f1ea-4800-88ed-3542ddad16c1` is prepared locally with identical scope and 8:30–9:15 AM Eastern window, changed ID/path/hashes only. Fresh approval required before replacement installation/execution. P06 remains 12/14; no scope deviation.
+
+## Replacement installed after explicit approval
+
+Owner approved replacement `0969cc65-f1ea-4800-88ed-3542ddad16c1` for the same 8:30–9:15 AM Eastern window. Six files installed under `/Volumes/Signmons-P06/r11-retained-state-diagnostic-20260923-0830b`, exact inventory/hash/authorization/owner/mode verification passed, installed review returned `R11_RETAINED_STATE_PREPARED_NO_ACTION`. No replacement attempt or external action; original stopped operation preserved. Owner must wait until 8:30 AM before the single hidden-input execution. No scope deviation.
