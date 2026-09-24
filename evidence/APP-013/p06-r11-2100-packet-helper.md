@@ -1,0 +1,9 @@
+# P06/R11 9:00 PM packet-readiness helper
+
+APP-013/2B P06/R11 remains the governing section. The owner selected September 23, 2026, 9:00–9:45 PM Eastern, reviewed the planned commands, completed the local/governance/Cloud Run/provider checks manually, and then said `proceed` after being told that the next action was fresh local helper preparation and testing only.
+
+Fresh operation `1cb93bea-3044-4063-b78e-255b4928a44f` is installed at `/Volumes/Signmons-P06/r11-packet-preparation-20260923-2100`. The owner-only directory contains exactly four owner-only files: plan, binding, Node read-only helper and hidden-input wrapper. It binds backend documentation head `4d5625b85f0ca26a5c74f453a67406037da94f5b`, the existing private sole-recipient binding, historical scope packet, exact source/schema/profile hashes, the approved phone 500000/4500000 and address account/tenant six/600000, session two/200000 policy, and the selected 9:00–9:45 PM window.
+
+Node syntax, Python AST, phone-summary self-test, nine address-capacity tests and the installed source/permission/hash `--review` passed. The terminal result was `R11_PACKET_HELPER_PREPARED_NO_ACTION`. No authorization file, attempt, result or packet exists. No database, LOGIN, Cloud Run, Twilio/provider, verification-code, browser/customer, secret/IAM, billing or live action occurred. All holds remain preserved.
+
+The helper is inert until a separate exact owner authorization is installed. If authorized before the cutoff, one owner-operated hidden-input command may perform one read-only PostgreSQL 18 repeatable-read transaction and rollback. A stop or uncertain result is consumed and must not be rerun. If the window expires first, this helper must not be activated or reused. P06 remains 12/14; R11 and full R12 remain open. No scope deviation.
