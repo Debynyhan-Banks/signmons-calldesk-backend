@@ -13,3 +13,5 @@ Operation `65007417-c4d1-41f9-baea-6d797a41c785` completed once with `CAPACITY_D
 Signed-in Twilio readback shows one Signmons Verify service, SMS only, United States SMS monitored by Fraud Guard and Voice disabled. The console now displays an account-level warning requiring an upgrade and approved Primary Compliance Profile to send to any recipient. Exact verified-recipient eligibility was not re-established, so provider eligibility remains unconfirmed. No provider setting or request changed.
 
 Governance `APP013_P06_R11_PHONE_CAPACITY_AND_PROVIDER_DECISION.md` proposes a policy-only 500000/4500000 phone envelope while keeping the provider gate closed. No packet, ceiling change, provider action or live execution occurred. P06 remains 12/14. No scope deviation.
+
+The owner approved alternative 1 on 2026-09-23: preserve all holds and authorize exactly one future packet at phone 500000/4500000, address account/tenant six/600000, and session two/200000. The Twilio provider gate remains a hard prerequisite. No packet was created, and the approval does not authorize any provider-account change or live execution.
