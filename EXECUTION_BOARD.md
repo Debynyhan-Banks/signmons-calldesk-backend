@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: 9:00 PM R11 helper expired unused — 2026-09-24
+
+At 5:03 AM Eastern, the September 23 9:00–9:45 PM window was expired. The owner-only helper directory still contains exactly the four prepared mode-0600 files and has no database authorization, attempt, result or packet. Operation `1cb93bea-3044-4063-b78e-255b4928a44f` was never activated and is not reusable. No database, LOGIN, cloud, provider, browser/customer or billing action occurred. Next requires an owner-selected fresh future window and separately authorized read-only refresh/new helper; live execution remains separately gated. P06 stays 12/14, R11/full R12 open. Evidence: `evidence/APP-013/p06-r11-2100-helper-expired.md`. No scope deviation.
+
 ## Current: R08 custody prepared — owner-only credential handoff pending
 
 Owner approved the recommended limited staging credential method on2026-09-16. See APP013_P06_INITIAL_PASSWORD_REVIEW.md for the exact owner-only guarded bootstrap/reset/private-custody sequence and current evidence. Live21:47/21:50UTC metadata: runtimeOID163840 remainsNOLOGIN/no elevated flags/no memberships/limit10, zero app sessions,26migrations. Statistics save=on/max5000 has no guaranteed expiry; only inspected owner/provider login roles have other-user-statistics privileges, not the runtime. Provider internal logs remain unknown; no secret-free claim.
