@@ -5,6 +5,11 @@ import { loadControlledIntakeRuntime } from "./controlled-intake-runtime";
 import { parseControlledRuntimeConfig } from "./controlled-intake-runtime-config";
 import { customerSessionHttp } from "./customer-session-http";
 import { customerIntakePage } from "./customer-intake-page";
+import {
+  ControlledIntakeStartupStage,
+  controlledIntakeStartupFailureStage,
+  markControlledIntakeStartupFailure,
+} from "./controlled-intake-startup-diagnostic";
 
 type Resources = NonNullable<Parameters<typeof loadControlledIntakeRuntime>[2]>;
 type Assets = { html: string; script: string };
@@ -27,6 +32,7 @@ export async function prepareControlledIntakeStartup(
   readAssets: () => Promise<Assets> = packagedAssets,
 ) {
   let runtime: Awaited<ReturnType<typeof loadControlledIntakeRuntime>>;
+  let stage: ControlledIntakeStartupStage = "CONFIGURATION";
   const material: Record<string, Buffer | string> = {};
   try {
     const raw = env.CONTROLLED_INTAKE_RUNTIME_JSON;
@@ -57,6 +63,7 @@ export async function prepareControlledIntakeStartup(
         page: customerIntakePage(),
         retire: () => undefined,
       });
+    stage = "INJECTED_MATERIAL";
     const encoded = env.CONTROLLED_INTAKE_SECRETS_JSON;
     if (!encoded || encoded.length > 8192) throw Error();
     const values: unknown = JSON.parse(encoded);
@@ -80,6 +87,7 @@ export async function prepareControlledIntakeStartup(
         throw Error();
       material[ref] = token ? value : Buffer.from(value, "hex");
     }
+    stage = "PACKAGED_ASSETS";
     const assets = await readAssets();
     if (
       typeof assets.html !== "string" ||
@@ -88,21 +96,34 @@ export async function prepareControlledIntakeStartup(
       !assets.script.trim()
     )
       throw Error();
-    runtime = await loadControlledIntakeRuntime(envelope, facts, {
+    stage = "RESOURCE_CONSTRUCTION";
+    const runtimeResources = {
       ...resources(),
       secrets: material,
-    });
+    };
+    stage = "RUNTIME_LOADING";
+    runtime = await loadControlledIntakeRuntime(
+      envelope,
+      facts,
+      runtimeResources,
+    );
     if (!runtime) throw Error();
+    stage = "REGISTRATION";
     return Object.freeze({
       session: customerSessionHttp(runtime.binding),
       page: customerIntakePage(assets),
       retire: runtime.retire,
     });
-  } catch {
-    runtime?.retire();
-    // Never attach raw JSON, secret values, filesystem paths or a cause.
-    throw new ServiceUnavailableException(
-      "Controlled intake startup unavailable.",
+  } catch (error: unknown) {
+    try {
+      runtime?.retire();
+    } catch {
+      // Cleanup errors must not expose a private cause or replace this refusal.
+    }
+    // Carry only the fixed stage; never attach private material or a cause.
+    throw markControlledIntakeStartupFailure(
+      new ServiceUnavailableException("Controlled intake startup unavailable."),
+      controlledIntakeStartupFailureStage(error) ?? stage,
     );
   } finally {
     for (const value of Object.values(material))

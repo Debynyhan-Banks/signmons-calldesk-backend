@@ -11,6 +11,9 @@ const {
 const {
   controlledCustomerAdmissionDigest,
 } = require("../dist/communications/controlled-customer-admission.js");
+const {
+  controlledIntakeStartupFailureStage,
+} = require("../dist/communications/controlled-intake-startup-diagnostic.js");
 export async function verifyControlledRuntime({
   prisma,
   cipher,
@@ -146,10 +149,11 @@ export async function verifyControlledRuntime({
     channel: "sms",
   });
   const limited = await qualifyRuntimeRole(prisma);
+  const startupWarnings = [];
   const resources = {
     prisma: limited.prisma,
     cipher,
-    logging: { warn: () => undefined },
+    logging: { warn: (message) => startupWarnings.push(message) },
     secrets,
     verifyFactory: () => ({
       verify: {
@@ -181,7 +185,14 @@ export async function verifyControlledRuntime({
     },
   };
   try {
-    await assert.rejects(loadControlledIntakeRuntime(config, facts, resources));
+    await assert.rejects(
+      loadControlledIntakeRuntime(config, facts, resources),
+      (error) => {
+        assert.equal(controlledIntakeStartupFailureStage(error), "RUNTIME_APPROVAL");
+        assert.equal(error.message, "Controlled runtime unavailable.");
+        return true;
+      },
+    );
     assert.equal(calls, 0);
     await prisma.tenantOrganization.update({
       where: { id: tenantId },
@@ -195,16 +206,31 @@ export async function verifyControlledRuntime({
           [config.secrets.fingerprintKey]: Buffer.alloc(32, 8),
         },
       }),
+      (error) => {
+        assert.equal(
+          controlledIntakeStartupFailureStage(error),
+          "RUNTIME_KEY_MATERIAL",
+        );
+        return true;
+      },
     );
     await assert.rejects(
       loadControlledIntakeRuntime(config, facts, {
         ...resources,
         secrets: { ...secrets, [config.secrets.twilioToken]: "invalid" },
       }),
+      (error) => {
+        assert.equal(
+          controlledIntakeStartupFailureStage(error),
+          "RUNTIME_KEY_MATERIAL",
+        );
+        return true;
+      },
     );
     const runtime = await loadControlledIntakeRuntime(config, facts, resources);
     assert.ok(Object.isFrozen(runtime.binding));
     assert.equal(calls, 0);
+    assert.deepEqual(startupWarnings, []);
     const request = async (path, body) =>
       scoped(() =>
         runtime.binding.transport.handle({

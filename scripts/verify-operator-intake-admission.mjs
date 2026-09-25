@@ -23,6 +23,12 @@ const {
   CustomerConsentCaptureService: Capture,
 } = require("../dist/communications/customer-consent-capture.service.js");
 const {
+  ControlledCustomerVerification,
+} = require("../dist/communications/controlled-customer-verification.js");
+const {
+  lockCustomerConsentSession,
+} = require("../dist/communications/customer-consent-session-lock.js");
+const {
   AppointmentEmailConsentEvidenceStore: Evidence,
 } = require("../dist/communications/appointment-email-consent-evidence.js");
 const {
@@ -857,7 +863,7 @@ export async function verifyOperatorIntakeAdmission({
         lifetimeMs: 1800000,
       }),
     );
-    if (mode !== "missing-phone") {
+    if (mode !== "missing-phone" && !browserCase) {
       const start = {
         sessionToken: connectedInput.sessionToken,
         operationId: randomUUID(),
@@ -965,7 +971,28 @@ export async function verifyOperatorIntakeAdmission({
         return addressPolicy;
       },
     });
+    const controlledVerification = browserCase
+      ? new ControlledCustomerVerification({
+          durable,
+          noticeVersion: "local-p04",
+          authorize: async (sessionToken) => {
+            const claims = credentials.verifySession(sessionToken);
+            assert.equal(claims.tenantId, tenantId);
+            assert.equal(claims.conversationId, connectedScope.conversationId);
+            await prisma.$transaction(async (tx) => {
+              await authority.check(binding.capability, tx, {
+                tenantId,
+                integrationId: binding.integrationId,
+                origin: binding.origin,
+                serviceCategoryId: category.id,
+              });
+              await lockCustomerConsentSession(tx, claims);
+            });
+          },
+        })
+      : undefined;
     const priorJobs = await prisma.job.count(),
+      priorPhoneCalls = syntheticPhoneCalls,
       priorCalls = syntheticAddressCalls;
     if (mode === "missing-phone") {
       await assert.rejects(composition.submit(connectedInput));
@@ -988,11 +1015,14 @@ export async function verifyOperatorIntakeAdmission({
             responses,
             capture,
             composition,
+            controlledVerification,
             mode,
             width: Number(scenario.split("-")[2]),
             evidence,
           })
         : await composition.submit(connectedInput);
+      if (browserCase)
+        assert.equal(syntheticPhoneCalls - priorPhoneCalls, 2);
       if (mode === "accepted" || mode === "correction") {
         assert.equal(outcome.status, "ADMITTED");
         connectedJobs++;

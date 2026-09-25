@@ -10,6 +10,7 @@ import { PrismaService } from "./prisma/prisma.service";
 import { requestContextMiddleware } from "./common/context/request-context";
 import { prepareControlledIntakeStartup } from "./communications/controlled-intake-startup";
 import { ConversationMemoryCipher } from "./logging/conversation-memory-cipher.service";
+import { recordControlledIntakeStartupFailure } from "./communications/controlled-intake-startup-diagnostic";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -26,6 +27,7 @@ async function bootstrap() {
     cipher: app.get(ConversationMemoryCipher),
     logging: loggingService,
   })).catch(async (error: unknown) => {
+    recordControlledIntakeStartupFailure(loggingService, error);
     await app.close();
     throw error;
   });

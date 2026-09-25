@@ -1,8 +1,16 @@
 import { readFileSync } from "node:fs";
+import { Logger } from "@nestjs/common";
 import * as files from "node:fs/promises";
 import * as configModule from "./controlled-intake-runtime-config";
 import * as runtimeModule from "./controlled-intake-runtime";
 import { prepareControlledIntakeStartup } from "./controlled-intake-startup";
+import * as pageModule from "./customer-intake-page";
+import {
+  ControlledIntakeStartupStage,
+  controlledIntakeStartupFailureStage,
+  markControlledIntakeStartupFailure,
+  recordControlledIntakeStartupFailure,
+} from "./controlled-intake-startup-diagnostic";
 
 jest.mock("node:fs/promises", () => ({
   ...jest.requireActual<typeof import("node:fs/promises")>("node:fs/promises"),
@@ -10,7 +18,10 @@ jest.mock("node:fs/promises", () => ({
 }));
 
 describe("controlled intake startup registration", () => {
-  afterEach(() => jest.restoreAllMocks());
+  afterEach(() => {
+    Logger.detachBuffer();
+    jest.restoreAllMocks();
+  });
   const resources = jest.fn(() => ({}) as never);
   const assets = jest.fn(() =>
     Promise.resolve({
@@ -207,6 +218,100 @@ describe("controlled intake startup registration", () => {
     ).rejects.toThrow("Controlled intake startup unavailable.");
     expect(captured!.equals(Buffer.alloc(32))).toBe(true);
   });
+  it.each([
+    "CONFIGURATION",
+    "INJECTED_MATERIAL",
+    "PACKAGED_ASSETS",
+    "RESOURCE_CONSTRUCTION",
+    "RUNTIME_LOADING",
+  ] as const)("identifies %s without exposing private input", async (stage) => {
+    const privateValue = "synthetic private value /secret/path";
+    let attempt: ReturnType<typeof prepareControlledIntakeStartup>;
+    if (stage === "CONFIGURATION") {
+      attempt = prepareControlledIntakeStartup(
+        { CONTROLLED_INTAKE_RUNTIME_JSON: privateValue },
+        resources,
+        assets,
+      );
+    } else {
+      const { env, load } = validSeam();
+      const fail = () => {
+        throw Error(privateValue);
+      };
+      if (stage === "INJECTED_MATERIAL")
+        env.CONTROLLED_INTAKE_SECRETS_JSON = privateValue;
+      if (stage === "RUNTIME_LOADING")
+        load.mockRejectedValue(Error(privateValue));
+      attempt = prepareControlledIntakeStartup(
+        env,
+        stage === "RESOURCE_CONSTRUCTION" ? fail : resources,
+        stage === "PACKAGED_ASSETS" ? fail : assets,
+      );
+    }
+    const error: unknown = await attempt.catch((failure: unknown) => failure);
+    expect(controlledIntakeStartupFailureStage(error)).toBe(stage);
+    await expect(attempt).rejects.toThrow(
+      "Controlled intake startup unavailable.",
+    );
+    const warn = jest.fn();
+    recordControlledIntakeStartupFailure({ warn }, error);
+    expect(warn.mock.calls).toEqual([
+      [`CONTROLLED_INTAKE_STARTUP_FAILURE stage=${stage}`],
+    ]);
+    expect(JSON.stringify(error)).not.toContain(privateValue);
+  });
+
+  it.each([
+    "RUNTIME_CONFIGURATION",
+    "RUNTIME_RESOURCES",
+    "RUNTIME_APPROVAL",
+    "RUNTIME_KEY_MATERIAL",
+    "RUNTIME_SERVICES",
+    "RUNTIME_AUTHORITY",
+    "RUNTIME_BINDING",
+  ] satisfies ControlledIntakeStartupStage[])(
+    "preserves the inner %s stage while replacing its error",
+    async (stage) => {
+      const { env, load } = validSeam();
+      const inner = markControlledIntakeStartupFailure(
+        new Error("synthetic private cause"),
+        stage,
+      );
+      load.mockRejectedValue(inner);
+      const error: unknown = await prepareControlledIntakeStartup(
+        env,
+        resources,
+        assets,
+      ).catch((failure: unknown) => failure);
+      expect(error).not.toBe(inner);
+      expect(controlledIntakeStartupFailureStage(error)).toBe(stage);
+      expect(JSON.stringify(error)).not.toContain("synthetic private cause");
+    },
+  );
+
+  it("keeps registration failure private even when retirement throws and clears keys", async () => {
+    const { env, load, retire } = validSeam();
+    let captured: Buffer | undefined;
+    load.mockImplementation((_value, _facts, input) => {
+      captured = input!.secrets["session/1"] as Buffer;
+      return Promise.resolve({ binding: undefined, retire } as never);
+    });
+    jest.spyOn(pageModule, "customerIntakePage").mockImplementation(() => {
+      throw Error("synthetic private registration path");
+    });
+    retire.mockImplementation(() => {
+      throw Error("synthetic private retirement cause");
+    });
+    const attempt = prepareControlledIntakeStartup(env, resources, assets);
+    const error: unknown = await attempt.catch((failure: unknown) => failure);
+    await expect(attempt).rejects.toThrow(
+      "Controlled intake startup unavailable.",
+    );
+    expect(controlledIntakeStartupFailureStage(error)).toBe("REGISTRATION");
+    expect(retire).toHaveBeenCalledTimes(1);
+    expect(captured!.equals(Buffer.alloc(32))).toBe(true);
+    expect(JSON.stringify(error)).not.toContain("private");
+  });
   it("main awaits startup before mount, parsers and listener without synthetic ports", () => {
     const main = readFileSync("src/main.ts", "utf8");
     const startup = main.indexOf("await prepareControlledIntakeStartup(");
@@ -218,5 +323,15 @@ describe("controlled intake startup registration", () => {
     expect(main.indexOf("await app.listen(port)")).toBeGreaterThan(startup);
     expect(main).not.toMatch(/verifyFactory|googlePorts|fixtures\//);
     expect(main).toContain("logging: loggingService");
+    const diagnostic = main.indexOf(
+      "recordControlledIntakeStartupFailure(loggingService, error)",
+    );
+    expect(diagnostic).toBeGreaterThan(startup);
+    expect(main.indexOf("await app.close()")).toBeGreaterThan(diagnostic);
+    expect(
+      main.match(
+        /recordControlledIntakeStartupFailure\(loggingService, error\)/g,
+      ),
+    ).toHaveLength(1);
   });
 });

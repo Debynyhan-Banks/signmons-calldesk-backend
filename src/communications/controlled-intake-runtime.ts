@@ -33,6 +33,10 @@ import { VERIFICATION_PROOF_MS } from "./verification-freshness";
 import { VerificationCleanupService } from "./verification-cleanup.service";
 import { LoggingService } from "../logging/logging.service";
 import { recordControlledIntakeRefusal } from "./controlled-intake-refusal";
+import {
+  ControlledIntakeStartupStage,
+  markControlledIntakeStartupFailure,
+} from "./controlled-intake-startup-diagnostic";
 
 type Resources = {
   prisma: Pick<PrismaService, "$transaction">;
@@ -58,14 +62,19 @@ export async function loadControlledIntakeRuntime(
   facts: RuntimeFacts,
   resources?: Resources,
 ) {
-  const config = parseControlledRuntimeConfig(value, facts);
+  let config: ReturnType<typeof parseControlledRuntimeConfig>;
+  try {
+    config = parseControlledRuntimeConfig(value, facts);
+  } catch (error) {
+    throw markControlledIntakeStartupFailure(error, "RUNTIME_CONFIGURATION");
+  }
   if (!config) return undefined;
   if (
     !resources ||
     config.project !== "signmons" ||
     typeof resources.logging?.warn !== "function"
   )
-    throw deny();
+    throw markControlledIntakeStartupFailure(deny(), "RUNTIME_RESOURCES");
   const p = resources,
     a = config.activation;
   let retired = false;
@@ -92,8 +101,10 @@ export async function loadControlledIntakeRuntime(
     )
       throw deny();
   };
+  let stage: ControlledIntakeStartupStage = "RUNTIME_APPROVAL";
   try {
     await p.prisma.$transaction(current);
+    stage = "RUNTIME_KEY_MATERIAL";
     const refs = [
       ...Object.values(config.secrets.sessionKeys),
       config.secrets.digestKey,
@@ -113,6 +124,7 @@ export async function loadControlledIntakeRuntime(
       const token = material.at(-1);
       if (typeof token !== "string" || !/^[a-fA-F0-9]{32}$/.test(token))
         throw deny();
+      stage = "RUNTIME_SERVICES";
       const keys = Object.fromEntries(
         Object.keys(config.secrets.sessionKeys).map((id, i) => [id, copied[i]]),
       );
@@ -163,7 +175,9 @@ export async function loadControlledIntakeRuntime(
       const authorize = async (tx: Prisma.TransactionClient) => {
         await authority.check(capability, tx, scope);
       };
+      stage = "RUNTIME_AUTHORITY";
       await p.prisma.$transaction(authorize);
+      stage = "RUNTIME_BINDING";
       const admission = new ControlledCustomerAdmission(config.phone);
       const adapter = new TwilioVerifyAdapter(
         config.phone,
@@ -276,6 +290,6 @@ export async function loadControlledIntakeRuntime(
       copied.forEach((k) => k.fill(0));
     }
   } catch {
-    throw deny();
+    throw markControlledIntakeStartupFailure(deny(), stage);
   }
 }

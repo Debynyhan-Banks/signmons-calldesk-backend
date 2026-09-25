@@ -31,6 +31,7 @@ export async function verifyControlledIntakeConnectedBrowser({
   responses,
   capture,
   composition,
+  controlledVerification,
   mode,
   width,
   evidence,
@@ -49,6 +50,7 @@ export async function verifyControlledIntakeConnectedBrowser({
       credentials,
       budget: new LocalCustomerBrowserBudget(),
       capture,
+      controlledVerification,
       controlledLifecycle: new VerificationCleanupService(prisma, credentials, {
         mode: "CONTROLLED_SESSION_V1",
         tenantId,
@@ -126,6 +128,19 @@ export async function verifyControlledIntakeConnectedBrowser({
       serviceIntent: "REPAIR",
     }))
       await page.locator("#" + id).selectOption(value);
+    assert.equal(await page.locator("#draft").isDisabled(), true);
+    await page.locator("#verifyNotice").click();
+    await page.locator("#verifyRequested").check();
+    await page.locator("#verifyStart").click();
+    await page.waitForFunction(() =>
+      document.getElementById("verifyStatus").textContent.includes("Code check pending"),
+    );
+    await page.locator("#verifyCode").fill("123456");
+    await page.locator("#verifyCheck").click();
+    await page.waitForFunction(() =>
+      document.getElementById("verifyStatus").textContent.includes("Code accepted"),
+    );
+    assert.equal(results.length, 0);
     await page.locator("#reviewed").check();
     await page.locator("#draft").click();
     await page.locator("#submitReview").click();
