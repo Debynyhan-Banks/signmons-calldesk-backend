@@ -22,4 +22,10 @@ The coordinator suite passes 15 tests, including six real production-adapter pat
 
 Fresh refresh operation is `7eaefdb3-75b5-4e23-beab-30e5bebfa59f`, 11:00–11:45Z. Local stage is `/private/tmp/r11-packet-preparation-20260925-0700`; intended private directory is `/Volumes/Signmons-P06/r11-packet-preparation-20260925-0700`. The stage contains plan, authorization, bindings and two helpers; it contains no attempt/result or runtime packet. Private installation/readback and provider/target refresh are pending at this checkpoint.
 
+## Installed no-action review
+
+An isolated temporary copy of the actual installed read-only refresh wrapper also passed an attended PTY smoke test. Only its ROOT pointed to a synthetic local child; NODE/REPO/imports/control flow remained unchanged. It displayed exactly one hidden prompt, accepted complete fragmented READY, forwarded the fictional canary only through stdin, propagated the exact readiness marker, restored terminal modes and exited zero. No external call or real credential was used; this proves transport only, not live readiness.
+
+The fresh five-file helper was installed under the intended private directory with exact byte/hash equality, owner UID, directory mode 0700 and file mode 0600. Binding source is backend `bc26759`, including the final test file. Installed Node syntax and `--check` returned `R11_PACKET_HELPER_CHECK_PASSED_NO_ACTION` at 6:55 AM. No attempt/result or runtime packet exists. The owner-operated database connection must start at/after 7:00 AM; current target/provider refresh remains pending for that same window. Plan selection is conditional on passing every refresh gate; execution remains separately unapproved.
+
 No scope deviation.
