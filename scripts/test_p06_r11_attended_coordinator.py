@@ -219,9 +219,9 @@ class LocalReviewTest(unittest.TestCase):
             "runtimeEnd": "2026-09-22T13:30:00.000Z",
             "closeoutEnd": "2026-09-22T13:45:00.000Z",
             "phoneFlowUpperBoundMicros": 500000,
-            "phoneAccountCeilingMicros": 3500000,
-            "retainedPhoneLiabilityMicros": 3000000,
-            "retainedPhoneHoldCount": 6,
+            "phoneAccountCeilingMicros": 4500000,
+            "retainedPhoneLiabilityMicros": 4000000,
+            "retainedPhoneHoldCount": 8,
             "addressCostMicros": 100000,
             "addressAccountMicros": 600000,
             "addressAccountRequestLimit": 6,
@@ -248,7 +248,7 @@ class LocalReviewTest(unittest.TestCase):
                 "revision": self.plan["revision"],
                 "phone": {
                     "flowUpperBoundMicros": 500000,
-                    "accountCeilingMicros": 3500000,
+                    "accountCeilingMicros": 4500000,
                 },
                 "addressPolicy": {
                     "costMicros": 100000,
@@ -321,14 +321,22 @@ class LocalReviewTest(unittest.TestCase):
         self.assertEqual(caught.exception.stage, "MARKER_REUSE")
 
     def test_wrong_ceiling_or_helper_hash_fails_closed(self):
-        self.plan["phoneAccountCeilingMicros"] = 2500000
+        self.plan["phoneAccountCeilingMicros"] = 3500000
+        self.plan["retainedPhoneLiabilityMicros"] = 3000000
+        self.plan["retainedPhoneHoldCount"] = 6
+        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 3500000
         self.write_private("r10-review-plan.json", self.plan)
+        self.write_private("runtime-packet.json", self.packet)
         with self.assertRaises(module.CoordinatorStop) as caught:
             self.run_review()
         self.assertEqual(caught.exception.stage, "PLAN_BINDING")
 
-        self.plan["phoneAccountCeilingMicros"] = 3500000
+        self.plan["phoneAccountCeilingMicros"] = 4500000
+        self.plan["retainedPhoneLiabilityMicros"] = 4000000
+        self.plan["retainedPhoneHoldCount"] = 8
+        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 4500000
         self.write_private("r10-review-plan.json", self.plan)
+        self.write_private("runtime-packet.json", self.packet)
         self.binding["files"]["r10-control.mjs"] = "0" * 64
         self.write_private("helper-binding.json", self.binding)
         with self.assertRaises(module.CoordinatorStop) as caught:
