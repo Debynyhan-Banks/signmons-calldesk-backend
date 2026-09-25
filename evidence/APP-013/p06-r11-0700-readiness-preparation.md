@@ -28,4 +28,12 @@ An isolated temporary copy of the actual installed read-only refresh wrapper als
 
 The fresh five-file helper was installed under the intended private directory with exact byte/hash equality, owner UID, directory mode 0700 and file mode 0600. Binding source is backend `bc26759`, including the final test file. Installed Node syntax and `--check` returned `R11_PACKET_HELPER_CHECK_PASSED_NO_ACTION` at 6:55 AM. No attempt/result or runtime packet exists. The owner-operated database connection must start at/after 7:00 AM; current target/provider refresh remains pending for that same window. Plan selection is conditional on passing every refresh gate; execution remains separately unapproved.
 
+## 7:00 AM external readback
+
+Within the approved window, Cloud Run read-only refresh passed: desired/latest-created/latest-Ready remain enabled22, normal traffic is 100% on app013bounds, enabled-intake tag and proposed enabled25 are absent, six guarded flags are false, database secret metadata names/version match and the approved `b2415744…fa9dc` image exists. Sanitized result is `/private/tmp/r11-packet-preparation-20260925-0700/cloud-readback.json`.
+
+Safari Twilio was refreshed and showed the account Active, the sole existing verified recipient, one Signmons Verify service with the controlled-test note, SMS enabled, Fraud Guard checked, Voice disabled, United States SMS monitored and other listed country traffic disabled. The previously owner-reviewed general compliance banner remained; it was not treated as a new account-specific restriction. No setting was changed, message/code requested, raw participant detail retained or secret accessed. Sanitized result is the sibling `provider-readback.json`.
+
+Only the owner's one hidden-input database refresh and sanitized result are pending before conditional packet creation. No execution approval or runtime packet exists. Next command is `python3 -B "/Volumes/Signmons-P06/r11-packet-preparation-20260925-0700/r11-private.py" --run`, once during the window. Do not rerun after a stop.
+
 No scope deviation.
