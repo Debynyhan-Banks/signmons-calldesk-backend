@@ -224,9 +224,9 @@ class LocalReviewTest(unittest.TestCase):
             "runtimeEnd": "2026-09-22T13:30:00.000Z",
             "closeoutEnd": "2026-09-22T13:45:00.000Z",
             "phoneFlowUpperBoundMicros": 500000,
-            "phoneAccountCeilingMicros": 4500000,
-            "retainedPhoneLiabilityMicros": 4000000,
-            "retainedPhoneHoldCount": 8,
+            "phoneAccountCeilingMicros": 5000000,
+            "retainedPhoneLiabilityMicros": 4500000,
+            "retainedPhoneHoldCount": 9,
             "addressCostMicros": 100000,
             "addressAccountMicros": 600000,
             "addressAccountRequestLimit": 6,
@@ -253,7 +253,7 @@ class LocalReviewTest(unittest.TestCase):
                 "revision": self.plan["revision"],
                 "phone": {
                     "flowUpperBoundMicros": 500000,
-                    "accountCeilingMicros": 4500000,
+                    "accountCeilingMicros": 5000000,
                 },
                 "addressPolicy": {
                     "costMicros": 100000,
@@ -325,6 +325,17 @@ class LocalReviewTest(unittest.TestCase):
             self.run_review()
         self.assertEqual(caught.exception.stage, "MARKER_REUSE")
 
+    def test_consumed_eight_hold_policy_refuses_new_nine_hold_packet(self):
+        self.plan["phoneAccountCeilingMicros"] = 4500000
+        self.plan["retainedPhoneLiabilityMicros"] = 4000000
+        self.plan["retainedPhoneHoldCount"] = 8
+        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 4500000
+        self.write_private("r10-review-plan.json", self.plan)
+        self.write_private("runtime-packet.json", self.packet)
+        with self.assertRaises(module.CoordinatorStop) as caught:
+            self.run_review()
+        self.assertEqual(caught.exception.stage, "PLAN_BINDING")
+
     def test_wrong_ceiling_or_helper_hash_fails_closed(self):
         self.plan["phoneAccountCeilingMicros"] = 3500000
         self.plan["retainedPhoneLiabilityMicros"] = 3000000
@@ -336,10 +347,10 @@ class LocalReviewTest(unittest.TestCase):
             self.run_review()
         self.assertEqual(caught.exception.stage, "PLAN_BINDING")
 
-        self.plan["phoneAccountCeilingMicros"] = 4500000
-        self.plan["retainedPhoneLiabilityMicros"] = 4000000
-        self.plan["retainedPhoneHoldCount"] = 8
-        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 4500000
+        self.plan["phoneAccountCeilingMicros"] = 5000000
+        self.plan["retainedPhoneLiabilityMicros"] = 4500000
+        self.plan["retainedPhoneHoldCount"] = 9
+        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 5000000
         self.write_private("r10-review-plan.json", self.plan)
         self.write_private("runtime-packet.json", self.packet)
         self.binding["files"]["r10-control.mjs"] = "0" * 64
