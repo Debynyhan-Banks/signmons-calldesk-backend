@@ -2,6 +2,7 @@ import hashlib
 import json
 import os
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -369,6 +370,40 @@ class LocalReviewTest(unittest.TestCase):
 
 
 class ChildProtocolTest(unittest.TestCase):
+    def test_private_copy_resolves_hidden_input_module_from_bound_repo(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            private_copy = Path(temporary) / "r11-attended-coordinator.py"
+            source = Path(module.__file__).read_text(encoding="utf-8")
+            source = source.replace(
+                "REPO = Path(__file__).resolve().parents[1]",
+                "REPO = Path(" + repr(str(Path(module.__file__).resolve().parents[1])) + ")",
+                1,
+            )
+            private_copy.write_text(source, encoding="utf-8")
+            loader = (
+                "import importlib.util,sys;"
+                "p=sys.argv[1];"
+                "s=importlib.util.spec_from_file_location('private_coordinator',p);"
+                "m=importlib.util.module_from_spec(s);"
+                "sys.modules[s.name]=m;"
+                "s.loader.exec_module(m);"
+                "import p06_private_input;"
+                "print(p06_private_input.__file__)"
+            )
+            result = subprocess.run(
+                [sys.executable, "-I", "-B", "-c", loader, str(private_copy)],
+                cwd=temporary,
+                env={"PATH": "/usr/bin:/bin"},
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=20,
+            )
+            self.assertEqual(
+                Path(result.stdout.strip()).resolve(),
+                Path(module.__file__).resolve().with_name("p06_private_input.py"),
+            )
+
     def test_secret_uses_ready_pipe_and_never_appears_in_output(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

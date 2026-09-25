@@ -27,6 +27,7 @@ sys.dont_write_bytecode = True
 REPO = Path(__file__).resolve().parents[1]
 PRIVATE_PARENT = Path("/Volumes/Signmons-P06")
 NODE = Path("/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node")
+sys.path.insert(0, str(REPO / "scripts"))
 TARGET_ORIGIN = (
     "https://p06-intake-enabled---signmons-calldesk-staging-p572d6wipq-ul.a.run.app"
 )
