@@ -1,10 +1,14 @@
 import hashlib
 import json
 import os
+import pty
+import select
 import stat
 import subprocess
 import sys
 import tempfile
+import termios
+import time
 import unittest
 from pathlib import Path
 
@@ -370,6 +374,117 @@ class LocalReviewTest(unittest.TestCase):
 
 
 class ChildProtocolTest(unittest.TestCase):
+    def test_private_copy_attended_tty_sequence_and_failure_closeout(self):
+        """Exercise real prompt/child adapters outside the repository, using local fakes."""
+        for failure, signal_value, expected_reason, expected_modes in (
+            ("--check", None, "STOPPED_BEFORE_ACTION", ["--check"]),
+            (None, "DONE", "BROWSER_DONE", ["--check", "--open-login", "--run", "--closeout"]),
+            (None, "STOP", "BROWSER_STOP", ["--check", "--open-login", "--run", "--closeout"]),
+            ("--open-login", None, "CHILD_STOP", ["--check", "--open-login", "--closeout"]),
+            ("--run", None, "CHILD_STOP", ["--check", "--open-login", "--run", "--closeout"]),
+            ("--closeout", "DONE", "CLOSEOUT_UNCONFIRMED", ["--check", "--open-login", "--run", "--closeout"]),
+        ):
+            with self.subTest(failure=failure, browser=signal_value), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary).resolve()
+                private_copy = root / "r11-attended-coordinator.py"
+                source = Path(module.__file__).read_text(encoding="utf-8").replace(
+                    "REPO = Path(__file__).resolve().parents[1]",
+                    "REPO = Path(" + repr(str(module.REPO)) + ")",
+                    1,
+                )
+                private_copy.write_text(source, encoding="utf-8")
+                # The child has no database, network or provider dependency. It records
+                # modes only and fragments READY so the real complete-line reader runs.
+                child = root / "r10-control.mjs"
+                child.write_text(
+                    "import fs from 'node:fs';\n"
+                    "const mode=process.argv[2];\n"
+                    "fs.appendFileSync(new URL('./modes.txt',import.meta.url),mode+'\\n');\n"
+                    "if(mode==='--check'){ if(mode===" + json.dumps(failure) + ") process.exit(5);"
+                    " console.log('R10_CHECK_PASSED_NO_ACTION'); process.exit(0); }\n"
+                    "process.stdout.write('REA');\n"
+                    "await new Promise(resolve=>setTimeout(resolve,10));\n"
+                    "process.stdout.write('DY\\n');\n"
+                    "let input='';for await(const chunk of process.stdin) input+=chunk;\n"
+                    "if(input!=='FICTIONAL_ADMIN_CANARY\\n') process.exit(4);\n"
+                    "if(mode===" + json.dumps(failure) + ") process.exit(5);\n"
+                    "const outputs={'--open-login':'R10_DATABASE_LOGIN_OPEN',"
+                    "'--run':'R10_ACTIVE_READY " + module.TARGET_ORIGIN + "/customer-intake',"
+                    "'--closeout':'R12_RUNTIME_CLOSEOUT_VERIFIED'};\n"
+                    "console.log(outputs[mode]);\n",
+                    encoding="utf-8",
+                )
+                runner = root / "run-fixture.py"
+                # Only local packet review is injected here; its strict metadata and
+                # no-reuse checks have separate tests. CLI, prompt, reservation, child
+                # protocol, browser input and closeout all use production code.
+                runner.write_text(
+                    "import importlib.util,sys,time\n"
+                    "from pathlib import Path\n"
+                    "s=importlib.util.spec_from_file_location('private_coordinator',sys.argv[1])\n"
+                    "m=importlib.util.module_from_spec(s);sys.modules[s.name]=m;s.loader.exec_module(m)\n"
+                    "root=Path(sys.argv[2]);now=time.time()\n"
+                    "r=m.Review(root,'11111111-1111-4111-8111-111111111111',m.TARGET_ORIGIN,"
+                    "now-2,now+900,now-1,now+600,now+900)\n"
+                    "m.review_run_directory=lambda supplied: r if supplied==root else None\n"
+                    "raise SystemExit(m.main(['--run',str(root)]))\n",
+                    encoding="utf-8",
+                )
+                master, slave = pty.openpty()
+                original = termios.tcgetattr(slave)
+                process = subprocess.Popen(
+                    [sys.executable, "-I", "-B", str(runner), str(private_copy), str(root)],
+                    cwd=root,
+                    env={"PATH": "/usr/bin:/bin"},
+                    stdin=slave,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                transcript = bytearray()
+                secret_sent = browser_sent = False
+                try:
+                    deadline = time.monotonic() + 15
+                    while process.poll() is None:
+                        self.assertLess(time.monotonic(), deadline, "synthetic coordinator did not finish")
+                        if select.select([process.stdout], [], [], 0.1)[0]:
+                            transcript.extend(os.read(process.stdout.fileno(), 4096))
+                        if not secret_sent and b"Private password (input hidden): " in transcript:
+                            self.assertFalse(termios.tcgetattr(slave)[3] & termios.ECHO)
+                            os.write(master, b"FICTIONAL_ADMIN_CANARY\n")
+                            secret_sent = True
+                        if not browser_sent and signal_value and b"closeout runs automatically." in transcript:
+                            os.write(master, signal_value.encode("ascii") + b"\n")
+                            browser_sent = True
+                    transcript.extend(process.communicate(timeout=2)[0])
+                    while select.select([master], [], [], 0)[0]:
+                        transcript.extend(os.read(master, 4096))
+                    self.assertEqual(termios.tcgetattr(slave), original)
+                    self.assertNotIn(b"FICTIONAL_ADMIN_CANARY", transcript)
+                    self.assertEqual((root / "modes.txt").read_text().splitlines(), expected_modes)
+                    if failure == "--check":
+                        self.assertFalse(secret_sent)
+                        self.assertFalse((root / "coordinator-attempt.json").exists())
+                        self.assertIn(b"R11_ATTENDED_COORDINATOR_STOPPED_BEFORE_ACTION", transcript)
+                        self.assertEqual(process.returncode, 1)
+                        continue
+                    self.assertTrue(secret_sent)
+                    self.assertEqual(transcript.count(b"Private password (input hidden): "), 1)
+                    self.assertTrue((root / "coordinator-attempt.json").exists())
+                    if expected_reason == "CLOSEOUT_UNCONFIRMED":
+                        self.assertIn(b"R11_ATTENDED_COORDINATOR_CLOSEOUT_UNCONFIRMED", transcript)
+                        self.assertNotIn(b"R12_RUNTIME_CLOSEOUT_VERIFIED", transcript)
+                    else:
+                        self.assertIn(b"R12_RUNTIME_CLOSEOUT_VERIFIED", transcript)
+                        self.assertIn(("R11_ATTENDED_COORDINATOR_CLOSED_" + expected_reason).encode(), transcript)
+                    self.assertEqual(process.returncode, 0 if failure is None else 1)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                        process.wait()
+                    process.stdout.close()
+                    os.close(master)
+                    os.close(slave)
+
     def test_private_copy_resolves_hidden_input_module_from_bound_repo(self):
         with tempfile.TemporaryDirectory() as temporary:
             private_copy = Path(temporary) / "r11-attended-coordinator.py"
