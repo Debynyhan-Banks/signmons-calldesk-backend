@@ -1,5 +1,9 @@
 # Signmons Backend Execution Board
 
+## Current: startup-stage repair-image decision ready; build approval pending — 2026-09-28
+
+The fixed-stage diagnostic source remains backend `fe9b066`. Governance `APP013_P06_R11_STARTUP_STAGE_REPAIR_IMAGE_DECISION.md` now pins the exact tracked build inputs, candidate tag, one-submission/no-retry rule and mandatory temporary-grant cleanup for a future owner-approved image build. Exact approval and a future window are absent. No build, upload, cloud/provider/database read, IAM/secret/billing change, packet, LOGIN, activation, deployment, traffic change, browser/customer action, job, hold release or retry occurred. Next is the owner decision between one build and retaining the local result. Evidence: `evidence/APP-013/p06-r11-startup-stage-repair-image-decision.md`. P06 remains 12/14; R11/full R12 open; accepted 1A/1B/2A remain 3/8 (37.5%). No scope deviation.
+
 ## Current: enabled24 R11 packet ready; execution approval required — 2026-09-25
 
 Read-only operation `47715fca-cf91-4a1f-9193-d89607769dd7` returned `READY_FOR_PACKET_REVIEW` after rollback. Fresh plan `97fc393e-bd78-4f68-89e6-4e3bfe2e830d` binds runtime source `6d8ba54`, repaired coordinator `0e30a04`, immutable repair image, zero-traffic enabled24, phone 500000/4500000 and address six/600000, session two/200000 while preserving eight phone/four address holds. Runtime is 6:45-7:00 AM Eastern; closeout is due 7:15. Production packet/controller and actual attended-coordinator reviews pass, including refusal of the prior six-hold tuple. Exactly three private mode-0600 files exist. No helper, execution authorization, LOGIN, write, activation, deployment, provider request/code or browser action occurred. Exact plan approval or refusal is next. P06 stays 12/14, R11/full R12 open. Evidence: `evidence/APP-013/p06-r11-0630-enabled24-packet-review.md`. No scope deviation beyond approved coordinator/capacity policy.
