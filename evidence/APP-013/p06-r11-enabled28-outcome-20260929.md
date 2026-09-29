@@ -1,0 +1,13 @@
+# APP-013 / 2B / P06-R11 enabled28 outcome and closeout
+
+## Current: enabled28 started and closed; browser submission outcome uncertain — 2026-09-29
+
+Consumed plan8823f338-cb5b-454b-97bd-efdfce89d505 reached READY_FOR_R11/READY_NO_TRAFFIC on enabled28. Owner reports R11_ATTENDED_COORDINATOR_CLOSED_BROWSER_DONE and the browser's Outcome unconfirmed for request4d5b5043-c975-48ab-b899-f8c2c29b9e8a. DONE indicates owner completion, not confirmed job admission. Local saved evidence: revocationREVOKED at12:25:57.813Z, matching audit1/readbackREVOKED, closeoutCLOSED with failures[]. Installed controller closeout verifies inactive approvals, runtimeNOLOGIN/limit0/zero sessions, absent enabled tag and baseline100%. No new live query or replay was performed after this report.
+
+Source inspection maps the exact UI text to version2 submit responseUNCERTAIN/jobCreatedfalse; controlled verification emits UNCERTAIN when the address operation is not OBSERVED. This narrows the path but does not establish provider failure, retained operation state or database job absence. Do not retry the browser or rerun the consumed coordinator after closeout. Startup succeeded; the earlier startup failure is not reproduced or causally explained.
+
+Next: owner decision on the exact read-only request reconciliation in APP013_P06_R11_ENABLED28_OUTCOME_RECONCILIATION.md; implementer owns guarded reader preparation and result review after approval. No new activation/deployment/provider request/code/job write/hold release. Execution and closeout evidence reviewed; request/job/address correlation and fullR11/R12acceptance remain. P06 stays12/14;accepted1A/1B/2A remain3/8. No scope deviation.
+
+Evidence inspected locally in /Volumes/Signmons-P06/r11-supervised-run-20260929-0800: coordinator-attempt12:04:48.006Z, deployment-readbackREADY_NO_TRAFFIC, r10-run-resultREADY_FOR_R11, revocation-resultREVOKED, revocation-readback matchingOperationAudits1/storedApprovalStateREVOKED, closeout-resultCLOSED/failures[]. The coordinator terminal line is owner-reported; no coordinator-result.json exists. Do not invent an admitted job, successful address verification or full participant-data cleanup from these artifacts.
+
+Source evidence: scripts/fixtures/customer-intake-journey.js version2 submit branch; src/communications/controlled-intake-verification.service.ts non-OBSERVED branch; customer-intake-continuation.service.ts submitControlled/replay. The submission transaction records customer_intake.controlled_submitted and Job.policySnapshot.intakeAdmission.requestId. AddressVerificationOperation.intentId correlates to the same request; request claims relate through operationId. These existing seams support narrow read-only reconciliation. No source changes made.
