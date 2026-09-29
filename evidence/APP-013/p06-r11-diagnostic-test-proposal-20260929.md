@@ -1,0 +1,15 @@
+# APP-013 / 2B / P06-R11 controlled-test proposal evidence
+
+## Current: diagnostic-image test proposal ready; packet preparation decision pending — 2026-09-29
+
+Owner requested the next controlled-test proposal and selected September29,8:00–8:45AM Eastern for attendance only. APP013_P06_R11_DIAGNOSTIC_TEST_PROPOSAL_20260929.md binds diagnostic sourcefe9b066/image0457ff3, proposed unused enabled28 on signmons-calldesk-staging/us-east5, LOGINsupport8:00–8:45, deployment/browser8:15–8:30 and mandatory closeoutby8:45. Proposed verification allowances phone0.50/account5.00 and address0.20/session, account/tenant six0.60 preserve observed9/4retained holds; proposed infrastructure2.00 makes2.70 incremental operational allowance, not guaranteed invoice cap. Prior readiness observations remain dated evidence; the next target/metadata and active-run guards must pass.
+
+Completed: source/reuse/acceptance inspection, finite preparation card, exact proposed schedule/cost/sequence and review-only decision. No packet, private execution helpers, external reads, LOGIN, activation, deployment, provider request, browser submission or new job in this documentation step. Next observable result: owner decides exactly-one private review-packet preparation, including bounded target/secret-version metadata qualification; implementer then validates the complete current compiled binding, fresh identities and production reviewers, and presents the finished exact packet for separate execution approval. No automatic run or retry. P06 remains12/14,R11/fullR12open;accepted1A/1B/2A remain3/8. No scope deviation in this proposal; prior disclosed cloud-target error remains historical evidence.
+
+Preparation source backend a83e57e2a0385c5ed883b879758ef2d672110be9, governance c9eba6cfcb1e9371ea7a2de6ad84592adbfd5d0f. Inspected canonical pointer/board/handoff/ticket, remaining execution contract, data-contract scope, latest readiness/build evidence, consumed enabled27 review/controller and current packet/controller/coordinator seams. git diff fe9b066..HEAD across runtime source/scripts/package/Prisma/Docker/build inputs is empty. Existing untracked tmp/ preserved.
+
+The proposal is documentation, not an installed packet or execution artifact. No current price, invoice, provider or cloud lookup was made here; the amounts are proposed allowances based on the existing guarded limits, with historical liabilities preserved. The owner selected attendance timing through the explicit timing-only question. Do not record that answer as execution approval.
+
+Startup success remains uncertain. Failed startup stops the browser journey and requires closeout; any fixed-stage log read needs a bounded subsequent diagnostic decision. Existing startup-stage tests and full application/browser proof are historical evidence only. No change to the coordinator or runtime was made.
+
+Validation completed: backend/governance baseline, frozen baseline, complete cross-repository documentation consistency,21 governance safeguards,backend architecture and both whitespace checks passed. No runtime tests newly run for this documentation-only proposal.
