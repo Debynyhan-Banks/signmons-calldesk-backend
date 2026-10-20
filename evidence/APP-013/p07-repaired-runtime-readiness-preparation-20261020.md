@@ -4,7 +4,7 @@ Date: October 20, 2026, Eastern time
 
 ## Status
 
-The owner-approved four-secret startup correction is implemented only in a fresh private, disabled operation package at `/private/tmp/p07-repaired-runtime-readiness-20261020-prep1`. No provider or database command was executed. The package has no `binding.json`, no `owner-approval.json`, no attempt or mutation journal, and `--run`, `--recover` and `--retire` refuse with `P07_REFUSED_WINDOW_NOT_BOUND`. Its local `--check` returns `P07_PREPARATION_CHECK_PASSED_NO_ACTION`.
+The owner-approved four-secret startup correction is implemented only in a fresh private operation package at `/private/tmp/p07-repaired-runtime-readiness-20261020-prep1`. The package is bound to the owner-selected October 20, 2026, 7:00–8:30 p.m. Eastern review window, with a strict 7:15 start cutoff and October 21 at 7:00 p.m. retirement deadline. No provider or database command was executed. The package has no `owner-approval.json`, attempt or mutation journal; `--run` refuses with `P07_REFUSED_OWNER_APPROVAL_INVALID`. Its local `--check` returns `P07_PREPARATION_CHECK_PASSED_NO_ACTION`.
 
 This is preparation evidence, not live readiness, payment demonstration or 3A acceptance.
 
@@ -34,16 +34,17 @@ This is preparation evidence, not live readiness, payment demonstration or 3A ac
 
 - Python syntax: passed.
 - Node syntax for database closeout, Firebase read and IAM `testIamPermissions` helpers: passed.
-- Focused controller suite: **28/28 passed**. It covers exact resources/hashes, immutable approval-source binding, disabled/no-window refusal, exact approval, window/retirement bounds, exclusive receipt creation, command failure/timeout sanitization, absence uncertainty, Cloud/database preflight shapes, exact job/account binding, four independent startup values, role attribute/membership/ownership readback, seven resource bindings, exact environment replacement, inherited-environment refusal, disabled destination/event contract, persistent mutation recovery, persistence failure before provider access, interruption containment and cleanup coverage.
+- Focused controller suite: **29/29 passed**. It covers exact resources/hashes, immutable approval-source binding, disabled/no-window refusal, exact selected-window binding, exact approval, window/retirement bounds, exclusive receipt creation, command failure/timeout sanitization, absence uncertainty, Cloud/database preflight shapes, exact job/account binding, four independent startup values, role attribute/membership/ownership readback, seven resource bindings, exact environment replacement, inherited-environment refusal, disabled destination/event contract, persistent mutation recovery, persistence failure before provider access, interruption containment and cleanup coverage.
 - Installed CLI help confirmed Cloud Run replacement environment/secret flags, no-traffic/tag/revision controls and unconditional secret IAM bindings. It also disproved the originally drafted `gcloud iam service-accounts test-iam-permissions` command; the package now uses the read-only IAM REST `testIamPermissions` method through the existing explicit-token seam. That correction was completed before binding or external action.
 - Static secret-pattern scan: no Stripe API key or webhook signing-secret value in package sources.
 - Private directory mode: 0700; generated receipt mode: 0600.
-- Manifest SHA-256: `eaf4fe41602baada407fcb1f69607a2924f5df9cc406a191338c5083ec08b134`.
-- Controller SHA-256: `458f013cc922a3fc131d42a59cdf3c1d231d744766847fdc45e85a95c1d308cc`.
-- Test SHA-256: `8b22fe6ad5ec0aa50079393860c00cdba78d5bcde636998f682cd746146d5e06`.
+- Manifest SHA-256: `6f3b4e1a66962d64248fab185d6388c1d2e78e68dd280d839cc57d412af5ae69`.
+- Controller SHA-256: `e1f8fe898ae299f354f8b728afc90407ef0d0b1e6487768deaeaff4fce31258f`.
+- Test SHA-256: `e589484982a76df6223e144092cb6546ce565d3ae2ca5be29964be913a19ab31`.
+- Binding SHA-256: `c5eb72c440ecc1c840b94c4b25a304f0e3ffb74d553dd1c62350166bab111d8e`.
 
 ## Remaining and next observable result
 
-The package remains deliberately unbound. Debynyhan Banks supplies a new attended Eastern block of at least 90 minutes with Terminal, the current CHILD administrator password and signed-in Stripe Sandbox available. The implementer then adds exact UTC window/retirement bindings, reruns the full local suite/no-action/refusal checks, prepares the exact owner-approval record and presents the complete live operation. No external action begins until that separate approval.
+The package is exactly bound and locally verified. Debynyhan Banks next approves or refuses `APP013_P07_REPAIRED_RUNTIME_READINESS_OPERATION_PROPOSAL_20261020.md` before the strict 7:15 p.m. cutoff. No external action begins until that separate exact approval. On approval, the next observable result is `P07_REPAIRED_RUNTIME_READY_DISABLED` or a named stop with mandatory containment.
 
 Accepted progress remains **0/27 newly closed R1 packages; 6/60 legacy packages; 4/8 walkthrough milestones; 0/13 full-intelligence rows**. **No scope deviation from the owner-approved startup correction.**
