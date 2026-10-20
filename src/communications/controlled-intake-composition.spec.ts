@@ -52,6 +52,7 @@ describe("disabled controlled intake composition", () => {
     );
     const composition = new ControlledIntakeComposition({
       prisma: { $transaction: transaction } as unknown as PrismaService,
+      cipher: { encrypt: (value) => value, decrypt: (value) => value },
       credentials,
       tenantId,
       integrationId: "test-integration",

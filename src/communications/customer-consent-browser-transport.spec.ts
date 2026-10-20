@@ -426,6 +426,7 @@ describe("inactive same-origin browser transport", () => {
         country: "US",
         state: "OH",
       };
+      const correctionContinuation = "v1." + "a".repeat(80);
       const expected = {
         status,
         requestId: input.requestId,
@@ -434,13 +435,18 @@ describe("inactive same-origin browser transport", () => {
         ...(status === "ADMITTED"
           ? { jobId: randomUUID(), state: "CREATED" }
           : {}),
-        ...(status === "CORRECTION_REQUIRED" ? { candidate } : {}),
+        ...(status === "CORRECTION_REQUIRED"
+          ? { candidate, correctionContinuation }
+          : {}),
       };
       const submit = jest.fn().mockResolvedValue({
         ...expected,
         secret: "DO_NOT_LEAK",
         ...(status === "CORRECTION_REQUIRED"
-          ? { candidate: { ...candidate, responseId: "DO_NOT_LEAK" } }
+          ? {
+              candidate: { ...candidate, responseId: "DO_NOT_LEAK" },
+              correctionContinuation,
+            }
           : {}),
       });
       const submitReview = jest.fn();
@@ -459,6 +465,23 @@ describe("inactive same-origin browser transport", () => {
       expect(submitReview).not.toHaveBeenCalled();
     },
   );
+  it("passes an opaque correction continuation only through controlled submit", async () => {
+    const correctionContinuation = "v1." + "a".repeat(80);
+    const input = { ...controlledInput(), correctionContinuation };
+    const submit = jest.fn().mockResolvedValue({
+      status: "UNCERTAIN",
+      jobCreated: false,
+    });
+    const transport = new CustomerConsentBrowserTransport(
+      { origin, tenantId },
+      { ...ports, controlled: { submit } },
+    );
+
+    const result = await asActor(() => transport.handle(req("submit", input)));
+
+    expect(result.status).toBe(200);
+    expect(submit).toHaveBeenCalledWith(input);
+  });
   it("reports only a fixed controlled refusal stage and preserves the generic browser response", async () => {
     const input = controlledInput();
     const submit = jest

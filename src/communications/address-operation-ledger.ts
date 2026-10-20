@@ -1,3 +1,4 @@
+import { controlledIntakeConflict } from "./controlled-intake-refusal";
 import { ConflictException } from "@nestjs/common";
 import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -308,6 +309,11 @@ export class AddressOperationLedger {
               orderBy: { createdAt: "desc" },
               take: 3,
             });
+            if (controlled && prior.length >= 2)
+              throw controlledIntakeConflict(
+                "VERIFICATION_LIMIT_REACHED",
+                "Address operation unavailable.",
+              );
             if (
               prior.length >= (controlled ? 2 : 3) ||
               (!controlled &&
@@ -340,8 +346,14 @@ export class AddressOperationLedger {
               total._count >= limit.requests ||
               (total._sum.heldMicros ?? 0n) + BigInt(p.costMicros) >
                 BigInt(limit.micros)
-            )
+            ) {
+              if (controlled)
+                throw controlledIntakeConflict(
+                  "VERIFICATION_LIMIT_REACHED",
+                  "Address operation unavailable.",
+                );
               throw refuse();
+            }
           }
           operation = await tx.addressVerificationOperation.create({
             data: {

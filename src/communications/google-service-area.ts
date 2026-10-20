@@ -77,7 +77,7 @@ export async function reviewGoogleServiceArea(
       usps.dpvCmra !== "N" ||
       (usps.poBoxOnlyPostalCode !== undefined &&
         usps.poBoxOnlyPostalCode !== false) ||
-      usps.addressRecordType !== "H" ||
+      (usps.addressRecordType !== "H" && usps.addressRecordType !== "S") ||
       (usps.pmbNumber !== undefined && usps.pmbNumber !== "") ||
       (usps.pmbDesignator !== undefined && usps.pmbDesignator !== "")
     )

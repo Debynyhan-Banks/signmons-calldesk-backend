@@ -12,7 +12,35 @@ import {
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type Scope = { tenantId: string; conversationId: string; sessionId: string };
+export type CleanupMaintenanceBinding = Readonly<{
+  mode: "EXACT_SESSION_MAINTENANCE_V1";
+  tenantId: string;
+  accountId: string;
+  approvalId: string;
+  operationId: string;
+  validFrom: number;
+  validUntil: number;
+  targets: ReadonlyArray<
+    Readonly<{
+      conversationId: string;
+      sessionId: string;
+      expiresAt: number;
+      operations: ReadonlyArray<
+        Readonly<{
+          id: string;
+          attemptId: string;
+          createdAt: number;
+          executionDeadline: number;
+          heldMicros: number;
+          aliasCount: number;
+          state: "OBSERVED";
+        }>
+      >;
+    }>
+  >;
+}>;
 type CleanupMode =
+  | CleanupMaintenanceBinding
   | "FIXTURE_ONLY"
   | Readonly<{ mode: "CONTROLLED_SESSION_V1"; tenantId: string }>;
 /** Explicit lifecycle service. No scheduler/production registration.
@@ -25,10 +53,87 @@ export class VerificationCleanupService {
     private readonly credentials: CustomerConsentCredentials,
     private readonly mode: CleanupMode,
   ) {
+    if (
+      typeof mode === "object" &&
+      mode?.mode === "EXACT_SESSION_MAINTENANCE_V1"
+    ) {
+      const copy = structuredClone(mode);
+      const array = (v: unknown): boolean => Array.isArray(v);
+      const exact = (v: object, fields: string) =>
+        Object.keys(v).sort().join() === fields.split(",").sort().join();
+      const time = (v: number) => Number.isSafeInteger(v) && v > 0;
+      if (
+        !exact(
+          copy,
+          "mode,tenantId,accountId,approvalId,operationId,validFrom,validUntil,targets",
+        ) ||
+        ![
+          copy.tenantId,
+          copy.accountId,
+          copy.approvalId,
+          copy.operationId,
+        ].every((v) => typeof v === "string" && UUID.test(v)) ||
+        !time(copy.validFrom) ||
+        !time(copy.validUntil) ||
+        copy.validUntil <= copy.validFrom ||
+        copy.validUntil - copy.validFrom > 3600000 ||
+        !array(copy.targets) ||
+        copy.targets.length !== 3
+      )
+        throw new ConflictException();
+      const sessions = new Set<string>(),
+        conversations = new Set<string>(),
+        operations = new Set<string>();
+      for (const target of copy.targets) {
+        if (
+          !target ||
+          !exact(target, "conversationId,sessionId,expiresAt,operations") ||
+          ![target.conversationId, target.sessionId].every(
+            (v) => typeof v === "string" && UUID.test(v),
+          ) ||
+          sessions.has(target.sessionId) ||
+          conversations.has(target.conversationId) ||
+          !time(target.expiresAt) ||
+          !array(target.operations) ||
+          target.operations.length !== 2
+        )
+          throw new ConflictException();
+        sessions.add(target.sessionId);
+        conversations.add(target.conversationId);
+        for (const operation of target.operations) {
+          if (
+            !operation ||
+            !exact(
+              operation,
+              "id,attemptId,createdAt,executionDeadline,heldMicros,aliasCount,state",
+            ) ||
+            ![operation.id, operation.attemptId].every(
+              (v) => typeof v === "string" && UUID.test(v),
+            ) ||
+            operations.has(operation.id) ||
+            !time(operation.createdAt) ||
+            !time(operation.executionDeadline) ||
+            operation.executionDeadline < operation.createdAt ||
+            operation.state !== "OBSERVED" ||
+            operation.heldMicros !== 100000 ||
+            operation.aliasCount !== 1
+          )
+            throw new ConflictException();
+          operations.add(operation.id);
+          Object.freeze(operation);
+        }
+        Object.freeze(target.operations);
+        Object.freeze(target);
+      }
+      Object.freeze(copy.targets);
+      this.mode = Object.freeze(copy);
+      return;
+    }
     this.mode =
       typeof mode === "object" && mode ? Object.freeze({ ...mode }) : mode;
   }
   async end(sessionToken: string) {
+    if (this.maintenance()) throw new ConflictException();
     const claims = this.credentials.verifySession(sessionToken);
     const scope = {
       tenantId: claims.tenantId,
@@ -47,6 +152,60 @@ export class VerificationCleanupService {
       cleanupPending,
       fixtureOnly: this.mode === "FIXTURE_ONLY",
       deliveryAuthorized: false,
+    };
+  }
+  private maintenance(): CleanupMaintenanceBinding | undefined {
+    return typeof this.mode === "object" &&
+      this.mode.mode === "EXACT_SESSION_MAINTENANCE_V1"
+      ? this.mode
+      : undefined;
+  }
+  /** Inert maintenance entry; only the separately reviewed private runner supplies this binding. */
+  async inspectMaintenance() {
+    const binding = this.maintenance();
+    if (!binding) throw new ConflictException();
+    for (const target of binding.targets)
+      await this.prisma.$transaction((tx) =>
+        this.read(tx, {
+          tenantId: binding.tenantId,
+          conversationId: target.conversationId,
+          sessionId: target.sessionId,
+        }).then(() => undefined),
+      );
+    return { eligible: 3 as const };
+  }
+  async maintain(input: { conversationId: string; sessionId: string }) {
+    const binding = this.maintenance();
+    if (
+      !binding ||
+      !input ||
+      Object.keys(input).sort().join() !== "conversationId,sessionId" ||
+      !binding.targets.some(
+        (t) =>
+          t.conversationId === input.conversationId &&
+          t.sessionId === input.sessionId,
+      )
+    )
+      throw new ConflictException();
+    const scope = {
+      tenantId: binding.tenantId,
+      conversationId: input.conversationId,
+      sessionId: input.sessionId,
+    };
+    await this.close(scope, true);
+    try {
+      await this.purge(scope);
+    } catch {
+      return {
+        state: "CLOSED" as const,
+        cleanupPending: true,
+        deliveryAuthorized: false as const,
+      };
+    }
+    return {
+      state: "CLOSED" as const,
+      cleanupPending: false,
+      deliveryAuthorized: false as const,
     };
   }
   async sweep(
@@ -100,6 +259,12 @@ export class VerificationCleanupService {
     if (
       !(
         this.mode === "FIXTURE_ONLY" ||
+        (this.maintenance()?.tenantId === scope.tenantId &&
+          this.maintenance()?.targets.some(
+            (t) =>
+              t.conversationId === scope.conversationId &&
+              t.sessionId === scope.sessionId,
+          )) ||
         (this.mode &&
           typeof this.mode === "object" &&
           Object.keys(this.mode).sort().join() === "mode,tenantId" &&
@@ -133,6 +298,53 @@ export class VerificationCleanupService {
     );
     const now = Number(clock?.ms);
     if (!state || !Number.isSafeInteger(now)) throw new ConflictException();
+    const binding = this.maintenance();
+    if (binding) {
+      const target = binding.targets.find(
+        (t) =>
+          t.conversationId === scope.conversationId &&
+          t.sessionId === scope.sessionId,
+      );
+      if (
+        !target ||
+        now < binding.validFrom ||
+        now >= binding.validUntil ||
+        state.expiresAt !== target.expiresAt ||
+        now < state.expiresAt
+      )
+        throw new ConflictException();
+      const actual = await tx.addressVerificationOperation.findMany({
+        where: { accountId: binding.accountId },
+        take: 7,
+        include: { _count: { select: { requests: true } } },
+      });
+      const expected = binding.targets.flatMap((t) =>
+        t.operations.map((o) => ({
+          ...o,
+          conversationId: t.conversationId,
+          sessionId: t.sessionId,
+        })),
+      );
+      if (
+        actual.length !== expected.length ||
+        actual.some((o) => {
+          const e = expected.find((e) => e.id === o.id);
+          return (
+            !e ||
+            o.tenantId !== binding.tenantId ||
+            o.conversationId !== e.conversationId ||
+            o.sessionId !== e.sessionId ||
+            o.state !== e.state ||
+            o.heldMicros !== BigInt(e.heldMicros) ||
+            o.attemptId !== e.attemptId ||
+            o.createdAt.getTime() !== e.createdAt ||
+            o.executionDeadline?.getTime() !== e.executionDeadline ||
+            o._count.requests !== e.aliasCount
+          );
+        })
+      )
+        throw new ConflictException();
+    }
     return { row, data, state, now };
   }
   private async close(scope: Scope, explicit: boolean) {
@@ -298,9 +510,19 @@ export class VerificationCleanupService {
         actorId:
           this.mode === "FIXTURE_ONLY"
             ? "fixture-cleanup"
-            : "controlled-session-cleanup",
+            : this.maintenance()
+              ? "controlled-session-maintenance"
+              : "controlled-session-cleanup",
         action: "conversation.verification_session_" + state,
-        metadata: { sessionId: scope.sessionId },
+        metadata: {
+          sessionId: scope.sessionId,
+          ...(this.maintenance()
+            ? {
+                maintenanceOperationId: this.maintenance()!.operationId,
+                maintenanceApprovalId: this.maintenance()!.approvalId,
+              }
+            : {}),
+        },
       },
     });
   }

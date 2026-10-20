@@ -28,6 +28,7 @@
     reviewedDraft,
     reviewedControlledAddress,
     controlledSuggestion,
+    controlledCorrectionContinuation,
     reviewedAddressSelection,
     expires = 0,
     revision = 0,
@@ -35,10 +36,12 @@
     email,
     step = "start",
     pending,
+    verificationLimitReached = false,
     busy = false,
     epoch = 0,
     controller,
-    expiryTimer;
+    expiryTimer,
+    previewWarningTimer;
   const status = (value) => {
     el("status").textContent = value;
   };
@@ -59,6 +62,7 @@
     return false;
   }
   function paint() {
+    const now = Date.now();
     el("controlledAddress").hidden = !controlledMode();
     if (controlledMode()) {
       el("journeyNotice").textContent =
@@ -134,6 +138,39 @@
       el(id).hidden = !controlledMode() || phoneReady;
     el("draft").disabled =
       busy || !!pending || !el("reviewed").checked || !phoneReady;
+    const previewReadiness = el("previewReadiness"),
+      previewReadinessVisible = controlledMode() && step === "details";
+    previewReadiness.hidden = !previewReadinessVisible;
+    if (previewReadinessVisible) {
+      const remaining = expires - now,
+        deadline = expires
+          ? " Private session expires at " +
+            new Date(expires).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+              second: "2-digit",
+            }) +
+            "."
+          : "",
+        warning =
+          remaining > 0 && remaining <= 90000
+            ? " Less than 90 seconds remain."
+            : "";
+      previewReadiness.textContent =
+        (!token || !expires || now >= expires
+          ? "Preview unavailable: this private session expired."
+          : busy
+            ? "Preview locked: your last request is still processing."
+            : pending
+              ? "Preview locked: the previous operation outcome is pending."
+              : !phoneReady
+                ? "Preview locked: complete the phone code check and wait for Code accepted."
+                : !el("reviewed").checked
+                  ? "Preview locked: select I reviewed these details."
+                  : "Ready to preview: phone accepted and details reviewed.") +
+        deadline +
+        warning;
+    } else previewReadiness.textContent = "";
     el("submitReview").disabled = busy || !!pending || !phoneReady;
     el("submitReview").hidden =
       (!controlledMode() &&
@@ -143,8 +180,8 @@
       !controlledSuggestion || step !== "details";
     el("controlledUseSuggestion").disabled =
       busy || !!pending || !controlledSuggestion;
-    el("retry").hidden = !pending || busy;
-    el("retry").disabled = busy;
+    el("retry").hidden = !pending || busy || verificationLimitReached;
+    el("retry").disabled = busy || verificationLimitReached;
     el("addressConfirm").disabled =
       busy ||
       !!pending ||
@@ -175,12 +212,14 @@
         !!verifyStart && verifyState !== "CORRECTION_REQUIRED";
   }
   function clear(message) {
+    verificationLimitReached = false;
     smsPrompt = undefined;
     el("smsStatus").textContent = "";
     clearCorrection();
     epoch++;
     controller?.abort();
     clearTimeout(expiryTimer);
+    clearTimeout(previewWarningTimer);
     clearTimeout(phoneExpiryTimer);
     phoneRevision = 0;
     phoneLocked = false;
@@ -204,6 +243,7 @@
     reviewedAddressSelection = undefined;
     reviewedControlledAddress = undefined;
     controlledSuggestion = undefined;
+    controlledCorrectionContinuation = undefined;
     el("controlledSuggestion").textContent = "";
     expires = revision = 0;
     step = "start";
@@ -242,13 +282,19 @@
   async function run() {
     if (busy || !pending) return;
     const request = pending,
-      generation = epoch,
-      abort = new AbortController();
-    controller = abort;
+      generation = epoch;
+    let abort, timeout;
     busy = true;
-    paint();
-    const timeout = setTimeout(() => abort.abort(), 15000);
     try {
+      abort = new AbortController();
+      controller = abort;
+      paint();
+      timeout = setTimeout(() => abort.abort(), 15000);
+      if (request.operation === "submit" && request.body.version === 2)
+        status(
+          "Submitting your request. Please wait. Reference: " +
+            request.body.requestId,
+        );
       const response = await fetch("/customer-session/" + request.operation, {
         method: "POST",
         mode: "cors",
@@ -631,6 +677,10 @@
             controlledVerificationNotice = Object.freeze({ ...n });
           }
           expires = deadline;
+          clearTimeout(previewWarningTimer);
+          const warningDelay = expires - Date.now() - 90000;
+          if (warningDelay > 0)
+            previewWarningTimer = setTimeout(paint, warningDelay);
           expiryTimer = setTimeout(
             () => alive(),
             Math.max(0, expires - Date.now()),
@@ -751,6 +801,7 @@
             )
               throw Error("Invalid controlled receipt");
             if (value.status === "ADMITTED") {
+              controlledCorrectionContinuation = undefined;
               if (
                 value.jobCreated !== true ||
                 typeof value.jobId !== "string" ||
@@ -784,6 +835,45 @@
                 "Job created. No appointment confirmed or payment authorized.",
               );
             } else if (
+              value.status === "REFUSED" &&
+              value.reason === "VERIFICATION_LIMIT_REACHED" &&
+              value.jobCreated === false
+            ) {
+              controlledCorrectionContinuation = undefined;
+              verificationLimitReached = true;
+              status(
+                "Verification limit reached. No job was created for this request. Your draft is retained. Contact the office with this reference; do not retry or start a new request to bypass the limit. Reference: " +
+                  request.body.requestId,
+              );
+            } else if (
+              value.status === "REFUSED" &&
+              [
+                "ADDRESS_REVIEW_UNAVAILABLE",
+                "SERVICE_AREA_NOT_CONFIRMED",
+                "OUTSIDE_SERVICE_AREA",
+                "ADDRESS_CORRECTION_STATE_UNAVAILABLE",
+              ].includes(value.reason) &&
+              value.jobCreated === false
+            ) {
+              controlledCorrectionContinuation = undefined;
+              controlledSuggestion = undefined;
+              el("controlledSuggestion").textContent = "";
+              pending = reviewedDraft = reviewedControlledAddress = undefined;
+              el("reviewed").checked = false;
+              step = "details";
+              status(
+                {
+                  ADDRESS_REVIEW_UNAVAILABLE:
+                    "No job created. We could not confirm the address as entered. Your fields are retained; check every address field or contact the office.",
+                  SERVICE_AREA_NOT_CONFIRMED:
+                    "No job created. We could not confirm that this address is in the service area. Your fields are retained; review the address or contact the office.",
+                  OUTSIDE_SERVICE_AREA:
+                    "No job created. The confirmed address is outside the current service area. Your fields are retained; contact the office if you believe the address is incorrect.",
+                  ADDRESS_CORRECTION_STATE_UNAVAILABLE:
+                    "No job created. The address correction review is no longer available. Your fields are retained; contact the office and do not restart the request.",
+                }[value.reason],
+              );
+            } else if (
               value.status === "UNCERTAIN" &&
               value.jobCreated === false
             ) {
@@ -800,6 +890,13 @@
               if (value.status === "CORRECTION_REQUIRED") {
                 const c = value.candidate;
                 if (
+                  typeof value.correctionContinuation !== "string" ||
+                  value.correctionContinuation.length < 40 ||
+                  value.correctionContinuation.length > 4096 ||
+                  !value.correctionContinuation.startsWith("v1.") ||
+                  !/^[A-Za-z0-9._-]+$/.test(
+                    value.correctionContinuation,
+                  ) ||
                   !c ||
                   c.country !== "US" ||
                   c.state !== "OH" ||
@@ -815,6 +912,8 @@
                   !/^\d{5}(-\d{4})?$/.test(c.postalCode)
                 )
                   throw Error("Invalid correction");
+                controlledCorrectionContinuation =
+                  value.correctionContinuation;
                 const suggestedUnit = c.addressLines.slice(1).join(", ");
                 if (
                   c.addressLines[0].length <= 150 &&
@@ -835,6 +934,8 @@
                   c.postalCode +
                   ". Select Use suggested address below, or enter the correct address above, then review and explicitly submit again. Nothing is adopted automatically.";
               }
+              if (value.status === "REFUSED")
+                controlledCorrectionContinuation = undefined;
               pending = reviewedDraft = reviewedControlledAddress = undefined;
               el("reviewed").checked = false;
               step = "details";
@@ -1289,6 +1390,23 @@
     paint();
   };
   el("reviewed").onchange = paint;
+  for (const id of [
+    "controlledStreet",
+    "controlledUnit",
+    "controlledCity",
+    "controlledPostal",
+  ])
+    el(id).addEventListener("input", () => {
+      if (!controlledCorrectionContinuation) return;
+      controlledSuggestion = undefined;
+      reviewedDraft = reviewedControlledAddress = undefined;
+      el("reviewed").checked = false;
+      el("summary").textContent = "";
+      el("controlledSuggestion").textContent =
+        "Address changed. Review it before submitting the corrected address.";
+      status("Address changed. Review the corrected address before submitting.");
+      paint();
+    });
   el("controlledUseSuggestion").onclick = () => {
     if (busy || pending || !controlledSuggestion) return;
     const selected = controlledSuggestion;
@@ -1376,7 +1494,7 @@
     paint();
   };
   el("retry").onclick = () => {
-    if (!busy && pending && alive()) void run();
+    if (!busy && pending && !verificationLimitReached && alive()) void run();
   };
   el("submitReview").onclick = () => {
     if (busy || pending || !requireControlledPhone()) return;
@@ -1388,21 +1506,40 @@
           reviewedDraft.phone !== controlledVerifiedPhone)) ||
       (!controlledMode() &&
         document.documentElement.dataset.reviewSubmit !== "true")
-    )
+    ) {
+      status(
+        "Your reviewed details are incomplete or changed. Your draft is retained. Choose Edit draft and review them again.",
+      );
       return;
-    submit("submit", {
-      sessionToken: token,
-      requestId: crypto.randomUUID(),
-      expectedRevision: revision,
-      draft: reviewedDraft,
-      confirmed: true,
-      ...(controlledMode()
-        ? { version: 2, confirmedAddress: reviewedControlledAddress }
-        : {}),
-      ...(reviewedAddressSelection
-        ? { addressSelection: reviewedAddressSelection }
-        : {}),
-    });
+    }
+    try {
+      submit("submit", {
+        sessionToken: token,
+        requestId: crypto.randomUUID(),
+        expectedRevision: revision,
+        draft: reviewedDraft,
+        confirmed: true,
+        ...(controlledMode()
+          ? {
+              version: 2,
+              confirmedAddress: reviewedControlledAddress,
+              ...(controlledCorrectionContinuation
+                ? {
+                    correctionContinuation:
+                      controlledCorrectionContinuation,
+                  }
+                : {}),
+            }
+          : {}),
+        ...(reviewedAddressSelection
+          ? { addressSelection: reviewedAddressSelection }
+          : {}),
+      });
+    } catch {
+      status(
+        "We could not prepare your request. Your draft is retained; nothing was submitted. Please review your details again.",
+      );
+    }
   };
   el("forget").onclick = () => {
     if (

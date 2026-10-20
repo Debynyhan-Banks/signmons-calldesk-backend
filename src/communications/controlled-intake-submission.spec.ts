@@ -46,6 +46,27 @@ describe("controlled version2 submission", () => {
       "Unit 2",
     );
   });
+  it("accepts only an opaque correction continuation and copies it", () => {
+    const correctionContinuation = "v1." + "a".repeat(80);
+    expect(
+      controlledIntakeSubmission({
+        ...request(),
+        correctionContinuation,
+      }).correctionContinuation,
+    ).toBe(correctionContinuation);
+    for (const value of [
+      "raw-provider-id",
+      "v1.short",
+      "v1." + "a".repeat(4097),
+      "v1." + "a".repeat(40) + "\n",
+    ])
+      expect(() =>
+        controlledIntakeSubmission({
+          ...request(),
+          correctionContinuation: value,
+        }),
+      ).toThrow();
+  });
   it.each([
     { version: 1 },
     { confirmed: false },

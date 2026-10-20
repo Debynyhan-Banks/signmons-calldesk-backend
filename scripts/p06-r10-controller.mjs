@@ -5,8 +5,12 @@ import { dirname } from "node:path";
 const CONSUMED_PLAN_ID = "b228f87a-ed6e-4253-a62a-b33128bb094a";
 const CONSUMED_REVISION = "signmons-calldesk-staging-app013p06enabled";
 const SERVICE_NAME = "signmons-calldesk-staging";
-const NORMAL_REVISION = "signmons-calldesk-staging-app013bounds";
+const NORMAL_REVISION = "signmons-calldesk-staging-app013dbrot2";
 const TARGET_TAG = "p06-intake-enabled";
+const CONTROLLED_MATERIAL_SECRET =
+  "CONTROLLED_INTAKE_SECRETS_JSON=signmons-staging-controlled-intake-material:1";
+const CHILD_DATABASE_SECRET =
+  "DATABASE_URL=signmons-staging-p06-child-database-url:2";
 const TARGET_ORIGIN =
   "https://p06-intake-enabled---signmons-calldesk-staging-p572d6wipq-ul.a.run.app";
 const exactKeys = (value, keys) =>
@@ -35,6 +39,14 @@ export class R10ControllerStop extends Error {
     this.stage = stage;
     this.closeoutStatus = closeoutStatus;
   }
+}
+
+/** Fixed no-payload bindings for the controlled zero-traffic revision.
+ * The complete value is passed to gcloud --update-secrets as one argument so
+ * the candidate cannot inherit the normal service's production DATABASE_URL.
+ */
+export function r10DeploymentSecretUpdate() {
+  return `${CONTROLLED_MATERIAL_SECRET},${CHILD_DATABASE_SECRET}`;
 }
 
 export function reviewR10ControllerPlan(input) {

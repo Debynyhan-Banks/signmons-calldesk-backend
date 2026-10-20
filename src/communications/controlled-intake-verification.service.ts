@@ -1,4 +1,4 @@
-import { GoogleCorrectionSequence } from "./google-correction-sequence";
+import { GoogleCorrectionContinuation } from "./google-correction-continuation";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -29,7 +29,7 @@ export type ControlledIntakeSubmission = {
   authorityScope: ControlledIntakeScope;
 };
 type Ports = {
-  corrections?: GoogleCorrectionSequence;
+  corrections?: Pick<GoogleCorrectionContinuation, "issue" | "open">;
   prisma: Pick<PrismaService, "$transaction">;
   credentials: CustomerConsentCredentials;
   authority: ControlledIntakeAuthority;
@@ -64,7 +64,11 @@ export class ControlledIntakeVerificationService {
   constructor(private readonly ports?: Ports) {}
 
   async run<T>(
-    input: { sessionToken: string; requestId: string },
+    input: {
+      sessionToken: string;
+      requestId: string;
+      correctionContinuation?: string;
+    },
     consume: (
       check: (tx: Prisma.TransactionClient) => Promise<void>,
       beforeCommit: (tx: Prisma.TransactionClient) => Promise<void>,
@@ -74,10 +78,17 @@ export class ControlledIntakeVerificationService {
     if (
       !p ||
       !input ||
-      Object.keys(input).sort().join() !== "requestId,sessionToken" ||
+      Object.keys(input).sort().join() !==
+        (input.correctionContinuation === undefined
+          ? "requestId,sessionToken"
+          : "correctionContinuation,requestId,sessionToken") ||
       !uuid(input.requestId) ||
       typeof input.sessionToken !== "string" ||
-      input.sessionToken.length > 4096
+      input.sessionToken.length > 4096 ||
+      (input.correctionContinuation !== undefined &&
+        (typeof input.correctionContinuation !== "string" ||
+          input.correctionContinuation.length < 40 ||
+          input.correctionContinuation.length > 4096))
     )
       throw refuse();
     input = { ...input };
@@ -133,21 +144,33 @@ export class ControlledIntakeVerificationService {
         )
           throw refuse();
         const address = initial.snapshot.address;
-        const sequenceKey = JSON.stringify([
-          session.tenantId,
-          session.sessionId,
-          session.conversationId,
-          initial.snapshot.authorityScope.serviceCategoryId,
-          initial.snapshot.policyVersion,
-          initial.snapshot.organizationApprovedAt,
-        ]);
-        const previousResponseId = p.corrections?.take(sequenceKey);
+        const correctionBinding = () => ({
+          tenantId: session.tenantId,
+          sessionId: session.sessionId,
+          conversationId: session.conversationId,
+          serviceCategoryId: initial.snapshot.authorityScope.serviceCategoryId,
+          revision: initial.snapshot.revision,
+          policyVersion: initial.snapshot.policyVersion,
+          organizationApprovedAt: initial.snapshot.organizationApprovedAt,
+        });
+        const previousResponseId = input.correctionContinuation
+          ? p.corrections?.open(
+              input.correctionContinuation,
+              correctionBinding(),
+              session.expiresAt,
+            )
+          : undefined;
         if (
           !Number.isSafeInteger(claim.priorSessionOperations) ||
           claim.priorSessionOperations < 0 ||
+          (claim.priorSessionOperations === 0 &&
+            input.correctionContinuation !== undefined) ||
           (claim.priorSessionOperations > 0 && !previousResponseId)
         )
-          return { status: "REFUSED" as const };
+          return {
+            status: "REFUSED" as const,
+            reason: "ADDRESS_CORRECTION_STATE_UNAVAILABLE" as const,
+          };
         const response = await p.transport.validate(
           {
             address: {
@@ -168,21 +191,36 @@ export class ControlledIntakeVerificationService {
         if (signal.aborted || response.status !== "RESPONSE") throw refuse();
         const preview = reviewGoogleAddressResponse(address, response.body);
         if (preview.status === "CORRECTION_REQUIRED") {
-          if (
-            !previousResponseId &&
-            !p.corrections?.remember(
-              sequenceKey,
-              response.body.responseId,
-              session.expiresAt,
-            )
-          )
-            return { status: "REFUSED" as const };
+          // The trusted claim counts prior operations, excluding this second one.
+          // The executor publishes this refusal only after durable observation.
+          if (claim.priorSessionOperations >= 1)
+            return {
+              status: "REFUSED" as const,
+              reason: "VERIFICATION_LIMIT_REACHED" as const,
+            };
+          const correctionContinuation = previousResponseId
+            ? undefined
+            : p.corrections?.issue(
+                response.body.responseId,
+                correctionBinding(),
+                session.expiresAt,
+              );
+          if (!previousResponseId && !correctionContinuation)
+            return {
+              status: "REFUSED" as const,
+              reason: "ADDRESS_CORRECTION_STATE_UNAVAILABLE" as const,
+            };
           return {
             status: "CORRECTION_REQUIRED" as const,
             candidate: preview.candidate,
+            correctionContinuation: correctionContinuation!,
           };
         }
-        if (preview.status !== "REVIEW") return { status: "REFUSED" as const };
+        if (preview.status !== "REVIEW")
+          return {
+            status: "REFUSED" as const,
+            reason: "ADDRESS_REVIEW_UNAVAILABLE" as const,
+          };
         const checkedAt = Date.now();
         const binding = {
           tenantId: session.tenantId,
@@ -207,12 +245,25 @@ export class ControlledIntakeVerificationService {
           },
           "REVIEW_ONLY",
         );
-        if (area.coverage !== "IN_AREA") return { status: "REFUSED" as const };
+        if (area.coverage !== "IN_AREA")
+          return {
+            status: "REFUSED" as const,
+            reason:
+              area.coverage === "OUT_OF_AREA"
+                ? ("OUTSIDE_SERVICE_AREA" as const)
+                : ("SERVICE_AREA_NOT_CONFIRMED" as const),
+          };
         // Only internal operation identity/time survives this stack frame. No Google body,
         // county, verdict, responseId, provider hash or permanent proof is returned.
         return { status: "READY" as const, claim, checkedAt };
       },
     );
+    if (observed.status === "LIMIT_REACHED")
+      return {
+        status: "REFUSED" as const,
+        reason: "VERIFICATION_LIMIT_REACHED" as const,
+        jobCreated: false as const,
+      };
     if (observed.status !== "OBSERVED")
       return { status: "UNCERTAIN" as const, jobCreated: false as const };
     const value = observed.value;

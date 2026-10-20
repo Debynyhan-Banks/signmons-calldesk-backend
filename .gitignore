@@ -11,6 +11,9 @@ pnpm-debug.log*
 .idea
 .vscode
 .firebase/
+tmp/
+__pycache__/
+*.py[cod]
 
 
 # Snyk Security Extension - AI Rules (auto-generated)

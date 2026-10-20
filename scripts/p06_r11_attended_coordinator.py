@@ -32,14 +32,14 @@ TARGET_ORIGIN = (
     "https://p06-intake-enabled---signmons-calldesk-staging-p572d6wipq-ul.a.run.app"
 )
 FLOW_UPPER_BOUND_MICROS = 500_000
-ACCOUNT_CEILING_MICROS = 5_000_000
-RETAINED_LIABILITY_MICROS = 4_500_000
-RETAINED_HOLD_COUNT = 9
+ACCOUNT_CEILING_MICROS = 6_500_000
+RETAINED_LIABILITY_MICROS = 6_000_000
+RETAINED_HOLD_COUNT = 12
 ADDRESS_COST_MICROS = 100_000
-ADDRESS_ACCOUNT_MICROS = 600_000
-ADDRESS_ACCOUNT_REQUESTS = 6
-ADDRESS_TENANT_MICROS = 600_000
-ADDRESS_TENANT_REQUESTS = 6
+ADDRESS_ACCOUNT_MICROS = 1_000_000
+ADDRESS_ACCOUNT_REQUESTS = 10
+ADDRESS_TENANT_MICROS = 1_000_000
+ADDRESS_TENANT_REQUESTS = 10
 ADDRESS_SESSION_MICROS = 200_000
 ADDRESS_SESSION_REQUESTS = 2
 RUN_RESERVE_SECONDS = 4 * 60
@@ -423,6 +423,26 @@ def coordinate(
         failed_stage = "UNCONFIRMED"
     finally:
         closeout_verified = False
+        if failed_stage is not None:
+            # Reporting is best effort; even a broken terminal must not skip
+            # the existing mandatory closeout path or secret erasure.
+            messages = {
+                "READ_ONLY_QUALIFICATION_PHONE_CAPACITY_INSUFFICIENT":
+                    "Phone capacity exhausted under the approved ceiling.",
+                "READ_ONLY_QUALIFICATION_ADDRESS_CAPACITY_INSUFFICIENT":
+                    "Address capacity exhausted under the approved ceiling.",
+            }
+            message = messages.get(failed_stage, "The attended attempt stopped; the failure is unconfirmed.")
+            link_notice = " No browser link will appear for this attempt." if active_url is None else ""
+            cleanup_notice = (
+                " Keep Terminal open for the scheduled cleanup check."
+                if live_started else ""
+            )
+            try:
+                ports.emit("R11_ATTENDED_ATTEMPT_STOPPED: " + message + link_notice
+                           + cleanup_notice + " Do not rerun.")
+            except BaseException:
+                pass
         if live_started and not closeout_attempted:
             closeout_attempted = True
             try:
@@ -570,7 +590,45 @@ class ProductionPorts:
                 self.child = None
 
     def open_login(self, secret: bytearray) -> None:
-        self._secret_mode("--open-login", secret, b"R10_DATABASE_LOGIN_OPEN\n")
+        started_at = time.time()
+        try:
+            self._secret_mode("--open-login", secret, b"R10_DATABASE_LOGIN_OPEN\n")
+        except CoordinatorStop as error:
+            if error.stage == "CONTROLLER_OPEN_LOGIN":
+                stage = self._capacity_stop_stage(started_at, time.time())
+                if stage is not None:
+                    raise CoordinatorStop(stage) from error
+            raise
+
+    def _capacity_stop_stage(self, started_at: float, finished_at: float) -> str | None:
+        """Explain a fresh same-plan refusal only; never grant cleanup authority."""
+        try:
+            descriptor = os.open(
+                self.review.root / "qualification-decision.json",
+                os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+            )
+            with os.fdopen(descriptor, "rb") as receipt:
+                info = os.fstat(receipt.fileno())
+                if not stat.S_ISREG(info.st_mode) or info.st_size > 16384:
+                    return None
+                data = receipt.read(16385)
+            if len(data) > 16384:
+                return None
+            value = json.loads(data)
+            if value["version"] != 1 or value["planId"] != self.review.plan_id:
+                return None
+            observed = datetime.fromisoformat(value["observedAt"].replace("Z", "+00:00"))
+            if observed.tzinfo is None or not started_at <= observed.timestamp() <= finished_at:
+                return None
+            decision = value["decision"]
+            reason = decision["reason"]
+            if decision["status"] != "STOP" or reason not in {
+                "PHONE_CAPACITY_INSUFFICIENT", "ADDRESS_CAPACITY_INSUFFICIENT"
+            }:
+                return None
+            return "READ_ONLY_QUALIFICATION_" + reason
+        except Exception:
+            return None
 
     def run(self, secret: bytearray, expected_url: str) -> str:
         expected = ("R10_ACTIVE_READY " + expected_url + "\n").encode("utf-8")

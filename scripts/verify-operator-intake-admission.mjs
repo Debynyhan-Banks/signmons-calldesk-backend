@@ -955,6 +955,7 @@ export async function verifyOperatorIntakeAdmission({
     });
     const composition = new ControlledIntakeComposition({
       prisma,
+      cipher,
       credentials,
       intake: controlled,
       tenantId,

@@ -1,3 +1,4 @@
+import { controlledIntakeConflict } from "./controlled-intake-refusal";
 import { AddressOperationExecutor } from "./address-operation-executor";
 
 describe("mock-only bounded address executor", () => {
@@ -17,6 +18,65 @@ describe("mock-only bounded address executor", () => {
   });
   afterEach(() => jest.useRealTimers());
   const executor = () => new AddressOperationExecutor({ execute, complete });
+  it("recognizes only trusted controlled reserve limit refusal", async () => {
+    const work = jest.fn();
+    execute.mockRejectedValueOnce(
+      controlledIntakeConflict("VERIFICATION_LIMIT_REACHED", "private"),
+    );
+    const model = new AddressOperationExecutor({
+      execute,
+      complete,
+      executeControlled: execute,
+      completeControlled: complete,
+    });
+    expect(await model.runControlled(input, work)).toEqual({
+      status: "LIMIT_REACHED",
+    });
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(work).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
+  it("a marked claim failure remains uncertain", async () => {
+    const work = jest.fn();
+    execute
+      .mockResolvedValueOnce(claim)
+      .mockRejectedValueOnce(
+        controlledIntakeConflict("VERIFICATION_LIMIT_REACHED", "private"),
+      );
+    const model = new AddressOperationExecutor({
+      execute,
+      complete,
+      executeControlled: execute,
+      completeControlled: complete,
+    });
+    expect(await model.runControlled(input, work)).toEqual({
+      status: "UNCERTAIN",
+    });
+    expect(work).not.toHaveBeenCalled();
+  });
+  it.each([
+    new Error("limit"),
+    { stage: "VERIFICATION_LIMIT_REACHED", status: 409 },
+  ])("untrusted reserve errors remain uncertain", async (error) => {
+    execute.mockRejectedValueOnce(error);
+    const model = new AddressOperationExecutor({
+      execute,
+      complete,
+      executeControlled: execute,
+      completeControlled: complete,
+    });
+    expect(await model.runControlled(input, jest.fn())).toEqual({
+      status: "UNCERTAIN",
+    });
+  });
+  it("fixture mode cannot receive the controlled classification", async () => {
+    execute.mockRejectedValueOnce(
+      controlledIntakeConflict("VERIFICATION_LIMIT_REACHED", "private"),
+    );
+    expect(
+      await executor().run(input, { mode: "FIXTURE_ONLY", run: jest.fn() }),
+    ).toEqual({ status: "UNCERTAIN" });
+  });
   it("publishes only after durable observation", async () => {
     const run = jest.fn().mockResolvedValue("candidate");
     expect(await executor().run(input, { mode: "FIXTURE_ONLY", run })).toEqual({
@@ -146,5 +206,28 @@ describe("mock-only bounded address executor", () => {
       run: jest.fn().mockResolvedValue("candidate"),
     });
     expect(execute).toHaveBeenNthCalledWith(2, { ...input, action: "claim" });
+  });
+  it("projects the strict ledger identity from a controlled correction request", async () => {
+    execute.mockResolvedValue({ ...claim, fixtureOnly: false });
+    const model = new AddressOperationExecutor({
+      execute,
+      complete,
+      executeControlled: execute,
+      completeControlled: complete,
+    });
+    const work = jest.fn().mockResolvedValue("candidate");
+
+    await model.runControlled(
+      { ...input, correctionContinuation: "opaque-browser-value" },
+      work,
+    );
+
+    expect(execute).toHaveBeenNthCalledWith(1, { ...input, action: "reserve" });
+    expect(execute).toHaveBeenNthCalledWith(2, { ...input, action: "claim" });
+    expect(complete).toHaveBeenCalledWith({
+      ...input,
+      attemptId: "attempt",
+      state: "OBSERVED",
+    });
   });
 });

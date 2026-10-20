@@ -10,7 +10,9 @@ import tempfile
 import termios
 import time
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -191,8 +193,163 @@ class CoordinatorCoreTest(unittest.TestCase):
         )
         self.assertFalse(result.closeout_verified)
         self.assertFalse(result.live_started)
-        self.assertEqual(ports.calls, ["check"])
+        self.assertEqual(ports.calls, ["check", "emit:R11_ATTENDED_ATTEMPT_STOPPED:"])
         self.assertEqual(ports.prompt_count, 0)
+
+
+class ImmediateStopTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.review = review(self.root)
+        self.receipt = self.root / "qualification-decision.json"
+        self.ports = module.ProductionPorts(self.review)
+
+    def write_receipt(self, **overrides):
+        value = {
+            "version": 1,
+            "planId": self.review.plan_id,
+            "observedAt": datetime.fromtimestamp(START + 1, timezone.utc).isoformat(),
+            "decision": {"status": "STOP", "reason": "PHONE_CAPACITY_INSUFFICIENT"},
+        }
+        value.update(overrides)
+        self.receipt.write_text(json.dumps(value))
+
+    def test_fresh_capacity_receipt_classifies_both_supported_limits(self):
+        for reason in ("PHONE_CAPACITY_INSUFFICIENT", "ADDRESS_CAPACITY_INSUFFICIENT"):
+            with self.subTest(reason=reason):
+                self.write_receipt(decision={"status": "STOP", "reason": reason})
+                self.assertEqual(self.ports._capacity_stop_stage(START, START + 2),
+                                 "READ_ONLY_QUALIFICATION_" + reason)
+
+    def test_stale_future_foreign_or_unknown_receipt_is_unconfirmed(self):
+        for overrides in (
+            {"planId": "other-plan"}, {"version": 2},
+            {"observedAt": datetime.fromtimestamp(START - 1, timezone.utc).isoformat()},
+            {"observedAt": datetime.fromtimestamp(START + 3, timezone.utc).isoformat()},
+            {"observedAt": "2026-10-16T13:51:21"},
+            {"decision": {"status": "QUALIFIED", "reason": "PHONE_CAPACITY_INSUFFICIENT"}},
+            {"decision": {"status": "STOP", "reason": "PRIVATE_CANARY"}},
+            {"decision": None},
+        ):
+            with self.subTest(overrides=overrides):
+                self.write_receipt(**overrides)
+                self.assertIsNone(self.ports._capacity_stop_stage(START, START + 2))
+
+    def test_missing_malformed_oversized_symlink_and_fifo_are_unconfirmed(self):
+        self.assertIsNone(self.ports._capacity_stop_stage(START, START + 2))
+        for data in ("{PRIVATE_CANARY", "[]", "x" * 16385):
+            self.receipt.write_text(data)
+            self.assertIsNone(self.ports._capacity_stop_stage(START, START + 2))
+        self.receipt.unlink()
+        target = self.root / "target.json"
+        target.write_text("PRIVATE_CANARY")
+        self.receipt.symlink_to(target)
+        self.assertIsNone(self.ports._capacity_stop_stage(START, START + 2))
+        self.receipt.unlink()
+        os.mkfifo(self.receipt)
+        self.assertIsNone(self.ports._capacity_stop_stage(START, START + 2))
+
+    def test_open_login_explains_only_its_current_failed_invocation(self):
+        self.write_receipt()
+        with patch.object(module.time, "time", side_effect=[START, START + 2]), patch.object(
+            self.ports, "_secret_mode", side_effect=module.CoordinatorStop("CONTROLLER_OPEN_LOGIN")
+        ) as child:
+            with self.assertRaises(module.CoordinatorStop) as caught:
+                self.ports.open_login(bytearray(b"FICTIONAL_ADMIN_CANARY"))
+        self.assertEqual(caught.exception.stage, "READ_ONLY_QUALIFICATION_PHONE_CAPACITY_INSUFFICIENT")
+        self.assertEqual(child.call_count, 1)
+        # A successful controller response cannot be overruled by a receipt.
+        with patch.object(self.ports, "_secret_mode", return_value=b"R10_DATABASE_LOGIN_OPEN\n"):
+            self.ports.open_login(bytearray(b"FICTIONAL_ADMIN_CANARY"))
+
+    def test_real_child_failure_receipt_survives_sanitized_protocol(self):
+        child = self.root / "r10-control.mjs"
+        child.write_text(
+            "import sys,json\n"
+            "from pathlib import Path\n"
+            "from datetime import datetime,timezone\n"
+            "assert sys.argv[1]=='--open-login'\n"
+            "print('READY',flush=True)\n"
+            "assert sys.stdin.buffer.readline()==b'FICTIONAL_ADMIN_CANARY\\n'\n"
+            "receipt={'version':1,'planId':" + repr(self.review.plan_id) + ","
+            "'observedAt':datetime.now(timezone.utc).isoformat(),"
+            "'decision':{'status':'STOP','reason':'PHONE_CAPACITY_INSUFFICIENT'}}\n"
+            "Path(__file__).with_name('qualification-decision.json').write_text(json.dumps(receipt))\n"
+            "print('PRIVATE_CHILD_ERROR_CANARY',file=sys.stderr)\n"
+            "raise SystemExit(1)\n"
+        )
+        ports = module.ProductionPorts(self.review, node=Path(sys.executable))
+        with self.assertRaises(module.CoordinatorStop) as caught:
+            ports.open_login(bytearray(b"FICTIONAL_ADMIN_CANARY"))
+        self.assertEqual(caught.exception.stage, "READ_ONLY_QUALIFICATION_PHONE_CAPACITY_INSUFFICIENT")
+        self.assertNotIn("PRIVATE_CHILD_ERROR_CANARY", str(caught.exception))
+        self.assertIsNone(ports.child)
+
+    def test_capacity_notice_precedes_all_cleanup_waits_and_never_launches(self):
+        clock = FakeClock(START)
+        ports = FakePorts()
+        notices = []
+        def stopped(_secret):
+            ports.calls.append("open_login")
+            raise module.CoordinatorStop("READ_ONLY_QUALIFICATION_PHONE_CAPACITY_INSUFFICIENT")
+        ports.open_login = stopped
+        ports.emit = lambda line: notices.append((clock.now(), line))
+        clock.on_sleep = lambda _now, _duration: self.assertTrue(notices)
+        result = module.coordinate(self.review, ports, now=clock.now, sleep=clock.sleep)
+        self.assertEqual(notices[0][0], START)
+        self.assertIn("Phone capacity exhausted", notices[0][1])
+        self.assertIn("No browser link will appear", notices[0][1])
+        self.assertIn("Do not rerun", notices[0][1])
+        self.assertNotIn("FICTIONAL_ADMIN_CANARY", str(notices))
+        self.assertNotIn("run", ports.calls)
+        self.assertNotIn("wait_browser", ports.calls)
+        self.assertEqual(ports.calls.count("closeout"), 1)
+        self.assertTrue(result.closeout_verified)
+        self.assertEqual(clock.now(), self.review.runtime_start)
+        self.assertEqual(ports.secret, bytearray(b"\0" * 22))
+
+    def test_unknown_failure_is_not_rendered_and_closeout_still_runs(self):
+        clock = FakeClock(START)
+        ports = FakePorts()
+        notices = []
+        def stopped(_secret):
+            raise module.CoordinatorStop("SECRET_AND_CUSTOMER_CANARY")
+        ports.open_login = stopped
+        ports.emit = notices.append
+        result = module.coordinate(self.review, ports, now=clock.now, sleep=clock.sleep)
+        self.assertIn("failure is unconfirmed", notices[0])
+        self.assertNotIn("SECRET_AND_CUSTOMER_CANARY", str(notices))
+        self.assertTrue(result.closeout_verified)
+
+    def test_broken_failure_output_cannot_skip_cleanup_or_secret_erasure(self):
+        clock = FakeClock(START)
+        ports = FakePorts(fail="open_login")
+        def emit(line):
+            if line.startswith("R11_ATTENDED_ATTEMPT_STOPPED"):
+                raise BrokenPipeError("PRIVATE_CANARY")
+        ports.emit = emit
+        result = module.coordinate(self.review, ports, now=clock.now, sleep=clock.sleep)
+        self.assertTrue(result.closeout_verified)
+        self.assertEqual(ports.calls.count("closeout"), 1)
+        self.assertEqual(ports.secret, bytearray(b"\0" * 22))
+
+    def test_uncertain_failure_and_failed_cleanup_never_claim_closed(self):
+        clock = FakeClock(START)
+        ports = FakePorts(fail="closeout")
+        notices = []
+        def stopped(_secret):
+            raise RuntimeError("PRIVATE_CANARY")
+        ports.open_login = stopped
+        ports.emit = notices.append
+        result = module.coordinate(self.review, ports, now=clock.now, sleep=clock.sleep)
+        self.assertFalse(result.closeout_verified)
+        self.assertEqual(result.failed_stage, "CLOSEOUT_UNCONFIRMED")
+        self.assertEqual(ports.calls.count("closeout"), 1)
+        self.assertNotIn("R12_RUNTIME_CLOSEOUT_VERIFIED", str(notices))
+        self.assertNotIn("PRIVATE_CANARY", str(notices))
+        self.assertEqual(ports.secret, bytearray(b"\0" * 22))
 
 
 class LocalReviewTest(unittest.TestCase):
@@ -224,14 +381,14 @@ class LocalReviewTest(unittest.TestCase):
             "runtimeEnd": "2026-09-22T13:30:00.000Z",
             "closeoutEnd": "2026-09-22T13:45:00.000Z",
             "phoneFlowUpperBoundMicros": 500000,
-            "phoneAccountCeilingMicros": 5000000,
-            "retainedPhoneLiabilityMicros": 4500000,
-            "retainedPhoneHoldCount": 9,
+            "phoneAccountCeilingMicros": 6500000,
+            "retainedPhoneLiabilityMicros": 6000000,
+            "retainedPhoneHoldCount": 12,
             "addressCostMicros": 100000,
-            "addressAccountMicros": 600000,
-            "addressAccountRequestLimit": 6,
-            "addressTenantMicros": 600000,
-            "addressTenantRequestLimit": 6,
+            "addressAccountMicros": 1000000,
+            "addressAccountRequestLimit": 10,
+            "addressTenantMicros": 1000000,
+            "addressTenantRequestLimit": 10,
             "addressSessionMicros": 200000,
             "addressSessionRequestLimit": 2,
             "automaticRetryAllowed": False,
@@ -253,12 +410,12 @@ class LocalReviewTest(unittest.TestCase):
                 "revision": self.plan["revision"],
                 "phone": {
                     "flowUpperBoundMicros": 500000,
-                    "accountCeilingMicros": 5000000,
+                    "accountCeilingMicros": 6500000,
                 },
                 "addressPolicy": {
                     "costMicros": 100000,
-                    "account": {"micros": 600000, "requests": 6},
-                    "tenant": {"micros": 600000, "requests": 6},
+                    "account": {"micros": 1000000, "requests": 10},
+                    "tenant": {"micros": 1000000, "requests": 10},
                     "session": {"micros": 200000, "requests": 2},
                 },
             }
@@ -325,11 +482,29 @@ class LocalReviewTest(unittest.TestCase):
             self.run_review()
         self.assertEqual(caught.exception.stage, "MARKER_REUSE")
 
-    def test_consumed_eight_hold_policy_refuses_new_nine_hold_packet(self):
-        self.plan["phoneAccountCeilingMicros"] = 4500000
-        self.plan["retainedPhoneLiabilityMicros"] = 4000000
-        self.plan["retainedPhoneHoldCount"] = 8
-        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 4500000
+    def test_consumed_ten_hold_policy_refuses_new_twelve_hold_packet(self):
+        self.plan["phoneAccountCeilingMicros"] = 5500000
+        self.plan["retainedPhoneLiabilityMicros"] = 5000000
+        self.plan["retainedPhoneHoldCount"] = 10
+        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 5500000
+        self.write_private("r10-review-plan.json", self.plan)
+        self.write_private("runtime-packet.json", self.packet)
+        with self.assertRaises(module.CoordinatorStop) as caught:
+            self.run_review()
+        self.assertEqual(caught.exception.stage, "PLAN_BINDING")
+
+    def test_consumed_enabled30_policy_refuses_new_twelve_hold_packet(self):
+        self.plan["phoneAccountCeilingMicros"] = 6000000
+        self.plan["retainedPhoneLiabilityMicros"] = 5500000
+        self.plan["retainedPhoneHoldCount"] = 11
+        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 6000000
+        for scope in ("Account", "Tenant"):
+            self.plan[f"address{scope}Micros"] = 800000
+            self.plan[f"address{scope}RequestLimit"] = 8
+            self.packet["envelope"]["addressPolicy"][scope.lower()] = {
+                "micros": 800000,
+                "requests": 8,
+            }
         self.write_private("r10-review-plan.json", self.plan)
         self.write_private("runtime-packet.json", self.packet)
         with self.assertRaises(module.CoordinatorStop) as caught:
@@ -347,10 +522,10 @@ class LocalReviewTest(unittest.TestCase):
             self.run_review()
         self.assertEqual(caught.exception.stage, "PLAN_BINDING")
 
-        self.plan["phoneAccountCeilingMicros"] = 5000000
-        self.plan["retainedPhoneLiabilityMicros"] = 4500000
-        self.plan["retainedPhoneHoldCount"] = 9
-        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 5000000
+        self.plan["phoneAccountCeilingMicros"] = 6500000
+        self.plan["retainedPhoneLiabilityMicros"] = 6000000
+        self.plan["retainedPhoneHoldCount"] = 12
+        self.packet["envelope"]["phone"]["accountCeilingMicros"] = 6500000
         self.write_private("r10-review-plan.json", self.plan)
         self.write_private("runtime-packet.json", self.packet)
         self.binding["files"]["r10-control.mjs"] = "0" * 64
@@ -366,7 +541,7 @@ class LocalReviewTest(unittest.TestCase):
             self.run_review()
         self.assertEqual(caught.exception.stage, "PLAN_BINDING")
 
-        self.plan["addressAccountRequestLimit"] = 6
+        self.plan["addressAccountRequestLimit"] = 10
         self.write_private("r10-review-plan.json", self.plan)
         self.packet["envelope"]["addressPolicy"]["tenant"]["requests"] = 3
         self.write_private("runtime-packet.json", self.packet)

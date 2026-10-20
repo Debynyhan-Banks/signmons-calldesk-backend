@@ -1,5 +1,6 @@
 import { ServiceUnavailableException } from "@nestjs/common";
-import { GoogleCorrectionSequence } from "./google-correction-sequence";
+import { GoogleCorrectionContinuation } from "./google-correction-continuation";
+import { ConversationMemoryCipher } from "../logging/conversation-memory-cipher.service";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
@@ -34,6 +35,7 @@ type Resources = {
     tx: Prisma.TransactionClient,
     submission: ControlledIntakeSubmission,
   ) => Promise<ControlledAddressOperationPolicy | null>;
+  cipher: Pick<ConversationMemoryCipher, "encrypt" | "decrypt">;
 };
 
 /** Server-owned composition only. No environment loader, clients, listener or DI
@@ -41,8 +43,12 @@ type Resources = {
  * Receipt replay happens in intake before constructing verification or its ledger.
  */
 export class ControlledIntakeComposition {
-  private readonly corrections = new GoogleCorrectionSequence();
-  constructor(private readonly resources?: Resources) {}
+  private readonly corrections?: GoogleCorrectionContinuation;
+  constructor(private readonly resources?: Resources) {
+    this.corrections = resources
+      ? new GoogleCorrectionContinuation(resources.cipher)
+      : undefined;
+  }
 
   async submit(value: unknown) {
     const p = this.resources;

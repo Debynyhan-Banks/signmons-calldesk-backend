@@ -1,0 +1,20 @@
+# APP-013 / 2B / P06-R11 — existing-image release proposal
+
+## Current: owner approved; enabled32 installed and checked — October 1 evening
+
+The concrete proposal is approved for 9:30–10:15 p.m. Eastern, runtime 9:45–10:00, with the $2.70 additional allowance. Qualification, exact binding and installation passed. Current evidence is evidence/APP-013/p06-r11-enabled32-preparation-20261001.md. No live attempt has occurred; owner-operated input/browser and verified outcome/closeout remain. P06 12/14 and accepted milestones unchanged. No scope deviation from the approved proposal; historical manual-build deviation retained.
+
+## Historical: repaired-image release proposal ready; prospective owner decision pending — October 1 evening
+
+APP013_P06_R11_SUBMIT_RELEASE_PROPOSAL_20261001.md specifies one existing-image release and attendedjourney/cleanup, proposedadditional$2.70allowance(runtime2.00,phone0.50,address0.20), phoneceiling7.00with13/6.50retained, address8/0.80retained and10/1.00ceilingsunchanged. Uses image6a7cb0...1e0c6/builddce97411-6f76-4d85-b86e-3f8aadc23c86; no rebuild. Current read receipt17:07:05UTC remainsconsumed; do not rerun. Future45minuteEasternwindow notselected; exact qualification must still match beforeLOGIN. Accepted localrepair stayscomplete.
+
+Review-only isolated hostcandidate fromd712843 at /private/tmp/signmons-submit-host-candidate-20261001 changes only twohostfiles;18focusedtests and33packet/controllertests pass. Currentworktree/limits/consumedpackages untouched. Initial missingdependency Nodeattempt retained; reuse matching installeddependencies/compiledoutput resolved it. Independentreview found no materialissue; early/latecloseout authorizationpaths remain and must be checked in finalboundpackage. Exact558file archive/source/localmanualstaging correspondence verified. No externalquery oraction in this preparation.
+
+Explicit prospective amendment: replace obsolete automatic-build receipt dependency with strict qualifiedmanualbuild evidence (exactbuild,resolvedsourcegeneration,558filecontents/modes,outputdigest/configuration/identity and currentthreegrantabsence). Source qualification and receiptverifier tests still required before deployment; no staleautomaticreceipt may substitute. Preserve manualbuild11:52:38Eastern timing/method deviation without retroactiveapproval. Concrete ownerprocedure/proposalinputs/proposedhostdiff at /private/tmp/r11-submit-release-decision-20261001; statusPROPOSAL_NOT_EXECUTABLE, noinstall/approval/window invented.
+
+Preparationreview complete. Remaining: owner consolidateddecision on listedscope/limits/operatingallowance and futurewindow; implementer qualification, exact privatebindings/focusedgates/installation; owner privateinput/browser; correlatedoutcome and verifiedshutdown/acceptance. Nextobservable result afterapproval is qualifiedexistingimage and installedcheckedone-shotpackage, or precisequalificationstop. No promisedsectioncompletion. P0612/14,R11/fullR12open;accepted1A/1B/2A3/8unchanged. No scope deviation in localpreparation; proposed external/manualreceipt amendment remainsunexecuted and historicalmanualbuilddeviation disclosed.
+
+
+Currentsavedbalance13holds/6.50 and address8/0.80; runtimeclosed verified by completed reader at1:07p.m.Eastern, not refreshed tonight. Proposal localcandidate is preparation only, no policy authority. HostpatchSHA256 84260e2c1e463d8295e4b7b5a9060f8bfed208661af270a5667409257af4bea3; sourceSHA d7128435f55421438b64150a522c44ddea209df7. Exact changed-file diff and logs retained in proposal directory.
+
+Final preparation gates passed: frozenbaseline, completeconsistency, architecture,21governancesafeguardtests and both whitespacechecks. Proposed ownerwindow after preparation: October1,9:30–10:15p.m.Eastern; runtime9:45–10:00, fullcloseout10:00–10:15. UTC October2,01:30–02:15/runtime01:45–02:00. Owner has not accepted this proposedwindow; approval and all actionflags remainpending/false. If preparation/qualification cannot pass before that slot, no launch or implicitextension.

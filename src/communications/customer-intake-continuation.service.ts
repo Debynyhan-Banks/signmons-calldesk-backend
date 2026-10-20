@@ -308,7 +308,13 @@ export class CustomerIntakeContinuationService {
           throw markControlledIntakeRefusal(error, "INTAKE_STATE_CHANGED");
         });
       const resultPromise = verification.run(
-        { sessionToken: input.sessionToken, requestId: input.requestId },
+        {
+          sessionToken: input.sessionToken,
+          requestId: input.requestId,
+          ...(input.correctionContinuation
+            ? { correctionContinuation: input.correctionContinuation }
+            : {}),
+        },
         (check, beforeCommit) =>
           this.transaction(async (tx) => {
             await check(tx);

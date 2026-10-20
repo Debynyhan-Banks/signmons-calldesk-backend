@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await -- Synthetic transaction/provider ports, no network. */
 import { randomUUID } from "node:crypto";
-import { GoogleCorrectionSequence } from "./google-correction-sequence";
 import { Prisma } from "@prisma/client";
 import {
   ControlledIntakeVerificationService,
@@ -10,9 +9,13 @@ import { ControlledIntakeAuthority } from "./controlled-intake-authority";
 import { CustomerConsentCredentials } from "./customer-consent-credentials";
 import { AddressOperationLedger } from "./address-operation-ledger";
 import { PrismaService } from "../prisma/prisma.service";
-import { controlledIntakeRefusalStage } from "./controlled-intake-refusal";
+import {
+  controlledIntakeConflict,
+  controlledIntakeRefusalStage,
+} from "./controlled-intake-refusal";
 
-describe("request-local controlled verification connection", () => {
+describe.each(["H", "S"])("controlled verification (%s)", (recordType) => {
+  let capacityRefusal = false;
   const tenantId = randomUUID(),
     sessionId = randomUUID(),
     conversationId = randomUUID(),
@@ -20,6 +23,7 @@ describe("request-local controlled verification connection", () => {
   const now = Date.now(),
     approval = new Date(now - 1000).toISOString();
   const input = { sessionToken: "private-token", requestId: randomUUID() };
+  const correctionContinuation = "v1." + "a".repeat(80);
   let submission: ControlledIntakeSubmission,
     clock: number,
     inTx: boolean,
@@ -63,7 +67,7 @@ describe("request-local controlled verification connection", () => {
         uspsData: {
           dpvConfirmation: "Y",
           dpvCmra: "N",
-          addressRecordType: "H",
+          addressRecordType: recordType,
           fipsCountyCode: "035",
           county: "Cuyahoga",
         },
@@ -71,7 +75,26 @@ describe("request-local controlled verification connection", () => {
       },
     },
   });
+  const correctionResponse = () => {
+    const value = response();
+    value.body.result.address.postalAddress.addressLines = [
+      "125 Fictional Street",
+    ];
+    return value;
+  };
+  const correctedSubmission = () => {
+    claim.priorSessionOperations = 1;
+    submission.intentId = randomUUID();
+    submission.address.street = "125 Fictional Street";
+    claim.intentId = submission.intentId;
+    return {
+      ...input,
+      requestId: submission.intentId,
+      correctionContinuation,
+    };
+  };
   beforeEach(() => {
+    capacityRefusal = false;
     clock = now;
     inTx = false;
     enabled = true;
@@ -175,12 +198,28 @@ describe("request-local controlled verification connection", () => {
       },
     } as CustomerConsentCredentials;
     const ledger = {
-      executeControlled: async () => ({ ...claim }),
+      executeControlled: async () => {
+        if (capacityRefusal)
+          throw controlledIntakeConflict(
+            "VERIFICATION_LIMIT_REACHED",
+            "private",
+          );
+        return { ...claim };
+      },
       completeControlled: complete,
       checkControlledObservation: checkObservation,
     } as unknown as AddressOperationLedger;
     service = new ControlledIntakeVerificationService({
-      corrections: new GoogleCorrectionSequence(),
+      corrections: {
+        issue: (responseId) =>
+          responseId === response().body.responseId
+            ? correctionContinuation
+            : undefined,
+        open: (token) =>
+          token === correctionContinuation
+            ? response().body.responseId
+            : undefined,
+      },
       prisma,
       credentials,
       authority,
@@ -198,6 +237,17 @@ describe("request-local controlled verification connection", () => {
     );
   });
   afterEach(() => jest.restoreAllMocks());
+  it("returns a safe definite capacity refusal without provider or consumer", async () => {
+    capacityRefusal = true;
+    expect(await service.run(input, consumer)).toEqual({
+      status: "REFUSED",
+      reason: "VERIFICATION_LIMIT_REACHED",
+      jobCreated: false,
+    });
+    expect(validate).not.toHaveBeenCalled();
+    expect(consumer).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
   it("defaults disabled and rejects expanded client input", async () => {
     await expect(
       new ControlledIntakeVerificationService().run(input, consumer),
@@ -267,26 +317,30 @@ describe("request-local controlled verification connection", () => {
     });
     await expect(service.run(input, consumer)).rejects.toThrow();
   });
-  it("returns only an allowlisted temporary correction, never a job", async () => {
-    validate.mockImplementation(async () => {
-      const r = response();
-      r.body.result.address.postalAddress.addressLines = [
-        "125 Fictional Street",
-      ];
-      return r;
-    });
+  it("allows one reviewed correction and consumes a valid second response once", async () => {
+    validate.mockImplementation(async () => correctionResponse());
     const result = await service.run(input, consumer);
     expect(result).toMatchObject({
       status: "CORRECTION_REQUIRED",
       jobCreated: false,
+      correctionContinuation,
     });
     expect(JSON.stringify(result)).not.toContain(response().body.responseId);
     expect(consumer).not.toHaveBeenCalled();
-    claim.priorSessionOperations = 1;
-    submission.intentId = randomUUID();
-    claim.intentId = submission.intentId;
-    validate.mockImplementation(async () => response());
-    await service.run({ ...input, requestId: randomUUID() }, consumer);
+    const corrected = correctedSubmission();
+    validate.mockImplementation(async () => {
+      const value = correctionResponse();
+      value.body.result.address.addressComponents.find(
+        (component) => component.componentType === "street_number",
+      )!.componentName.text = "125";
+      return value;
+    });
+    expect(await service.run(corrected, consumer)).toEqual({
+      status: "CONSUMED",
+      value: { internalTest: "checked", jobCreated: false },
+    });
+    expect(validate).toHaveBeenCalledTimes(2);
+    expect(consumer).toHaveBeenCalledTimes(1);
     expect((validate.mock.calls as unknown[][])[1][0]).toMatchObject({
       previousResponseId: "11111111-1111-4111-8111-111111111111",
     });
@@ -299,10 +353,60 @@ describe("request-local controlled verification connection", () => {
     ).toMatchObject({ status: "REFUSED" });
     expect(validate).toHaveBeenCalledTimes(calls);
   });
+  it("ends a durably observed second correction without a candidate or consumption", async () => {
+    validate.mockImplementation(async () => correctionResponse());
+    expect(await service.run(input, consumer)).toMatchObject({
+      status: "CORRECTION_REQUIRED",
+      jobCreated: false,
+    });
+    const result = await service.run(correctedSubmission(), consumer);
+    expect(result).toEqual({
+      status: "REFUSED",
+      reason: "VERIFICATION_LIMIT_REACHED",
+      jobCreated: false,
+    });
+    expect(validate).toHaveBeenCalledTimes(2);
+    expect(complete).toHaveBeenCalledTimes(2);
+    expect(complete).toHaveBeenLastCalledWith(
+      expect.objectContaining({ state: "OBSERVED" }),
+    );
+    expect(consumer).not.toHaveBeenCalled();
+  });
+  it.each(["rejected completion", "unconfirmed completion", "deadline"])(
+    "keeps a second correction uncertain after %s without inviting another submit",
+    async (failure) => {
+      validate.mockImplementation(async () => correctionResponse());
+      expect(await service.run(input, consumer)).toMatchObject({
+        status: "CORRECTION_REQUIRED",
+      });
+      const corrected = correctedSubmission();
+      if (failure === "rejected completion")
+        complete.mockRejectedValue(Error("private completion failure"));
+      else if (failure === "unconfirmed completion")
+        complete.mockResolvedValue({ completed: false, state: "OBSERVED" });
+      else
+        validate.mockImplementation(async () => {
+          clock = now + 8000;
+          return correctionResponse();
+        });
+      expect(await service.run(corrected, consumer)).toEqual({
+        status: "UNCERTAIN",
+        jobCreated: false,
+      });
+      expect(validate).toHaveBeenCalledTimes(2);
+      expect(consumer).not.toHaveBeenCalled();
+    },
+  );
   it("refuses a follow-up after cache loss without a provider call", async () => {
     claim.priorSessionOperations = 1;
-    expect(await service.run(input, consumer)).toMatchObject({
+    expect(
+      await service.run(
+        { ...input, correctionContinuation: "v1." + "b".repeat(80) },
+        consumer,
+      ),
+    ).toEqual({
       status: "REFUSED",
+      reason: "ADDRESS_CORRECTION_STATE_UNAVAILABLE",
       jobCreated: false,
     });
     expect(validate).not.toHaveBeenCalled();
@@ -318,13 +422,17 @@ describe("request-local controlled verification connection", () => {
     });
     expect(await service.run(input, consumer)).toEqual({
       status: "REFUSED",
+      reason: "ADDRESS_CORRECTION_STATE_UNAVAILABLE",
       jobCreated: false,
     });
     expect(consumer).not.toHaveBeenCalled();
   });
-  it.each(["093", "999"])(
-    "outside or unknown county %s refuses without exposing county",
-    async (code) => {
+  it.each([
+    ["093", "OUTSIDE_SERVICE_AREA"],
+    ["999", "SERVICE_AREA_NOT_CONFIRMED"],
+  ] as const)(
+    "outside or unknown county %s returns safe category %s",
+    async (code, reason) => {
       validate.mockImplementation(async () => {
         const r = response();
         r.body.result.uspsData.fipsCountyCode = code;
@@ -333,11 +441,25 @@ describe("request-local controlled verification connection", () => {
       });
       expect(await service.run(input, consumer)).toEqual({
         status: "REFUSED",
+        reason,
         jobCreated: false,
       });
       expect(consumer).not.toHaveBeenCalled();
     },
   );
+  it("returns a safe category when provider semantics cannot be reviewed", async () => {
+    validate.mockImplementation(async () => {
+      const r = response();
+      r.body.result.uspsData.dpvConfirmation = "N";
+      return r;
+    });
+    expect(await service.run(input, consumer)).toEqual({
+      status: "REFUSED",
+      reason: "ADDRESS_REVIEW_UNAVAILABLE",
+      jobCreated: false,
+    });
+    expect(consumer).not.toHaveBeenCalled();
+  });
   it("timeout/late outcome stays uncertain and does not retry", async () => {
     validate.mockImplementation(async () => {
       clock = now + 8000;

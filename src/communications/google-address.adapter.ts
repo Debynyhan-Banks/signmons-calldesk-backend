@@ -29,6 +29,48 @@ const text = (value: unknown, max: number): value is string =>
   value.trim() === value &&
   !/[\p{Cc}\p{Cf}]/u.test(value);
 
+const normalize = (value: string) =>
+  value.toUpperCase().trim().replace(/\s+/g, " ");
+// Owner-approved finite pairs from USPS Publication 28, Appendix C1.
+// These apply only to a route's final suffix, never names, directions or units.
+const streetSuffixPairs = new Map([
+  ["STREET", "ST"],
+  ["AVENUE", "AVE"],
+  ["ROAD", "RD"],
+  ["BOULEVARD", "BLVD"],
+  ["DRIVE", "DR"],
+  ["LANE", "LN"],
+  ["COURT", "CT"],
+  ["CIRCLE", "CIR"],
+  ["PARKWAY", "PKWY"],
+  ["PLACE", "PL"],
+  ["TERRACE", "TER"],
+  ["TRAIL", "TRL"],
+]);
+const sameStructuredStreet = (
+  street: string,
+  streetNumber: string,
+  route: string,
+) => {
+  const actual = normalize(street);
+  const number = normalize(streetNumber);
+  const routeTokens = normalize(route).split(" ");
+  if (actual === `${number} ${routeTokens.join(" ")}`) return true;
+  if (routeTokens.length < 2) return false;
+  const finalSpace = actual.lastIndexOf(" ");
+  if (
+    actual.slice(0, finalSpace) !==
+    `${number} ${routeTokens.slice(0, -1).join(" ")}`
+  )
+    return false;
+  const actualSuffix = actual.slice(finalSpace + 1);
+  const structuredSuffix = routeTokens[routeTokens.length - 1];
+  return (
+    streetSuffixPairs.get(actualSuffix) === structuredSuffix ||
+    streetSuffixPairs.get(structuredSuffix) === actualSuffix
+  );
+};
+
 /** No HTTP client, credentials, environment switch or production registration.
  * The injected fixture seam exercises the wire contract, never real verification.
  */
@@ -219,21 +261,35 @@ export function reviewGoogleAddressResponse(input: unknown, raw: unknown) {
       usps.dpvConfirmation !== "Y"
     )
       return result("UNKNOWN");
-    const normalize = (value: string) =>
-      value.toUpperCase().trim().replace(/\s+/g, " ");
     const names = new Map<string, string>(
       (components as Record<string, unknown>[]).map((component) => [
         component.componentType as string,
         record(component.componentName).text as string,
       ]),
     );
+    const postalCode = names.get("postal_code")!;
+    const postalSuffix = names.get("postal_code_suffix");
+    if (
+      !/^\d{5}(-\d{4})?$/.test(postalCode) ||
+      (postalSuffix !== undefined &&
+        (!/^\d{4}$/.test(postalSuffix) ||
+          (postalCode.length === 10 && postalCode.slice(6) !== postalSuffix)))
+    )
+      return result("UNKNOWN");
+    const structuredPostalCode =
+      postalCode.length === 5 && postalSuffix !== undefined
+        ? `${postalCode}-${postalSuffix}`
+        : postalCode;
     const correction =
-      normalize(intended.street) !==
-        normalize(names.get("street_number") + " " + names.get("route")) ||
+      !sameStructuredStreet(
+        intended.street,
+        names.get("street_number")!,
+        names.get("route")!,
+      ) ||
       normalize(intended.city) !== normalize(postal.locality) ||
       normalize(intended.city) !== normalize(names.get("locality") ?? "") ||
       intended.postalCode !== postal.postalCode ||
-      intended.postalCode !== names.get("postal_code") ||
+      intended.postalCode !== structuredPostalCode ||
       !["OH", "OHIO"].includes(
         normalize(names.get("administrative_area_level_1") ?? ""),
       ) ||

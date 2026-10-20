@@ -55,8 +55,21 @@ export async function verifyLoadedIntakeBrowser({
       key: await readFile(join(directory, "key.pem")),
       cert: await readFile(join(directory, "cert.pem")),
     };
-    for (const width of [390, 1440])
-      for (const mode of ["accepted", "outside", "unknown", "correction"]) {
+    for (const [recordType, width] of [
+      ["H", 390],
+      ["H", 1440],
+      ["S", 390],
+      ["S", 1440],
+    ])
+      for (const mode of [
+        "accepted",
+        "outside",
+        "unknown",
+        "correction",
+        "format-correction",
+        "repeated-correction",
+        "capacity",
+      ]) {
         const app = express(),
           server = createServer(tls, app);
         await new Promise((r) => server.listen(0, "127.0.0.1", r));
@@ -64,8 +77,26 @@ export async function verifyLoadedIntakeBrowser({
         const cfg = structuredClone(template),
           from = Date.now() - 1000,
           until = Date.now() + 120000;
+        const formatCorrection = mode === "format-correction",
+          correctionMode = [
+            "correction",
+            "format-correction",
+            "repeated-correction",
+          ].includes(mode),
+          correctedAdmission = ["correction", "format-correction"].includes(
+            mode,
+          ),
+          formatRoute = width === 390 ? "Fictional Street" : "Fictional Lane",
+          postalStreet = `173 Fictional ${width === 390 ? "ST" : "LN"}`,
+          initialStreet = formatCorrection
+            ? `173 ${formatRoute}`
+            : "173 Fictional Lane";
         cfg.origin = cfg.activation.origin = origin;
         cfg.addressAccountId = randomUUID(); // Independent synthetic account per case; never resets a real hold.
+        cfg.addressPolicy.costMicros = 100000;
+        cfg.addressPolicy.account = { micros: 600000, requests: 6 };
+        cfg.addressPolicy.tenant = { micros: 600000, requests: 6 };
+        cfg.addressPolicy.session = { micros: 200000, requests: 2 };
         cfg.phone.accountSid = "AC" + randomUUID().replaceAll("-", "");
         cfg.activation.packetId = randomUUID();
         cfg.activation.validFrom = new Date(from).toISOString();
@@ -85,6 +116,32 @@ export async function verifyLoadedIntakeBrowser({
               where: { id: tenantId },
             })
           ).settings;
+        const priorOperations = mode === "capacity" ? 6 : 4;
+        // Fictional historical holds in another session, preserved throughout this case.
+        const historicalSession = randomUUID();
+        await prisma.addressVerificationOperation.createMany({
+          data: Array.from({ length: priorOperations }, () => ({
+            id: randomUUID(),
+            accountId: cfg.addressAccountId,
+            tenantId,
+            conversationId: randomUUID(),
+            sessionId: historicalSession,
+            intentId: randomUUID(),
+            revision: 1,
+            policyHash: "a".repeat(64),
+            state: "OBSERVED",
+            heldMicros: 100000n,
+            attemptId: randomUUID(),
+            createdAt: new Date(from - 60000),
+            executionDeadline: new Date(from - 52000),
+          })),
+        });
+        const retained = () =>
+          prisma.addressVerificationOperation.aggregate({
+            where: { accountId: cfg.addressAccountId, tenantId },
+            _count: true,
+            _sum: { heldMicros: true },
+          });
         let runtime, context;
         let phoneCalls = 0,
           addressCalls = 0,
@@ -173,9 +230,29 @@ export async function verifyLoadedIntakeBrowser({
                       ? undefined
                       : "11111111-1111-4111-8111-111111111111",
                   );
+                  if (formatCorrection) {
+                    assert.deepEqual(request.address.addressLines, [
+                      addressCalls === 0 ? initialStreet : postalStreet,
+                    ]);
+                    assert.equal(
+                      request.address.postalCode,
+                      addressCalls === 0 ? "44101" : "44101-1234",
+                    );
+                  } else if (correctionMode && addressCalls > 0) {
+                    assert.deepEqual(request.address.addressLines, [
+                      "174 Fictional Lane",
+                    ]);
+                  }
                   addressCalls++;
                   if (mode === "unknown") throw Error("Synthetic uncertainty");
-                  const number = mode === "correction" ? "174" : "173";
+                  const number =
+                    mode === "repeated-correction"
+                      ? addressCalls === 1
+                        ? "174"
+                        : "175"
+                      : mode === "correction"
+                        ? "174"
+                        : "173";
                   return new Response(
                     JSON.stringify({
                       responseId: "11111111-1111-4111-8111-111111111111",
@@ -189,15 +266,26 @@ export async function verifyLoadedIntakeBrowser({
                             regionCode: "US",
                             administrativeArea: "OH",
                             locality: "Example",
-                            postalCode: "44101",
-                            addressLines: [number + " Fictional Lane"],
+                            postalCode: formatCorrection
+                              ? "44101-1234"
+                              : "44101",
+                            addressLines: [
+                              formatCorrection
+                                ? postalStreet
+                                : number + " Fictional Lane",
+                            ],
                           },
                           addressComponents: Object.entries({
                             street_number: number,
-                            route: "Fictional Lane",
+                            route: formatCorrection
+                              ? formatRoute
+                              : "Fictional Lane",
                             locality: "Example",
                             administrative_area_level_1: "Ohio",
                             postal_code: "44101",
+                            ...(formatCorrection
+                              ? { postal_code_suffix: "1234" }
+                              : {}),
                             country: "United States",
                           }).map(([componentType, text]) => ({
                             componentType,
@@ -208,7 +296,7 @@ export async function verifyLoadedIntakeBrowser({
                         uspsData: {
                           dpvConfirmation: "Y",
                           dpvCmra: "N",
-                          addressRecordType: "H",
+                          addressRecordType: recordType,
                           fipsCountyCode: mode === "outside" ? "093" : "035",
                           county: mode === "outside" ? "Lorain" : "Cuyahoga",
                         },
@@ -305,12 +393,12 @@ export async function verifyLoadedIntakeBrowser({
           assert.equal(phoneCalls, 3);
           if (mode === "accepted")
             await page.screenshot({
-              path: `${evidence}/loaded-phone-${width}.png`,
+              path: `${evidence}/loaded-phone-${recordType}-${width}.png`,
               fullPage: true,
             });
           for (const [id, value] of Object.entries({
             customerName: "Fictional Loaded Customer",
-            controlledStreet: "173 Fictional Lane",
+            controlledStreet: initialStreet,
             controlledCity: "Example",
             controlledPostal: "44101",
           }))
@@ -323,6 +411,17 @@ export async function verifyLoadedIntakeBrowser({
             await page.locator("#" + id).selectOption(value);
           await page.locator("#reviewed").check();
           await page.locator("#draft").click();
+          await page.locator("#submitReview").waitFor({ state: "visible" });
+          assert.equal(
+            addressCalls,
+            0,
+            "preview must not call address provider",
+          );
+          assert.equal(
+            (await retained())._count,
+            priorOperations,
+            "preview must not reserve",
+          );
           await page.locator("#submitReview").click();
           if (mode === "accepted") {
             await page.locator("#retry").waitFor({ state: "visible" });
@@ -332,20 +431,165 @@ export async function verifyLoadedIntakeBrowser({
             await page.locator("#submitted").waitFor({ state: "visible" });
             assert.deepEqual(receipts[1], receipts[0]);
             assert.equal(addressCalls, 1);
-          } else if (mode === "correction") {
+          } else if (correctionMode) {
             await page.locator("#details").waitFor({ state: "visible" });
             assert.equal(receipts[0]?.status, "CORRECTION_REQUIRED");
             assert.equal(await prisma.job.count(), jobs);
+            if (formatCorrection) {
+              assert.equal(receipts[0]?.jobCreated, false);
+              assert.deepEqual(receipts[0]?.candidate.addressLines, [
+                postalStreet,
+              ]);
+              assert.equal(receipts[0]?.candidate.postalCode, "44101-1234");
+              assert.equal(
+                await page.locator("#controlledStreet").inputValue(),
+                initialStreet,
+              );
+              assert.equal(
+                await page.locator("#controlledPostal").inputValue(),
+                "44101",
+              );
+            }
             await page.locator("#controlledUseSuggestion").click();
             assert.equal(
               await page.locator("#controlledStreet").inputValue(),
-              "174 Fictional Lane",
+              formatCorrection ? postalStreet : "174 Fictional Lane",
             );
+            assert.equal(addressCalls, 1, "copying suggestion must not reverify");
+            if (formatCorrection) {
+              assert.equal(
+                await page.locator("#controlledPostal").inputValue(),
+                "44101-1234",
+              );
+              assert.equal(await page.locator("#reviewed").isChecked(), false);
+              assert.equal(await page.locator("#draft").isDisabled(), true);
+              assert.equal(await prisma.job.count(), jobs);
+            }
             await page.locator("#reviewed").check();
             await page.locator("#draft").click();
+            await page.locator("#submitReview").waitFor({ state: "visible" });
+            assert.equal(
+              addressCalls,
+              1,
+              "correction preview must not reverify",
+            );
+            assert.equal((await retained())._count, priorOperations + 1);
             await page.locator("#submitReview").click();
-            await page.locator("#submitted").waitFor({ state: "visible" });
+            if (correctedAdmission) {
+              try {
+                await page
+                  .locator("#submitted")
+                  .waitFor({ state: "visible", timeout: 5000 });
+              } catch (error) {
+                const terminal = receipts.map((receipt) => ({
+                  status: receipt.status,
+                  reason: receipt.reason,
+                  jobCreated: receipt.jobCreated,
+                }));
+                throw new Error(
+                  `Corrected synthetic admission did not complete: ${JSON.stringify({ mode, addressCalls, terminal, status: await page.locator("#status").innerText() })}`,
+                  { cause: error },
+                );
+              }
+              assert.equal(receipts[1]?.status, "ADMITTED");
+              if (formatCorrection) {
+                assert.equal(receipts.length, 2);
+                assert.equal(receipts[1]?.jobCreated, true);
+                assert.equal(
+                  await page.locator("#controlledStreet").inputValue(),
+                  postalStreet,
+                );
+                assert.equal(
+                  await page.locator("#controlledPostal").inputValue(),
+                  "44101-1234",
+                );
+                const createdJob = await prisma.job.findUniqueOrThrow({
+                  where: { id: receipts[1].jobId },
+                  select: {
+                    tenantId: true,
+                    propertyAddress: { select: { formattedAddress: true } },
+                  },
+                });
+                assert.equal(createdJob.tenantId, tenantId);
+                assert.equal(
+                  createdJob.propertyAddress.formattedAddress,
+                  `${postalStreet}, Example, OH 44101-1234`,
+                );
+              }
+            } else {
+              await page.waitForFunction(() =>
+                document
+                  .getElementById("status")
+                  .textContent.includes("Verification limit reached"),
+              );
+              assert.equal(receipts.length, 2);
+              assert.equal(receipts[1]?.status, "REFUSED");
+              assert.equal(receipts[1]?.reason, "VERIFICATION_LIMIT_REACHED");
+              assert.equal(receipts[1]?.jobCreated, false);
+              assert.equal(Object.hasOwn(receipts[1], "candidate"), false);
+              assert.equal(await prisma.job.count(), jobs);
+              for (const id of ["editDraft", "submitReview", "retry"])
+                assert.equal(await page.locator("#" + id).isDisabled(), true);
+              assert.equal(await page.locator("#retry").isVisible(), false);
+              assert.equal(
+                await page.locator("#controlledUseSuggestion").isVisible(),
+                false,
+              );
+              assert.equal(
+                await page.locator("#controlledSuggestion").isVisible(),
+                false,
+              );
+              for (const [id, value] of Object.entries({
+                customerName: "Fictional Loaded Customer",
+                controlledStreet: "174 Fictional Lane",
+                controlledCity: "Example",
+                controlledPostal: "44101",
+                issueCategory: "COOLING",
+                propertyType: "RESIDENTIAL",
+                serviceIntent: "REPAIR",
+              }))
+                assert.equal(await page.locator("#" + id).inputValue(), value);
+              assert.match(
+                await page.locator("#status").innerText(),
+                /No job was created for this request\. Your draft is retained/,
+              );
+              // Native clicks respect disabled controls and cannot dispatch a third request.
+              await page.evaluate(() => {
+                document.getElementById("submitReview").click();
+                document.getElementById("retry").click();
+              });
+              assert.equal(receipts.length, 2);
+              assert.equal(await prisma.job.count(), jobs);
+            }
             assert.equal(addressCalls, 2);
+          } else if (mode === "capacity") {
+            await page.waitForFunction(() =>
+              document
+                .getElementById("status")
+                .textContent.includes("Verification limit reached"),
+            );
+            assert.equal(receipts[0]?.status, "REFUSED");
+            assert.equal(receipts[0]?.reason, "VERIFICATION_LIMIT_REACHED");
+            assert.equal(receipts[0]?.jobCreated, false);
+            assert.equal(addressCalls, 0);
+            assert.equal((await retained())._count, priorOperations);
+            assert.equal(receipts.length, 1);
+            assert.equal(await prisma.job.count(), jobs);
+            assert.equal(await page.locator("#editDraft").isDisabled(), true);
+            assert.equal(
+              await page.locator("#submitReview").isDisabled(),
+              true,
+            );
+            assert.equal(await page.locator("#retry").isVisible(), false);
+            assert.equal(await page.locator("#retry").isDisabled(), true);
+            assert.equal(
+              await page.locator("#customerName").inputValue(),
+              "Fictional Loaded Customer",
+            );
+            assert.match(
+              await page.locator("#status").innerText(),
+              /No job was created for this request/,
+            );
           } else if (mode === "outside") {
             await page.locator("#details").waitFor({ state: "visible" });
             assert.equal(receipts[0]?.status, "REFUSED");
@@ -356,11 +600,37 @@ export async function verifyLoadedIntakeBrowser({
           }
           assert.equal(
             await prisma.job.count(),
-            jobs + (["accepted", "correction"].includes(mode) ? 1 : 0),
+            jobs + (mode === "accepted" || correctedAdmission ? 1 : 0),
           );
           assert.equal(phoneCalls, 3);
           assert.deepEqual(errors, []);
-          assert.equal(addressCalls, mode === "correction" ? 2 : 1);
+          assert.equal(
+            addressCalls,
+            mode === "capacity"
+              ? 0
+              : correctionMode
+                ? 2
+                : 1,
+          );
+          const held = await retained();
+          const expectedOperations = priorOperations + addressCalls;
+          assert.equal(held._count, expectedOperations);
+          assert.equal(
+            held._sum.heldMicros,
+            BigInt(expectedOperations) * 100000n,
+          );
+          if (correctionMode) {
+            const current = await prisma.addressVerificationOperation.findMany({
+              where: {
+                accountId: cfg.addressAccountId,
+                sessionId: { not: historicalSession },
+              },
+              select: { intentId: true, state: true },
+            });
+            assert.equal(current.length, 2);
+            assert.equal(new Set(current.map((r) => r.intentId)).size, 2);
+            assert.equal(current.every((r) => r.state === "OBSERVED"), true);
+          }
           assert.equal(
             await page.evaluate(
               () => localStorage.length + sessionStorage.length,
@@ -374,10 +644,10 @@ export async function verifyLoadedIntakeBrowser({
             true,
           );
           await page.screenshot({
-            path: `${evidence}/loaded-${mode}-${width}.png`,
+            path: `${evidence}/loaded-${recordType}-${mode}-${width}.png`,
             fullPage: true,
           });
-          if (mode !== "unknown") {
+          if (!["unknown", "capacity", "repeated-correction"].includes(mode)) {
             await page.locator("#forget").click();
             await page.waitForFunction(() =>
               document
@@ -393,10 +663,13 @@ export async function verifyLoadedIntakeBrowser({
           console.log(
             JSON.stringify({
               loadedBrowser: {
+                recordType,
                 mode,
                 width,
                 phoneCalls,
                 addressCalls,
+                retainedOperationCount: held._count,
+                priorOperations,
                 preprovisionedPhoneProof: false,
                 liveProviderCalls: 0,
               },

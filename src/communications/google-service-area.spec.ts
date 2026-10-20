@@ -3,7 +3,7 @@ import {
   reviewGoogleServiceArea,
 } from "./google-service-area";
 
-describe("Google service-area fixture evaluator", () => {
+describe.each(["H", "S"])("Google service-area (%s)", (recordType) => {
   const input = {
     street: "123 Fictional Street",
     city: "Example",
@@ -52,13 +52,29 @@ describe("Google service-area fixture evaluator", () => {
         dpvConfirmation: "Y",
         dpvCmra: "N",
         poBoxOnlyPostalCode: false,
-        addressRecordType: "H",
+        addressRecordType: recordType,
         fipsCountyCode: "035",
         county: "Cuyahoga",
       },
       metadata: { poBox: false },
     },
   });
+  const correctedInput = {
+    ...input,
+    street: "123 Fictional St",
+    postalCode: "44101-1234",
+  };
+  const correctedResponse = () => {
+    const r = response();
+    r.result.address.postalAddress.addressLines = [correctedInput.street];
+    r.result.address.postalAddress.postalCode = correctedInput.postalCode;
+    r.result.address.addressComponents.push({
+      componentType: "postal_code_suffix",
+      componentName: { text: "1234" },
+      confirmationLevel: "CONFIRMED",
+    });
+    return r;
+  };
   const run = (r: unknown = response(), c = context(), i = input) =>
     evaluateGoogleServiceArea(i, r, c, "FIXTURE_ONLY");
   it("defaults disabled", async () => {
@@ -95,15 +111,84 @@ describe("Google service-area fixture evaluator", () => {
       deliveryAuthorized: false,
     });
   });
+  it("proposes inside for the confirmed postal suffix and assembled ZIP without granting authority", async () => {
+    expect(
+      await reviewGoogleServiceArea(
+        correctedInput,
+        correctedResponse(),
+        context(),
+        "REVIEW_ONLY",
+      ),
+    ).toEqual({
+      coverage: "IN_AREA",
+      realVerificationAccepted: false,
+      admissionAuthorized: false,
+      bookingAuthorized: false,
+      deliveryAuthorized: false,
+    });
+    expect((await run(correctedResponse())).coverage).toBe("UNKNOWN");
+  });
+  it.each([
+    ["route", "Different Street"],
+    ["postal_code", "44102"],
+    ["postal_code_suffix", "9999"],
+  ])(
+    "rejects a corrected-format response with conflicting %s",
+    async (key, value) => {
+      const r = correctedResponse();
+      r.result.address.addressComponents.find(
+        (component) => component.componentType === key,
+      )!.componentName.text = value;
+      expect((await run(r, context(), correctedInput)).coverage).toBe(
+        "UNKNOWN",
+      );
+    },
+  );
   it.each([
     ["093", "Lorain"],
     ["103", "Medina"],
     ["153", "Summit"],
   ])("uses structured county not the same ZIP: %s", async (code, name) => {
+    for (const [r, i] of [
+      [response(), input],
+      [correctedResponse(), correctedInput],
+    ] as const) {
+      r.result.uspsData.fipsCountyCode = code;
+      r.result.uspsData.county = name;
+      expect((await run(r, context(), i)).coverage).toBe("OUT_OF_AREA");
+    }
+  });
+  it.each([
+    undefined,
+    null,
+    "",
+    "F",
+    "G",
+    "P",
+    "R",
+    "h",
+    "s",
+    " S ",
+    0,
+    {},
+    ["S"],
+  ])("refuses unsupported or malformed record type %j", async (value) => {
     const r = response();
-    r.result.uspsData.fipsCountyCode = code;
-    r.result.uspsData.county = name;
-    expect((await run(r)).coverage).toBe("OUT_OF_AREA");
+    Object.assign(r.result.uspsData, { addressRecordType: value });
+    expect((await run(r)).coverage).toBe("UNKNOWN");
+  });
+  it.each(["fipsCountyCode", "county"])(
+    "refuses missing structured county evidence %s",
+    async (key) => {
+      const r = response();
+      Reflect.deleteProperty(r.result.uspsData, key);
+      expect((await run(r)).coverage).toBe("UNKNOWN");
+    },
+  );
+  it("refuses explicit PO-box metadata even with a supported record type", async () => {
+    const r = response();
+    r.result.metadata.poBox = true;
+    expect((await run(r)).coverage).toBe("UNKNOWN");
   });
   it.each(["", "39035", "35", "999", "toString"])(
     "refuses unqualified/missing code %s",
@@ -126,9 +211,13 @@ describe("Google service-area fixture evaluator", () => {
     { pmbNumber: "12" },
     { pmbDesignator: "PMB" },
   ])("refuses conflicting/nonphysical/unit evidence %j", async (patch) => {
-    const r = response();
-    Object.assign(r.result.uspsData, patch);
-    expect((await run(r)).coverage).toBe("UNKNOWN");
+    for (const [r, i] of [
+      [response(), input],
+      [correctedResponse(), correctedInput],
+    ] as const) {
+      Object.assign(r.result.uspsData, patch);
+      expect((await run(r, context(), i)).coverage).toBe("UNKNOWN");
+    }
   });
   it.each([
     "tenantId",
@@ -141,6 +230,9 @@ describe("Google service-area fixture evaluator", () => {
       [key]: key === "addressRevision" ? 2 : "stale",
     });
     expect((await run(response(), c)).coverage).toBe("UNKNOWN");
+    expect((await run(correctedResponse(), c, correctedInput)).coverage).toBe(
+      "UNKNOWN",
+    );
   });
   it.each([
     { customerConfirmed: false },
@@ -152,6 +244,15 @@ describe("Google service-area fixture evaluator", () => {
     expect((await run(response(), { ...context(), ...patch })).coverage).toBe(
       "UNKNOWN",
     );
+    expect(
+      (
+        await run(
+          correctedResponse(),
+          { ...context(), ...patch },
+          correctedInput,
+        )
+      ).coverage,
+    ).toBe("UNKNOWN");
   });
   it("refuses wrong state/country and component conflicts", async () => {
     for (const key of ["regionCode", "administrativeArea"]) {
@@ -189,10 +290,34 @@ describe("Google service-area fixture evaluator", () => {
       (await run(r, context(), { ...input, unit: "Unit 2" })).coverage,
     ).toBe("IN_AREA");
   });
+  it("requires a resolved matching unit with the corrected street and ZIP", async () => {
+    const r = correctedResponse();
+    const i = { ...correctedInput, unit: "Unit 2" };
+    expect((await run(r, context(), i)).coverage).toBe("UNKNOWN");
+    r.result.verdict.validationGranularity = "SUB_PREMISE";
+    r.result.address.postalAddress.addressLines.push(i.unit);
+    const unit = {
+      componentType: "subpremise",
+      componentName: { text: "2" },
+      confirmationLevel: "CONFIRMED",
+    };
+    r.result.address.addressComponents.push(unit);
+    expect((await run(r, context(), i)).coverage).toBe("IN_AREA");
+    unit.componentName.text = "3";
+    expect((await run(r, context(), i)).coverage).toBe("UNKNOWN");
+    unit.componentName.text = "2";
+    unit.confirmationLevel = "UNCONFIRMED_BUT_PLAUSIBLE";
+    expect((await run(r, context(), i)).coverage).toBe("UNKNOWN");
+  });
   it("refuses missing physical-location flags", async () => {
     const r = response();
     Reflect.deleteProperty(r.result.metadata, "poBox");
     expect((await run(r)).coverage).toBe("UNKNOWN");
+    const corrected = correctedResponse();
+    Reflect.deleteProperty(corrected.result.metadata, "poBox");
+    expect((await run(corrected, context(), correctedInput)).coverage).toBe(
+      "UNKNOWN",
+    );
   });
   it("accepts omitted proto3 false without treating optional metadata as false", async () => {
     const r = response();

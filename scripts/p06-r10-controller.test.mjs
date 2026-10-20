@@ -8,6 +8,7 @@ import {
   closeR10Runtime,
   deriveR10CloudRunRevisionSuffix,
   executeR10ActivateBeforeDeploy,
+  r10DeploymentSecretUpdate,
   requireR10CloseoutWindow,
   requireR10ExecutionWindow,
   reserveR10Operation,
@@ -16,6 +17,7 @@ import {
 } from "./p06-r10-controller.mjs";
 
 const START = Date.parse("2026-09-20T01:00:00.000Z");
+const CURRENT_NORMAL_REVISION = "signmons-calldesk-staging-app013dbrot2";
 const plan = (overrides = {}) => ({
   planId: "11111111-1111-4111-8111-111111111111",
   packetDigest: "1".repeat(64),
@@ -29,6 +31,19 @@ const plan = (overrides = {}) => ({
   runtimeEnd: new Date(START + 15 * 60_000).toISOString(),
   closeoutEnd: new Date(START + 30 * 60_000).toISOString(),
   ...overrides,
+});
+
+test("deployment secret update binds both controlled material and the numeric child database", () => {
+  const update = r10DeploymentSecretUpdate();
+  assert.equal(
+    update,
+    "CONTROLLED_INTAKE_SECRETS_JSON=signmons-staging-controlled-intake-material:1,DATABASE_URL=signmons-staging-p06-child-database-url:2",
+  );
+  assert.deepEqual(update.split(","), [
+    "CONTROLLED_INTAKE_SECRETS_JSON=signmons-staging-controlled-intake-material:1",
+    "DATABASE_URL=signmons-staging-p06-child-database-url:2",
+  ]);
+  assert.equal(update.includes("signmons-staging-database-url"), false);
 });
 
 const makePorts = (options = {}) => {
@@ -47,7 +62,8 @@ const makePorts = (options = {}) => {
         approvalState: "INACTIVE",
         runtimeRoleLogin: true,
         runtimeRoleSessions: 0,
-        normalTrafficRevision: "signmons-calldesk-staging-app013bounds",
+        normalTrafficRevision:
+          options.preflightNormalRevision ?? CURRENT_NORMAL_REVISION,
         normalTrafficPercent: 100,
       }),
     reserveActivation: () => hit("reserveActivation"),
@@ -76,7 +92,7 @@ const makePorts = (options = {}) => {
         revision: p.revision,
         tag: p.tag,
         origin: p.origin,
-        normalTrafficRevision: "signmons-calldesk-staging-app013bounds",
+        normalTrafficRevision: CURRENT_NORMAL_REVISION,
         normalTrafficPercent: 100,
         targetTrafficPercent: 0,
       }),
@@ -104,7 +120,7 @@ const makePorts = (options = {}) => {
         runtimeRoleConnectionLimit:
           options.finalRuntimeRoleConnectionLimit ?? 0,
         runtimeRoleSessions: options.finalRuntimeRoleSessions ?? 0,
-        normalTrafficRevision: "signmons-calldesk-staging-app013bounds",
+        normalTrafficRevision: CURRENT_NORMAL_REVISION,
         normalTrafficPercent: 100,
       }),
   };
@@ -347,4 +363,21 @@ test("preflight mismatch performs containment and never activates", async () => 
   assert.equal(calls.includes("activate"), false);
   assert.equal(calls.includes("deployNoTraffic"), false);
   assert.equal(calls.includes("disableRuntimeRole"), true);
+});
+
+test("historical normal revision stops before activation and closes against the current revision", async () => {
+  const { calls, ports } = makePorts({
+    approvalState: "INACTIVE",
+    preflightNormalRevision: "signmons-calldesk-staging-app013bounds",
+  });
+  await assert.rejects(
+    executeR10ActivateBeforeDeploy(plan(), ports, START, 0),
+    (error) =>
+      error instanceof R10ControllerStop &&
+      error.stage === "PREFLIGHT" &&
+      error.closeoutStatus === "CLOSED",
+  );
+  assert.equal(calls.includes("activate"), false);
+  assert.equal(calls.includes("deployNoTraffic"), false);
+  assert.equal(calls.filter((name) => name === "disableRuntimeRole").length, 1);
 });

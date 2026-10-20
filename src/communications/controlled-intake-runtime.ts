@@ -220,6 +220,7 @@ export async function loadControlledIntakeRuntime(
       });
       const composition = new ControlledIntakeComposition({
         prisma: p.prisma,
+        cipher: p.cipher,
         credentials,
         intake,
         tenantId: a.tenantId,

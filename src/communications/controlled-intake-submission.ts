@@ -9,9 +9,12 @@ export function controlledIntakeSubmission(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw refuse();
   const v = value as Record<string, unknown>;
+  const hasContinuation = v.correctionContinuation !== undefined;
   if (
     Object.keys(v).sort().join() !==
-      "confirmed,confirmedAddress,draft,expectedRevision,requestId,sessionToken,version" ||
+      (hasContinuation
+        ? "confirmed,confirmedAddress,correctionContinuation,draft,expectedRevision,requestId,sessionToken,version"
+        : "confirmed,confirmedAddress,draft,expectedRevision,requestId,sessionToken,version") ||
     v.version !== 2 ||
     v.confirmed !== true ||
     typeof v.sessionToken !== "string" ||
@@ -24,6 +27,12 @@ export function controlledIntakeSubmission(value: unknown) {
     !Number.isSafeInteger(v.expectedRevision) ||
     Number(v.expectedRevision) < 1 ||
     Number(v.expectedRevision) > 20 ||
+    (hasContinuation &&
+      (typeof v.correctionContinuation !== "string" ||
+        v.correctionContinuation.length < 40 ||
+        v.correctionContinuation.length > 4096 ||
+        !v.correctionContinuation.startsWith("v1.") ||
+        !/^[A-Za-z0-9._-]+$/.test(v.correctionContinuation))) ||
     reviewGoogleAddressResponse(v.confirmedAddress, null).status ===
       "INVALID_INPUT"
   )
@@ -50,6 +59,9 @@ export function controlledIntakeSubmission(value: unknown) {
     requestId: v.requestId,
     expectedRevision: v.expectedRevision as number,
     confirmed: true as const,
+    ...(hasContinuation
+      ? { correctionContinuation: v.correctionContinuation as string }
+      : {}),
     draft: Object.freeze(draft),
     confirmedAddress: address,
   });

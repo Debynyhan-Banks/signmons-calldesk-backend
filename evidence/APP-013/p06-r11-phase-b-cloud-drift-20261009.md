@@ -1,0 +1,13 @@
+# APP-013 / P06-R11 staged Cloud drift — 2026-10-09
+
+Plan `75f6d775-6604-4356-a543-198bd83521d8`, operation `6f6ebdfa-849d-45ce-9499-d67ceaf4d2d6`, completed `CLOUD_ARTIFACT_DRIFT`. Service routing, accepted artifact and accepted build provenance qualified. Revision drift was isolated to applying the six-disabled-candidate flag predicate to normal revision `app013dbrot2`: scheduling was not false and background/old-phone flags were absent. No stop exists. The operation is consumed.
+
+Local source/evidence review shows this revision has the known normal-baseline image digest and role: normal scheduling/background behavior remains, old staging-phone is disabled by absence, and controlled intake cannot load because it requires all six flags literal false. The child database runtime remains separately verified closed. Governance `APP013_P06_R11_PHASE_B_NORMAL_BASELINE_PREDICATE_CORRECTION_20261009.md` proposes accepting the completed Cloud receipts by revision role and then performing Twilio metadata readback, or pausing.
+
+Focused validation: 43 tests passed; one managed-HTTP test was blocked from binding localhost by the sandbox and timed out. No source code or external state changed. P06 remains 12/14; R11/full R12 remain open; accepted milestones remain 3/8. Proposed predicate correction not yet implemented.
+
+Owner approved the predicate correction and one signed-in Twilio metadata readback for October 9, 6:00–6:15 a.m. Eastern. Plan `05cf17b8-ef41-4249-ab88-4c3e696683b3`, operation `46f1bf06-6d9c-48d0-9e72-93bad3d61ef5`, is privately prepared at `/private/tmp/r11-phase-b-twilio-20261009-0600`; no provider read or marker exists at preparation close.
+
+Operation `46f1bf06-6d9c-48d0-9e72-93bad3d61ef5` was reserved and completed in-window with `TWILIO_METADATA_QUALIFIED` and combined `PHASE_B_METADATA_QUALIFIED`. Sanitized classifications confirm an active account, exactly one Verify service, SMS and Fraud Guard enabled, United States SMS monitored, United States voice disabled, and one unchanged verified-recipient classification. No recipient, provider identifier or balance was persisted. No Save control was opened; no message, code, provider transaction or external mutation occurred. The operation is consumed and must never be rerun.
+
+Role-aware Cloud evidence plus the Twilio readback completes the approved metadata-only Phase B qualification. It does not complete the R11 connected customer outcome or authorize another paid journey. Phone liability remains at the approved ceiling and the controlled runtime remains closed. P06 remains 12/14; R11/full R12 remain open; accepted milestones remain 3/8. No scope deviation.

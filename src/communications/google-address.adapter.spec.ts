@@ -335,7 +335,7 @@ describe("disabled Google address adapter", () => {
       ).status,
     ).toBe("CORRECTION_REQUIRED");
   });
-  it("does not equate street abbreviations or changed postal lines automatically", async () => {
+  it("still requires customer review of changed postal lines", async () => {
     const value = response();
     value.result.address.postalAddress.addressLines = ["123 Fictional St"];
     expect(
@@ -346,7 +346,39 @@ describe("disabled Google address adapter", () => {
       ).status,
     ).toBe("CORRECTION_REQUIRED");
   });
-  it("permits only case and whitespace normalization without correction", async () => {
+  it.each(["street", "postalCode"] as const)(
+    "reviews the selected %s only when its structured representation agrees",
+    (field) => {
+      const value = response();
+      if (field === "street")
+        value.result.address.postalAddress.addressLines = ["123 Fictional St"];
+      else value.result.address.postalAddress.postalCode = "44101-1234";
+
+      const first = reviewGoogleAddressResponse(input, value);
+      expect(first.status).toBe("CORRECTION_REQUIRED");
+      const candidate = first.candidate!;
+      const second = reviewGoogleAddressResponse(
+        {
+          ...input,
+          street: candidate.addressLines[0],
+          city: candidate.city,
+          postalCode: candidate.postalCode,
+        },
+        value,
+      );
+
+      // The approved suffix pair resolves street spelling after postal review.
+      // ZIP+4 without a provider suffix remains a genuine evidence mismatch.
+      expect(second).toMatchObject({
+        status: field === "street" ? "REVIEW" : "CORRECTION_REQUIRED",
+        candidate,
+        addressVerified: false,
+        admissionAuthorized: false,
+      });
+      expect(JSON.stringify(second)).not.toContain("never-return-this");
+    },
+  );
+  it("preserves case and whitespace normalization without correction", async () => {
     const value = response();
     value.result.address.postalAddress.addressLines = ["123  FICTIONAL STREET"];
     expect(
@@ -356,5 +388,180 @@ describe("disabled Google address adapter", () => {
         )
       ).status,
     ).toBe("REVIEW");
+  });
+
+  const component = (value: ReturnType<typeof response>, type: string) =>
+    value.result.address.addressComponents.find(
+      (c) => c.componentType === type,
+    )!;
+  const suffix = (value: ReturnType<typeof response>, text = "1234") =>
+    value.result.address.addressComponents.push({
+      componentType: "postal_code_suffix",
+      componentName: { text },
+      confirmationLevel: "CONFIRMED",
+    });
+
+  it.each([false, true])(
+    "assembles confirmed split ZIP components, already complete=%s",
+    (complete) => {
+      const value = response();
+      const postalCode = "44101-1234";
+      value.result.address.postalAddress.postalCode = postalCode;
+      if (complete)
+        component(value, "postal_code").componentName.text = postalCode;
+      suffix(value);
+      expect(reviewGoogleAddressResponse(input, value).status).toBe(
+        "CORRECTION_REQUIRED",
+      );
+      expect(
+        reviewGoogleAddressResponse({ ...input, postalCode }, value),
+      ).toMatchObject({
+        status: "REVIEW",
+        addressVerified: false,
+        admissionAuthorized: false,
+      });
+    },
+  );
+  it("accepts an already complete component ZIP without inventing another suffix", () => {
+    const value = response();
+    const postalCode = "44101-1234";
+    value.result.address.postalAddress.postalCode = postalCode;
+    component(value, "postal_code").componentName.text = postalCode;
+    expect(
+      reviewGoogleAddressResponse({ ...input, postalCode }, value).status,
+    ).toBe("REVIEW");
+  });
+  it.each([
+    ["44101", "123", "44101-1234"],
+    ["44101", "12345", "44101-1234"],
+    ["44101", "ABCD", "44101-1234"],
+    ["44101", " 1234", "44101-1234"],
+    ["44101-9999", "1234", "44101-9999"],
+    ["44102", "1234", "44101-1234"],
+    ["44101", "9999", "44101-1234"],
+    ["44101", "1234", "44101"],
+    ["441011234", undefined, "44101-1234"],
+    ["44101", undefined, "44101-1234"],
+  ])(
+    "does not ignore ZIP component/suffix conflict: %s %s %s",
+    (base, extension, postalCode) => {
+      const value = response();
+      value.result.address.postalAddress.postalCode = postalCode;
+      component(value, "postal_code").componentName.text = base;
+      if (extension !== undefined) suffix(value, extension);
+      const result = reviewGoogleAddressResponse(
+        { ...input, postalCode },
+        value,
+      );
+      expect(result.status).not.toBe("REVIEW");
+      expect(result.admissionAuthorized).toBe(false);
+    },
+  );
+  it.each([
+    "duplicate",
+    "unconfirmed",
+    "inferred",
+    "replaced",
+    "spellCorrected",
+  ])("does not ignore %s suffix evidence", (change) => {
+    const value = response();
+    const postalCode = "44101-1234";
+    value.result.address.postalAddress.postalCode = postalCode;
+    suffix(value);
+    if (change === "duplicate") suffix(value);
+    else if (change === "unconfirmed")
+      component(value, "postal_code_suffix").confirmationLevel =
+        "UNCONFIRMED_BUT_PLAUSIBLE";
+    else
+      Object.assign(component(value, "postal_code_suffix"), { [change]: true });
+    expect(
+      reviewGoogleAddressResponse({ ...input, postalCode }, value).status,
+    ).not.toBe("REVIEW");
+  });
+  it.each([
+    ["STREET", "ST"],
+    ["AVENUE", "AVE"],
+    ["ROAD", "RD"],
+    ["BOULEVARD", "BLVD"],
+    ["DRIVE", "DR"],
+    ["LANE", "LN"],
+    ["COURT", "CT"],
+    ["CIRCLE", "CIR"],
+    ["PARKWAY", "PKWY"],
+    ["PLACE", "PL"],
+    ["TERRACE", "TER"],
+    ["TRAIL", "TRL"],
+  ])(
+    "reviews approved final suffix %s/%s only after exact postal selection",
+    (full, abbreviated) => {
+      for (const [routeSuffix, postalSuffix] of [
+        [full, abbreviated],
+        [abbreviated, full],
+      ]) {
+        const value = response();
+        const original = { ...input, street: `123 Fictional ${routeSuffix}` };
+        const street = `123 Fictional ${postalSuffix}`;
+        component(value, "route").componentName.text =
+          `Fictional ${routeSuffix}`;
+        value.result.address.postalAddress.addressLines = [street];
+        expect(reviewGoogleAddressResponse(original, value).status).toBe(
+          "CORRECTION_REQUIRED",
+        );
+        expect(
+          reviewGoogleAddressResponse({ ...input, street }, value),
+        ).toMatchObject({
+          status: "REVIEW",
+          addressVerified: false,
+          admissionAuthorized: false,
+        });
+      }
+    },
+  );
+  it.each([
+    ["123 Fictional St", "124", "Fictional Street"],
+    ["123 Fictional St", "123", "Different Street"],
+    ["123 Fictional St", "123", "Fictional Road"],
+    ["123 Fictional Strt", "123", "Fictional Street"],
+    ["123 Fictional St.", "123", "Fictional Street"],
+    ["123 East Fictional St", "123", "West Fictional Street"],
+    ["123 E Fictional St", "123", "East Fictional Street"],
+    ["123 St John St", "123", "Saint John Street"],
+    ["123 Road Street", "123", "Rd Street"],
+    ["123 St", "123", "Street"],
+    ["123 1/2 St", "123 1/2", "Street"],
+    ["123 Fictional toString", "123", "Fictional Street"],
+  ])(
+    "does not normalize other street differences: %s / %s %s",
+    (street, number, route) => {
+      const value = response();
+      value.result.address.postalAddress.addressLines = [street];
+      component(value, "street_number").componentName.text = number;
+      component(value, "route").componentName.text = route;
+      expect(
+        reviewGoogleAddressResponse({ ...input, street }, value).status,
+      ).toBe("CORRECTION_REQUIRED");
+    },
+  );
+  it("requires the same unit after suffix review and supports split postal lines", () => {
+    const value = response();
+    const reviewed = { ...input, street: "123 Fictional St", unit: "Unit 2" };
+    value.result.verdict.validationGranularity = "SUB_PREMISE";
+    value.result.address.postalAddress.addressLines = [
+      reviewed.street,
+      reviewed.unit,
+    ];
+    value.result.address.addressComponents.push({
+      componentType: "subpremise",
+      componentName: { text: "2" },
+      confirmationLevel: "CONFIRMED",
+    });
+    expect(reviewGoogleAddressResponse(reviewed, value).status).toBe("REVIEW");
+    component(value, "subpremise").componentName.text = "3";
+    expect(reviewGoogleAddressResponse(reviewed, value).status).toBe(
+      "CORRECTION_REQUIRED",
+    );
+    expect(
+      reviewGoogleAddressResponse({ ...reviewed, unit: "" }, value).status,
+    ).not.toBe("REVIEW");
   });
 });

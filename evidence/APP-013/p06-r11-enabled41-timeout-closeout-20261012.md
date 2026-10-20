@@ -1,0 +1,35 @@
+# APP-013 / P06-R11 enabled41 timeout and verified closeout — 2026-10-12
+
+## October 12, 7:00:53 a.m. Eastern — exact-request no-job reconciliation verified
+
+APP-013 / 2B / P06-R11: plan `e0c119ce-cc74-4fa0-bf8f-269b27494709`, operation `8554396c-8040-44b0-ac3d-486aad6aa859` completed once with `EXACT_REQUEST_NO_JOB_CONFIRMED`. Local receipt review confirms matching plan/operation identities, in-window attempt/result, unchanged bound file hashes and no stop receipt. Immutable result: `/private/tmp/r11-enabled41-reconciliation-20261012-0700/result.json`, SHA256 `ffa0197730d7a94eb784a65f65f4518b258ad8f4727cda467a4ad488db285ac2`. Source remains `3cf8a9dc53d0282a35e6263a36d749c5b32f8e2e`. The package is consumed; never rerun.
+
+Exact reference `134646c8-2459-42ad-bc08-b17f9b2d8709`: zero matching jobs, zero submitted/admitted audits, one address operation and one address request, USD0.10 held, invalid0. Phone aggregate: 19 holds/USD9.50, invalid0. Address account and tenant aggregates: each12/USD1.20, invalid0, below approved13/USD1.30 ceiling. These are ledger reservations, not provider invoices or current Twilio balance. Phone ceiling is reached; no extra phone headroom is inferred.
+
+Runtime snapshot: phone/runtime approvals false; runtime role NOLOGIN, connection limit0, expired, sessions0. The read-only helper rolled back and closed before writing the result. This review made no additional database, Cloud or provider call. The previous browser service-area refusal remains browser/source evidence; its detailed cause is not persisted and cannot be established from these aggregate projections.
+
+Completed: exact-reference job/audit/address reconciliation, final ledger totals, closed-runtime snapshot and receipt review. Remaining: diagnosis of the service-area refusal, successful R11 reviewed-job journey and full R12/owner acceptance. Blocker: the service-area check prevented the observed journey from admitting a job; precise cause remains unknown. Next proposed bounded action: read the pinned service-area evaluator, adapter and existing synthetic tests to distinguish supported hypotheses; any behavior change or further live/provider test requires a concrete approved scope. No new test, deployment or implementation is authorized by this result. P06 remains12/14; accepted milestones3/8. No scope deviation.
+
+## October 12, 7:00–7:25 a.m. Eastern — fresh approved reconciliation
+
+The prior 6:30 package is consumed: `stop-1791802287065.json` records `LOCAL_PREFLIGHT` at 6:51:27 a.m., after the 6:50 start cutoff. No attempt/result exists; inspected execution order places this stop before private input and database connection. Do not rerun it.
+
+Owner rescheduled the same approved Alternative 1 with “7:00-7:25 am eastern today”. Fresh plan `e0c119ce-cc74-4fa0-bf8f-269b27494709` / operation `8554396c-8040-44b0-ac3d-486aad6aa859` is privately installed at `/private/tmp/r11-enabled41-reconciliation-20261012-0700`. Start at or after 7:00 and strictly before 7:20; finish by 7:25. Source SHA `3cf8a9dc53d0282a35e6263a36d749c5b32f8e2e`; exact reference `134646c8-2459-42ad-bc08-b17f9b2d8709`; fixed direct child; one read-only transaction; hidden password; USD0 provider allowance; no retry.
+
+Section APP-013 / 2B / P06-R11. Reuses the prior reader and private-input launcher with unchanged SQL/projections/classifications; local guards additionally reject stop receipts, validate the bound manifest hash, and check target identity before private input. These enforce the existing consumed-operation and target boundaries. Node/Python syntax, manifest/hash/mode validation and installed no-action check pass. Disposable no-action copies pass clean and reject prior attempt, stop receipt and altered file. Installed package has no attempt/result/stop at preparation completion.
+
+Evidence limitation: the pinned application does not persist the service-area refusal reason. This query can reconcile exact-reference job/audit/address linkage and totals; it cannot independently establish that refusal reason. A no-job database classification must not be reported as proof of a persisted terminal reason or R11 success.
+
+Completed: fresh package preparation and local checks. Remaining: owner runs once in the approved window, then sanitized receipt review; exact database outcome remains unconfirmed. Next observable result is one sanitized read-only result or terminal stop. Runtime remains disabled; no provider, Cloud, deployment or database action occurred during preparation. P06 remains 12/14, R11/full R12 open, accepted milestones 3/8. No scope deviation.
+
+Plan `ec7c5b1d-4fc6-47c3-b8cc-b7d8095795c1` / packet `05384982-d770-4127-95f2-db76b044389a` is consumed. Immutable private receipts under `/private/tmp/r11-supervised-run-20261011-1100` record `EXACT_BASELINE_MATCHED` at18 phone holds/USD9.00 and11 address operations/USD1.10, activation/readback, enabled41 `READY_NO_TRAFFIC`, `READY_FOR_R11`, revocation/readback and `CLOSED` with no failures. The owner reported `R12_RUNTIME_CLOSEOUT_VERIFIED` and `R11_ATTENDED_COORDINATOR_CLOSED_BROWSER_TIMEOUT`.
+
+The browser entered submit and displayed reference `134646c8-2459-42ad-bc08-b17f9b2d8709`. Post-timeout read-only Safari inspection found a retained tab with **No job created. We could not confirm that this address is in the service area. Your fields are retained; review the address or contact the office.** Pinned image source `scripts/fixtures/customer-intake-journey.js` maps that exact text only to response `REFUSED`, reason `SERVICE_AREA_NOT_CONFIRMED`, `jobCreated:false`. Another intake tab showed only expired/unavailable state.
+
+This is terminal browser-side no-job evidence, but exact database correlation to the reported reference and final liability totals were not read. No claim is made about a correlated durable request row beyond the browser result. The package must never be rerun, resent, resubmitted, extended or used for a substitute request.
+
+Completed: baseline, activation, exact-image enabled41 zero-traffic readiness, one browser journey through submit, browser-side no-job refusal, revocation/readback and verified closeout. Remaining: one separately owner-approved exact-reference read-only reconciliation or pause; R11 reviewed-job success, full R12 and owner acceptance remain open. P06 remains12/14; accepted milestones remain3/8.
+
+No scope deviation.
+
+Owner approved Alternative1 for October12,6:30–6:55a.m.Eastern. Fresh plan `4df115a6-9721-4216-b2ca-37752d23580a` / operation `33ac0183-b6bc-4e91-ba50-6dd775eedf91` is installed at `/private/tmp/r11-enabled41-reconciliation-20261012-0630`. It binds the exact request reference, fixed direct child target, source manifest, hidden input and one `REPEATABLE READ READ ONLY` transaction. Output is limited to exact-reference job/audit/address classifications, phone/address aggregates and approval/runtime classifications. USD0 provider allowance; no provider/Cloud/browser/write or retry. Private modes, hashes, source-manifest validation, syntax and installed no-action check pass; no attempt/read existed at preparation completion.

@@ -22,6 +22,11 @@ export function controlledIntakeBrowserResult(
   };
   for (const key of Object.keys(denied))
     if (v[key] !== undefined && v[key] !== false) refuse();
+  if (
+    v.correctionContinuation !== undefined &&
+    v.status !== "CORRECTION_REQUIRED"
+  )
+    refuse();
   if (v.requestId !== undefined && v.requestId !== requestId) refuse();
   if (v.status === "ADMITTED") {
     if (
@@ -45,6 +50,27 @@ export function controlledIntakeBrowserResult(
     };
   }
   if (v.jobCreated !== false) refuse();
+  if (v.reason !== undefined) {
+    const safeReasons = [
+      "VERIFICATION_LIMIT_REACHED",
+      "ADDRESS_REVIEW_UNAVAILABLE",
+      "SERVICE_AREA_NOT_CONFIRMED",
+      "OUTSIDE_SERVICE_AREA",
+      "ADDRESS_CORRECTION_STATE_UNAVAILABLE",
+    ] as const;
+    if (
+      v.status !== "REFUSED" ||
+      !safeReasons.includes(v.reason as (typeof safeReasons)[number])
+    )
+      refuse();
+    return {
+      status: "REFUSED" as const,
+      reason: v.reason as (typeof safeReasons)[number],
+      requestId,
+      jobCreated: false as const,
+      ...denied,
+    };
+  }
   if (v.status === "REFUSED" || v.status === "UNCERTAIN")
     return {
       status: v.status,
@@ -69,7 +95,12 @@ export function controlledIntakeBrowserResult(
     typeof c.postalCode !== "string" ||
     !/^\d{5}(-\d{4})?$/.test(c.postalCode) ||
     c.country !== "US" ||
-    c.state !== "OH"
+    c.state !== "OH" ||
+    typeof v.correctionContinuation !== "string" ||
+    v.correctionContinuation.length < 40 ||
+    v.correctionContinuation.length > 4096 ||
+    !v.correctionContinuation.startsWith("v1.") ||
+    !/^[A-Za-z0-9._-]+$/.test(v.correctionContinuation)
   )
     return refuse();
   return {
@@ -77,6 +108,7 @@ export function controlledIntakeBrowserResult(
     requestId,
     jobCreated: false as const,
     ...denied,
+    correctionContinuation: v.correctionContinuation,
     candidate: {
       addressLines: [...c.addressLines] as string[],
       city: c.city,

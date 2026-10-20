@@ -1,7 +1,13 @@
 // Disposable parent database only; no provider calls, production data or settlement.
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
+import { mkdtemp, realpath, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { Readable } from "node:stream";
+import { createCleanupConnection } from "./p06-cleanup-connector.mjs";
+import { runCleanup, planHash } from "./p06-cleanup-maintenance.mjs";
 import { localCorrectionPort } from "./local-correction-port.mjs";
 const require = createRequire(import.meta.url);
 const {
@@ -416,6 +422,418 @@ export async function verifyVerificationCleanup({
     holdsBefore,
   );
   assert.equal((await service.purgeResolvedReferences(tenantId)).removed, 0);
+  // Exact maintenance uses the same transactions with a distinct, expired-only binding.
+  const maintenanceSessions = await Promise.all([begin(), begin(), begin()]);
+  const maintenanceAccount = randomUUID(),
+    expiresAt = Date.now() - 60000;
+  const maintenanceTargets = [];
+  for (const session of maintenanceSessions) {
+    await edit(session, (d) => {
+      d.verificationLifecycle.expiresAt = expiresAt;
+      d.verificationOperations = { private: "synthetic" };
+    });
+    const operations = [];
+    for (let i = 0; i < 2; i++) {
+      const operation = {
+        id: randomUUID(),
+        attemptId: randomUUID(),
+        createdAt: expiresAt - 10000,
+        executionDeadline: expiresAt - 2000,
+        heldMicros: 100000,
+        aliasCount: 1,
+        state: "OBSERVED",
+      };
+      await prisma.addressVerificationOperation.create({
+        data: {
+          id: operation.id,
+          attemptId: operation.attemptId,
+          accountId: maintenanceAccount,
+          tenantId,
+          conversationId: session.scope.conversationId,
+          sessionId: session.scope.sessionId,
+          intentId: randomUUID(),
+          revision: 1,
+          policyHash: "synthetic",
+          state: "OBSERVED",
+          heldMicros: 100000n,
+          createdAt: new Date(operation.createdAt),
+          executionDeadline: new Date(operation.executionDeadline),
+          requests: { create: { id: randomUUID() } },
+        },
+      });
+      operations.push(operation);
+    }
+    maintenanceTargets.push({
+      conversationId: session.scope.conversationId,
+      sessionId: session.scope.sessionId,
+      expiresAt,
+      operations,
+    });
+  }
+  const drafts = await Promise.all(maintenanceSessions.map((s) => content(s)));
+  const preservedReview = await content(
+    maintenanceSessions[1],
+    "protected_intake_review_v1",
+  );
+  const otherVersion = await content(maintenanceSessions[0]);
+  await prisma.communicationContent.update({
+    where: { id: otherVersion.content.id },
+    data: {
+      payload: {
+        type: "protected_intake_turn_v1",
+        sessionId: maintenanceSessions[0].scope.sessionId,
+        version: 3,
+        encryptedInput: "synthetic",
+      },
+    },
+  });
+  const otherSession = await content(
+    maintenanceSessions[0],
+    "protected_intake_turn_v1",
+    randomUUID(),
+  );
+  const customer = await prisma.customer.create({
+    data: {
+      tenantId,
+      phone: "+12025550198",
+      fullName: "Synthetic maintenance",
+    },
+  });
+  const address = await prisma.propertyAddress.create({
+    data: {
+      tenantId,
+      customerId: customer.id,
+      customerTenantId: tenantId,
+      formattedAddress: "Synthetic only",
+      addressComponents: {},
+    },
+  });
+  const category = await prisma.serviceCategory.create({
+    data: { tenantId, name: "Synthetic maintenance" },
+  });
+  const job = await prisma.job.create({
+    data: {
+      tenantId,
+      customerId: customer.id,
+      customerTenantId: tenantId,
+      propertyAddressId: address.id,
+      propertyAddressTenantId: tenantId,
+      serviceCategoryId: category.id,
+      serviceCategoryTenantId: tenantId,
+      status: "CREATED",
+      urgency: "STANDARD",
+      pricingSnapshot: {},
+      policySnapshot: {},
+    },
+  });
+  await prisma.conversationJobLink.create({
+    data: {
+      tenantId,
+      conversationId: maintenanceSessions[2].scope.conversationId,
+      conversationTenantId: tenantId,
+      jobId: job.id,
+      jobTenantId: tenantId,
+      relationType: "ABOUT",
+    },
+  });
+  await prisma.auditLog.create({
+    data: {
+      tenantId,
+      entityType: "Conversation",
+      entityId: maintenanceSessions[0].scope.conversationId,
+      actorType: "SYSTEM_AI",
+      actorId: "synthetic-maintenance-fixture",
+      action: "conversation.controlled_phone_held",
+      metadata: {
+        accountSid: "synthetic-cleanup-account",
+        state: "HELD",
+        reservedMicros: 500000,
+        version: 1,
+        currency: "USD",
+      },
+    },
+  });
+  const inventory = () =>
+    prisma.addressVerificationOperation.findMany({
+      where: { tenantId },
+      include: { requests: true },
+      orderBy: { id: "asc" },
+    });
+  const beforeInventory = await inventory(),
+    beforeAudits = await prisma.auditLog.findMany({
+      where: { tenantId },
+      orderBy: { id: "asc" },
+    });
+  const mode = {
+    mode: "EXACT_SESSION_MAINTENANCE_V1",
+    tenantId,
+    accountId: maintenanceAccount,
+    approvalId: randomUUID(),
+    operationId: randomUUID(),
+    validFrom: Date.now() - 1000,
+    validUntil: Date.now() + 600000,
+    targets: maintenanceTargets,
+  };
+  const maint = new VerificationCleanupService(prisma, credentials, mode);
+  assert.deepEqual(await maint.inspectMaintenance(), { eligible: 3 });
+  const target = (i) => ({
+    conversationId: maintenanceTargets[i].conversationId,
+    sessionId: maintenanceTargets[i].sessionId,
+  });
+  const failMaintenance = (action) =>
+    new VerificationCleanupService(
+      {
+        $transaction: (fn) =>
+          prisma.$transaction((tx) =>
+            fn(
+              new Proxy(tx, {
+                get(obj, key) {
+                  if (key === "auditLog")
+                    return {
+                      ...obj.auditLog,
+                      create: (args) => {
+                        if (args.data.action === action)
+                          throw Error("synthetic rollback");
+                        return obj.auditLog.create(args);
+                      },
+                    };
+                  const v = obj[key];
+                  return typeof v === "function" ? v.bind(obj) : v;
+                },
+              }),
+            ),
+          ),
+      },
+      credentials,
+      mode,
+    );
+  await assert.rejects(
+    failMaintenance("conversation.verification_session_closed").maintain(
+      target(0),
+    ),
+  );
+  assert.equal(
+    (await row(maintenanceSessions[0])).collectedData.verificationLifecycle
+      .closedAt,
+    null,
+  );
+  const pending = await failMaintenance(
+    "conversation.verification_session_purged",
+  ).maintain(target(0));
+  assert.equal(pending.cleanupPending, true);
+  assert.notEqual(
+    (await row(maintenanceSessions[0])).collectedData.verificationLifecycle
+      .closedAt,
+    null,
+  );
+  assert.equal(
+    (await row(maintenanceSessions[0])).collectedData.verificationLifecycle
+      .purgedAt,
+    null,
+  );
+  assert.equal(
+    await prisma.communicationContent.count({
+      where: { id: drafts[0].content.id },
+    }),
+    1,
+  );
+  const concurrentMaintenance = await Promise.all([
+    maint.maintain(target(0)),
+    maint.maintain(target(0)),
+  ]);
+  assert.ok(concurrentMaintenance.every((r) => !r.cleanupPending));
+  await maint.maintain(target(1));
+  await maint.maintain(target(2));
+  for (const session of maintenanceSessions) {
+    const r = await row(session);
+    assert.equal(r.status, "ONGOING");
+    assert.ok(r.collectedData.verificationLifecycle.closedAt > 0);
+    assert.ok(r.collectedData.verificationLifecycle.purgedAt > 0);
+    assert.equal("verificationOperations" in r.collectedData, false);
+    for (const action of ["closed", "purged"])
+      assert.equal(
+        await prisma.auditLog.count({
+          where: {
+            entityId: session.scope.conversationId,
+            action: "conversation.verification_session_" + action,
+          },
+        }),
+        1,
+      );
+  }
+  assert.equal(
+    await prisma.communicationContent.count({
+      where: { id: drafts[0].content.id },
+    }),
+    0,
+  );
+  for (const c of [
+    drafts[1],
+    drafts[2],
+    preservedReview,
+    otherVersion,
+    otherSession,
+  ])
+    assert.equal(
+      await prisma.communicationContent.count({ where: { id: c.content.id } }),
+      1,
+    );
+  assert.deepEqual(await inventory(), beforeInventory);
+  for (const audit of beforeAudits)
+    assert.deepEqual(
+      await prisma.auditLog.findUnique({ where: { id: audit.id } }),
+      audit,
+    );
+  assert.deepEqual(await prisma.job.findUnique({ where: { id: job.id } }), job);
+  // Reopen only disposable synthetic fixtures for connector + runner integration.
+  for (const session of maintenanceSessions)
+    await edit(session, (d) => {
+      d.verificationLifecycle.closedAt = null;
+      d.verificationLifecycle.purgedAt = null;
+      d.verificationOperations = { private: "synthetic" };
+    });
+  await content(maintenanceSessions[0]);
+  await prisma.tenantOrganization.update({
+    where: { id: tenantId },
+    data: {
+      settings: {
+        controlledPhoneApproval: { enabled: false },
+        controlledRuntimeApproval: { enabled: false },
+      },
+    },
+  });
+  const roles = await prisma.$queryRawUnsafe(
+    "SELECT rolname FROM pg_roles WHERE rolname='p06_intake_runtime'",
+  );
+  if (!roles.length)
+    await prisma.$executeRawUnsafe(
+      "CREATE ROLE p06_intake_runtime NOLOGIN CONNECTION LIMIT 0 VALID UNTIL '2000-01-01'",
+    );
+  const [identity] = await prisma.$queryRawUnsafe(
+    "SELECT current_database() AS database,current_user AS user",
+  );
+  const binding = {
+    ...mode,
+    operationId: randomUUID(),
+    approvalId: randomUUID(),
+  };
+  const connectorTarget = {
+    ...identity,
+    phoneAccountSid: "synthetic-cleanup-account",
+    expectedRetention: maintenanceTargets
+      .map((t, i) => ({
+        id: t.conversationId,
+        reviews: i === 1 ? 1 : 0,
+        jobs: i === 2 ? 1 : 0,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  };
+  let connectorClosed = false;
+  await assert.rejects(
+    createCleanupConnection({
+      prisma,
+      binding,
+      target: { ...connectorTarget, database: "wrong" },
+      close: async () => {},
+    }),
+    /CLEANUP_PREFLIGHT_REFUSED/,
+  );
+  const connection = await createCleanupConnection({
+    prisma,
+    binding,
+    target: connectorTarget,
+    close: async () => {
+      connectorClosed = true;
+    },
+  });
+  await prisma.tenantOrganization.update({
+    where: { id: tenantId },
+    data: {
+      settings: {
+        controlledPhoneApproval: { enabled: true },
+        controlledRuntimeApproval: { enabled: false },
+      },
+    },
+  });
+  await assert.rejects(connection.preflight());
+  await prisma.tenantOrganization.update({
+    where: { id: tenantId },
+    data: {
+      settings: {
+        controlledPhoneApproval: { enabled: false },
+        controlledRuntimeApproval: { enabled: false },
+      },
+    },
+  });
+  await prisma.$executeRawUnsafe("ALTER ROLE p06_intake_runtime LOGIN");
+  await assert.rejects(connection.preflight());
+  await prisma.$executeRawUnsafe("ALTER ROLE p06_intake_runtime NOLOGIN");
+  const sourceRoot = await realpath(process.cwd());
+  const names = [
+    "src/communications/verification-cleanup.service.ts",
+    "dist/communications/verification-cleanup.service.js",
+    "scripts/p06-cleanup-maintenance.mjs",
+    "scripts/p06-cleanup-connector.mjs",
+    "scripts/p06_backup_guards.mjs",
+    "package-lock.json",
+    "prisma/schema.prisma",
+  ];
+  const sourceHashes = Object.fromEntries(
+    await Promise.all(
+      names.map(async (n) => [
+        n,
+        createHash("sha256")
+          .update(await readFile(path.join(sourceRoot, n)))
+          .digest("hex"),
+      ]),
+    ),
+  );
+  const plan = { binding, target: connectorTarget, sourceHashes };
+  const reviewedPlanHash = planHash(plan);
+  const journalRoot = await realpath(
+    await mkdtemp(path.join(tmpdir(), "cleanup-connector-fixture-")),
+  );
+  try {
+    await runCleanup({
+      plan,
+      reviewedPlanHash,
+      authorization: {
+        decision: "APPROVED",
+        action: "THREE_EXPIRED_SESSION_CLEANUP",
+        operationId: binding.operationId,
+        approvalId: binding.approvalId,
+        planHash: reviewedPlanHash,
+        automaticRetryAllowed: false,
+        deploymentAllowed: false,
+      },
+      sourceRoot,
+      journalRoot,
+      input: Readable.from([Buffer.from("synthetic-password\n")]),
+      ready: () => {},
+      connect: async () => connection,
+    });
+    const receipt = JSON.parse(
+      await readFile(path.join(journalRoot, "result.json"), "utf8"),
+    );
+    assert.equal(receipt.status, "CLEANUP_VERIFIED");
+    assert.equal(connectorClosed, true);
+    await connection.verifyUnchangedAndClosed();
+    const held = await prisma.auditLog.findFirst({
+      where: { tenantId, action: "conversation.controlled_phone_held" },
+    });
+    await prisma.auditLog.update({
+      where: { id: held.id },
+      data: { metadata: { ...held.metadata, reservedMicros: 1 } },
+    });
+    await assert.rejects(connection.verifyUnchangedAndClosed());
+    await prisma.auditLog.update({
+      where: { id: held.id },
+      data: { metadata: held.metadata },
+    });
+  } finally {
+    await rm(journalRoot, { recursive: true, force: true });
+  }
+  assert.equal(calls, before);
   correction.clear();
   return {
     checks: [
@@ -431,6 +849,8 @@ export async function verifyVerificationCleanup({
       "ninety-day resolved alias purge retains younger and uncertain references",
       "reference purge audit failure rolls back; foreign tenant sweep removes nothing",
       "accounting rows, request counts and holds unchanged",
+      "real connector and one-use runner: exact identity/runtime gates, closure/purge, preservation fingerprints and hold tamper refusal",
+      "exact three-session maintenance: close/purge audit rollback, concurrent idempotency, submitted and linked business retention, draft version/session scope and unchanged liabilities",
     ],
     mockCalls: calls,
     liveProviderCalls: 0,

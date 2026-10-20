@@ -1,3 +1,4 @@
+import { controlledIntakeRefusalStage } from "./controlled-intake-refusal";
 import { AddressOperationLedger } from "./address-operation-ledger";
 export type AddressOperationClaim = Awaited<
   ReturnType<AddressOperationLedger["execute"]>
@@ -28,7 +29,7 @@ export class AddressOperationExecutor {
     },
   ) {
     if (!mock || mock.mode !== "FIXTURE_ONLY") return uncertain();
-    return this.perform(
+    const observed = await this.perform(
       input,
       (signal, claim) =>
         mock.run(signal, {
@@ -37,6 +38,8 @@ export class AddressOperationExecutor {
         }),
       false,
     );
+    // Keep the legacy fixture contract free of controlled-only outcomes.
+    return observed.status === "LIMIT_REACHED" ? uncertain() : observed;
   }
   runControlled<T>(
     input: { sessionToken: string; requestId: string },
@@ -60,10 +63,22 @@ export class AddressOperationExecutor {
     const complete = controlled
       ? this.ledger.completeControlled!.bind(this.ledger)
       : this.ledger.complete.bind(this.ledger);
-    input = { ...input };
+    input = {
+      sessionToken: input.sessionToken,
+      requestId: input.requestId,
+    };
     let claim: Awaited<ReturnType<AddressOperationLedger["execute"]>>;
     try {
       await execute({ ...input, action: "reserve" });
+    } catch (error) {
+      if (
+        controlled &&
+        controlledIntakeRefusalStage(error) === "VERIFICATION_LIMIT_REACHED"
+      )
+        return { status: "LIMIT_REACHED" as const };
+      return uncertain();
+    }
+    try {
       claim = await execute({ ...input, action: "claim" });
     } catch {
       return uncertain();

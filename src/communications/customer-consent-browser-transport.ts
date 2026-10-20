@@ -262,7 +262,12 @@ export class CustomerConsentBrowserTransport {
           ? "addressSelection,draft,expectedRevision,sessionToken"
           : "draft,expectedRevision,sessionToken",
         submit: Object.prototype.hasOwnProperty.call(input, "version")
-          ? "confirmed,confirmedAddress,draft,expectedRevision,requestId,sessionToken,version"
+          ? Object.prototype.hasOwnProperty.call(
+              input,
+              "correctionContinuation",
+            )
+            ? "confirmed,confirmedAddress,correctionContinuation,draft,expectedRevision,requestId,sessionToken,version"
+            : "confirmed,confirmedAddress,draft,expectedRevision,requestId,sessionToken,version"
           : Object.prototype.hasOwnProperty.call(input, "addressSelection")
             ? "addressSelection,confirmed,draft,expectedRevision,requestId,sessionToken"
             : "confirmed,draft,expectedRevision,requestId,sessionToken",
