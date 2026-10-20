@@ -34,13 +34,13 @@ This is preparation evidence, not live readiness, payment demonstration or 3A ac
 
 - Python syntax: passed.
 - Node syntax for database closeout, Firebase read and IAM `testIamPermissions` helpers: passed.
-- Focused controller suite: **27/27 passed**. It covers exact resources/hashes, disabled/no-window refusal, exact approval, window/retirement bounds, exclusive receipt creation, command failure/timeout sanitization, absence uncertainty, Cloud/database preflight shapes, exact job/account binding, four independent startup values, role attribute/membership/ownership readback, seven resource bindings, exact environment replacement, inherited-environment refusal, disabled destination/event contract, persistent mutation recovery, persistence failure before provider access, interruption containment and cleanup coverage.
+- Focused controller suite: **28/28 passed**. It covers exact resources/hashes, immutable approval-source binding, disabled/no-window refusal, exact approval, window/retirement bounds, exclusive receipt creation, command failure/timeout sanitization, absence uncertainty, Cloud/database preflight shapes, exact job/account binding, four independent startup values, role attribute/membership/ownership readback, seven resource bindings, exact environment replacement, inherited-environment refusal, disabled destination/event contract, persistent mutation recovery, persistence failure before provider access, interruption containment and cleanup coverage.
 - Installed CLI help confirmed Cloud Run replacement environment/secret flags, no-traffic/tag/revision controls and unconditional secret IAM bindings. It also disproved the originally drafted `gcloud iam service-accounts test-iam-permissions` command; the package now uses the read-only IAM REST `testIamPermissions` method through the existing explicit-token seam. That correction was completed before binding or external action.
 - Static secret-pattern scan: no Stripe API key or webhook signing-secret value in package sources.
 - Private directory mode: 0700; generated receipt mode: 0600.
-- Manifest SHA-256: `da1d18696aaf40127239a63f1b22ac4a89a6c7677ac81f90b7f6a0004055a0a7`.
-- Controller SHA-256: `ff84cb7e52e55427eff5944713effe4ea6121d7da624d9918f78c0cd2adb17a0`.
-- Test SHA-256: `ab9d9c28637232522c0b99a926709e621e0f7a93140ee38825938d311c443cd5`.
+- Manifest SHA-256: `eaf4fe41602baada407fcb1f69607a2924f5df9cc406a191338c5083ec08b134`.
+- Controller SHA-256: `458f013cc922a3fc131d42a59cdf3c1d231d744766847fdc45e85a95c1d308cc`.
+- Test SHA-256: `8b22fe6ad5ec0aa50079393860c00cdba78d5bcde636998f682cd746146d5e06`.
 
 ## Remaining and next observable result
 
