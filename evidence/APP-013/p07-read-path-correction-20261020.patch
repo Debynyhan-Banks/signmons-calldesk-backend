@@ -1,0 +1,204 @@
+--- repair3-source/controller.py
++++ local-correction-only/controller.py
+@@ -6,2 +6,3 @@
+-
+-ROOT=Path('/private/tmp/p07-readiness-20261020-1030-repair3')
++from urllib.parse import urlsplit, unquote, parse_qs
++
++ROOT=Path('/private/tmp/p07-read-path-correction-20261020')
+@@ -149,0 +151,24 @@
++def child_password(payload):
++    try:
++        if not isinstance(payload,str) or not 1<=len(payload.encode())<=8192 or any(x in payload for x in ['\x00','\r','\n']): raise ValueError()
++        url=urlsplit(payload)
++        query=parse_qs(url.query,keep_blank_values=True,strict_parsing=True)
++        if url.scheme not in {'postgres','postgresql'} or url.fragment or url.hostname!=DB_HOST or url.port not in {None,5432} or unquote(url.path)!='/'+DB_NAME or unquote(url.username or '')!=ROLE: raise ValueError()
++        if query.get('sslmode')!=['verify-full'] or query.get('schema')!=['public'] or set(query)-{'sslmode','schema'}: raise ValueError()
++        password=unquote(url.password or '')
++        if not password or len(password)>512 or any(x in password for x in ['\x00','\r','\n']): raise ValueError()
++        return password
++    except Exception:
++        raise Stop('CHILD_CONNECTION_TARGET_MISMATCH') from None
++
++def runtime_psql(sql):
++    payload=''; password=''
++    try:
++        payload=gc(['secrets','versions','access','2','--secret=signmons-staging-p06-child-database-url','--project='+PROJECT],timeout=30)
++        password=child_password(payload)
++        payload=''
++        data=json.dumps({'password':password,'sql':sql}).encode()
++        return run(['/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node',str(ROOT/'db-runtime-read.mjs')],input_bytes=data,timeout=45)
++    finally:
++        payload=''; password=''
++
+@@ -192,4 +217,17 @@
+-    sql=f"""BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
+-SET LOCAL ROLE {ROLE};
+-WITH j AS (SELECT * FROM \"Job\" WHERE id='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid), t AS (SELECT * FROM \"TenantOrganization\" WHERE id='{TENANT}'::uuid)
+-SELECT (SELECT count(*) FROM j)||'|'||(SELECT bool_and(status='CREATED') FROM j)||'|'||(SELECT bool_and(\"deletedAt\" IS NULL) FROM j)||'|'||(SELECT count(*) FROM \"Payment\" WHERE \"jobId\"='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid)||'|'||(SELECT bool_and(\"calendarEventId\" IS NULL) FROM j)||'|'||(SELECT count(*) FROM \"CalendarOperation\" WHERE \"jobId\"='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid)||'|'||(SELECT bool_and(jsonb_typeof(\"policySnapshot\"->'intakeAdmission')='object' AND (\"policySnapshot\"#>>'{{intakeAdmission,paymentApprovedAt}}')::timestamptz <= now() AND (\"policySnapshot\"#>>'{{intakeAdmission,paymentDigest}}') ~ '^[a-f0-9]{{64}}$') FROM j)||'|'||(SELECT bool_and(NOT (\"policySnapshot\" ? 'paymentPolicyBinding')) FROM j)||'|'||(SELECT bool_and(\"stripeConnectAccountId\" IS NOT NULL AND length(btrim(\"stripeConnectAccountId\"))>0) FROM t)||'|'||(SELECT bool_and(\"stripeConnectAccountId\"='{account}') FROM t)||'|'||(SELECT bool_and(\"chargesEnabled\"=true) FROM t)||'|'||(current_user='{ROLE}');
++    fields=[
++        "(SELECT count(*) FROM j)",
++        "(SELECT bool_and(status='CREATED') FROM j)",
++        '(SELECT bool_and("deletedAt" IS NULL) FROM j)',
++        '(SELECT bool_and("calendarEventId" IS NULL) FROM j)',
++        """(SELECT bool_and(jsonb_typeof("policySnapshot"->'intakeAdmission')='object' AND ("policySnapshot"#>>'{intakeAdmission,paymentApprovedAt}')::timestamptz <= now() AND ("policySnapshot"#>>'{intakeAdmission,paymentDigest}') ~ '^[a-f0-9]{64}$') FROM j)""",
++        """(SELECT bool_and(NOT ("policySnapshot" ? 'paymentPolicyBinding')) FROM j)""",
++        '(SELECT bool_and("stripeConnectAccountId" IS NOT NULL AND length(btrim("stripeConnectAccountId"))>0) FROM t)',
++        f"""(SELECT bool_and("stripeConnectAccountId"='{account}') FROM t)""",
++        '(SELECT bool_and("chargesEnabled"=true) FROM t)',
++        f"(current_user='{ROLE}')",
++    ]
++    joined="||'|'||".join(fields)
++    sql=f'''BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
++SELECT current_database()||'|'||current_user||'|'||session_user;
++WITH j AS (SELECT status,"deletedAt","calendarEventId","policySnapshot" FROM "Job" WHERE id='{JOB}'::uuid AND "tenantId"='{TENANT}'::uuid), t AS (SELECT "stripeConnectAccountId","chargesEnabled" FROM "TenantOrganization" WHERE id='{TENANT}'::uuid)
++SELECT {joined};
+@@ -197,4 +235,9 @@
+-"""
+-    result=[x for x in psql(password,sql).splitlines() if x][-1]
+-    if result!='1|t|t|0|t|0|t|t|t|t|t|t': raise Stop('EXACT_JOB_READ_MISMATCH')
+-    save('exact-job-read.json',{'status':'PASSED','jobCount':1,'state':'CREATED','undeleted':True,'paymentCount':0,'calendarEventAbsent':True,'calendarOperationCount':0,'paymentApprovalAndDigestValid':True,'paymentPolicyBindingAbsent':True,'tenantAccountPresent':True,'tenantAccountMatchesStripe':True,'chargesEnabled':True,'runtimeRoleUsed':True,'transactionRolledBack':True})
++'''
++    lines=[x for x in runtime_psql(sql).splitlines() if x]
++    if lines!=[f'{DB_NAME}|{ROLE}|{ROLE}','1|t|t|t|t|t|t|t|t|t']: raise Stop('EXACT_JOB_READ_MISMATCH')
++    absence=f'''BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
++SELECT (current_database()='{DB_NAME}' AND current_user='{DB_ADMIN}' AND session_user='{DB_ADMIN}')||'|'||(SELECT count(*) FROM "Payment" WHERE "jobId"='{JOB}'::uuid AND "tenantId"='{TENANT}'::uuid)||'|'||(SELECT count(*) FROM "CalendarOperation" WHERE "jobId"='{JOB}'::uuid AND "tenantId"='{TENANT}'::uuid);
++ROLLBACK;
++'''
++    if psql(password,absence).splitlines()!=['t|0|0']: raise Stop('EXACT_JOB_ACTIVITY_MISMATCH')
++    save('exact-job-read.json',{'status':'PASSED','jobCount':1,'state':'CREATED','undeleted':True,'paymentCount':0,'calendarEventAbsent':True,'calendarOperationCount':0,'paymentApprovalAndDigestValid':True,'paymentPolicyBindingAbsent':True,'tenantAccountPresent':True,'tenantAccountMatchesStripe':True,'chargesEnabled':True,'runtimeRoleUsed':True,'runtimeSessionIdentityVerified':True,'activityReadOnlyAdministrator':True,'sharedSnapshot':False,'transactionRolledBack':True})
+@@ -334 +377,3 @@
+-if __name__=='__main__': raise SystemExit(main())
++if __name__=='__main__':
++    print('P07_LOCAL_CORRECTION_ONLY_NO_EXECUTION')
++    raise SystemExit(2)
+--- repair3-source/test_controller.py
++++ local-correction-only/test_controller.py
+@@ -86,2 +86,2 @@
+-        replies=['t|10|t|0','1|t|t|0|t|0|t|t|t|t|t|t']
+-        with patch.object(c,'psql',side_effect=replies),patch.object(c,'save'):
++        replies=['t|10|t|0','t|0|0']
++        with patch.object(c,'psql',side_effect=replies),patch.object(c,'runtime_psql',return_value=f'{c.DB_NAME}|{c.ROLE}|{c.ROLE}\n1|t|t|t|t|t|t|t|t|t'),patch.object(c,'save'):
+@@ -89,0 +90,56 @@
++
++    def fixture_url(self):
++        return f'postgresql://{c.ROLE}:FICTIONAL%3Aonly@{c.DB_HOST}:5432/{c.DB_NAME}?schema=public&sslmode=verify-full'
++
++    def test_runtime_connection_uses_numeric_secret_and_direct_role_without_secret_argv(self):
++        with patch.object(c,'gc',return_value=self.fixture_url()) as gc,patch.object(c,'run',return_value='runtime-result') as run:
++            self.assertEqual(c.runtime_psql('BEGIN READ ONLY; SELECT 1; ROLLBACK;'),'runtime-result')
++        args=gc.call_args.args[0]
++        self.assertEqual(args[:4],['secrets','versions','access','2'])
++        self.assertIn('--secret=signmons-staging-p06-child-database-url',args)
++        argv=run.call_args.args[0]
++        self.assertEqual(Path(argv[-1]).name,'db-runtime-read.mjs')
++        self.assertNotIn('FICTIONAL',str(argv))
++        payload=json.loads(run.call_args.kwargs['input_bytes'])
++        self.assertEqual(payload['password'],'FICTIONAL:only')
++
++    def test_runtime_target_refuses_foreign_or_malformed_credentials_without_database_call(self):
++        value=self.fixture_url()
++        variants=[value.replace(c.ROLE,'neondb_owner'),value.replace(c.DB_HOST,'foreign.example'),value.replace('/'+c.DB_NAME,'/other'),value.replace('sslmode=verify-full','sslmode=require'),value+'&options=unsafe',value+'#fragment',value.replace('FICTIONAL%3Aonly',''),value+'&channel_binding=disable',value+'\n',value.replace(':5432',':1234'),value+'&sslmode=verify-full']
++        for payload in variants:
++            with self.subTest(payload_kind=variants.index(payload)),patch.object(c,'gc',return_value=payload),patch.object(c,'psql') as psql:
++                with self.assertRaises(c.Stop) as result:c.runtime_psql('SELECT 1;')
++                self.assertEqual(result.exception.code,'CHILD_CONNECTION_TARGET_MISMATCH')
++                self.assertNotIn('FICTIONAL',str(result.exception));psql.assert_not_called()
++
++    def test_separate_transactions_preserve_restricted_identity_and_forbidden_tables(self):
++        with patch.object(c,'psql',side_effect=['t|10|t|0','t|0|0']) as admin,patch.object(c,'runtime_psql',return_value=f'{c.DB_NAME}|{c.ROLE}|{c.ROLE}\n1|t|t|t|t|t|t|t|t|t') as runtime,patch.object(c,'save') as save:
++            c.db_open_and_read('FICTIONAL-admin','acct_12345678')
++        limited=runtime.call_args.args[0];activity=admin.call_args_list[1].args[1]
++        self.assertNotIn('SET LOCAL ROLE',limited);self.assertNotIn('"Payment"',limited);self.assertNotIn('"CalendarOperation"',limited)
++        self.assertIn('session_user',limited)
++        for sql in [limited,activity]:
++            self.assertIn('REPEATABLE READ READ ONLY',sql);self.assertIn('ROLLBACK;',sql)
++            self.assertIn(c.JOB,sql);self.assertIn(c.TENANT,sql)
++        self.assertIn('"Payment"',activity);self.assertIn('"CalendarOperation"',activity)
++        self.assertNotIn('"Job"',activity);self.assertNotIn('"TenantOrganization"',activity)
++        self.assertFalse(save.call_args.args[1]['sharedSnapshot'])
++
++    def test_foreign_runtime_identity_or_job_state_refuses_before_admin_activity_read(self):
++        variants=[f'{c.DB_NAME}|{c.ROLE}|neondb_owner\n1|t|t|t|t|t|t|t|t|t',f'{c.DB_NAME}|{c.ROLE}|{c.ROLE}\n0|t|t|t|t|t|t|t|t|t']
++        for value in variants:
++            with patch.object(c,'psql',return_value='t|10|t|0') as admin,patch.object(c,'runtime_psql',return_value=value),patch.object(c,'save'):
++                with self.assertRaises(c.Stop) as result:c.db_open_and_read('FICTIONAL-admin','acct_12345678')
++                self.assertEqual(result.exception.code,'EXACT_JOB_READ_MISMATCH');self.assertEqual(admin.call_count,1)
++
++    def test_existing_payment_or_calendar_or_foreign_admin_refuses_success_receipt(self):
++        for activity in ['t|1|0','t|0|1','f|0|0','t|0|0\nprivate unexpected row']:
++            with patch.object(c,'psql',side_effect=['t|10|t|0',activity]),patch.object(c,'runtime_psql',return_value=f'{c.DB_NAME}|{c.ROLE}|{c.ROLE}\n1|t|t|t|t|t|t|t|t|t'),patch.object(c,'save') as save:
++                with self.assertRaises(c.Stop) as result:c.db_open_and_read('FICTIONAL-admin','acct_12345678')
++                self.assertEqual(result.exception.code,'EXACT_JOB_ACTIVITY_MISMATCH')
++                self.assertNotIn('exact-job-read.json',[call.args[0] for call in save.call_args_list])
++
++    def test_local_copy_entry_point_cannot_execute_even_with_run_flag(self):
++        result=subprocess.run(['/opt/homebrew/bin/python3','-B',str(Path(__file__).with_name('controller.py')),'--run'],capture_output=True,text=True,timeout=5)
++        self.assertEqual(result.returncode,2)
++        self.assertEqual(result.stdout.strip(),'P07_LOCAL_CORRECTION_ONLY_NO_EXECUTION')
+@@ -129 +185 @@
+-        with patch.object(c.sys,'argv',['controller.py','--run']),patch.object(c.os,'isatty',return_value=True),patch.object(c,'local_check'),patch.object(c,'start_state',return_value='OPEN'),patch.object(c,'save',side_effect=lambda n,v:saved.append((n,v))),patch.object(c.getpass,'getpass',side_effect=['db-password','acct_12345678','whsec_'+'a'*20]),patch.object(c,'cloud_preflight') as cloud,patch.object(c,'db_preflight') as db,patch.object(c,'wait_stripe_receipt') as stripe,patch.object(c,'add_secret',return_value='6') as secret,patch.object(c,'db_open_and_read') as read,patch.object(c,'deploy') as deploy,patch.object(c,'deploy_readback') as readback,patch.object(c,'preview_check') as preview,patch.object(c,'close_role') as close,patch.object(c,'gc',return_value=service):
++        with patch.object(c.time,'time',return_value=c.START+60),patch.object(c.sys,'argv',['controller.py','--run']),patch.object(c.os,'isatty',return_value=True),patch.object(c,'local_check'),patch.object(c,'start_state',return_value='OPEN'),patch.object(c,'save',side_effect=lambda n,v:saved.append((n,v))),patch.object(c.getpass,'getpass',side_effect=['db-password','acct_12345678','whsec_'+'a'*20]),patch.object(c,'cloud_preflight') as cloud,patch.object(c,'db_preflight') as db,patch.object(c,'wait_stripe_receipt') as stripe,patch.object(c,'add_secret',return_value='6') as secret,patch.object(c,'db_open_and_read') as read,patch.object(c,'deploy') as deploy,patch.object(c,'deploy_readback') as readback,patch.object(c,'preview_check') as preview,patch.object(c,'close_role') as close,patch.object(c,'gc',return_value=service):
+--- /dev/null
++++ local-correction-only/db-runtime-read.mjs
+@@ -0,0 +1,34 @@
++// Local correction source only; parent CLI refuses execution.
++import { createRequire } from 'node:module';
++import { readFileSync } from 'node:fs';
++import { pathToFileURL } from 'node:url';
++const require=createRequire('/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/package.json');
++const { Client }=require('pg');
++
++export async function readRuntime(input, ClientType=Client) {
++  if (!input || typeof input.password!=='string' || !input.password || typeof input.sql!=='string') throw Error('input');
++  const host='ep-jolly-flower-ayc6w9hv.c-5.us-east-2.aws.neon.tech';
++  const client=new ClientType({host,port:5432,database:'neondb',user:'p06_intake_runtime',password:input.password,
++    ssl:{rejectUnauthorized:true,servername:host},connectionTimeoutMillis:8000,query_timeout:35000,
++    application_name:'signmons_p07_exact_runtime_read',
++    options:'-c statement_timeout=20s -c lock_timeout=5s -c default_transaction_read_only=on -c search_path=public'});
++  try {
++    await client.connect();
++    const result=await client.query(input.sql);
++    const rows=(Array.isArray(result)?result:[result]).flatMap(x=>x.rows??[]);
++    const lines=rows.map(row=>{
++      const values=Object.values(row);
++      if(values.length!==1 || typeof values[0]!=='string' || !/^[A-Za-z0-9_|]+$/.test(values[0])) throw Error('result');
++      return values[0];
++    });
++    return lines.join('\n');
++  } finally { await client.end(); }
++}
++
++if (process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
++  const raw=readFileSync(0);
++  let input;
++  try { input=JSON.parse(raw.toString('utf8'));process.stdout.write(await readRuntime(input)); }
++  catch { process.stdout.write('P07_RUNTIME_READ_FAILED\n');process.exitCode=1; }
++  finally { raw.fill(0);if(input)input.password=''; }
++}
+--- /dev/null
++++ local-correction-only/test-runtime-read.mjs
+@@ -0,0 +1,23 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { readRuntime } from './db-runtime-read.mjs';
++
++test('direct restricted pg connection requires certificate and hostname verification and closes',async()=>{
++  let options,ended=false,sql;
++  class Client {constructor(x){options=x}async connect(){}async query(x){sql=x;return [{rows:[]},{rows:[{identity:'neondb|p06_intake_runtime|p06_intake_runtime'}]},{rows:[{facts:'1|t|t'}]},{rows:[]}]}async end(){ended=true}}
++  const query='BEGIN READ ONLY; SELECT 1; ROLLBACK;';
++  assert.equal(await readRuntime({password:'FICTIONAL-only',sql:query},Client),'neondb|p06_intake_runtime|p06_intake_runtime\n1|t|t');
++  assert.equal(options.user,'p06_intake_runtime');assert.equal(options.database,'neondb');
++  assert.equal(options.ssl.rejectUnauthorized,true);assert.equal(options.ssl.servername,options.host);
++  assert.match(options.options,/default_transaction_read_only=on/);assert.equal(sql,query);assert.equal(ended,true);
++});
++test('query failure still closes the restricted client',async()=>{
++  let ended=false;
++  class Client {async connect(){}async query(){throw Error('FICTIONAL-private-diagnostic')}async end(){ended=true}}
++  await assert.rejects(readRuntime({password:'FICTIONAL-only',sql:'BEGIN READ ONLY;'},Client));assert.equal(ended,true);
++});
++test('unexpected result shape refuses instead of emitting raw private values',async()=>{
++  let ended=false;
++  class Client {async connect(){}async query(){return {rows:[{unexpected:'private url with spaces'}]}}async end(){ended=true}}
++  await assert.rejects(readRuntime({password:'FICTIONAL-only',sql:'SELECT 1;'},Client),/result/);assert.equal(ended,true);
++});
