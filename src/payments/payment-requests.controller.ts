@@ -93,6 +93,20 @@ export class PaymentRequestsController {
     });
   }
 
+  @Post(":jobId/payment-request/recover")
+  @HttpCode(200)
+  @Header("Cache-Control", "private, no-store")
+  @Throttle({ default: { limit: 10, ttl: 60 } })
+  recoverPaymentRequest(@Param("jobId", new ParseUUIDPipe()) jobId: string) {
+    const context = this.operatorContext();
+    return this.payments.recoverForOperator({
+      tenantId: context.tenantId,
+      jobId,
+      actorId: context.userId,
+      traceId: this.traceId(context.requestId),
+    });
+  }
+
   private operatorContext(): {
     tenantId: string;
     userId: string;

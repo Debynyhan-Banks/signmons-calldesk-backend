@@ -20,8 +20,6 @@ import appConfig from "../config/app.config";
 import { PrismaService } from "../prisma/prisma.service";
 
 const SIGNATURE_TOLERANCE_SECONDS = 300;
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HANDLED_EVENTS = new Set([
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
@@ -76,11 +74,7 @@ export class StripeWebhooksService {
       throw new NotFoundException("Webhook account is not recognized.");
     }
 
-    const payment = await this.findPayment(
-      tenant.id,
-      event.account,
-      event.data.object,
-    );
+    const payment = await this.findPayment(tenant.id, event.account, event);
     if (!payment) {
       throw new NotFoundException("Webhook payment is not recognized.");
     }
@@ -197,34 +191,58 @@ export class StripeWebhooksService {
   private async findPayment(
     tenantId: string,
     connectedAccountId: string,
-    object: StripeObject,
+    event: StripeEvent,
   ) {
+    const object = event.data.object;
     const metadata = this.record(object.metadata);
-    const paymentRequestId =
-      typeof metadata?.paymentRequestId === "string" &&
-      UUID.test(metadata.paymentRequestId)
-        ? metadata.paymentRequestId
-        : null;
-    const sessionId = this.prefixed(object.id, "cs_");
-    const paymentIntentId =
-      this.prefixed(object.payment_intent, "pi_") ??
-      (this.prefixed(object.id, "pi_") ? String(object.id) : null);
-    const chargeId = this.prefixed(object.id, "ch_");
-    const options: Prisma.PaymentWhereInput[] = [];
-    if (paymentRequestId) options.push({ id: paymentRequestId });
-    if (sessionId) options.push({ stripeCheckoutSessionId: sessionId });
-    if (paymentIntentId)
-      options.push({ stripePaymentIntentId: paymentIntentId });
-    if (chargeId) options.push({ stripeChargeId: chargeId });
-    if (options.length === 0) return null;
+    let resource: Prisma.PaymentWhereInput | null = null;
+    if (event.type.startsWith("checkout.session.")) {
+      const sessionId = this.prefixed(object.id, "cs_");
+      if (!sessionId) return null;
+      resource = { stripeCheckoutSessionId: sessionId };
+    } else if (event.type === "payment_intent.payment_failed") {
+      const paymentIntentId = this.prefixed(object.id, "pi_");
+      if (!paymentIntentId) return null;
+      resource = { stripePaymentIntentId: paymentIntentId };
+    } else if (event.type === "charge.refunded") {
+      const chargeId = this.prefixed(object.id, "ch_");
+      const paymentIntentId = this.prefixed(object.payment_intent, "pi_");
+      if (!chargeId || !paymentIntentId) return null;
+      resource = {
+        OR: [
+          { stripeChargeId: chargeId },
+          { stripeChargeId: null, stripePaymentIntentId: paymentIntentId },
+        ],
+      };
+    }
+    if (!resource) return null;
 
-    return this.prisma.payment.findFirst({
+    const payment = await this.prisma.payment.findFirst({
       where: {
         tenantId,
         destinationAccountId: connectedAccountId,
-        OR: options,
+        ...resource,
       },
     });
+    if (!payment) return null;
+
+    if (
+      event.type === "charge.refunded" &&
+      (payment.stripePaymentIntentId !== object.payment_intent ||
+        (payment.stripeChargeId !== null &&
+          payment.stripeChargeId !== object.id))
+    )
+      return null;
+
+    for (const [key, expected] of [
+      ["paymentRequestId", payment.id],
+      ["jobId", payment.jobId],
+      ["tenantId", tenantId],
+    ] as const) {
+      if (metadata && key in metadata && metadata[key] !== expected)
+        return null;
+    }
+    return payment;
   }
 
   private transition(

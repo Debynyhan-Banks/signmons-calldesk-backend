@@ -21,11 +21,14 @@ import { TechnicianNotificationsService } from "./technician-notifications.servi
 import { TechnicianLinkService } from "./technician-link.service";
 import { TechnicianWorkflowService } from "./technician-workflow.service";
 import { RoutingService } from "./routing.service";
+import { JobPaymentPolicyController } from "./job-payment-policy.controller";
+import { JobPaymentPolicyService } from "./job-payment-policy.service";
 
 @Module({
   imports: [AuthModule, CommunicationsModule],
   controllers: [
     JobsController,
+    JobPaymentPolicyController,
     TechnicianController,
     TechnicianNotificationsController,
   ],
@@ -44,6 +47,7 @@ import { RoutingService } from "./routing.service";
     TechnicianWorkflowService,
     TechnicianNotificationsService,
     RoutingService,
+    JobPaymentPolicyService,
     TenantGuard,
     {
       provide: JOB_REPOSITORY,

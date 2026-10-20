@@ -94,15 +94,24 @@ export class JobPaymentPolicyService {
         );
       const policy = object(job.policySnapshot),
         pricing = object(job.pricingSnapshot);
-      if (
-        !policy ||
-        !pricing ||
-        object(policy.intakeAdmission)?.humanReviewed !== true
-      )
-        throw new ConflictException("Human-reviewed intake required.");
       const digest = createHash("sha256")
         .update(JSON.stringify(approved))
         .digest("hex");
+      const admission = object(policy?.intakeAdmission);
+      const admissionSource =
+        admission?.version === 1 && admission.humanReviewed === true
+          ? "HUMAN_REVIEWED_V1"
+          : admission?.version === 2 &&
+              admission.actorId === "signmons-intake-admission-v1" &&
+              admission.paymentApprovedAt === approvedAt &&
+              admission.paymentDigest === digest &&
+              admission.humanReviewed !== true
+            ? "CONTROLLED_V2"
+            : null;
+      if (!policy || !pricing || !admissionSource)
+        throw new ConflictException(
+          "Reviewed or controlled intake payment authority is required.",
+        );
       const prior = object(policy.paymentPolicyBinding);
       const terms = approved.draft;
       const receipt = (updatedAt: string) => ({
@@ -116,7 +125,7 @@ export class JobPaymentPolicyService {
       });
       if (prior) {
         if (
-          prior.version === 1 &&
+          (prior.version === 1 || prior.version === 2) &&
           JSON.stringify(draft(prior.snapshot)) === JSON.stringify(terms) &&
           policy.depositRequired === terms.depositRequired &&
           policy.serviceFeeRequired === terms.serviceFeeRequired &&
@@ -132,6 +141,7 @@ export class JobPaymentPolicyService {
           prior.expectedUpdatedAt === expected &&
           prior.approvedAt === approvedAt &&
           prior.digest === digest &&
+          (prior.version === 1 || prior.admissionSource === admissionSource) &&
           prior.updatedAt === job.updatedAt.toISOString()
         )
           return receipt(job.updatedAt.toISOString());
@@ -161,7 +171,8 @@ export class JobPaymentPolicyService {
         paymentGateMode: p.paymentGateMode,
         webhookValidationRequired: true,
         paymentPolicyBinding: {
-          version: 1,
+          version: 2,
+          admissionSource,
           actorId,
           approvedAt,
           digest,
@@ -201,7 +212,8 @@ export class JobPaymentPolicyService {
           entityId: jobId,
           action: "job.payment_policy_bound",
           metadata: {
-            version: 1,
+            version: 2,
+            admissionSource,
             approvedAt,
             digest,
             expectedUpdatedAt: expected,

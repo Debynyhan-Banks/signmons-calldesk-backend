@@ -20,6 +20,7 @@ import {
   getPaymentRequest,
   evaluateJobRouting,
   listDispatchBoard,
+  recoverPaymentRequest,
 } from "@/lib/api";
 import {
   DispatchFilter,
@@ -154,17 +155,44 @@ export default function DispatchPage() {
     setNotice(null);
     setPaymentCheckoutUrl(null);
     try {
+      const operationKey = `signmons:payment-request:${tenantId}:${detail.jobId}`;
+      const idempotencyKey =
+        window.sessionStorage.getItem(operationKey) ?? crypto.randomUUID();
+      window.sessionStorage.setItem(operationKey, idempotencyKey);
       const result = await createPaymentRequest(
         detail.jobId,
         detail.updatedAt,
+        idempotencyKey,
         auth,
         tenantId,
       );
+      window.sessionStorage.removeItem(operationKey);
       setPayment(result);
       setPaymentCheckoutUrl(result.checkoutUrl);
       setNotice(
         "Secure customer payment request created. Copy or open the temporary link below.",
       );
+    } catch (actionError) {
+      setError(errorMessage(actionError));
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const recoverPayment = async () => {
+    if (!detail) return;
+    setActing(true);
+    setError(null);
+    setNotice(null);
+    setPaymentCheckoutUrl(null);
+    try {
+      const result = await recoverPaymentRequest(
+        detail.jobId,
+        auth,
+        tenantId,
+      );
+      setPaymentCheckoutUrl(result.checkoutUrl);
+      setNotice("Recovered the existing active payment request.");
     } catch (actionError) {
       setError(errorMessage(actionError));
     } finally {
@@ -481,6 +509,7 @@ export default function DispatchPage() {
                 onIssueLink={() => void issueTechnicianLink()}
                 onEvaluateRouting={() => void evaluateRouting()}
                 onRequestPayment={() => void requestPayment()}
+                onRecoverPayment={() => void recoverPayment()}
                 payment={payment}
                 paymentCheckoutUrl={paymentCheckoutUrl}
                 paymentEvents={paymentEvents}
@@ -543,6 +572,7 @@ function DispatchDetail({
   onIssueLink,
   onEvaluateRouting,
   onRequestPayment,
+  onRecoverPayment,
   payment,
   paymentCheckoutUrl,
   paymentEvents,
@@ -556,6 +586,7 @@ function DispatchDetail({
   onIssueLink: () => void;
   onEvaluateRouting: () => void;
   onRequestPayment: () => void;
+  onRecoverPayment: () => void;
   payment: PaymentRequestTracking | null;
   paymentCheckoutUrl: string | null;
   paymentEvents: PaymentWebhookEvent[];
@@ -672,19 +703,19 @@ function DispatchDetail({
           </small>
         ) : null}
         {detail.paymentGate.required && payment?.status !== "SUCCEEDED" ? (
-          <button
-            disabled={acting || Boolean(payment?.requestActive)}
-            onClick={onRequestPayment}
-            type="button"
-          >
-            {acting
-              ? "Creating secure request…"
-              : payment?.requestActive
-                ? "Active payment request exists"
+          payment?.requestActive ? (
+            <button disabled={acting} onClick={onRecoverPayment} type="button">
+              {acting ? "Recovering secure request…" : "Recover active payment request"}
+            </button>
+          ) : (
+            <button disabled={acting} onClick={onRequestPayment} type="button">
+              {acting
+                ? "Creating secure request…"
                 : payment?.paymentRequestId
                   ? "Create replacement request"
                   : "Create payment request"}
-          </button>
+            </button>
+          )
         ) : null}
         {paymentCheckoutUrl ? (
           <div className={styles.checkoutActions}>

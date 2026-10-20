@@ -1,5 +1,27 @@
 # Signmons Backend Execution Board
 
+## October 20 — 3A/P07 read-only qualification completed with blockers
+
+P07 is review-ready after the bounded controlled-policy, stable-request/recovery and exact webhook-resource patch. Evidence: `evidence/APP-013/p07-local-implementation-20261020.md`. Focused 65/65 and full backend 2,611 tests pass; lint/build/architecture, UI lint/build, desktop/mobile browser QA and governance checks pass. No deployment, runtime/database mutation, Stripe Checkout/event/charge, commit or push occurred.
+
+The one approved no-retry read-only qualification completed. Sandbox mode, one enabled connected account and Cloud Stripe references/test mode/return URL passed. Blockers are `DESTINATION_DISABLED`, `API_VERSION_UNCONFIRMED`, `P07_DEPLOYMENT_REQUIRED` and `READ_PATH_UNAVAILABLE`. Exact source isolation and validation are complete; governance `APP013_P07_BACKEND_IMAGE_BUILD_PROPOSAL_20261020.md` awaits the owner's one-build or no-build decision. No external state changed. P08 and 3A acceptance remain pending; accepted progress stays 6/60, 4/8 and 0/13. **No scope deviation.**
+
+**Progress and next action:** [Signmons progress tracker](../signmons-governance-r08-recovery/PROGRESS_TRACKER.md). Owner requested an update after each work step and section. Update the tracker before each handoff with completed work, remaining items or blocker/owner, evidence, the immediate next observable result and accepted milestones. Synchronize acceptance changes with the existing ledger and these records; use the concise handoff format in the tracker.
+
+## October 20 — 3A/P07 entry inspection and section card complete
+
+P07 is active after the required entry inspection. Governance `APP013_3A_PAYMENT_SECTION_CARD_20261020.md` records the exact acceptance criterion, inspected components, demonstrated gaps, finite patch/test matrix and external approval boundary. Objective evidence: `evidence/APP-013/p07-3a-entry-inspection-20261020.md`.
+
+The local gaps are controlled-job payment-policy binding, active pre-booking Checkout lost-response recovery and exact per-event Stripe resource correlation. Sandbox readiness/actions remain unverified and separately approval-gated. Focused payment tests passed 39/39; no application source, provider, database, secret, deploy, charge, booking or customer action occurred. Next is the finite local P07 patch. Accepted progress remains 6/60, 4/8 and 0/13. Commit/push is blocked by preserved unpublished mixed work on both focused branches. **No scope deviation.**
+
+## October 19 — 2B and R12 owner-accepted; 3A is next
+
+Owner explicitly replied **“Accept 2B and its closeout”** after reviewing enabled52's CREATED job receipt, private-session cleanup and verified runtime closeout. Section 2B is accepted; P06-R11/R12 are closed and the fixed P06 task inventory is 14/14. Accepted walkthrough milestones are now **1A, 1B, 2A, 2B: 4/8**. This is milestone acceptance, not overall MVP completion. APP-013 remains the sole Now ticket.
+
+Evidence: backend `evidence/APP-013/p06-r11-enabled52-live-result-20261019.md`; exact plan `6516f97b-b7ee-4d78-b616-8bbfcc70eea6`, request `188ee212-4340-490c-a7c6-9f848d002004`, job `9180bef4-561d-47a0-869f-925e6a3dfd96` in CREATED state. Saved browser outcome/cleanup, REVOKED readback, CLOSED/failures[] and BROWSER_DONE/closeoutVerified receipts correlate the approved run; owner-acceptance.json records the decision. No additional database recount was performed. Source/image unchanged; no commit/push/merge. Documentation baseline/consistency/architecture/whitespace and 21 safeguard tests passed before this acceptance update and are rerun afterward.
+
+No remaining 2B acceptance item. Billing reconciliation is assigned to account owner Debynyhan Banks when charges become available, against the approved USD2.70 allowance; actual charges remain unverified and all holds retained. Runtime is closed and the package consumed. Next section is **3A, Sandbox payment on this admitted job**. Next observable preparation result is the existing 3A entry inspection and complete source/configuration/test card; Sandbox actions still require their own exact approval. Do not reopen 2B or create another verification run. Remaining walkthrough order is 3A → 3B → 3C → 3D; the original section definitions, criteria and denominator are unchanged. Stop at this accepted section boundary. **No scope deviation.**
+
 ## Current: startup-stage repair-image decision ready; build approval pending — 2026-09-28
 
 The fixed-stage diagnostic source remains backend `fe9b066`. Governance `APP013_P06_R11_STARTUP_STAGE_REPAIR_IMAGE_DECISION.md` now pins the exact tracked build inputs, candidate tag, one-submission/no-retry rule and mandatory temporary-grant cleanup for a future owner-approved image build. Exact approval and a future window are absent. No build, upload, cloud/provider/database read, IAM/secret/billing change, packet, LOGIN, activation, deployment, traffic change, browser/customer action, job, hold release or retry occurred. Next is the owner decision between one build and retaining the local result. Evidence: `evidence/APP-013/p06-r11-startup-stage-repair-image-decision.md`. P06 remains 12/14; R11/full R12 open; accepted 1A/1B/2A remain 3/8 (37.5%). No scope deviation.
@@ -768,7 +790,7 @@ Global pointer: `/Users/debynyhanbanks/Web Projects/signmons-governance/GLOBAL_E
 ## Now
 
 - [ ] APP-013 Twilio-backed notification center and transactional customer messaging (`SCR-APP-021`, `SCR-APP-022`, `SCR-TECH-005`)
-  - Current section 2B; fixed walkthrough 3/8 accepted (37.5%), not whole-MVP engineering completion. Backend 330e402 disabled OAuth transport is review-ready. Preserve all newer evidence; BE-001 residual proof must close inside full APP-013 acceptance.
+  - 2B and closeout accepted October 19; current next section 3A. Fixed walkthrough 4/8 accepted, not whole-MVP completion. Preserve enabled52 admitted job and closure evidence; 3A entry card and exact Sandbox approval remain. BE-001 residual proof remains inside full APP-013 acceptance.
 
 ## Next
 

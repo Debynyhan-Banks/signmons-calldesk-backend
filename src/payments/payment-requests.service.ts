@@ -263,10 +263,39 @@ export class PaymentRequestsService {
   }
 
   async recover(tenantId: string, jobId: string) {
+    return this.recoverActive({
+      tenantId,
+      jobId,
+      actorType: AuditActorType.CUSTOMER,
+      actorId: "secure-link-customer",
+      traceId: randomUUID(),
+    });
+  }
+
+  async recoverForOperator(input: {
+    tenantId: string;
+    jobId: string;
+    actorId: string;
+    traceId: string;
+  }) {
+    return this.recoverActive({
+      ...input,
+      actorType: AuditActorType.USER,
+    });
+  }
+
+  private async recoverActive(input: {
+    tenantId: string;
+    jobId: string;
+    actorType: AuditActorType;
+    actorId: string;
+    traceId: string;
+  }) {
     const job = await this.prisma.job.findFirst({
-      where: { tenantId, id: jobId, deletedAt: null },
+      where: { tenantId: input.tenantId, id: input.jobId, deletedAt: null },
       select: {
         id: true,
+        status: true,
         tenant: {
           select: { stripeConnectAccountId: true, chargesEnabled: true },
         },
@@ -274,6 +303,14 @@ export class PaymentRequestsService {
       },
     });
     if (!job) throw new NotFoundException("Job was not found.");
+    if (
+      input.actorType === AuditActorType.USER &&
+      (job.status === JobStatus.COMPLETED || job.status === JobStatus.CANCELLED)
+    ) {
+      throw new ConflictException(
+        "Payment checkout cannot be recovered for a closed job.",
+      );
+    }
     const payment = job.payment;
     if (
       !payment ||
@@ -306,13 +343,19 @@ export class PaymentRequestsService {
     }
     await this.prisma.auditLog.create({
       data: {
-        tenantId,
+        tenantId: input.tenantId,
         action: "payment.checkout_recovered",
-        actorType: AuditActorType.CUSTOMER,
-        actorId: "secure-link-customer",
+        actorType: input.actorType,
+        ...(input.actorType === AuditActorType.USER
+          ? {
+              actorUserId: input.actorId,
+              actorUserTenantId: input.tenantId,
+            }
+          : {}),
+        actorId: input.actorId,
         entityType: "Payment",
         entityId: payment.id,
-        traceId: randomUUID(),
+        traceId: input.traceId,
         metadata: {
           jobId: job.id,
           status: payment.status,

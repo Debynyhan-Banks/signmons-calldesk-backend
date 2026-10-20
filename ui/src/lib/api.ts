@@ -716,6 +716,7 @@ export async function getPaymentEvents(
 export async function createPaymentRequest(
   jobId: string,
   expectedJobUpdatedAt: string,
+  idempotencyKey: string,
   auth: RequestAuth,
   tenantId?: string,
 ): Promise<PaymentRequestTracking & { checkoutUrl: string }> {
@@ -724,8 +725,24 @@ export async function createPaymentRequest(
     { expectedJobUpdatedAt },
     {
       ...buildAuthHeaders(auth, tenantId),
-      "Idempotency-Key": crypto.randomUUID(),
+      "Idempotency-Key": idempotencyKey,
     },
+  );
+}
+
+export async function recoverPaymentRequest(
+  jobId: string,
+  auth: RequestAuth,
+  tenantId?: string,
+): Promise<{
+  status: "payment_checkout";
+  checkoutUrl: string;
+  checkoutExpiresAt: string;
+}> {
+  return postJson(
+    `/jobs/${encodeURIComponent(jobId)}/payment-request/recover`,
+    {},
+    buildAuthHeaders(auth, tenantId),
   );
 }
 

@@ -167,6 +167,99 @@ describe("StripeWebhooksService", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it("rejects copied payment metadata when the Checkout Session is foreign", async () => {
+    const request = signedRequest(
+      event("checkout.session.completed", {
+        id: "cs_test_foreign",
+        payment_status: "paid",
+        payment_intent: "pi_test_success",
+        amount_total: 10000,
+        currency: "usd",
+        metadata: { paymentRequestId: paymentId, jobId, tenantId },
+      }),
+    );
+    prisma.payment.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.receive(request.body, request.header),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.payment.findFirst).toHaveBeenCalledWith({
+      where: {
+        tenantId,
+        destinationAccountId: accountId,
+        stripeCheckoutSessionId: "cs_test_foreign",
+      },
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects an exact Checkout resource with mismatched stored metadata", async () => {
+    const request = signedRequest(
+      event("checkout.session.completed", {
+        id: "cs_test_success",
+        payment_status: "paid",
+        payment_intent: "pi_test_success",
+        amount_total: 10000,
+        currency: "usd",
+        metadata: {
+          paymentRequestId: paymentId,
+          jobId: "40000000-0000-4000-8000-000000000004",
+          tenantId,
+        },
+      }),
+    );
+
+    await expect(
+      service.receive(request.body, request.header),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("requires the stored PaymentIntent for a failure event", async () => {
+    const request = signedRequest(
+      event("payment_intent.payment_failed", {
+        id: "pi_test_foreign",
+        metadata: { paymentRequestId: paymentId },
+      }),
+    );
+    prisma.payment.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.receive(request.body, request.header),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.payment.findFirst).toHaveBeenCalledWith({
+      where: {
+        tenantId,
+        destinationAccountId: accountId,
+        stripePaymentIntentId: "pi_test_foreign",
+      },
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a refund from a different Charge after the Charge is bound", async () => {
+    prisma.payment.findFirst.mockResolvedValue(
+      payment({
+        status: PaymentStatus.SUCCEEDED,
+        stripeChargeId: "ch_test_bound",
+      }),
+    );
+    const request = signedRequest(
+      event("charge.refunded", {
+        id: "ch_test_foreign",
+        payment_intent: "pi_test_success",
+        amount: 10000,
+        amount_refunded: 10000,
+        currency: "usd",
+      }),
+    );
+
+    await expect(
+      service.receive(request.body, request.header),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it("rejects a signed event from the wrong Stripe mode before database access", async () => {
     const request = signedRequest(
       event(
@@ -274,6 +367,9 @@ function payment(overrides: Record<string, unknown> = {}) {
     amountTotalCents: 10000,
     currency: "usd",
     destinationAccountId: accountId,
+    stripeCheckoutSessionId: "cs_test_success",
+    stripePaymentIntentId: "pi_test_success",
+    stripeChargeId: null,
     ...overrides,
   };
 }

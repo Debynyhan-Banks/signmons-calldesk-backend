@@ -638,6 +638,61 @@ describe("PaymentRequestsService", () => {
     });
   });
 
+  it("recovers the same active Checkout for an authorized operator with user audit identity", async () => {
+    prisma.job.findFirst.mockResolvedValue({
+      id: jobId,
+      status: JobStatus.CREATED,
+      tenant: {
+        stripeConnectAccountId: "acct_connected",
+        chargesEnabled: true,
+      },
+      payment: paymentRecord(),
+    });
+
+    const result = await service.recoverForOperator({
+      tenantId,
+      jobId,
+      actorId,
+      traceId,
+    });
+
+    expect(provider.createCheckout).not.toHaveBeenCalled();
+    expect(provider.recoverCheckout).toHaveBeenCalledWith({
+      connectedAccountId: "acct_connected",
+      sessionId: "cs_test_private",
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenantId,
+        action: "payment.checkout_recovered",
+        actorType: "USER",
+        actorUserId: actorId,
+        actorUserTenantId: tenantId,
+        actorId,
+        traceId,
+      }),
+    });
+    expect(result.checkoutUrl).toBe("https://checkout.stripe.com/c/pay/test");
+  });
+
+  it("refuses operator recovery for a closed job before Stripe access", async () => {
+    prisma.job.findFirst.mockResolvedValue({
+      id: jobId,
+      status: JobStatus.COMPLETED,
+      tenant: {
+        stripeConnectAccountId: "acct_connected",
+        chargesEnabled: true,
+      },
+      payment: paymentRecord(),
+    });
+
+    await expect(
+      service.recoverForOperator({ tenantId, jobId, actorId, traceId }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(provider.recoverCheckout).not.toHaveBeenCalled();
+    expect(prisma.auditLog.create).not.toHaveBeenCalled();
+  });
+
   it("fails before Stripe access when customer recovery is expired", async () => {
     prisma.job.findFirst.mockResolvedValue({
       id: jobId,

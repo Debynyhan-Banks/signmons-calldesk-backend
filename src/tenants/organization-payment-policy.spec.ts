@@ -8,6 +8,7 @@ import { JobPaymentPolicyService } from "../jobs/job-payment-policy.service";
 import { getRequestContext } from "../common/context/request-context";
 import { PrismaService } from "../prisma/prisma.service";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 jest.mock("../common/context/request-context", () => ({
   getRequestContext: jest.fn(),
 }));
@@ -145,77 +146,116 @@ describe("local approved payment policies", () => {
       expect(h.db.tenantOrganization.findFirst).not.toHaveBeenCalled();
     },
   );
-  it("binds once, preserves intake metadata, and replays without writes", async () => {
-    const approvedAt = "2026-01-01T00:00:00.000Z";
-    let job = {
-      id: jobId,
-      tenantId,
-      status: "CREATED",
-      updatedAt: new Date(approvedAt),
-      policySnapshot: {
-        intakeAdmission: { humanReviewed: true },
-        keep: true,
-      } as Record<string, unknown>,
-      pricingSnapshot: {},
-      payment: null,
-      calendarEventId: null,
-      serviceWindowStart: null,
-      serviceWindowEnd: null,
-    };
-    const db = {
-      $queryRaw: jest.fn(),
-      tenantOrganization: {
-        findFirst: jest.fn().mockResolvedValue({
-          settings: {
-            [ORGANIZATION_PAYMENT_POLICY]: {
-              version: 1,
-              draft: facts,
-              approved: { draft: facts, actorId: "owner", approvedAt },
+  it.each([
+    ["human-reviewed v1", false],
+    ["controlled v2", true],
+  ])(
+    "binds %s once, preserves intake metadata, and replays",
+    async (_name, controlled) => {
+      const approvedAt = "2026-01-01T00:00:00.000Z";
+      const approved = { draft: facts, actorId: "owner", approvedAt };
+      const paymentDigest = createHash("sha256")
+        .update(JSON.stringify(approved))
+        .digest("hex");
+      let job = {
+        id: jobId,
+        tenantId,
+        status: "CREATED",
+        updatedAt: new Date(approvedAt),
+        policySnapshot: {
+          intakeAdmission: controlled
+            ? {
+                version: 2,
+                actorId: "signmons-intake-admission-v1",
+                paymentApprovedAt: approvedAt,
+                paymentDigest,
+              }
+            : { version: 1, humanReviewed: true },
+          keep: true,
+        } as Record<string, unknown>,
+        pricingSnapshot: {},
+        payment: null,
+        calendarEventId: null,
+        serviceWindowStart: null,
+        serviceWindowEnd: null,
+      };
+      const db = {
+        $queryRaw: jest.fn(),
+        tenantOrganization: {
+          findFirst: jest.fn().mockResolvedValue({
+            settings: {
+              [ORGANIZATION_PAYMENT_POLICY]: {
+                version: 1,
+                draft: facts,
+                approved,
+              },
             },
-          },
-        }),
-      },
-      job: {
-        findFirst: jest.fn().mockImplementation(() => Promise.resolve(job)),
-        updateMany: jest
-          .fn()
-          .mockImplementation(({ data }: { data: Partial<typeof job> }) => {
-            job = { ...job, ...data };
-            return Promise.resolve({ count: 1 });
           }),
-      },
-      calendarOperation: { count: jest.fn().mockResolvedValue(0) },
-      auditLog: { create: jest.fn() },
-      $transaction: jest.fn(),
-    };
-    db.$transaction.mockImplementation((fn: (tx: typeof db) => unknown) =>
-      fn(db),
+        },
+        job: {
+          findFirst: jest.fn().mockImplementation(() => Promise.resolve(job)),
+          updateMany: jest
+            .fn()
+            .mockImplementation(({ data }: { data: Partial<typeof job> }) => {
+              job = { ...job, ...data };
+              return Promise.resolve({ count: 1 });
+            }),
+        },
+        calendarOperation: { count: jest.fn().mockResolvedValue(0) },
+        auditLog: { create: jest.fn() },
+        $transaction: jest.fn(),
+      };
+      db.$transaction.mockImplementation((fn: (tx: typeof db) => unknown) =>
+        fn(db),
+      );
+      const service = new JobPaymentPolicyService(
+        db as unknown as PrismaService,
+      );
+      const input = {
+        jobId,
+        expectedUpdatedAt: approvedAt,
+        approvedAt,
+        acknowledged: true,
+      };
+      const first = await service.apply(input);
+      expect(await service.apply(input)).toEqual(first);
+      expect(db.job.updateMany).toHaveBeenCalledTimes(1);
+      expect(db.auditLog.create).toHaveBeenCalledTimes(1);
+      expect(job.policySnapshot.keep).toBe(true);
+      if (controlled)
+        expect(job.policySnapshot.intakeAdmission).not.toHaveProperty(
+          "humanReviewed",
+        );
+      else
+        expect(job.policySnapshot.intakeAdmission).toHaveProperty(
+          "humanReviewed",
+          true,
+        );
+      expect(first.paymentInitiated).toBe(false);
+      await expect(
+        service.apply({ ...input, expectedUpdatedAt: first.updatedAt }),
+      ).rejects.toThrow();
+      if (controlled) {
+        const admission = job.policySnapshot.intakeAdmission as Record<
+          string,
+          unknown
+        >;
+        admission.paymentDigest = "0".repeat(64);
+        await expect(service.apply(input)).rejects.toThrow();
+        admission.paymentDigest = paymentDigest;
+      }
+      context.mockReturnValue({ tenantId, userId: "another", role: "owner" });
+      await expect(service.apply(input)).rejects.toThrow();
+    },
+  );
+  it("registers only the bounded job binder in the existing jobs module", () => {
+    expect(readFileSync("src/jobs/jobs.module.ts", "utf8")).toMatch(
+      /JobPaymentPolicyController/,
     );
-    const service = new JobPaymentPolicyService(db as unknown as PrismaService);
-    const input = {
-      jobId,
-      expectedUpdatedAt: approvedAt,
-      approvedAt,
-      acknowledged: true,
-    };
-    const first = await service.apply(input);
-    expect(await service.apply(input)).toEqual(first);
-    expect(db.job.updateMany).toHaveBeenCalledTimes(1);
-    expect(db.auditLog.create).toHaveBeenCalledTimes(1);
-    expect(job.policySnapshot.keep).toBe(true);
-    expect(first.paymentInitiated).toBe(false);
-    await expect(
-      service.apply({ ...input, expectedUpdatedAt: first.updatedAt }),
-    ).rejects.toThrow();
-    context.mockReturnValue({ tenantId, userId: "another", role: "owner" });
-    await expect(service.apply(input)).rejects.toThrow();
-  });
-  it("has no production registration", () => {
-    for (const f of [
-      "src/app.module.ts",
-      "src/jobs/jobs.module.ts",
-      "src/tenants/tenants.module.ts",
-    ])
+    expect(readFileSync("src/jobs/jobs.module.ts", "utf8")).toMatch(
+      /JobPaymentPolicyService/,
+    );
+    for (const f of ["src/app.module.ts", "src/tenants/tenants.module.ts"])
       expect(readFileSync(f, "utf8")).not.toMatch(
         /OrganizationPaymentPolicy|JobPaymentPolicy/,
       );
