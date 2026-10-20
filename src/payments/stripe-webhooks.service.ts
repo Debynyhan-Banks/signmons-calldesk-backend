@@ -79,14 +79,43 @@ export class StripeWebhooksService {
       throw new NotFoundException("Webhook payment is not recognized.");
     }
 
-    const transition = this.transition(event, payment);
+    // Preserve early payload validation; only the locked reread decides state.
+    this.transition(event, payment);
     return this.prisma.$transaction(async (transaction) => {
+      const locked = await transaction.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT id FROM "Payment" WHERE id=${payment.id}::uuid AND "tenantId"=${tenant.id}::uuid FOR UPDATE`,
+      );
+      const currentTenant = await transaction.tenantOrganization.findFirst({
+        where: { id: tenant.id, stripeConnectAccountId: event.account },
+        select: { id: true },
+      });
+      if (
+        locked.length !== 1 ||
+        locked[0].id !== payment.id ||
+        currentTenant?.id !== tenant.id
+      ) {
+        throw new NotFoundException("Webhook payment is no longer current.");
+      }
+      const currentPayment = await this.findPayment(
+        tenant.id,
+        event.account,
+        event,
+        transaction,
+      );
+      if (
+        !currentPayment ||
+        currentPayment.id !== payment.id ||
+        currentPayment.jobId !== payment.jobId
+      ) {
+        throw new NotFoundException("Webhook payment is no longer current.");
+      }
+      const transition = this.transition(event, currentPayment);
       const inserted = await transaction.stripeEvent.createMany({
         data: {
           tenantId: tenant.id,
           stripeEventId: event.id,
           type: event.type,
-          payload: this.auditPayload(event, payment.id),
+          payload: this.auditPayload(event, currentPayment.id),
           processingStatus: StripeEventStatus.PENDING,
         },
         skipDuplicates: true,
@@ -98,7 +127,9 @@ export class StripeWebhooksService {
       const update = this.paymentUpdate(transition);
       if (Object.keys(update).length > 0) {
         await transaction.payment.update({
-          where: { id_tenantId: { id: payment.id, tenantId: tenant.id } },
+          where: {
+            id_tenantId: { id: currentPayment.id, tenantId: tenant.id },
+          },
           data: update,
         });
         await transaction.auditLog.create({
@@ -108,14 +139,15 @@ export class StripeWebhooksService {
             actorType: AuditActorType.WEBHOOK,
             actorId: "stripe",
             entityType: "Payment",
-            entityId: payment.id,
+            entityId: currentPayment.id,
             traceId: randomUUID(),
             metadata: {
-              jobId: payment.jobId,
+              jobId: currentPayment.jobId,
               eventType: event.type,
-              previousStatus: payment.status,
-              status: transition.status ?? payment.status,
-              refundStatus: transition.refundStatus ?? payment.refundStatus,
+              previousStatus: currentPayment.status,
+              status: transition.status ?? currentPayment.status,
+              refundStatus:
+                transition.refundStatus ?? currentPayment.refundStatus,
             },
           },
         });
@@ -192,6 +224,7 @@ export class StripeWebhooksService {
     tenantId: string,
     connectedAccountId: string,
     event: StripeEvent,
+    client: Prisma.TransactionClient = this.prisma,
   ) {
     const object = event.data.object;
     const metadata = this.record(object.metadata);
@@ -217,7 +250,7 @@ export class StripeWebhooksService {
     }
     if (!resource) return null;
 
-    const payment = await this.prisma.payment.findFirst({
+    const payment = await client.payment.findFirst({
       where: {
         tenantId,
         destinationAccountId: connectedAccountId,

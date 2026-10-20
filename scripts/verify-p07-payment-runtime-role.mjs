@@ -754,8 +754,8 @@ try {
     },
   );
   let interruptedRequest;
-  await observe(
-    "post-provider audit failure must allow immediate same-key recovery without second logical Checkout",
+  await check(
+    "post-provider audit rollback preserves the approved five-minute reservation hold",
     async () => {
       const row = await boundJob(),
         input = createInput(row),
@@ -769,11 +769,16 @@ try {
       });
       assert.equal(reserved.status, "PENDING");
       assert.equal(reserved.stripeCheckoutSessionId, null);
-      await payments.create(input);
+      const callsBeforeRetry = mockCheckoutCalls;
+      // Owner-approved clarification: the archived exploratory failure remains
+      // evidence; the existing hold must refuse before another provider call.
+      await rejectStatus(() => payments.create(input), 409);
+      assert.equal(mockCheckoutCalls, callsBeforeRetry);
       assert.equal(sessions.size, before + 1);
-      assert.ok(
+      assert.equal(
         (await owner.payment.findFirstOrThrow({ where: { jobId: row.id } }))
           .stripeCheckoutSessionId,
+        null,
       );
     },
   );
@@ -781,7 +786,7 @@ try {
     "abandoned-reservation recovery retains the same mocked provider operation after the existing timeout",
     async () => {
       const { row, input, before } = interruptedRequest;
-      // Admin fixture time advance only; the immediate recovery failure above stays failed.
+      // Admin fixture time advance only; no real reservation or hold is reset.
       await owner.payment.updateMany({
         where: { jobId: row.id },
         data: { requestedAt: new Date(Date.now() - 6 * 60000) },
@@ -1014,81 +1019,148 @@ try {
     },
   );
 
-  await observe(
-    "different concurrent event types must not regress a committed settlement",
-    async () => {
-      const row = await boundJob();
-      await payments.create(createInput(row));
-      const payment = await owner.payment.findFirstOrThrow({
+  async function concurrentEvents(order) {
+    const row = await boundJob();
+    await payments.create(createInput(row));
+    const refundedCase = order === "refund-before-stale-success";
+    if (refundedCase)
+      await owner.payment.updateMany({
         where: { jobId: row.id },
+        data: { status: "SUCCEEDED" },
       });
-      let releaseSuccess, releaseFailure, announceBoth;
-      const successGate = new Promise((resolve) => {
-        releaseSuccess = resolve;
-      });
-      const failureGate = new Promise((resolve) => {
-        releaseFailure = resolve;
-      });
-      const both = new Promise((resolve) => {
-        announceBoth = resolve;
-      });
-      let arrived = 0;
-      // Scheduling hook around real queries, never synthetic database responses.
-      const scheduled = runtime.$extends({
-        query: {
-          payment: {
-            async findFirst({ args, query }) {
-              const actual = await query(args);
-              if (actual?.id === payment.id) {
-                if (++arrived === 2) announceBoth();
-                await (args.where.stripeCheckoutSessionId
-                  ? successGate
-                  : failureGate);
-              }
-              return actual;
-            },
+    const payment = await owner.payment.findFirstOrThrow({
+      where: { jobId: row.id },
+    });
+    let releaseSuccess, releaseFailure, announceBoth;
+    const successGate = new Promise((resolve) => {
+      releaseSuccess = resolve;
+    });
+    const failureGate = new Promise((resolve) => {
+      releaseFailure = resolve;
+    });
+    const both = new Promise((resolve) => {
+      announceBoth = resolve;
+    });
+    const initialLookups = new Set();
+    // Scheduling hook around real queries, never synthetic database responses.
+    const scheduled = runtime.$extends({
+      query: {
+        payment: {
+          async findFirst({ args, query }) {
+            const actual = await query(args);
+            const kind = args.where.stripeCheckoutSessionId
+              ? "success"
+              : "other";
+            if (actual?.id === payment.id && !initialLookups.has(kind)) {
+              assert.equal(
+                actual.status,
+                refundedCase ? "SUCCEEDED" : "PENDING",
+              );
+              initialLookups.add(kind);
+              if (initialLookups.size === 2) announceBoth();
+              await (kind === "success" ? successGate : failureGate);
+            }
+            return actual;
           },
         },
-      });
-      const concurrentHooks = new StripeWebhooksService(scheduled, {
-        stripeWebhookSecret: webhookSecret,
-        stripeWebhookLivemode: false,
-      });
-      const success = receive(concurrentHooks, signed(payment));
-      const failure = receive(
-        concurrentHooks,
-        signed(payment, "payment_intent.payment_failed"),
-      );
-      success.catch(() => {});
-      failure.catch(() => {});
-      try {
-        await Promise.race([
-          both,
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(Error("RACE_BARRIER_TIMEOUT")),
-              5000,
-            ).unref(),
-          ),
-        ]);
+      },
+    });
+    const concurrentHooks = new StripeWebhooksService(scheduled, {
+      stripeWebhookSecret: webhookSecret,
+      stripeWebhookLivemode: false,
+    });
+    const success = receive(concurrentHooks, signed(payment));
+    const failure = receive(
+      concurrentHooks,
+      refundedCase
+        ? signed(payment, "charge.refunded", {
+            id: "ch_local_" + randomBytes(8).toString("hex"),
+            amount: payment.amountTotalCents,
+            amount_refunded: payment.amountTotalCents,
+          })
+        : signed(payment, "payment_intent.payment_failed"),
+    );
+    success.catch(() => {});
+    failure.catch(() => {});
+    try {
+      await Promise.race([
+        both,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(Error("RACE_BARRIER_TIMEOUT")), 5000).unref(),
+        ),
+      ]);
+      const successFirst = order === "success-before-failure";
+      if (successFirst) {
         releaseSuccess();
         await success;
-        assert.equal(
-          (await payments.get(tenant.id, row.id)).status,
-          "SUCCEEDED",
-        );
+      } else {
         releaseFailure();
         await failure;
-        assert.equal(
-          (await payments.get(tenant.id, row.id)).status,
-          "SUCCEEDED",
-        );
-      } finally {
-        releaseSuccess();
-        releaseFailure();
-        await Promise.allSettled([success, failure]);
       }
-    },
+      assert.equal(
+        (await payments.get(tenant.id, row.id)).status,
+        successFirst ? "SUCCEEDED" : refundedCase ? "REFUNDED" : "FAILED",
+      );
+      if (successFirst) {
+        releaseFailure();
+        await failure;
+      } else {
+        releaseSuccess();
+        await success;
+      }
+      assert.equal(
+        (await payments.get(tenant.id, row.id)).status,
+        refundedCase ? "REFUNDED" : "SUCCEEDED",
+      );
+      const events = await owner.stripeEvent.findMany({
+        where: {
+          tenantId: tenant.id,
+          payload: { path: ["paymentId"], equals: payment.id },
+        },
+      });
+      assert.equal(events.length, 2);
+      assert.ok(
+        events.every((event) => event.processingStatus === "PROCESSED"),
+      );
+      const transitions = await owner.auditLog.findMany({
+        where: { entityId: payment.id, action: "payment.webhook_transitioned" },
+      });
+      assert.equal(
+        transitions.length,
+        order === "failure-before-success" ? 2 : 1,
+      );
+      if (order === "failure-before-success")
+        assert.ok(
+          transitions.some(
+            (audit) =>
+              audit.metadata.previousStatus === "FAILED" &&
+              audit.metadata.status === "SUCCEEDED",
+          ),
+        );
+      if (refundedCase) {
+        const settled = await owner.payment.findFirstOrThrow({
+          where: { id: payment.id },
+        });
+        assert.equal(settled.refundStatus, "FULL");
+        assert.equal(settled.refundAmountCents, payment.amountTotalCents);
+      }
+    } finally {
+      releaseSuccess();
+      releaseFailure();
+      await Promise.allSettled([success, failure]);
+    }
+  }
+  await observe(
+    "different concurrent event types must not regress a committed settlement",
+    () => concurrentEvents("success-before-failure"),
+  );
+  await observe(
+    "different concurrent event types settle correctly when failure commits first",
+    () => concurrentEvents("failure-before-success"),
+  );
+  await observe(
+    "concurrent stale success cannot overwrite a committed full-refund state",
+    () => concurrentEvents("refund-before-stale-success"),
   );
 } catch (error) {
   if (interruption && error.message === "EXPECTED_LOCAL_INTERRUPTION")

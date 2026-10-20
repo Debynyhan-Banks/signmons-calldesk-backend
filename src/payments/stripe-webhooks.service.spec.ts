@@ -19,11 +19,13 @@ const timestamp = Math.floor(Date.now() / 1000);
 
 describe("StripeWebhooksService", () => {
   const transaction = {
+    $queryRaw: jest.fn(),
+    tenantOrganization: { findFirst: jest.fn() },
     stripeEvent: {
       createMany: jest.fn(),
       update: jest.fn(),
     },
-    payment: { update: jest.fn() },
+    payment: { findFirst: jest.fn(), update: jest.fn() },
     auditLog: { create: jest.fn() },
   };
   const prisma = {
@@ -46,6 +48,11 @@ describe("StripeWebhooksService", () => {
     jest.clearAllMocks();
     prisma.tenantOrganization.findFirst.mockResolvedValue({ id: tenantId });
     prisma.payment.findFirst.mockResolvedValue(payment());
+    transaction.$queryRaw.mockResolvedValue([{ id: paymentId }]);
+    transaction.tenantOrganization.findFirst.mockResolvedValue({
+      id: tenantId,
+    });
+    transaction.payment.findFirst.mockResolvedValue(payment());
     transaction.stripeEvent.createMany.mockResolvedValue({ count: 1 });
     transaction.stripeEvent.update.mockResolvedValue({ id: "stored-event" });
     transaction.payment.update.mockResolvedValue(payment());
@@ -77,6 +84,30 @@ describe("StripeWebhooksService", () => {
         destinationAccountId: accountId,
       }),
     });
+    const [lock] = transaction.$queryRaw.mock.calls[0] as [
+      { strings: string[]; values: unknown[] },
+    ];
+    expect(lock.strings.join("")).toMatch(/SELECT[\s\S]*"Payment"/);
+    expect(lock.strings.join("")).toMatch(/FOR UPDATE/);
+    expect(lock.values).toHaveLength(2);
+    expect(lock.values).toEqual(expect.arrayContaining([paymentId, tenantId]));
+    expect(transaction.tenantOrganization.findFirst).toHaveBeenCalledWith({
+      where: { id: tenantId, stripeConnectAccountId: accountId },
+      select: { id: true },
+    });
+    expect(transaction.payment.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        tenantId,
+        destinationAccountId: accountId,
+        stripeCheckoutSessionId: "cs_test_success",
+      }),
+    });
+    expect(transaction.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
+      transaction.payment.findFirst.mock.invocationCallOrder[0],
+    );
+    expect(
+      transaction.payment.findFirst.mock.invocationCallOrder[0],
+    ).toBeLessThan(transaction.payment.update.mock.invocationCallOrder[0]);
     expect(transaction.payment.update).toHaveBeenCalledWith({
       where: { id_tenantId: { id: paymentId, tenantId } },
       data: {
@@ -305,8 +336,198 @@ describe("StripeWebhooksService", () => {
     });
   });
 
+  it.each([
+    "checkout.session.async_payment_failed",
+    "payment_intent.payment_failed",
+    "checkout.session.expired",
+  ])("does not let stale %s overwrite committed success", async (type) => {
+    transaction.payment.findFirst.mockResolvedValue(
+      payment({ status: PaymentStatus.SUCCEEDED }),
+    );
+    const request = signedRequest(
+      event(type, {
+        id: type.startsWith("payment_intent")
+          ? "pi_test_success"
+          : "cs_test_success",
+        metadata: { paymentRequestId: paymentId, jobId, tenantId },
+      }),
+    );
+
+    await expect(
+      service.receive(request.body, request.header),
+    ).resolves.toEqual({ received: true, handled: true, duplicate: false });
+
+    expect(transaction.payment.findFirst).toHaveBeenCalled();
+    expect(transaction.payment.update).not.toHaveBeenCalled();
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+    expect(transaction.stripeEvent.update).toHaveBeenCalledWith({
+      where: {
+        tenantId_stripeEventId: { tenantId, stripeEventId: "evt_test_event" },
+      },
+      data: expect.objectContaining({
+        processingStatus: StripeEventStatus.PROCESSED,
+      }),
+    });
+  });
+
+  it("preserves a refund committed after the initial pending lookup", async () => {
+    transaction.payment.findFirst.mockResolvedValue(
+      payment({
+        status: PaymentStatus.REFUNDED,
+        refundStatus: RefundStatus.FULL,
+      }),
+    );
+    const request = signedRequest(
+      event("checkout.session.completed", {
+        id: "cs_test_success",
+        payment_status: "paid",
+        amount_total: 10000,
+        currency: "usd",
+        metadata: { paymentRequestId: paymentId },
+      }),
+    );
+
+    await service.receive(request.body, request.header);
+
+    expect(transaction.payment.update).not.toHaveBeenCalled();
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+    expect(transaction.stripeEvent.update).toHaveBeenCalled();
+  });
+
+  it("uses the current state in the transition audit", async () => {
+    transaction.payment.findFirst.mockResolvedValue(
+      payment({ status: PaymentStatus.FAILED }),
+    );
+    const request = signedRequest(
+      event("checkout.session.completed", {
+        id: "cs_test_success",
+        payment_status: "paid",
+        amount_total: 10000,
+        currency: "usd",
+        metadata: { paymentRequestId: paymentId },
+      }),
+    );
+
+    await service.receive(request.body, request.header);
+
+    expect(transaction.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        entityId: paymentId,
+        metadata: expect.objectContaining({
+          previousStatus: PaymentStatus.FAILED,
+          status: PaymentStatus.SUCCEEDED,
+        }),
+      }),
+    });
+  });
+
+  it.each([null, { id: "40000000-0000-4000-8000-000000000004" }])(
+    "rejects a changed account mapping before writing an event (%p)",
+    async (currentTenant) => {
+      transaction.tenantOrganization.findFirst.mockResolvedValue(currentTenant);
+      const request = signedRequest(
+        event("checkout.session.expired", { id: "cs_test_success" }),
+      );
+
+      await expect(
+        service.receive(request.body, request.header),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(transaction.stripeEvent.createMany).not.toHaveBeenCalled();
+      expect(transaction.payment.update).not.toHaveBeenCalled();
+      expect(transaction.auditLog.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { lockedRows: [] },
+    { lockedRows: [{ id: "40000000-0000-4000-8000-000000000004" }] },
+  ])(
+    "rejects a missing or mismatched locked row before writing an event ($lockedRows)",
+    async ({ lockedRows }) => {
+      transaction.$queryRaw.mockResolvedValue(lockedRows);
+      const request = signedRequest(
+        event("checkout.session.expired", { id: "cs_test_success" }),
+      );
+
+      await expect(
+        service.receive(request.body, request.header),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(transaction.payment.findFirst).not.toHaveBeenCalled();
+      expect(transaction.stripeEvent.createMany).not.toHaveBeenCalled();
+      expect(transaction.payment.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([null, payment({ id: "40000000-0000-4000-8000-000000000004" })])(
+    "rejects a resource no longer bound to the locked payment (%p)",
+    async (currentPayment) => {
+      transaction.payment.findFirst.mockResolvedValue(currentPayment);
+      const request = signedRequest(
+        event("checkout.session.expired", { id: "cs_test_success" }),
+      );
+
+      await expect(
+        service.receive(request.body, request.header),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(transaction.stripeEvent.createMany).not.toHaveBeenCalled();
+      expect(transaction.payment.update).not.toHaveBeenCalled();
+      expect(transaction.auditLog.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([undefined, { paymentRequestId: paymentId, jobId, tenantId }])(
+    "refuses a changed job with or without event metadata (%p)",
+    async (metadata) => {
+      transaction.payment.findFirst.mockResolvedValue(
+        payment({ jobId: "40000000-0000-4000-8000-000000000004" }),
+      );
+      const request = signedRequest(
+        event("checkout.session.expired", {
+          id: "cs_test_success",
+          metadata,
+        }),
+      );
+
+      await expect(
+        service.receive(request.body, request.header),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(transaction.stripeEvent.createMany).not.toHaveBeenCalled();
+      expect(transaction.payment.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it("revalidates current trusted money before writing an event", async () => {
+    transaction.payment.findFirst.mockResolvedValue(
+      payment({ amountTotalCents: 20000 }),
+    );
+    const request = signedRequest(
+      event("checkout.session.completed", {
+        id: "cs_test_success",
+        payment_status: "paid",
+        amount_total: 10000,
+        currency: "usd",
+        metadata: { paymentRequestId: paymentId },
+      }),
+    );
+
+    await expect(
+      service.receive(request.body, request.header),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+
+    expect(transaction.stripeEvent.createMany).not.toHaveBeenCalled();
+    expect(transaction.payment.update).not.toHaveBeenCalled();
+    expect(transaction.auditLog.create).not.toHaveBeenCalled();
+  });
+
   it("records a full refund without allowing later success to downgrade it", async () => {
     prisma.payment.findFirst.mockResolvedValue(
+      payment({ status: PaymentStatus.SUCCEEDED }),
+    );
+    transaction.payment.findFirst.mockResolvedValue(
       payment({ status: PaymentStatus.SUCCEEDED }),
     );
     const refund = signedRequest(
@@ -334,6 +555,12 @@ describe("StripeWebhooksService", () => {
     jest.clearAllMocks();
     prisma.tenantOrganization.findFirst.mockResolvedValue({ id: tenantId });
     prisma.payment.findFirst.mockResolvedValue(
+      payment({
+        status: PaymentStatus.REFUNDED,
+        refundStatus: RefundStatus.FULL,
+      }),
+    );
+    transaction.payment.findFirst.mockResolvedValue(
       payment({
         status: PaymentStatus.REFUNDED,
         refundStatus: RefundStatus.FULL,
