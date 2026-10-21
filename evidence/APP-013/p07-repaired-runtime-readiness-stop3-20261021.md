@@ -17,4 +17,10 @@ No database role, secret resource/version, IAM identity/binding, Stripe destinat
 
 The connected-account handoff correction itself remains locally proven by 33 focused tests. The live database command failure is a new bounded diagnostic gap, not permission to broaden scope or replay the operation. A fresh proposal must preserve sanitized output while capturing enough classified database failure evidence to distinguish connection/authentication, schema/query and expected-state failures before any new live attempt.
 
+## Post-closeout local diagnosis
+
+Homebrew `psql` is PostgreSQL 16.11 with OpenSSL. The user's default PostgreSQL root-certificate file is absent. The controller supplied `PGSSLMODE=verify-full` without `PGSSLROOTCERT=system`, while installed PostgreSQL 16 documentation requires `sslrootcert=system` to select operating-system trust. The repository's existing backup controller already uses that exact pair, and the Node closeout connected successfully with system certificate trust. This strongly indicates a libpq trust-configuration failure before SQL, but it does not conclusively identify the consumed attempt's raw error.
+
+Governance proposal `APP013_P07_DATABASE_TLS_DIAGNOSTIC_CORRECTION_PROPOSAL_20261021.md` recommends the narrow local correction plus fixed, secret-safe error classification. No implementation or new database action is authorized by this diagnosis.
+
 Accepted progress remains **0/27 newly closed R1 packages; 6/60 legacy packages; 4/8 walkthrough milestones; 0/13 full-intelligence rows**. **Unexpected database-preflight stop disclosed; no external mutation.**
