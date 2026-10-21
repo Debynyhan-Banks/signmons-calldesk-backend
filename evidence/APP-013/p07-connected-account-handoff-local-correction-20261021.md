@@ -17,13 +17,14 @@ Fresh private package: `/private/tmp/p07-repaired-runtime-readiness-20261021-rep
 - Plan: `469fc707-51d9-406a-b8df-c55b078f4eba`
 - Packet: `95e56ac2-afea-4efc-b7bc-78fb2507d576`
 - Operation: `0ae8a2a9-530f-47c6-80da-3bcd740a821d`
-- Manifest SHA-256: `a95a014cd7b81ff66dc006c30c51d1d4dfb4b6ab27f619a4d4e61587de1db180`
+- Manifest SHA-256: `6b193750e2f515463c6fece18b6f1fac0ac5054244723a8d959caf8d5949c3e7`
 - Controller SHA-256: `3d242c8980280f586331e01ca515994f202e6114a4e726f3834fe1f5dff9e41f`
-- Test SHA-256: `55590ea3794c2aba353da2f9ddf76ce03892a2c390abe87afb9a533bd495c990`
+- Test SHA-256: `82830263aa31bcee1d5fc6e78767626c0921560a6e9de154ad30c0d91ffc0e7c`
+- Binding SHA-256: `03010637384f946014c0c7bc365f3934171a95d1487bbe36fef48b151b6f39b2`
 
 The database preflight now uses only the fixed plan-bound job and tenant UUIDs in SQL. It reads the tenant's stored connected-account ID and `chargesEnabled` result as one in-memory result line, requires exactly one tenant row, validates the `acct_...` format, compares its SHA-256 with the already sanitized Stripe preflight receipt using constant-time comparison, then clears the raw value and result lines. The raw ID is absent from prompts, SQL, command arguments, exceptions and persisted receipts. The persisted database receipt retains only `tenantAccountMatchesAndChargesEnabled:true`.
 
-The fresh package contains no binding, owner-approval, attempt or mutation-journal file. Its plan remains `PREPARATION_ONLY_PENDING_WINDOW_AND_LIVE_APPROVAL`, `externalActionAuthorized:false`, and `automaticRetryAllowed:false`. Both previous operations remain consumed.
+After the local correction passed, the owner selected October 21, 2026, 6:00–7:30 a.m. Eastern with a strict 6:15 start cutoff. The fresh package now contains that exact binding but no owner-approval, attempt or mutation-journal file. Its plan remains `PREPARATION_ONLY_PENDING_WINDOW_AND_LIVE_APPROVAL`, `externalActionAuthorized:false`, and `automaticRetryAllowed:false`. Both previous operations remain consumed.
 
 ## Validation
 
@@ -34,13 +35,13 @@ The fresh package contains no binding, owner-approval, attempt or mutation-journ
 - `python3 -m py_compile controller.py test_controller.py`: passed.
 - `node --check db-closeout.mjs firebase-read.mjs iam-actas-read.mjs`: passed.
 - `python3 controller.py --check`: `P07_PREPARATION_CHECK_PASSED_NO_ACTION`.
-- `--run`, `--recover` and `--retire`: each refused `P07_REFUSED_WINDOW_NOT_BOUND` with exit 2.
+- Before binding, `--run`, `--recover` and `--retire` each refused `P07_REFUSED_WINDOW_NOT_BOUND` with exit 2. After binding/retest, all three refuse `P07_REFUSED_OWNER_APPROVAL_INVALID` with exit 2.
 - Private package directory mode: `0700`.
 
 No Cloud, Stripe or database command ran during this local correction. No role, secret, IAM binding, destination, revision, payment, booking, customer contact or deployment was attempted.
 
 ## Remaining gate
 
-Debynyhan Banks supplies a fresh attended Eastern block of at least 90 minutes with Terminal, the current CHILD administrator password and signed-in Stripe Sandbox available. The implementer may then create an exact window/retirement binding, rerun all package checks and present a separate external-operation proposal. No executable live command or external authority exists at this checkpoint.
+Debynyhan Banks approves or refuses the exact operation in governance `APP013_P07_REPAIRED_RUNTIME_READINESS_OPERATION_REPAIR3_20261021.md` before the strict 6:15 a.m. cutoff. Scheduling did not grant external authority; the live command remains refused until an exact approval record exists.
 
 Accepted progress remains **0/27 newly closed R1 packages; 6/60 legacy packages; 4/8 walkthrough milestones; 0/13 full-intelligence rows**. **No scope deviation from the owner-approved connected-account handoff correction.**
