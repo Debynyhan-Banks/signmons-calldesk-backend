@@ -1,0 +1,18 @@
+{
+  "files": {
+    "README.txt": "9116f0c9574b411508557a1d93a1c5b9a18cc3a2864403c9a2a4531afc36aaa0",
+    "controller.py": "093a69824feef7f0885680ba92685927ca5e8259c0752608ca2e84f3abc285ae",
+    "db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+    "firebase-read.mjs": "d2dec2cec6d6e74d30650720ad0e07265ca1ccc02863c7ec5fe2641c7736361c",
+    "iam-actas-read.mjs": "5ecf70d5d1bfd8f9a5fc9efd0e616665ec0b99d28f1d2846fcca5a5695e7c0d7",
+    "p07-payment-runtime-role-review.sql": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+    "plan.json": "d330fbd2dad27c290b6b575c744eda1a32de7d3a17406f58c6fd0bbe7acd05c8",
+    "test_controller.py": "368bae0f09e758c5587dfea16429490e43bc69302bec829481c6012da451f30d",
+    "test_postgres_contract.py": "c8051318d13c482cd10c8e404dd615274b81ea24188896f751194f4fbfb8f68c"
+  },
+  "operationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "packetId": "c9622a7d-7aa0-4a27-ab75-e9bc56f21cc0",
+  "planId": "4bb26b9b-cd41-4bbb-a62a-5aedfd4f82bb",
+  "status": "PREPARATION_ONLY_PENDING_WINDOW_AND_LIVE_APPROVAL",
+  "version": 1
+}

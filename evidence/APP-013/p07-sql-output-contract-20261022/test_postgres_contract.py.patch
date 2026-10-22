@@ -1,0 +1,177 @@
+--- diagnostic/test_postgres_contract.py
++++ sql-contract1/test_postgres_contract.py
+@@ -1,0 +2,5 @@
++import ast
++import datetime as dt
++import hashlib
++import json
++from unittest.mock import patch
+@@ -24,13 +29,19 @@
+-        cls.temp=tempfile.TemporaryDirectory(prefix='p07-total-output-')
+-        base=Path(cls.temp.name);cls.data=base/'data';cls.socket_dir=base/'socket';cls.socket_dir.mkdir(mode=0o700)
+-        cls.port=str(55000+(os.getpid()%1000))
+-        env=os.environ.copy();env['PATH']=str(PG_BIN)+':/usr/bin:/bin';env['PGAPPNAME']='signmons_p07_local_contract';cls.env=env
+-        cls._command([INITDB,'-D',str(cls.data),'--username=neondb_owner','--auth=trust','--encoding=UTF8','--no-locale'])
+-        cls.server=subprocess.Popen([POSTGRES,'-D',str(cls.data),'-k',str(cls.socket_dir),'-p',cls.port,'-F','-c','listen_addresses='],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=env)
+-        for _ in range(100):
+-            if cls.server.poll() is not None:raise AssertionError('local PostgreSQL failed to start')
+-            ready=subprocess.run([PSQL,'-X','-q','-A','-t','-h',str(cls.socket_dir),'-p',cls.port,'-U','neondb_owner','-d','postgres','-c','SELECT 1'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=env)
+-            if ready.returncode==0:break
+-            time.sleep(0.05)
+-        else:raise AssertionError('local PostgreSQL readiness timed out')
+-        cls._command([CREATEDB,'-h',str(cls.socket_dir),'-p',cls.port,'-U','neondb_owner','neondb'])
++        cls.temp=tempfile.TemporaryDirectory(prefix='p07-sql-',dir='/private/tmp')
++        try:
++            base=Path(cls.temp.name);cls.data=base/'data';cls.socket_dir=base/'socket';cls.socket_dir.mkdir(mode=0o700)
++            cls.port=str(55000+(os.getpid()%1000))
++            env=os.environ.copy();env['PATH']=str(PG_BIN)+':/usr/bin:/bin';env['PGAPPNAME']='signmons_p07_local_contract';cls.env=env
++            cls._command([INITDB,'-D',str(cls.data),'--username=neondb_owner','--auth=trust','--encoding=UTF8','--no-locale'])
++            cls.server=subprocess.Popen([POSTGRES,'-D',str(cls.data),'-k',str(cls.socket_dir),'-p',cls.port,'-F','-c','listen_addresses='],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,env=env)
++            for _ in range(100):
++                if cls.server.poll() is not None:
++                    detail=cls.server.communicate()[1].decode('utf-8','ignore')
++                    code='LOCAL_SOCKET_PATH' if 'Unix-domain' in detail or 'too long' in detail else 'LOCAL_SERVER_START_FAILED'
++                    detail='';raise AssertionError(code)
++                ready=subprocess.run([PSQL,'-X','-q','-A','-t','-h',str(cls.socket_dir),'-p',cls.port,'-U','neondb_owner','-d','postgres','-c','SELECT 1'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,env=env)
++                if ready.returncode==0:break
++                time.sleep(0.05)
++            else:raise AssertionError('local PostgreSQL readiness timed out')
++            cls._command([CREATEDB,'-h',str(cls.socket_dir),'-p',cls.port,'-U','neondb_owner','neondb'])
++        except BaseException:
++            cls.tearDownClass();raise
+@@ -43 +54,4 @@
+-        if hasattr(cls,'temp'):cls.temp.cleanup()
++        if hasattr(cls,'server') and cls.server.stderr:cls.server.stderr.close()
++        if hasattr(cls,'temp'):
++            directory=Path(cls.temp.name);cls.temp.cleanup()
++            if directory.exists():raise AssertionError('LOCAL_FIXTURE_CLEANUP_FAILED')
+@@ -55,0 +70,4 @@
++        self.expire=(dt.datetime.now(dt.timezone.utc)+dt.timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S+00')
++        exists=self._command([],"SELECT count(*) FROM pg_roles WHERE rolname='p07_payment_runtime'",'neondb')
++        if exists=='1':self._command([],"DROP OWNED BY p07_payment_runtime CASCADE; DROP ROLE p07_payment_runtime;",'neondb')
++        self._command([],"DROP ROLE IF EXISTS p07_contract_parent",'neondb')
+@@ -72 +90 @@
+-        raw=self._command([],c.DIAGNOSTIC_SQL,'neondb')
++        raw=self._command([],c.PREFLIGHT_SQL,'neondb')
+@@ -102,0 +121,121 @@
++
++    def assert_preflight_stop(self,code,stripe=None):
++        with self.assertRaises(c.Stop) as caught:c.classify_database_preflight(self.diagnostic_lines(),stripe or self.stripe())
++        self.assertEqual(caught.exception.code,code)
++        self.assertNotIn(ACCOUNT,str(caught.exception))
++
++    def create_runtime_role(self):
++        self._command([],f"CREATE ROLE p07_payment_runtime LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 6 VALID UNTIL '{self.expire}';",'neondb')
++
++    def role_row(self):
++        return self._command([],c.role_boundary_sql(self.expire),'neondb')
++
++    def test_runtime_db_preflight_consumes_real_sql_and_saves_only_sanitized_result(self):
++        with tempfile.TemporaryDirectory() as root,patch.object(c,'ROOT',Path(root)),patch.object(c,'psql_admin',side_effect=lambda password,sql,**kwargs:self._command([],sql,'neondb')):
++            c.save('stripe-preflight.json',self.stripe());c.db_preflight('synthetic-not-used')
++            text=(Path(root)/'database-preflight.json').read_text()
++            self.assertNotIn(ACCOUNT,text);self.assertNotIn(c.base64.b64encode(ACCOUNT.encode()).decode(),text)
++            self.assertTrue(json.loads(text)['tenantAccountMatchesAndChargesEnabled'])
++
++    def test_runtime_db_preflight_real_sql_failure_never_saves_pass(self):
++        self._command([],f'''UPDATE "Job" SET status='CANCELLED' WHERE id='{c.JOB}'::uuid''','neondb')
++        with tempfile.TemporaryDirectory() as root,patch.object(c,'ROOT',Path(root)),patch.object(c,'psql_admin',side_effect=lambda password,sql,**kwargs:self._command([],sql,'neondb')):
++            c.save('stripe-preflight.json',self.stripe())
++            with self.assertRaises(c.Stop) as caught:c.db_preflight('synthetic-not-used')
++            self.assertEqual(caught.exception.code,'JOB_STATE_DRIFT');self.assertFalse((Path(root)/'database-preflight.json').exists())
++
++    def test_real_job_state_deletion_and_tenant_isolation(self):
++        for query,code in [
++            ('''UPDATE "Job" SET status='CANCELLED' ''','JOB_STATE_DRIFT'),
++            ('''UPDATE "Job" SET "deletedAt"=now() ''','JOB_DELETED'),
++            ('''UPDATE "Job" SET "tenantId"='00000000-0000-0000-0000-000000000001' ''','EXACT_JOB_COUNT_DRIFT'),
++        ]:
++            with self.subTest(code=code):
++                self.setUp();self._command([],query,'neondb');self.assert_preflight_stop(code)
++
++    def test_real_payment_and_calendar_activity_fail_closed(self):
++        for query,code in [
++            (f'''INSERT INTO "Payment" VALUES ('{c.JOB}','{c.TENANT}')''','PAYMENT_ACTIVITY_PRESENT'),
++            ('''UPDATE "Job" SET "calendarEventId"='synthetic-event' ''','CALENDAR_EVENT_PRESENT'),
++            (f'''INSERT INTO "CalendarOperation" VALUES ('{c.JOB}','{c.TENANT}')''','CALENDAR_OPERATION_PRESENT'),
++        ]:
++            with self.subTest(code=code):
++                self.setUp();self._command([],query,'neondb');self.assert_preflight_stop(code)
++
++    def test_real_null_and_bound_policy_fail_closed(self):
++        for value in ['NULL',"'{}'::jsonb", "'{\"intakeAdmission\":null}'::jsonb", "'{\"intakeAdmission\":{\"paymentDigest\":null}}'::jsonb", "'{\"intakeAdmission\":{\"paymentDigest\":\"wrong\"}}'::jsonb", "'{\"intakeAdmission\":{\"paymentDigest\":\""+'a'*64+"\"},\"paymentPolicyBinding\":{}}'::jsonb"]:
++            with self.subTest(value=value):
++                self.setUp();self._command([],'''UPDATE "Job" SET "policySnapshot"='''+value,'neondb');self.assert_preflight_stop('CONTROLLED_ADMISSION_POLICY_DRIFT')
++
++    def test_real_account_format_hash_and_null_charges_fail_closed(self):
++        for query,code in [
++            ('''UPDATE "TenantOrganization" SET "stripeConnectAccountId"='invalid|delimiter' ''','CONNECTED_ACCOUNT_FORMAT'),
++            ('''UPDATE "TenantOrganization" SET "chargesEnabled"=false ''','CONNECTED_ACCOUNT_CHARGES_DISABLED'),
++            ('''UPDATE "TenantOrganization" SET "chargesEnabled"=NULL ''','CONNECTED_ACCOUNT_CHARGES_DISABLED'),
++            ('''UPDATE "TenantOrganization" SET "stripeConnectAccountId"='acct_other12345' ''','CONNECTED_ACCOUNT_MISMATCH'),
++        ]:
++            with self.subTest(code=code):
++                self.setUp();self._command([],query,'neondb');self.assert_preflight_stop(code)
++
++    def test_real_p06_state_fields_and_p07_collision_fail_closed(self):
++        for query,code in [
++            ('ALTER ROLE p06_intake_runtime LOGIN','P06_ROLE_STATE_DRIFT'),
++            ('ALTER ROLE p06_intake_runtime CONNECTION LIMIT 1','P06_ROLE_STATE_DRIFT'),
++            ("ALTER ROLE p06_intake_runtime VALID UNTIL '2099-01-01'",'P06_ROLE_STATE_DRIFT'),
++            ("CREATE ROLE p07_payment_runtime NOLOGIN",'P07_ROLE_COLLISION'),
++        ]:
++            with self.subTest(code=code):
++                self.setUp();self._command([],query,'neondb');self.assert_preflight_stop(code)
++
++    def test_real_active_p06_session_fails_closed(self):
++        self._command([],"ALTER ROLE p06_intake_runtime LOGIN CONNECTION LIMIT 1 VALID UNTIL '2099-01-01'",'neondb')
++        session_env={**self.env,'PGAPPNAME':'signmons_p07_synthetic_held_role'}
++        child=subprocess.Popen([PSQL,'-X','-q','-A','-t','-h',str(self.socket_dir),'-p',self.port,'-U','p06_intake_runtime','-d','neondb','-c','SELECT pg_sleep(10)'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=session_env)
++        try:
++            until=time.monotonic()+2
++            while self._command([],"SELECT count(*) FROM pg_stat_activity WHERE usename='p06_intake_runtime' AND backend_type='client backend'",'neondb')!='1':
++                if time.monotonic()>until:self.fail('synthetic p06 session not observed')
++                time.sleep(0.01)
++            self._command([],"ALTER ROLE p06_intake_runtime NOLOGIN CONNECTION LIMIT 0 VALID UNTIL '2000-01-01'",'neondb');self.assert_preflight_stop('P06_ROLE_STATE_DRIFT')
++        finally:
++            self._command([],"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename='p06_intake_runtime' AND pid<>pg_backend_pid()",'neondb');child.wait(timeout=3)
++
++    def test_real_query_output_corruption_missing_extra_and_wrong_tags_refused(self):
++        rows=self.diagnostic_lines()
++        corruptions=[rows[:2],rows+['EXTRA'],['BROKEN'+rows[0],*rows[1:]],[rows[0].replace('|0|1|0|0|1|0','|0|1|false|0|true|0'),*rows[1:]]]
++        for value in corruptions:
++            with self.subTest(value=value):
++                with self.assertRaises(c.Stop) as caught:c.classify_database_preflight(value,self.stripe())
++                self.assertEqual(caught.exception.code,'DATABASE_PREFLIGHT_OUTPUT_INVALID')
++
++    def test_real_duplicate_job_and_tenant_counts_fail_closed(self):
++        self._command([],'''INSERT INTO "Job" SELECT * FROM "Job"''','neondb');self.assert_preflight_stop('EXACT_JOB_COUNT_DRIFT')
++        self.setUp();self._command([],'''INSERT INTO "TenantOrganization" SELECT * FROM "TenantOrganization"''','neondb');self.assert_preflight_stop('TENANT_COUNT_DRIFT')
++
++    def test_real_role_attribute_positive_and_absent(self):
++        with self.assertRaises(c.Stop):c.validate_role_boundary(self.role_row())
++        self.create_runtime_role();row=self.role_row()
++        self.assertEqual(len(row.split('|')),13);self.assertEqual(row,c.ROLE_BOUNDARY_EXPECTED);c.validate_role_boundary(row)
++
++    def test_real_role_each_flag_limit_expiry_membership_and_ownership_fails_closed(self):
++        commands=['ALTER ROLE p07_payment_runtime NOLOGIN','ALTER ROLE p07_payment_runtime INHERIT','ALTER ROLE p07_payment_runtime SUPERUSER','ALTER ROLE p07_payment_runtime CREATEDB','ALTER ROLE p07_payment_runtime CREATEROLE','ALTER ROLE p07_payment_runtime REPLICATION','ALTER ROLE p07_payment_runtime BYPASSRLS','ALTER ROLE p07_payment_runtime CONNECTION LIMIT 7',"ALTER ROLE p07_payment_runtime VALID UNTIL '2099-01-01'",'CREATE ROLE p07_contract_parent; GRANT p07_contract_parent TO p07_payment_runtime','CREATE TABLE local_runtime_owned(id int); ALTER TABLE local_runtime_owned OWNER TO p07_payment_runtime']
++        for index,command in enumerate(commands):
++            with self.subTest(field=index):
++                self.setUp();self.create_runtime_role();self._command([],command,'neondb')
++                with self.assertRaises(c.Stop) as caught:c.validate_role_boundary(self.role_row())
++                self.assertEqual(caught.exception.code,'RUNTIME_ROLE_BOUNDARY_DRIFT')
++
++    def test_consumed_preflight_and_role_sql_reproduce_original_defects(self):
++        original=Path('/private/tmp/p07-repaired-runtime-readiness-20261022-guards1/controller.py')
++        self.assertEqual(hashlib.sha256(original.read_bytes()).hexdigest(),'69f7a69a0b770457a6685e5ab0e69e4121832290d3f65e4dfbf4f624d4e72989')
++        spec=importlib.util.spec_from_file_location('p07_consumed_comparison',original);old=importlib.util.module_from_spec(spec);spec.loader.exec_module(old)
++        tree=ast.parse(original.read_text());fn=next(x for x in tree.body if isinstance(x,ast.FunctionDef) and x.name=='db_preflight')
++        sql=eval(compile(ast.Expression(fn.body[0].value),'<consumed-sql>','eval'),old.__dict__)
++        rows=self._command([],sql,'neondb').splitlines()
++        with self.assertRaises(old.Stop) as caught:old.classify_database_preflight(rows,self.stripe())
++        self.assertEqual(caught.exception.code,'DATABASE_PREFLIGHT_OUTPUT_INVALID')
++        self.create_runtime_role();fn=next(x for x in tree.body if isinstance(x,ast.FunctionDef) and x.name=='provision_database');assignment=next(x for x in fn.body if isinstance(x,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='role_state' for t in x.targets))
++        sql=eval(compile(ast.Expression(assignment.value.args[1]),'<consumed-role-sql>','eval'),old.__dict__,{'expire':self.expire})
++        row=self._command([],sql,'neondb');self.assertNotEqual(row,'t|f|f|f|f|f|f|6|t|0|0');self.assertTrue(row.startswith('true|false|'))
++        c.validate_role_boundary(self.role_row())
++

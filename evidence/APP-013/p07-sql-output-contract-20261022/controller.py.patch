@@ -1,0 +1,128 @@
+--- guards1/controller.py
++++ sql-contract1/controller.py
+@@ -5,0 +6,2 @@
++import base64
++import binascii
+@@ -19 +21 @@
+-ROOT=Path('/private/tmp/p07-repaired-runtime-readiness-20261022-guards1')
++ROOT=Path('/private/tmp/p07-repaired-runtime-readiness-20261022-sql-contract1')
+@@ -40,0 +43,3 @@
++SQL_CONTRACT_SOURCE_HEAD='a16513f0f9433adebdf3c978a6bfbfefdf4fd55a'
++SQL_CONTRACT_PROPOSAL_NAME='APP013_P07_SQL_OUTPUT_CONTRACT_REUSE_PROPOSAL_20261022.md'
++SQL_CONTRACT_PROPOSAL_SHA='807b16c97b9acf18bd9a91440615aecc1f051a7dbbad44afea5e58f53934868a'
+@@ -42 +47 @@
+-BACKEND_HEAD='2c3ad5dbdbc599a8121539ed37e8d31e53542c5b'
++BACKEND_HEAD='17bd56b3f4e88f2cf879b077eb62bc7ec588dd03'
+@@ -44,3 +49,3 @@
+-PLAN='f3252875-1a8a-4c64-b642-254fdc30a620'
+-PACKET='6c91b550-78cf-4dd1-a93e-63d9a282e21e'
+-OPERATION='abff0262-3504-4f92-b49d-5c5dea238cdb'
++PLAN='4bb26b9b-cd41-4bbb-a62a-5aedfd4f82bb'
++PACKET='c9622a7d-7aa0-4a27-ab75-e9bc56f21cc0'
++OPERATION='b8d2ac94-3310-4f84-b36a-8495cc919097'
+@@ -226,0 +232 @@
++    if git_file_sha(GOV,SQL_CONTRACT_SOURCE_HEAD,SQL_CONTRACT_PROPOSAL_NAME)!=SQL_CONTRACT_PROPOSAL_SHA:raise Stop('SQL_CONTRACT_APPROVAL_SOURCE_DRIFT')
+@@ -335,0 +342,7 @@
++PREFLIGHT_SQL=f"""BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
++SELECT 'IDENTITY|'||current_database()||'|'||current_user||'|'||(SELECT count(*) FROM pg_roles WHERE rolname='{ROLE}')||'|'||(SELECT count(*) FROM pg_roles WHERE rolname='p06_intake_runtime')||'|'||COALESCE((SELECT CASE WHEN rolcanlogin THEN '1' ELSE '0' END FROM pg_roles WHERE rolname='p06_intake_runtime'),'0')||'|'||COALESCE((SELECT rolconnlimit::text FROM pg_roles WHERE rolname='p06_intake_runtime'),'0')||'|'||COALESCE((SELECT CASE WHEN rolvaliduntil IS NOT NULL AND rolvaliduntil<now() THEN '1' ELSE '0' END FROM pg_roles WHERE rolname='p06_intake_runtime'),'0')||'|'||(SELECT count(*) FROM pg_stat_activity WHERE usename='p06_intake_runtime' AND backend_type='client backend');
++WITH j AS (SELECT * FROM \"Job\" WHERE id='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid) SELECT 'JOB|'||(SELECT count(*) FROM j)||'|'||CASE WHEN COALESCE((SELECT bool_and(status='CREATED') FROM j),false) THEN '1' ELSE '0' END||'|'||CASE WHEN COALESCE((SELECT bool_and(\"deletedAt\" IS NULL) FROM j),false) THEN '1' ELSE '0' END||'|'||(SELECT count(*) FROM \"Payment\" WHERE \"jobId\"='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid)||'|'||CASE WHEN COALESCE((SELECT bool_and(\"calendarEventId\" IS NULL) FROM j),false) THEN '1' ELSE '0' END||'|'||(SELECT count(*) FROM \"CalendarOperation\" WHERE \"jobId\"='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid)||'|'||CASE WHEN COALESCE((SELECT bool_and(jsonb_typeof(\"policySnapshot\"->'intakeAdmission')='object' AND (\"policySnapshot\"#>>'{{intakeAdmission,paymentDigest}}')~'^[a-f0-9]{{64}}$' AND NOT(\"policySnapshot\"?'paymentPolicyBinding')) FROM j),false) THEN '1' ELSE '0' END;
++WITH t AS (SELECT \"stripeConnectAccountId\",\"chargesEnabled\" FROM \"TenantOrganization\" WHERE id='{TENANT}'::uuid) SELECT 'TENANT|'||count(*)||'|'||encode(convert_to(COALESCE(max(\"stripeConnectAccountId\"),''),'UTF8'),'base64')||'|'||CASE WHEN COALESCE(bool_and(\"chargesEnabled\"),false) THEN '1' ELSE '0' END FROM t;
++ROLLBACK;
++"""
++
+@@ -337 +350 @@
+-    if not isinstance(lines,list) or len(lines)!=3 or not all(isinstance(x,str) for x in lines): raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
++    if not isinstance(lines,list) or len(lines)!=3 or not all(isinstance(value,str) for value in lines):raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
+@@ -339,3 +352,5 @@
+-    if len(identity)!=4: raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
+-    database,user,p07_count,p06_raw=identity
+-    try:p07_count=int(p07_count)
++    if len(identity)!=9 or identity[0]!='IDENTITY':raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
++    _,database,user,p07_count_raw,p06_count_raw,p06_login,p06_limit_raw,p06_expired,p06_sessions_raw=identity
++    if p06_login not in {'0','1'} or p06_expired not in {'0','1'}:raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
++    try:
++        p07_count=int(p07_count_raw);p06_count=int(p06_count_raw);p06_limit=int(p06_limit_raw);p06_sessions=int(p06_sessions_raw)
+@@ -343,5 +358,6 @@
+-    if database!='neondb' or user!='neondb_owner': raise Stop('DATABASE_IDENTITY_DRIFT')
+-    if p07_count!=0: raise Stop('P07_ROLE_COLLISION')
+-    p06=p06_raw.split(',')
+-    if len(p06)!=4 or p06[0] not in {'t','f'} or p06[2] not in {'t','f'}: raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
+-    try:p06_limit=int(p06[1]);p06_sessions=int(p06[3])
++    if database!='neondb' or user!='neondb_owner':raise Stop('DATABASE_IDENTITY_DRIFT')
++    if p07_count!=0:raise Stop('P07_ROLE_COLLISION')
++    if (p06_count,p06_login,p06_limit,p06_expired,p06_sessions)!=(1,'0',0,'1',0):raise Stop('P06_ROLE_STATE_DRIFT')
++    job=lines[1].split('|')
++    if len(job)!=8 or job[0]!='JOB' or any(job[index] not in {'0','1'} for index in [2,3,5,7]):raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
++    try:job_count=int(job[1]);payment_count=int(job[4]);calendar_count=int(job[6])
+@@ -349,4 +365,10 @@
+-    if (p06[0],p06_limit,p06[2],p06_sessions)!=('f',0,'t',0): raise Stop('P06_ROLE_STATE_DRIFT')
+-    job=lines[1].split('|')
+-    if len(job)!=7 or any(job[i] not in {'t','f'} for i in [1,2,4,6]): raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
+-    try:job_count=int(job[0]);payment_count=int(job[3]);calendar_count=int(job[5])
++    if job_count!=1:raise Stop('EXACT_JOB_COUNT_DRIFT')
++    if job[2]!='1':raise Stop('JOB_STATE_DRIFT')
++    if job[3]!='1':raise Stop('JOB_DELETED')
++    if payment_count!=0:raise Stop('PAYMENT_ACTIVITY_PRESENT')
++    if job[5]!='1':raise Stop('CALENDAR_EVENT_PRESENT')
++    if calendar_count!=0:raise Stop('CALENDAR_OPERATION_PRESENT')
++    if job[7]!='1':raise Stop('CONTROLLED_ADMISSION_POLICY_DRIFT')
++    tenant=lines[2].split('|')
++    if len(tenant)!=4 or tenant[0]!='TENANT' or tenant[3] not in {'0','1'}:raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
++    try:tenant_count=int(tenant[1])
+@@ -354,13 +376,6 @@
+-    if job_count!=1: raise Stop('EXACT_JOB_COUNT_DRIFT')
+-    if job[1]!='t': raise Stop('JOB_STATE_DRIFT')
+-    if job[2]!='t': raise Stop('JOB_DELETED')
+-    if payment_count!=0: raise Stop('PAYMENT_ACTIVITY_PRESENT')
+-    if job[4]!='t': raise Stop('CALENDAR_EVENT_PRESENT')
+-    if calendar_count!=0: raise Stop('CALENDAR_OPERATION_PRESENT')
+-    if job[6]!='t': raise Stop('CONTROLLED_ADMISSION_POLICY_DRIFT')
+-    tenant=lines[2].rsplit('|',1)
+-    if len(tenant)!=2 or tenant[1] not in {'t','f'}: raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
+-    account=tenant[0]
+-    try:
+-        if not re.fullmatch(r'acct_[A-Za-z0-9]{8,}',account): raise Stop('CONNECTED_ACCOUNT_FORMAT')
+-        if tenant[1]!='t': raise Stop('CONNECTED_ACCOUNT_CHARGES_DISABLED')
++    if tenant_count!=1:raise Stop('TENANT_COUNT_DRIFT')
++    try:account=base64.b64decode(tenant[2],validate=True).decode('utf-8','strict')
++    except (ValueError,binascii.Error,UnicodeDecodeError):raise Stop('DATABASE_PREFLIGHT_OUTPUT_INVALID')
++    try:
++        if not re.fullmatch(r'acct_[A-Za-z0-9]{8,}',account):raise Stop('CONNECTED_ACCOUNT_FORMAT')
++        if tenant[3]!='1':raise Stop('CONNECTED_ACCOUNT_CHARGES_DISABLED')
+@@ -368 +383 @@
+-        if not secrets.compare_digest(stripe['connectedAccountSha256'],hashlib.sha256(account.encode()).hexdigest()): raise Stop('CONNECTED_ACCOUNT_MISMATCH')
++        if not secrets.compare_digest(stripe['connectedAccountSha256'],hashlib.sha256(account.encode()).hexdigest()):raise Stop('CONNECTED_ACCOUNT_MISMATCH')
+@@ -369,0 +385 @@
++    return 'DATABASE_PREFLIGHT_MATCH'
+@@ -372,4 +387,0 @@
+-    sql=f"""SELECT current_database()||'|'||current_user||'|'||(SELECT count(*) FROM pg_roles WHERE rolname='{ROLE}')||'|'||(SELECT rolcanlogin||','||rolconnlimit||','||(rolvaliduntil IS NOT NULL AND rolvaliduntil<now())||','||(SELECT count(*) FROM pg_stat_activity WHERE usename='p06_intake_runtime' AND backend_type='client backend') FROM pg_roles WHERE rolname='p06_intake_runtime');
+-WITH j AS (SELECT * FROM \"Job\" WHERE id='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid) SELECT (SELECT count(*) FROM j)||'|'||(SELECT bool_and(status='CREATED') FROM j)||'|'||(SELECT bool_and(\"deletedAt\" IS NULL) FROM j)||'|'||(SELECT count(*) FROM \"Payment\" WHERE \"jobId\"='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid)||'|'||(SELECT bool_and(\"calendarEventId\" IS NULL) FROM j)||'|'||(SELECT count(*) FROM \"CalendarOperation\" WHERE \"jobId\"='{JOB}'::uuid AND \"tenantId\"='{TENANT}'::uuid)||'|'||(SELECT bool_and(jsonb_typeof(\"policySnapshot\"->'intakeAdmission')='object' AND (\"policySnapshot\"#>>'{{intakeAdmission,paymentDigest}}')~'^[a-f0-9]{{64}}$' AND NOT(\"policySnapshot\"?'paymentPolicyBinding')) FROM j);
+-SELECT \"stripeConnectAccountId\"||'|'||\"chargesEnabled\" FROM \"TenantOrganization\" WHERE id='{TENANT}'::uuid;
+-"""
+@@ -378 +390 @@
+-        lines=[x for x in psql_admin(password,sql).splitlines() if x]
++        lines=[line for line in psql_admin(password,PREFLIGHT_SQL).splitlines() if line]
+@@ -383,2 +395,16 @@
+-    finally:
+-        lines.clear()
++    finally:lines.clear()
++
++
++ROLE_BOUNDARY_EXPECTED='ROLE|1|1|0|0|0|0|0|0|6|1|0|0'
++
++
++def role_boundary_sql(expire):
++    flags=['rolcanlogin','rolinherit','rolsuper','rolcreatedb','rolcreaterole','rolreplication','rolbypassrls']
++    fields=["CASE WHEN COALESCE(bool_and("+name+"),false) THEN '1' ELSE '0' END" for name in flags]
++    fields.extend(["COALESCE(min(rolconnlimit),0)::text",f"CASE WHEN COALESCE(bool_and(rolvaliduntil IS NOT NULL AND rolvaliduntil<='{expire}'::timestamptz),false) THEN '1' ELSE '0' END",f"(SELECT count(*) FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname='{ROLE}'))::text",f"(SELECT count(*) FROM pg_class WHERE relowner=(SELECT oid FROM pg_roles WHERE rolname='{ROLE}'))::text"])
++    return "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;\nWITH r AS (SELECT * FROM pg_roles WHERE rolname='"+ROLE+"') SELECT 'ROLE|'||count(*)||'|'||"+"||'|'||".join(fields)+" FROM r;\nROLLBACK;"
++
++
++def validate_role_boundary(row):
++    if row!=ROLE_BOUNDARY_EXPECTED:raise Stop('RUNTIME_ROLE_BOUNDARY_DRIFT')
++
+@@ -412,2 +438,2 @@
+-    role_state=psql_admin(password,f"SELECT rolcanlogin||'|'||rolinherit||'|'||rolsuper||'|'||rolcreatedb||'|'||rolcreaterole||'|'||rolreplication||'|'||rolbypassrls||'|'||rolconnlimit||'|'||(rolvaliduntil<='{expire}'::timestamptz)||'|'||(SELECT count(*) FROM pg_auth_members WHERE member=(SELECT oid FROM pg_roles WHERE rolname='{ROLE}'))||'|'||(SELECT count(*) FROM pg_class WHERE relowner=(SELECT oid FROM pg_roles WHERE rolname='{ROLE}')) FROM pg_roles WHERE rolname='{ROLE}';")
+-    if role_state!='t|f|f|f|f|f|f|6|t|0|0':raise Stop('RUNTIME_ROLE_BOUNDARY_DRIFT')
++    role_state=psql_admin(password,role_boundary_sql(expire))
++    validate_role_boundary(role_state)

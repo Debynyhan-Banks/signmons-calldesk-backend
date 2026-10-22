@@ -1,0 +1,63 @@
+--- guards1/test_controller.py
++++ sql-contract1/test_controller.py
+@@ -200 +200 @@
+-                with patch.object(c,'psql_admin',return_value='neondb|neondb_owner|0|f,0,t,0\n1|t|t|0|t|0|t\nacct_12345678|t\n') as psql:
++                with patch.object(c,'psql_admin',return_value='IDENTITY|neondb|neondb_owner|0|1|0|0|1|0\nJOB|1|1|1|0|1|0|1\nTENANT|1|YWNjdF8xMjM0NTY3OA==|1\n') as psql:
+@@ -212,5 +212,5 @@
+-            ('neondb|neondb_owner|0|f,0,t,0\n1|t|t|0|t|0|t\n','DATABASE_PREFLIGHT_OUTPUT_INVALID',good),
+-            ('neondb|neondb_owner|0|f,0,t,0\n1|t|t|0|t|0|t\nacct_12345678|t\nextra\n','DATABASE_PREFLIGHT_OUTPUT_INVALID',good),
+-            ('neondb|neondb_owner|0|f,0,t,0\n1|t|t|0|t|0|t\ninvalid|t\n','CONNECTED_ACCOUNT_FORMAT',good),
+-            ('neondb|neondb_owner|0|f,0,t,0\n1|t|t|0|t|0|t\nacct_12345678|f\n','CONNECTED_ACCOUNT_CHARGES_DISABLED',good),
+-            ('neondb|neondb_owner|0|f,0,t,0\n1|t|t|0|t|0|t\nacct_12345678|t\n','CONNECTED_ACCOUNT_MISMATCH',{**good,'connectedAccountSha256':'0'*64}),
++            ('IDENTITY|neondb|neondb_owner|0|1|0|0|1|0\nJOB|1|1|1|0|1|0|1\n','DATABASE_PREFLIGHT_OUTPUT_INVALID',good),
++            ('IDENTITY|neondb|neondb_owner|0|1|0|0|1|0\nJOB|1|1|1|0|1|0|1\nTENANT|1|YWNjdF8xMjM0NTY3OA==|1\nextra\n','DATABASE_PREFLIGHT_OUTPUT_INVALID',good),
++            ('IDENTITY|neondb|neondb_owner|0|1|0|0|1|0\nJOB|1|1|1|0|1|0|1\nTENANT|1|aW52YWxpZA==|1\n','CONNECTED_ACCOUNT_FORMAT',good),
++            ('IDENTITY|neondb|neondb_owner|0|1|0|0|1|0\nJOB|1|1|1|0|1|0|1\nTENANT|1|YWNjdF8xMjM0NTY3OA==|0\n','CONNECTED_ACCOUNT_CHARGES_DISABLED',good),
++            ('IDENTITY|neondb|neondb_owner|0|1|0|0|1|0\nJOB|1|1|1|0|1|0|1\nTENANT|1|YWNjdF8xMjM0NTY3OA==|1\n','CONNECTED_ACCOUNT_MISMATCH',{**good,'connectedAccountSha256':'0'*64}),
+@@ -232 +232 @@
+-        valid=['neondb|neondb_owner|0|f,0,t,0','1|t|t|0|t|0|t',account+'|t']
++        valid=['IDENTITY|neondb|neondb_owner|0|1|0|0|1|0','JOB|1|1|1|0|1|0|1','TENANT|1|'+c.base64.b64encode(account.encode()).decode()+'|1']
+@@ -235,12 +235,12 @@
+-            (['private-db|neondb_owner|0|f,0,t,0',valid[1],valid[2]],stripe,'DATABASE_IDENTITY_DRIFT'),
+-            (['neondb|neondb_owner|1|f,0,t,0',valid[1],valid[2]],stripe,'P07_ROLE_COLLISION'),
+-            (['neondb|neondb_owner|0|t,1,f,2',valid[1],valid[2]],stripe,'P06_ROLE_STATE_DRIFT'),
+-            ([valid[0],'0|f|f|1|f|2|f',valid[2]],stripe,'EXACT_JOB_COUNT_DRIFT'),
+-            ([valid[0],'1|f|t|0|t|0|t',valid[2]],stripe,'JOB_STATE_DRIFT'),
+-            ([valid[0],'1|t|f|0|t|0|t',valid[2]],stripe,'JOB_DELETED'),
+-            ([valid[0],'1|t|t|1|t|0|t',valid[2]],stripe,'PAYMENT_ACTIVITY_PRESENT'),
+-            ([valid[0],'1|t|t|0|f|0|t',valid[2]],stripe,'CALENDAR_EVENT_PRESENT'),
+-            ([valid[0],'1|t|t|0|t|1|t',valid[2]],stripe,'CALENDAR_OPERATION_PRESENT'),
+-            ([valid[0],'1|t|t|0|t|0|f',valid[2]],stripe,'CONTROLLED_ADMISSION_POLICY_DRIFT'),
+-            ([valid[0],valid[1],'private-account|t'],stripe,'CONNECTED_ACCOUNT_FORMAT'),
+-            ([valid[0],valid[1],account+'|f'],stripe,'CONNECTED_ACCOUNT_CHARGES_DISABLED'),
++            (['IDENTITY|private-db|neondb_owner|0|1|0|0|1|0',valid[1],valid[2]],stripe,'DATABASE_IDENTITY_DRIFT'),
++            (['IDENTITY|neondb|neondb_owner|1|1|0|0|1|0',valid[1],valid[2]],stripe,'P07_ROLE_COLLISION'),
++            (['IDENTITY|neondb|neondb_owner|0|1|1|1|0|2',valid[1],valid[2]],stripe,'P06_ROLE_STATE_DRIFT'),
++            ([valid[0],'JOB|0|0|0|1|0|2|0',valid[2]],stripe,'EXACT_JOB_COUNT_DRIFT'),
++            ([valid[0],'JOB|1|0|1|0|1|0|1',valid[2]],stripe,'JOB_STATE_DRIFT'),
++            ([valid[0],'JOB|1|1|0|0|1|0|1',valid[2]],stripe,'JOB_DELETED'),
++            ([valid[0],'JOB|1|1|1|1|1|0|1',valid[2]],stripe,'PAYMENT_ACTIVITY_PRESENT'),
++            ([valid[0],'JOB|1|1|1|0|0|0|1',valid[2]],stripe,'CALENDAR_EVENT_PRESENT'),
++            ([valid[0],'JOB|1|1|1|0|1|1|1',valid[2]],stripe,'CALENDAR_OPERATION_PRESENT'),
++            ([valid[0],'JOB|1|1|1|0|1|0|0',valid[2]],stripe,'CONTROLLED_ADMISSION_POLICY_DRIFT'),
++            ([valid[0],valid[1],'TENANT|1|cHJpdmF0ZS1hY2NvdW50|1'],stripe,'CONNECTED_ACCOUNT_FORMAT'),
++            ([valid[0],valid[1],'TENANT|1|'+c.base64.b64encode(account.encode()).decode()+'|0'],stripe,'CONNECTED_ACCOUNT_CHARGES_DISABLED'),
+@@ -249 +249 @@
+-            (['neondb|neondb_owner|not-a-number|f,0,t,0',valid[1],valid[2]],stripe,'DATABASE_PREFLIGHT_OUTPUT_INVALID'),
++            (['IDENTITY|neondb|neondb_owner|not-a-number|1|0|0|1|0',valid[1],valid[2]],stripe,'DATABASE_PREFLIGHT_OUTPUT_INVALID'),
+@@ -272 +272 @@
+-        replies=['','', 't|f|f|f|f|f|f|6|t|0|0']
++        replies=['','', c.ROLE_BOUNDARY_EXPECTED]
+@@ -550,0 +551,12 @@
++    def test_sql_contract_decision_is_pinned_to_preimplementation_approval(self):
++        self.assertEqual(c.SQL_CONTRACT_SOURCE_HEAD,'a16513f0f9433adebdf3c978a6bfbfefdf4fd55a')
++        self.assertEqual(c.SQL_CONTRACT_PROPOSAL_SHA,c.git_file_sha(c.GOV,c.SQL_CONTRACT_SOURCE_HEAD,c.SQL_CONTRACT_PROPOSAL_NAME))
++
++    def test_role_boundary_query_is_read_only_and_rejects_legacy_or_extra_output(self):
++        sql=c.role_boundary_sql('2026-10-23 00:00:00+00')
++        self.assertTrue(sql.startswith('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;'))
++        self.assertTrue(sql.endswith('ROLLBACK;'))
++        c.validate_role_boundary(c.ROLE_BOUNDARY_EXPECTED)
++        for row in ['t|f|f|f|f|f|f|6|t|0|0',c.ROLE_BOUNDARY_EXPECTED+'|extra','']:
++            with self.assertRaises(c.Stop):c.validate_role_boundary(row)
++
