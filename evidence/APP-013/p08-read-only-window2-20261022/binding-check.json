@@ -1,0 +1,22 @@
+{
+  "bindingCanonicalSha256": "8471c4fbfe550af970f602744fd9e781a3898578934a6fdfc588ccc332d9869d",
+  "bindingPositiveCheckAtFutureStart": true,
+  "checkedAtUtc": "2026-10-22T23:33:58.554699Z",
+  "externalCalls": 0,
+  "liveApproval": false,
+  "liveAttempt": false,
+  "manifestSha256": "b5e8174c513eb4a25a0404dfcafd3f24a80278577b6f81f5130f21187396081e",
+  "oldPackageUnchanged": true,
+  "proposalCommit": "4a2acd4c3354c4c279d0b692d4e218c46f99b47b",
+  "proposalSha256": "638d2d236006313f894d41d67a0d5ccae10c7c9c4e179ce8eac45486bc7db3d3",
+  "refusals": {
+    "--qualify": "P08_REFUSED_PRIVATE_FILE_INVALID",
+    "--run": "P08_PAYMENT_BINDING_REQUIRED_NO_ACTION",
+    "AT_CUTOFF": "START_CUTOFF",
+    "BEFORE_START": "NOT_YET_START",
+    "MISSING_APPROVAL": "OWNER_APPROVAL_INVALID",
+    "OLD_EXPIRED_APPROVAL": "OWNER_APPROVAL_INVALID"
+  },
+  "status": "P08_WINDOW2_BOUND_NOT_APPROVED_NOT_ATTEMPTED",
+  "syntheticApprovalInMemoryOnly": true
+}
