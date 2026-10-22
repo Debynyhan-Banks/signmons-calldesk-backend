@@ -1,0 +1,20 @@
+{
+  "prisma/schema.prisma": "fa596d194b54868c39d705f8d5dca9597452620afde86b27cdce4a801fafa6dd",
+  "scripts/fixtures/p07-payment-runtime-role-review.sql": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+  "scripts/fixtures/payment-policy.js": "ecc498197ce7aa1636552bbd960b11a0fc75fcfb4d6f2ef823ae2ba36fe550f0",
+  "scripts/rehearse-phone-auth.mjs": "3422588da3e80f3fe8ce0a6a4983f425390bdf602ef58c3374365a6a8d72d5fb",
+  "src/auth/firebase-admin.service.ts": "c08830abba171d58242aac5f04f2745e2ca58647a6ec3aeefa362867fb714347",
+  "src/auth/request-auth.guard.ts": "c73758c437dffdf556f08fec9c880a196eb1d50666c0780de12e057fe5f588c9",
+  "src/jobs/job-payment-policy.controller.ts": "bee30c38c0aa6243a08d8a458b65ce1b07f14dd276350c1f24f1383c1a755b2d",
+  "src/jobs/job-payment-policy.service.ts": "4bfe4448b7e1cbf15d7f9fc8822be4e806d55f8e837b18cf19ca860bdfe2e16c",
+  "src/jobs/jobs.module.ts": "a8f93ba83f1c4d5a870d9db1dc33ffa6ed91592c196d5f1753b59e575ec8394e",
+  "src/payments/payment-gate.policy.ts": "dd50ff1fd15b40c61c73dcbc53d3c10b2735bb2a8163cb9b1594ff1fb0169b7c",
+  "src/payments/payment-requests.controller.ts": "071a51e868e81ee3a8730ed4ebb18034989e2faed5571ab893581bd19d05720b",
+  "src/payments/payment-requests.service.ts": "aa0304c737380c7327bcb57873a78ffa913dfa01ebb534c55e420b5bd767a005",
+  "src/payments/payments.module.ts": "7fad52feceeae3b2d6045ada4943a51e17b91ead1262e1abbbb71613c7d2f084",
+  "src/payments/stripe-checkout.provider.ts": "579f7143323cac767412fc66c095cc8733c70a201886ff55bb8c47284942c021",
+  "src/payments/stripe-webhooks.controller.ts": "97757890ebca1a9abab89ced1977fee9e0e50d2b16073a6b1729d107691a5374",
+  "src/payments/stripe-webhooks.service.ts": "fb35798fa5940e9c047c5d5e840c535efd1db64e393788c02b1f5ab7389216d0",
+  "ui/src/app/app/dispatch/page.tsx": "bc928636b6d4b7b4ed089e3065e1c3d18e0a1872f3e2ce8de30b0d88eb49e851",
+  "ui/src/lib/api.ts": "8c28c4616e2e1c43e0fe0e69cdb2e85c472de6cea066328c200aed194aaee829"
+}
