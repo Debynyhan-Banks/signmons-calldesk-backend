@@ -1,0 +1,8 @@
+{
+  "deployerActAs": true,
+  "projectRoles": 0,
+  "resourceSecretAccessorBindings": 7,
+  "serviceAccountKeyCreated": false,
+  "serviceIdentity": "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+  "status": "PASSED"
+}

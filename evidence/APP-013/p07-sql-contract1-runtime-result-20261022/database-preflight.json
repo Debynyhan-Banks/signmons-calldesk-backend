@@ -1,0 +1,13 @@
+{
+  "approvedDigestAndUnboundPolicy": true,
+  "calendarEventAbsent": true,
+  "calendarOperationCount": 0,
+  "jobCount": 1,
+  "jobState": "CREATED",
+  "p06RoleClosed": true,
+  "p07RoleAbsent": true,
+  "paymentCount": 0,
+  "status": "PASSED",
+  "tenantAccountMatchesAndChargesEnabled": true,
+  "undeleted": true
+}

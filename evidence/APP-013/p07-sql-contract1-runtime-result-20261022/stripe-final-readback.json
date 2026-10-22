@@ -1,0 +1,12 @@
+{
+  "deliveryAttempts": 0,
+  "destinationName": "Signmons P07 same-job sandbox",
+  "disabled": true,
+  "method": "signed-in browser heading and Event deliveries tab; No event deliveries found",
+  "mode": "SANDBOX_TEST",
+  "observedAfterControllerResult": true,
+  "observedAtUtc": "2026-10-22T22:32:00.450904+00:00",
+  "operationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "signingSecretReadByAutomation": false,
+  "status": "DISABLED_ZERO_DELIVERIES"
+}

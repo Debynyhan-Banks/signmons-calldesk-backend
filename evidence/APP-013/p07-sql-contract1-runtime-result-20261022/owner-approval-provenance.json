@@ -1,0 +1,14 @@
+{
+  "approvalSha256": "44d25c280e5af6bb208d5e2f07121ef470b669c2cad77ef1612ce653f66bb0af",
+  "automaticRetryAllowed": false,
+  "bindingSha256": "a8735f8b7b8f94ecef2a62a730404d9ced405c2e62468cc59e15be947cd4f306",
+  "decision": "APPROVED",
+  "manifestSha256": "006a0c5e4d204cdc8d0b0042c9336724c4b553251dacfd3b42ad17d506b6300c",
+  "operationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "owner": "Debynyhan Banks",
+  "ownerAnswer": "Approve this exact SQL-corrected P07 operation",
+  "proposal": "APP013_P07_SQL_CONTRACT1_RUNTIME_OPERATION_20261022.md",
+  "proposalCommit": "a7870939ef63bf3f7fea080df4f53ed6c42984da",
+  "proposalSha256": "c029b7091ceabb3b9904a47f1b6db57a106514c4a8db2f755095d69e0c71f02c",
+  "recordedAtUtc": "2026-10-22T22:08:51.440650Z"
+}

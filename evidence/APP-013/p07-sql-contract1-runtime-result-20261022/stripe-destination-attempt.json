@@ -1,0 +1,14 @@
+{
+  "apiVersion": "2026-03-25.dahlia",
+  "automaticRetryAllowed": false,
+  "connectedAccountsScope": true,
+  "eventHash": "4766a12d19858ebc976109f5156551dad455182e1660892505367d1190e17c49",
+  "mode": "SANDBOX_TEST",
+  "operationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "packetId": "c9622a7d-7aa0-4a27-ab75-e9bc56f21cc0",
+  "planId": "4bb26b9b-cd41-4bbb-a62a-5aedfd4f82bb",
+  "reservedAtUtc": "2026-10-22T22:22:44.563361+00:00",
+  "stableAccountDefaultApiVersion": true,
+  "status": "CREATE_RESERVED_DO_NOT_RETRY",
+  "urlExact": true
+}

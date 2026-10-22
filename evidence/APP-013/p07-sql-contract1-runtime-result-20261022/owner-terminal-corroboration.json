@@ -1,0 +1,9 @@
+{
+  "clipboardCleared": "UNCONFIRMED",
+  "operationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "ownerAcceptanceOfPaymentOr3A": false,
+  "ownerReportedStatus": "P07_REPAIRED_RUNTIME_READY_DISABLED",
+  "priorDifferentOutputReportResolved": true,
+  "recordedAtUtc": "2026-10-22T22:33:40.475214+00:00",
+  "status": "OWNER_TERMINAL_RESULT_CORROBORATED"
+}

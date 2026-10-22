@@ -1,0 +1,13 @@
+{
+  "exactEnvironmentReplacement": true,
+  "imageDigestExact": true,
+  "liveness": 200,
+  "normalRevision": "signmons-calldesk-staging-app013dbrot2",
+  "normalTrafficPercent": 100,
+  "numericSecretReferences": 7,
+  "readiness": 200,
+  "revision": "signmons-calldesk-staging-app013p07atomic1",
+  "serviceIdentityExact": true,
+  "status": "READY_NO_TRAFFIC",
+  "targetTrafficPercent": 0
+}

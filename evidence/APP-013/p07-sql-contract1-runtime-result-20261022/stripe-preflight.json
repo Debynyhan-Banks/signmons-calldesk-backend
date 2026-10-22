@@ -1,0 +1,9 @@
+{
+  "accountAdmin": true,
+  "connectedAccountSha256": "a008b806d6ea2cbe47eda0e27bfc855f1d8a376752c434c5efc36c571ece0248",
+  "destinationAbsent": true,
+  "enabledConnectedAccounts": 1,
+  "mode": "SANDBOX_TEST",
+  "operationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "status": "PASSED"
+}

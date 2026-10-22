@@ -1,0 +1,12 @@
+{
+  "connectedAccountsScope": true,
+  "deliveryAttempts": 0,
+  "destinationName": "Signmons P07 same-job sandbox",
+  "disabled": true,
+  "enabledConnectedAccounts": 1,
+  "eventHash": "4766a12d19858ebc976109f5156551dad455182e1660892505367d1190e17c49",
+  "mode": "SANDBOX_TEST",
+  "signingSecretCaptured": true,
+  "stableAccountDefaultApiVersion": true,
+  "urlExact": true
+}

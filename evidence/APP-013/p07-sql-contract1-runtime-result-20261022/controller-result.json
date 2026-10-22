@@ -1,0 +1,13 @@
+{
+  "automaticRetryAllowed": false,
+  "destinationDisabled": true,
+  "newSecretVersions": 6,
+  "normalTrafficPreserved": true,
+  "operationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "planId": "4bb26b9b-cd41-4bbb-a62a-5aedfd4f82bb",
+  "resourceBindings": 7,
+  "retirementDeadlineUtc": "2026-10-23T22:15:00Z",
+  "revisionReadyZeroTraffic": true,
+  "roleClosed": true,
+  "status": "P07_REPAIRED_RUNTIME_READY_DISABLED"
+}

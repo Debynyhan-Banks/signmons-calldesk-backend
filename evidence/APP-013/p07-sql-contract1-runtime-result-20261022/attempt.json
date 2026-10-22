@@ -1,0 +1,8 @@
+{
+  "automaticRetryAllowed": false,
+  "operationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "packetId": "c9622a7d-7aa0-4a27-ab75-e9bc56f21cc0",
+  "planId": "4bb26b9b-cd41-4bbb-a62a-5aedfd4f82bb",
+  "startedAtUtc": "2026-10-22T22:15:24.757443+00:00",
+  "status": "RESERVED_DO_NOT_RETRY"
+}

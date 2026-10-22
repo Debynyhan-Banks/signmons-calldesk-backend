@@ -1,0 +1,13 @@
+{
+  "connectionLimit": 6,
+  "databaseSecretVersion": 1,
+  "directRuntimeIdentity": true,
+  "exactJobVisible": true,
+  "expiresNoLaterThan": "2026-10-22T23:15:00Z",
+  "memberships": 0,
+  "noElevation": true,
+  "noInherit": true,
+  "ownedRelations": 0,
+  "role": "p07_payment_runtime",
+  "status": "PASSED"
+}
