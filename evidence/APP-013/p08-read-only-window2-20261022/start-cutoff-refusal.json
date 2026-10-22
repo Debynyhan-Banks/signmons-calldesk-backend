@@ -1,0 +1,27 @@
+{
+  "absentReceipts": [
+    "qualification-attempt.json",
+    "qualification-result.json",
+    "qualification-stop.json",
+    "database-qualification-private.json",
+    "stripe-readback.json",
+    "closeout-attempt.json",
+    "closeout-result.json"
+  ],
+  "approvalSha256": "d911fb3d0633a74831148d74067bbea61accc2c6e2677bbb0aba492cb0839b3c",
+  "automaticRetryAllowed": false,
+  "bindingCanonicalSha256": "8471c4fbfe550af970f602744fd9e781a3898578934a6fdfc588ccc332d9869d",
+  "currentInMemoryBindingRefusal": "START_CUTOFF",
+  "cutoffUtc": "2026-10-22T23:55:00Z",
+  "externalReadOrMutationPerformedByThisVerification": false,
+  "liveSessionQueryPerformed": false,
+  "noLiveAttemptReserved": true,
+  "oldApprovalReusable": false,
+  "operationId": "de0985c0-a7d3-40f8-8143-2c7d31b798b2",
+  "ownerReportedTerminalStatus": "P08_REFUSED_START_CUTOFF",
+  "p07RetirementDeadlineUtc": "2026-10-23T22:15:00Z",
+  "sourceIntegrity": true,
+  "sourceManifestSha256": "b5e8174c513eb4a25a0404dfcafd3f24a80278577b6f81f5130f21187396081e",
+  "status": "P08_WINDOW2_START_REFUSED_EXPIRED_NO_ATTEMPT",
+  "verifiedAtUtc": "2026-10-22T23:57:49.703371Z"
+}
