@@ -1,0 +1,21 @@
+{
+  "actions": [
+    "cloud_metadata",
+    "exact_tenant_job_policy_actor_read",
+    "exact_firebase_test_identity_read",
+    "stripe_browser_readback",
+    "mandatory_session_closeout"
+  ],
+  "automaticRetryAllowed": false,
+  "closeoutEndUtc": "2026-10-23T00:13:00Z",
+  "cutoffUtc": "2026-10-22T23:55:00Z",
+  "manifestSha256": "b5e8174c513eb4a25a0404dfcafd3f24a80278577b6f81f5130f21187396081e",
+  "mode": "READ_ONLY_QUALIFICATION",
+  "operationId": "de0985c0-a7d3-40f8-8143-2c7d31b798b2",
+  "packetId": "9c2d844d-5e49-428d-bd61-81c79a481b6e",
+  "planId": "cd151968-2bab-4fdd-9d0b-2fe69bc5cf52",
+  "proposalCommit": null,
+  "proposalSha256": null,
+  "startUtc": "2026-10-22T23:45:00Z",
+  "workEndUtc": "2026-10-23T00:10:00Z"
+}
