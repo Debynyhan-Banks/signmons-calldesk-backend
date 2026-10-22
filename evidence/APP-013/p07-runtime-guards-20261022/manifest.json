@@ -1,0 +1,18 @@
+{
+  "files": {
+    "README.txt": "b486f086444a29c4fa973736ecb523b8c3d9cb8397b46e61a5e9433a47b164af",
+    "binding.json": "8b1bd73d9f707c237f582735a0499183fc08073346f98d4d42abbe71242c7cd5",
+    "controller.py": "69f7a69a0b770457a6685e5ab0e69e4121832290d3f65e4dfbf4f624d4e72989",
+    "db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+    "firebase-read.mjs": "d2dec2cec6d6e74d30650720ad0e07265ca1ccc02863c7ec5fe2641c7736361c",
+    "iam-actas-read.mjs": "5ecf70d5d1bfd8f9a5fc9efd0e616665ec0b99d28f1d2846fcca5a5695e7c0d7",
+    "p07-payment-runtime-role-review.sql": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+    "plan.json": "bd98d5621129012ace065f58f090801da54387a5cc323df408fa013f2d2b0483",
+    "test_controller.py": "ba3098797eb85c3470121bd40356935463ee685c89bbaf85902b876bfea8d2b1"
+  },
+  "operationId": "abff0262-3504-4f92-b49d-5c5dea238cdb",
+  "packetId": "6c91b550-78cf-4dd1-a93e-63d9a282e21e",
+  "planId": "f3252875-1a8a-4c64-b642-254fdc30a620",
+  "status": "PREPARATION_ONLY_PENDING_WINDOW_AND_LIVE_APPROVAL",
+  "version": 1
+}

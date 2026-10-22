@@ -1,0 +1,230 @@
+--- repair5/test_controller.py
++++ guards1/test_controller.py
+@@ -4,0 +5,6 @@
++import hashlib
++import signal
++import sys
++import time
++import pty
++import termios
+@@ -132 +138 @@
+-    def test_fresh_package_has_no_window_or_live_approval(self):
++    def test_fresh_package_has_no_live_approval_or_attempt_and_binding_is_valid_or_absent(self):
+@@ -134 +140 @@
+-        for name in ['binding.json','owner-approval.json','attempt.json','mutation-journal.json']:
++        for name in ['owner-approval.json','attempt.json','mutation-journal.json']:
+@@ -135,0 +142,5 @@
++        if (root/'binding.json').exists():
++            bound=c.load_binding();self.assertEqual(bound['operationId'],c.OPERATION)
++        else:
++            with self.assertRaises(c.Stop) as error:c.load_binding()
++            self.assertEqual(error.exception.code,'WINDOW_NOT_BOUND')
+@@ -332 +343 @@
+-        with patch.object(c,'close_role') as close,patch.object(c,'remove_tag') as tag,patch.object(c,'disable_version') as disable,patch.object(c,'remove_binding') as remove,patch.object(c,'gc',side_effect=[None,self.service(False)]):
++        with patch.object(c,'close_role') as close,patch.object(c,'remove_tag') as tag,patch.object(c,'disable_version') as disable,patch.object(c,'remove_binding') as remove,patch.object(c,'gc',side_effect=[None,{'email':c.SERVICE_ACCOUNT,'disabled':True},self.service(False)]):
+@@ -340,0 +352,205 @@
++
++class GuardTests(unittest.TestCase):
++    def setUp(self):
++        Tests.setUp(self)
++        c._PHASE_DEADLINE=None;c._CLEANING=False
++
++    def bound(self,work=10,contain=20):
++        now=time.time()
++        dates=[now-1,now+5,now+work,now+contain,now+30,now+3600]
++        b=Tests().binding();b['_times']=tuple(dt.datetime.fromtimestamp(x,dt.timezone.utc) for x in dates)
++        for key,value in zip(['windowStartUtc','startCutoffUtc','workEndUtc','containmentEndUtc','windowEndUtc','retirementDeadlineUtc'],b['_times']):b[key]=value.isoformat().replace('+00:00','Z')
++        return b
++
++    def test_phase_before_at_after_deadline(self):
++        for now,allowed in [(99,True),(100,False),(101,False)]:
++            with self.subTest(now=now),patch.object(c.time,'time',return_value=now):
++                if allowed:
++                    with c.phase_guard(100):self.assertEqual(c.require_phase(),1)
++                else:
++                    with self.assertRaises(c.Stop) as error:
++                        with c.phase_guard(100):pass
++                    self.assertEqual(error.exception.code,'READINESS_WINDOW_CLOSED')
++            self.assertIsNone(c._PHASE_DEADLINE)
++
++    def test_preflight_crossing_deadline_cannot_call_provision(self):
++        b=self.bound();clock=[b['_times'][0].timestamp()+1];saved=[]
++        def cross(_):clock[0]=b['_times'][2].timestamp()
++        with patch.object(c.time,'time',side_effect=lambda:clock[0]),patch.object(c.os,'isatty',return_value=True),patch.object(c,'save',side_effect=lambda n,v:saved.append((n,v))),patch.object(c,'journal'),patch.object(c,'private_input',return_value='synthetic'),patch.object(c,'cloud_preflight'),patch.object(c,'wait_receipt'),patch.object(c,'db_preflight',side_effect=cross),patch.object(c,'provision_database') as provision,patch.object(c,'failure_contain',return_value=[]):
++            self.assertEqual(c.run_operation(b),1)
++        provision.assert_not_called();self.assertEqual(saved[-1][1]['status'],'P07_STOP_READINESS_WINDOW_CLOSED')
++
++    def test_delayed_input_cannot_start_preflight(self):
++        b=self.bound();clock=[b['_times'][0].timestamp()+1]
++        def delayed(_):clock[0]=b['_times'][2].timestamp();return 'synthetic'
++        with patch.object(c.time,'time',side_effect=lambda:clock[0]),patch.object(c.os,'isatty',return_value=True),patch.object(c,'save'),patch.object(c,'journal'),patch.object(c,'private_input',side_effect=delayed),patch.object(c,'cloud_preflight') as cloud,patch.object(c,'failure_contain',return_value=[]):self.assertEqual(c.run_operation(b),1)
++        cloud.assert_not_called()
++
++    def test_private_input_rechecks_deadline_and_restores_alarm(self):
++        original=signal.getsignal(signal.SIGALRM);clock=[time.time()]
++        def delayed(_):clock[0]+=2;return 'synthetic'
++        with patch.object(c.time,'time',side_effect=lambda:clock[0]),patch.object(c.getpass,'getpass',side_effect=delayed):
++            with self.assertRaises(c.Stop):
++                with c.phase_guard(clock[0]+1):c.private_input('synthetic')
++        self.assertEqual(signal.getsignal(signal.SIGALRM),original);self.assertEqual(signal.getitimer(signal.ITIMER_REAL),(0.0,0.0))
++
++    def test_command_timeout_capped_and_late_completion_rejected(self):
++        clock=[100.0];seen=[]
++        def late(*args,**kwargs):seen.append(kwargs['timeout']);clock[0]=102;return Result()
++        with patch.object(c.time,'time',side_effect=lambda:clock[0]),patch.object(c.subprocess,'run',side_effect=late):
++            with self.assertRaises(c.Stop):
++                with c.phase_guard(101):c.run_status(['/synthetic'],timeout=120)
++        self.assertEqual(seen,[1.0])
++
++    def test_expired_phase_never_starts_command(self):
++        c._PHASE_DEADLINE=0
++        with patch.object(c.subprocess,'run') as run:
++            with self.assertRaises(c.Stop):c.run_status(['/synthetic'])
++        run.assert_not_called();c._PHASE_DEADLINE=None
++
++    def test_real_slow_local_command_is_killed_by_deadline(self):
++        start=time.monotonic()
++        with self.assertRaises(c.Stop) as error:
++            with c.phase_guard(time.time()+0.15):c.run_status([sys.executable,'-c','import time; time.sleep(10)'],timeout=30)
++        self.assertEqual(error.exception.code,'COMMAND_TIMEOUT');self.assertLess(time.monotonic()-start,2)
++
++    def test_cleanup_uses_separate_budget_and_refuses_expired_budget(self):
++        b=self.bound(work=-1,contain=10)
++        with patch.object(c,'_failure_contain',return_value=[]) as cleanup:self.assertEqual(c.failure_contain('synthetic',b),[])
++        cleanup.assert_called_once()
++        with patch.object(c,'_failure_contain') as cleanup:self.assertTrue(c.failure_contain('synthetic',b,deadline=0))
++        cleanup.assert_not_called()
++
++    def test_cleanup_overrun_cannot_return_verified(self):
++        b=self.bound();clock=[time.time()]
++        def delayed(*args):clock[0]=b['_times'][3].timestamp()+1;return []
++        with patch.object(c.time,'time',side_effect=lambda:clock[0]),patch.object(c,'_failure_contain',side_effect=delayed):self.assertTrue(c.failure_contain('synthetic',b))
++
++    def test_identity_disable_requires_matching_disabled_readback(self):
++        for row in [{},{'email':c.SERVICE_ACCOUNT,'disabled':False},{'email':'foreign','disabled':True},None]:
++            with self.subTest(row=row),patch.object(c,'gc',side_effect=[{},row]):
++                with self.assertRaises(c.Stop):c.disable_identity()
++        with patch.object(c,'gc',side_effect=[{},{'email':c.SERVICE_ACCOUNT,'disabled':True}]) as gc:c.disable_identity()
++        self.assertEqual(gc.call_args_list[-1].args[0][:3],['iam','service-accounts','describe'])
++
++    def test_cleanup_failed_identity_readback_reports_residual(self):
++        c.MUT['service_account_attempted']=True
++        with patch.object(c,'close_role'),patch.object(c,'gc',side_effect=[{},RuntimeError('synthetic'),Tests().service(False)]):self.assertIn('DISABLE_SERVICE_ACCOUNT',c.failure_contain('synthetic'))
++
++    def test_tag_removal_requires_absent_readback(self):
++        before=Tests().service(True);after=Tests().service(False)
++        with patch.object(c,'gc',side_effect=[before,{},before]):
++            with self.assertRaises(c.Stop):c.remove_tag()
++        with patch.object(c,'gc',side_effect=[before,{},after]) as gc:c.remove_tag()
++        self.assertEqual(gc.call_count,3)
++
++    def test_cleanup_rejects_tag_traffic_malformed_and_failed_readback(self):
++        c.MUT['deploy_attempted']=True
++        for value in [Tests().service(True),{}, {'status':{'traffic':[{'revisionName':c.NORMAL,'percent':100},{'revisionName':'foreign','percent':1}]}},RuntimeError('synthetic')]:
++            with self.subTest(value=value),patch.object(c,'close_role'),patch.object(c,'remove_tag'),patch.object(c,'gc',side_effect=[value]):self.assertIn('TRAFFIC_READBACK',c.failure_contain('synthetic'))
++
++    def test_stop_receipt_failure_cannot_print_verified(self):
++        import io
++        b=self.bound();output=io.StringIO()
++        def save(name,value):
++            if name=='controller-stop.json':raise OSError('synthetic')
++        with patch.object(c.os,'isatty',return_value=True),patch.object(c,'save',side_effect=save),patch.object(c,'journal'),patch.object(c,'private_input',return_value='synthetic'),patch.object(c,'cloud_preflight',side_effect=c.Stop('SYNTHETIC')),patch.object(c,'failure_contain',return_value=[]),patch.object(c.sys,'stdout',output):self.assertEqual(c.run_operation(b),1)
++        self.assertIn('CONTAINMENT_UNCONFIRMED',output.getvalue());self.assertNotIn('CONTAINMENT_VERIFIED',output.getvalue())
++
++    def test_actual_concurrent_reservation_is_exclusive(self):
++        source=str(Path(__file__).with_name('controller.py'))
++        with tempfile.TemporaryDirectory() as root:
++            code="import importlib.util, pathlib, sys; s=importlib.util.spec_from_file_location('c',sys.argv[1]); c=importlib.util.module_from_spec(s); s.loader.exec_module(c); c.ROOT=pathlib.Path(sys.argv[2]);\ntry:c.save('attempt.json',{'status':'RESERVED'}); print('WON')\nexcept FileExistsError:print('REFUSED')"
++            children=[subprocess.Popen([sys.executable,'-B','-c',code,source,root],stdout=subprocess.PIPE,stderr=subprocess.PIPE) for _ in range(2)]
++            outputs=[p.communicate(timeout=5) for p in children]
++            self.assertEqual(sorted(x[0].strip() for x in outputs),[b'REFUSED',b'WON']);self.assertTrue(all(not x[1] for x in outputs))
++
++    def child_signal(self,signum=None,repeated=False,timeout_input=False):
++        source=str(Path(__file__).with_name('controller.py'))
++        with tempfile.TemporaryDirectory() as root:
++            script=r"""
++import importlib.util,pathlib,sys,time,datetime as dt,json
++s=importlib.util.spec_from_file_location('c',sys.argv[1]);c=importlib.util.module_from_spec(s);s.loader.exec_module(c)
++c.ROOT=pathlib.Path(sys.argv[2]);short=sys.argv[3]=='short';now=time.time();times=[now-1,now+1,now+(0.3 if short else 10),now+15,now+20,now+3600]
++b={'_times':tuple(dt.datetime.fromtimestamp(x,dt.timezone.utc) for x in times),'retirementDeadlineUtc':'synthetic'}
++def close(password):
++    (c.ROOT/'cleanup-started').write_text('yes');time.sleep(0.25)
++def gc(args,**kw):
++    if args[:3]!=['run','services','describe']:raise RuntimeError('EXTERNAL_COMMAND_FORBIDDEN')
++    return {'status':{'traffic':[{'percent':100,'revisionName':c.NORMAL}]}}
++def preflight():
++    (c.ROOT/'first-input-complete').write_text('yes');c.private_input('Synthetic second hidden input: ')
++c.close_role=close;c.gc=gc;c.cloud_preflight=preflight
++raise SystemExit(c.run_operation(b))
++"""
++            master,slave=pty.openpty();before=termios.tcgetattr(master)
++            child=subprocess.Popen([sys.executable,'-B','-c',script,source,root,'short' if timeout_input else 'normal'],stdin=slave,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
++            os.close(slave)
++            try:
++                deadline=time.monotonic()+3
++                while termios.tcgetattr(master)[3]&termios.ECHO:
++                    if child.poll() is not None or time.monotonic()>deadline:self.fail('child did not enter hidden input')
++                    time.sleep(0.01)
++                os.write(master,b'synthetic\n')
++                while not (Path(root)/'first-input-complete').exists() or termios.tcgetattr(master)[3]&termios.ECHO:
++                    if child.poll() is not None or time.monotonic()>deadline:self.fail('child second hidden input not entered')
++                    time.sleep(0.01)
++                if signum is not None:os.kill(child.pid,signum)
++                if repeated:
++                    while not (Path(root)/'cleanup-started').exists():
++                        if child.poll() is not None or time.monotonic()>deadline:self.fail('child cleanup not entered')
++                        time.sleep(0.01)
++                    os.kill(child.pid,signal.SIGTERM);os.kill(child.pid,signal.SIGINT)
++                out,err=child.communicate(timeout=4)
++                self.assertEqual(child.returncode,1,(out,err));self.assertIn(b'CONTAINMENT_VERIFIED',out)
++                self.assertTrue((Path(root)/'cleanup-started').exists())
++                receipt=json.loads((Path(root)/'controller-stop.json').read_text())
++                self.assertEqual(receipt['status'],'P07_STOP_READINESS_WINDOW_CLOSED' if timeout_input else 'P07_STOP_INTERRUPTED')
++                self.assertEqual(receipt['containmentFailures'],[])
++                self.assertEqual(termios.tcgetattr(master),before)
++            finally:
++                if child.poll() is None:child.kill();child.communicate(timeout=2)
++                if child.stdout:child.stdout.close()
++                if child.stderr:child.stderr.close()
++                os.close(master)
++
++    def test_real_sigterm_hidden_input_restores_terminal_and_cleans(self):self.child_signal(signal.SIGTERM)
++    def test_real_sigint_hidden_input_restores_terminal_and_cleans(self):self.child_signal(signal.SIGINT)
++    def test_repeated_signals_do_not_abort_bounded_cleanup(self):self.child_signal(signal.SIGTERM,repeated=True)
++    def test_real_hidden_input_deadline_restores_terminal_and_cleans(self):self.child_signal(timeout_input=True)
++
++    def test_complete_synthetic_success_and_cleanup_recovery(self):
++        b=self.bound();saved=[]
++        with patch.object(c.os,'isatty',return_value=True),patch.object(c,'private_input',return_value='synthetic'),patch.object(c,'save',side_effect=lambda n,v:saved.append((n,v))),patch.object(c,'journal'),patch.object(c,'cloud_preflight'),patch.object(c,'wait_receipt'),patch.object(c,'db_preflight'),patch.object(c,'provision_database',return_value='1'),patch.object(c,'provision_startup_secrets',return_value={}),patch.object(c,'create_identity_and_bindings'),patch.object(c,'add_webhook_version',return_value='1'),patch.object(c,'deploy',return_value={}),patch.object(c,'deploy_readback'),patch.object(c,'close_role'):
++            self.assertEqual(c.run_operation(b),0)
++        self.assertEqual(saved[-1][1]['status'],'P07_REPAIRED_RUNTIME_READY_DISABLED')
++        with tempfile.TemporaryDirectory() as root:
++            with patch.object(c,'ROOT',Path(root)),patch.object(c.os,'isatty',return_value=True),patch.object(c,'load_journal'),patch.object(c,'private_input',return_value='synthetic'),patch.object(c,'failure_contain',return_value=[]) as cleanup:
++                (Path(root)/'attempt.json').write_text('{}')
++                self.assertEqual(c.recovery_or_retirement(b),0)
++                cleanup.assert_called_once()
++                self.assertEqual(json.loads((Path(root)/'recovery-result.json').read_text())['status'],'P07_RECOVERY_VERIFIED')
++
++    def test_signal_before_credential_is_truthfully_unconfirmed(self):
++        b=self.bound();saved=[]
++        with patch.object(c.os,'isatty',return_value=True),patch.object(c,'save',side_effect=lambda n,v:saved.append((n,v))),patch.object(c,'journal'),patch.object(c,'private_input',side_effect=c.Stop('INTERRUPTED')),patch.object(c,'failure_contain') as cleanup:
++            self.assertEqual(c.run_operation(b),1)
++        cleanup.assert_not_called();self.assertEqual(saved[-1][1]['containmentFailures'],['ROLE_CLOSEOUT_NOT_AVAILABLE'])
++
++    def test_retirement_stripe_containment_uses_retirement_budget(self):
++        b=self.bound();c.MUT['stripe_destination']=True
++        calls=[]
++        with patch.object(c,'close_role'),patch.object(c,'gc',return_value=Tests().service(False)),patch.object(c,'wait_receipt',side_effect=lambda name,validator,deadline:calls.append(deadline)):
++            self.assertEqual(c.failure_contain('synthetic',b,deadline=b['_times'][5].timestamp()),[])
++        self.assertEqual(calls,[b['_times'][5].timestamp()])
++
++    def test_guard_decision_is_pinned_to_approved_commit(self):
++        self.assertEqual(c.GUARD_SOURCE_HEAD,'d88dc4e8bd138046b8ca5dca36029a266c8b27d5')
++        self.assertEqual(c.GUARD_PROPOSAL_SHA,c.git_file_sha(c.GOV,c.GUARD_SOURCE_HEAD,c.GUARD_PROPOSAL_NAME))
++
++    def test_signal_handlers_restored_after_scope(self):
++        before={s:signal.getsignal(s) for s in [signal.SIGINT,signal.SIGTERM]}
++        with c.signal_guard():self.assertNotEqual(signal.getsignal(signal.SIGTERM),before[signal.SIGTERM])
++        self.assertEqual({s:signal.getsignal(s) for s in before},before)
++
++

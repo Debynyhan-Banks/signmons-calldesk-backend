@@ -1,0 +1,207 @@
+--- repair5/controller.py
++++ guards1/controller.py
+@@ -5,0 +6 @@
++from contextlib import contextmanager
+@@ -18 +19 @@
+-ROOT=Path('/private/tmp/p07-repaired-runtime-readiness-20261021-repair5')
++ROOT=Path('/private/tmp/p07-repaired-runtime-readiness-20261022-guards1')
+@@ -36,0 +38,3 @@
++GUARD_SOURCE_HEAD='d88dc4e8bd138046b8ca5dca36029a266c8b27d5'
++GUARD_PROPOSAL_NAME='APP013_P07_RUNTIME_GUARD_COMPLETION_PROPOSAL_20261022.md'
++GUARD_PROPOSAL_SHA='bbb91e771ba66aacf149e038045da159111cc8a3e253d0b531cf84ec19f0b9b3'
+@@ -38 +42 @@
+-BACKEND_HEAD='3a5b472931e46d4742e8bb3b440d1e8c511ecc72'
++BACKEND_HEAD='2c3ad5dbdbc599a8121539ed37e8d31e53542c5b'
+@@ -40,3 +44,3 @@
+-PLAN='2058551c-6a4f-468b-8a26-f860b754e8db'
+-PACKET='e40c598f-f918-425b-8368-c6062cec0d5d'
+-OPERATION='1b1a983c-40c5-4100-98f5-9d4dd3102803'
++PLAN='f3252875-1a8a-4c64-b642-254fdc30a620'
++PACKET='6c91b550-78cf-4dd1-a93e-63d9a282e21e'
++OPERATION='abff0262-3504-4f92-b49d-5c5dea238cdb'
+@@ -79,0 +84,54 @@
++_PHASE_DEADLINE=None
++_CLEANING=False
++
++
++def require_phase():
++    if _PHASE_DEADLINE is not None:
++        remaining=_PHASE_DEADLINE-time.time()
++        if remaining<=0:raise Stop('CONTAINMENT_WINDOW_CLOSED' if _CLEANING else 'READINESS_WINDOW_CLOSED')
++        return remaining
++    return None
++
++
++@contextmanager
++def phase_guard(deadline,cleanup=False):
++    global _PHASE_DEADLINE,_CLEANING
++    previous=(_PHASE_DEADLINE,_CLEANING)
++    _PHASE_DEADLINE=deadline;_CLEANING=cleanup
++    try:
++        require_phase()
++        yield
++        require_phase()
++    finally:_PHASE_DEADLINE,_CLEANING=previous
++
++
++@contextmanager
++def signal_guard():
++    previous={signum:signal.getsignal(signum) for signum in (signal.SIGINT,signal.SIGTERM)}
++    def interrupted(signum,frame):
++        if not _CLEANING:raise Stop('INTERRUPTED')
++    try:
++        for signum in previous:signal.signal(signum,interrupted)
++        yield
++    finally:
++        for signum,handler in previous.items():signal.signal(signum,handler)
++
++
++def private_input(prompt):
++    remaining=require_phase()
++    if remaining is None:raise Stop('INPUT_DEADLINE_NOT_BOUND')
++    previous=signal.getsignal(signal.SIGALRM)
++    old_timer=signal.getitimer(signal.ITIMER_REAL)
++    if old_timer!=(0.0,0.0):raise Stop('INPUT_TIMER_COLLISION')
++    def expired(signum,frame):raise Stop('CONTAINMENT_WINDOW_CLOSED' if _CLEANING else 'READINESS_WINDOW_CLOSED')
++    try:
++        signal.signal(signal.SIGALRM,expired)
++        signal.setitimer(signal.ITIMER_REAL,remaining)
++        value=getpass.getpass(prompt)
++        require_phase()
++        return value
++    finally:
++        signal.setitimer(signal.ITIMER_REAL,0)
++        signal.signal(signal.SIGALRM,previous)
++
++
+@@ -114,2 +172,6 @@
+-    try:
+-        return subprocess.run(args,input=input_bytes,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=base,cwd=cwd,timeout=timeout,check=False)
++    remaining=require_phase()
++    if remaining is not None:timeout=min(timeout,remaining)
++    try:
++        result=subprocess.run(args,input=input_bytes,stdout=subprocess.PIPE,stderr=subprocess.PIPE,env=base,cwd=cwd,timeout=timeout,check=False)
++        require_phase()
++        return result
+@@ -164,0 +227 @@
++    if git_file_sha(GOV,GUARD_SOURCE_HEAD,GUARD_PROPOSAL_NAME)!=GUARD_PROPOSAL_SHA:raise Stop('GUARD_APPROVAL_SOURCE_DRIFT')
+@@ -260,0 +324 @@
++        require_phase()
+@@ -264 +328 @@
+-            validator(value);return value
++            validator(value);require_phase();return value
+@@ -459,0 +524,2 @@
++    service=gc(['run','services','describe',SERVICE,'--project='+PROJECT,'--region='+REGION,'--format=json'],json_out=True)
++    verify_normal_traffic(service,tag_absent=True)
+@@ -480 +546,23 @@
+-def failure_contain(password,binding=None):
++def verify_normal_traffic(service,tag_absent=False):
++    rows=service.get('status',{}).get('traffic')
++    if not isinstance(rows,list) or not rows:raise Stop('TRAFFIC_READBACK_MISMATCH')
++    if any(not isinstance(row,dict) for row in rows):raise Stop('TRAFFIC_READBACK_MISMATCH')
++    normal=[row for row in rows if row.get('percent',0)!=0]
++    if len(normal)!=1 or normal[0].get('percent')!=100 or normal[0].get('revisionName')!=NORMAL:raise Stop('TRAFFIC_READBACK_MISMATCH')
++    if tag_absent and any(row.get('tag')==TAG for row in rows):raise Stop('TAG_CLOSEOUT_READBACK_FAILED')
++
++
++def disable_identity():
++    gc(['iam','service-accounts','disable',SERVICE_ACCOUNT,'--project='+PROJECT,'--quiet'],timeout=90)
++    state=gc(['iam','service-accounts','describe',SERVICE_ACCOUNT,'--project='+PROJECT,'--format=json'],json_out=True)
++    if not isinstance(state,dict) or state.get('email')!=SERVICE_ACCOUNT or state.get('disabled') is not True:raise Stop('SERVICE_IDENTITY_CLOSEOUT_READBACK_FAILED')
++
++
++def failure_contain(password,binding=None,deadline=None):
++    if deadline is None and binding:deadline=binding['_times'][3].timestamp()
++    try:
++        with phase_guard(deadline,cleanup=True):return _failure_contain(password,binding)
++    except BaseException:return ['CONTAINMENT_DEADLINE_OR_INTERRUPTION']
++
++
++def _failure_contain(password,binding=None):
+@@ -494 +582 @@
+-        try:gc(['iam','service-accounts','disable',SERVICE_ACCOUNT,'--project='+PROJECT,'--quiet'],timeout=90)
++        try:disable_identity()
+@@ -497 +585 @@
+-        try:wait_receipt('stripe-containment.json',lambda v: None if v=={'status':'ABSENT_OR_DISABLED_OR_DELETED','deliveryAttempts':0} else (_ for _ in ()).throw(Stop('STRIPE_CONTAINMENT_DRIFT')),binding['_times'][3].timestamp())
++        try:wait_receipt('stripe-containment.json',lambda v: None if v=={'status':'ABSENT_OR_DISABLED_OR_DELETED','deliveryAttempts':0} else (_ for _ in ()).throw(Stop('STRIPE_CONTAINMENT_DRIFT')),_PHASE_DEADLINE if _PHASE_DEADLINE is not None else binding['_times'][3].timestamp())
+@@ -501 +589 @@
+-        if len([x for x in rows if x.get('percent')==100 and x.get('revisionName')==NORMAL])!=1:failures.append('NORMAL_TRAFFIC')
++        verify_normal_traffic(service,tag_absent=MUT['deploy_attempted'])
+@@ -507,0 +596,3 @@
++    with signal_guard():return _run_operation(binding)
++
++def _run_operation(binding):
+@@ -517,19 +608,32 @@
+-        password=getpass.getpass('Enter current CHILD administrator password (hidden): ')
+-        if not password:raise Stop('CHILD_PASSWORD_EMPTY')
+-        stage='CLOUD_PREFLIGHT';cloud_preflight()
+-        print('P07_STRIPE_PREFLIGHT_READY',flush=True)
+-        wait_receipt('stripe-preflight.json',validate_stripe_preflight,binding['_times'][2].timestamp())
+-        stage='DATABASE_PREFLIGHT';db_preflight(password)
+-        stage='DATABASE_PROVISIONING';db_version=provision_database(password,binding)
+-        stage='STARTUP_SECRET_PROVISIONING';startup_versions=provision_startup_secrets()
+-        stage='IDENTITY_BINDINGS';create_identity_and_bindings()
+-        MUT['stripe_destination']=True;journal()
+-        print('P07_STRIPE_DESTINATION_CREATE_DISABLED_READY',flush=True)
+-        stage='STRIPE_DESTINATION';wait_receipt('stripe-destination.json',validate_destination,binding['_times'][2].timestamp())
+-        webhook=getpass.getpass('Paste the new disabled destination signing secret (hidden): ').strip()
+-        stage='WEBHOOK_SECRET';webhook_version=add_webhook_version(webhook);webhook=''
+-        if dt.datetime.now(dt.timezone.utc)>=binding['_times'][2]:raise Stop('READINESS_WINDOW_CLOSED')
+-        stage='DEPLOYMENT';secret_map=deploy(db_version,startup_versions,webhook_version)
+-        stage='DEPLOYMENT_READBACK';deploy_readback(secret_map)
+-        stage='ROLE_CLOSEOUT';close_role(password)
+-        save('controller-result.json',{'status':'P07_REPAIRED_RUNTIME_READY_DISABLED','planId':PLAN,'operationId':OPERATION,'revisionReadyZeroTraffic':True,'normalTrafficPreserved':True,'destinationDisabled':True,'roleClosed':True,'newSecretVersions':6,'resourceBindings':7,'retirementDeadlineUtc':binding['retirementDeadlineUtc'],'automaticRetryAllowed':False})
++        with phase_guard(binding['_times'][2].timestamp()):
++            password=private_input('Enter current CHILD administrator password (hidden): ')
++            if not password:raise Stop('CHILD_PASSWORD_EMPTY')
++            require_phase()
++            stage='CLOUD_PREFLIGHT';cloud_preflight()
++            print('P07_STRIPE_PREFLIGHT_READY',flush=True)
++            wait_receipt('stripe-preflight.json',validate_stripe_preflight,binding['_times'][2].timestamp())
++            require_phase()
++            stage='DATABASE_PREFLIGHT';db_preflight(password)
++            require_phase()
++            stage='DATABASE_PROVISIONING';db_version=provision_database(password,binding)
++            require_phase()
++            stage='STARTUP_SECRET_PROVISIONING';startup_versions=provision_startup_secrets()
++            require_phase()
++            stage='IDENTITY_BINDINGS';create_identity_and_bindings()
++            require_phase()
++            MUT['stripe_destination']=True;journal()
++            print('P07_STRIPE_DESTINATION_CREATE_DISABLED_READY',flush=True)
++            require_phase()
++            stage='STRIPE_DESTINATION';wait_receipt('stripe-destination.json',validate_destination,binding['_times'][2].timestamp())
++            webhook=private_input('Paste the new disabled destination signing secret (hidden): ').strip()
++            require_phase()
++            stage='WEBHOOK_SECRET';webhook_version=add_webhook_version(webhook);webhook=''
++            if dt.datetime.now(dt.timezone.utc)>=binding['_times'][2]:raise Stop('READINESS_WINDOW_CLOSED')
++            require_phase()
++            stage='DEPLOYMENT';secret_map=deploy(db_version,startup_versions,webhook_version)
++            require_phase()
++            stage='DEPLOYMENT_READBACK';deploy_readback(secret_map)
++            require_phase()
++            stage='ROLE_CLOSEOUT';close_role(password)
++            require_phase()
++            save('controller-result.json',{'status':'P07_REPAIRED_RUNTIME_READY_DISABLED','planId':PLAN,'operationId':OPERATION,'revisionReadyZeroTraffic':True,'normalTrafficPreserved':True,'destinationDisabled':True,'roleClosed':True,'newSecretVersions':6,'resourceBindings':7,'retirementDeadlineUtc':binding['retirementDeadlineUtc'],'automaticRetryAllowed':False})
+@@ -541 +645 @@
+-        except Exception:pass
++        except Exception:failures.append('STOP_RECEIPT_PERSISTENCE')
+@@ -545,0 +650,3 @@
++    with signal_guard():return _recovery_or_retirement(binding,retire)
++
++def _recovery_or_retirement(binding,retire=False):
+@@ -551,2 +658,7 @@
+-    password=getpass.getpass('Enter current CHILD administrator password for cleanup (hidden): ')
+-    failures=failure_contain(password,binding)
++    deadline=binding['_times'][5 if retire else 3].timestamp()
++    password=''
++    try:
++        with phase_guard(deadline,cleanup=True):password=private_input('Enter current CHILD administrator password for cleanup (hidden): ')
++        failures=failure_contain(password,binding,deadline=deadline)
++    except BaseException:failures=['CLEANUP_INPUT_OR_DEADLINE']
++    finally:password=''
+@@ -555,2 +667,2 @@
+-    except FileExistsError:pass
+-    print(status);return 0 if not failures else 1
++    except Exception:status='P07_MANDATORY_CLOSEOUT_UNCONFIRMED'
++    print(status);return 0 if status in {'P07_RETIREMENT_VERIFIED','P07_RECOVERY_VERIFIED'} else 1

@@ -1,0 +1,12 @@
+{
+  "containmentEndUtc": "2026-10-22T22:50:00Z",
+  "operationId": "abff0262-3504-4f92-b49d-5c5dea238cdb",
+  "packetId": "6c91b550-78cf-4dd1-a93e-63d9a282e21e",
+  "planId": "f3252875-1a8a-4c64-b642-254fdc30a620",
+  "retirementDeadlineUtc": "2026-10-23T21:30:00Z",
+  "startCutoffUtc": "2026-10-22T21:45:00Z",
+  "status": "LIVE_REVIEW_BOUND",
+  "windowEndUtc": "2026-10-22T23:00:00Z",
+  "windowStartUtc": "2026-10-22T21:30:00Z",
+  "workEndUtc": "2026-10-22T22:30:00Z"
+}
