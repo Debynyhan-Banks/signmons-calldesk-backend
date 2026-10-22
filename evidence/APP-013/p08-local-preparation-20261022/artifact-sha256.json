@@ -1,0 +1,22 @@
+{
+  "README.txt": "2d440156c5d98f7d6766bdaf5f997193fd8ada7072d2503d1e2496b4eb274ed0",
+  "binding.json": "6e282a457209b59b54439aaf3a91da4fa43177504aed30fa2b146c76af5fc493",
+  "browser-1440.png": "e430af3dcdd995985f356a4d83128163af7d6c0edecab51ee11be6520e3c60db",
+  "browser-390.png": "74a37afc2ba28a26c38951d85a7a8a34be78c565ef5c60a33ac9ca05b4ba5005",
+  "browser-test-toolchain.json": "9666dd3a8bf89f7952918bc2d743bf0fc923584451c5de2ff88e4c8f31eddf56",
+  "controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",
+  "db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+  "final-bridge-tests.log": "99534b1f4b2a37a1b21fe946a691ac730cdf65208861c1924f5b77270a5003e4",
+  "final-controller-tests.log": "968d7381cc314d901cde9efc08dffad1f8a14ebf57ac778a4bb575e5e691e3cd",
+  "final-python-tests.log": "9f98695ccb5b449bc40bf779c8c955e0a3f4d9301c3655d15834274cd49fca30",
+  "independent-cleanup.json": "a97d87a6b6adfacbe94f264d706c0bf437834e3715220f957bf8ebde08eaec91",
+  "manifest.json": "19c95b213ee0ed955647e31af9c57e360a340b3363f5dfc2781c2047b268b41c",
+  "operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
+  "operator-bridge.test.mjs": "aa79fc01fcfe42f0c8629e0c54b1edf0f4c6d1b025309effdbb3b8aaafbf7b66",
+  "p07-payment-runtime-role-review.sql": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+  "plan.json": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",
+  "real-role-proof-summary.json": "355d9b1e5b0df03ce05ffe4ce3752acf851cee0a5a068fb5a1165872863289a5",
+  "reuse-source.json": "a1ede5abf99fb2d521250050f488d41e25be7212b8ce2119c48bc85b741bb378",
+  "test_controller.py": "3115a26cbfc46e740d742f4020e695ab8fb5125bd0768bb1c8e3785473a8f7f7",
+  "test_postgres_contract.py": "f4a7ded4cecb41ba4b0fa9fe746f403d0d10635e48937bd5459b6e217f2a3f33"
+}

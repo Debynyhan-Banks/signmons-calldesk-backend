@@ -1,0 +1,13 @@
+{
+  "status": "LOCAL_FIXTURE_CLEANUP_VERIFIED_WITH_UNRELATED_HISTORICAL_DIRECTORIES_PRESERVED",
+  "p08OwnedDirectoriesRemaining": 0,
+  "matchingPostgresProcesses": 0,
+  "historicalUnrelatedDirectories": 2,
+  "historicalModificationDatesUtc": [
+    "2026-10-17",
+    "2026-10-19"
+  ],
+  "historicalDirectoriesModifiedOrRemoved": false,
+  "p07ConsumedSourcesAndResultUnchanged": true,
+  "liveDatabaseRead": false
+}

@@ -1,0 +1,28 @@
+{
+  "status": "LOCAL_PERMISSION_PROOF_PASSED",
+  "passedChecks": 23,
+  "failures": [],
+  "fixtureSha256": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+  "aclSha256": "efd16d9dc554a02ae33210c9dc93fe4219b770e1ce159f53df31b6e6057c1089",
+  "generatedInsertShapes": [
+    "AuditLog(id,tenantId,action,actorType,actorId,entityType,entityId,metadata,createdAt)",
+    "AuditLog(id,tenantId,action,actorType,actorId,entityType,entityId,metadata,traceId,createdAt)",
+    "AuditLog(id,tenantId,action,actorType,actorUserId,actorUserTenantId,actorId,entityType,entityId,metadata,traceId,createdAt)",
+    "Payment(id,tenantId,jobId,jobTenantId,status,requestKeyHash,requestedAt,destinationAccountId,amountTotalCents,applicationFeeAmountCents,currency,refundStatus,createdAt,updatedAt)",
+    "StripeEvent(id,tenantId,stripeEventId,type,payload,processingStatus,receivedAt)"
+  ],
+  "mockCheckoutCalls": 8,
+  "mockRecoverCalls": 1,
+  "providerCalls": 0,
+  "secretCalls": 0,
+  "p06SourceUnchanged": true,
+  "cleanup": {
+    "roleClosed": true,
+    "roleSessions": 0,
+    "roleRemoved": true,
+    "databaseRemoved": true,
+    "clusterStopped": true,
+    "scratchRemoved": true
+  },
+  "interruptionProof": "INTERRUPTION_CONTAINED"
+}

@@ -1,0 +1,10 @@
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+const require=createRequire('/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/package.json');
+const {Client}=require('pg');
+const password=readFileSync(0);
+const client=new Client({host:'ep-jolly-flower-ayc6w9hv.c-5.us-east-2.aws.neon.tech',port:5432,database:'neondb',user:'neondb_owner',password:password.toString('utf8').replace(/[\r\n]+$/,''),ssl:{rejectUnauthorized:true},connectionTimeoutMillis:8000,query_timeout:12000,application_name:'signmons_p07_atomic_closeout',options:'-c statement_timeout=10s -c lock_timeout=5s'});
+const closed=(x)=>x&&x.rolcanlogin===false&&Number(x.rolconnlimit)===0&&x.expired===true&&Number(x.sessions)===0;
+const state=async()=>{const r=await client.query("SELECT rolcanlogin,rolconnlimit,(rolvaliduntil IS NOT NULL AND rolvaliduntil < now()) AS expired,(SELECT count(*)::int FROM pg_stat_activity WHERE datname=current_database() AND usename='p07_payment_runtime' AND backend_type='client backend') AS sessions FROM pg_roles WHERE rolname='p07_payment_runtime'");if(r.rows.length===0)return null;if(r.rows.length!==1)throw Error('role');return r.rows[0]};
+let connected=false,changed=false;
+try{await client.connect();connected=true;const before=await state();if(before&&!closed(before)){changed=true;await client.query("ALTER ROLE p07_payment_runtime NOLOGIN CONNECTION LIMIT 0 VALID UNTIL '1970-01-01 00:00:00+00'");await client.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=current_database() AND usename='p07_payment_runtime' AND backend_type='client backend' AND pid<>pg_backend_pid()")};const after=await state();if(after&&!closed(after))throw Error('readback');process.stdout.write('P07_DATABASE_CLOSEOUT_VERIFIED_'+(after===null?'ABSENT':changed?'CHANGED':'UNCHANGED')+'\n')}catch{process.stdout.write('P07_DATABASE_CLOSEOUT_FAILED\n');process.exitCode=1}finally{if(connected)try{await client.end()}catch{};password.fill(0)}

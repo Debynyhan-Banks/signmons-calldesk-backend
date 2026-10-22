@@ -1,0 +1,28 @@
+test_actual_concurrent_reservation_one_winner (test_controller.Tests.test_actual_concurrent_reservation_one_winner) ... ok
+test_bindings_no_window_wrong_operation_extra_action_and_approval (test_controller.Tests.test_bindings_no_window_wrong_operation_extra_action_and_approval) ... ok
+test_closeout_refuses_successful_or_expired_operation (test_controller.Tests.test_closeout_refuses_successful_or_expired_operation) ... ok
+test_cloud_snapshot_rejects_traffic_flags_identity_and_environment_drift (test_controller.Tests.test_cloud_snapshot_rejects_traffic_flags_identity_and_environment_drift) ... ok
+test_command_deadline_kills_slow_local_child (test_controller.Tests.test_command_deadline_kills_slow_local_child) ... ok
+test_each_modeled_mutation_failure_and_cleanup_residual (test_controller.Tests.test_each_modeled_mutation_failure_and_cleanup_residual) ... ok
+test_firebase_absent_disabled_and_collision (test_controller.Tests.test_firebase_absent_disabled_and_collision) ... ok
+test_firebase_child_cannot_bypass_approval (test_controller.Tests.test_firebase_child_cannot_bypass_approval) ... ok
+test_hidden_input_fallback_is_forbidden (test_controller.Tests.test_hidden_input_fallback_is_forbidden) ... ok
+test_no_action_cli_and_helper_do_not_prompt_or_call_provider (test_controller.Tests.test_no_action_cli_and_helper_do_not_prompt_or_call_provider) ... ok
+test_no_credential_cleanup_claim (test_controller.Tests.test_no_credential_cleanup_claim) ... ok
+test_normalizer_fixed_reason_is_not_lost_on_nonzero_exit (test_controller.Tests.test_normalizer_fixed_reason_is_not_lost_on_nonzero_exit) ... ok
+test_private_modes_exclusive_reservation_and_symlink (test_controller.Tests.test_private_modes_exclusive_reservation_and_symlink) ... ok
+test_psql_drops_inherited_pg_environment_and_uses_verified_tls (test_controller.Tests.test_psql_drops_inherited_pg_environment_and_uses_verified_tls) ... ok
+test_readonly_adapter_success_closeout_no_mutation (test_controller.Tests.test_readonly_adapter_success_closeout_no_mutation) ... ok
+test_readonly_closeout_has_one_use_and_no_qualification_replay (test_controller.Tests.test_readonly_closeout_has_one_use_and_no_qualification_replay) ... ok
+test_readonly_failures_preserve_stage_and_truthful_closeout (test_controller.Tests.test_readonly_failures_preserve_stage_and_truthful_closeout) ... ok
+test_readonly_sql_exact_only (test_controller.Tests.test_readonly_sql_exact_only) ... ok
+test_real_deadline_prevents_later_stage (test_controller.Tests.test_real_deadline_prevents_later_stage) ... ok
+test_real_pty_secret_echo_restored_after_signals_and_deadline (test_controller.Tests.test_real_pty_secret_echo_restored_after_signals_and_deadline) ... ok
+test_reused_guards_ast_are_identical (test_controller.Tests.test_reused_guards_ast_are_identical) ... ok
+test_start_cutoff_expiry_and_retirement_boundaries (test_controller.Tests.test_start_cutoff_expiry_and_retirement_boundaries) ... ok
+test_stripe_readback_requires_exact_current_operation_disabled_destination (test_controller.Tests.test_stripe_readback_requires_exact_current_operation_disabled_destination) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 3.380s
+
+OK
