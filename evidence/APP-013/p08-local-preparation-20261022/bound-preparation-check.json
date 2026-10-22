@@ -1,0 +1,17 @@
+{
+  "atUtc": "2026-10-22T23:19:04.327773+00:00",
+  "automaticRetryAllowed": false,
+  "bindingCanonicalSha256": "d66211de060539949f6ebe43761d7a4639053de63017790a38b4faa58542892a",
+  "externalCalls": 0,
+  "immutableProposalAndCleanRepos": true,
+  "inMemorySyntheticBindingContractOnly": true,
+  "liveApproval": false,
+  "liveAttempt": false,
+  "missingApprovalRefusal": "P08_REFUSED_PRIVATE_FILE_INVALID",
+  "proposalCommit": "574c5bcc5ba1981567babfb5f643090c71fe5c94",
+  "proposalSha256": "bbbe58cff1d228a913aa007971b3054bbbf97baa0e21ba813d4afee9c38123fc",
+  "sourceIntegrity": true,
+  "sourceManifestSha256": "19c95b213ee0ed955647e31af9c57e360a340b3363f5dfc2781c2047b268b41c",
+  "status": "P08_EXACT_READ_ONLY_BINDING_PREPARED_NOT_APPROVED",
+  "syntheticApprovalPersisted": false
+}
