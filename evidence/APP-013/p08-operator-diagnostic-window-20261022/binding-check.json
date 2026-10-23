@@ -1,0 +1,28 @@
+{
+  "actualPrivateCandidatesRetained": false,
+  "bindingCanonicalSha256": "cbebe0087b58463e4e26492ca793a5a64c3ed3645a0ec338906f19b016878bca",
+  "checkedAtUtc": "2026-10-23T01:24:53.498735Z",
+  "externalCalls": 0,
+  "liveApproval": false,
+  "liveAttempt": false,
+  "manifestSha256": "bd062aac5bf1e709f21b5d733a04fca2d107c59500083e20f586cc02f233460f",
+  "positiveFutureStartAndImmutableLocalPins": true,
+  "proposalCommit": "d3442af63d18465763e52d34bd6757c0186904a6",
+  "proposalSha256": "bbcacdcc9d0d0ee26df76505dbc0ed0e54175e1cf3f717084ac62982909c7984",
+  "refusals": {
+    "--operator-diagnostic": "P08_REFUSED_PRIVATE_FILE_INVALID",
+    "--operator-diagnostic-closeout": "P08_REFUSED_PRIVATE_FILE_INVALID",
+    "--run": "P08_PAYMENT_BINDING_REQUIRED_NO_ACTION",
+    "AT_CUTOFF": "OPERATOR_START_CUTOFF",
+    "BEFORE_START": "OPERATOR_NOT_YET_START",
+    "MISSING_APPROVAL": "OPERATOR_APPROVAL_INVALID",
+    "PRIOR_APPROVAL_1": "OPERATOR_APPROVAL_INVALID",
+    "PRIOR_APPROVAL_2": "OPERATOR_APPROVAL_INVALID",
+    "PRIOR_APPROVAL_3": "OPERATOR_APPROVAL_INVALID",
+    "PRIOR_APPROVAL_4": "OPERATOR_APPROVAL_INVALID",
+    "RETENTION_EXTENSION": "OPERATOR_BINDING_DRIFT"
+  },
+  "sourceManifestUnchanged": true,
+  "status": "P08_OPERATOR_DIAGNOSTIC_BOUND_NOT_APPROVED_NOT_ATTEMPTED",
+  "syntheticApprovalInMemoryOnly": true
+}
