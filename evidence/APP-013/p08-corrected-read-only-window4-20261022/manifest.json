@@ -1,0 +1,16 @@
+{
+  "operationId": "e7f2f7ff-2ddc-4c94-831d-1c8abf92c960",
+  "files": {
+    "plan.json": "f82fd86879ba421b756df70c8b305a11ed647208a08ee64df3b910333866722a",
+    "controller.py": "23058d3d6fc6c6d53778f8dfb8c75d0b4fc19c3f2daeb1063487ad81ba947d50",
+    "test_controller.py": "5839657c53c2fb83dc5c0b2b18183c654dc73a33f088c96c05c5feda8faac4d1",
+    "operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
+    "operator-bridge.test.mjs": "aa79fc01fcfe42f0c8629e0c54b1edf0f4c6d1b025309effdbb3b8aaafbf7b66",
+    "test_postgres_contract.py": "f4a7ded4cecb41ba4b0fa9fe746f403d0d10635e48937bd5459b6e217f2a3f33",
+    "db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+    "p07-payment-runtime-role-review.sql": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+    "reuse-source.json": "a1ede5abf99fb2d521250050f488d41e25be7212b8ce2119c48bc85b741bb378",
+    "README.txt": "fdb1aca20cfed326e1f1bf30acbc213fea316a2f1c81acebd758c3c72fb50e67",
+    "browser-test-toolchain.json": "9666dd3a8bf89f7952918bc2d743bf0fc923584451c5de2ff88e4c8f31eddf56"
+  }
+}
