@@ -1,0 +1,7 @@
+{
+  "automaticRetryAllowed": false,
+  "businessMutation": false,
+  "sessionsAbsent": true,
+  "stage": "DATABASE_READ",
+  "status": "P08_QUALIFICATION_STOP_OPERATOR_SELECTION_REQUIRED"
+}

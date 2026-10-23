@@ -1,0 +1,13 @@
+{
+  "accountAdmin": true,
+  "apiVersion": "2026-03-25.dahlia",
+  "connectedAccountSha256": "a008b806d6ea2cbe47eda0e27bfc855f1d8a376752c434c5efc36c571ece0248",
+  "connectedAccountsScope": true,
+  "deliveryAttempts": 0,
+  "destinationDisabled": true,
+  "enabledConnectedAccounts": 1,
+  "eventHash": "4766a12d19858ebc976109f5156551dad455182e1660892505367d1190e17c49",
+  "mode": "SANDBOX_TEST",
+  "operationId": "e7f2f7ff-2ddc-4c94-831d-1c8abf92c960",
+  "urlExact": true
+}

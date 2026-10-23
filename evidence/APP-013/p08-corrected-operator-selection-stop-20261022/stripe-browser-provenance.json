@@ -1,0 +1,13 @@
+{
+  "accountRole": "You Owner; Super Administrator, +1 others in sole active member row",
+  "configurationChanged": false,
+  "connectedInventory": "All1; Enabled1; sole test-account link ID hashed in memory and discarded",
+  "destination": "Disabled; URL exact; Connected accounts; six visible event names hashed; API version exact; refreshed Event deliveries says No event deliveries found",
+  "initialRoleLocatorCorrection": "row substring missed whitespace; explicit visible You Owner and Super Administrator cells verified true before release",
+  "observedAtUtc": "2026-10-23T00:51:56.878730Z",
+  "operationId": "e7f2f7ff-2ddc-4c94-831d-1c8abf92c960",
+  "rawAccountIdRetained": false,
+  "secretRevealedOrCopied": false,
+  "source": "Chrome signed-in Stripe Sandbox rendered UI, tab1250952178",
+  "testEventSent": false
+}

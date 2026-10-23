@@ -1,0 +1,30 @@
+{
+  "actualCandidateCount": "UNKNOWN_NOT_RETAINED",
+  "actualCandidates": "UNKNOWN_NOT_RETAINED",
+  "approvalSha256": "d32eb78a2fe0f35a59d5b570dea797d5255c4bf40170c6084037029fd77344d8",
+  "automaticRetryAllowed": false,
+  "bindingSha256": "5b82f4c100afb10b802c0dcba97e5db8ad08eb5d977de4cc9d41f3632ae601db",
+  "businessMutation": false,
+  "databaseQualificationReceiptAbsent": true,
+  "eligibleOperatorResult": "not exactly one eligible actor result; zero versus multiple or shape mismatch not retained",
+  "firebaseLookupReached": false,
+  "freshStripePassed": true,
+  "newExternalReadForReconciliation": false,
+  "operationId": "e7f2f7ff-2ddc-4c94-831d-1c8abf92c960",
+  "ownerConfirmationToolCall": "call_f561f925caa34f92ac84b7cd6f7cc800",
+  "ownerTerminalConfirmation": "YES_BOTH_STATUS_LINES_MATCH",
+  "paymentAuthorized": false,
+  "proposalCommit": "9fad1ea0b7e8d8bb749d6c052868980b4a8bc472",
+  "savedStop": {
+    "automaticRetryAllowed": false,
+    "businessMutation": false,
+    "sessionsAbsent": true,
+    "stage": "DATABASE_READ",
+    "status": "P08_QUALIFICATION_STOP_OPERATOR_SELECTION_REQUIRED"
+  },
+  "sourceManifestSha256": "ff5ce38109acce687f45808d715836fb59aef5bd0db19d5bffa7dc65ee66e5aa",
+  "status": "P08_OPERATOR_SELECTION_STOP_CONTAINMENT_VERIFIED",
+  "stopSha256": "a61e0d7ec0880a6d07fbfc52d87b45f32e3e068dd9fc4e7f651c62bdcf9d58ec",
+  "timestampProducerPassed": true,
+  "verifiedAtUtc": "2026-10-23T00:53:52.066980Z"
+}
