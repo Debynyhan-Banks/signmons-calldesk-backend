@@ -1,0 +1,28 @@
+{
+  "actualPrivateCandidatesRetained": false,
+  "approvalReusable": false,
+  "attemptReserved": false,
+  "automaticRetryAllowed": false,
+  "bindingCanonicalSha256": "cbebe0087b58463e4e26492ca793a5a64c3ed3645a0ec338906f19b016878bca",
+  "bindingGuard": "OPERATOR_START_CUTOFF",
+  "externalVerificationCalls": 0,
+  "freshWindowSupplied": false,
+  "liveSessionQueryPerformed": false,
+  "manifestSha256": "bd062aac5bf1e709f21b5d733a04fca2d107c59500083e20f586cc02f233460f",
+  "observedAtUtc": "2026-10-23T01:53:09.317663Z",
+  "operationId": "6e362278-1535-4b04-bc44-02fab0dcd168",
+  "ownerApprovalSha256": "4761fc8c6f92d59507454580e71f434ac16932bf8bc0dfbfef1e4941b5fc8562",
+  "ownerStatement": "i missed the dealine i will start again tomorrow",
+  "receiptAbsence": {
+    "operator-diagnostic-attempt.json": true,
+    "operator-diagnostic-closeout-attempt.json": true,
+    "operator-diagnostic-closeout-result.json": true,
+    "operator-diagnostic-private.json": true,
+    "operator-diagnostic-result.json": true,
+    "operator-diagnostic-stop.json": true
+  },
+  "retirementDeadlineUtc": "2026-10-23T22:15:00Z",
+  "scopeDeviation": false,
+  "startCutoffUtc": "2026-10-23T01:40:00Z",
+  "status": "P08_OPERATOR_DIAGNOSTIC_EXPIRED_UNSTARTED_OWNER_POSTPONED"
+}
