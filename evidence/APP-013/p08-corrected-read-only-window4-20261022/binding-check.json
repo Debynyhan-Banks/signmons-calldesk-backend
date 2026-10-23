@@ -1,0 +1,25 @@
+{
+  "bindingCanonicalSha256": "c1292ac542d9562ef86d187e6c8d5106c674080406ca3c5f1c28a864ea8a7b5a",
+  "bindingPositiveCheckAtFutureStart": true,
+  "checkedAtUtc": "2026-10-23T00:29:46.196660Z",
+  "consumedPackageUnchanged": true,
+  "correctedSourceManifestUnchanged": true,
+  "externalCalls": 0,
+  "liveApproval": false,
+  "liveAttempt": false,
+  "manifestSha256": "ff5ce38109acce687f45808d715836fb59aef5bd0db19d5bffa7dc65ee66e5aa",
+  "proposalCommit": "9fad1ea0b7e8d8bb749d6c052868980b4a8bc472",
+  "proposalSha256": "4a647d95f6adf830866d2900ab1808b7a461e194c618d811c48600d01888f8e6",
+  "refusals": {
+    "--qualify": "P08_REFUSED_PRIVATE_FILE_INVALID",
+    "--run": "P08_PAYMENT_BINDING_REQUIRED_NO_ACTION",
+    "AT_CUTOFF": "START_CUTOFF",
+    "BEFORE_START": "NOT_YET_START",
+    "MISSING_APPROVAL": "OWNER_APPROVAL_INVALID",
+    "PRIOR_APPROVAL_1": "OWNER_APPROVAL_INVALID",
+    "PRIOR_APPROVAL_2": "OWNER_APPROVAL_INVALID",
+    "PRIOR_APPROVAL_3": "OWNER_APPROVAL_INVALID"
+  },
+  "status": "P08_CORRECTED_WINDOW4_BOUND_NOT_APPROVED_NOT_ATTEMPTED",
+  "syntheticApprovalInMemoryOnly": true
+}
