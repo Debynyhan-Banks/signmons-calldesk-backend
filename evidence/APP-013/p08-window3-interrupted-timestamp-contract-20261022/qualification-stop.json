@@ -1,0 +1,7 @@
+{
+  "automaticRetryAllowed": false,
+  "businessMutation": false,
+  "sessionsAbsent": true,
+  "stage": "STRIPE_READBACK",
+  "status": "P08_QUALIFICATION_STOP_INTERRUPTED"
+}

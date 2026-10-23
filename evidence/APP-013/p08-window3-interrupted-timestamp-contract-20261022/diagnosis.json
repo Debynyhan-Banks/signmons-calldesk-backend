@@ -1,0 +1,32 @@
+{
+  "approvalSha256": "20eada1a8a94f8bcfe2e6c03906014df3fd8449e40b3eaabefa9a4eb771a8138",
+  "attemptStartedAtUtc": "2026-10-23T00:18:22.595367+00:00",
+  "automaticRetryAllowed": false,
+  "bindingSha256": "397ff41481bddedc3fcb2b2e69802e68c18b1c35589bef48931724613aeba988",
+  "businessMutation": false,
+  "controllerSha256": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",
+  "currentVerificationExternalCalls": 0,
+  "databaseQualificationAbsent": true,
+  "defect": {
+    "actualSavedReceiptRefusal": "WINDOW_BINDING_INVALID",
+    "reader": "parse_utc requires trailing Z; authorize-helper and readonly_closeout consume it",
+    "testGap": "consumer fixtures hand-write Z; no emitted-receipt round trip",
+    "writer": "qualify saves datetime.now(UTC).isoformat(), emitting +00:00"
+  },
+  "firebaseLookupReached": false,
+  "operationId": "1bd31c86-36b4-4ce0-ac50-fa2e69b07ca1",
+  "ownerContainment": "CONTAINMENT_VERIFIED",
+  "ownerTerminalStatus": "P08_QUALIFICATION_STOP_INTERRUPTED",
+  "savedStop": {
+    "automaticRetryAllowed": false,
+    "businessMutation": false,
+    "sessionsAbsent": true,
+    "stage": "STRIPE_READBACK",
+    "status": "P08_QUALIFICATION_STOP_INTERRUPTED"
+  },
+  "sourceManifestSha256": "e3830935f1395c18bec2d4e756e639201e9059bafd6efed3ff317a7f7f0243b7",
+  "status": "P08_TIMESTAMP_CONTRACT_DEFECT_CONTAINMENT_VERIFIED",
+  "stopSha256": "79939461ccae74f838cb4b6108c8f38e6df9ae0c3847065185dc543fc35c0232",
+  "stripeReadbackAbsent": true,
+  "verifiedAtUtc": "2026-10-23T00:20:34.001703Z"
+}
