@@ -1,0 +1,21 @@
+{
+  "README.txt": "2d440156c5d98f7d6766bdaf5f997193fd8ada7072d2503d1e2496b4eb274ed0",
+  "binding.json": "397ff41481bddedc3fcb2b2e69802e68c18b1c35589bef48931724613aeba988",
+  "browser-test-toolchain.json": "9666dd3a8bf89f7952918bc2d743bf0fc923584451c5de2ff88e4c8f31eddf56",
+  "controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",
+  "db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+  "fresh-controller-tests.log": "7fde3584810a0544dafb62b371298633edbd138f7868b8f1604cd6a2f032eced",
+  "fresh-preparation.json": "17c6c4f4cbd371170ca26426f3dbd42f6045a03e61875b503d0a8c59867f8fae",
+  "manifest.json": "e3830935f1395c18bec2d4e756e639201e9059bafd6efed3ff317a7f7f0243b7",
+  "operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
+  "operator-bridge.test.mjs": "aa79fc01fcfe42f0c8629e0c54b1edf0f4c6d1b025309effdbb3b8aaafbf7b66",
+  "owner-approval.json": "20eada1a8a94f8bcfe2e6c03906014df3fd8449e40b3eaabefa9a4eb771a8138",
+  "owner-decision-provenance.json": "4ad2479678f74c362256c68223d46bfec615b84372e4e4eaba9a748ae30db17c",
+  "p07-payment-runtime-role-review.sql": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+  "plan.json": "924180b90dd92279c8e4cb917ed03b34da7718f3b83a2ce9e8dd88ef88d12f5a",
+  "qualification-attempt.json": "2f6a918bc7283c49575fefd601f39a4ca54767fe845824d1e9852059b77a2d6d",
+  "qualification-stop.json": "79939461ccae74f838cb4b6108c8f38e6df9ae0c3847065185dc543fc35c0232",
+  "reuse-source.json": "a1ede5abf99fb2d521250050f488d41e25be7212b8ce2119c48bc85b741bb378",
+  "test_controller.py": "3115a26cbfc46e740d742f4020e695ab8fb5125bd0768bb1c8e3785473a8f7f7",
+  "test_postgres_contract.py": "f4a7ded4cecb41ba4b0fa9fe746f403d0d10635e48937bd5459b6e217f2a3f33"
+}

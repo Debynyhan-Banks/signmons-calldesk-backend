@@ -1,0 +1,81 @@
+test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate (test_controller.Tests.test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate) ... ERROR
+test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) ... 
+  test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) (signal=<Signals.SIGINT: 2>) ... ERROR
+  test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) (signal=<Signals.SIGTERM: 15>) ... ERROR
+
+======================================================================
+ERROR: test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate (test_controller.Tests.test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 185, in test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate
+    b,a=self.emitted_binding();actor={'actorId':'10000000-0000-4000-8000-000000000001','actorRole':'OWNER'};visited=[]
+        ~~~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 178, in emitted_binding
+    b,a=binding();now=time.time()
+        ~~~~~~~^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 8, in binding
+    b={'operationId':c.PLAN['operationId'],'planId':c.PLAN['planId'],'packetId':c.PLAN['packetId'],'mode':'READ_ONLY_QUALIFICATION','automaticRetryAllowed':False,'actions':c.PLAN['readOnlyActions'],'manifestSha256':c.file_sha(ROOT/'manifest.json'),'proposalCommit':'a'*40,'proposalSha256':'b'*64}
+                                                                                                                                                                                                                       ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/controller.py", line 127, in file_sha
+    def file_sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/p08-same-job-sandbox-20261022-timestamp1/manifest.json'
+
+======================================================================
+ERROR: test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) (signal=<Signals.SIGINT: 2>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 204, in test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout
+    b,a=self.emitted_binding();called=[]
+        ~~~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 178, in emitted_binding
+    b,a=binding();now=time.time()
+        ~~~~~~~^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 8, in binding
+    b={'operationId':c.PLAN['operationId'],'planId':c.PLAN['planId'],'packetId':c.PLAN['packetId'],'mode':'READ_ONLY_QUALIFICATION','automaticRetryAllowed':False,'actions':c.PLAN['readOnlyActions'],'manifestSha256':c.file_sha(ROOT/'manifest.json'),'proposalCommit':'a'*40,'proposalSha256':'b'*64}
+                                                                                                                                                                                                                       ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/controller.py", line 127, in file_sha
+    def file_sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/p08-same-job-sandbox-20261022-timestamp1/manifest.json'
+
+======================================================================
+ERROR: test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) (signal=<Signals.SIGTERM: 15>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 204, in test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout
+    b,a=self.emitted_binding();called=[]
+        ~~~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 178, in emitted_binding
+    b,a=binding();now=time.time()
+        ~~~~~~~^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 8, in binding
+    b={'operationId':c.PLAN['operationId'],'planId':c.PLAN['planId'],'packetId':c.PLAN['packetId'],'mode':'READ_ONLY_QUALIFICATION','automaticRetryAllowed':False,'actions':c.PLAN['readOnlyActions'],'manifestSha256':c.file_sha(ROOT/'manifest.json'),'proposalCommit':'a'*40,'proposalSha256':'b'*64}
+                                                                                                                                                                                                                       ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/controller.py", line 127, in file_sha
+    def file_sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                                             ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/p08-same-job-sandbox-20261022-timestamp1/manifest.json'
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.002s
+
+FAILED (errors=3)

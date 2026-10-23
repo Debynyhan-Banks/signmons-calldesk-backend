@@ -1,0 +1,11 @@
+--- consumed-prep3/controller.py
++++ disabled-timestamp1/controller.py
+@@ -264,7 +264,7 @@
+     if binding['manifestSha256']!=file_sha(ROOT/'manifest.json'):raise Stop('MANIFEST_BINDING')
+     adapter=adapter or {'input':attended_input,'cloud':cloud_read,'database':lambda p:normalize_database(psql_read(p,QUALIFICATION_SQL)),'firebase':firebase_read,'stripe':wait_stripe,'closeout':lambda p:psql_read(p,CLOSEOUT_SQL)=='0'}
+     password='';stage='PRIVATE_INPUT';closed=False
+-    save('qualification-attempt.json',{'status':'RESERVED_DO_NOT_RETRY','operationId':PLAN['operationId'],'automaticRetryAllowed':False,'startedAtUtc':dt.datetime.now(dt.timezone.utc).isoformat()})
++    save('qualification-attempt.json',{'status':'RESERVED_DO_NOT_RETRY','operationId':PLAN['operationId'],'automaticRetryAllowed':False,'startedAtUtc':dt.datetime.now(dt.timezone.utc).isoformat().replace('+00:00','Z')})
+     with signal_guard():
+         try:
+             with phase_guard(values[2]):

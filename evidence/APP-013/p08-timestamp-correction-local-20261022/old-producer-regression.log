@@ -1,0 +1,55 @@
+test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate (test_controller.Tests.test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate) ... FAIL
+test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) ... 
+  test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) (signal=<Signals.SIGINT: 2>) ... ERROR
+  test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) (signal=<Signals.SIGTERM: 15>) ... ERROR
+
+======================================================================
+ERROR: test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) (signal=<Signals.SIGINT: 2>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 213, in test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout
+    self.assertEqual(c.readonly_closeout(b,a,close),'P08_READ_ONLY_CLOSEOUT_VERIFIED')
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/controller.py", line 310, in readonly_closeout
+    begun=parse_utc(attempt['startedAtUtc']).timestamp()
+          ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/controller.py", line 84, in parse_utc
+    if not isinstance(value,str) or not value.endswith('Z'): raise Stop('WINDOW_BINDING_INVALID')
+                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+p08.Stop: WINDOW_BINDING_INVALID
+
+======================================================================
+ERROR: test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout (test_controller.Tests.test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout) (signal=<Signals.SIGTERM: 15>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 213, in test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout
+    self.assertEqual(c.readonly_closeout(b,a,close),'P08_READ_ONLY_CLOSEOUT_VERIFIED')
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/controller.py", line 310, in readonly_closeout
+    begun=parse_utc(attempt['startedAtUtc']).timestamp()
+          ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/controller.py", line 84, in parse_utc
+    if not isinstance(value,str) or not value.endswith('Z'): raise Stop('WINDOW_BINDING_INVALID')
+                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+p08.Stop: WINDOW_BINDING_INVALID
+
+======================================================================
+FAIL: test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate (test_controller.Tests.test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-same-job-sandbox-20261022-timestamp1/test_controller.py", line 197, in test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate
+    self.assertEqual(c.qualify(b,a,adapters),'P08_READ_ONLY_OPERATOR_QUALIFICATION_COMPLETE')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'P08_QUALIFICATION_STOP_UNCONFIRMED\nCONTAINMENT_VERIFIED' != 'P08_READ_ONLY_OPERATOR_QUALIFICATION_COMPLETE'
++ P08_READ_ONLY_OPERATOR_QUALIFICATION_COMPLETE
+- P08_QUALIFICATION_STOP_UNCONFIRMED
+- CONTAINMENT_VERIFIED
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.004s
+
+FAILED (failures=1, errors=2)
+P08_REFUSED_WINDOW_BINDING_INVALID
+P08_REFUSED_HELPER_ATTEMPT
+P08_REFUSED_HELPER_ATTEMPT

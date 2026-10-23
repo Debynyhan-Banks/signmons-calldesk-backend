@@ -1,0 +1,56 @@
+{
+  "addedMethods": [
+    "emitted_binding",
+    "test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate",
+    "test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout",
+    "test_consumed_actual_noncanonical_timestamp_stays_strictly_refused"
+  ],
+  "controllerChangedFunctions": [
+    "qualify"
+  ],
+  "exactSingleProducerExpressionChange": true,
+  "externalCalls": 0,
+  "initialTestSetupError": "missing scratch manifest; recorded separately, supplied before actual defect reproduction",
+  "liveApproval": false,
+  "liveAttempt": false,
+  "localTestsPassed": 26,
+  "manifestSha256": "ff5ce38109acce687f45808d715836fb59aef5bd0db19d5bffa7dc65ee66e5aa",
+  "oldPackageAllFileHashesUnchanged": true,
+  "oldSourceRegressions": "both actual consumers fail WINDOW_BINDING_INVALID before correction",
+  "ownedFixtureDirectoriesAbsent": true,
+  "paymentAuthorized": false,
+  "refusals": {
+    "--authorize-helper": {
+      "code": 2,
+      "status": "P08_REFUSED_WINDOW_NOT_BOUND"
+    },
+    "--check": {
+      "code": 0,
+      "status": "P08_LOCAL_PREPARATION_CHECK_PASSED_NO_ACTION"
+    },
+    "--closeout": {
+      "code": 2,
+      "status": "P08_REFUSED_WINDOW_NOT_BOUND"
+    },
+    "--qualify": {
+      "code": 2,
+      "status": "P08_REFUSED_WINDOW_NOT_BOUND"
+    },
+    "--run": {
+      "code": 2,
+      "status": "P08_PAYMENT_BINDING_REQUIRED_NO_ACTION"
+    }
+  },
+  "status": "P08_TIMESTAMP_CORRECTION_LOCAL_VERIFIED_DISABLED",
+  "unchangedFiles": [
+    "operator-bridge.mjs",
+    "operator-bridge.test.mjs",
+    "test_postgres_contract.py",
+    "db-closeout.mjs",
+    "p07-payment-runtime-role-review.sql",
+    "reuse-source.json",
+    "browser-test-toolchain.json"
+  ],
+  "unchangedOriginalControllerTestMethods": 23,
+  "verifiedAtUtc": "2026-10-23T00:25:58.833288Z"
+}

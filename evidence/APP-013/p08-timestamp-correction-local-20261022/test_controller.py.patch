@@ -1,0 +1,58 @@
+--- consumed-prep3/test_controller.py
++++ disabled-timestamp1/test_controller.py
+@@ -173,4 +173,55 @@
+  def test_reused_guards_ast_are_identical(self):
+   source=ast.parse(Path('/private/tmp/p07-repaired-runtime-readiness-20261022-sql-contract1/controller.py').read_text());current=ast.parse((ROOT/'controller.py').read_text());old={n.name:ast.dump(n,include_attributes=False) for n in source.body if isinstance(n,(ast.FunctionDef,ast.ClassDef))};new={n.name:ast.dump(n,include_attributes=False) for n in current.body if isinstance(n,(ast.FunctionDef,ast.ClassDef))}
+   for name in json.loads((ROOT/'reuse-source.json').read_text())['astIdentical']:self.assertEqual(old[name],new[name],name)
++ def emitted_binding(self):
++  # Use both real clocks: the producer must serialize its own datetime.now().
++  b,a=binding();now=time.time()
++  for k,offset in [('startUtc',-5),('cutoffUtc',60),('workEndUtc',120),('closeoutEndUtc',180)]:
++   b[k]=dt.datetime.fromtimestamp(now+offset,dt.timezone.utc).isoformat().replace('+00:00','Z')
++  a['approvedAtUtc']=dt.datetime.fromtimestamp(now-6,dt.timezone.utc).isoformat().replace('+00:00','Z')
++  a['bindingSha256']=hashlib.sha256(json.dumps(b,sort_keys=True,separators=(',',':')).encode()).hexdigest()
++  return b,a
++ def test_actual_emitted_attempt_round_trips_through_unchanged_helper_gate(self):
++  b,a=self.emitted_binding();actor={'actorId':'10000000-0000-4000-8000-000000000001','actorRole':'OWNER'};visited=[]
++  def firebase(value):
++   self.assertEqual(value,actor);self.assertEqual(c.load_json('database-qualification-private.json'),actor)
++   receipt=c.load_json('qualification-attempt.json')
++   with patch.object(sys,'argv',['controller.py','--authorize-helper']):
++    self.assertEqual(c.main(),0)
++   self.assertTrue(receipt['startedAtUtc'].endswith('Z'))
++   self.assertEqual(c.parse_utc(receipt['startedAtUtc']).utcoffset(),dt.timedelta(0))
++   visited.append('authorized');return {'exists':False}
++  adapters={'input':lambda prompt:'synthetic-local-only','cloud':lambda:{},'stripe':lambda:{},'database':lambda password:actor,'firebase':firebase,'closeout':lambda password:True}
++  with patch.object(c,'ROOT',Path(self.temp.name)),patch.object(c,'file_sha',return_value=b['manifestSha256']),patch.object(c,'integrity',return_value={}),patch.object(c,'verify_live_governance'):
++   c.save('binding.json',b);c.save('owner-approval.json',a)
++   self.assertEqual(c.qualify(b,a,adapters),'P08_READ_ONLY_OPERATOR_QUALIFICATION_COMPLETE')
++   self.assertEqual(visited,['authorized'])
++   with patch.object(sys,'argv',['controller.py','--authorize-helper']):self.assertEqual(c.main(),2)
++   self.assertTrue(c.load_json('qualification-result.json')['sessionsAbsent'])
++ def test_actual_signal_emitted_attempt_round_trips_through_readonly_closeout(self):
++  for signum in [signal.SIGINT,signal.SIGTERM]:
++   with self.subTest(signal=signum),tempfile.TemporaryDirectory(prefix='p08-emitted-',dir='/private/tmp') as root:
++    b,a=self.emitted_binding();called=[]
++    def interrupted():os.kill(os.getpid(),signum)
++    adapters={'input':lambda prompt:'synthetic-local-only','cloud':interrupted,'stripe':lambda:self.fail('must not advance'),'database':lambda password:self.fail('must not read'),'firebase':lambda actor:self.fail('must not lookup'),'closeout':lambda password:False}
++    with patch.object(c,'ROOT',Path(root)),patch.object(c,'file_sha',return_value=b['manifestSha256']),patch.object(c,'integrity',return_value={}),patch.object(c,'verify_live_governance'):
++     c.save('binding.json',b);c.save('owner-approval.json',a)
++     self.assertEqual(c.qualify(b,a,adapters),'P08_QUALIFICATION_STOP_INTERRUPTED\nCONTAINMENT_UNCONFIRMED')
++     receipt=c.load_json('qualification-attempt.json')
++     with patch.object(sys,'argv',['controller.py','--authorize-helper']):self.assertEqual(c.main(),2)
++     close={'input':lambda prompt:'synthetic-local-only','closeout':lambda password:called.append('session-absence') is None}
++     self.assertEqual(c.readonly_closeout(b,a,close),'P08_READ_ONLY_CLOSEOUT_VERIFIED')
++     self.assertTrue(receipt['startedAtUtc'].endswith('Z'))
++     self.assertEqual(called,['session-absence']);self.assertEqual(c.load_json('qualification-attempt.json'),receipt)
++     self.assertTrue(c.load_json('closeout-result.json')['sessionsAbsent'])
++     with self.assertRaises(FileExistsError):c.readonly_closeout(b,a,close)
++     with patch.object(c.time,'time',return_value=c.parse_utc(b['closeoutEndUtc']).timestamp()),self.assertRaises(c.Stop) as expired:c.readonly_closeout(b,a,close)
++     self.assertEqual(expired.exception.code,'CLOSEOUT_DEADLINE')
++ def test_consumed_actual_noncanonical_timestamp_stays_strictly_refused(self):
++  old=Path('/private/tmp/p08-same-job-sandbox-20261022-prep3/qualification-attempt.json')
++  raw=old.read_bytes();value=json.loads(raw)['startedAtUtc'];self.assertTrue(value.endswith('+00:00'))
++  for value in [value,'2026-10-23T00:18:22','invalidZ',None]:
++   with self.assertRaises(c.Stop) as refused:c.parse_utc(value)
++   self.assertEqual(refused.exception.code,'WINDOW_BINDING_INVALID')
++  self.assertEqual(old.read_bytes(),raw)
+ if __name__=='__main__':unittest.main()
