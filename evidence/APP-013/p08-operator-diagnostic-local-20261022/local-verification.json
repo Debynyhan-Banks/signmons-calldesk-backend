@@ -1,0 +1,76 @@
+{
+  "addedFunctions": [
+    "check_operator_binding",
+    "normalize_operator_diagnostic",
+    "operator_diagnostic",
+    "operator_diagnostic_closeout",
+    "operator_public_projection",
+    "purge_operator_private",
+    "verify_operator_governance"
+  ],
+  "allConsumedSourceAndReceiptHashesUnchanged": true,
+  "atUtc": "2026-10-23T01:08:01.005723Z",
+  "controllerOriginalChangedFunctions": [
+    "psql_read",
+    "main"
+  ],
+  "externalCalls": 0,
+  "initialIndependentProcessRead": "sandbox denied ps; completed with approved host read permission, without rerunning tests",
+  "manifestSha256": "bd062aac5bf1e709f21b5d733a04fca2d107c59500083e20f586cc02f233460f",
+  "matchingOwnedPostgresProcesses": 0,
+  "noLiveBindingApprovalAttemptOrPrivateCandidateReceipt": true,
+  "operatorSelected": false,
+  "original26TestFileByteIdentical": true,
+  "ownedFixtureDirectories": {
+    "p08-emitted-*": [],
+    "p08-op-test-*": [],
+    "p08-pg-*": [],
+    "p08-test-*": []
+  },
+  "paymentAuthorized": false,
+  "privateRetentionDeadlineUtc": "2026-10-23T22:15:00Z",
+  "refusals": {
+    "--check": {
+      "code": 0,
+      "status": "P08_LOCAL_PREPARATION_CHECK_PASSED_NO_ACTION"
+    },
+    "--operator-diagnostic": {
+      "code": 2,
+      "status": "P08_REFUSED_OPERATOR_WINDOW_NOT_BOUND"
+    },
+    "--operator-diagnostic-closeout": {
+      "code": 2,
+      "status": "P08_REFUSED_OPERATOR_WINDOW_NOT_BOUND"
+    },
+    "--purge-operator-private": {
+      "code": 0,
+      "status": "P08_OPERATOR_PRIVATE_ALREADY_ABSENT"
+    },
+    "--qualify": {
+      "code": 2,
+      "status": "P08_REFUSED_WINDOW_NOT_BOUND"
+    },
+    "--run": {
+      "code": 2,
+      "status": "P08_PAYMENT_BINDING_REQUIRED_NO_ACTION"
+    }
+  },
+  "retirementMechanism": "Explicit local --purge-operator-private; no background deletion timer is installed or claimed",
+  "status": "P08_OPERATOR_DIAGNOSTIC_LOCAL_VERIFIED_DISABLED",
+  "testBreakdown": {
+    "actualPostgreSQL": 5,
+    "newDiagnosticController": 16,
+    "originalController": 26
+  },
+  "testsPassed": 47,
+  "unchangedSourceTestFiles": [
+    "test_controller.py",
+    "operator-bridge.mjs",
+    "operator-bridge.test.mjs",
+    "test_postgres_contract.py",
+    "db-closeout.mjs",
+    "p07-payment-runtime-role-review.sql",
+    "reuse-source.json",
+    "browser-test-toolchain.json"
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "package": "playwright",
+  "version": "1.64.1",
+  "packageLockSha256": "43751ed4a1d8076399e055cd572401ae9e0039210048bae7a06e74969160c409",
+  "installScripts": false,
+  "browserDownloads": false,
+  "scope": "private scratch test dependency only"
+}
