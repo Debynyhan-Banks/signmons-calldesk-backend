@@ -11,3 +11,7 @@ No payment/Checkout, booking/messages/customer action, Firebase/operator selecti
 Retained runtime is now retired; do not reopen/re-enable it or replay consumed packets. P08 operator selection remains unresolved (zero/one/multiple was not retained by the prior qualification). Next is a separately reviewed fresh operator-diagnostic/retention and payment-readiness plan reflecting retired resources, not assumed payment authority or reuse of the expired diagnostic. Any future runtime/identity/access/payment action needs its own exact scope/approval; no action is included here. Accepted1A/1B/2A/2B and0/27 newly closed R1;6/60 legacy;4/8 walkthrough;0/13 intelligence unchanged.
 
 **Disclosed deviation: original mandatory retirement deadline missed; exact owner-approved late cleanup now verified. No additional scope deviation from that exact operation.**
+
+## Owner Terminal corroboration
+
+Owner answered “Yes, P07_LATE_RETIREMENT_VERIFIED” to call_43bab81eb52747959b03aa594763a854. New owner-terminal-corroboration.json binds the unchanged saved result hash and actual fixed status; earlier pending statements describe the prior record. Cleanup result is now live-demonstrated and owner-corroborated, not 3A/payment acceptance. No rerun or further provider call. Original missed deadline remains disclosed.

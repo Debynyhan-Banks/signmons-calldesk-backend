@@ -1,0 +1,11 @@
+{
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "originalRetirementDeadlineMissed": true,
+  "owner": "Debynyhan Banks",
+  "ownerAnswer": "Yes, P07_LATE_RETIREMENT_VERIFIED",
+  "paymentOr3AAcceptance": false,
+  "questionCall": "call_43bab81eb52747959b03aa594763a854",
+  "recordedAtUtc": "2026-10-24T00:38:13.891068Z",
+  "resultSha256": "02ee666d74b1b0bad3a5ae1a68459961e8fd6f0b2828b54d4d13faf176e43300",
+  "terminalMatchesSavedResult": true
+}
