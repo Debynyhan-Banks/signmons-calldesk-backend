@@ -1,0 +1,22 @@
+{
+  "actualAttempt": false,
+  "actualOwnerApproval": false,
+  "bindingCanonicalSha256": "fec6d871aae023f5b1ee75da5a7fad12a70940c59000d4e7beaaba02b8738c0d",
+  "externalCalls": 0,
+  "manifestSha256": "070cde389cddbd714e65b0f9f29ed0819522e70d58db46839b4a60d42bb78013",
+  "operationId": "cf0bfa5c-d6b7-4481-92e2-a975a1175c03",
+  "positiveExactNewProposalAndLocalDecision": true,
+  "proposalCommit": "67cb6fe54531eb8310398ff91b95d95bd6d7b6ac",
+  "proposalSha256": "d624c4701dcb92eab0bbb4b22bc10bb725404018470a3dee0bfed0347dae3cd1",
+  "refusals": {
+    "--operator-diagnostic": "P08_REFUSED_PRIVATE_FILE_INVALID",
+    "--qualify": "P08_REFUSED_WINDOW_NOT_BOUND",
+    "--run": "P08_PAYMENT_BINDING_REQUIRED_NO_ACTION",
+    "AT_CUTOFF": "OPERATOR_START_CUTOFF",
+    "BEFORE_START": "OPERATOR_NOT_YET_START",
+    "MISSING": "OPERATOR_APPROVAL_INVALID",
+    "OLD": "OPERATOR_APPROVAL_INVALID"
+  },
+  "retentionBoundToAttendedEnd": true,
+  "syntheticApprovalInMemoryOnly": true
+}

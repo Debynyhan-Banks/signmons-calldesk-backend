@@ -1,0 +1,20 @@
+{
+  "actions": [
+    "exact_tenant_operator_read",
+    "mandatory_session_closeout",
+    "bounded_private_receipt_retirement"
+  ],
+  "automaticRetryAllowed": false,
+  "closeoutEndUtc": "2026-10-24T01:23:00Z",
+  "cutoffUtc": "2026-10-24T01:15:00Z",
+  "manifestSha256": "070cde389cddbd714e65b0f9f29ed0819522e70d58db46839b4a60d42bb78013",
+  "mode": "READ_ONLY_OPERATOR_DIAGNOSTIC",
+  "operationId": "cf0bfa5c-d6b7-4481-92e2-a975a1175c03",
+  "packetId": "ae27b5a3-edcc-4245-80c2-1591686ff9d3",
+  "planId": "7a75bdd8-e740-43d8-b47e-105db9e94b12",
+  "privateRetentionEndUtc": "2026-10-24T01:30:00Z",
+  "proposalCommit": "67cb6fe54531eb8310398ff91b95d95bd6d7b6ac",
+  "proposalSha256": "d624c4701dcb92eab0bbb4b22bc10bb725404018470a3dee0bfed0347dae3cd1",
+  "startUtc": "2026-10-24T01:00:00Z",
+  "workEndUtc": "2026-10-24T01:20:00Z"
+}
