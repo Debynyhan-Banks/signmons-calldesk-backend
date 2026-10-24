@@ -1,0 +1,5 @@
+# APP-013 /3A P07 late-retirement exact window binding
+
+Prepared exact cleanup-only operation356203f, source manifest29fdcdbe8dd82e241ce05133c6a5d68b2ebd274c5c8a14774782ffe562dbc14b unchanged from92-test proof. Fresh binding/proposal pinned and local source/clean-repository checks pass; positive future-start and before-start/cutoff/missing/old approval guards tested using synthetic approval in memory only, never installed. Native CLI --check passes; --retire refuses before input because actual owner approval absent; --run refuses cleanup-only usage. No real input, provider/browser/database call, actual approval/attempt/result.
+
+Tonight October23 start8:30 p.m. Eastern; strict8:40 cutoff; input/actions/current readbacks through9:12; owner attendance through9:15. Original mandatory6:15 p.m. retirement deadline remains missed, not extended. Immutable source/journal retained. Actual external approval/hidden CHILD password/fresh exact Stripe metadata readback/current resource cleanup/result remain pending. Accepted counts unchanged. No additional scope deviation beyond proposed exact recovery of disclosed overdue retirement.

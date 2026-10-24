@@ -1,0 +1,24 @@
+{
+  "actualAttemptPresent": false,
+  "actualOwnerApprovalPresent": false,
+  "bindingCanonicalSha256": "44adae6ae2135cd7d0ff0c8dcfb2c516533bb021dc03c420bfad2b3cf9447666",
+  "checkedAtUtc": "2026-10-24T00:25:44.989249Z",
+  "externalCalls": 0,
+  "manifestSha256": "29fdcdbe8dd82e241ce05133c6a5d68b2ebd274c5c8a14774782ffe562dbc14b",
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "originalDeadlineUnchanged": true,
+  "positiveFutureStart": true,
+  "proposalCommit": "356203f811bab74e9356f4f189bf1ba7d236f777",
+  "proposalSha256": "4c2abe8fbd7380b9f664012dd603ff2800c0fcff22125413158312b86208f378",
+  "refusals": {
+    "--check": "P07_CLEANUP_PREPARATION_CHECK_PASSED_NO_ACTION",
+    "--retire": "P07_CLEANUP_REFUSED_PRIVATE_FILE_INVALID",
+    "--run": "P07_CLEANUP_REFUSED_USAGE_CLEANUP_ONLY",
+    "AT_CUTOFF": "START_CUTOFF",
+    "BEFORE_START": "NOT_YET_START",
+    "MISSING_APPROVAL": "OWNER_APPROVAL_INVALID",
+    "OLD_OWNER_APPROVAL": "OWNER_APPROVAL_INVALID"
+  },
+  "status": "EXACT_CLEANUP_BOUND_NOT_APPROVED_NOT_ATTEMPTED",
+  "syntheticApprovalInMemoryOnly": true
+}
