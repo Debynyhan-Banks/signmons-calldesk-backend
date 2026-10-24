@@ -1,0 +1,22 @@
+{
+  "files": {
+    "README.txt": "6e3a459f1d91b0277bd81082fd0668e7e475f3f17f7e2d823ddd0017fc589639",
+    "browser-test-toolchain.json": "9666dd3a8bf89f7952918bc2d743bf0fc923584451c5de2ff88e4c8f31eddf56",
+    "controller.py": "7b43d332625bbf7f2735187bf5709f0e6ff58c975d98c1b4aef33f911f77807c",
+    "db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+    "operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
+    "operator-bridge.test.mjs": "aa79fc01fcfe42f0c8629e0c54b1edf0f4c6d1b025309effdbb3b8aaafbf7b66",
+    "p07-payment-runtime-role-review.sql": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+    "plan.json": "de0b2684bcb90fc4f2d933fb36c8f1acc4da13bb1c54fcbfa88d304e590ecec9",
+    "reuse-source.json": "a1ede5abf99fb2d521250050f488d41e25be7212b8ce2119c48bc85b741bb378",
+    "test_controller.py": "5839657c53c2fb83dc5c0b2b18183c654dc73a33f088c96c05c5feda8faac4d1",
+    "test_operator_diagnostic.py": "50e2c796b1461cb7a7f8c96da177c58ba8e223e0c7b72e8a7478fc0885c4dc04",
+    "test_operator_diagnostic_postgres.py": "864f4800232a4df0f6ea387c119582ff893066e27db58f556e40584e2ac75384",
+    "test_postgres_contract.py": "f4a7ded4cecb41ba4b0fa9fe746f403d0d10635e48937bd5459b6e217f2a3f33",
+    "test_renewal_retention.py": "403439e22199e0f3a520030b8343af1bc4f260a3ffde3338e66b29afa2cbd5f8"
+  },
+  "operationId": "ffe73b39-b222-4cee-93f7-ad4b02884a53",
+  "packetId": "2ea0f150-2025-4112-a77a-29d062fa6071",
+  "planId": "38169374-03c5-4f25-be63-9acfcaeec836",
+  "status": "PREPARATION_ONLY"
+}

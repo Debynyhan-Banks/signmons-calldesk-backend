@@ -1,0 +1,10 @@
+test_real_pg_absent_inactive_tenant_are_invalid_not_zero (test_operator_diagnostic_postgres.OperatorDiagnosticPostgreSQL.test_real_pg_absent_inactive_tenant_are_invalid_not_zero) ... ok
+test_real_pg_excludes_foreign_inactive_and_disallowed_roles (test_operator_diagnostic_postgres.OperatorDiagnosticPostgreSQL.test_real_pg_excludes_foreign_inactive_and_disallowed_roles) ... ok
+test_real_pg_order_cap_and_json_boolean_encoding (test_operator_diagnostic_postgres.OperatorDiagnosticPostgreSQL.test_real_pg_order_cap_and_json_boolean_encoding) ... ok
+test_real_pg_readonly_write_refusal_and_session_absence (test_operator_diagnostic_postgres.OperatorDiagnosticPostgreSQL.test_real_pg_readonly_write_refusal_and_session_absence) ... ok
+test_real_pg_zero_one_two_and_more_than_two_total_output (test_operator_diagnostic_postgres.OperatorDiagnosticPostgreSQL.test_real_pg_zero_one_two_and_more_than_two_total_output) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 1.013s
+
+OK

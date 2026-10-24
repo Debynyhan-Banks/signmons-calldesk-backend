@@ -1,0 +1,11 @@
+--- renewal1/test_renewal_retention.py
++++ renewal2/test_renewal_retention.py
+@@ -11,7 +11,7 @@
+    adapter={'input':lambda prompt:'synthetic-only','database':lambda password:json.dumps(fixture.raw(3)),'closeout':lambda password:True}
+    with patch.object(c,'ROOT',root):
+     result=c.operator_diagnostic(b,a,adapter);self.assertIn('MULTIPLE_ELIGIBLE',result)
+-    private=json.loads((root/'operator-diagnostic-private.json').read_text());self.assertEqual(private['operationId'],c.PLAN['operationId']);self.assertEqual(private['retentionDeadlineUtc'],'2026-10-24T01:30:00Z');self.assertEqual(len(private['diagnostic']['candidates']),2)
++    private=json.loads((root/'operator-diagnostic-private.json').read_text());self.assertEqual(private['operationId'],c.PLAN['operationId']);self.assertEqual(private['retentionDeadlineUtc'],'2026-10-24T12:45:00Z');self.assertEqual(len(private['diagnostic']['candidates']),2)
+     public_before=(root/'operator-diagnostic-result.json').read_bytes();self.assertNotIn(fixture.ACTOR.encode(),public_before)
+     self.assertEqual(c.purge_operator_private(),'P08_OPERATOR_PRIVATE_RETIRED');self.assertFalse((root/'operator-diagnostic-private.json').exists());self.assertEqual((root/'operator-diagnostic-result.json').read_bytes(),public_before)
+     retirement=json.loads((root/'operator-private-retirement.json').read_text());self.assertTrue(retirement['privateReceiptAbsent']);self.assertEqual(retirement['operationId'],c.PLAN['operationId']);self.assertEqual(retirement['diagnostic']['classification'],'MULTIPLE_ELIGIBLE');self.assertEqual(c.purge_operator_private(),'P08_OPERATOR_PRIVATE_ALREADY_ABSENT')
