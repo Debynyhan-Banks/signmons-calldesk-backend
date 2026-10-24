@@ -1,0 +1,12 @@
+{
+  "operationId": "ffe73b39-b222-4cee-93f7-ad4b02884a53",
+  "owner": "Debynyhan Banks",
+  "paymentOr3AAcceptance": false,
+  "recordedAtUtc": "2026-10-24T12:20:05.601394Z",
+  "reportedStatusLines": [
+    "P08_OPERATOR_DIAGNOSTIC_COMPLETE_ZERO_ELIGIBLE",
+    "CONTAINMENT_VERIFIED"
+  ],
+  "resultSha256": "a70c5ae401c9f6693851efa77fa7bba72ce43494ae937a2554bb034782559343",
+  "terminalMatchesSavedResult": true
+}

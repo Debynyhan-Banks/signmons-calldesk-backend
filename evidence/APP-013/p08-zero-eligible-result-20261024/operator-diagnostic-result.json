@@ -1,0 +1,17 @@
+{
+  "automaticRetryAllowed": false,
+  "businessMutation": false,
+  "diagnostic": {
+    "candidateHashes": [],
+    "classification": "ZERO_ELIGIBLE",
+    "eligibleCount": 0,
+    "reason": null,
+    "truncated": false
+  },
+  "operationId": "ffe73b39-b222-4cee-93f7-ad4b02884a53",
+  "operatorSelected": false,
+  "paymentAuthorized": false,
+  "privateRetentionEndUtc": "2026-10-24T12:45:00Z",
+  "sessionsAbsent": true,
+  "status": "P08_OPERATOR_DIAGNOSTIC_COMPLETE_ZERO_ELIGIBLE"
+}

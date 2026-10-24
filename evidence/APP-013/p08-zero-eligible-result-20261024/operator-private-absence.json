@@ -1,0 +1,14 @@
+{
+  "beforeRetentionDeadline": true,
+  "candidateDataCreated": false,
+  "deletionRequired": false,
+  "eligibleCount": 0,
+  "externalCalls": 0,
+  "localPurgeHelperStatus": "P08_OPERATOR_PRIVATE_ALREADY_ABSENT",
+  "observedAtUtc": "2026-10-24T12:20:05.601394Z",
+  "operationId": "ffe73b39-b222-4cee-93f7-ad4b02884a53",
+  "privateReceiptAbsent": true,
+  "privateSymlinkAbsent": true,
+  "resultSha256": "a70c5ae401c9f6693851efa77fa7bba72ce43494ae937a2554bb034782559343",
+  "status": "P08_OPERATOR_PRIVATE_ABSENCE_VERIFIED"
+}

@@ -1,0 +1,13 @@
+{
+  "actualAttempt": false,
+  "approvalSha256": "d7f61b9e89e3fd904e0ee9dfead31f1d2cc3761fc9db01fc8ea6851c7e89947a",
+  "approvedAtUtc": "2026-10-24T12:05:57.186724Z",
+  "bindingCanonicalSha256": "2d160416d2cd59cc5d72b5643775a0df00efcc661cf9d0cb9621f23042a299ca",
+  "externalCalls": 0,
+  "manifestSha256": "f50c535d314423e14d4ca802e0ee1b341cf470d117fd21be0e639ac0670af671",
+  "operationId": "ffe73b39-b222-4cee-93f7-ad4b02884a53",
+  "ownerAnswer": "Approve this exact morning database-only diagnostic",
+  "proposalCommit": "6a3b6502fe003ebaa4472ee7d6198a2d6d02b8cb",
+  "proposalSha256": "2e6fe3f6d59616653becacf9c8b56a9898918a522dc86e3112de0407cb4d0509",
+  "questionCall": "call_dfae69761259453c9175b87c4c644da9"
+}
