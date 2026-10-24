@@ -1,0 +1,19 @@
+{
+  "allSecretVersionsNumeric": true,
+  "automaticRetryAllowed": false,
+  "availabilityIsExecutionApproval": false,
+  "currentCloudDatabaseStripeState": "NOT_READ",
+  "externalCalls": 0,
+  "journalScopedBindings": 7,
+  "journalSecretVersions": 6,
+  "observedAtUtc": "2026-10-24T00:13:27.734209Z",
+  "originalJournalSha256": "46283a76afad78f82b12988ba9d80e631c6734fa42d86c34b614dc6ac1611638",
+  "originalOperationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "originalRetirementDeadlineUtc": "2026-10-23T22:15:00Z",
+  "ownerAvailabilityEastern": "2026-10-23 20:15 through 21:15",
+  "recoveryReceiptPresent": false,
+  "retirementReceiptPresent": false,
+  "sourceIntegrity": true,
+  "sourceManifestSha256": "006a0c5e4d204cdc8d0b0042c9336724c4b553251dacfd3b42ad17d506b6300c",
+  "status": "P07_RETIREMENT_OVERDUE_NO_COMPLETION_RECEIPT"
+}
