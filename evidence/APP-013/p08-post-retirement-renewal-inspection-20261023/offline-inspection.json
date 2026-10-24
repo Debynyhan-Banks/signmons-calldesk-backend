@@ -1,0 +1,15 @@
+{
+  "externalCalls": 0,
+  "newPackageCreated": false,
+  "newRetentionApproved": false,
+  "newWindowChosen": false,
+  "observedAtUtc": "2026-10-24T00:52:42.891954Z",
+  "oldCandidateReceiptAbsent": true,
+  "oldRetirementDeadlineUtc": "2026-10-23T22:15:00Z",
+  "originalDiagnosticUnstarted": true,
+  "originalSourceIntegrity": true,
+  "ownerCorroborationCommit": "e9028da",
+  "p07ResultEvidenceCommit": "58ebeaf",
+  "p07RetirementResult": "P07_LATE_RETIREMENT_VERIFIED",
+  "sourceManifestSha256": "bd062aac5bf1e709f21b5d733a04fca2d107c59500083e20f586cc02f233460f"
+}
