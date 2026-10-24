@@ -1,0 +1,14 @@
+{
+  "kind": "OFFLINE_ACTUAL_BINDING_PROOF_SYNTHETIC_APPROVAL_IN_MEMORY_ONLY",
+  "proposalCommit": "46647952969411407086e6b873e8fd8579f7fd29",
+  "planSha256": "0cf3f103792d10e0fd8f88c2ab74e4b0661ed156406c8d0faa3ce82283bd0759",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "positive": "PASS",
+  "beforeStart": "BEFORE_START",
+  "cutoff": "START_CUTOFF",
+  "missingApproval": "EXACT_OWNER_APPROVAL_REQUIRED",
+  "actualApprovalFileAbsent": true,
+  "actualAttemptAbsent": true,
+  "providerCalls": 0,
+  "credentialCalls": 0
+}
