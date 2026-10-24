@@ -1,0 +1,93 @@
+test_already_retired_provider_states_are_read_back (test_cleanup.Tests.test_already_retired_provider_states_are_read_back) ... P07_LATE_RETIREMENT_VERIFIED
+ok
+test_before_start_cutoff_and_expired_refuse (test_cleanup.Tests.test_before_start_cutoff_and_expired_refuse) ... ok
+test_clock_rechecked_before_reservation (test_cleanup.Tests.test_clock_rechecked_before_reservation) ... ok
+test_command_allowlist_excludes_provisioning_and_shared_version_disable (test_cleanup.Tests.test_command_allowlist_excludes_provisioning_and_shared_version_disable) ... P07_LATE_RETIREMENT_VERIFIED
+ok
+test_deadline_shape_and_original_deadline_cannot_change (test_cleanup.Tests.test_deadline_shape_and_original_deadline_cannot_change) ... ok
+test_each_cleanup_failure_keeps_residual_without_false_verified (test_cleanup.Tests.test_each_cleanup_failure_keeps_residual_without_false_verified) ... P07_LATE_RETIREMENT_UNCONFIRMED
+P07_LATE_RETIREMENT_UNCONFIRMED
+P07_LATE_RETIREMENT_UNCONFIRMED
+P07_LATE_RETIREMENT_UNCONFIRMED
+P07_LATE_RETIREMENT_UNCONFIRMED
+ok
+test_foreign_extra_duplicate_and_unknown_resources_refuse (test_cleanup.Tests.test_foreign_extra_duplicate_and_unknown_resources_refuse) ... ok
+test_fresh_complete_binding_is_required (test_cleanup.Tests.test_fresh_complete_binding_is_required) ... ok
+test_full_cleanup_executes_existing_functions_and_current_role_readback (test_cleanup.Tests.test_full_cleanup_executes_existing_functions_and_current_role_readback) ... P07_LATE_RETIREMENT_VERIFIED
+ok
+test_json_receipts_exclusive_private_and_symlink_refused (test_cleanup.Tests.test_json_receipts_exclusive_private_and_symlink_refused) ... ok
+test_late_readback_never_returns_verified (test_cleanup.Tests.test_late_readback_never_returns_verified) ... P07_RETIREMENT_STRIPE_READBACK_READY
+P07_LATE_RETIREMENT_UNCONFIRMED
+ok
+test_local_source_and_exact_resources (test_cleanup.Tests.test_local_source_and_exact_resources) ... ok
+test_no_terminal_no_action (test_cleanup.Tests.test_no_terminal_no_action) ... ok
+test_preparation_cli_cannot_launch_any_old_mode (test_cleanup.Tests.test_preparation_cli_cannot_launch_any_old_mode) ... ok
+test_private_modes_directory_and_files (test_cleanup.Tests.test_private_modes_directory_and_files) ... ok
+test_real_concurrent_reservation_only_one_winner (test_cleanup.Tests.test_real_concurrent_reservation_only_one_winner) ... ok
+test_real_hidden_input_deadline_restores_echo (test_cleanup.Tests.test_real_hidden_input_deadline_restores_echo) ... ok
+test_real_sigint_hidden_input_truthfully_unconfirmed (test_cleanup.Tests.test_real_sigint_hidden_input_truthfully_unconfirmed) ... ok
+test_real_sigterm_hidden_input_truthfully_unconfirmed (test_cleanup.Tests.test_real_sigterm_hidden_input_truthfully_unconfirmed) ... ok
+test_receipt_write_failure_never_prints_verified (test_cleanup.Tests.test_receipt_write_failure_never_prints_verified) ... ok
+test_repeated_signals_during_cleanup_do_not_abort_it (test_cleanup.Tests.test_repeated_signals_during_cleanup_do_not_abort_it) ... FAIL
+test_source_hash_manifest_inventory_and_journal_pins (test_cleanup.Tests.test_source_hash_manifest_inventory_and_journal_pins) ... ok
+test_stale_role_or_stripe_result_refuses_before_input (test_cleanup.Tests.test_stale_role_or_stripe_result_refuses_before_input) ... ERROR
+test_stripe_must_be_fresh_exact_operation_and_destination (test_cleanup.Tests.test_stripe_must_be_fresh_exact_operation_and_destination) ... ERROR
+test_wrong_old_or_missing_approval_refuses (test_cleanup.Tests.test_wrong_old_or_missing_approval_refuses) ... ok
+
+======================================================================
+ERROR: test_stale_role_or_stripe_result_refuses_before_input (test_cleanup.Tests.test_stale_role_or_stripe_result_refuses_before_input)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/cleanup.py", line 36, in save
+    fd=os.open(ROOT/name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+FileExistsError: [Errno 17] File exists: '/var/folders/kl/3mw81_0d2b79w2_h57w465km0000gn/T/p07-cleanup-test-hzdcuom9/stripe-readback.json'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/test_cleanup.py", line 130, in test_stale_role_or_stripe_result_refuses_before_input
+    w.save(name,{})
+    ~~~~~~^^^^^^^^^
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/cleanup.py", line 38, in save
+    except FileExistsError:raise Stop('ALREADY_RESERVED_OR_RECEIPT_EXISTS')
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+cleanup_supervisor.Stop: ALREADY_RESERVED_OR_RECEIPT_EXISTS
+
+======================================================================
+ERROR: test_stripe_must_be_fresh_exact_operation_and_destination (test_cleanup.Tests.test_stripe_must_be_fresh_exact_operation_and_destination)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/cleanup.py", line 36, in save
+    fd=os.open(ROOT/name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+FileExistsError: [Errno 17] File exists: '/var/folders/kl/3mw81_0d2b79w2_h57w465km0000gn/T/p07-cleanup-test-cpdcpppt/stripe-readback.json'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/test_cleanup.py", line 135, in test_stripe_must_be_fresh_exact_operation_and_destination
+    b,a=self.bound();attempt={'startedAtUtc':w.utc()};self.fake_stripe(attempt,b);good=w.read('stripe-readback.json')
+                                                      ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/test_cleanup.py", line 48, in fake_stripe
+    w.save('stripe-readback.json',receipt);w.stripe_valid(receipt,attempt,binding)
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/cleanup.py", line 38, in save
+    except FileExistsError:raise Stop('ALREADY_RESERVED_OR_RECEIPT_EXISTS')
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+cleanup_supervisor.Stop: ALREADY_RESERVED_OR_RECEIPT_EXISTS
+
+======================================================================
+FAIL: test_repeated_signals_during_cleanup_do_not_abort_it (test_cleanup.Tests.test_repeated_signals_during_cleanup_do_not_abort_it)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/test_cleanup.py", line 217, in test_repeated_signals_during_cleanup_do_not_abort_it
+    def test_repeated_signals_during_cleanup_do_not_abort_it(self):self.child_pty(repeated=True)
+                                                                   ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/p07-overdue-retirement-20261023-prep1/test_cleanup.py", line 209, in child_pty
+    if repeated:self.assertEqual(p.returncode,0);self.assertEqual(receipt['status'],'P07_LATE_RETIREMENT_VERIFIED')
+                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 25 tests in 2.273s
+
+FAILED (failures=1, errors=2)

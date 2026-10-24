@@ -1,0 +1,24 @@
+{
+  "actions": [
+    "close_exact_role",
+    "remove_exact_tag",
+    "disable_six_exact_versions",
+    "remove_seven_exact_bindings",
+    "disable_exact_identity",
+    "fresh_stripe_and_normal_traffic_readback"
+  ],
+  "automaticRetryAllowed": false,
+  "externalActionAuthorized": false,
+  "localDecisionCommit": "8a6377a122088bfd98ee07f3053aa12940c91f52",
+  "localProposalCommit": "2f2a419",
+  "localProposalSha256": "19dd94593420fc9ff42785bb34c11b05507bf379722d0ea9892f15218327833e",
+  "mode": "CLEANUP_ONLY",
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "originalJournalSha256": "46283a76afad78f82b12988ba9d80e631c6734fa42d86c34b614dc6ac1611638",
+  "originalManifestSha256": "006a0c5e4d204cdc8d0b0042c9336724c4b553251dacfd3b42ad17d506b6300c",
+  "originalOperationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "originalRetirementDeadlineUtc": "2026-10-23T22:15:00Z",
+  "packetId": "9f257010-5fe9-48d5-830c-8338980cbc80",
+  "planId": "89165e55-4f04-4e1c-b271-e1d11afa63b9",
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY"
+}

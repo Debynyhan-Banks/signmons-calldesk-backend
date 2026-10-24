@@ -1,0 +1,24 @@
+{
+  "files": {
+    "README.txt": "21054a94d66c8bbf970da8c291b3cf78a588d8a586c0cd23b6a4268b02dd0d52",
+    "cleanup-plan.json": "9d2c3329bbb3b5ce35dd10f17fc766805a9193cc7ff64b4e9d48a419e416703c",
+    "cleanup.py": "ba06c4c44b82bc1d51c1c22af6fa68ebb07a8821319ee18a0bebb3e1f36c527a",
+    "db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+    "legacy-manifest.json": "006a0c5e4d204cdc8d0b0042c9336724c4b553251dacfd3b42ad17d506b6300c",
+    "legacy/README.txt": "9116f0c9574b411508557a1d93a1c5b9a18cc3a2864403c9a2a4531afc36aaa0",
+    "legacy/binding.json": "a8735f8b7b8f94ecef2a62a730404d9ced405c2e62468cc59e15be947cd4f306",
+    "legacy/controller.py": "093a69824feef7f0885680ba92685927ca5e8259c0752608ca2e84f3abc285ae",
+    "legacy/db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+    "legacy/firebase-read.mjs": "d2dec2cec6d6e74d30650720ad0e07265ca1ccc02863c7ec5fe2641c7736361c",
+    "legacy/iam-actas-read.mjs": "5ecf70d5d1bfd8f9a5fc9efd0e616665ec0b99d28f1d2846fcca5a5695e7c0d7",
+    "legacy/p07-payment-runtime-role-review.sql": "35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c",
+    "legacy/plan.json": "d330fbd2dad27c290b6b575c744eda1a32de7d3a17406f58c6fd0bbe7acd05c8",
+    "legacy/test_controller.py": "368bae0f09e758c5587dfea16429490e43bc69302bec829481c6012da451f30d",
+    "legacy/test_postgres_contract.py": "c8051318d13c482cd10c8e404dd615274b81ea24188896f751194f4fbfb8f68c",
+    "source-journal.json": "46283a76afad78f82b12988ba9d80e631c6734fa42d86c34b614dc6ac1611638",
+    "source-result.json": "90a4e9f7afb16d4af69a299a7b7655f5cd1c2e845ca1efec455e24456597ca57",
+    "test_cleanup.py": "b916d368ede2b3d3438c39719c1d8ac6656e5c24dc15b84540d85ebb4f826f75"
+  },
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY"
+}
