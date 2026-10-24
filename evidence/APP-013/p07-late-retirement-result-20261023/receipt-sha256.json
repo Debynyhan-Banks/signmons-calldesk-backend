@@ -1,0 +1,12 @@
+{
+  "cleanup-attempt.json": "add5700f14518569c2f4e67a34d6865ff12a4dbf907fa8e500cbfc493e5589c5",
+  "cleanup-binding.json": "889c76b26b547c846ba77593b0fd3386d392b738d73150345a1d7c82e7840294",
+  "cleanup-manifest.json": "29fdcdbe8dd82e241ce05133c6a5d68b2ebd274c5c8a14774782ffe562dbc14b",
+  "cleanup-owner-approval.json": "cf372bc5ca74366b1faef45a1a86408cc63bcd0cadf14ced59a33a2d0e647c77",
+  "cleanup-result.json": "02ee666d74b1b0bad3a5ae1a68459961e8fd6f0b2828b54d4d13faf176e43300",
+  "owner-decision-provenance.json": "6971a11221368bfe4d1928524c74fe45fc87ee754a8276111720a875ed7a9c03",
+  "role-closeout.json": "bfc1c50148f222dac9a6bb4075733bf10a419b7b68ab4a8364a914cf0eb3b75c",
+  "stripe-readback-provenance.json": "f94eef4a2a5dc01192be0b045aa22d632413f0b00d2524a32d8c583a41848086",
+  "stripe-readback-request.json": "cfbeb1ce8a20350ded700db62d935999a3636627f60b38a83501d5eab41a186c",
+  "stripe-readback.json": "28e8ff7fb1ab89d768daeb150676ac4e3b7cd33442829d8ace6c4f00bc0b3328"
+}

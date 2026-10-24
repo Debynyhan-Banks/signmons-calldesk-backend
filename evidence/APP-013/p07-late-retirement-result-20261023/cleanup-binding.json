@@ -1,0 +1,24 @@
+{
+  "actions": [
+    "close_exact_role",
+    "remove_exact_tag",
+    "disable_six_exact_versions",
+    "remove_seven_exact_bindings",
+    "disable_exact_identity",
+    "fresh_stripe_and_normal_traffic_readback"
+  ],
+  "automaticRetryAllowed": false,
+  "cutoffUtc": "2026-10-24T00:40:00Z",
+  "endUtc": "2026-10-24T01:12:00Z",
+  "manifestSha256": "29fdcdbe8dd82e241ce05133c6a5d68b2ebd274c5c8a14774782ffe562dbc14b",
+  "mode": "CLEANUP_ONLY",
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "originalOperationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "originalRetirementDeadlineUtc": "2026-10-23T22:15:00Z",
+  "packetId": "9f257010-5fe9-48d5-830c-8338980cbc80",
+  "planId": "89165e55-4f04-4e1c-b271-e1d11afa63b9",
+  "proposalCommit": "356203f811bab74e9356f4f189bf1ba7d236f777",
+  "proposalName": "APP013_P07_LATE_RETIREMENT_OPERATION_20261023.md",
+  "proposalSha256": "4c2abe8fbd7380b9f664012dd603ff2800c0fcff22125413158312b86208f378",
+  "startUtc": "2026-10-24T00:30:00Z"
+}

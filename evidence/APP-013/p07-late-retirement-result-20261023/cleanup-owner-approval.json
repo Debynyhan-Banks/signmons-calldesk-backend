@@ -1,0 +1,18 @@
+{
+  "actions": [
+    "close_exact_role",
+    "remove_exact_tag",
+    "disable_six_exact_versions",
+    "remove_seven_exact_bindings",
+    "disable_exact_identity",
+    "fresh_stripe_and_normal_traffic_readback"
+  ],
+  "approvedAtUtc": "2026-10-24T00:28:30.771573Z",
+  "automaticRetryAllowed": false,
+  "bindingSha256": "44adae6ae2135cd7d0ff0c8dcfb2c516533bb021dc03c420bfad2b3cf9447666",
+  "decision": "APPROVED",
+  "manifestSha256": "29fdcdbe8dd82e241ce05133c6a5d68b2ebd274c5c8a14774782ffe562dbc14b",
+  "mode": "CLEANUP_ONLY",
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "owner": "Debynyhan Banks"
+}

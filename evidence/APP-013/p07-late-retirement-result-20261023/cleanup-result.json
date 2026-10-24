@@ -1,0 +1,32 @@
+{
+  "automaticRetryAllowed": false,
+  "businessMutation": false,
+  "completedAtUtc": "2026-10-24T00:35:58.085319Z",
+  "completedSteps": [
+    "ROLE_CLOSEOUT",
+    "REMOVE_TAG",
+    "DISABLE_VERSION_1",
+    "DISABLE_VERSION_2",
+    "DISABLE_VERSION_3",
+    "DISABLE_VERSION_4",
+    "DISABLE_VERSION_5",
+    "DISABLE_VERSION_6",
+    "REMOVE_BINDING_1",
+    "REMOVE_BINDING_2",
+    "REMOVE_BINDING_3",
+    "REMOVE_BINDING_4",
+    "REMOVE_BINDING_5",
+    "REMOVE_BINDING_6",
+    "REMOVE_BINDING_7",
+    "DISABLE_IDENTITY",
+    "STRIPE_READBACK",
+    "NORMAL_TRAFFIC_READBACK"
+  ],
+  "failures": [],
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "originalDeadlineMissed": true,
+  "originalOperationId": "b8d2ac94-3310-4f84-b36a-8495cc919097",
+  "originalRetirementDeadlineUtc": "2026-10-23T22:15:00Z",
+  "remainingSteps": [],
+  "status": "P07_LATE_RETIREMENT_VERIFIED"
+}

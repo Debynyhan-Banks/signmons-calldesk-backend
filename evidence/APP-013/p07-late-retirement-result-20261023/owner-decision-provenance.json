@@ -1,0 +1,13 @@
+{
+  "actualAttemptPresent": false,
+  "approvalSha256": "cf372bc5ca74366b1faef45a1a86408cc63bcd0cadf14ced59a33a2d0e647c77",
+  "approvedAtUtc": "2026-10-24T00:28:30.771573Z",
+  "bindingCanonicalSha256": "44adae6ae2135cd7d0ff0c8dcfb2c516533bb021dc03c420bfad2b3cf9447666",
+  "externalCalls": 0,
+  "manifestSha256": "29fdcdbe8dd82e241ce05133c6a5d68b2ebd274c5c8a14774782ffe562dbc14b",
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "ownerAnswer": "Approve this exact cleanup-only operation",
+  "proposalCommit": "356203f811bab74e9356f4f189bf1ba7d236f777",
+  "proposalSha256": "4c2abe8fbd7380b9f664012dd603ff2800c0fcff22125413158312b86208f378",
+  "questionCall": "call_cb1a71262b5a4aca8f7b60aacfecf594"
+}

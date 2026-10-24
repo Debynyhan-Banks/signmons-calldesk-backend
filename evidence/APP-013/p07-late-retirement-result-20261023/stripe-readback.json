@@ -1,0 +1,9 @@
+{
+  "deliveryAttempts": 0,
+  "destinationName": "Signmons P07 same-job sandbox",
+  "destinationUrlSha256": "87e95319ad3a8e88b610cebab2d85a385ce73949ae163c6f539fb89d0abd679d",
+  "disabled": true,
+  "mode": "SANDBOX_TEST",
+  "observedAtUtc": "2026-10-24T00:35:56.856161Z",
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32"
+}

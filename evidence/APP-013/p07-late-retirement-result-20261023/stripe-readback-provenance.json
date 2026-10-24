@@ -1,0 +1,15 @@
+{
+  "accountSandboxBanner": true,
+  "clipboardUsed": false,
+  "configurationChanged": false,
+  "destinationHeadingDisabled": true,
+  "eventDeliveriesText": "No event deliveries found",
+  "eventsSentOrResent": false,
+  "exactUrlMatched": true,
+  "method": "AUTHORIZED_CHROME_UI_FRESH_RELOAD_AND_EVENT_DELIVERIES_TAB",
+  "observedAtUtc": "2026-10-24T00:35:56.856161Z",
+  "operationId": "3e86198b-fa22-4881-9988-d3f023c4cc32",
+  "receiptCanonicalSha256": "df9b4e6ba6be29f43e0c8069a01f58ccc994f760be6897a5ac14fa20d93bad1d",
+  "searchEmpty": true,
+  "signingSecretRevealedOrCopied": false
+}
