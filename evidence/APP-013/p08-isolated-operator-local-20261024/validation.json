@@ -1,0 +1,29 @@
+{
+  "newModel": {
+    "passed": 13,
+    "failed": 0
+  },
+  "actualDisposablePostgreSQL": {
+    "passed": 6,
+    "failed": 0,
+    "log": "logs/p08-bootstrap-postgres-run5.out"
+  },
+  "unchangedReusedBridge": {
+    "passed": 14,
+    "failed": 0
+  },
+  "existingAuthGuardJest": {
+    "passed": 3,
+    "failed": 0
+  },
+  "governanceSafeguards": {
+    "passed": 25,
+    "failed": 0
+  },
+  "frozenBaseline": "PASS",
+  "crossRepositoryConsistency": "PASS",
+  "backendArchitecture": "PASS",
+  "bothRepositoryWhitespace": "PASS",
+  "liveDemonstrated": false,
+  "ownerAccepted3A": false
+}

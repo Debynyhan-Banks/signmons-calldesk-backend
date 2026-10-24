@@ -1,0 +1,149 @@
+✔ actual policy normalizer derives canonical digest and fixed amount without identity/account leakage (2.819958ms)
+✔ total absent/null/foreign rows and existing activity refuse (0.7915ms)
+✔ UUID and actual same-tenant active application actor required before any transport (0.1115ms)
+✔ unqualified/stale money or identity cannot construct upstream (0.101ms)
+✔ exact method/job route allowlist and deadline refuse before transport (0.291083ms)
+✖ bootstrap one-use; bearer stays server-side; cookie private and no persistence (7.163709ms)
+✖ Origin/CSRF/body/unknown action and unacknowledged policy cannot mutate (1.792959ms)
+✖ real HTTP loopback create, controlled lost response, one active recovery, failed/success state and clear (0.255208ms)
+✖ concurrent click has one winner and cannot invoke second policy operation (0.192958ms)
+✖ foreign tracking, money and unexpected gate cannot assert a successful outcome (0.36725ms)
+✖ return query alone has no settlement path (0.21675ms)
+✖ private clear failure cannot claim cleanup succeeded (0.207125ms)
+✖ deadline closes private session without additional action (0.162792ms)
+✖ isolated desktop/mobile browser controls preserve one request and clear private session (0.666709ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 5
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 117.901416
+
+✖ failing tests:
+
+test at operator-bridge.test.mjs:315:1
+✖ bootstrap one-use; bearer stays server-side; cookie private and no persistence (7.163709ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at operator-bridge.test.mjs:339:1
+✖ Origin/CSRF/body/unknown action and unacknowledged policy cannot mutate (1.792959ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at operator-bridge.test.mjs:356:1
+✖ real HTTP loopback create, controlled lost response, one active recovery, failed/success state and clear (0.255208ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at operator-bridge.test.mjs:387:1
+✖ concurrent click has one winner and cannot invoke second policy operation (0.192958ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at operator-bridge.test.mjs:403:1
+✖ foreign tracking, money and unexpected gate cannot assert a successful outcome (0.36725ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at operator-bridge.test.mjs:429:1
+✖ return query alone has no settlement path (0.21675ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at operator-bridge.test.mjs:445:1
+✖ private clear failure cannot claim cleanup succeeded (0.207125ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at operator-bridge.test.mjs:459:1
+✖ deadline closes private session without additional action (0.162792ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at operator-bridge.test.mjs:476:1
+✖ isolated desktop/mobile browser controls preserve one request and clear private session (0.666709ms)
+  AssertionError [ERR_ASSERTION]: PLAYWRIGHT_MODULE must identify an existing installed module
+      at TestContext.<anonymous> (file:///private/tmp/p08-isolated-operator-local-20261024-prep1/reuse/operator-bridge.test.mjs:478:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at runNextTicks (node:internal/process/task_queues:68:3)
+      at process.processImmediate (node:internal/timers:472:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

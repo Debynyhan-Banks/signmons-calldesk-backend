@@ -1,0 +1,22 @@
+✔ actual policy normalizer derives canonical digest and fixed amount without identity/account leakage (1.042ms)
+✔ total absent/null/foreign rows and existing activity refuse (0.720416ms)
+✔ UUID and actual same-tenant active application actor required before any transport (0.100917ms)
+✔ unqualified/stale money or identity cannot construct upstream (0.093792ms)
+✔ exact method/job route allowlist and deadline refuse before transport (0.261292ms)
+✔ bootstrap one-use; bearer stays server-side; cookie private and no persistence (21.267291ms)
+✔ Origin/CSRF/body/unknown action and unacknowledged policy cannot mutate (16.555833ms)
+✔ real HTTP loopback create, controlled lost response, one active recovery, failed/success state and clear (5.944708ms)
+✔ concurrent click has one winner and cannot invoke second policy operation (4.468917ms)
+✔ foreign tracking, money and unexpected gate cannot assert a successful outcome (8.747209ms)
+✔ return query alone has no settlement path (1.353416ms)
+✔ private clear failure cannot claim cleanup succeeded (1.971917ms)
+✔ deadline closes private session without additional action (303.293834ms)
+✔ isolated desktop/mobile browser controls preserve one request and clear private session (3020.481125ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3504.335125

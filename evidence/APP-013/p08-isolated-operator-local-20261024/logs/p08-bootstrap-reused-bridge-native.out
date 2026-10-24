@@ -1,0 +1,43 @@
+✔ actual policy normalizer derives canonical digest and fixed amount without identity/account leakage (1.037625ms)
+✔ total absent/null/foreign rows and existing activity refuse (1.494583ms)
+✔ UUID and actual same-tenant active application actor required before any transport (0.134958ms)
+✔ unqualified/stale money or identity cannot construct upstream (0.114541ms)
+✔ exact method/job route allowlist and deadline refuse before transport (0.302083ms)
+✔ bootstrap one-use; bearer stays server-side; cookie private and no persistence (19.607125ms)
+✔ Origin/CSRF/body/unknown action and unacknowledged policy cannot mutate (11.174292ms)
+✔ real HTTP loopback create, controlled lost response, one active recovery, failed/success state and clear (7.231791ms)
+✔ concurrent click has one winner and cannot invoke second policy operation (3.223542ms)
+✔ foreign tracking, money and unexpected gate cannot assert a successful outcome (5.642875ms)
+✔ return query alone has no settlement path (1.018041ms)
+✔ private clear failure cannot claim cleanup succeeded (1.366042ms)
+✔ deadline closes private session without additional action (303.183084ms)
+✖ isolated desktop/mobile browser controls preserve one request and clear private session (2.406208ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 13
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 462.624834
+
+✖ failing tests:
+
+test at operator-bridge.test.mjs:476:1
+✖ isolated desktop/mobile browser controls preserve one request and clear private session (2.406208ms)
+  AssertionError [ERR_ASSERTION]: PLAYWRIGHT_MODULE must identify an existing installed module
+      at TestContext.<anonymous> (file:///private/tmp/p08-isolated-operator-local-20261024-prep1/reuse/operator-bridge.test.mjs:478:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

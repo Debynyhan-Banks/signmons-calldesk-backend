@@ -1,0 +1,15 @@
+
+> signmons-calldesk-backend@0.1.0 test
+> jest --runInBand src/auth/__tests__/request-auth.guard.spec.ts
+
+PASS src/auth/__tests__/request-auth.guard.spec.ts
+  RequestAuthGuard
+    ✓ rejects dev headers when dev auth is disabled (1 ms)
+    ✓ blocks dev auth when running in production
+    ✓ requires role claim in JWT mode
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        0.417 s, estimated 1 s
+Ran all test suites matching src/auth/__tests__/request-auth.guard.spec.ts.

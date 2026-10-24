@@ -1,0 +1,20 @@
+✔ disabled pair refuses authentication, activates through actual guard/qualifier, and closes (1.733125ms)
+✔ exact UUID, tenant-email, existing Firebase UID/email collisions never overwrite (0.443291ms)
+✔ production-looking metadata, wrong tenant, foreign UUID, missing fields and non-mock Firebase refuse (0.13475ms)
+✔ same proof cannot prepare twice or activate a nonowned existing pair (0.11425ms)
+✔ Firebase failure after DB creation leaves disabled owned row and never closes another identity (0.117417ms)
+✔ activation failure remains unconfirmed and cleanup restores disabled pair (0.15525ms)
+✔ wrong app tenant, role, status and Firebase UID/claims cannot authenticate (0.737709ms)
+✔ application disable alone is not proof of Firebase revocation (0.216042ms)
+✔ disable/revoke/app readback failures report residuals and never closed (0.249709ms)
+✔ local reservation is private, exclusive and deadline bounded (4.04125ms)
+✔ two actual processes can reserve only once (177.578625ms)
+✔ live-looking CLI modes refuse without any network operation (531.953042ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1157.725584

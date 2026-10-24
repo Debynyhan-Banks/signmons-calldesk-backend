@@ -1,0 +1,31 @@
+test_01_actual_schema_disabled_pair_and_unique_constraints (test_operator_postgres.OperatorPostgreSQL.test_01_actual_schema_disabled_pair_and_unique_constraints) ... ok
+test_02_full_existing_policy_request_audit_and_disabled_retention (test_operator_postgres.OperatorPostgreSQL.test_02_full_existing_policy_request_audit_and_disabled_retention) ... FAIL
+test_03_existing_uuid_or_email_collision_no_overwrite (test_operator_postgres.OperatorPostgreSQL.test_03_existing_uuid_or_email_collision_no_overwrite) ... ok
+test_04_actual_concurrent_creation_has_one_winner_no_overwrite (test_operator_postgres.OperatorPostgreSQL.test_04_actual_concurrent_creation_has_one_winner_no_overwrite) ... ok
+test_05_required_fields_roles_and_same_tenant_audit_fk (test_operator_postgres.OperatorPostgreSQL.test_05_required_fields_roles_and_same_tenant_audit_fk) ... FAIL
+test_06_adapter_rejects_tcp_before_connection (test_operator_postgres.OperatorPostgreSQL.test_06_adapter_rejects_tcp_before_connection) ... ok
+
+======================================================================
+FAIL: test_02_full_existing_policy_request_audit_and_disabled_retention (test_operator_postgres.OperatorPostgreSQL.test_02_full_existing_policy_request_audit_and_disabled_retention)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-isolated-operator-local-20261024-prep1/test_operator_postgres.py", line 24, in test_02_full_existing_policy_request_audit_and_disabled_retention
+    result=self.execute('flow');self.assertEqual(result.returncode,0,result.stdout.decode());data=json.loads(result.stdout);self.assertEqual(data['status'],'LOCAL_ADMIN_POLICY_REQUEST_AUDIT_AND_DISABLED_RETENTION_PROVED');self.assertEqual(data['mockCheckoutCalls'],1);self.assertTrue(data['disabledRowRetained']);self.assertFalse(data['livePayment'])
+                                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : {"status":"LOCAL_PROOF_REFUSED_OR_FAILED","phase":"REQUEST_AND_REPLAY","code":"ERR_ASSERTION"}
+
+
+======================================================================
+FAIL: test_05_required_fields_roles_and_same_tenant_audit_fk (test_operator_postgres.OperatorPostgreSQL.test_05_required_fields_roles_and_same_tenant_audit_fk)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-isolated-operator-local-20261024-prep1/test_operator_postgres.py", line 42, in test_05_required_fields_roles_and_same_tenant_audit_fk
+    result=self.execute('foreign-audit');self.assertEqual(result.returncode,0,result.stdout.decode());self.assertIn('LOCAL_FOREIGN_AUDIT_REFUSED',result.stdout.decode())
+                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : {"status":"LOCAL_PROOF_REFUSED_OR_FAILED","phase":"FOREIGN_AUDIT","code":"ERR_ASSERTION"}
+
+
+----------------------------------------------------------------------
+Ran 6 tests in 2.993s
+
+FAILED (failures=2)

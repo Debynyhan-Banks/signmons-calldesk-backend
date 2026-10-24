@@ -1,0 +1,11 @@
+test_01_actual_schema_disabled_pair_and_unique_constraints (test_operator_postgres.OperatorPostgreSQL.test_01_actual_schema_disabled_pair_and_unique_constraints) ... ok
+test_02_full_existing_policy_request_audit_and_disabled_retention (test_operator_postgres.OperatorPostgreSQL.test_02_full_existing_policy_request_audit_and_disabled_retention) ... ok
+test_03_existing_uuid_or_email_collision_no_overwrite (test_operator_postgres.OperatorPostgreSQL.test_03_existing_uuid_or_email_collision_no_overwrite) ... ok
+test_04_actual_concurrent_creation_has_one_winner_no_overwrite (test_operator_postgres.OperatorPostgreSQL.test_04_actual_concurrent_creation_has_one_winner_no_overwrite) ... ok
+test_05_required_fields_roles_and_same_tenant_audit_fk (test_operator_postgres.OperatorPostgreSQL.test_05_required_fields_roles_and_same_tenant_audit_fk) ... ok
+test_06_adapter_rejects_tcp_before_connection (test_operator_postgres.OperatorPostgreSQL.test_06_adapter_rejects_tcp_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 2.931s
+
+OK
