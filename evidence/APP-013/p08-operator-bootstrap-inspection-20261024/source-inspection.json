@@ -1,0 +1,35 @@
+{
+  "actualDiagnosticEvidenceCommit": "4917cff",
+  "applicationUserRequiredFields": [
+    "id UUID",
+    "tenantId UUID",
+    "email",
+    "fullName",
+    "role",
+    "status"
+  ],
+  "backendUserCreationInInspectedProductionSource": "NO_HANDLER_FOUND_IN_SRC_SEARCH",
+  "existingAccountAbsenceNotInferred": true,
+  "externalCalls": 0,
+  "liveIdentityLookupPerformed": false,
+  "observedAtUtc": "2026-10-24T12:25:31.025619Z",
+  "ownerAnswer": "I\u2019m not sure",
+  "signInCreatesUser": false,
+  "sourceHashes": {
+    "prisma/schema.prisma": "fa596d194b54868c39d705f8d5dca9597452620afde86b27cdce4a801fafa6dd",
+    "scripts/verify-p07-payment-runtime-role.mjs": "f8c5b02e8909e2b6c8d239e8f2340b414a083da69efc42bf73af0744913ca967",
+    "src/auth/firebase-admin.service.ts": "c08830abba171d58242aac5f04f2745e2ca58647a6ec3aeefa362867fb714347",
+    "src/auth/request-auth.guard.ts": "c73758c437dffdf556f08fec9c880a196eb1d50666c0780de12e057fe5f588c9"
+  },
+  "supportedRoles": [
+    "OWNER",
+    "ADMIN",
+    "DISPATCHER",
+    "TECH",
+    "READ_ONLY"
+  ],
+  "supportedStatuses": [
+    "ACTIVE",
+    "DISABLED"
+  ]
+}
