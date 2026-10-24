@@ -1,0 +1,29 @@
+{
+  "approvalReusable": false,
+  "attemptReserved": false,
+  "automaticRetryAllowed": false,
+  "bindingCanonicalSha256": "fec6d871aae023f5b1ee75da5a7fad12a70940c59000d4e7beaaba02b8738c0d",
+  "externalCalls": 0,
+  "guard": "OPERATOR_START_CUTOFF",
+  "liveSessionQueryPerformed": false,
+  "noPrivateCandidateData": true,
+  "observedAtUtc": "2026-10-24T01:17:35.170336Z",
+  "operationId": "cf0bfa5c-d6b7-4481-92e2-a975a1175c03",
+  "ownerApprovalSha256": "29e358677b06aac0611f848cac7c3fb4697e42ef6df6ca361232e94e09a11f4d",
+  "ownerStatement": "i miss the time",
+  "p07RetirementRemainsVerified": true,
+  "privateDeletionRequired": false,
+  "receiptAbsence": {
+    "operator-diagnostic-attempt.json": true,
+    "operator-diagnostic-closeout-attempt.json": true,
+    "operator-diagnostic-closeout-result.json": true,
+    "operator-diagnostic-private.json": true,
+    "operator-diagnostic-result.json": true,
+    "operator-diagnostic-stop.json": true,
+    "operator-private-retirement.json": true
+  },
+  "retentionDeadlineUtc": "2026-10-24T01:30:00Z",
+  "sourceManifestSha256": "070cde389cddbd714e65b0f9f29ed0819522e70d58db46839b4a60d42bb78013",
+  "startCutoffUtc": "2026-10-24T01:15:00Z",
+  "status": "P08_RENEWED_DIAGNOSTIC_EXPIRED_UNSTARTED"
+}
