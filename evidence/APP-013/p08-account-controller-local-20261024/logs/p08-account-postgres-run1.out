@@ -1,0 +1,21 @@
+test_actual_concurrent_create_one_winner_no_overwrite (test_account_postgres.AccountPostgreSQL.test_actual_concurrent_create_one_winner_no_overwrite) ... ok
+test_claim_failure_closes_confirmed_owned_pair (test_account_postgres.AccountPostgreSQL.test_claim_failure_closes_confirmed_owned_pair) ... ok
+test_disabled_pair_in_actual_schema (test_account_postgres.AccountPostgreSQL.test_disabled_pair_in_actual_schema) ... ok
+test_independent_cleanup_retains_actual_same_tenant_audit_fk (test_account_postgres.AccountPostgreSQL.test_independent_cleanup_retains_actual_same_tenant_audit_fk) ... ok
+test_tcp_refused_before_connection (test_account_postgres.AccountPostgreSQL.test_tcp_refused_before_connection) ... ok
+test_unknown_firebase_response_never_claims_cleanup (test_account_postgres.AccountPostgreSQL.test_unknown_firebase_response_never_claims_cleanup) ... ok
+test_unknown_sql_response_preserves_disabled_row_reports_unconfirmed (test_account_postgres.AccountPostgreSQL.test_unknown_sql_response_preserves_disabled_row_reports_unconfirmed) ... ok
+test_uuid_and_tenant_email_collision_preserve_existing_person (test_account_postgres.AccountPostgreSQL.test_uuid_and_tenant_email_collision_preserve_existing_person) ... ok
+test_absent_null_and_foreign_rows_are_total (owned_existing_pg_fixture.PostgreSQLContract.test_absent_null_and_foreign_rows_are_total) ... ok
+test_account_mode_policy_null_and_digest_refuse (owned_existing_pg_fixture.PostgreSQLContract.test_account_mode_policy_null_and_digest_refuse) ... ok
+test_activity_and_changed_job_refuse (owned_existing_pg_fixture.PostgreSQLContract.test_activity_and_changed_job_refuse) ... ok
+test_actual_pg_read_only_transaction_rejects_write (owned_existing_pg_fixture.PostgreSQLContract.test_actual_pg_read_only_transaction_rejects_write) ... ok
+test_actual_sql_positive_canonical_jsonb_and_readonly_rollback (owned_existing_pg_fixture.PostgreSQLContract.test_actual_sql_positive_canonical_jsonb_and_readonly_rollback) ... ok
+test_existing_real_role_proof_with_actual_guard_and_actor_preflight (owned_existing_pg_fixture.PostgreSQLContract.test_existing_real_role_proof_with_actual_guard_and_actor_preflight) ... ok
+test_inactive_foreign_role_and_ambiguous_actor (owned_existing_pg_fixture.PostgreSQLContract.test_inactive_foreign_role_and_ambiguous_actor) ... ok
+test_role_must_be_closed_expired_without_sessions (owned_existing_pg_fixture.PostgreSQLContract.test_role_must_be_closed_expired_without_sessions) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 9.742s
+
+OK

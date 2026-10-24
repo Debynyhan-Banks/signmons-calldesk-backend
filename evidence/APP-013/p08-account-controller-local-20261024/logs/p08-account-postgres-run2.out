@@ -1,0 +1,13 @@
+test_actual_concurrent_create_one_winner_no_overwrite (test_account_postgres.AccountPostgreSQL.test_actual_concurrent_create_one_winner_no_overwrite) ... ok
+test_claim_failure_closes_confirmed_owned_pair (test_account_postgres.AccountPostgreSQL.test_claim_failure_closes_confirmed_owned_pair) ... ok
+test_disabled_pair_in_actual_schema (test_account_postgres.AccountPostgreSQL.test_disabled_pair_in_actual_schema) ... ok
+test_independent_cleanup_retains_actual_same_tenant_audit_fk (test_account_postgres.AccountPostgreSQL.test_independent_cleanup_retains_actual_same_tenant_audit_fk) ... ok
+test_tcp_refused_before_connection (test_account_postgres.AccountPostgreSQL.test_tcp_refused_before_connection) ... ok
+test_unknown_firebase_response_never_claims_cleanup (test_account_postgres.AccountPostgreSQL.test_unknown_firebase_response_never_claims_cleanup) ... ok
+test_unknown_sql_response_preserves_disabled_row_reports_unconfirmed (test_account_postgres.AccountPostgreSQL.test_unknown_sql_response_preserves_disabled_row_reports_unconfirmed) ... ok
+test_uuid_and_tenant_email_collision_preserve_existing_person (test_account_postgres.AccountPostgreSQL.test_uuid_and_tenant_email_collision_preserve_existing_person) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 2.076s
+
+OK

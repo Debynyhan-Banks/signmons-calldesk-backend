@@ -1,0 +1,84 @@
+✔ exact disabled pair; independent restart cleanup retains disabled app row and revokes (10.836375ms)
+✔ collision refuses without overwrite: app-uuid (1.217417ms)
+✔ collision refuses without overwrite: app-email (1.29525ms)
+✔ collision refuses without overwrite: firebase-uid (1.498916ms)
+✔ collision refuses without overwrite: firebase-email (1.029625ms)
+✔ source/authority/target/deadline/adapter changes refuse before calls (1.065625ms)
+✔ consumed provisioning and closeout attempts refuse replay (3.468ms)
+✔ foreign journal refuses cleanup without calls (2.697917ms)
+✔ fixed sanitized failure and bounded cleanup: APP_COLLISION (0.9415ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_COLLISION (1.096083ms)
+✔ fixed sanitized failure and bounded cleanup: APP_INSERT (1.189875ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_CREATE (2.098583ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_CLAIMS (2.383917ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_READBACK (2.406791ms)
+✔ fixed sanitized failure and bounded cleanup: APP_READBACK (2.506833ms)
+✔ absolute prepare timeout: APP_COLLISION (30.921041ms)
+✔ absolute prepare timeout: FIREBASE_COLLISION (31.415292ms)
+✔ absolute prepare timeout: APP_INSERT (30.510042ms)
+✔ absolute prepare timeout: FIREBASE_CREATE (31.732042ms)
+✔ absolute prepare timeout: FIREBASE_CLAIMS (31.5125ms)
+✔ absolute prepare timeout: FIREBASE_READBACK (32.424583ms)
+✔ absolute prepare timeout: APP_READBACK (32.673667ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_OWNERSHIP (4.104333ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_DISABLE (4.25725ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_REVOKE (4.182041ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_READBACK (4.401791ms)
+✔ cleanup failure remains unconfirmed: CLOSE_APP_DISABLE (3.443959ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_OWNERSHIP (43.101916ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_DISABLE (44.215084ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_REVOKE (44.539375ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_READBACK (45.283541ms)
+✔ cleanup absolute timeout: CLOSE_APP_DISABLE (45.215959ms)
+✔ lost create response does not take over or disable uncertain Firebase identity (6.616125ms)
+✔ lost SQL insert response leaves only disabled row and reports uncertainty (3.418792ms)
+✔ identity drift refuses disable/revoke of now-unqualified resource (5.019708ms)
+✔ revocation timestamp readback is required (5.732458ms)
+✔ SIGINT actual process interruption at APP_COLLISION (62.704792ms)
+✔ SIGINT actual process interruption at FIREBASE_COLLISION (43.6765ms)
+✔ SIGINT actual process interruption at APP_INSERT (38.634209ms)
+✔ SIGINT actual process interruption at FIREBASE_CREATE (38.008916ms)
+✔ SIGINT actual process interruption at FIREBASE_CLAIMS (38.98875ms)
+✔ SIGINT actual process interruption at FIREBASE_READBACK (39.623416ms)
+✔ SIGINT actual process interruption at APP_READBACK (39.868709ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_OWNERSHIP (44.258166ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_DISABLE (41.191334ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_REVOKE (41.890958ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_READBACK (40.822208ms)
+✔ SIGINT actual process interruption at CLOSE_APP_DISABLE (40.576542ms)
+✔ SIGTERM actual process interruption at APP_COLLISION (38.694ms)
+✔ SIGTERM actual process interruption at FIREBASE_COLLISION (38.070875ms)
+✔ SIGTERM actual process interruption at APP_INSERT (38.120625ms)
+✔ SIGTERM actual process interruption at FIREBASE_CREATE (38.894833ms)
+✔ SIGTERM actual process interruption at FIREBASE_CLAIMS (39.102458ms)
+✔ SIGTERM actual process interruption at FIREBASE_READBACK (39.663125ms)
+✔ SIGTERM actual process interruption at APP_READBACK (38.353042ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_OWNERSHIP (41.941292ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_DISABLE (40.759083ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_REVOKE (41.645459ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_READBACK (41.920084ms)
+✔ SIGTERM actual process interruption at CLOSE_APP_DISABLE (41.732625ms)
+✔ actual competing exclusive reservation across processes has one winner (27.767667ms)
+✔ CLI refuses all external modes before credentials (80.54175ms)
+ℹ Error: Test "cleanup absolute timeout: CLOSE_FIREBASE_OWNERSHIP" at account-controller.test.mjs:16:32 generated asynchronous activity after the test ended. This activity created the error "Error: ABSOLUTE_DEADLINE" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+ℹ Error: Test "cleanup absolute timeout: CLOSE_FIREBASE_DISABLE" at account-controller.test.mjs:16:32 generated asynchronous activity after the test ended. This activity created the error "Error: ABSOLUTE_DEADLINE" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+ℹ Error: Test "cleanup absolute timeout: CLOSE_FIREBASE_DISABLE" at account-controller.test.mjs:16:32 generated asynchronous activity after the test ended. This activity created the error "Error: ABSOLUTE_DEADLINE" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+ℹ Error: Test "cleanup absolute timeout: CLOSE_FIREBASE_DISABLE" at account-controller.test.mjs:16:32 generated asynchronous activity after the test ended. This activity created the error "Error: ABSOLUTE_DEADLINE" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+ℹ Error: Test "cleanup absolute timeout: CLOSE_FIREBASE_REVOKE" at account-controller.test.mjs:16:32 generated asynchronous activity after the test ended. This activity created the error "Error: ABSOLUTE_DEADLINE" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+ℹ Error: Test "cleanup absolute timeout: CLOSE_FIREBASE_REVOKE" at account-controller.test.mjs:16:32 generated asynchronous activity after the test ended. This activity created the error "Error: ABSOLUTE_DEADLINE" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+ℹ Error: Test "cleanup absolute timeout: CLOSE_FIREBASE_READBACK" at account-controller.test.mjs:16:32 generated asynchronous activity after the test ended. This activity created the error "Error: ABSOLUTE_DEADLINE" and would have caused the test to fail, but instead triggered an unhandledRejection event.
+✖ account-controller.test.mjs (1664.90025ms)
+ℹ tests 63
+ℹ suites 0
+ℹ pass 62
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1675.138709
+
+✖ failing tests:
+
+test at account-controller.test.mjs:1:1
+✖ account-controller.test.mjs (1664.90025ms)
+  'test failed'
