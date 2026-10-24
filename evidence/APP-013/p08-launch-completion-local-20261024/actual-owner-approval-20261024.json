@@ -1,0 +1,14 @@
+{
+  "kind": "ACTUAL_OWNER_EXECUTION_APPROVAL",
+  "owner": "Debynyhan Banks",
+  "decision": "APPROVE_EXACT_DISABLED_ACCOUNT_OPERATION",
+  "ownerAnswer": "Approve this exact disabled-account operation",
+  "externalActionAuthorized": true,
+  "operationId": "635dd086-27cf-4a77-a0f0-061613022726",
+  "planSha256": "0cf3f103792d10e0fd8f88c2ab74e4b0661ed156406c8d0faa3ce82283bd0759",
+  "proposalCommit": "46647952969411407086e6b873e8fd8579f7fd29",
+  "proposalSha256": "9b61bc043af84497c3f5244d2cf211ba79f63b27e286035ed8b5826039d5a0fb",
+  "questionCallId": "call_a8b2feb1ed65433089c96f5419b2b4f9",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "recordedAtUtc": "2026-10-24T18:19:38.027Z"
+}

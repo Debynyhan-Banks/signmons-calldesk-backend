@@ -1,0 +1,17 @@
+{
+  "kind": "ACTUAL_APPROVAL_BOUND_NO_EXECUTION",
+  "proposalCommit": "46647952969411407086e6b873e8fd8579f7fd29",
+  "operationId": "635dd086-27cf-4a77-a0f0-061613022726",
+  "approvalFileSha256": "444004469f0a7f155f43fb9bb1ff9aeaca4c8d736645e048c334a05d17ef7ad5",
+  "actualNativeStatus": "P08_ACCOUNT_LAUNCH_REFUSED_BEFORE_START",
+  "actualAttemptAbsent": true,
+  "privatePlanIntact": true,
+  "privateDesignationIntact": true,
+  "sourceIntegrity": "PASS",
+  "futureStartGuard": "PASS_OFFLINE_ONLY",
+  "cutoffGuard": "START_CUTOFF_OFFLINE_ONLY",
+  "externalCredentialCalls": 0,
+  "providerCalls": 0,
+  "accountCreated": false,
+  "threeAAccepted": false
+}
