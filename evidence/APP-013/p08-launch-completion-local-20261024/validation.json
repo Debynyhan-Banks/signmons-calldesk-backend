@@ -1,0 +1,16 @@
+{
+  "controllerAndLaunchCases": 110,
+  "preservedControllerCases": 66,
+  "actualPostgreSQLCases": 10,
+  "preservedPostgreSQLCases": 8,
+  "reusedModelCases": 13,
+  "governanceSafeguards": 25,
+  "frozenBaseline": "PASS",
+  "crossRepositoryConsistency": "PASS",
+  "architecture": "PASS",
+  "nodeSyntax": "PASS",
+  "whitespaceBothRepositories": "PASS",
+  "ownedFixtureProcessesAfterTests": 0,
+  "actualExternalActions": 0,
+  "ownerAccepted3A": false
+}

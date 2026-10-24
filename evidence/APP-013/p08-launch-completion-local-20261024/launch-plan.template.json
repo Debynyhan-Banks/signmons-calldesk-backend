@@ -1,0 +1,18 @@
+{
+  "status": "DISABLED_UNBOUND_EXTERNAL_OPERATION",
+  "localDecisionCommit": "57969acbaca04dcd391594f92b020123040f23d4",
+  "operationId": null,
+  "target": null,
+  "database": null,
+  "ownerPrincipalHash": null,
+  "projectId": "signmons",
+  "window": null,
+  "proposalCommit": null,
+  "proposalSha256": null,
+  "privateMetadataPurgeEnd": null,
+  "automaticRetryAllowed": false,
+  "availabilityOnly": {
+    "start": "2026-10-24T23:00:00Z",
+    "end": "2026-10-24T23:30:00Z"
+  }
+}

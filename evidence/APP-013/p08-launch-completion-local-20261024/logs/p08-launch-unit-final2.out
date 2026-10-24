@@ -1,0 +1,98 @@
+✔ exact disabled pair; independent restart cleanup retains disabled app row and revokes (10.470917ms)
+✔ collision refuses without overwrite: app-uuid (1.585875ms)
+✔ collision refuses without overwrite: app-email (1.139917ms)
+✔ collision refuses without overwrite: firebase-uid (1.145084ms)
+✔ collision refuses without overwrite: firebase-email (1.001625ms)
+✔ source/authority/target/deadline/adapter changes refuse before calls (1.101542ms)
+✔ consumed provisioning and closeout attempts refuse replay (3.470084ms)
+✔ foreign journal refuses cleanup without calls (2.462666ms)
+✔ fixed sanitized failure and bounded cleanup: APP_COLLISION (1.075666ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_COLLISION (1.298583ms)
+✔ fixed sanitized failure and bounded cleanup: APP_INSERT (1.518625ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_CREATE (1.697542ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_CLAIMS (2.746083ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_READBACK (2.455166ms)
+✔ fixed sanitized failure and bounded cleanup: APP_READBACK (2.51425ms)
+✔ absolute prepare timeout: APP_COLLISION (31.377708ms)
+✔ absolute prepare timeout: FIREBASE_COLLISION (31.032458ms)
+✔ absolute prepare timeout: APP_INSERT (30.576083ms)
+✔ absolute prepare timeout: FIREBASE_CREATE (31.953417ms)
+✔ absolute prepare timeout: FIREBASE_CLAIMS (33.441ms)
+✔ absolute prepare timeout: FIREBASE_READBACK (32.743583ms)
+✔ absolute prepare timeout: APP_READBACK (34.024458ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_OWNERSHIP (5.639833ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_DISABLE (5.809625ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_REVOKE (5.850917ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_READBACK (4.584125ms)
+✔ cleanup failure remains unconfirmed: CLOSE_APP_DISABLE (4.05025ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_OWNERSHIP (43.85775ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_DISABLE (45.206291ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_REVOKE (44.91975ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_READBACK (44.297625ms)
+✔ cleanup absolute timeout: CLOSE_APP_DISABLE (43.786292ms)
+✔ lost create response does not take over or disable uncertain Firebase identity (3.936709ms)
+✔ lost SQL insert response leaves only disabled row and reports uncertainty (2.293958ms)
+✔ identity drift refuses disable/revoke of now-unqualified resource (4.178375ms)
+✔ revocation timestamp readback is required (5.039125ms)
+✔ SIGINT actual process interruption at APP_COLLISION (51.374583ms)
+✔ SIGINT actual process interruption at FIREBASE_COLLISION (109.2815ms)
+✔ SIGINT actual process interruption at APP_INSERT (80.632541ms)
+✔ SIGINT actual process interruption at FIREBASE_CREATE (44.879666ms)
+✔ SIGINT actual process interruption at FIREBASE_CLAIMS (41.037666ms)
+✔ SIGINT actual process interruption at FIREBASE_READBACK (39.913459ms)
+✔ SIGINT actual process interruption at APP_READBACK (40.032ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_OWNERSHIP (41.180167ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_DISABLE (41.863166ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_REVOKE (43.090708ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_READBACK (43.343458ms)
+✔ SIGINT actual process interruption at CLOSE_APP_DISABLE (43.698083ms)
+✔ SIGTERM actual process interruption at APP_COLLISION (45.304ms)
+✔ SIGTERM actual process interruption at FIREBASE_COLLISION (39.812166ms)
+✔ SIGTERM actual process interruption at APP_INSERT (46.302375ms)
+✔ SIGTERM actual process interruption at FIREBASE_CREATE (39.879708ms)
+✔ SIGTERM actual process interruption at FIREBASE_CLAIMS (41.244791ms)
+✔ SIGTERM actual process interruption at FIREBASE_READBACK (40.482584ms)
+✔ SIGTERM actual process interruption at APP_READBACK (40.245542ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_OWNERSHIP (42.333459ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_DISABLE (42.302875ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_REVOKE (41.45125ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_READBACK (44.256792ms)
+✔ SIGTERM actual process interruption at CLOSE_APP_DISABLE (43.146791ms)
+✔ actual competing exclusive reservation across processes has one winner (28.446167ms)
+✔ CLI refuses all external modes before credentials (82.164583ms)
+✔ denied Firebase lookup is not treated as absent (1.217834ms)
+✔ Firebase create wrong returned identity remains unowned and unconfirmed (2.168416ms)
+✔ private journal symlink and permissive mode refuse independent cleanup (2.558334ms)
+✔ changed sealed source refuses before any adapter access in isolated copy (23.324458ms)
+file:///private/tmp/p08-account-launch-20261024-prep1/account-launch.mjs:41
+ const directory=fileURLToPath(new URL('../p08-account-proof-'+p.operationId,import.meta.url));let result;try{result=await runLaunch({plan:p,approval,proposal,sourceHashes:sources,mode:mode==='--prepare-disabled'?'prepare':'closeout',directory:fileURLToPath(new URL('../p08-account-proof-'+p.operationId,import.meta.url))});await finishMetadata(result,[ROOT+'launch-plan.json','/private/tmp/p08-owner-account-designation-20261024/owner-designation.json'],{deadline:Date.parse(p.window.purgeEnd)});writeFileSync(ROOT+'account-result.json',JSON.stringify(result)+'\n',{mode:0o600,flag:'wx'});console.log(result.failureCode?'P08_ACCOUNT_PROVISIONING_STOP_'+result.failureStage:(result.status==='LOCAL_DISABLED_PAIR_CLOSED'?'P08_DISABLED_ACCOUNT_CREATED_AND_CLOSED':'P08_ACCOUNT_CLOSEOUT_UNCONFIRMED'));console.log(result.residuals.length||!result.sessionsAbsent||!result.privateMetadataPurgeOnTime?'CONTAINMENT_UNCONFIRMED':'CONTAINMENT_VERIFIED')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                ^
+
+SyntaxError: Missing catch or finally after try
+    at compileSourceTextModule (node:internal/modules/esm/utils:318:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:111:18)
+    at #translate (node:internal/modules/esm/loader:473:20)
+    at afterLoad (node:internal/modules/esm/loader:529:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:534:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:571:36)
+    at afterResolve (node:internal/modules/esm/loader:624:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:630:12)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:143:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:228:17)
+
+Node.js v24.12.0
+✖ launch.test.mjs (33.619083ms)
+ℹ tests 67
+ℹ suites 0
+ℹ pass 66
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1840.367917
+
+✖ failing tests:
+
+test at launch.test.mjs:1:1
+✖ launch.test.mjs (33.619083ms)
+  'test failed'

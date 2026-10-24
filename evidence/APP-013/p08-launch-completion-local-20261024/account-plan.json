@@ -1,0 +1,26 @@
+{
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
+  "mode": "LOCAL_FIXTURE_ONLY",
+  "externalActionAuthorized": false,
+  "automaticRetryAllowed": false,
+  "operationId": "08000000-0000-4000-8000-000000000024",
+  "proposalCommit": "38b1c8b",
+  "localDecisionCommit": "900ff9a544b5d3597b74d20a173e7f71f7d3d41a",
+  "backendSourceSha": "064711aac8801cd2da72373445eb86f12b38de5f",
+  "backend": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+  "liveBinding": null,
+  "liveApproval": null,
+  "futureActorUuid": null,
+  "futureEmail": null,
+  "prepareDeadline": null,
+  "cleanupDeadline": null,
+  "runtime": "RETIRED_DO_NOT_REACTIVATE",
+  "spec": {
+    "id": "30000000-0000-4000-8000-000000000001",
+    "tenantId": "20000000-0000-4000-8000-000000000001",
+    "email": "operator@fixture.invalid",
+    "fullName": "Fictional isolated operator",
+    "role": "ADMIN",
+    "status": "DISABLED"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "operationId": "635dd086-27cf-4a77-a0f0-061613022726",
+  "targetSha256": "64eb53771ec4f77e58c36d5d90b3f2c27a5a382ea0da7adf9bc614a65f87be52",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "localPacketManifestSha256": "b796462bbab8cda32f7c0cca52b5b7b30f3cd8f2390d9d7a6abd305c4a31f32b",
+  "window": {
+    "start": "2026-10-24T23:00:00Z",
+    "cutoff": "2026-10-24T23:10:00Z",
+    "workEnd": "2026-10-24T23:20:00Z",
+    "cleanupEnd": "2026-10-24T23:27:00Z",
+    "purgeEnd": "2026-10-24T23:30:00Z"
+  },
+  "approvalInstalled": false,
+  "attemptStarted": false,
+  "sourceManifestEncoding": "canonical JSON.stringify mapping"
+}

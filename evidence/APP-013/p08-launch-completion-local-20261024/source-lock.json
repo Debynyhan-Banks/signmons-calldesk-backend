@@ -1,0 +1,10 @@
+{
+  "account-plan.json": "d6f470948138e0fd1c1de9a1e53427af9488c5f455f3e9e8b997dafefad46b2a",
+  "account-controller.mjs": "689dc4482bd8f1cf1a8dca1b26b80776acddafc83dd5957fa7a5583c0a24d67d",
+  "account-adapters.mjs": "7deaca64b27fc3004bd68a190eb343d0a5f942ab21021ea3ff1b1846531724e2",
+  "signal-proof.mjs": "711178adccbd7dec107214eb6a79e1289056f797ce19ffa3a5a6f16d79d6ac45",
+  "pg-account-proof.mjs": "de00fc3da421c9ea7afdf7847c85109d70a12915c207e39173ecc70a282d8430",
+  "launch-authority.mjs": "d1b531faf377f5bdca2f665f853870f5f241a0ba5f5501bd7bf854aab319452b",
+  "account-launch.mjs": "c273128eaa5c6876d0745bc59c3ef100ebbcd6f0036e136e62dddf153094e373",
+  "backend-lock.json": "0e11175e274a1db4f7ed38a58e889c1f08f18f6e3d6770c81ef29fd221200011"
+}

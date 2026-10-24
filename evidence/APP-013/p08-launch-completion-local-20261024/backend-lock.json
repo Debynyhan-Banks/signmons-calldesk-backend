@@ -1,0 +1,6 @@
+{
+  "prisma/schema.prisma": "fa596d194b54868c39d705f8d5dca9597452620afde86b27cdce4a801fafa6dd",
+  "package-lock.json": "6939b58c7b223071182239fa006dc7b44f5a585a02ec73965d31ccf5af0e3af3",
+  "node_modules/pg/lib/client.js": "992c12d10cd42ece06b0b224601fa783a02ed08f3ace8bd8089cc441b6308abf",
+  "node_modules/pg/lib/connection.js": "836b6abbfbc68744769ba499e2a79062dba5fd281af31fc5e83431514bdefd4a"
+}

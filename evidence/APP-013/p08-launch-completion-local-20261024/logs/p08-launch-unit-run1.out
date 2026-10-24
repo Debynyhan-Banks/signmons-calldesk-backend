@@ -1,0 +1,148 @@
+✔ exact disabled pair; independent restart cleanup retains disabled app row and revokes (12.146666ms)
+✔ collision refuses without overwrite: app-uuid (1.203125ms)
+✔ collision refuses without overwrite: app-email (1.366083ms)
+✔ collision refuses without overwrite: firebase-uid (1.111833ms)
+✔ collision refuses without overwrite: firebase-email (2.224625ms)
+✔ source/authority/target/deadline/adapter changes refuse before calls (1.869959ms)
+✔ consumed provisioning and closeout attempts refuse replay (3.999917ms)
+✔ foreign journal refuses cleanup without calls (2.569459ms)
+✔ fixed sanitized failure and bounded cleanup: APP_COLLISION (1.183959ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_COLLISION (1.799584ms)
+✔ fixed sanitized failure and bounded cleanup: APP_INSERT (2.091459ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_CREATE (2.269417ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_CLAIMS (4.588ms)
+✔ fixed sanitized failure and bounded cleanup: FIREBASE_READBACK (2.836334ms)
+✔ fixed sanitized failure and bounded cleanup: APP_READBACK (3.199875ms)
+✔ absolute prepare timeout: APP_COLLISION (31.331333ms)
+✔ absolute prepare timeout: FIREBASE_COLLISION (31.398666ms)
+✔ absolute prepare timeout: APP_INSERT (30.29625ms)
+✔ absolute prepare timeout: FIREBASE_CREATE (30.884792ms)
+✔ absolute prepare timeout: FIREBASE_CLAIMS (32.361875ms)
+✔ absolute prepare timeout: FIREBASE_READBACK (32.761958ms)
+✔ absolute prepare timeout: APP_READBACK (32.556542ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_OWNERSHIP (5.13175ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_DISABLE (5.528667ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_REVOKE (4.756833ms)
+✔ cleanup failure remains unconfirmed: CLOSE_FIREBASE_READBACK (4.149625ms)
+✔ cleanup failure remains unconfirmed: CLOSE_APP_DISABLE (4.119625ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_OWNERSHIP (43.965042ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_DISABLE (44.940209ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_REVOKE (45.39825ms)
+✔ cleanup absolute timeout: CLOSE_FIREBASE_READBACK (44.561541ms)
+✔ cleanup absolute timeout: CLOSE_APP_DISABLE (44.064792ms)
+✔ lost create response does not take over or disable uncertain Firebase identity (3.98125ms)
+✔ lost SQL insert response leaves only disabled row and reports uncertainty (2.60575ms)
+✔ identity drift refuses disable/revoke of now-unqualified resource (4.220541ms)
+✔ revocation timestamp readback is required (4.560917ms)
+✔ SIGINT actual process interruption at APP_COLLISION (53.269417ms)
+✔ SIGINT actual process interruption at FIREBASE_COLLISION (47.469125ms)
+✔ SIGINT actual process interruption at APP_INSERT (41.992834ms)
+✔ SIGINT actual process interruption at FIREBASE_CREATE (47.385542ms)
+✔ SIGINT actual process interruption at FIREBASE_CLAIMS (40.93525ms)
+✔ SIGINT actual process interruption at FIREBASE_READBACK (42.28ms)
+✔ SIGINT actual process interruption at APP_READBACK (43.357166ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_OWNERSHIP (52.937875ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_DISABLE (53.149042ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_REVOKE (52.47475ms)
+✔ SIGINT actual process interruption at CLOSE_FIREBASE_READBACK (48.797ms)
+✔ SIGINT actual process interruption at CLOSE_APP_DISABLE (47.35475ms)
+✔ SIGTERM actual process interruption at APP_COLLISION (42.766708ms)
+✔ SIGTERM actual process interruption at FIREBASE_COLLISION (43.615375ms)
+✔ SIGTERM actual process interruption at APP_INSERT (42.768417ms)
+✔ SIGTERM actual process interruption at FIREBASE_CREATE (45.165958ms)
+✔ SIGTERM actual process interruption at FIREBASE_CLAIMS (46.415416ms)
+✔ SIGTERM actual process interruption at FIREBASE_READBACK (41.230292ms)
+✔ SIGTERM actual process interruption at APP_READBACK (45.388708ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_OWNERSHIP (48.832041ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_DISABLE (45.555375ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_REVOKE (50.1065ms)
+✔ SIGTERM actual process interruption at CLOSE_FIREBASE_READBACK (47.191959ms)
+✔ SIGTERM actual process interruption at CLOSE_APP_DISABLE (49.96925ms)
+✔ actual competing exclusive reservation across processes has one winner (32.702459ms)
+✔ CLI refuses all external modes before credentials (97.825042ms)
+✔ denied Firebase lookup is not treated as absent (1.336167ms)
+✔ Firebase create wrong returned identity remains unowned and unconfirmed (1.879208ms)
+✔ private journal symlink and permissive mode refuse independent cleanup (2.772791ms)
+✖ changed sealed source refuses before any adapter access in isolated copy (23.901542ms)
+✔ exact authority matches and closeout capability cannot create (1.418542ms)
+✔ authority rejects changed operationId (0.083958ms)
+✔ authority rejects changed projectId (0.059ms)
+✔ authority rejects changed ownerPrincipalHash (0.052542ms)
+✔ authority rejects changed database (0.053834ms)
+✔ authority rejects changed target (0.044042ms)
+✔ authority rejects changed window (0.05175ms)
+✔ authority rejects changed proposalCommit (0.05025ms)
+✔ authority rejects changed localDecisionCommit (0.049625ms)
+✔ approval rejects changed owner (0.096708ms)
+✔ approval rejects changed decision (0.054625ms)
+✔ approval rejects changed externalActionAuthorized (0.083625ms)
+✔ approval rejects changed operationId (0.037125ms)
+✔ approval rejects changed planSha256 (0.045167ms)
+✔ approval rejects changed proposalCommit (0.033375ms)
+✔ approval rejects changed proposalSha256 (0.031416ms)
+✔ approval rejects changed questionCallId (0.045ms)
+✔ approval rejects changed sourceManifestSha256 (0.035667ms)
+✔ window refusal 2026-10-24T22:59:59Z (0.081917ms)
+✔ window refusal 2026-10-24T23:10:00Z (0.046583ms)
+✔ window refusal 2026-10-24T23:30:00Z (0.045458ms)
+✔ deadline checked again after valid launch (0.117459ms)
+✔ exact real adapters use core, retain audit-ready disabled row and independent closeout (9.142375ms)
+✔ runLaunch missing approval cannot ask password or resolve clients (0.522875ms)
+✔ real credential interface refuses missing password and principal mismatch before token/client (0.255208ms)
+✔ REST one-request methods use exact administrative endpoints and no retries on denial (0.239125ms)
+✔ REST missing is only absence; wrong ID/email/activation are refused (0.188ms)
+✔ purge exact private synthetic metadata and confirm absence (0.328667ms)
+✔ native modes refuse before hidden input with unbound actual plan (74.515ms)
+ℹ tests 95
+ℹ suites 0
+ℹ pass 94
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1859.226958
+
+✖ failing tests:
+
+test at account-controller.test.mjs:27:1
+✖ changed sealed source refuses before any adapter access in isolated copy (23.901542ms)
+  AssertionError [ERR_ASSERTION]: node:internal/modules/run_main:107
+      triggerUncaughtException(
+      ^
+  
+  Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/private/tmp/p08-account-proof-IAhxLn/copy/launch-authority.mjs' imported from /private/tmp/p08-account-proof-IAhxLn/copy/account-controller.mjs
+  Did you mean to import "../../p08-account-launch-20261024-prep1/launch-authority.mjs"?
+      at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+      at moduleResolve (node:internal/modules/esm/resolve:864:10)
+      at defaultResolve (node:internal/modules/esm/resolve:990:11)
+      at #cachedDefaultResolve (node:internal/modules/esm/loader:718:20)
+      at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:735:38)
+      at ModuleLoader.resolveSync (node:internal/modules/esm/loader:764:52)
+      at #resolve (node:internal/modules/esm/loader:700:17)
+      at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:620:35)
+      at ModuleJob.syncLink (node:internal/modules/esm/module_job:143:33)
+      at ModuleJob.link (node:internal/modules/esm/module_job:228:17) {
+    code: 'ERR_MODULE_NOT_FOUND',
+    url: 'file:///private/tmp/p08-account-proof-IAhxLn/copy/launch-authority.mjs'
+  }
+  
+  Node.js v24.12.0
+  
+  
+  1 !== 0
+  
+      at file:///private/tmp/p08-account-launch-20261024-prep1/account-controller.test.mjs:27:1034
+      at TestContext.<anonymous> (file:///private/tmp/p08-account-launch-20261024-prep1/account-controller.test.mjs:5:339)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
