@@ -1,0 +1,27 @@
+{
+  "actualApprovalPresent": false,
+  "actualAttemptPresent": false,
+  "actualPostgresCases": 5,
+  "controllerAndQueryAndHelpersUnchanged": true,
+  "controllerCases": 26,
+  "existingDiagnosticCases": 16,
+  "externalCalls": 0,
+  "localDecisionCommit": "dabe2bc46c7e00532e241baf0957bc13a8792aa7",
+  "manifestSha256": "070cde389cddbd714e65b0f9f29ed0819522e70d58db46839b4a60d42bb78013",
+  "oldPacketUnchanged": true,
+  "operationId": "cf0bfa5c-d6b7-4481-92e2-a975a1175c03",
+  "original26ControllerTestsUnchanged": true,
+  "ownedFixturesAbsent": true,
+  "packetId": "ae27b5a3-edcc-4245-80c2-1591686ff9d3",
+  "planId": "7a75bdd8-e740-43d8-b47e-105db9e94b12",
+  "renewalRetentionCases": 3,
+  "retentionDeadlineUtc": "2026-10-24T01:30:00Z",
+  "runtimeRemainsRetired": true,
+  "sourceFilesChanged": [
+    "plan.json",
+    "README.txt",
+    "test_operator_diagnostic.py"
+  ],
+  "status": "DISABLED_RENEWED_DIAGNOSTIC_LOCAL_PROOF_PASSED",
+  "totalPass": 50
+}

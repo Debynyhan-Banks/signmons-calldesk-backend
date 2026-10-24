@@ -1,0 +1,11 @@
+--- original/test_operator_diagnostic.py
++++ renewal/test_operator_diagnostic.py
+@@ -36,7 +36,7 @@
+   b,a=binding();self.assertEqual(len(c.check_operator_binding(b,a)),4)
+   for key,value in [('operationId','foreign'),('mode','READ_ONLY_QUALIFICATION'),('automaticRetryAllowed',True),('actions',b['actions']+['payment']),('privateRetentionEndUtc','2026-10-24T00:00:00Z'),('proposalCommit',None)]:
+    with self.subTest(key=key),self.assertRaises(c.Stop):c.check_operator_binding(dict(b,**{key:value}),a)
+-  for value in [None,{},dict(a,owner='other'),dict(a,mode='READ_ONLY_QUALIFICATION'),dict(a,approvedAtUtc='2026-10-24T00:00:00Z')]:
++  for value in [None,{},dict(a,owner='other'),dict(a,mode='READ_ONLY_QUALIFICATION'),dict(a,approvedAtUtc=b['cutoffUtc'])]:
+    with self.assertRaises(c.Stop):c.check_operator_binding(b,value)
+   for now,code in [(c.parse_utc(b['startUtc']).timestamp()-1,'OPERATOR_NOT_YET_START'),(c.parse_utc(b['cutoffUtc']).timestamp(),'OPERATOR_START_CUTOFF')]:
+    with self.assertRaises(c.Stop) as failure:c.check_operator_binding(b,a,now)
