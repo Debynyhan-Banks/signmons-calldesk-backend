@@ -1,0 +1,10 @@
+{
+  "kind": "ACTUAL_APPROVAL_NATIVE_PRESTART_REFUSAL",
+  "status": "P08_ACCOUNT_LAUNCH_REFUSED_BEFORE_START",
+  "actualAttemptAbsent": true,
+  "freshPrivatePlanIntact": true,
+  "previousExactRawFilesStillAbsent": true,
+  "credentialCalls": 0,
+  "providerCalls": 0,
+  "accountCreated": false
+}
