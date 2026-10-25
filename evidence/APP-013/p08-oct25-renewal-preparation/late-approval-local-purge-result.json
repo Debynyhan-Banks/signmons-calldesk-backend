@@ -1,0 +1,29 @@
+{
+  "kind": "ACTUAL_OWNER_APPROVAL_AFTER_START_CUTOFF_LOCAL_PURGE_ONLY",
+  "ownerAnswer": "Approve this exact fresh operation and metadata recovery",
+  "questionCallId": "call_e0d85117b428474984c6323cd2711017",
+  "proposalCommit": "29b95a9e7b47fe8ef640b045657dfb7b8bd52953",
+  "operationId": "84df5558-b9fa-4fa8-9fc4-52376473d45a",
+  "observedUtc": "2026-10-25T13:38:48.918976Z",
+  "normalStartRefusedReason": "START_CUTOFF_EXPIRED",
+  "actualProvisioningAttemptAbsent": true,
+  "expiredOperationAttemptAbsent": true,
+  "deletedExactFiles": [
+    "/private/tmp/p08-account-launch-20261024-prep1/launch-plan.json",
+    "/private/tmp/p08-owner-account-designation-20261024/owner-designation.json",
+    "/private/tmp/p08-account-launch-20261025-renewal1/launch-plan.json"
+  ],
+  "deletedFileSha256": {
+    "/private/tmp/p08-account-launch-20261024-prep1/launch-plan.json": "745509b71cdb6d3ad980567853ff51906a717cd8d54ed657e076183aa6567a70",
+    "/private/tmp/p08-owner-account-designation-20261024/owner-designation.json": "f5c5cb862b4f54a04ff79f200b724ffcf0fa61793b53b273bd7f643096e60d57",
+    "/private/tmp/p08-account-launch-20261025-renewal1/launch-plan.json": "eecca4267bf8b8c86fd26f3d383f6b98b0242aa216f67fd0dec55f15d0ea5ada"
+  },
+  "allExactPrivateFilesAbsent": true,
+  "newRealMetadataCopied": false,
+  "providerCalls": 0,
+  "credentialCalls": 0,
+  "accountCreated": false,
+  "privatePurgeBeforeFreshDeadline": true,
+  "previousPurgeDeadlineMissed": true,
+  "oldSourceAndApprovalReceiptsPreserved": true
+}
