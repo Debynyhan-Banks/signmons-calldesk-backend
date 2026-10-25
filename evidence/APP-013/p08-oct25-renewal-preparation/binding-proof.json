@@ -1,0 +1,17 @@
+{
+  "kind": "OFFLINE_RENEWAL_BINDING_NO_REAL_APPROVAL",
+  "proposalCommit": "29b95a9e7b47fe8ef640b045657dfb7b8bd52953",
+  "proposalSha256": "54d74983e3b4177cf5f87761fcd0a7757012f13128ca130b19ae1feafb8ebe4e",
+  "expectedPlanSha256": "570ca492ebf14c6576a56f6711d029e36e756b42d84b2b9ba4ba34fdcb3dd88e",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "positive": "PASS",
+  "beforeStart": "BEFORE_START",
+  "cutoff": "START_CUTOFF",
+  "missingApproval": "EXACT_OWNER_APPROVAL_REQUIRED",
+  "actualApprovalAbsent": true,
+  "actualAttemptAbsent": true,
+  "newRawMetadataCopied": false,
+  "oldPrivatePurgeNotYetAuthorized": true,
+  "credentialCalls": 0,
+  "providerCalls": 0
+}
