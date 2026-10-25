@@ -1,0 +1,7 @@
+# APP-013 /3A /P08 — October25 renewal preparation
+
+Local inspection only. October24 approved account operation expired; no operation directory, launch/core attempts, journal or result exists at its exact saved location. Do not claim a live account read, session readback or customer outcome. Its source/approval receipts remain intact. Raw private launch plan and owner-designation file remain after7:30p.m. purge deadline: retention miss disclosed, not timely cleanup. No passwords/bearers in these metadata files. No new external action or actual account lookup.
+
+Fresh source-only packet prepared from exact verified source-lock; no source/algorithm/assertion change, old actual approval not copied. New raw target not copied; only sanitized target/source/old-plan hashes and proposed new operation/window. New native plan is unbound template, approval/attempt absent. Owner renewal decision required before reusing private metadata and deleting expired raw copies; no silent retention extension. Fresh exact operation needs new approval, never the old receipt. Proposed9:15–9:45a.m. Eastern October25 with9:25cutoff; owner start supplied, end awaits exact approval.
+
+No new runtime tests claimed: prior110+10+13 remain historical proof of unchanged code. Current source/hash and fresh native-unbound refusal/parameter guards are appropriate renewal evidence. Required governance/architecture/whitespace checks remain. Same accepted milestones/denominators; no new section or payment acceptance.

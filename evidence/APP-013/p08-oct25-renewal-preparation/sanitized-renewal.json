@@ -1,0 +1,18 @@
+{
+  "status": "PREPARED_NO_METADATA_RENEWAL_OR_EXECUTION_AUTHORITY",
+  "newOperationId": "84df5558-b9fa-4fa8-9fc4-52376473d45a",
+  "window": {
+    "start": "2026-10-25T13:15:00Z",
+    "cutoff": "2026-10-25T13:25:00Z",
+    "workEnd": "2026-10-25T13:35:00Z",
+    "cleanupEnd": "2026-10-25T13:42:00Z",
+    "purgeEnd": "2026-10-25T13:45:00Z"
+  },
+  "expiredOperationId": "635dd086-27cf-4a77-a0f0-061613022726",
+  "expiredPlanHash": "0cf3f103792d10e0fd8f88c2ab74e4b0661ed156406c8d0faa3ce82283bd0759",
+  "targetHash": "64eb53771ec4f77e58c36d5d90b3f2c27a5a382ea0da7adf9bc614a65f87be52",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "actualApprovalAbsent": true,
+  "actualAttemptAbsent": true,
+  "newRawMetadataCopied": false
+}
