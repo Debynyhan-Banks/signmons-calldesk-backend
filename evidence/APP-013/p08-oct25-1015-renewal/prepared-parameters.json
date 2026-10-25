@@ -1,0 +1,16 @@
+{
+  "status": "PREPARED_NO_EXTERNAL_OR_RAW_METADATA_RETENTION_AUTHORITY",
+  "operationId": "045270ef-535e-4572-b5ed-62557a9b5213",
+  "tenantPlanFileSha256": "de0b2684bcb90fc4f2d933fb36c8f1acc4da13bb1c54fcbfa88d304e590ecec9",
+  "targetSha256": "f7fadc43b8883546546411795c8febf834c2e76c293665d8ca341cd81a80c463",
+  "ownerMailboxSha256": "63993d26286698e06c692f3912294623a16bc29b9cef743e5fb80acc4767041c",
+  "window": {
+    "start": "2026-10-25T14:15:00Z",
+    "cutoff": "2026-10-25T14:25:00Z",
+    "workEnd": "2026-10-25T14:35:00Z",
+    "cleanupEnd": "2026-10-25T14:42:00Z",
+    "purgeEnd": "2026-10-25T14:45:00Z"
+  },
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "newRawMailboxMetadataPersisted": false
+}

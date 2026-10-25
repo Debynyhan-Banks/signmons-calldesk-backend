@@ -1,0 +1,3 @@
+# APP-013 /3A /P08 —10:15 renewal preparation
+
+Source-only reuse; canonical source 062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df verified unchanged. No raw mailbox copied or persisted, no old approval reused, no runnable fresh approval or attempt. Current tests are source/parameter/native refusal checks; prior110/10/13 proof remains historical, not a new runtime result. Prior exact-file purge absence rechecked. Fresh candidate/operation IDs; same approved account/tenant purpose and collision refusal. Fresh exact approval must authorize one private plan retained only until10:45, then same disabled-account provisioning/readbacks/cleanup. No API/credential lookup or account mutation.
