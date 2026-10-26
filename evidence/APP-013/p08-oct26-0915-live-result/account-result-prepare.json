@@ -1,0 +1,13 @@
+{
+  "status": "LOCAL_DISABLED_PAIR_CLOSED",
+  "failureStage": null,
+  "failureCode": null,
+  "residuals": [],
+  "appOwned": true,
+  "firebaseOwned": true,
+  "actualAccountCreated": true,
+  "liveAction": true,
+  "sessionsAbsent": true,
+  "privateMetadataAbsent": true,
+  "privateMetadataPurgeOnTime": true
+}

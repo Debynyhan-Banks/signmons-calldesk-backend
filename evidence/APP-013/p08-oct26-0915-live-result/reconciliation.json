@@ -1,0 +1,21 @@
+{
+  "verifiedAtUtc": "2026-10-26T13:18:09.248Z",
+  "operationId": "0bac708b-c4fb-4440-b9c6-f26ded85ea73",
+  "proposalCommit": "c489534e6acbba55f7fa58d86dfa401304938892",
+  "questionCallId": "call_98c1cbf088064dec90d92a22b825f8ce",
+  "planSha256": "c1e3c646dd6c6f220ce557df721570cd035501f489546f8d9731277863c9c6ab",
+  "targetSha256": "23d7b71141e7cdba27558c97333e6821fc76ec872a84cdc2f2f19a980bee029c",
+  "sourceVerified": true,
+  "approvalAttemptJournalResultCorrelated": true,
+  "ownerTerminalStatus": [
+    "P08_DISABLED_ACCOUNT_CREATED_AND_CLOSED",
+    "CONTAINMENT_VERIFIED"
+  ],
+  "privatePlanAndDesignationAbsent": true,
+  "purgeObservedBeforeDeadline": true,
+  "remoteRereadPerformed": false,
+  "accountRemainsDisabled": true,
+  "operatorSignInDemonstrated": false,
+  "paymentDemonstrated": false,
+  "scopeDeviation": false
+}
