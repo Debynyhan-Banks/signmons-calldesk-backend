@@ -1,0 +1,17 @@
+{
+  "kind": "OFFLINE_OCT26_RENEWAL_BINDING_NO_REAL_APPROVAL",
+  "proposalCommit": "609275a7f081ec8cd9e66ef096d6384396947101",
+  "proposalSha256": "f63c33cd2b823d395d746740bb4647eee5f731f38ced8f15e7fcb252b9335fae",
+  "expectedPlanSha256": "5edac2756110ba49b964c9ce625c4a9ebcc868f91d64b76e057f5f73374228c9",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "positive": "PASS",
+  "beforeStart": "BEFORE_START",
+  "cutoff": "START_CUTOFF",
+  "missingApproval": "EXACT_OWNER_APPROVAL_REQUIRED",
+  "actualApprovalAbsent": true,
+  "actualAttemptAbsent": true,
+  "privatePlanUnbound": true,
+  "rawMailboxPersisted": false,
+  "credentialCalls": 0,
+  "providerCalls": 0
+}
