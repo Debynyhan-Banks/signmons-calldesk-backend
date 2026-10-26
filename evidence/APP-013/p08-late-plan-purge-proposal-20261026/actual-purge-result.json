@@ -1,0 +1,16 @@
+{
+  "kind": "ACTUAL_OWNER_APPROVED_EXACT_LATE_LOCAL_PURGE",
+  "ownerAnswer": "Approve exact local plan cleanup",
+  "questionCallId": "call_b210b3bc14e941d99a85fefe02379178",
+  "proposalCommit": "6fd591cc5d659c44daf41f84d0460a26fbf9a2e8",
+  "deletedPath": "/private/tmp/p08-account-launch-20261025-renewal2/launch-plan.json",
+  "deletedBlobSha256": "a6678513048ac06aa8e26a39c1c9d10ef94c7254e1f8a8abc6bc403a38b1a770",
+  "absenceVerified": true,
+  "completedUtc": "2026-10-26T12:02:32.718449Z",
+  "rawMetadataCopied": false,
+  "sourceAndApprovalPreserved": true,
+  "credentialCalls": 0,
+  "providerCalls": 0,
+  "accountCreated": false,
+  "originalRetentionDeadlineMissed": true
+}

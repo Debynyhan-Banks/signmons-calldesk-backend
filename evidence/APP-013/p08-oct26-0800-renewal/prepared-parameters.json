@@ -1,0 +1,16 @@
+{
+  "status": "PREPARED_NO_EXECUTION_OR_RAW_MAILBOX_RETENTION_AUTHORITY",
+  "operationId": "ff134034-e23d-4588-9c77-b5ef3017f962",
+  "tenantPlanFileSha256": "de0b2684bcb90fc4f2d933fb36c8f1acc4da13bb1c54fcbfa88d304e590ecec9",
+  "targetSha256": "ebfee6e7fb98b0acc9a8e70b7d92a334dc3bce47aa8c219a5a76a027cceeb33a",
+  "ownerMailboxSha256": "63993d26286698e06c692f3912294623a16bc29b9cef743e5fb80acc4767041c",
+  "window": {
+    "start": "2026-10-26T12:00:00Z",
+    "cutoff": "2026-10-26T12:15:00Z",
+    "workEnd": "2026-10-26T12:20:00Z",
+    "cleanupEnd": "2026-10-26T12:27:00Z",
+    "purgeEnd": "2026-10-26T12:30:00Z"
+  },
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "rawMailboxPersisted": false
+}

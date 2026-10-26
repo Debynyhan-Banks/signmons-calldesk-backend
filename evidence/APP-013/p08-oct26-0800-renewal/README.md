@@ -1,0 +1,3 @@
+# APP-013 /3A /P08 — October26 8:00 renewal
+
+Source-only unchanged launcher reuse under the existing preparation card. Fresh proposed candidate/operation/window; no raw mailbox persisted or actual approval/attempt. Canonical source 062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df unchanged, backend locks and native refusal checked. Historical110/10/13proof is not reported as new runtime testing. Prior exact late-plan purge completed8:02:32a.m. with owner approval and absence receipt. New operation requires separate exact approval/private retention until8:30; no expired receipt reuse or account action. No new code/permission/product scope.
