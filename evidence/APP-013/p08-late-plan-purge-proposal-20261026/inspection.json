@@ -1,0 +1,13 @@
+{
+  "kind": "LOCAL_EXACT_FILE_INSPECTION_NO_PURGE",
+  "path": "/private/tmp/p08-account-launch-20261025-renewal2/launch-plan.json",
+  "blobSha256": "a6678513048ac06aa8e26a39c1c9d10ef94c7254e1f8a8abc6bc403a38b1a770",
+  "mode": "0600",
+  "symlink": false,
+  "deleted": false,
+  "providerCalls": 0,
+  "credentialCalls": 0,
+  "accountCreated": false,
+  "ownerStartRequested": "2026-10-26T08:00:00 America/New_York",
+  "endTimeAwaitingOwner": true
+}
