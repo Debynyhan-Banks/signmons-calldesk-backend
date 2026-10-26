@@ -1,0 +1,33 @@
+{
+  "status": "P08_ACCOUNT_OPERATION_EXPIRED_UNSTARTED",
+  "observedAtUtc": "2026-10-26T09:03:34Z",
+  "operationId": "045270ef-535e-4572-b5ed-62557a9b5213",
+  "proposalCommit": "14ca9e44b1c2b2cf51d327fa3805a71a0e5a9b69",
+  "window": {
+    "start": "2026-10-25T14:15:00Z",
+    "cutoff": "2026-10-25T14:25:00Z",
+    "workEnd": "2026-10-25T14:35:00Z",
+    "cleanupEnd": "2026-10-25T14:42:00Z",
+    "purgeEnd": "2026-10-25T14:45:00Z"
+  },
+  "canonicalPlanSha256": "4612df27aa4f0ce719fd83811c646824d77f8c5fb60bf77869171f6f5294ce2a",
+  "approvalFileSha256": "6b448d5f0f7932d2cdbaf91b0448d0a9e33fafb08e3d3c143427be6f66ea87d2",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "privatePackagePresent": true,
+  "privateFilesMode": "0600",
+  "attemptReceiptPresent": false,
+  "journalReceiptPresent": false,
+  "resultReceiptPresent": false,
+  "stopReceiptPresent": false,
+  "closeoutAttemptPresent": false,
+  "closeoutResultPresent": false,
+  "privatePurgeReceiptPresent": false,
+  "privateLaunchPlanPresentAfterPurgeDeadline": true,
+  "privateApprovalReceiptPresent": true,
+  "recordedExternalActionAbsent": true,
+  "accountExistenceUnverified": true,
+  "privateMetadataPurgeOverdue": true,
+  "automaticRetryAllowed": false,
+  "deletionPerformed": false,
+  "freshAuthorityRequired": true
+}
