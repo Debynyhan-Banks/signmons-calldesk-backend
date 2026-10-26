@@ -1,0 +1,18 @@
+{
+  "kind": "ACTUAL_OWNER_REPLY_AFTER_START_CUTOFF_NO_EXECUTION",
+  "ownerAnswer": "Approve this exact 8:00\u20138:30 operation",
+  "questionCallId": "call_b569239c848f466b9010d42f7d71af4b",
+  "proposalCommit": "609275a7f081ec8cd9e66ef096d6384396947101",
+  "operationId": "ff134034-e23d-4588-9c77-b5ef3017f962",
+  "observedUtc": "2026-10-26T12:19:24.868863Z",
+  "startCutoffUtc": "2026-10-26T12:15:00Z",
+  "normalStartWithheldReason": "START_CUTOFF_EXPIRED",
+  "actualAttemptAbsent": true,
+  "runnableApprovalNotInstalled": true,
+  "rawMailboxNotPersisted": true,
+  "planIsUnboundTemplateOnly": true,
+  "newSensitiveDataPurgeNeeded": false,
+  "credentialCalls": 0,
+  "providerCalls": 0,
+  "accountCreated": false
+}

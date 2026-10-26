@@ -1,0 +1,16 @@
+{
+  "status": "PROPOSED_AVAILABILITY_AND_EXACT_APPROVAL_REQUIRED",
+  "operationId": "0bac708b-c4fb-4440-b9c6-f26ded85ea73",
+  "tenantPlanFileSha256": "de0b2684bcb90fc4f2d933fb36c8f1acc4da13bb1c54fcbfa88d304e590ecec9",
+  "targetSha256": "23d7b71141e7cdba27558c97333e6821fc76ec872a84cdc2f2f19a980bee029c",
+  "ownerMailboxSha256": "63993d26286698e06c692f3912294623a16bc29b9cef743e5fb80acc4767041c",
+  "window": {
+    "start": "2026-10-26T13:15:00Z",
+    "cutoff": "2026-10-26T13:30:00Z",
+    "workEnd": "2026-10-26T13:35:00Z",
+    "cleanupEnd": "2026-10-26T13:42:00Z",
+    "purgeEnd": "2026-10-26T13:45:00Z"
+  },
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "rawMailboxPersisted": false
+}

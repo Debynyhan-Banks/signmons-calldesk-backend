@@ -1,0 +1,3 @@
+# APP-013 /3A /P08 — proposed9:15 operation
+
+Previous8:00 reply arrived8:17after8:15start cutoff; no runnable approval, attempt, credential/provider action or raw mailbox plan. Late reply recorded separately. One fresh source-only packet prepared for proposed9:15–9:45, strict9:30start/work end9:35/cleanup9:42/purge before9:45. Availability is not assumed: next exact decision must confirm both attendance and operation. Unchanged source 062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df, no code or new tests claimed beyond source/parameter guards. Previous110/10/13 proof remains historical. No raw mailbox persisted; no actual approval/attempt. Prior exact overdue-plan purge verified8:02:32; no residual sensitive-file cleanup.
