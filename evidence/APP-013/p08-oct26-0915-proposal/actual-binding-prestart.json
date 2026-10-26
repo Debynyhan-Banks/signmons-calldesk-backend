@@ -1,0 +1,13 @@
+{
+  "kind": "ACTUAL_APPROVAL_NATIVE_PRESTART_VERIFICATION",
+  "proposalCommit": "c489534e6acbba55f7fa58d86dfa401304938892",
+  "questionCallId": "call_98c1cbf088064dec90d92a22b825f8ce",
+  "planSha256": "c1e3c646dd6c6f220ce557df721570cd035501f489546f8d9731277863c9c6ab",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "nativeStatus": "P08_ACCOUNT_LAUNCH_REFUSED_BEFORE_START",
+  "actualAttemptAbsent": true,
+  "credentialCalls": 0,
+  "providerCalls": 0,
+  "accountCreated": false,
+  "privatePlanPurgeDeadline": "2026-10-26T13:45:00Z"
+}
