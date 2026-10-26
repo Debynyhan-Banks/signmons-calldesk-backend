@@ -1,0 +1,17 @@
+{
+  "kind": "OFFLINE_PROPOSED_0915_BINDING_NO_REAL_APPROVAL",
+  "proposalCommit": "c489534e6acbba55f7fa58d86dfa401304938892",
+  "proposalSha256": "a5a18018bc1c6c59f39f9e41a49f54a92462a5e983bc1022a3ea66c4accaa9f6",
+  "expectedPlanSha256": "c1e3c646dd6c6f220ce557df721570cd035501f489546f8d9731277863c9c6ab",
+  "sourceManifestSha256": "062e0c1e13192b17b010e8e605f22eaa386c98e390465f752d5518b6367b10df",
+  "positive": "PASS",
+  "beforeStart": "BEFORE_START",
+  "cutoff": "START_CUTOFF",
+  "missingApproval": "EXACT_OWNER_APPROVAL_REQUIRED",
+  "actualApprovalAbsent": true,
+  "actualAttemptAbsent": true,
+  "privatePlanUnbound": true,
+  "rawMailboxPersisted": false,
+  "credentialCalls": 0,
+  "providerCalls": 0
+}
