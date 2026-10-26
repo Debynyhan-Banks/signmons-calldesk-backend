@@ -1,0 +1,24 @@
+{
+  "kind": "LOCAL_SOURCE_INSPECTION_NO_EXTERNAL_ACTION",
+  "backendCommit": "fcff17d999a6498d33fdea298bacd490e44a1a1d",
+  "governanceCommit": "02da0c84849cb3dcdb89e55d6774f5d18005a74d",
+  "availabilityQuestionCallId": "call_b90a3c4da1ca4acba755bfbec499fae2",
+  "availabilityAnswer": "Available 8:30\u20139:15 tonight",
+  "availabilityOnly": true,
+  "files": {
+    "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
+    "evidence/APP-013/p08-local-preparation-20261022/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",
+    "evidence/APP-013/p08-isolated-operator-local-20261024/operator-model.mjs": "25dba19f8ac69161debe3b3cabde7bb1fe5f44803ece1d9f873f2bfd194cf6e0",
+    "src/auth/firebase-admin.service.ts": "c08830abba171d58242aac5f04f2745e2ca58647a6ec3aeefa362867fb714347",
+    "src/auth/request-auth.guard.ts": "c73758c437dffdf556f08fec9c880a196eb1d50666c0780de12e057fe5f588c9",
+    "scripts/rehearse-phone-auth.mjs": "3422588da3e80f3fe8ce0a6a4983f425390bdf602ef58c3374365a6a8d72d5fb"
+  },
+  "findings": [
+    "Existing operator model uses mocked Firebase and refuses live CLI.",
+    "Existing payment controller --run refuses pending payment binding.",
+    "Existing qualification helper requires stagingOnly while the provisioned account has testOnly.",
+    "Account launcher supports disabled provisioning/closeout, not activation or user-token exchange.",
+    "P07 runtime remains retired; local source cannot establish current external readiness."
+  ],
+  "externalCalls": 0
+}
