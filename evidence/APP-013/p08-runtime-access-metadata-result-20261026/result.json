@@ -1,0 +1,26 @@
+{
+  "operationId": "307f00df-998f-45ef-a3c8-8c2cd5d27860",
+  "proposalCommit": "ef7d4d6d938f8da8bcfbfcc0c6a590f06220e8f3",
+  "proposalSha256": "d7c19f44bc3d09567aa89098af97939121e58de35736e24697f2d54051185396",
+  "questionCallId": "call_f3139bce9603407480f476ee8358a9df",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "argumentSha256": "a816351a15234078bf2d378ddfb6ed8fc1dccff304336a4b578c6e2ade5cb09b",
+      "startedAtUtc": "2026-10-27T00:11:03.169060+00:00",
+      "exitCode": 1,
+      "responseSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "completedAtUtc": "2026-10-27T00:11:03.651016+00:00"
+    }
+  ],
+  "facts": {},
+  "status": "P08_RUNTIME_ACCESS_METADATA_STOP",
+  "mutation": false,
+  "rawProviderDataPersisted": false,
+  "failureCode": "COMMAND_DENIED_OR_FAILED",
+  "failureStage": "OWNER_PRINCIPAL",
+  "noActiveChildProcess": true,
+  "completedAtUtc": "2026-10-27T00:11:03.651047+00:00",
+  "commandCount": 1,
+  "closeoutBeforeDeadline": true
+}

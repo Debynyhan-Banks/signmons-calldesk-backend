@@ -1,0 +1,14 @@
+{
+  "kind": "ACTUAL_OWNER_METADATA_EXECUTION_APPROVAL",
+  "operationId": "307f00df-998f-45ef-a3c8-8c2cd5d27860",
+  "proposalCommit": "ef7d4d6d938f8da8bcfbfcc0c6a590f06220e8f3",
+  "proposalSha256": "d7c19f44bc3d09567aa89098af97939121e58de35736e24697f2d54051185396",
+  "questionCallId": "call_f3139bce9603407480f476ee8358a9df",
+  "ownerAnswer": "Approve exact metadata-only qualification",
+  "recordedAtUtc": "2026-10-27T00:10:13.734392+00:00",
+  "commandLimit": 22,
+  "startCutoffUtc": "2026-10-27T01:00:00Z",
+  "readDeadlineUtc": "2026-10-27T01:10:00Z",
+  "closeoutDeadlineUtc": "2026-10-27T01:15:00Z",
+  "automaticRetryAllowed": false
+}
