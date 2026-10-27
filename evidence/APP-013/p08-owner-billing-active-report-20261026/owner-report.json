@@ -1,0 +1,8 @@
+{
+  "kind": "OWNER_REPORTED_BILLING_ACTIVE_NOT_PROVIDER_VERIFIED",
+  "ownerStatement": "Signmons billing account is active",
+  "recordedAtUtc": "2026-10-27T00:37:42.863478+00:00",
+  "providerRereadPerformed": false,
+  "billingChangeByAssistant": false,
+  "externalActionApproved": false
+}
