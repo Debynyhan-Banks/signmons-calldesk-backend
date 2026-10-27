@@ -1,0 +1,10 @@
+test_01_actual_predicate_roundtrip_retains_row_and_audit (test_auth_postgres.AuthPostgreSQL.test_01_actual_predicate_roundtrip_retains_row_and_audit) ... ok
+test_02_concurrent_conditional_activation_one_winner (test_auth_postgres.AuthPostgreSQL.test_02_concurrent_conditional_activation_one_winner) ... ok
+test_03_foreign_missing_wrong_role_and_stale_refuse (test_auth_postgres.AuthPostgreSQL.test_03_foreign_missing_wrong_role_and_stale_refuse) ... ok
+test_04_already_active_and_changed_version_no_cleanup_takeover (test_auth_postgres.AuthPostgreSQL.test_04_already_active_and_changed_version_no_cleanup_takeover) ... ok
+test_05_tcp_refuses_before_connection (test_auth_postgres.AuthPostgreSQL.test_05_tcp_refuses_before_connection) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.975s
+
+OK

@@ -1,0 +1,204 @@
+✔ positive lifecycle uses real production-mode guard and tenant context then retains disabled account (5.272ms)
+✔ stage failure is bounded and truthful: getApp (1.050375ms)
+✔ stage failure is bounded and truthful: getFirebase (1.295916ms)
+✔ stage failure is bounded and truthful: activate (1.365792ms)
+✔ stage failure is bounded and truthful: enable (2.260459ms)
+✔ stage failure is bounded and truthful: issue (2.46575ms)
+✔ stage failure is bounded and truthful: authenticate (2.647209ms)
+✔ stage failure is bounded and truthful: disableFirebase (2.7025ms)
+✔ stage failure is bounded and truthful: revoke (2.721541ms)
+✔ stage failure is bounded and truthful: disableApp (2.483792ms)
+✔ timeout records unknown mutation or closes: activate (27.6185ms)
+✔ timeout records unknown mutation or closes: enable (27.946583ms)
+✔ timeout records unknown mutation or closes: issue (28.474334ms)
+✔ timeout records unknown mutation or closes: authenticate (29.313834ms)
+✔ SIGTERM during activate stops and contains or reports uncertainty (1.936042ms)
+✔ SIGTERM during enable stops and contains or reports uncertainty (3.086875ms)
+✔ SIGTERM during issue stops and contains or reports uncertainty (2.928875ms)
+✔ SIGTERM during authenticate stops and contains or reports uncertainty (3.069792ms)
+✔ preflight already-active refuses without disabling another operation (1.034292ms)
+✔ CAS loser never disables winning operation (1.464083ms)
+✔ production guard/tenant role rejects {"iss":"foreign"} (3.033708ms)
+✔ production guard/tenant role rejects {"aud":"foreign"} (3.272958ms)
+✔ production guard/tenant role rejects {"tenantId":"foreign"} (3.206334ms)
+✔ production guard/tenant role rejects {"role":"tech"} (2.768125ms)
+✔ production guard/tenant role rejects {"sub":"non-uuid"} (2.829833ms)
+✔ exact testOnly marker branch rejects historical stagingOnly and extra markers (0.181875ms)
+✔ disabled/revoked Firebase refuses guard even with otherwise matching token (2.732625ms)
+✔ before-start/cutoff/missing owner/proposal/source/runtime and wrong target refuse before input (0.345375ms)
+✔ actual serialized native inputs traverse runLaunch with no real credential calls (7.578167ms)
+✔ independent closeout reuses exact activation journal and has one reservation (3.55775ms)
+✔ native CLI refuses with no plan before any credential input (89.412709ms)
+✔ real REST protocol adapters sign/exchange once and traverse exact-job bridge only (0.971583ms)
+✔ runtime adapter rejects token claims {"sub":"foreign"} (0.239458ms)
+✔ runtime adapter rejects token claims {"aud":"foreign"} (0.154959ms)
+✔ runtime adapter rejects token claims {"iss":"foreign"} (0.115208ms)
+✔ runtime adapter rejects token claims {"testOnly":false} (0.156333ms)
+✔ runtime adapter rejects token claims {"exp":0} (0.138709ms)
+✔ runtime adapter rejects token claims {"role":"owner"} (0.119666ms)
+✔ no retry of protocol :signBlob (0.130833ms)
+✔ no retry of protocol :signInWithCustomToken (0.141958ms)
+✔ owner credential and TLS adapters use exact account, no overrides, and close session readback (0.393667ms)
+✔ actual OS SIGINT during token wait still performs closeout (391.22625ms)
+✔ actual OS SIGTERM during token wait still performs closeout (421.599958ms)
+✔ signals during mandatory cleanup do not terminate it: disableFirebase (7.78125ms)
+✔ signals during mandatory cleanup do not terminate it: revoke (6.500625ms)
+✔ signals during mandatory cleanup do not terminate it: disableApp (4.701583ms)
+✔ work deadline prevents enable and cleanup deadline preserves residual (2.662417ms)
+✔ foreign claims/ownership drift refuses before any mutation (4.297125ms)
+✔ independent cleanup can finish revoke after prior app disable without reactivation (4.60825ms)
+✔ wrong runtime job is never accepted as authentication (0.369584ms)
+✔ missing qualification refuses before hidden password (0.270667ms)
+✔ session closeout failure cannot be contained (3.353417ms)
+✔ cleanup deadline expiration stops all new calls and reports residual (2.604292ms)
+✔ unexpected TLS/owner authority fail before Firebase and close attempted session (0.495958ms)
+✔ cleared adapters refuse further transport calls (0.126208ms)
+✔ actual policy normalizer derives canonical digest and fixed amount without identity/account leakage (1.941833ms)
+✔ total absent/null/foreign rows and existing activity refuse (0.847833ms)
+✔ UUID and actual same-tenant active application actor required before any transport (0.103209ms)
+✔ unqualified/stale money or identity cannot construct upstream (0.097625ms)
+✔ exact method/job route allowlist and deadline refuse before transport (0.265541ms)
+✖ bootstrap one-use; bearer stays server-side; cookie private and no persistence (5.372708ms)
+✖ Origin/CSRF/body/unknown action and unacknowledged policy cannot mutate (1.867125ms)
+✖ real HTTP loopback create, controlled lost response, one active recovery, failed/success state and clear (0.256708ms)
+✖ concurrent click has one winner and cannot invoke second policy operation (0.197625ms)
+✖ foreign tracking, money and unexpected gate cannot assert a successful outcome (0.254916ms)
+✖ return query alone has no settlement path (0.232ms)
+✖ private clear failure cannot claim cleanup succeeded (0.210792ms)
+✖ deadline closes private session without additional action (0.162666ms)
+✖ isolated desktop/mobile browser controls preserve one request and clear private session (0.500542ms)
+ℹ tests 69
+ℹ suites 0
+ℹ pass 60
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1492.814
+
+✖ failing tests:
+
+test at reuse/operator-bridge.test.mjs:315:1
+✖ bootstrap one-use; bearer stays server-side; cookie private and no persistence (5.372708ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at reuse/operator-bridge.test.mjs:339:1
+✖ Origin/CSRF/body/unknown action and unacknowledged policy cannot mutate (1.867125ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at reuse/operator-bridge.test.mjs:356:1
+✖ real HTTP loopback create, controlled lost response, one active recovery, failed/success state and clear (0.256708ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at reuse/operator-bridge.test.mjs:387:1
+✖ concurrent click has one winner and cannot invoke second policy operation (0.197625ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at reuse/operator-bridge.test.mjs:403:1
+✖ foreign tracking, money and unexpected gate cannot assert a successful outcome (0.254916ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at reuse/operator-bridge.test.mjs:429:1
+✖ return query alone has no settlement path (0.232ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at reuse/operator-bridge.test.mjs:445:1
+✖ private clear failure cannot claim cleanup succeeded (0.210792ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at reuse/operator-bridge.test.mjs:459:1
+✖ deadline closes private session without additional action (0.162666ms)
+  Error: listen EPERM: operation not permitted 127.0.0.1
+      at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+      at listenInCluster (node:net:1997:12)
+      at node:net:2206:7
+      at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+    code: 'EPERM',
+    errno: -1,
+    syscall: 'listen',
+    address: '127.0.0.1'
+  }
+
+test at reuse/operator-bridge.test.mjs:476:1
+✖ isolated desktop/mobile browser controls preserve one request and clear private session (0.500542ms)
+  AssertionError [ERR_ASSERTION]: PLAYWRIGHT_MODULE must identify an existing installed module
+      at TestContext.<anonymous> (file:///private/tmp/p08-authentication-20261026-prep1/reuse/operator-bridge.test.mjs:478:10)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at runNextTicks (node:internal/process/task_queues:68:3)
+      at process.processImmediate (node:internal/timers:472:9)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

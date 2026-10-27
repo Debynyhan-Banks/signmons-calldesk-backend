@@ -1,0 +1,46 @@
+{
+  "kind": "LOCAL_AUTHENTICATION_COMPLETION_ONLY",
+  "verifiedAtUtc": "2026-10-27T00:06:00.076337+00:00",
+  "approvalProposalCommit": "8dbf43a65017e8ddc3f1404c87b21c2c59b2e925",
+  "approvalDecisionCommit": "ea91309",
+  "questionCallId": "call_e9d14ac50b094afdad54c04c55cee630",
+  "ownerAnswer": "Approve bounded local completion and tests",
+  "sourceManifestSha256": "305f27922daecf24721a25fc3e78c27554cc481e3ce902664d4f574044bcf5c8",
+  "authCases": 60,
+  "preservedBridgeCases": 14,
+  "preservedModelCases": 13,
+  "actualDisposablePostgreSQLCases": 5,
+  "allPassed": true,
+  "loopbackBrowserViewports": [
+    1440,
+    390
+  ],
+  "observedNonLoopbackBrowserRequests": 0,
+  "actualOSSignalsTested": [
+    "SIGINT",
+    "SIGTERM"
+  ],
+  "ownedPostgreSQLProcessesRemaining": 0,
+  "nativeRefusal": "P08_AUTH_REFUSED_ENOENT",
+  "actualExternalApprovalAbsent": true,
+  "realMailboxPlanAbsent": true,
+  "credentialResolutions": 0,
+  "liveDatabaseOrProviderActions": 0,
+  "applicationSourcesChanged": false,
+  "realOperatorAuthenticated": false,
+  "paymentDemonstrated": false,
+  "scopeDeviation": false,
+  "remainingExternalPrerequisites": [
+    "current exact runtime/access metadata qualification",
+    "separate approved P07 runtime restoration",
+    "exact authentication action/source/identity/window/private-retention approval",
+    "same-job Sandbox payment and final 3A acceptance"
+  ],
+  "productionGuardClassesExecuted": [
+    "RequestAuthGuard",
+    "TenantGuard",
+    "DispatchAccessGuard"
+  ],
+  "governanceSafeguardCases": 25,
+  "frozenBaselineDocsArchitectureWhitespace": "PASS"
+}

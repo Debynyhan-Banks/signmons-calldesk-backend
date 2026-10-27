@@ -1,0 +1,21 @@
+setUpClass (test_auth_postgres.AuthPostgreSQL) ... ERROR
+
+======================================================================
+ERROR: setUpClass (test_auth_postgres.AuthPostgreSQL)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-authentication-20261026-prep1/test_auth_postgres.py", line 9, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/p08-authentication-20261026-prep1/reuse/test_postgres_contract.py", line 19, in setUpClass
+    cls.command(args=[str(PG/'initdb'),'-D',str(cls.data),'--username=neondb_owner','--auth=trust','--no-locale','--encoding=UTF8'])
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-authentication-20261026-prep1/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.813s
+
+FAILED (errors=1)

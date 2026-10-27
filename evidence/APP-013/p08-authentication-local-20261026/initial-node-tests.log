@@ -1,0 +1,32 @@
+file:///private/tmp/p08-authentication-20261026-prep1/auth-controller.test.mjs:27
+test('owner credential and TLS adapters use exact account, no overrides, and close session readback',async()=>{const f=fixture(),calls=[];const child=async(bin,args)=>{calls.push(args);if(args[0]==='auth'&&args[1]==='list')return f.p.ownerPrincipal;if(args[0]==='config')return '(unset)';return 'FIXTURE_ACCESS_TOKEN_LONG_ENOUGH'};class Client{constructor(cfg){this.cfg=cfg;this.connection={stream:{encrypted:true,authorized:true}}}async connect(){}async end(){}async query(sql){if(sql.includes('current_database'))return {rows:[{database:'neondb',username:'neondb_owner',status:'ACTIVE'}]};return {rows:[{n:0}]}}const c=await realClients(f.cap(),{password:'FIXTURE',child,fetcher:()=>{throw Error('NO_FETCH')},ClientClass:Client});await c.close();assert.equal(calls.filter(x=>x[1]==='print-access-token').length,1);assert(calls.some(x=>x.includes('--account='+f.p.ownerPrincipal)))});
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           ^
+
+SyntaxError: Unexpected identifier 'c'
+    at compileSourceTextModule (node:internal/modules/esm/utils:318:16)
+    at ModuleLoader.moduleStrategy (node:internal/modules/esm/translators:111:18)
+    at #translate (node:internal/modules/esm/loader:473:20)
+    at afterLoad (node:internal/modules/esm/loader:529:29)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:534:12)
+    at #getOrCreateModuleJobAfterResolve (node:internal/modules/esm/loader:571:36)
+    at afterResolve (node:internal/modules/esm/loader:624:52)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:630:12)
+    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:649:32)
+    at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+
+Node.js v24.12.0
+✖ /private/tmp/p08-authentication-20261026-prep1/auth-controller.test.mjs (31.010875ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42.599042
+
+✖ failing tests:
+
+test at ../../../../private/tmp/p08-authentication-20261026-prep1/auth-controller.test.mjs:1:1
+✖ /private/tmp/p08-authentication-20261026-prep1/auth-controller.test.mjs (31.010875ms)
+  'test failed'
