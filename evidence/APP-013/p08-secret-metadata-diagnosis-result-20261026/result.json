@@ -1,0 +1,44 @@
+{
+  "operationId": "2b0bbec5-b94f-4256-9e5f-916d1548553b",
+  "proposalCommit": "7a72a2a080d0cdaee56a90b40c223108337980ee",
+  "proposalSha256": "37690d503c0f99a8a54df5740c18e828719f3e19235a9040ededa63617185237",
+  "questionCallId": "call_cd3f87c7a28648ab8f22096103bd10d1",
+  "cliCommands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "startedAtUtc": "2026-10-27T00:25:53.539058+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-27T00:25:53.921962+00:00"
+    },
+    {
+      "stage": "OWNER_OAUTH_MEMORY_ONLY",
+      "startedAtUtc": "2026-10-27T00:25:53.922394+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-27T00:25:54.157337+00:00"
+    }
+  ],
+  "httpsGetCount": 1,
+  "mutation": false,
+  "rawBodiesOrBearersPersisted": false,
+  "localCredentialOverridesAbsent": true,
+  "ownerPrincipalMatched": true,
+  "httpStatus": 403,
+  "responseByteCount": 1558,
+  "responseSha256": "3d017c399df66be569549eda947831a6703c31ba1149065c2578f0510ffde18e",
+  "providerStatus": "PERMISSION_DENIED",
+  "expectedMetadataPermissionMentioned": false,
+  "safeErrorInfo": [
+    {
+      "reason": "BILLING_DISABLED",
+      "permission": "UNKNOWN",
+      "service": "secretmanager.googleapis.com"
+    }
+  ],
+  "status": "P08_SECRET_METADATA_DIAGNOSIS_DENIED",
+  "resourceExistenceUnconfirmed": true,
+  "ownerBearerReferencesCleared": true,
+  "noActiveChildProcess": true,
+  "httpConnectionClosed": true,
+  "completedAtUtc": "2026-10-27T00:25:54.354612+00:00",
+  "closeoutBeforeDeadline": true
+}
