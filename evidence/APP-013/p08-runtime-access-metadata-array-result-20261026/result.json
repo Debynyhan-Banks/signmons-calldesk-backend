@@ -1,0 +1,98 @@
+{
+  "operationId": "678d75e1-44aa-4f16-971c-12c87d9826ce",
+  "proposalCommit": "ce7999fe8f152af67f1dbcff10a9302191f4bdf8",
+  "proposalSha256": "7fba2d47e99a57472b98d47f157ee1c78fe43df9649d03e87de3db076003ad68",
+  "questionCallId": "call_d07a633a536f482f9539bcf24c3f2ad2",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "argumentSha256": "a816351a15234078bf2d378ddfb6ed8fc1dccff304336a4b578c6e2ade5cb09b",
+      "startedAtUtc": "2026-10-27T00:17:49.963690+00:00",
+      "exitCode": 0,
+      "responseSha256": "1055220f7e494bcac615036fe47036ead9c47254577ffce25f2ad33d49367f4d",
+      "completedAtUtc": "2026-10-27T00:17:50.354789+00:00"
+    },
+    {
+      "stage": "SERVICE_METADATA",
+      "argumentSha256": "8b1896920f3417f7728e498f552429967107da15aea41138041cbea369b60c24",
+      "startedAtUtc": "2026-10-27T00:17:50.355201+00:00",
+      "exitCode": 0,
+      "responseSha256": "6ed92ba5761a9080ae107b55f3d538bf3fb0e298e983f9f9eb6da62d2421430f",
+      "completedAtUtc": "2026-10-27T00:17:50.959033+00:00"
+    },
+    {
+      "stage": "CANDIDATE_METADATA",
+      "argumentSha256": "6b4bd4964dfaf920132ad82c2827588e46d50af244d5d5abc004a917bb200759",
+      "startedAtUtc": "2026-10-27T00:17:50.959534+00:00",
+      "exitCode": 0,
+      "responseSha256": "0a16a6a685b38c0ea4d9410cf685dfb68e4df0922272021c54bde1a452af229a",
+      "completedAtUtc": "2026-10-27T00:17:51.530155+00:00"
+    },
+    {
+      "stage": "DEDICATED_IDENTITY",
+      "argumentSha256": "8bcf9de16727e4dfd9a56906e983caafeb3322b85d5941deb88e4ea39fac7d35",
+      "startedAtUtc": "2026-10-27T00:17:51.530627+00:00",
+      "exitCode": 0,
+      "responseSha256": "09a2cbfd1649461000a9d5b9a43a39068e01d855e18a50576e28a8b5df422c33",
+      "completedAtUtc": "2026-10-27T00:17:52.026581+00:00"
+    },
+    {
+      "stage": "DEDICATED_IDENTITY_POLICY",
+      "argumentSha256": "187ed3290e3695acc1a972d36c5a0d513856d9ef066688783bd56e2b5769c940",
+      "startedAtUtc": "2026-10-27T00:17:52.027032+00:00",
+      "exitCode": 0,
+      "responseSha256": "c6bc1f4315e66396fab83c1908f342f5dec34847e44f43e272d5a12be30295b0",
+      "completedAtUtc": "2026-10-27T00:17:52.534515+00:00"
+    },
+    {
+      "stage": "PROJECT_DEDICATED_BINDINGS",
+      "argumentSha256": "3d23d50505ba1b28c2fd1d2189ea5dfe4d0259f3274d4fcf9618cab736a71897",
+      "startedAtUtc": "2026-10-27T00:17:52.535023+00:00",
+      "exitCode": 0,
+      "responseSha256": "82029293b5182180020c3825b6ff6afd11bd45643c04ee0f996d0a701f90ea98",
+      "completedAtUtc": "2026-10-27T00:17:53.348585+00:00"
+    },
+    {
+      "stage": "SECRET_VERSION_1",
+      "argumentSha256": "2491ab429658783629f38eb2afe8c3bbe621cee989a79fd24d25602a1b29a2c5",
+      "startedAtUtc": "2026-10-27T00:17:53.349226+00:00",
+      "exitCode": 1,
+      "responseSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "completedAtUtc": "2026-10-27T00:17:53.812335+00:00",
+      "safeCause": "PROVIDER_PERMISSION_DENIED"
+    }
+  ],
+  "facts": {
+    "localCredentialOverridesAbsent": true,
+    "ownerPrincipalMatched": true,
+    "service": {
+      "tagAbsent": true,
+      "normalTraffic100": true,
+      "candidateTrafficZero": true,
+      "latestReadyMatchesCandidate": true
+    },
+    "candidate": {
+      "imageMatched": true,
+      "observedImageSha256": "17e54c5fc39408d21254d94ccd3a5b96fdec960ae5f40b036a521e89dcac6959",
+      "identityMatched": true,
+      "readyCondition": "True",
+      "environmentNameCount": 19,
+      "secretReferenceCount": 7
+    },
+    "dedicatedIdentity": {
+      "exactEmailMatched": true,
+      "disabled": true
+    },
+    "dedicatedAccountOwnerBindings": [],
+    "projectDedicatedBindings": []
+  },
+  "status": "P08_RUNTIME_ACCESS_METADATA_STOP",
+  "mutation": false,
+  "rawProviderDataPersisted": false,
+  "failureCode": "PROVIDER_PERMISSION_DENIED",
+  "failureStage": "SECRET_VERSION_1",
+  "noActiveChildProcess": true,
+  "completedAtUtc": "2026-10-27T00:17:53.812392+00:00",
+  "commandCount": 7,
+  "closeoutBeforeDeadline": true
+}

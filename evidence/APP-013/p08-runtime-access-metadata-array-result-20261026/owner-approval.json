@@ -1,0 +1,13 @@
+{
+  "operationId": "678d75e1-44aa-4f16-971c-12c87d9826ce",
+  "proposalCommit": "ce7999fe8f152af67f1dbcff10a9302191f4bdf8",
+  "proposalSha256": "7fba2d47e99a57472b98d47f157ee1c78fe43df9649d03e87de3db076003ad68",
+  "questionCallId": "call_d07a633a536f482f9539bcf24c3f2ad2",
+  "ownerAnswer": "Approve exact corrected metadata operation",
+  "recordedAtUtc": "2026-10-27T00:17:49.962602+00:00",
+  "hostConfigurationAccessApproved": true,
+  "correctedArrayProjectionApproved": true,
+  "metadataOnly": true,
+  "automaticRetryAllowed": false,
+  "commandLimit": 22
+}
