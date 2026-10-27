@@ -1,0 +1,11 @@
+{
+  "operationId": "70d7a530-113b-4808-849a-7732c3564474",
+  "proposalCommit": "3e88e5e298012edefadf989e1e20a8ebba895c68",
+  "proposalSha256": "8225154e8108cee7ee920f5259fca66401aed32a7615a5e607453a55b6e98f22",
+  "questionCallId": "call_7d2fe754cd58424c9e8fdd6e8cac4910",
+  "ownerAnswer": "Approve read-only billing status check",
+  "recordedAtUtc": "2026-10-27T00:29:49.045511+00:00",
+  "maximumCommands": 3,
+  "automaticRetryAllowed": false,
+  "financialMutationAuthorized": false
+}

@@ -1,0 +1,46 @@
+{
+  "operationId": "70d7a530-113b-4808-849a-7732c3564474",
+  "proposalCommit": "3e88e5e298012edefadf989e1e20a8ebba895c68",
+  "proposalSha256": "8225154e8108cee7ee920f5259fca66401aed32a7615a5e607453a55b6e98f22",
+  "questionCallId": "call_7d2fe754cd58424c9e8fdd6e8cac4910",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "startedAtUtc": "2026-10-27T00:29:49.046546+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-27T00:29:49.446668+00:00",
+      "responseSha256": "1055220f7e494bcac615036fe47036ead9c47254577ffce25f2ad33d49367f4d"
+    },
+    {
+      "stage": "PROJECT_BILLING_STATUS",
+      "startedAtUtc": "2026-10-27T00:29:49.447115+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-27T00:29:49.999171+00:00",
+      "responseSha256": "b7628502c2780cf984002a33c367def34fd4a934e9942fd175b3b6fc4afd9b39"
+    },
+    {
+      "stage": "LINKED_ACCOUNT_OPEN_STATUS",
+      "startedAtUtc": "2026-10-27T00:29:49.999760+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-27T00:29:50.504394+00:00",
+      "responseSha256": "0f02eb97752ecb5724f15c16a1598627a80b90c5154d69fcdd1c80bd10fcd1a0"
+    }
+  ],
+  "facts": {
+    "localCredentialOverridesAbsent": true,
+    "ownerPrincipalMatched": true,
+    "projectMatched": true,
+    "billingEnabled": true,
+    "billingAccountLinked": true,
+    "linkedAccountSha256": "df8c89e72b72b59ac6b06c0a20fa7d5f85a15b5d6d7450ff57a72722be172935",
+    "linkedAccountOpen": false,
+    "linkedAccountMatched": true
+  },
+  "financialMutation": false,
+  "rawBodiesOrAccountIdentifiersPersisted": false,
+  "status": "P08_BILLING_STATUS_READ_COMPLETE",
+  "noActiveChildProcess": true,
+  "completedAtUtc": "2026-10-27T00:29:50.505143+00:00",
+  "commandCount": 3,
+  "closeoutBeforeDeadline": true
+}
