@@ -1,0 +1,11 @@
+{
+  "kind": "LOCAL_INSTALLED_GCLOUD_SYNTHETIC_FORMATTER_DIAGNOSIS",
+  "originalFormat": "json(status.conditions,spec.serviceAccountName,spec.containers.image,spec.containers.env.name,spec.containers.env.valueFrom)",
+  "correctedFormat": "json(status.conditions,spec.serviceAccountName,spec.containers[].image,spec.containers[].env[].name,spec.containers[].env[].valueFrom)",
+  "oldProjectionDropsContainers": true,
+  "correctedProjectionPreservesImageAndSecretReferences": true,
+  "literalEnvironmentValueExcludedInBoth": true,
+  "externalCalls": 0,
+  "actualCandidateImageStillUnknown": true,
+  "interpretation": "CANDIDATE_SOURCE_OR_IDENTITY_DRIFT was the safe stop code, not established deployment drift; array metadata was absent because the projection omitted brackets."
+}

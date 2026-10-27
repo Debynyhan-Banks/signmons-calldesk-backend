@@ -1,0 +1,58 @@
+{
+  "operationId": "ae591f19-0b15-46d0-9295-047b77136d2b",
+  "proposalCommit": "d3d3cb8a679602bcf7d49582c862acd3a4ab0b77",
+  "proposalSha256": "1044139d9439567314ec443acb1532e8e56f321b72fb719f099eeb3210c72d39",
+  "questionCallId": "call_22e3b94dcbd84c4896a223c6af983ca3",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "argumentSha256": "a816351a15234078bf2d378ddfb6ed8fc1dccff304336a4b578c6e2ade5cb09b",
+      "startedAtUtc": "2026-10-27T00:14:02.625165+00:00",
+      "exitCode": 0,
+      "responseSha256": "1055220f7e494bcac615036fe47036ead9c47254577ffce25f2ad33d49367f4d",
+      "completedAtUtc": "2026-10-27T00:14:03.060779+00:00"
+    },
+    {
+      "stage": "SERVICE_METADATA",
+      "argumentSha256": "8b1896920f3417f7728e498f552429967107da15aea41138041cbea369b60c24",
+      "startedAtUtc": "2026-10-27T00:14:03.061224+00:00",
+      "exitCode": 0,
+      "responseSha256": "6ed92ba5761a9080ae107b55f3d538bf3fb0e298e983f9f9eb6da62d2421430f",
+      "completedAtUtc": "2026-10-27T00:14:03.970713+00:00"
+    },
+    {
+      "stage": "CANDIDATE_METADATA",
+      "argumentSha256": "6b4bd4964dfaf920132ad82c2827588e46d50af244d5d5abc004a917bb200759",
+      "startedAtUtc": "2026-10-27T00:14:03.971190+00:00",
+      "exitCode": 0,
+      "responseSha256": "7e8ecaa426e1471d7b149ff0ab743b6267cb8ccda21cb21cd2a3993428c9e549",
+      "completedAtUtc": "2026-10-27T00:14:04.600008+00:00"
+    }
+  ],
+  "facts": {
+    "localCredentialOverridesAbsent": true,
+    "ownerPrincipalMatched": true,
+    "service": {
+      "tagAbsent": true,
+      "normalTraffic100": true,
+      "candidateTrafficZero": true,
+      "latestReadyMatchesCandidate": true
+    },
+    "candidate": {
+      "imageMatched": false,
+      "identityMatched": true,
+      "readyCondition": "True",
+      "environmentNameCount": 0,
+      "secretReferenceCount": 0
+    }
+  },
+  "status": "P08_RUNTIME_ACCESS_METADATA_STOP",
+  "mutation": false,
+  "rawProviderDataPersisted": false,
+  "failureCode": "CANDIDATE_SOURCE_OR_IDENTITY_DRIFT",
+  "failureStage": "CANDIDATE_METADATA",
+  "noActiveChildProcess": true,
+  "completedAtUtc": "2026-10-27T00:14:04.600498+00:00",
+  "commandCount": 3,
+  "closeoutBeforeDeadline": true
+}

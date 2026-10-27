@@ -1,0 +1,12 @@
+{
+  "operationId": "ae591f19-0b15-46d0-9295-047b77136d2b",
+  "proposalCommit": "d3d3cb8a679602bcf7d49582c862acd3a4ab0b77",
+  "proposalSha256": "1044139d9439567314ec443acb1532e8e56f321b72fb719f099eeb3210c72d39",
+  "questionCallId": "call_22e3b94dcbd84c4896a223c6af983ca3",
+  "ownerAnswer": "Approve fresh host-access metadata operation",
+  "recordedAtUtc": "2026-10-27T00:14:02.623915+00:00",
+  "hostConfigurationAccessApproved": true,
+  "metadataOnly": true,
+  "automaticRetryAllowed": false,
+  "commandLimit": 22
+}
