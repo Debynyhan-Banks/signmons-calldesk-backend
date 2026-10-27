@@ -1,0 +1,14 @@
+{
+  "kind": "STATIC_REVIEW_OF_OWNER_ONLY_ONE_SHOT_COMMAND",
+  "commandBodySha256": "a7a9ece8c1ed1439262f20578747d404ce636ae96d8bfb4341e0a608f08be942",
+  "syntaxParsed": true,
+  "savedExpectedFingerprintMatched": true,
+  "networkOrSubprocessImportsAbsent": true,
+  "privateTerminalRequired": true,
+  "echoFallbackRefused": true,
+  "inputTimeoutSeconds": 60,
+  "fixedStatusOnlyOutput": true,
+  "identifierOrComputedHashPersisted": false,
+  "commandExecutedWithRealInput": false,
+  "providerCalls": 0
+}
