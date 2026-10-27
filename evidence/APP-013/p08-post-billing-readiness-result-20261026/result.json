@@ -1,0 +1,54 @@
+{
+  "operationId": "60e55fda-d026-43e8-9b89-c8e2ebef1a10",
+  "proposalCommit": "ccf1e1c6f36afa89cec76599710ce12c2a672333",
+  "proposalSha256": "3cffd2fadb964c0178fea72b9f92635ca9c06e1870f8c026a26a06f16b63289e",
+  "questionCallId": "call_0ed87489c74a4362b0e85c6697221ed5",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "argumentSha256": "a816351a15234078bf2d378ddfb6ed8fc1dccff304336a4b578c6e2ade5cb09b",
+      "startedAtUtc": "2026-10-27T00:39:01.818384+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-27T00:39:02.233147+00:00",
+      "responseSha256": "1055220f7e494bcac615036fe47036ead9c47254577ffce25f2ad33d49367f4d"
+    },
+    {
+      "stage": "PROJECT_BILLING_STATUS",
+      "argumentSha256": "0c608c25a1e62ea404cfcbd9f2baa4358b9448f58c45099acdb0412396312634",
+      "startedAtUtc": "2026-10-27T00:39:02.233619+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-27T00:39:02.735921+00:00",
+      "responseSha256": "b7628502c2780cf984002a33c367def34fd4a934e9942fd175b3b6fc4afd9b39"
+    },
+    {
+      "stage": "LINKED_ACCOUNT_OPEN_STATUS",
+      "argumentSha256": "a905fc4ce4cd209790587393726adc2674c891fabc4d755391b2d2a519c7963b",
+      "startedAtUtc": "2026-10-27T00:39:02.736482+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-27T00:39:03.280464+00:00",
+      "responseSha256": "0f02eb97752ecb5724f15c16a1598627a80b90c5154d69fcdd1c80bd10fcd1a0"
+    }
+  ],
+  "facts": {
+    "localCredentialOverridesAbsent": true,
+    "ownerPrincipalMatched": true,
+    "billing": {
+      "projectMatched": true,
+      "enabled": true,
+      "accountLinked": true,
+      "linkedAccountSha256": "df8c89e72b72b59ac6b06c0a20fa7d5f85a15b5d6d7450ff57a72722be172935",
+      "samePreviouslyLinkedAccount": true,
+      "linkedAccountOpen": false
+    }
+  },
+  "financialMutation": false,
+  "resourceMutation": false,
+  "rawBodiesOrAccountIdentifiersPersisted": false,
+  "status": "P08_POST_BILLING_READINESS_STOP",
+  "failureStage": "LINKED_ACCOUNT_OPEN_STATUS",
+  "failureCode": "LINKED_ACCOUNT_NOT_OPEN",
+  "noActiveChildProcess": true,
+  "completedAtUtc": "2026-10-27T00:39:03.280914+00:00",
+  "commandCount": 3,
+  "closeoutBeforeDeadline": true
+}
