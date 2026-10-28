@@ -1,0 +1,18 @@
+{
+  "callsCompleted": 4,
+  "cliCompleted": 4,
+  "containment": "VERIFIED",
+  "createdCount": 0,
+  "errorCategory": "TRANSPORT",
+  "externalMutationAttempted": false,
+  "failedStage": "CLI_4_IAM_SERVICE_STATE",
+  "httpsCompleted": 0,
+  "operationId": "2f413783-9c32-4ed5-89d1-875f383e3bca",
+  "privateInputsAbsent": true,
+  "processesAbsent": true,
+  "providerReason": "COMMAND_FAILED",
+  "rawOutputRetained": false,
+  "retryAllowed": false,
+  "status": "P08_EXACT_ROLE_CREATION_R02_STOP_TRANSPORT",
+  "unknownCount": 0
+}
