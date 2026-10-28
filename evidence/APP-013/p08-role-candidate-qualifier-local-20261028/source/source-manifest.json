@@ -4,8 +4,8 @@
   "proposalCommit": "6548f05",
   "approvalCommit": "0f9197b",
   "files": {
-    "role_qualifier.py": "4b74ba1b778a3f3cbed2a466049fa5cb2100fd2db71c2d48634476ae2e3bcef3",
-    "test_role_qualifier.py": "cc75a3daa017a2d25c4983450466bf531b69297f55f4980aa9fd3f2b4e8451ce"
+    "role_qualifier.py": "7b0f85d3b760838f4752dd55c5d31eb7ec42ba195d3b585a40ee69c4d9b428d4",
+    "test_role_qualifier.py": "ae5477213d177edcbbf2c1e07ce6419ce415341f4f487507e5b6df5374610f26"
   },
   "reusedRestorationContract": {
     "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",

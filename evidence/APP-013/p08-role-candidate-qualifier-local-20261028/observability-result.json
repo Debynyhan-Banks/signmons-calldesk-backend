@@ -1,0 +1,14 @@
+{
+  "status": "P08_ROLE_INVENTORY_OBSERVABILITY_LOCAL_COMPLETE",
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "governanceApprovalCommit": "b65aa3a",
+  "testsPassed": 16,
+  "testsFailed": 0,
+  "externalRetryPerformed": false,
+  "providerReads": 0,
+  "providerMutations": 0,
+  "rawOutputRetained": false,
+  "privateFixturesRemoved": true,
+  "scopeDeviation": false,
+  "next": "fresh exact read-only role inventory operation requires separate approval"
+}

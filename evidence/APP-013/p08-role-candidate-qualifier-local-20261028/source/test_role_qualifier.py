@@ -11,6 +11,7 @@ import time
 import unittest
 import uuid
 from pathlib import Path
+from unittest.mock import patch
 
 import role_qualifier as q
 
@@ -44,15 +45,19 @@ class Adapter:
 
 
 class Runner:
-    def __init__(self, rows, owner=q.OWNER, project=q.PROJECT):
+    def __init__(self, rows, owner=q.OWNER, project=q.PROJECT, fail_at=None):
         self.rows = rows
         self.owner = owner
         self.project = project
         self.calls = []
         self.cancelled = False
+        self.fail_at = fail_at
 
     def __call__(self, args, deadline):
         self.calls.append(args)
+        stage = "OWNER_CHECK" if args[0] == "auth" else "PROJECT_CHECK" if args[0] == "config" else "ROLE_LIST"
+        if self.fail_at == stage:
+            raise ValueError("private-provider-body")
         if args[0] == "auth":
             return self.owner
         if args[0] == "config":
@@ -150,7 +155,7 @@ class QualifierTests(unittest.TestCase):
                 os.chmod(directory, 0o700)
                 result = q.Controller(self.plan, Adapter(rows), directory, self.source, self.decision, self.clock).run()
                 self.assertEqual(result["status"], "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN")
-                self.assertFalse((Path(directory) / "result.json").exists())
+                self.assertEqual(json.loads((Path(directory) / "result.json").read_text()), result)
 
     def test_source_decision_retry_deadline_and_privacy_contract_refuse_before_adapter(self):
         changes = [
@@ -190,7 +195,7 @@ class QualifierTests(unittest.TestCase):
 
         result = self.controller(adapter=Tick(self.rows))[0].run()
         self.assertEqual(result["reason"], "CLOCK_ROLLBACK")
-        self.assertFalse((self.root / "result.json").exists())
+        self.assertEqual(json.loads((self.root / "result.json").read_text()), result)
 
     def test_untrusted_adapter_error_text_is_not_retained(self):
         class Bad(Adapter):
@@ -223,7 +228,7 @@ class QualifierTests(unittest.TestCase):
         result = self.controller(adapter=adapter)[0].run()
         self.assertEqual(result["reason"], "INTERRUPTED")
         self.assertIsNotNone(adapter.child.returncode)
-        self.assertFalse((self.root / "result.json").exists())
+        self.assertEqual(json.loads((self.root / "result.json").read_text()), result)
 
     def test_concurrent_reservation_has_one_winner(self):
         path = self.root / "concurrent.json"
@@ -279,6 +284,10 @@ class QualifierTests(unittest.TestCase):
         runner = Runner(self.rows)
         result = q.Controller(self.plan, q.NativeAdapter(runner), self.root, self.source, self.decision, self.clock).run()
         self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_UNIQUE")
+        self.assertEqual(result["commandsStarted"], 3)
+        self.assertEqual(result["commandsCompleted"], 3)
+        self.assertEqual(result["lastStartedStage"], "ROLE_LIST")
+        self.assertEqual(result["lastCompletedStage"], "ROLE_LIST")
         self.assertEqual(runner.calls, [
             ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"],
             ["config", "get-value", "project"],
@@ -288,12 +297,40 @@ class QualifierTests(unittest.TestCase):
         self.assertFalse(any(token in {"create", "delete", "update", "add-iam-policy-binding", "remove-iam-policy-binding", "set-policy"} for token in tokens))
 
     def test_native_owner_and_project_drift_stop_before_role_list(self):
-        for runner in [Runner(self.rows, owner="foreign@example.com"), Runner(self.rows, project="foreign")]:
+        cases = [(Runner(self.rows, owner="foreign@example.com"), 1, "OWNER_CHECK"), (Runner(self.rows, project="foreign"), 2, "PROJECT_CHECK")]
+        for runner, count, stage in cases:
             with self.subTest(owner=runner.owner, project=runner.project), tempfile.TemporaryDirectory(dir=self.root) as directory:
                 os.chmod(directory, 0o700)
                 result = q.Controller(self.plan, q.NativeAdapter(runner), directory, self.source, self.decision, self.clock).run()
                 self.assertEqual(result["status"], "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN")
                 self.assertLess(len(runner.calls), 3)
+                self.assertEqual(result["commandsStarted"], count)
+                self.assertEqual(result["commandsCompleted"], count)
+                self.assertEqual(result["lastCompletedStage"], stage)
+
+    def test_each_native_command_failure_records_started_not_completed_stage(self):
+        for stage, started, completed, last_completed in [
+            ("OWNER_CHECK", 1, 0, None),
+            ("PROJECT_CHECK", 2, 1, "OWNER_CHECK"),
+            ("ROLE_LIST", 3, 2, "PROJECT_CHECK"),
+        ]:
+            with self.subTest(stage=stage), tempfile.TemporaryDirectory(dir=self.root) as directory:
+                os.chmod(directory, 0o700)
+                result = q.Controller(self.plan, q.NativeAdapter(Runner(self.rows, fail_at=stage)), directory, self.source, self.decision, self.clock).run()
+                self.assertEqual(result["reason"], "ValueError")
+                self.assertEqual(result["commandsStarted"], started)
+                self.assertEqual(result["commandsCompleted"], completed)
+                self.assertEqual(result["lastStartedStage"], stage)
+                self.assertEqual(result["lastCompletedStage"], last_completed)
+                self.assertNotIn("private-provider-body", (Path(directory) / "result.json").read_text())
+
+    def test_result_write_failure_cannot_report_clean_result(self):
+        controller, _ = self.controller()
+        with patch.object(q, "atomic_result", side_effect=OSError("synthetic")):
+            result = controller.run()
+        self.assertEqual(result["status"], "P08_ROLE_QUALIFIER_STOP_EVIDENCE_UNCONFIRMED")
+        self.assertEqual(result["reason"], "RESULT_WRITE_FAILED")
+        self.assertFalse((self.root / "result.json").exists())
 
     def test_bound_path_requires_private_exact_approval_then_runs_fake_native(self):
         source = q.digest((ROOT / "role_qualifier.py").read_bytes())
@@ -316,6 +353,7 @@ class QualifierTests(unittest.TestCase):
         self.assertTrue(result["privateInputsAbsent"])
         self.assertFalse(plan_path.exists())
         self.assertFalse(approval_path.exists())
+        self.assertTrue(json.loads((self.root / "result.json").read_text())["privateInputsAbsent"])
         self.assertEqual(len(runner.calls), 3)
         bad = copy.deepcopy(approval)
         bad["externalActionAuthorized"] = False

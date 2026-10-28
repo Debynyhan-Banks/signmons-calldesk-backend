@@ -25,6 +25,13 @@ ACTIVE_STAGES = {"ALPHA", "BETA", "GA"}
 MAX_ROLES = 200
 OWNER = "debynyhan@signmons.com"
 GCLOUD = "/opt/homebrew/bin/gcloud"
+STAGES = ("OWNER_CHECK", "PROJECT_CHECK", "ROLE_LIST")
+SAFE_STOP_REASONS = {
+    "CLOCK_ROLLBACK", "DEADLINE", "INTERRUPTED", "COMMAND_LIMIT", "COMMAND_COUNT",
+    "OWNER_BINDING", "PROJECT_BINDING", "COMMAND_ALLOWLIST", "COMMAND_FAILED",
+    "OUTPUT_SHAPE", "ROLE_OUTPUT_CAP", "ROLE_SHAPE", "FOREIGN_OR_INVALID_ROLE",
+    "PERMISSION_SHAPE", "DUPLICATE_PERMISSION", "INACTIVE_ROLE", "DUPLICATE_ROLE",
+}
 
 
 class Stop(Exception):
@@ -56,6 +63,41 @@ def private_json(path):
     info = path.lstat()
     need(stat.S_ISREG(info.st_mode) and not path.is_symlink() and stat.S_IMODE(info.st_mode) == 0o600, "PRIVATE_INPUT")
     return json.loads(path.read_text())
+
+
+def atomic_result(directory, result):
+    directory = Path(directory)
+    temporary = directory / "result.tmp"
+    output = directory / "result.json"
+    try:
+        fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        try:
+            os.write(fd, json.dumps(result, sort_keys=True).encode())
+        finally:
+            os.close(fd)
+        os.replace(temporary, output)
+    finally:
+        if temporary.exists() and temporary.is_file() and not temporary.is_symlink():
+            temporary.unlink()
+
+
+def progress(adapter):
+    started = list(getattr(adapter, "started", []))
+    completed = list(getattr(adapter, "completed", []))
+    return {
+        "commandsStarted": len(started),
+        "commandsCompleted": len(completed),
+        "lastStartedStage": started[-1] if started else None,
+        "lastCompletedStage": completed[-1] if completed else None,
+    }
+
+
+def safe_reason(error):
+    if isinstance(error, Stop) and error.args and error.args[0] in SAFE_STOP_REASONS:
+        return error.args[0]
+    if isinstance(error, (TimeoutError, ValueError, TypeError, json.JSONDecodeError)):
+        return type(error).__name__
+    return "UNCLASSIFIED_STOP"
 
 
 def authorize(plan, source_sha256, decision_sha256, now):
@@ -177,30 +219,34 @@ class Controller:
         previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
         for sig in previous:
             signal.signal(sig, self._signal)
+        result = None
         try:
             self.check()
             rows = self.adapter.list_roles(self.deadline)
             self.check()
             result = classify(rows)
-            output = self.directory / "result.json"
-            fd = os.open(output, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-            try:
-                os.write(fd, json.dumps(result, sort_keys=True).encode())
-            finally:
-                os.close(fd)
-            return result
         except (Stop, TimeoutError, ValueError, TypeError, json.JSONDecodeError) as error:
-            reason = error.args[0] if isinstance(error, Stop) and error.args else type(error).__name__
-            return {
+            result = {
                 "status": "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN",
-                "reason": reason,
-                "rawOutputRetained": False,
-                "providerMutationPossible": False,
+                "reason": safe_reason(error),
             }
         finally:
             self.adapter.cancel()
             for sig, handler in previous.items():
                 signal.signal(sig, handler)
+        result.update(progress(self.adapter))
+        result.update({"rawOutputRetained": False, "providerMutationPossible": False})
+        try:
+            atomic_result(self.directory, result)
+        except OSError:
+            return {
+                "status": "P08_ROLE_QUALIFIER_STOP_EVIDENCE_UNCONFIRMED",
+                "reason": "RESULT_WRITE_FAILED",
+                **progress(self.adapter),
+                "rawOutputRetained": False,
+                "providerMutationPossible": False,
+            }
+        return result
 
 
 class NativeAdapter:
@@ -209,18 +255,24 @@ class NativeAdapter:
     def __init__(self, runner):
         self.runner = runner
         self.calls = []
+        self.started = []
+        self.completed = []
 
-    def _run(self, args, deadline):
+    def _run(self, stage, args, deadline):
+        need(stage in STAGES, "COMMAND_ALLOWLIST")
         need(len(self.calls) < 3, "COMMAND_LIMIT")
         self.calls.append(args)
-        return self.runner(args, deadline)
+        self.started.append(stage)
+        value = self.runner(args, deadline)
+        self.completed.append(stage)
+        return value
 
     def list_roles(self, deadline):
-        owner = self._run(["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"], deadline)
+        owner = self._run("OWNER_CHECK", ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"], deadline)
         need(owner == OWNER, "OWNER_BINDING")
-        project = self._run(["config", "get-value", "project"], deadline)
+        project = self._run("PROJECT_CHECK", ["config", "get-value", "project"], deadline)
         need(project == PROJECT, "PROJECT_BINDING")
-        rows = self._run(["iam", "roles", "list", "--project=signmons", "--format=json(name,includedPermissions,deleted,stage)"], deadline)
+        rows = self._run("ROLE_LIST", ["iam", "roles", "list", "--project=signmons", "--format=json(name,includedPermissions,deleted,stage)"], deadline)
         need(len(self.calls) == 3, "COMMAND_COUNT")
         return rows
 
@@ -263,6 +315,7 @@ def run_bound(plan_path, approval_path, directory, runner=None, clock=time.time)
     approval_path = Path(approval_path)
     need(plan_path.parent.resolve() == directory.resolve() and approval_path.parent.resolve() == directory.resolve(), "PRIVATE_PATH_SCOPE")
     result = None
+    adapter = None
     try:
         plan = private_json(plan_path)
         approval = private_json(approval_path)
@@ -271,17 +324,24 @@ def run_bound(plan_path, approval_path, directory, runner=None, clock=time.time)
         approve(plan, approval, source_sha256, decision_sha256)
         adapter = NativeAdapter(runner or SubprocessRunner())
         result = Controller(plan, adapter, directory, source_sha256, decision_sha256, clock).run()
-        return result
     finally:
         for path in (plan_path, approval_path):
             if path.exists() and path.is_file() and not path.is_symlink():
                 path.unlink()
         if result is not None:
             result["privateInputsAbsent"] = not plan_path.exists() and not approval_path.exists()
-            output = directory / "result.json"
-            if output.exists():
-                output.write_text(json.dumps(result, sort_keys=True))
-                os.chmod(output, 0o600)
+            try:
+                atomic_result(directory, result)
+            except OSError:
+                result = {
+                    "status": "P08_ROLE_QUALIFIER_STOP_EVIDENCE_UNCONFIRMED",
+                    "reason": "CLOSEOUT_RESULT_WRITE_FAILED",
+                    **progress(adapter),
+                    "privateInputsAbsent": result["privateInputsAbsent"],
+                    "rawOutputRetained": False,
+                    "providerMutationPossible": False,
+                }
+    return result
 
 
 def main(argv=None):
