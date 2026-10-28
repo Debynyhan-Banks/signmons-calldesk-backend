@@ -1,0 +1,21 @@
+{
+  "candidateCount": 0,
+  "candidates": {},
+  "classifications": {
+    "lookup": "NO_EXACT",
+    "signing": "NO_EXACT"
+  },
+  "commandsCompleted": 3,
+  "commandsStarted": 3,
+  "excludedRoleCount": 1,
+  "httpsCompleted": 1,
+  "httpsStarted": 1,
+  "lastCompletedStage": "ROLE_LIST_FULL",
+  "lastStartedStage": "ROLE_LIST_FULL",
+  "privateInputsAbsent": true,
+  "project": "signmons",
+  "providerMutationPossible": false,
+  "rawOutputRetained": false,
+  "roleCount": 1,
+  "status": "P08_ROLE_CANDIDATES_DECISION_REQUIRED"
+}
