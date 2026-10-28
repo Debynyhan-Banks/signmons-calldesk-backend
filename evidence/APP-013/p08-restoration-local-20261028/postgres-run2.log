@@ -1,0 +1,11 @@
+test_01_real_role_lifecycle_and_acl_unchanged (test_restore_postgres.RestorePostgreSQL.test_01_real_role_lifecycle_and_acl_unchanged) ... ok
+test_02_changed_membership_privilege_ownership_and_flags_refuse (test_restore_postgres.RestorePostgreSQL.test_02_changed_membership_privilege_ownership_and_flags_refuse) ... ok
+test_03_missing_role_and_wrong_connection_limit_refuse (test_restore_postgres.RestorePostgreSQL.test_03_missing_role_and_wrong_connection_limit_refuse) ... ok
+test_04_expiry_and_no_password_reset_in_serialized_sql (test_restore_postgres.RestorePostgreSQL.test_04_expiry_and_no_password_reset_in_serialized_sql) ... ok
+test_05_actual_runtime_connection_and_zero_session_termination (test_restore_postgres.RestorePostgreSQL.test_05_actual_runtime_connection_and_zero_session_termination) ... ok
+test_06_no_tcp_listener_and_current_schema_retained (test_restore_postgres.RestorePostgreSQL.test_06_no_tcp_listener_and_current_schema_retained) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.477s
+
+OK

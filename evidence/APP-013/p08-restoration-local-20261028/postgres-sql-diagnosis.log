@@ -1,0 +1,31 @@
+test_01_real_role_lifecycle_and_acl_unchanged (test_restore_postgres.RestorePostgreSQL.test_01_real_role_lifecycle_and_acl_unchanged) ... FAIL
+
+======================================================================
+FAIL: test_01_real_role_lifecycle_and_acl_unchanged (test_restore_postgres.RestorePostgreSQL.test_01_real_role_lifecycle_and_acl_unchanged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 23, in setUp
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                                                                                        ~~~~~~~~~~~~~~~~~^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 171, in role
+    return json.loads(self.sql(query,deadline))
+                      ~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 157, in sql
+    if self.sql_runner:return self.sql_runner(text,deadline)
+                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 23, in <lambda>
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                           ~~~~~~~~~~~~^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 11, in command
+    if v.returncode:raise AssertionError('DISPOSABLE_FIXTURE_SQL: '+v.stderr.decode())
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: DISPOSABLE_FIXTURE_SQL: ERROR:  operator is not unique: text || "char"
+LINE 6: ... ALL SELECT 'default',d.defaclnamespace::text||':'||d.defacl...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.938s
+
+FAILED (failures=1)

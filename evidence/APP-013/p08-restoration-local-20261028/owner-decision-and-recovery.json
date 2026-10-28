@@ -1,0 +1,19 @@
+{
+  "ownerAnswer": "Approve bounded local restoration preparation",
+  "questionCallId": "call_5085c8f9382c4f8fb62f65d578c44573",
+  "proposalCommit": "4a8874c",
+  "implementationAuthorizedOnlyAfterRecoveryGate": true,
+  "recoveredControllerSha256": "093a69824feef7f0885680ba92685927ca5e8259c0752608ca2e84f3abc285ae",
+  "matchesOriginalManifest": true,
+  "guardsIntermediateHashVerified": true,
+  "successfulHistoricalPatchesOnly": true,
+  "failedHistoricalPatchesNotApplied": true,
+  "historicalCommandsExecuted": false,
+  "historicalControllerExecuted": false,
+  "ownershipJournalPresentPrivateAndByteMatched": true,
+  "ownershipJournalSha256": "65409264d701edf8201878f6d058dfbbc3302412e683b36913a81b4578e6b668",
+  "ownershipRawTargetOpened": false,
+  "sourceProvenance": "Original Add File and successful Update File transcript records, then repository guard and SQL-output zero-context patches",
+  "sourceTranscriptId": "01a1568c-d075-7850-9d52-8fc6df9dd5c5",
+  "realCredentialProviderCalls": 0
+}

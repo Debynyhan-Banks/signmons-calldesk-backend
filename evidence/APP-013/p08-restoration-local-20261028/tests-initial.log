@@ -1,0 +1,269 @@
+test_all_mutation_unknowns_remain_unconfirmed_even_after_cleanup (test_restore.RestoreTests.test_all_mutation_unknowns_remain_unconfirmed_even_after_cleanup) ... ok
+test_auth_bad_or_incomplete_closeout_never_passes (test_restore.RestoreTests.test_auth_bad_or_incomplete_closeout_never_passes) ... ok
+test_cleanup_deadline_and_unavailable_readback_unconfirmed (test_restore.RestoreTests.test_cleanup_deadline_and_unavailable_readback_unconfirmed) ... ok
+test_clock_rollback_never_reports_verified (test_restore.RestoreTests.test_clock_rollback_never_reports_verified) ... ok
+test_exact_serialized_command_inventory (test_restore.RestoreTests.test_exact_serialized_command_inventory) ... ok
+test_expired_early_and_long_windows_refuse (test_restore.RestoreTests.test_expired_early_and_long_windows_refuse) ... ok
+test_failed_readback_cannot_claim_authentication (test_restore.RestoreTests.test_failed_readback_cannot_claim_authentication) ... ok
+test_iam_extra_permissions_creation_and_duplicate_refuse (test_restore.RestoreTests.test_iam_extra_permissions_creation_and_duplicate_refuse) ... ok
+test_independent_closeout_one_use_and_foreign_journal_refuses (test_restore.RestoreTests.test_independent_closeout_one_use_and_foreign_journal_refuses) ... ok
+test_missing_authorization_and_qualification_refuse (test_restore.RestoreTests.test_missing_authorization_and_qualification_refuse) ... ok
+test_native_command_builder_exercised_with_fake_transport (test_restore.RestoreTests.test_native_command_builder_exercised_with_fake_transport) ... ok
+test_native_without_binding_refuses_before_input (test_restore.RestoreTests.test_native_without_binding_refuses_before_input) ... ok
+test_no_iam_branch_preserved (test_restore.RestoreTests.test_no_iam_branch_preserved) ... ok
+test_no_secret_or_private_data_in_journal (test_restore.RestoreTests.test_no_secret_or_private_data_in_journal) ... FAIL
+test_partial_failure_cleanup_continues_and_reports_residual (test_restore.RestoreTests.test_partial_failure_cleanup_continues_and_reports_residual) ... ok
+test_positive_same_block_and_exact_cleanup (test_restore.RestoreTests.test_positive_same_block_and_exact_cleanup) ... ok
+test_preflight_refuses_foreign_active_state_without_mutation (test_restore.RestoreTests.test_preflight_refuses_foreign_active_state_without_mutation) ... ok
+test_reservation_one_winner_with_real_processes (test_restore.RestoreTests.test_reservation_one_winner_with_real_processes) ... ok
+test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) ...
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-payment-database-url')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-stripe-webhook-secret')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-disabled-openai-key')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-admin-token')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-conversation-key')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-technician-link-key')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-payment-database-url')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-stripe-webhook-secret')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-disabled-openai-key')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-admin-token')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-conversation-key')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-technician-link-key')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-stripe-secret-key')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('iam', 'lookup')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('iam', 'signing')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('tag', 'app013-p07-atomic')) ... FAIL
+  test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('role', 'p07_payment_runtime')) ... FAIL
+test_source_scope_identity_and_approval_refuse (test_restore.RestoreTests.test_source_scope_identity_and_approval_refuse) ... ok
+test_work_deadline_stops_but_cleanup_can_finish (test_restore.RestoreTests.test_work_deadline_stops_but_cleanup_can_finish) ... ok
+
+======================================================================
+FAIL: test_no_secret_or_private_data_in_journal (test_restore.RestoreTests.test_no_secret_or_private_data_in_journal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 99, in test_no_secret_or_private_data_in_journal
+    self.controller().run();s=(self.root/'journal.json').read_text();self.assertNotIn('password',s);self.assertNotIn('token',s.lower());self.assertNotIn(r.OWNER,s);self.assertNotIn('fixture-secret',s)
+                                                                                                    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: 'token' unexpectedly found in '{"operationid": "947f554a-775f-4993-ae0d-f5461a83faf4", "plansha256": "98e46e797930beddd419e24885761177c5e4f5a012541108d68150d2dc939660", "attempted": [["identity", "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"], ["version", "signmons-staging-p07-payment-database-url"], ["version", "signmons-staging-p07-stripe-webhook-secret"], ["version", "signmons-staging-p07-disabled-openai-key"], ["version", "signmons-staging-p07-admin-token"], ["version", "signmons-staging-p07-conversation-key"], ["version", "signmons-staging-p07-technician-link-key"], ["secretbinding", "signmons-staging-p07-payment-database-url"], ["secretbinding", "signmons-staging-p07-stripe-webhook-secret"], ["secretbinding", "signmons-staging-p07-disabled-openai-key"], ["secretbinding", "signmons-staging-p07-admin-token"], ["secretbinding", "signmons-staging-p07-conversation-key"], ["secretbinding", "signmons-staging-p07-technician-link-key"], ["secretbinding", "signmons-staging-stripe-secret-key"], ["iam", "lookup"], ["iam", "signing"], ["tag", "app013-p07-atomic"], ["role", "p07_payment_runtime"]], "finished": [["identity", "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"], ["version", "signmons-staging-p07-payment-database-url"], ["version", "signmons-staging-p07-stripe-webhook-secret"], ["version", "signmons-staging-p07-disabled-openai-key"], ["version", "signmons-staging-p07-admin-token"], ["version", "signmons-staging-p07-conversation-key"], ["version", "signmons-staging-p07-technician-link-key"], ["secretbinding", "signmons-staging-p07-payment-database-url"], ["secretbinding", "signmons-staging-p07-stripe-webhook-secret"], ["secretbinding", "signmons-staging-p07-disabled-openai-key"], ["secretbinding", "signmons-staging-p07-admin-token"], ["secretbinding", "signmons-staging-p07-conversation-key"], ["secretbinding", "signmons-staging-p07-technician-link-key"], ["secretbinding", "signmons-staging-stripe-secret-key"], ["iam", "lookup"], ["iam", "signing"], ["tag", "app013-p07-atomic"], ["role", "p07_payment_runtime"]], "unknown": [], "authenticated": true, "residuals": []}'
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-payment-database-url'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-stripe-webhook-secret'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-disabled-openai-key'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-admin-token'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-conversation-key'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('version', 'signmons-staging-p07-technician-link-key'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-payment-database-url'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-stripe-webhook-secret'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-disabled-openai-key'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-admin-token'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-conversation-key'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-p07-technician-link-key'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('secretBinding', 'signmons-staging-stripe-secret-key'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('iam', 'lookup'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('iam', 'signing'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('tag', 'app013-p07-atomic'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+======================================================================
+FAIL: test_signal_each_mutation_stops_and_retires (test_restore.RestoreTests.test_signal_each_mutation_stops_and_retires) (item=('role', 'p07_payment_runtime'))
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore.py", line 49, in test_signal_each_mutation_stops_and_retires
+    f=Fake(self.p);f.signal=item;v=r.Controller(self.p,self.a,self.q,f,d,'a'*64,'b'*64,self.clock).run();self.assertEqual(v['status'],'P08_RESTORATION_STOP_CONTAINED');self.assertFalse(any(f.state.values()));self.assertNotIn('auth',f.trace)
+                                                                                                         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CONTAINMENT_UNCONFIRMED' != 'P08_RESTORATION_STOP_CONTAINED'
+- CONTAINMENT_UNCONFIRMED
++ P08_RESTORATION_STOP_CONTAINED
+
+
+----------------------------------------------------------------------
+Ran 21 tests in 0.231s
+
+FAILED (failures=19)

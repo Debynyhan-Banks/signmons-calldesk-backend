@@ -1,0 +1,137 @@
+test_01_real_role_lifecycle_and_acl_unchanged (test_restore_postgres.RestorePostgreSQL.test_01_real_role_lifecycle_and_acl_unchanged) ... FAIL
+test_02_changed_membership_privilege_ownership_and_flags_refuse (test_restore_postgres.RestorePostgreSQL.test_02_changed_membership_privilege_ownership_and_flags_refuse) ... FAIL
+test_03_missing_role_and_wrong_connection_limit_refuse (test_restore_postgres.RestorePostgreSQL.test_03_missing_role_and_wrong_connection_limit_refuse) ... FAIL
+test_04_expiry_and_no_password_reset_in_serialized_sql (test_restore_postgres.RestorePostgreSQL.test_04_expiry_and_no_password_reset_in_serialized_sql) ... FAIL
+test_05_actual_runtime_connection_and_zero_session_termination (test_restore_postgres.RestorePostgreSQL.test_05_actual_runtime_connection_and_zero_session_termination) ... FAIL
+test_06_no_tcp_listener_and_current_schema_retained (test_restore_postgres.RestorePostgreSQL.test_06_no_tcp_listener_and_current_schema_retained) ... FAIL
+
+======================================================================
+FAIL: test_01_real_role_lifecycle_and_acl_unchanged (test_restore_postgres.RestorePostgreSQL.test_01_real_role_lifecycle_and_acl_unchanged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in setUp
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                                                                                        ~~~~~~~~~~~~~~~~~^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 171, in role
+    return json.loads(self.sql(query,deadline))
+                      ~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 157, in sql
+    if self.sql_runner:return self.sql_runner(text,deadline)
+                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in <lambda>
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                           ~~~~~~~~~~~~^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/auth/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+======================================================================
+FAIL: test_02_changed_membership_privilege_ownership_and_flags_refuse (test_restore_postgres.RestorePostgreSQL.test_02_changed_membership_privilege_ownership_and_flags_refuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in setUp
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                                                                                        ~~~~~~~~~~~~~~~~~^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 171, in role
+    return json.loads(self.sql(query,deadline))
+                      ~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 157, in sql
+    if self.sql_runner:return self.sql_runner(text,deadline)
+                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in <lambda>
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                           ~~~~~~~~~~~~^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/auth/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+======================================================================
+FAIL: test_03_missing_role_and_wrong_connection_limit_refuse (test_restore_postgres.RestorePostgreSQL.test_03_missing_role_and_wrong_connection_limit_refuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in setUp
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                                                                                        ~~~~~~~~~~~~~~~~~^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 171, in role
+    return json.loads(self.sql(query,deadline))
+                      ~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 157, in sql
+    if self.sql_runner:return self.sql_runner(text,deadline)
+                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in <lambda>
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                           ~~~~~~~~~~~~^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/auth/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+======================================================================
+FAIL: test_04_expiry_and_no_password_reset_in_serialized_sql (test_restore_postgres.RestorePostgreSQL.test_04_expiry_and_no_password_reset_in_serialized_sql)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in setUp
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                                                                                        ~~~~~~~~~~~~~~~~~^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 171, in role
+    return json.loads(self.sql(query,deadline))
+                      ~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 157, in sql
+    if self.sql_runner:return self.sql_runner(text,deadline)
+                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in <lambda>
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                           ~~~~~~~~~~~~^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/auth/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+======================================================================
+FAIL: test_05_actual_runtime_connection_and_zero_session_termination (test_restore_postgres.RestorePostgreSQL.test_05_actual_runtime_connection_and_zero_session_termination)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in setUp
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                                                                                        ~~~~~~~~~~~~~~~~~^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 171, in role
+    return json.loads(self.sql(query,deadline))
+                      ~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 157, in sql
+    if self.sql_runner:return self.sql_runner(text,deadline)
+                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in <lambda>
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                           ~~~~~~~~~~~~^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/auth/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+======================================================================
+FAIL: test_06_no_tcp_listener_and_current_schema_retained (test_restore_postgres.RestorePostgreSQL.test_06_no_tcp_listener_and_current_schema_retained)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in setUp
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                                                                                        ~~~~~~~~~~~~~~~~~^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 171, in role
+    return json.loads(self.sql(query,deadline))
+                      ~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/restore.py", line 157, in sql
+    if self.sql_runner:return self.sql_runner(text,deadline)
+                              ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/test_restore_postgres.py", line 17, in <lambda>
+    self.adapter=r.NativeAdapter(None,'synthetic',sql=lambda text,deadline:self.command(text));self.adapter.q={'roleAclSha256':r.digest(self.adapter.role(0)['acl'])}
+                                                                           ~~~~~~~~~~~~^^^^^^
+  File "/private/tmp/p08-restoration-20261028-prep1/auth/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.163s
+
+FAILED (failures=6)

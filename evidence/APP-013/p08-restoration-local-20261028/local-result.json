@@ -1,0 +1,35 @@
+{
+  "kind": "LOCAL_RESTORATION_PREPARATION_ONLY",
+  "recordedAtUtc": "2026-10-28T14:24:43.419414+00:00",
+  "proposalCommit": "4a8874c",
+  "ownerQuestionCallId": "call_5085c8f9382c4f8fb62f65d578c44573",
+  "sourceManifestSha256": "1bb87c987d6450f4727c9813c8636e33a5fe3029433696b1d288c47e77e7f41d",
+  "recoveredControllerSha256": "093a69824feef7f0885680ba92685927ca5e8259c0752608ca2e84f3abc285ae",
+  "restorationTests": 31,
+  "disposableCurrentSchemaPostgreSQLTests": 6,
+  "reusedAuthenticationTestsRunThisTurn": 60,
+  "allPassed": true,
+  "signalMatrix": [
+    "SIGINT",
+    "SIGTERM"
+  ],
+  "fixtureTeardownVerifiedByOwnedFixture": true,
+  "fixtureTcpEnabled": false,
+  "realPlanApprovalAndQualificationAbsent": true,
+  "nativeRefusal": "P08_RESTORE_REFUSED_UNBOUND",
+  "realCredentialResolutions": 0,
+  "realDatabaseOrProviderActions": 0,
+  "applicationSourcesChanged": false,
+  "realRestorationAuthenticatedOrPayment": false,
+  "scopeDeviation": false,
+  "limitations": [
+    "Current source/traffic/identity/role/account/key restriction and effective permissions still need exact approved qualification",
+    "Native IAM branches require preexisting exact custom roles; absence/definition drift refuses and needs owner decision before role creation",
+    "Future auth plan/approval/window and stdin password transport require exact external approval",
+    "No allowance/window/restoration/authentication/payment authorized by local tests"
+  ],
+  "governanceSafeguards": 25,
+  "frozenBaselineDocsArchitectureWhitespace": "PASS",
+  "logNormalization": "Trailing spaces removed from one unittest status line only; failure content preserved",
+  "recoveredSourceAndFinalManifestIntegrity": "PASS"
+}
