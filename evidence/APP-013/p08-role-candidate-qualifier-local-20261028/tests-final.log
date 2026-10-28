@@ -14,6 +14,6 @@ test_untrusted_adapter_error_text_is_not_retained (test_role_qualifier.Qualifier
 test_zero_broader_and_multiple_are_decision_required (test_role_qualifier.QualifierTests.test_zero_broader_and_multiple_are_decision_required) ... ok
 
 ----------------------------------------------------------------------
-Ran 14 tests in 0.076s
+Ran 14 tests in 0.080s
 
 OK

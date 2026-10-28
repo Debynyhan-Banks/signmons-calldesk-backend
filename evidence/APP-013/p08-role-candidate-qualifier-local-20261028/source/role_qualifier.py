@@ -258,13 +258,30 @@ class SubprocessRunner:
 
 
 def run_bound(plan_path, approval_path, directory, runner=None, clock=time.time):
-    plan = private_json(plan_path)
-    approval = private_json(approval_path)
-    source_sha256 = digest(Path(__file__).read_bytes())
-    decision_sha256 = plan.get("decisionSha256", "")
-    approve(plan, approval, source_sha256, decision_sha256)
-    adapter = NativeAdapter(runner or SubprocessRunner())
-    return Controller(plan, adapter, directory, source_sha256, decision_sha256, clock).run()
+    directory = Path(directory)
+    plan_path = Path(plan_path)
+    approval_path = Path(approval_path)
+    need(plan_path.parent.resolve() == directory.resolve() and approval_path.parent.resolve() == directory.resolve(), "PRIVATE_PATH_SCOPE")
+    result = None
+    try:
+        plan = private_json(plan_path)
+        approval = private_json(approval_path)
+        source_sha256 = digest(Path(__file__).read_bytes())
+        decision_sha256 = plan.get("decisionSha256", "")
+        approve(plan, approval, source_sha256, decision_sha256)
+        adapter = NativeAdapter(runner or SubprocessRunner())
+        result = Controller(plan, adapter, directory, source_sha256, decision_sha256, clock).run()
+        return result
+    finally:
+        for path in (plan_path, approval_path):
+            if path.exists() and path.is_file() and not path.is_symlink():
+                path.unlink()
+        if result is not None:
+            result["privateInputsAbsent"] = not plan_path.exists() and not approval_path.exists()
+            output = directory / "result.json"
+            if output.exists():
+                output.write_text(json.dumps(result, sort_keys=True))
+                os.chmod(output, 0o600)
 
 
 def main(argv=None):

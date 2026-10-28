@@ -313,14 +313,23 @@ class QualifierTests(unittest.TestCase):
         runner = Runner(self.rows)
         result = q.run_bound(plan_path, approval_path, self.root, runner, self.clock)
         self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_UNIQUE")
+        self.assertTrue(result["privateInputsAbsent"])
+        self.assertFalse(plan_path.exists())
+        self.assertFalse(approval_path.exists())
         self.assertEqual(len(runner.calls), 3)
         bad = copy.deepcopy(approval)
         bad["externalActionAuthorized"] = False
-        approval_path.write_text(json.dumps(bad))
         with tempfile.TemporaryDirectory(dir=self.root) as directory:
             os.chmod(directory, 0o700)
+            bad_plan_path = Path(directory) / "plan.json"
+            bad_approval_path = Path(directory) / "approval.json"
+            for path, value in [(bad_plan_path, plan), (bad_approval_path, bad)]:
+                path.write_text(json.dumps(value))
+                os.chmod(path, 0o600)
             with self.assertRaises(q.Stop):
-                q.run_bound(plan_path, approval_path, directory, Runner(self.rows), self.clock)
+                q.run_bound(bad_plan_path, bad_approval_path, directory, Runner(self.rows), self.clock)
+            self.assertFalse(bad_plan_path.exists())
+            self.assertFalse(bad_approval_path.exists())
 
 
 if __name__ == "__main__":
