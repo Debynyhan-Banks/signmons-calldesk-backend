@@ -1,0 +1,10 @@
+{
+  "operationId": "b9953d29-5396-4b58-826c-20054131b8f2",
+  "proposalCommit": "3c14d9fadc21376577bf39a01780c32b7c7c9d0f",
+  "proposalSha256": "cdde002d7c0f23d8ce03aeaa3daf32fff891fdcc3e8113b681038127750f121e",
+  "approvalContext": "Owner explicit i approve following corrected-fingerprint renewal question",
+  "startedAtUtc": "2026-10-28T13:39:11.023606+00:00",
+  "exclusiveAttempt": true,
+  "maximumCommands": 4,
+  "automaticRetryAllowed": false
+}

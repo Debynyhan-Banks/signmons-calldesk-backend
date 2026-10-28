@@ -1,0 +1,62 @@
+{
+  "operationId": "b9953d29-5396-4b58-826c-20054131b8f2",
+  "proposalCommit": "3c14d9fadc21376577bf39a01780c32b7c7c9d0f",
+  "proposalSha256": "cdde002d7c0f23d8ce03aeaa3daf32fff891fdcc3e8113b681038127750f121e",
+  "approvalContext": "Owner explicit i approve following corrected-fingerprint renewal question",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "argumentSha256": "f474bf876291e5037b233baaf876c88f29b27ae5b79da727d370154b85acbc0f",
+      "startedAtUtc": "2026-10-28T13:39:11.025667+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:39:11.454453+00:00",
+      "responseSha256": "1055220f7e494bcac615036fe47036ead9c47254577ffce25f2ad33d49367f4d"
+    },
+    {
+      "stage": "PROJECT_BILLING_STATUS",
+      "argumentSha256": "383587c901f7a8a5ec4b5ba28b3ca93ff7bd4d735d38a421735850f79068113e",
+      "startedAtUtc": "2026-10-28T13:39:11.454548+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:39:11.883519+00:00",
+      "responseSha256": "b7628502c2780cf984002a33c367def34fd4a934e9942fd175b3b6fc4afd9b39"
+    },
+    {
+      "stage": "LINKED_ACCOUNT_OPEN_STATUS",
+      "argumentSha256": "935df5e73dc24cc5003ce0e65a1d100f437c309a6b8065d788c2ca662479b258",
+      "startedAtUtc": "2026-10-28T13:39:11.883734+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:39:12.294891+00:00",
+      "responseSha256": "83e5ff6c6280c602165281e0be118cb23324495dd51a1655203568efd683a4bc"
+    },
+    {
+      "stage": "RETIRED_PAYMENT_DATABASE_VERSION_STATE",
+      "argumentSha256": "5eb02a84e48d2b20b544af0cb52a7cd31278d620e53b7ed40c3b318ef65d5bea",
+      "startedAtUtc": "2026-10-28T13:39:12.295011+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:39:12.945800+00:00",
+      "responseSha256": "56013de901f03118e841c7026c7bb9b1476c2d735534d6b5504d275a79297cd4"
+    }
+  ],
+  "facts": {
+    "localCredentialOverridesAbsent": true,
+    "ownerPrincipalMatched": true,
+    "billing": {
+      "projectMatched": true,
+      "enabled": true,
+      "accountLinked": true,
+      "linkedAccountSha256": "df8c89e72b72b59ac6b06c0a20fa7d5f85a15b5d6d7450ff57a72722be172935",
+      "hashInput": "canonical billingAccounts/ reference",
+      "samePreviouslyLinkedAccount": true,
+      "linkedAccountOpen": true
+    },
+    "retiredPaymentDatabaseVersionState": "DISABLED"
+  },
+  "financialMutation": false,
+  "resourceMutation": false,
+  "rawBodiesOrAccountIdentifiersPersisted": false,
+  "status": "P08_FOUR_READ_BILLING_VERIFIED",
+  "noActiveChildProcess": true,
+  "commandCount": 4,
+  "completedAtUtc": "2026-10-28T13:39:12.945888+00:00",
+  "closeoutBeforeDeadline": true
+}
