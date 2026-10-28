@@ -1,0 +1,109 @@
+{
+  "cliCount": 8,
+  "closedAt": "2026-10-28T14:56:42.605281Z",
+  "closeoutOnTime": true,
+  "facts": {
+    "accessDiagnostics": [],
+    "correctedExpectedSetSha256": "7e44f670c76bd95f7e2dcf0845a9050fd605d65511d5c88f436eed059bc138e4",
+    "dedicatedIdentityDisabled": true,
+    "environmentMatched": true,
+    "environmentNames": [
+      "ADMIN_API_TOKEN",
+      "BACKGROUND_WORKERS_ENABLED",
+      "CONVERSATION_DATA_ENCRYPTION_KEY",
+      "CUSTOMER_PAYMENT_RETURN_URL",
+      "DATABASE_URL",
+      "DEV_AUTH_ENABLED",
+      "ENABLED_TOOLS",
+      "GOOGLE_CLOUD_PROJECT",
+      "NODE_ENV",
+      "OPENAI_API_KEY",
+      "SCHEDULING_ENABLED",
+      "SMS_DELIVERY_ENABLED",
+      "STAGING_PHONE_TEST_ENABLED",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_LIVEMODE",
+      "STRIPE_WEBHOOK_SECRET",
+      "TECHNICIAN_LINK_SECRET",
+      "TWILIO_TENANT_IDENTITIES_JSON",
+      "WEBCHAT_INTEGRATIONS_JSON"
+    ],
+    "exactDirectBindings": [],
+    "keyRestrictions": {
+      "apiTargetCompatible": true,
+      "compatibility": "INCOMPATIBLE",
+      "sha256": "5d9aa8ab13f305c79d6120a979917f4555a32d7468735a31162fee1f63057036",
+      "types": [
+        "browserKeyRestrictions"
+      ]
+    },
+    "ownerMatched": true,
+    "referencedCustomRoles": [],
+    "returnUrlQualified": true,
+    "returnUrlSha256": "02f35bda1024492785d5bc06797cac09a578e8d2469ab0164ca221ec32077a34",
+    "runtimeEnvironmentSha256": "b3b3e19722bbd8f5ceadb94323e86612e4b26b8bc896b1d0223e74e683f67cc8",
+    "sourceMatched": true,
+    "trafficMatched": true
+  },
+  "httpCount": 1,
+  "mutations": false,
+  "operationId": "c324c781-2a06-49a9-9f7f-69502fa75806",
+  "processCloseoutVerified": true,
+  "startedAt": "2026-10-28T14:56:38.174655Z",
+  "status": "P08_CORRECTED_CLOUD_STOP_DIAGNOSTIC_SERVICE_DISABLED",
+  "steps": [
+    {
+      "argvSha256": "947b642fb9390cbb629296b10b8c3cb06084a892492640a4fe8e92354d3d218b",
+      "at": "2026-10-28T14:56:38.558170Z",
+      "exitCode": 0,
+      "stage": "CLI_1"
+    },
+    {
+      "argvSha256": "6a0eb7aa7275d97fcd3ab6b0f1cbcea920405fef3fda9025d9a5a1679b3b76bd",
+      "at": "2026-10-28T14:56:39.256696Z",
+      "exitCode": 0,
+      "stage": "CLI_2"
+    },
+    {
+      "argvSha256": "24ee1b778e8f72ba2a2f1d437a6b3cbaeee051066c5139f8b346c84e0f79d8fa",
+      "at": "2026-10-28T14:56:39.866467Z",
+      "exitCode": 0,
+      "stage": "CLI_3"
+    },
+    {
+      "argvSha256": "028680b19b1fc0c6e01f058ad70530f533b4c5ee7c4de3444c8300a8a7609a0d",
+      "at": "2026-10-28T14:56:40.365734Z",
+      "exitCode": 0,
+      "stage": "CLI_4"
+    },
+    {
+      "argvSha256": "556e9b069b16852bdc9d1f8939e3385954de2880540b3cedd868cb81ebfc087b",
+      "at": "2026-10-28T14:56:40.950668Z",
+      "exitCode": 0,
+      "stage": "CLI_5"
+    },
+    {
+      "argvSha256": "8f3289243d19b0c17d7ade6617bf2b0e708b7a9b34e0e32c10d9c3b585967cf9",
+      "at": "2026-10-28T14:56:41.491932Z",
+      "exitCode": 0,
+      "stage": "CLI_6"
+    },
+    {
+      "argvSha256": "293f99de0f448a89522aeb08f5da6a826a1d31f82ed3dfcde54dadb94a5d1054",
+      "at": "2026-10-28T14:56:42.004207Z",
+      "exitCode": 0,
+      "stage": "CLI_7"
+    },
+    {
+      "argvSha256": "7272a492dde4c64f4153442a597eabf1dac8671185fb9605d0b9af546cfd6b80",
+      "at": "2026-10-28T14:56:42.230674Z",
+      "exitCode": 0,
+      "stage": "CLI_8"
+    },
+    {
+      "category": "SERVICE_DISABLED",
+      "httpCode": 403,
+      "stage": "HTTP_1"
+    }
+  ]
+}
