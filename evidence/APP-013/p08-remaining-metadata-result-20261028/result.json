@@ -1,0 +1,184 @@
+{
+  "operationId": "10fc8e8b-64e8-49b4-ad70-c90a95ed51a0",
+  "proposalCommit": "0a2427695a09bda4892d99a6e13be30ac3e59be7",
+  "proposalSha256": "655844b4d1dab184005761ced2c87ee364a6d47ce1d8cfc7be153e70f2efe696",
+  "questionCallId": "call_45736a0cfbeb4077bdc0852868c30f75",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "argumentSha256": "f474bf876291e5037b233baaf876c88f29b27ae5b79da727d370154b85acbc0f",
+      "startedAtUtc": "2026-10-28T13:44:53.538453+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:53.935869+00:00",
+      "responseSha256": "1055220f7e494bcac615036fe47036ead9c47254577ffce25f2ad33d49367f4d"
+    },
+    {
+      "stage": "VERSION_STATE:signmons-staging-p07-stripe-webhook-secret",
+      "argumentSha256": "5e9bb59256bd171680f6c89dee6620c0e0c1ffab32bc468a2e3302bdf6586370",
+      "startedAtUtc": "2026-10-28T13:44:53.935982+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:54.460895+00:00",
+      "responseSha256": "56013de901f03118e841c7026c7bb9b1476c2d735534d6b5504d275a79297cd4"
+    },
+    {
+      "stage": "VERSION_STATE:signmons-staging-p07-disabled-openai-key",
+      "argumentSha256": "a00083c7ecb67b08ea5e85ef1c34437a03395319c62e6c53495180c75dfb945b",
+      "startedAtUtc": "2026-10-28T13:44:54.461019+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:55.006854+00:00",
+      "responseSha256": "56013de901f03118e841c7026c7bb9b1476c2d735534d6b5504d275a79297cd4"
+    },
+    {
+      "stage": "VERSION_STATE:signmons-staging-p07-admin-token",
+      "argumentSha256": "fbf02dbbcb59d5b2af45a982312a0921a185cf04b5635b9506c08cec7e6d9cd9",
+      "startedAtUtc": "2026-10-28T13:44:55.006977+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:55.545584+00:00",
+      "responseSha256": "56013de901f03118e841c7026c7bb9b1476c2d735534d6b5504d275a79297cd4"
+    },
+    {
+      "stage": "VERSION_STATE:signmons-staging-p07-conversation-key",
+      "argumentSha256": "30a2f5e34e48e1a3e3dcc1c2a7fc8f13bd907e361711faeafa5b639f16422f97",
+      "startedAtUtc": "2026-10-28T13:44:55.545723+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:56.028763+00:00",
+      "responseSha256": "56013de901f03118e841c7026c7bb9b1476c2d735534d6b5504d275a79297cd4"
+    },
+    {
+      "stage": "VERSION_STATE:signmons-staging-p07-technician-link-key",
+      "argumentSha256": "d6c96083d738bc34c8f8aaa55efb001535014d55912fd3920ea05ea7cb0f38dc",
+      "startedAtUtc": "2026-10-28T13:44:56.028875+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:56.510337+00:00",
+      "responseSha256": "56013de901f03118e841c7026c7bb9b1476c2d735534d6b5504d275a79297cd4"
+    },
+    {
+      "stage": "DIRECT_POLICY:signmons-staging-p07-stripe-webhook-secret",
+      "argumentSha256": "c7468b5d9de869209ef0831ab3c0d8ae7f4747bb1de758f6dd6d4fc6576135f5",
+      "startedAtUtc": "2026-10-28T13:44:56.510461+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:57.133588+00:00",
+      "responseSha256": "36f16641ad6999bcccb00996f302ed431a24f25e34fe0523b8c92462dbcc5bcb"
+    },
+    {
+      "stage": "DIRECT_POLICY:signmons-staging-p07-disabled-openai-key",
+      "argumentSha256": "0bafb8560c0580f5b842d3fee766ffa99f70c2a6fbbf5824aec79da2c8772184",
+      "startedAtUtc": "2026-10-28T13:44:57.133711+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:57.878712+00:00",
+      "responseSha256": "e8c5bc1f77f35a768b17e2737fd559a79068ce11d3a7805d40d1b3c3c994e825"
+    },
+    {
+      "stage": "DIRECT_POLICY:signmons-staging-p07-admin-token",
+      "argumentSha256": "9421c1a3e68d25be785946b958aa9c5ca2bd200ab63affc08a540f59f3391ed7",
+      "startedAtUtc": "2026-10-28T13:44:57.878831+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:58.420741+00:00",
+      "responseSha256": "b7709e8f32afba5a5d10f0b6bae73c3dc20679c3a6371221cbef2bf30dc6a2f6"
+    },
+    {
+      "stage": "DIRECT_POLICY:signmons-staging-p07-conversation-key",
+      "argumentSha256": "fa0253fe00ee394ac0279bf17b58cfe93a145a57779f97a33cbfa3d1392aa9e2",
+      "startedAtUtc": "2026-10-28T13:44:58.420855+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:59.021244+00:00",
+      "responseSha256": "5799b52e0b634dc3a7970ff22d63c9223aaaa1c8b27ba026fe861f32c4a0b78d"
+    },
+    {
+      "stage": "DIRECT_POLICY:signmons-staging-p07-technician-link-key",
+      "argumentSha256": "b26b6f42d3e19b37eae3fcd539171c037ee955b8f74a56df76ef214048cc15fe",
+      "startedAtUtc": "2026-10-28T13:44:59.021357+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:44:59.612483+00:00",
+      "responseSha256": "81a611caed4deb83376a91177cfddede1b6600c39c8bfc3301dbf54d2fa89be5"
+    },
+    {
+      "stage": "DIRECT_POLICY:signmons-staging-p07-payment-database-url",
+      "argumentSha256": "414b910a9de32b2ff6fa5167476dd49df1001b0e2f0cd8992e90b1f1e60597aa",
+      "startedAtUtc": "2026-10-28T13:44:59.612593+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:45:00.212971+00:00",
+      "responseSha256": "e9573574ab0a52948e14133c146eef18d343235c0edebe974e35d3661a3fc168"
+    },
+    {
+      "stage": "DIRECT_POLICY:signmons-staging-stripe-secret-key",
+      "argumentSha256": "0ec5cadf747541ee50513820563e6b6ba0002de31c8ff2b8ec19a2fe75461558",
+      "startedAtUtc": "2026-10-28T13:45:00.213101+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:45:00.833148+00:00",
+      "responseSha256": "1949bf41cec54483ccc0238e5dcab060fe7f4ab05e855dda98e5d0a3e3d8dfca"
+    },
+    {
+      "stage": "EXCHANGE_KEY_METADATA",
+      "argumentSha256": "8290101d17326ab7e9c2aacf48edc81a623b4dd24c9a555128680e0e9cae466a",
+      "startedAtUtc": "2026-10-28T13:45:00.833285+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:45:01.446772+00:00",
+      "responseSha256": "9cec1441d976990b3cee43f88239779d848c77b02b052874e8dff0a5b8becb09"
+    }
+  ],
+  "facts": {
+    "versionStates": {
+      "signmons-staging-p07-stripe-webhook-secret": "DISABLED",
+      "signmons-staging-p07-disabled-openai-key": "DISABLED",
+      "signmons-staging-p07-admin-token": "DISABLED",
+      "signmons-staging-p07-conversation-key": "DISABLED",
+      "signmons-staging-p07-technician-link-key": "DISABLED"
+    },
+    "directPolicies": {
+      "signmons-staging-p07-stripe-webhook-secret": {
+        "dedicatedBindingPresent": false,
+        "dedicatedBindings": [],
+        "effectiveOrInheritedPermissionProved": false
+      },
+      "signmons-staging-p07-disabled-openai-key": {
+        "dedicatedBindingPresent": false,
+        "dedicatedBindings": [],
+        "effectiveOrInheritedPermissionProved": false
+      },
+      "signmons-staging-p07-admin-token": {
+        "dedicatedBindingPresent": false,
+        "dedicatedBindings": [],
+        "effectiveOrInheritedPermissionProved": false
+      },
+      "signmons-staging-p07-conversation-key": {
+        "dedicatedBindingPresent": false,
+        "dedicatedBindings": [],
+        "effectiveOrInheritedPermissionProved": false
+      },
+      "signmons-staging-p07-technician-link-key": {
+        "dedicatedBindingPresent": false,
+        "dedicatedBindings": [],
+        "effectiveOrInheritedPermissionProved": false
+      },
+      "signmons-staging-p07-payment-database-url": {
+        "dedicatedBindingPresent": false,
+        "dedicatedBindings": [],
+        "effectiveOrInheritedPermissionProved": false
+      },
+      "signmons-staging-stripe-secret-key": {
+        "dedicatedBindingPresent": false,
+        "dedicatedBindings": [],
+        "effectiveOrInheritedPermissionProved": false
+      }
+    },
+    "localCredentialOverridesAbsent": true,
+    "ownerPrincipalMatched": true,
+    "exchangeKey": {
+      "exists": true,
+      "nameSha256": "d97db73e96fdaa30d31af93ce4c9eb8b17eb17fe9bcdd362348ba77a62a8fbb0",
+      "displayNameSha256": "8a446c78c81d7d437c37c488f7f9054d67e02c04bf48237af0c2a234e90258ee",
+      "restrictionsPresent": true,
+      "deleted": false,
+      "restrictionContentReadinessProved": false
+    }
+  },
+  "financialMutation": false,
+  "resourceMutation": false,
+  "rawBodiesPoliciesIdentifiersOrKeyValuesPersisted": false,
+  "status": "P08_REMAINING_METADATA_QUALIFIED",
+  "noActiveChildProcess": true,
+  "commandCount": 14,
+  "completedAtUtc": "2026-10-28T13:45:01.446980+00:00",
+  "closeoutBeforeDeadline": true
+}
