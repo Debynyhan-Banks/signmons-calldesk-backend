@@ -1,0 +1,10 @@
+{
+  "files": {
+    "diagnostics_stage.py": "483b27f06ce844632e7bd2b43198920e88307c52d18f94b1b2b6d8ee979526d3",
+    "test_diagnostics_stage.py": "0964fbe296b4fbd2ba334d81d17cee9d34afda6df81ee8d4556b8e5937bb03e6"
+  },
+  "governanceProposalCommit": "258273e",
+  "oldAccessModelSha256": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576",
+  "oldAccessTestSha256": "027bdeecaf8ac3c4b436d0f9d119725e3162ac32ec4d92d07681a1014a39c05f",
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY"
+}

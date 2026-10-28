@@ -1,0 +1,49 @@
+{
+  "externalActions": 0,
+  "final": {
+    "authenticationTests": {
+      "command": "node --test auth-controller.test.mjs from a private no-space source copy",
+      "passed": 60
+    },
+    "diagnosticsStageTests": {
+      "command": "python3 -B -m unittest -v test_diagnostics_stage.py",
+      "passed": 24
+    },
+    "legacyAccessModelTests": {
+      "command": "python3 -B -m unittest -v test_access_readiness.py",
+      "passed": 40
+    },
+    "restorationTests": {
+      "command": "python3 -B -m unittest -v test_restore.py",
+      "passed": 31
+    }
+  },
+  "initialFailures": [
+    {
+      "correction": "Reset the synthetic clock before each subcase without changing controller behavior or assertions",
+      "result": "13 errors",
+      "run": "First diagnostics-stage run",
+      "summary": "The test fixture reused a clock advanced by bounded LRO polling, so later subcases reached the synthetic start cutoff"
+    },
+    {
+      "correction": "Run the unchanged suite from a private no-space source copy, matching its established workflow; preserve source bytes",
+      "result": "Node ENOENT before tests",
+      "run": "First reused authentication run",
+      "summary": "The unchanged test uses import.meta.url pathname directly and decoded the checkout space as Web%20Projects"
+    }
+  ],
+  "networkOrHostCredentialAccessInTests": false,
+  "scratch": {
+    "authenticationCopy": "/private/tmp/p08-auth-reuse-hnqGmM",
+    "absenceVerifiedAfterTests": true,
+    "containedPrivateData": false
+  },
+  "status": "LOCAL_STAGE_A_PREPARATION_COMPLETE",
+  "totals": {
+    "newDiagnosticsStage": 24,
+    "reusedAuthentication": 60,
+    "reusedLegacyAccessModel": 40,
+    "reusedRestoration": 31,
+    "totalPassed": 155
+  }
+}

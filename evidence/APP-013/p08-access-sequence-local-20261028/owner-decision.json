@@ -1,0 +1,13 @@
+{
+  "decision": "APPROVE_BOUNDED_LOCAL_ACCESS_SEQUENCE_CORRECTION_AND_ISOLATED_TESTS",
+  "externalActionAuthorized": false,
+  "governanceProposalCommit": "258273e",
+  "owner": "Debynyhan Banks",
+  "scope": {
+    "providerAccess": false,
+    "stageAImplementation": true,
+    "stageBAction": false,
+    "stageBRefusalBoundary": true
+  },
+  "source": "User replied 'i approve' to the exact approval question for commit 258273e"
+}

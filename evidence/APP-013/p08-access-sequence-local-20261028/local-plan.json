@@ -1,0 +1,41 @@
+{
+  "automaticRetryAllowed": false,
+  "externalActionAuthorized": false,
+  "mode": "LOCAL_DIAGNOSTICS_STAGE_ONLY",
+  "operationId": "4b6d73d9-d81d-4f39-a889-4c8ddf0e95da",
+  "ownerPrincipal": "debynyhan@signmons.com",
+  "projectId": "signmons",
+  "projectNumber": "123456789012",
+  "service": "policytroubleshooter.googleapis.com",
+  "serviceRetention": "RETAIN_IF_ENABLED",
+  "stageBAllowed": false,
+  "tuples": [
+    [
+      "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+      "//cloudresourcemanager.googleapis.com/projects/signmons",
+      "firebaseauth.users.get"
+    ],
+    [
+      "debynyhan@signmons.com",
+      "//cloudresourcemanager.googleapis.com/projects/signmons",
+      "firebaseauth.users.get"
+    ],
+    [
+      "debynyhan@signmons.com",
+      "//cloudresourcemanager.googleapis.com/projects/signmons",
+      "firebaseauth.users.update"
+    ],
+    [
+      "debynyhan@signmons.com",
+      "//iam.googleapis.com/projects/signmons/serviceAccounts/signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+      "iam.serviceAccounts.signBlob"
+    ]
+  ],
+  "window": {
+    "cleanupEnd": "2026-10-28T18:33:00Z",
+    "cutoff": "2026-10-28T18:30:20Z",
+    "purgeEnd": "2026-10-28T18:34:00Z",
+    "start": "2026-10-28T18:30:00Z",
+    "workEnd": "2026-10-28T18:32:00Z"
+  }
+}
