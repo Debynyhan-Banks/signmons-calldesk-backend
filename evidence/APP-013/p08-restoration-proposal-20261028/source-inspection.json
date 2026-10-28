@@ -1,0 +1,21 @@
+{
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "backendSource": "99e54b9",
+  "governanceSource": "08fe3e6",
+  "sourceSha256": {
+    "evidence/APP-013/p08-authentication-local-20261026/source/auth-authority.mjs": "51c5250ace4ff095a7cc2e5b6f4e099a863389fa095c2bfe26151c832480d965",
+    "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
+    "evidence/APP-013/p08-authentication-local-20261026/source/auth-adapters.mjs": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
+    "evidence/APP-013/p07-overdue-retirement-local-20261023/cleanup.py": "ba06c4c44b82bc1d51c1c22af6fa68ebb07a8821319ee18a0bebb3e1f36c527a",
+    "evidence/APP-013/p07-overdue-retirement-local-20261023/db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+    "src/auth/request-auth.guard.ts": "c73758c437dffdf556f08fec9c880a196eb1d50666c0780de12e057fe5f588c9",
+    "src/auth/firebase-admin.service.ts": "c08830abba171d58242aac5f04f2745e2ca58647a6ec3aeefa362867fb714347"
+  },
+  "legacyRuntimeControllerExpectedSha256": "093a69824feef7f0885680ba92685927ca5e8259c0752608ca2e84f3abc285ae",
+  "legacyRuntimeControllerAtSavedPathPresent": false,
+  "legacyControllerAtRetirementCopyPathPresent": false,
+  "authenticationImplementationPresentInEvidence": true,
+  "authenticationManifestSha256": "305f27922daecf24721a25fc3e78c27554cc481e3ce902664d4f574044bcf5c8",
+  "externalCallsDuringPreparation": 0,
+  "applicationOrHelperImplementationChanged": false
+}
