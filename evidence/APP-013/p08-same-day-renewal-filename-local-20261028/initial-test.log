@@ -1,0 +1,5 @@
+Focused command: python3 -m unittest -v test_plan_builder.py test_launch_binding.py
+Result: 30 passed; 1 fixture error before parser execution.
+Cause: the malformed nested-filename fixture attempted to write into a nonexistent nested directory.
+Correction: remove the redundant builder fixture; retain the launcher's direct path-traversal refusal.
+Security/authority checks weakened: none.

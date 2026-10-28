@@ -1,0 +1,10 @@
+PASS 13 builder tests
+PASS 18 launcher tests
+PASS 24 Stage A tests
+PASS 40 access-model tests
+PASS 31 restoration tests
+PASS 60 authentication tests from deleted no-space scratch copy
+PASS source-manifest readback
+TOTAL PASS 186
+External actions: 0
+Private operation plans: 0

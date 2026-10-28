@@ -1,0 +1,13 @@
+{
+  "correctionProposalCommit": "867797572ebcad15d55fa9c0a3333a5914a51a21",
+  "files": {
+    "diagnostics_stage.py": "483b27f06ce844632e7bd2b43198920e88307c52d18f94b1b2b6d8ee979526d3",
+    "launch_binding.py": "baa0fea1ac8011c2c167634375647e636db49deaa624d9d3760a6eab03297296",
+    "plan_builder.py": "d22f3b0e7636c1ded148eb72d6a96ea7c66d7b77d2e80a0e7aebf536477e9dc9",
+    "source-manifest.json": "88d152858b6002b0fac32ced0b8a4ff05e4c082f56c2e946a36439006993d27a",
+    "test_launch_binding.py": "e8625821c28352b51658039cff0c87219603ca0ddaf62c95067bc7aaa3e23cd9",
+    "test_plan_builder.py": "ba4068bac141ebda7117338349cf901f704c9d7bc1e32ceb66861e247ac319ac"
+  },
+  "reusedLauncherCommit": "d19df960d22b53665485cbecc3a6a414067928e8",
+  "status": "DISABLED_SAME_DAY_RENEWAL_FILENAME_CORRECTION_ONLY"
+}
