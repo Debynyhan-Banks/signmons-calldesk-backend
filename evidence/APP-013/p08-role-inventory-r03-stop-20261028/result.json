@@ -1,0 +1,13 @@
+{
+  "commandsCompleted": 3,
+  "commandsStarted": 3,
+  "httpsCompleted": 1,
+  "httpsStarted": 1,
+  "lastCompletedStage": "ROLE_LIST_FULL",
+  "lastStartedStage": "ROLE_LIST_FULL",
+  "privateInputsAbsent": true,
+  "providerMutationPossible": false,
+  "rawOutputRetained": false,
+  "reason": "INACTIVE_ROLE",
+  "status": "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN"
+}
