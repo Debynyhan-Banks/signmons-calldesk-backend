@@ -1,0 +1,12 @@
+{
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "proposalCommit": "b01d8a3",
+  "approvalCommit": "6429a94",
+  "files": {
+    "role_provisioner.py": "5a1d736adf8d5d0dc88580cb7eb9ffa29f5eae5ed065fd50bcad79c4db0f08a6",
+    "test_role_provisioner.py": "6c85240f35d3a96a342e1c395acb20f3aa268b79e050fac1b25b896809e04945"
+  },
+  "nativeExternalBinding": false,
+  "providerActionOccurred": false
+}

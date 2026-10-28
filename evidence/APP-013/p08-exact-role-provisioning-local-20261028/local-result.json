@@ -1,0 +1,11 @@
+{
+  "actualProviderCommands": 0,
+  "commandCeilingModeled": 11,
+  "deleteUpdateUndeletePaths": 0,
+  "externalBindingEnabled": false,
+  "providerActionOccurred": false,
+  "sourceSha256": "5a1d736adf8d5d0dc88580cb7eb9ffa29f5eae5ed065fd50bcad79c4db0f08a6",
+  "status": "P08_EXACT_ROLE_LOCAL_PREPARATION_PASSED",
+  "testsPassed": 11,
+  "testsRun": 11
+}
