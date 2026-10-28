@@ -1,0 +1,73 @@
+{
+  "closedAt": "2026-10-28T14:53:18.783775Z",
+  "closeoutOnTime": true,
+  "commands": [
+    {
+      "argvSha256": "947b642fb9390cbb629296b10b8c3cb06084a892492640a4fe8e92354d3d218b",
+      "at": "2026-10-28T14:53:18.079437Z",
+      "exitCode": 0
+    },
+    {
+      "argvSha256": "214f1d8db850411239d22b7c6ce940e8d24fefa58e1e0f27bb7cfbd30efab9e4",
+      "at": "2026-10-28T14:53:18.772647Z",
+      "exitCode": 0
+    }
+  ],
+  "facts": {
+    "actualCount": 19,
+    "actualNames": [
+      "ADMIN_API_TOKEN",
+      "BACKGROUND_WORKERS_ENABLED",
+      "CONVERSATION_DATA_ENCRYPTION_KEY",
+      "CUSTOMER_PAYMENT_RETURN_URL",
+      "DATABASE_URL",
+      "DEV_AUTH_ENABLED",
+      "ENABLED_TOOLS",
+      "GOOGLE_CLOUD_PROJECT",
+      "NODE_ENV",
+      "OPENAI_API_KEY",
+      "SCHEDULING_ENABLED",
+      "SMS_DELIVERY_ENABLED",
+      "STAGING_PHONE_TEST_ENABLED",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_LIVEMODE",
+      "STRIPE_WEBHOOK_SECRET",
+      "TECHNICIAN_LINK_SECRET",
+      "TWILIO_TENANT_IDENTITIES_JSON",
+      "WEBCHAT_INTEGRATIONS_JSON"
+    ],
+    "expectedNames": [
+      "ADMIN_API_TOKEN",
+      "BACKGROUND_WORKERS_ENABLED",
+      "CONVERSATION_DATA_ENCRYPTION_KEY",
+      "DATABASE_URL",
+      "DEV_AUTH_ENABLED",
+      "ENABLED_TOOLS",
+      "GOOGLE_CLOUD_PROJECT",
+      "NODE_ENV",
+      "OPENAI_API_KEY",
+      "SCHEDULING_ENABLED",
+      "SMS_DELIVERY_ENABLED",
+      "STAGING_PHONE_TEST_ENABLED",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_LIVEMODE",
+      "STRIPE_WEBHOOK_SECRET",
+      "TECHNICIAN_LINK_SECRET",
+      "TWILIO_TENANT_IDENTITIES_JSON",
+      "WEBCHAT_INTEGRATIONS_JSON"
+    ],
+    "expectedSetSha256": "ead3da0c91cb6a54af94eff73b3f642052643c5cf57ec94d6856c578cbd51415",
+    "expectedSourceSha256": "093a69824feef7f0885680ba92685927ca5e8259c0752608ca2e84f3abc285ae",
+    "extra": [
+      "CUSTOMER_PAYMENT_RETURN_URL"
+    ],
+    "missing": [],
+    "optionalPortPresent": false,
+    "ownerMatched": true
+  },
+  "mutations": false,
+  "operationId": "ab326ffd-b585-4344-9380-dc7a2579b6c1",
+  "processCloseoutVerified": true,
+  "startedAt": "2026-10-28T14:53:17.656407Z",
+  "status": "P08_ENVIRONMENT_NAMES_DIAGNOSTIC_COMPLETE"
+}

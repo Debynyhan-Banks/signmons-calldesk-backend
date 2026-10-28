@@ -1,0 +1,25 @@
+{
+  "cause": "PREPARED_EXPECTATION_OMITTED_DYNAMIC_RETURN_URL",
+  "missing": [],
+  "extra": [
+    "CUSTOMER_PAYMENT_RETURN_URL"
+  ],
+  "sourceReferences": [
+    {
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/legacy/controller.py",
+      "lines": [
+        305,
+        309
+      ]
+    },
+    {
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/auth/reuse/controller.py",
+      "lines": [
+        226,
+        230
+      ]
+    }
+  ],
+  "liveReturnUrlValueQualified": false,
+  "correctiveImplementationPerformed": false
+}
