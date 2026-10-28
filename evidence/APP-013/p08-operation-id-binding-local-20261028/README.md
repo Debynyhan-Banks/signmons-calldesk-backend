@@ -1,0 +1,13 @@
+# P08 operation-ID binding correction local result
+
+R1-W01 / APP-013 / 3A / P08. Debynyhan Banks replied “i approve” to Alternative 1 in governance proposal `832407d`. This authorized the disabled deterministic plan builder and isolated tests only. No host credential/cache, cloud command, OAuth, network/provider, service/API, account/database/runtime, Stripe/payment, deployment, spending, merge or push action was authorized or performed.
+
+The builder requires a preselected operation UUID inside a single structured binding block in the proposed operation document before approval. After the exact document is approved and committed, it reads that immutable Git object, verifies its SHA256 and `APPROVED` owner decision, then copies the same operation/decision IDs, source manifest, window, retention and scope into one exclusively created `0600` private plan in a new `0700` directory. It never generates or replaces authority after approval.
+
+The successful disposable-Git integration passes the resulting private plan through the unchanged launcher's `private_json`, `validate_plan` and `verify_approval_document` paths. Tests refuse pending/rejected/duplicate/malformed documents; duplicate keys; operation/decision/source/window/retention/scope drift; stale commits and foreign paths; fingerprint mismatch; collision/symlink/extra-file conditions; clock rollback/expiry; interrupted writes and SIGINT/SIGTERM; and a real two-process reservation race. Every synthetic private plan is purged with absence readback. Native builder invocation returns `P08_PLAN_BUILDER_REFUSED_UNBOUND`.
+
+Final PASS: 11 new builder, 16 launcher, 24 Stage A, 40 access-model, 31 restoration and 60 authentication tests, 182 total. The first builder run had six disposable-Git/UUID fixture errors and one prose-only static assertion failure. The Git helper now permits distinct empty commits for repeated immutable subcases; malformed UUIDs return fixed stops; non-executable prose no longer triggers the provider-code assertion. No authority or launcher check was weakened. Authentication scratch `/private/tmp/p08-auth-opid-wJ4sTY` was deleted and absence verified.
+
+This result is **implemented and locally tested only**. It does not retry the consumed operation, establish live Stage A permissions or authorize Google access. A fresh external operation must preselect its UUID and exact window in the document, receive separate owner approval, and use this builder before the unchanged one-use launcher.
+
+Accepted 1A/1B/2A/2B, 4/8 walkthrough; 0/27 newly closed R1, 6/60 legacy, 0/13 intelligence unchanged. **No scope deviation within the approved local correction.**

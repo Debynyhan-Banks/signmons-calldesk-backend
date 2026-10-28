@@ -1,0 +1,10 @@
+{
+  "acceptanceCriterion": "APP-013 / 3A authentic same-job Sandbox payment and matching signed settlement remains unchanged",
+  "approvedSection": "R1-W01 / APP-013 / 3A / P08",
+  "builderSourceManifestSha256": "53f53dcc531a2aaf7b6184bfd3f740397b80719c7af250444f68231a5d94a350",
+  "externalActionAuthorized": false,
+  "governanceProposalCommit": "832407d",
+  "missingBehaviorEvidence": "The consumed Stage A operation document did not contain the operation UUID generated after approval",
+  "observableFinish": "Disabled deterministic builder proves committed approved document to private plan to unchanged launcher validation using one preselected operation UUID",
+  "reusedLauncherCommit": "d19df960d22b53665485cbecc3a6a414067928e8"
+}

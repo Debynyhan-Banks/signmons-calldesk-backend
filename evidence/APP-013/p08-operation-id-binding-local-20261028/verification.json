@@ -1,0 +1,44 @@
+{
+  "externalActions": 0,
+  "final": {
+    "authenticationTests": {"command": "node --test auth-controller.test.mjs from private no-space copy", "passed": 60},
+    "diagnosticsStageTests": {"command": "python3 -B -m unittest -v test_diagnostics_stage.py", "passed": 24},
+    "launchBindingTests": {"command": "python3 -B -m unittest -v test_launch_binding.py", "passed": 16},
+    "legacyAccessModelTests": {"command": "python3 -B -m unittest -v test_access_readiness.py", "passed": 40},
+    "operationIdBuilderTests": {"command": "python3 -B -m unittest -v test_plan_builder.py", "passed": 11},
+    "restorationTests": {"command": "python3 -B -m unittest -v test_restore.py", "passed": 31}
+  },
+  "initialFailures": [
+    {
+      "correction": "Allow empty disposable Git commits so repeated failure subcases can bind distinct immutable commits without changing the fixture document",
+      "result": "6 errors on first 11-test run",
+      "summary": "The test helper attempted to commit identical document bytes repeatedly and Git correctly refused no-op commits"
+    },
+    {
+      "correction": "Translate malformed UUID parser exceptions into fixed OPERATIONID or DECISIONID stops",
+      "result": "2 of the 6 errors",
+      "summary": "Malformed UUID cases escaped as Python ValueError rather than the builder's fixed safe stop"
+    },
+    {
+      "correction": "Remove a forbidden provider-tool word from the non-executable module description",
+      "result": "1 static-source assertion failure",
+      "summary": "The no-provider-code assertion matched prose even though the builder contained no provider import or invocation"
+    }
+  ],
+  "networkOrHostCredentialAccessInTests": false,
+  "scratch": {
+    "authenticationCopy": "/private/tmp/p08-auth-opid-wJ4sTY",
+    "absenceVerifiedAfterTests": true,
+    "containedPrivateData": false
+  },
+  "status": "LOCAL_OPERATION_ID_BINDING_CORRECTION_COMPLETE",
+  "totals": {
+    "newBuilder": 11,
+    "reusedAuthentication": 60,
+    "reusedDiagnosticsStage": 24,
+    "reusedLauncher": 16,
+    "reusedLegacyAccessModel": 40,
+    "reusedRestoration": 31,
+    "totalPassed": 182
+  }
+}

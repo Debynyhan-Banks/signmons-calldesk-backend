@@ -1,0 +1,10 @@
+{
+  "files": {
+    "diagnostics_stage.py": "483b27f06ce844632e7bd2b43198920e88307c52d18f94b1b2b6d8ee979526d3",
+    "launch_binding.py": "da47278dcfc81e43cdba1101c21a93052333aa130aa2734de633cbad2b081fe5",
+    "test_launch_binding.py": "20c3bc3b705896cb72d293b5da20eeb7a1bea0db9b98753605304f6138cf1b6d"
+  },
+  "governanceProposalCommit": "e758c79",
+  "reusedControllerSha256": "483b27f06ce844632e7bd2b43198920e88307c52d18f94b1b2b6d8ee979526d3",
+  "status": "DISABLED_LAUNCH_BINDING_ONLY"
+}
