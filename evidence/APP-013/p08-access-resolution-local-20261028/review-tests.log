@@ -1,0 +1,41 @@
+test_actual_request_timeout (test_access_readiness.Tests.test_actual_request_timeout) ... ok
+test_bounded_pending_poll_never_retries_mutation (test_access_readiness.Tests.test_bounded_pending_poll_never_retries_mutation) ... ok
+test_changed_operation_response_name_refused (test_access_readiness.Tests.test_changed_operation_response_name_refused) ... ok
+test_cleanup_after_start_cutoff (test_access_readiness.Tests.test_cleanup_after_start_cutoff) ... ok
+test_cleanup_deadline_refuses_delete (test_access_readiness.Tests.test_cleanup_deadline_refuses_delete) ... ok
+test_collision_never_adopted_or_deleted (test_access_readiness.Tests.test_collision_never_adopted_or_deleted) ... ok
+test_completion_on_last_permitted_poll (test_access_readiness.Tests.test_completion_on_last_permitted_poll) ... ok
+test_deadline_and_clock_rollback (test_access_readiness.Tests.test_deadline_and_clock_rollback) ... ok
+test_diagnostic_unknown_and_denied_are_not_grants (test_access_readiness.Tests.test_diagnostic_unknown_and_denied_are_not_grants) ... ok
+test_environment_reuses_dynamic_required_name (test_access_readiness.Tests.test_environment_reuses_dynamic_required_name) ... ok
+test_etag_drift_cleanup_is_not_verified (test_access_readiness.Tests.test_etag_drift_cleanup_is_not_verified) ... ok
+test_expired_start (test_access_readiness.Tests.test_expired_start) ... ok
+test_foreign_journal_refuses_independent_cleanup (test_access_readiness.Tests.test_foreign_journal_refuses_independent_cleanup) ... ok
+test_foreign_key_or_uid_refuses (test_access_readiness.Tests.test_foreign_key_or_uid_refuses) ... ok
+test_foreign_operation_refused_before_poll (test_access_readiness.Tests.test_foreign_operation_refused_before_poll) ... ok
+test_http_denial_is_not_absence (test_access_readiness.Tests.test_http_denial_is_not_absence) ... ok
+test_independent_cleanup_consumed_and_foreign_journal_refusal (test_access_readiness.Tests.test_independent_cleanup_consumed_and_foreign_journal_refusal) ... ok
+test_loss_after_create_is_unknown_no_adopt_no_delete (test_access_readiness.Tests.test_loss_after_create_is_unknown_no_adopt_no_delete) ... ok
+test_loss_after_delete_independent_readback_no_mutation_retry (test_access_readiness.Tests.test_loss_after_delete_independent_readback_no_mutation_retry) ... ok
+test_loss_after_enable_reports_service_unknown (test_access_readiness.Tests.test_loss_after_enable_reports_service_unknown) ... ok
+test_missing_diagnostic_does_not_become_success (test_access_readiness.Tests.test_missing_diagnostic_does_not_become_success) ... ok
+test_missing_service_state_refuses (test_access_readiness.Tests.test_missing_service_state_refuses) ... ok
+test_native_transport_unbound (test_access_readiness.Tests.test_native_transport_unbound) ... ok
+test_no_native_clients_in_cli (test_access_readiness.Tests.test_no_native_clients_in_cli) ... ok
+test_null_or_oversized_or_invalid_json (test_access_readiness.Tests.test_null_or_oversized_or_invalid_json) ... ok
+test_one_attempt_real_process_race (test_access_readiness.Tests.test_one_attempt_real_process_race) ... ok
+test_operation_response_error_is_unknown_and_never_leaks (test_access_readiness.Tests.test_operation_response_error_is_unknown_and_never_leaks) ... ok
+test_plan_gates_before_provider (test_access_readiness.Tests.test_plan_gates_before_provider) ... ok
+test_preexisting_service_not_enabled_or_disabled (test_access_readiness.Tests.test_preexisting_service_not_enabled_or_disabled) ... ok
+test_real_signal_matrix_at_every_mutation (test_access_readiness.Tests.test_real_signal_matrix_at_every_mutation) ... ok
+test_restriction_variants_fail_before_handoff (test_access_readiness.Tests.test_restriction_variants_fail_before_handoff) ... ok
+test_retention_purge_reuses_existing_guard (test_access_readiness.Tests.test_retention_purge_reuses_existing_guard) ... ok
+test_retention_symlink_refusal (test_access_readiness.Tests.test_retention_symlink_refusal) ... ok
+test_serialized_positive_lifecycle_and_privacy (test_access_readiness.Tests.test_serialized_positive_lifecycle_and_privacy) ... ok
+test_source_drift_refusal (test_access_readiness.Tests.test_source_drift_refusal) ... ok
+test_unknown_create_independent_cleanup_never_adopts (test_access_readiness.Tests.test_unknown_create_independent_cleanup_never_adopts) ... ok
+
+----------------------------------------------------------------------
+Ran 36 tests in 0.200s
+
+OK

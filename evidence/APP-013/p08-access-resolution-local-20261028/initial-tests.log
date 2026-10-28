@@ -1,0 +1,80 @@
+test_bounded_pending_poll_never_retries_mutation (test_access_readiness.Tests.test_bounded_pending_poll_never_retries_mutation) ... ok
+test_changed_operation_response_name_refused (test_access_readiness.Tests.test_changed_operation_response_name_refused) ... ok
+test_cleanup_deadline_refuses_delete (test_access_readiness.Tests.test_cleanup_deadline_refuses_delete) ... ok
+test_collision_never_adopted_or_deleted (test_access_readiness.Tests.test_collision_never_adopted_or_deleted) ... ok
+test_completion_on_last_permitted_poll (test_access_readiness.Tests.test_completion_on_last_permitted_poll) ... ok
+test_deadline_and_clock_rollback (test_access_readiness.Tests.test_deadline_and_clock_rollback) ... ok
+test_diagnostic_unknown_and_denied_are_not_grants (test_access_readiness.Tests.test_diagnostic_unknown_and_denied_are_not_grants) ... ok
+test_environment_reuses_dynamic_required_name (test_access_readiness.Tests.test_environment_reuses_dynamic_required_name) ... ok
+test_etag_drift_cleanup_is_not_verified (test_access_readiness.Tests.test_etag_drift_cleanup_is_not_verified) ... ok
+test_expired_start (test_access_readiness.Tests.test_expired_start) ... ok
+test_foreign_key_or_uid_refuses (test_access_readiness.Tests.test_foreign_key_or_uid_refuses) ... ok
+test_foreign_operation_refused_before_poll (test_access_readiness.Tests.test_foreign_operation_refused_before_poll) ... ok
+test_http_denial_is_not_absence (test_access_readiness.Tests.test_http_denial_is_not_absence) ... ok
+test_independent_cleanup_consumed_and_foreign_journal_refusal (test_access_readiness.Tests.test_independent_cleanup_consumed_and_foreign_journal_refusal) ... ok
+test_loss_after_create_is_unknown_no_adopt_no_delete (test_access_readiness.Tests.test_loss_after_create_is_unknown_no_adopt_no_delete) ... ok
+test_loss_after_delete_independent_readback_no_mutation_retry (test_access_readiness.Tests.test_loss_after_delete_independent_readback_no_mutation_retry) ... ok
+test_loss_after_enable_reports_service_unknown (test_access_readiness.Tests.test_loss_after_enable_reports_service_unknown) ... ok
+test_missing_diagnostic_does_not_become_success (test_access_readiness.Tests.test_missing_diagnostic_does_not_become_success) ... ok
+test_missing_service_state_refuses (test_access_readiness.Tests.test_missing_service_state_refuses) ... ok
+test_native_transport_unbound (test_access_readiness.Tests.test_native_transport_unbound) ... ok
+test_null_or_oversized_or_invalid_json (test_access_readiness.Tests.test_null_or_oversized_or_invalid_json) ... ok
+test_one_attempt_real_process_race (test_access_readiness.Tests.test_one_attempt_real_process_race) ... ok
+test_operation_response_error_is_unknown_and_never_leaks (test_access_readiness.Tests.test_operation_response_error_is_unknown_and_never_leaks) ... FAIL
+test_plan_gates_before_provider (test_access_readiness.Tests.test_plan_gates_before_provider) ... ok
+test_preexisting_service_not_enabled_or_disabled (test_access_readiness.Tests.test_preexisting_service_not_enabled_or_disabled) ... ok
+test_real_signal_matrix_at_every_mutation (test_access_readiness.Tests.test_real_signal_matrix_at_every_mutation) ...
+  test_real_signal_matrix_at_every_mutation (test_access_readiness.Tests.test_real_signal_matrix_at_every_mutation) (signal=<Signals.SIGINT: 2>, stage='delete') ... FAIL
+  test_real_signal_matrix_at_every_mutation (test_access_readiness.Tests.test_real_signal_matrix_at_every_mutation) (signal=<Signals.SIGTERM: 15>, stage='delete') ... FAIL
+test_restriction_variants_fail_before_handoff (test_access_readiness.Tests.test_restriction_variants_fail_before_handoff) ... ok
+test_retention_purge_reuses_existing_guard (test_access_readiness.Tests.test_retention_purge_reuses_existing_guard) ... ok
+test_retention_symlink_refusal (test_access_readiness.Tests.test_retention_symlink_refusal) ... ok
+test_serialized_positive_lifecycle_and_privacy (test_access_readiness.Tests.test_serialized_positive_lifecycle_and_privacy) ... ERROR
+test_unknown_create_independent_cleanup_never_adopts (test_access_readiness.Tests.test_unknown_create_independent_cleanup_never_adopts) ... ok
+
+======================================================================
+ERROR: test_serialized_positive_lifecycle_and_privacy (test_access_readiness.Tests.test_serialized_positive_lifecycle_and_privacy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-access-resolution-20261028-prep1/test_access_readiness.py", line 64, in test_serialized_positive_lifecycle_and_privacy
+    diags=[json.loads(x['body'])['accessTuple'] for x in self.fake.calls if 'policytroubleshooter.' in x['url']];self.assertEqual(len(diags),5);self.assertEqual(diags[0]['permission'],'firebaseauth.users.get');self.assertEqual(diags[-1]['permission'],'apikeys.keys.getKeyString');self.assertIn('receiveTime',diags[0]['conditionContext']['request'])
+           ~~~~~~~~~~^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/json/__init__.py", line 345, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+                    f'not {s.__class__.__name__}')
+TypeError: the JSON object must be str, bytes or bytearray, not NoneType
+
+======================================================================
+FAIL: test_operation_response_error_is_unknown_and_never_leaks (test_access_readiness.Tests.test_operation_response_error_is_unknown_and_never_leaks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-access-resolution-20261028-prep1/test_access_readiness.py", line 98, in test_operation_response_error_is_unknown_and_never_leaks
+    self.fake.tweak=lambda k,v:{**v,'error':{'message':'fixture-only-provider-secret'}} if k=='poll' else v;r=self.run_model();self.assertEqual(r['failure'],'OPERATION_FAILED');self.assertNotIn('fixture-only-provider-secret',json.dumps(r))
+                                                                                                                               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'PROVIDER_REFUSED' != 'OPERATION_FAILED'
+- PROVIDER_REFUSED
++ OPERATION_FAILED
+
+
+======================================================================
+FAIL: test_real_signal_matrix_at_every_mutation (test_access_readiness.Tests.test_real_signal_matrix_at_every_mutation) (signal=<Signals.SIGINT: 2>, stage='delete')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-access-resolution-20261028-prep1/test_access_readiness.py", line 134, in test_real_signal_matrix_at_every_mutation
+    p=fixture();fake=Fake(p);fake.signal_at=stage;fake.signal_number=sig;c=m.Controller(p,m.RequestAdapter(p,fake),Path(d)/'proof',clock=lambda:NOW);r=c.run();self.assertTrue(r['residuals']);self.assertNotEqual(r['status'],'LOCAL_ACCESS_MODEL_COMPLETE')
+                                                                                                                                                               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: [] is not true
+
+======================================================================
+FAIL: test_real_signal_matrix_at_every_mutation (test_access_readiness.Tests.test_real_signal_matrix_at_every_mutation) (signal=<Signals.SIGTERM: 15>, stage='delete')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/p08-access-resolution-20261028-prep1/test_access_readiness.py", line 134, in test_real_signal_matrix_at_every_mutation
+    p=fixture();fake=Fake(p);fake.signal_at=stage;fake.signal_number=sig;c=m.Controller(p,m.RequestAdapter(p,fake),Path(d)/'proof',clock=lambda:NOW);r=c.run();self.assertTrue(r['residuals']);self.assertNotEqual(r['status'],'LOCAL_ACCESS_MODEL_COMPLETE')
+                                                                                                                                                               ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: [] is not true
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.116s
+
+FAILED (failures=3, errors=1)

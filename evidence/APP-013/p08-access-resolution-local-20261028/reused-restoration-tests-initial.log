@@ -1,0 +1,18 @@
+test_restore (unittest.loader._FailedTest.test_restore) ... ERROR
+
+======================================================================
+ERROR: test_restore (unittest.loader._FailedTest.test_restore)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_restore
+Traceback (most recent call last):
+  File "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+  File "/private/tmp/p08-access-resolution-20261028-prep1/reuse/test_restore.py", line 4, in <module>
+    import restore as r
+ModuleNotFoundError: No module named 'restore'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

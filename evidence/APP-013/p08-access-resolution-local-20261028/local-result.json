@@ -1,0 +1,43 @@
+{
+  "kind": "LOCAL_ACCESS_RESOLUTION_PREPARATION_ONLY",
+  "recordedAtUtc": "2026-10-28T15:46:50.994338Z",
+  "proposalCommit": "c018f51",
+  "ownerQuestionId": "call_04368a8e39d54adba5023df285bd7111",
+  "sourceManifestSha256": "196e639e8be6921d79ab5e7b2c3a044ab9ee7fe96f3d55d7ac9b3cc5272c1401",
+  "sourceOwnershipGate": "PASS",
+  "newTests": 40,
+  "reusedRestorationTests": 31,
+  "reusedAuthenticationTests": 60,
+  "allPassed": true,
+  "nativeStatus": "P08_ACCESS_REFUSED_UNBOUND",
+  "realPlansAbsent": true,
+  "realCredentialResolutions": 0,
+  "realProviderRequests": 0,
+  "realDatabaseActions": 0,
+  "realSigningOrExchange": 0,
+  "applicationSourcesChanged": false,
+  "sqlChanged": false,
+  "liveTransportImplemented": false,
+  "limits": [
+    "Request descriptors and state model use injected fake transport; native launch deliberately refuses. This is not a live provisioning or authentication capability.",
+    "Five diagnostic verdicts do not qualify lifecycle permissions or provider-enable side effects.",
+    "Actual service/key availability, owner permissions, role definitions, key restrictions, account/job/role state, future allowance/window/authority remain unqualified.",
+    "Deletion metadata is not immediate global key invalidation or permanent erasure."
+  ],
+  "initialFailures": [
+    "Initial test URL filter matched the diagnostic service name inside Service Usage URLs; narrowed to the actual HTTPS API host.",
+    "Initial test expected an operation error at a layer that classified it as a provider refusal; structured LRO errors now reach the operation-specific classifier.",
+    "Initial signal test expected residuals even when cleanup ignored the signal and completed with authoritative fake readback; corrected to assert completed cleanup for that case.",
+    "Reused restoration tests initially invoked from the wrong directory; import failed before execution. Original log retained; unchanged suite rerun from reuse/."
+  ],
+  "preTestSourceCorrections": [
+    "Opaque operations/... names and proper host binding; real dotted API-key operation names.",
+    "Actual Service Usage EnableServiceResponse includes a service object.",
+    "Provider deleteTime permits RFC3339 fractional UTC seconds; approval-window timestamps remain strict UTC-Z.",
+    "Bounded10second poll backoff, final allowed poll result handling, post-request deadline/clock checks and independent closeout after start cutoff."
+  ],
+  "scopeDeviation": false,
+  "logNormalization": "One unittest status-line trailing space removed; original failure content retained.",
+  "governanceSafeguards": 25,
+  "baselineConsistencyArchitecture": "PASS"
+}

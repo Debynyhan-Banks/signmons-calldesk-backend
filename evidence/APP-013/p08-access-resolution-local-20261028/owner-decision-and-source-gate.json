@@ -1,0 +1,10 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "proposalCommit": "c018f51",
+  "questionId": "call_04368a8e39d54adba5023df285bd7111",
+  "answer": "Approve bounded local preparation and isolated tests",
+  "sourceAndOwnershipGate": "PASS",
+  "realCredentialResolutions": 0,
+  "externalActions": 0,
+  "originalSourceManifestSha256": "1bb87c987d6450f4727c9813c8636e33a5fe3029433696b1d288c47e77e7f41d"
+}

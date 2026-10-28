@@ -1,0 +1,33 @@
+{
+  "files": {
+    "access_readiness.py": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576",
+    "local-plan.json": "91c2d2f58dd20c1f64f782998475922981380fab95fcc60411efff3af4ec601c",
+    "reuse/auth/auth-adapters.mjs": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
+    "reuse/auth/auth-authority.mjs": "51c5250ace4ff095a7cc2e5b6f4e099a863389fa095c2bfe26151c832480d965",
+    "reuse/auth/auth-controller.mjs": "57ab0853630112145e81e10143b05099b2a446f7f450d0eff4598540528ef0c4",
+    "reuse/auth/auth-controller.test.mjs": "1075930471a236f62b55054da00e314d307ef400c00d806c116d10d73bac94b2",
+    "reuse/auth/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
+    "reuse/auth/local-plan.json": "de7eb0a60a845a8fe0e11cfb423930ff45ce668111caac6080328e040dda200e",
+    "reuse/auth/reuse/account-adapters.mjs": "7deaca64b27fc3004bd68a190eb343d0a5f942ab21021ea3ff1b1846531724e2",
+    "reuse/auth/reuse/account-controller.mjs": "689dc4482bd8f1cf1a8dca1b26b80776acddafc83dd5957fa7a5583c0a24d67d",
+    "reuse/auth/reuse/account-launch.mjs": "c273128eaa5c6876d0745bc59c3ef100ebbcd6f0036e136e62dddf153094e373",
+    "reuse/auth/reuse/account-plan.json": "d6f470948138e0fd1c1de9a1e53427af9488c5f455f3e9e8b997dafefad46b2a",
+    "reuse/auth/reuse/backend-lock.json": "5322d485db54dd743082203ed471d5c03a564ce3450a68af95cdf4f2da4b1d05",
+    "reuse/auth/reuse/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",
+    "reuse/auth/reuse/launch-authority.mjs": "d1b531faf377f5bdca2f665f853870f5f241a0ba5f5501bd7bf854aab319452b",
+    "reuse/auth/reuse/operator-bridge.mjs": "ab76b595592ea1e5a3c73ebe7ce0320faf2e388db40d4354216d9892a8120e71",
+    "reuse/auth/reuse/operator-bridge.test.mjs": "aa79fc01fcfe42f0c8629e0c54b1edf0f4c6d1b025309effdbb3b8aaafbf7b66",
+    "reuse/auth/reuse/plan.json": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",
+    "reuse/auth/reuse/test_postgres_contract.py": "f4a7ded4cecb41ba4b0fa9fe746f403d0d10635e48937bd5459b6e217f2a3f33",
+    "reuse/auth/source-lock.json": "cc0b6666e4f385602943c8988a0418fcbd9074fdea23524bb7b2986ae6704303",
+    "reuse/auth/test_auth_postgres.py": "cadc849b7395dd7574e24d2e73b6d531db5430a564b382423e0b129a018eadcf",
+    "reuse/db-closeout.mjs": "87720ea46d24521a37851c823ef58efb0d0e3fa774ad8e8688f010ee58317ddb",
+    "reuse/legacy/controller.py": "093a69824feef7f0885680ba92685927ca5e8259c0752608ca2e84f3abc285ae",
+    "reuse/restore.py": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "reuse/source-manifest.json": "1bb87c987d6450f4727c9813c8636e33a5fe3029433696b1d288c47e77e7f41d",
+    "reuse/test_restore.py": "21cc3472dda7faac33456abef2650c5797108657029670668b8253e29ac91d8e",
+    "reuse/test_restore_postgres.py": "2671de00894625e19456cea1dd67a5aca790048e88fb52abf356ad0c5183c4af",
+    "test_access_readiness.py": "027bdeecaf8ac3c4b436d0f9d119725e3162ac32ec4d92d07681a1014a39c05f"
+  },
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY"
+}
