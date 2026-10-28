@@ -1,0 +1,16 @@
+{
+  "diagnosis": "PREPARATION_FINGERPRINT_REPRESENTATION_ERROR",
+  "historicalHashInput": "canonical billingAccounts/ reference",
+  "incorrectCurrentHashInput": "bare account identifier",
+  "projectResponseByteHashUnchangedFromOctober26": true,
+  "actualRelinkEstablished": false,
+  "offlineChecks": {
+    "historicalHashIsCanonicalReference": true,
+    "currentBareIdentifierHashMatchesObserved": true,
+    "canonicalReferenceWouldPass": true,
+    "differentAccountWouldRefuse": true,
+    "missingPrefixWouldRefuse": true
+  },
+  "additionalProviderReads": 0,
+  "rawIdentifiersPersisted": false
+}

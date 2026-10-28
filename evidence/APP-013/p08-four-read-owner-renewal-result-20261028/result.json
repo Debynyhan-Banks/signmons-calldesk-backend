@@ -1,0 +1,45 @@
+{
+  "operationId": "9d4d376e-8a4c-4e59-8566-a60060776315",
+  "proposalCommit": "daf923e3176e9cacec80d1ed937f1e25450e4c8b",
+  "proposalSha256": "fd941ae70d702737e31d28e15a4a0db8081810d67982f19c2643905a88d30762",
+  "approvalContext": "Owner explicit I approve following corrected-owner renewal question",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "argumentSha256": "f474bf876291e5037b233baaf876c88f29b27ae5b79da727d370154b85acbc0f",
+      "startedAtUtc": "2026-10-28T13:36:46.958449+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:36:47.355893+00:00",
+      "responseSha256": "1055220f7e494bcac615036fe47036ead9c47254577ffce25f2ad33d49367f4d"
+    },
+    {
+      "stage": "PROJECT_BILLING_STATUS",
+      "argumentSha256": "383587c901f7a8a5ec4b5ba28b3ca93ff7bd4d735d38a421735850f79068113e",
+      "startedAtUtc": "2026-10-28T13:36:47.355989+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:36:48.133624+00:00",
+      "responseSha256": "b7628502c2780cf984002a33c367def34fd4a934e9942fd175b3b6fc4afd9b39"
+    }
+  ],
+  "facts": {
+    "localCredentialOverridesAbsent": true,
+    "ownerPrincipalMatched": true,
+    "billing": {
+      "projectMatched": true,
+      "enabled": true,
+      "accountLinked": true,
+      "linkedAccountSha256": "a8e8e1f29909a284837dc9d1f06b63f8b359acd3a85c6ce6d7ff6638bdee5b5e",
+      "samePreviouslyLinkedAccount": false
+    }
+  },
+  "financialMutation": false,
+  "resourceMutation": false,
+  "rawBodiesOrAccountIdentifiersPersisted": false,
+  "failureStage": "PROJECT_BILLING_STATUS",
+  "failureCode": "LINKED_ACCOUNT_CHANGED",
+  "status": "P08_FOUR_READ_BILLING_STOP",
+  "noActiveChildProcess": true,
+  "commandCount": 2,
+  "completedAtUtc": "2026-10-28T13:36:48.133835+00:00",
+  "closeoutBeforeDeadline": true
+}
