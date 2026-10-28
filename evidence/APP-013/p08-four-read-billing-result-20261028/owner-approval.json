@@ -1,0 +1,8 @@
+{
+  "operationId": "d1ec9c20-0ac3-4e13-ab69-4f13e65dd2c4",
+  "proposalCommit": "e11b3e49c97d661766c8d14fff363e85b0c7b201",
+  "proposalSha256": "776409e43d69c76b985912f907811e2df53f029a8f1216fe6283e22c54e1d78a",
+  "questionCallId": "call_f57c36fb328d42c19b191a12fcee89d3",
+  "decision": "Approve this exact four-read verification",
+  "recordedAtUtc": "2026-10-28T13:33:19.011673+00:00"
+}

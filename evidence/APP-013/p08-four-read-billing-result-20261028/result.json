@@ -1,0 +1,29 @@
+{
+  "operationId": "d1ec9c20-0ac3-4e13-ab69-4f13e65dd2c4",
+  "proposalCommit": "e11b3e49c97d661766c8d14fff363e85b0c7b201",
+  "proposalSha256": "776409e43d69c76b985912f907811e2df53f029a8f1216fe6283e22c54e1d78a",
+  "questionCallId": "call_f57c36fb328d42c19b191a12fcee89d3",
+  "commands": [
+    {
+      "stage": "OWNER_PRINCIPAL",
+      "argumentSha256": "f474bf876291e5037b233baaf876c88f29b27ae5b79da727d370154b85acbc0f",
+      "startedAtUtc": "2026-10-28T13:33:19.014790+00:00",
+      "exitCode": 0,
+      "completedAtUtc": "2026-10-28T13:33:19.665441+00:00",
+      "responseSha256": "1055220f7e494bcac615036fe47036ead9c47254577ffce25f2ad33d49367f4d"
+    }
+  ],
+  "facts": {
+    "localCredentialOverridesAbsent": true
+  },
+  "financialMutation": false,
+  "resourceMutation": false,
+  "rawBodiesOrAccountIdentifiersPersisted": false,
+  "failureStage": "OWNER_PRINCIPAL",
+  "failureCode": "OWNER_MISMATCH",
+  "status": "P08_FOUR_READ_BILLING_STOP",
+  "noActiveChildProcess": true,
+  "commandCount": 1,
+  "completedAtUtc": "2026-10-28T13:33:19.665559+00:00",
+  "closeoutBeforeDeadline": true
+}

@@ -1,0 +1,10 @@
+{
+  "diagnosis": "PREPARATION_EXPECTED_PRINCIPAL_ERROR",
+  "method": "Offline SHA256 comparison of saved output against already known owner identities with optional line endings",
+  "approvedGmailOwnerMatched": false,
+  "knownSignmonsOwnerMatched": true,
+  "sameResponseFingerprintAsAcceptedOctober26OwnerCheck": true,
+  "additionalProviderReads": 0,
+  "credentialOrPrincipalChangePerformed": false,
+  "rawPrincipalOutputPersisted": false
+}
