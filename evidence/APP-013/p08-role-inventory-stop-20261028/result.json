@@ -1,0 +1,15 @@
+{
+  "status": "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN",
+  "operationId": "83bdf433-98dd-45c9-8b42-fb90494219ce",
+  "attemptReserved": true,
+  "automaticRetryAllowed": false,
+  "resultFileProducedByController": false,
+  "savedReason": null,
+  "savedCommandStage": null,
+  "privatePlanAbsent": true,
+  "privateApprovalAbsent": true,
+  "childProcessesAbsent": true,
+  "providerMutationPossible": false,
+  "containmentVerified": true,
+  "externalRetryAuthorized": false
+}
