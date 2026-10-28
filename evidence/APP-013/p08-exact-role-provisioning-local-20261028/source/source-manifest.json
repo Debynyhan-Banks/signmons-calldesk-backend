@@ -1,12 +1,13 @@
 {
-  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
+  "status": "DISABLED_LOCAL_LAUNCH_BINDING_ONLY",
   "section": "R1-W01 / APP-013 / 3A / P08",
-  "proposalCommit": "b01d8a3",
-  "approvalCommit": "6429a94",
+  "proposalCommit": "be265f5",
+  "approvalCommit": "ea83386",
   "files": {
-    "role_provisioner.py": "5a1d736adf8d5d0dc88580cb7eb9ffa29f5eae5ed065fd50bcad79c4db0f08a6",
-    "test_role_provisioner.py": "6c85240f35d3a96a342e1c395acb20f3aa268b79e050fac1b25b896809e04945"
+    "role_provisioner.py": "a7134a14c0d1f1a1027fae4f61cecc2f5016876011ebdddb4d8d19ac9727ec1b",
+    "test_role_provisioner.py": "0256b94920b90b1cd87af59193cf77d1a9661ecca93b1a5dacc875cac23597c1"
   },
-  "nativeExternalBinding": false,
+  "nativeExternalBinding": true,
+  "externalBindingEnabled": false,
   "providerActionOccurred": false
 }

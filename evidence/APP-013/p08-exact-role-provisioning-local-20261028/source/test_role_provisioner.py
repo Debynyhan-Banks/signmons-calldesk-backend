@@ -59,6 +59,55 @@ class Fake:
         raise AssertionError(command)
 
 
+class NativeFake:
+    def __init__(self):
+        self.calls = []
+        self.roles = {}
+        self.permissions = list(p.PERMISSIONS)
+        self.collision = None
+        self.lost_create = None
+        self.signal_create = None
+        self.private_token = "private-token-" + "x" * 24
+
+    def definition(self, role):
+        return {
+            "name": role["name"], "title": role["title"], "description": role["description"],
+            "includedPermissions": [role["permission"]], "stage": "GA", "deleted": False,
+            "etag": "BwYNativeFixture=",
+        }
+
+    def cli(self, command, deadline):
+        command = tuple(command)
+        self.calls.append(("CLI", command))
+        commands = p.native_cli_commands()
+        if command == commands[0]: return p.OWNER
+        if command == commands[1]: return p.PROJECT
+        if command == commands[2]: return self.private_token
+        if command == commands[3]: return json.dumps({"state": "ENABLED"})
+        if command in commands[4:]: return json.dumps({"bindings": []})
+        raise AssertionError(command)
+
+    def https(self, method, url, headers, body, deadline):
+        self.calls.append(("HTTPS", method, url, copy.deepcopy(headers), copy.deepcopy(body)))
+        if url == p.permission_url():
+            return 200, {"permissions": copy.deepcopy(self.permissions)}
+        if method == "POST" and url == p.create_url(p.ROLES[0]):
+            role = next((item for item in p.ROLES if body == p.create_body(item)), None)
+            if role is None: raise AssertionError((method, url, body))
+            self.roles[role["kind"]] = self.definition(role)
+            if self.signal_create == role["kind"]: os.kill(os.getpid(), signal.SIGTERM)
+            if self.lost_create == role["kind"]: raise p.LostResponse()
+            return 200, copy.deepcopy(self.roles[role["kind"]])
+        for role in p.ROLES:
+            if url == p.role_url(role):
+                if method != "GET": raise AssertionError((method, url))
+                if self.collision == role["kind"] and role["kind"] not in self.roles:
+                    return 200, self.definition(role)
+                if role["kind"] not in self.roles: return 404, {"error": {"code": 404}}
+                return 200, copy.deepcopy(self.roles[role["kind"]])
+        raise AssertionError((method, url))
+
+
 class ProvisionerTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="p08-role-provisioner-", dir="/private/tmp")
@@ -195,6 +244,137 @@ class ProvisionerTests(unittest.TestCase):
             result = subprocess.run([sys.executable, "-B", str(Path(__file__).parent / "role_provisioner.py"), option], capture_output=True, timeout=5)
             self.assertEqual(result.returncode, 2)
             self.assertEqual(result.stdout.decode().strip(), "P08_EXACT_ROLE_PROVISIONER_REFUSED_UNBOUND")
+
+    def native_plan(self):
+        source = p.hashlib.sha256(Path(p.__file__).read_bytes()).hexdigest()
+        proposal = "c" * 64
+        plan = {
+            "mode": p.MODE, "action": "PROVISION", "automaticRetryAllowed": False, "project": p.PROJECT, "owner": p.OWNER,
+            "roles": p.role_plan(), "cliLimit": p.CLI_LIMIT, "httpsLimit": p.HTTPS_LIMIT,
+            "sourceSha256": source, "proposalSha256": proposal, "operationId": str(uuid.uuid4()),
+            "windowStartEpoch": self.clock() - 10, "startCutoffEpoch": self.clock() + 60,
+            "deadlineEpoch": self.clock() + 120, "windowEndEpoch": self.clock() + 180,
+        }
+        approval = {
+            "owner": "Debynyhan Banks", "externalActionAuthorized": True,
+            "decision": "APPROVE_EXACT_STABLE_ROLE_CREATION", "operationId": plan["operationId"],
+            "planSha256": p.digest(plan), "sourceSha256": source, "proposalSha256": proposal,
+        }
+        return plan, approval, source, proposal
+
+    def native_controller(self, fake=None, directory=None):
+        plan, approval, source, proposal = self.native_plan()
+        return p.NativeProvisioner(plan, approval, fake or NativeFake(), directory or self.root, source, proposal, self.clock)
+
+    def test_native_success_uses_exact_six_cli_seven_https_contract(self):
+        fake = NativeFake()
+        result = self.native_controller(fake).run()
+        self.assertEqual(result["status"], "P08_EXACT_ROLES_CREATED_RETAINED_UNBOUND")
+        self.assertEqual((result["cliCompleted"], result["httpsCompleted"], result["callsCompleted"]), (6, 7, 13))
+        self.assertEqual([item[1] for item in fake.calls[:6]], list(p.native_cli_commands()))
+        https = fake.calls[6:]
+        self.assertEqual([(item[1], item[2]) for item in https], [
+            ("POST", p.permission_url()),
+            ("GET", p.role_url(p.ROLES[0])), ("GET", p.role_url(p.ROLES[1])),
+            ("POST", p.create_url(p.ROLES[0])), ("POST", p.create_url(p.ROLES[1])),
+            ("GET", p.role_url(p.ROLES[0])), ("GET", p.role_url(p.ROLES[1])),
+        ])
+        self.assertEqual(https[0][4], {"permissions": list(p.PERMISSIONS)})
+        self.assertEqual(https[3][4], p.create_body(p.ROLES[0]))
+        self.assertEqual(https[4][4], p.create_body(p.ROLES[1]))
+        for item in https:
+            self.assertEqual(item[3]["Authorization"], "Bearer " + fake.private_token)
+            self.assertEqual(item[3]["Accept"], "application/json")
+            self.assertEqual("Content-Type" in item[3], item[1] == "POST")
+        self.assertNotIn(fake.private_token, json.dumps(result))
+
+    def test_native_permission_denial_and_collision_stop_before_create(self):
+        fake = NativeFake(); fake.permissions = list(p.PERMISSIONS[:-1])
+        result = self.native_controller(fake).run()
+        self.assertEqual(result["reason"], "PERMISSION_DENIED")
+        self.assertEqual(result["httpsCompleted"], 1)
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            os.chmod(directory, 0o700)
+            fake = NativeFake(); fake.collision = "lookup"
+            result = self.native_controller(fake, directory).run()
+            self.assertEqual(result["reason"], "COLLISION")
+            self.assertFalse(any(item[0] == "HTTPS" and item[1] == "POST" and item[2].startswith(p.IAM_BASE) for item in fake.calls))
+
+    def test_native_lost_response_records_unknown_without_retry(self):
+        fake = NativeFake(); fake.lost_create = "signing"
+        result = self.native_controller(fake).run()
+        self.assertEqual(result["reason"], "LOST_RESPONSE")
+        self.assertEqual(result["createdCount"], 1)
+        self.assertEqual(result["unknownCount"], 1)
+        self.assertEqual(sum(item[0] == "HTTPS" and item[1] == "POST" and item[4] == p.create_body(p.ROLES[1]) for item in fake.calls), 1)
+
+    def test_native_signal_after_create_records_unknown_and_no_retry(self):
+        fake = NativeFake(); fake.signal_create = "lookup"
+        result = self.native_controller(fake).run()
+        self.assertEqual(result["reason"], "INTERRUPTED")
+        self.assertEqual(result["unknownCount"], 1)
+        self.assertEqual(sum(item[0] == "HTTPS" and item[1] == "POST" for item in fake.calls), 2)
+
+    def test_native_malformed_outputs_and_window_changes_refuse(self):
+        class Bad(NativeFake):
+            def cli(inner, command, deadline):
+                value = super(Bad, inner).cli(command, deadline)
+                if tuple(command) == p.native_cli_commands()[3]: return "private-malformed"
+                return value
+        result = self.native_controller(Bad()).run()
+        self.assertEqual(result["reason"], "CLI_SHAPE")
+        self.assertNotIn("private-malformed", json.dumps(result))
+        plan, approval, source, proposal = self.native_plan()
+        plan["startCutoffEpoch"] = self.clock() - 1
+        approval["planSha256"] = p.digest(plan)
+        with self.assertRaises(p.Stop):
+            p.NativeProvisioner(plan, approval, NativeFake(), self.root, source, proposal, self.clock)
+
+    def test_bound_private_inputs_are_mode_checked_and_always_purged(self):
+        plan, approval, source, proposal = self.native_plan()
+        plan_path = self.root / "launch-plan.json"
+        approval_path = self.root / "owner-approval.json"
+        for path, value in ((plan_path, plan), (approval_path, approval)):
+            path.write_text(json.dumps(value))
+            os.chmod(path, 0o600)
+        result = p.run_bound(self.root, source, proposal, NativeFake(), self.clock)
+        self.assertEqual(result["callsCompleted"], p.EXTERNAL_CALL_LIMIT)
+        self.assertFalse(plan_path.exists())
+        self.assertFalse(approval_path.exists())
+        self.assertTrue(result["privateInputsAbsent"])
+        self.assertNotIn("private-token", (self.root / "native-result.json").read_text())
+
+    def test_native_independent_closeout_is_read_only_and_bound(self):
+        plan, approval, source, proposal = self.native_plan()
+        plan["action"] = "CLOSEOUT"
+        approval["decision"] = "APPROVE_EXACT_STABLE_ROLE_CLOSEOUT"
+        approval["planSha256"] = p.digest(plan)
+        fake = NativeFake()
+        for role in p.ROLES: fake.roles[role["kind"]] = fake.definition(role)
+        result = p.NativeCloseout(plan, approval, fake, self.root, source, proposal, self.clock).run()
+        self.assertEqual(result["status"], "P08_EXACT_ROLE_CLOSEOUT_VERIFIED")
+        self.assertEqual((result["cliCompleted"], result["httpsCompleted"]), (5, 2))
+        self.assertFalse(any(item[0] == "HTTPS" and item[1] != "GET" for item in fake.calls))
+
+    def test_bound_source_or_mode_drift_refuses_and_purges(self):
+        plan, approval, source, proposal = self.native_plan()
+        for path, value in ((self.root / "launch-plan.json", plan), (self.root / "owner-approval.json", approval)):
+            path.write_text(json.dumps(value)); os.chmod(path, 0o600)
+        with self.assertRaises(p.Stop): p.run_bound(self.root, "d" * 64, proposal, NativeFake(), self.clock)
+        self.assertFalse((self.root / "launch-plan.json").exists())
+        self.assertFalse((self.root / "owner-approval.json").exists())
+        plan, approval, source, proposal = self.native_plan()
+        for path, value in ((self.root / "launch-plan.json", plan), (self.root / "owner-approval.json", approval)):
+            path.write_text(json.dumps(value)); os.chmod(path, 0o600)
+        os.chmod(self.root / "launch-plan.json", 0o644)
+        with self.assertRaises(p.Stop): p.run_bound(self.root, source, proposal, NativeFake(), self.clock)
+
+    def test_native_attempt_reservation_prevents_concurrent_second_winner(self):
+        plan, approval, source, proposal = self.native_plan()
+        first = p.NativeProvisioner(plan, approval, NativeFake(), self.root, source, proposal, self.clock)
+        self.assertEqual(first.run()["callsCompleted"], p.EXTERNAL_CALL_LIMIT)
+        second = p.NativeProvisioner(plan, approval, NativeFake(), self.root, source, proposal, self.clock)
+        with self.assertRaises(FileExistsError): second.run()
 
 
 if __name__ == "__main__":

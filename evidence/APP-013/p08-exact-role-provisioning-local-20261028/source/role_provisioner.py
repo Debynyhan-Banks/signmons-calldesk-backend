@@ -7,9 +7,12 @@ import os
 import re
 import signal
 import stat
+import subprocess
 import sys
 import time
 import uuid
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 PROJECT = "signmons"
@@ -18,6 +21,17 @@ IDENTITY = "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
 GCLOUD = "/opt/homebrew/bin/gcloud"
 MODE = "DISABLED_LOCAL_STABLE_ROLE_PROVISIONER"
 COMMAND_LIMIT = 11
+CLI_LIMIT = 6
+HTTPS_LIMIT = 7
+EXTERNAL_CALL_LIMIT = CLI_LIMIT + HTTPS_LIMIT
+PERMISSIONS = (
+    "iam.roles.create",
+    "iam.roles.get",
+    "resourcemanager.projects.getIamPolicy",
+    "iam.serviceAccounts.getIamPolicy",
+)
+IAM_BASE = "https://iam.googleapis.com/v1"
+RESOURCE_MANAGER_BASE = "https://cloudresourcemanager.googleapis.com/v1"
 ROLES = (
     {
         "kind": "lookup",
@@ -43,7 +57,8 @@ SAFE_REASONS = {
     "CLOCK_ROLLBACK", "DEADLINE", "INTERRUPTED", "OWNER_BINDING", "PROJECT_BINDING",
     "IAM_API_DISABLED", "COLLISION", "COMMAND_FAILED", "LOST_RESPONSE", "ROLE_DRIFT",
     "BINDING_PRESENT", "COMMAND_LIMIT", "DIRECTORY", "ROLE_PLAN", "SOURCE_BINDING",
-    "APPROVAL_BINDING", "MODE", "RETRY_POLICY",
+    "APPROVAL_BINDING", "MODE", "RETRY_POLICY", "PRIVATE_INPUT", "WINDOW_BINDING",
+    "PERMISSION_DENIED", "HTTP_STATUS", "HTTP_SHAPE", "CLI_SHAPE",
 }
 
 
@@ -115,6 +130,378 @@ def policy_commands():
         (GCLOUD, "projects", "get-iam-policy", PROJECT, "--format=json(bindings)"),
         (GCLOUD, "iam", "service-accounts", "get-iam-policy", IDENTITY, "--project=signmons", "--format=json(bindings)"),
     )
+
+
+def native_cli_commands():
+    return (
+        (GCLOUD, "auth", "list", "--filter=status:ACTIVE", "--format=value(account)"),
+        (GCLOUD, "config", "get-value", "project"),
+        (GCLOUD, "auth", "print-access-token"),
+        (GCLOUD, "services", "describe", "iam.googleapis.com", "--project=signmons", "--format=json(state)"),
+        (GCLOUD, "projects", "get-iam-policy", PROJECT, "--format=json(bindings)"),
+        (GCLOUD, "iam", "service-accounts", "get-iam-policy", IDENTITY, "--project=signmons", "--format=json(bindings)"),
+    )
+
+
+def permission_url():
+    return f"{RESOURCE_MANAGER_BASE}/projects/{PROJECT}:testIamPermissions"
+
+
+def role_url(role):
+    return f"{IAM_BASE}/{role['name']}"
+
+
+def create_url(role):
+    return f"{IAM_BASE}/projects/{PROJECT}/roles"
+
+
+def create_body(role):
+    return {
+        "roleId": role["id"],
+        "role": {
+            "title": role["title"],
+            "description": role["description"],
+            "includedPermissions": [role["permission"]],
+            "stage": "GA",
+        }
+    }
+
+
+def private_json(path):
+    path = Path(path)
+    need(not path.is_symlink() and path.is_file(), "PRIVATE_INPUT")
+    need(stat.S_IMODE(path.stat().st_mode) == 0o600 and path.stat().st_size <= 65536, "PRIVATE_INPUT")
+    try:
+        value = json.loads(path.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        raise Stop("PRIVATE_INPUT")
+    need(isinstance(value, dict), "PRIVATE_INPUT")
+    return value
+
+
+def authorize_native(plan, approval, source_sha256, proposal_sha256, now):
+    need(plan.get("mode") == MODE, "MODE")
+    need(plan.get("automaticRetryAllowed") is False, "RETRY_POLICY")
+    need(plan.get("project") == PROJECT and plan.get("owner") == OWNER, "PROJECT_BINDING")
+    need(plan.get("roles") == role_plan(), "ROLE_PLAN")
+    need(plan.get("action") in {"PROVISION", "CLOSEOUT"}, "ROLE_PLAN")
+    need(plan.get("cliLimit") == CLI_LIMIT and plan.get("httpsLimit") == HTTPS_LIMIT, "ROLE_PLAN")
+    need(plan.get("sourceSha256") == source_sha256 and HASH_RE.fullmatch(source_sha256), "SOURCE_BINDING")
+    need(plan.get("proposalSha256") == proposal_sha256 and HASH_RE.fullmatch(proposal_sha256), "SOURCE_BINDING")
+    need(str(uuid.UUID(plan.get("operationId", ""))) == plan["operationId"], "ROLE_PLAN")
+    start = plan.get("windowStartEpoch")
+    cutoff = plan.get("startCutoffEpoch")
+    deadline = plan.get("deadlineEpoch")
+    end = plan.get("windowEndEpoch")
+    need(all(isinstance(item, (int, float)) for item in (start, cutoff, deadline, end)), "WINDOW_BINDING")
+    need(start <= now < cutoff < deadline <= end and end <= now + 1800, "WINDOW_BINDING")
+    need(approval.get("owner") == "Debynyhan Banks", "APPROVAL_BINDING")
+    need(approval.get("externalActionAuthorized") is True, "APPROVAL_BINDING")
+    expected_decision = "APPROVE_EXACT_STABLE_ROLE_CREATION" if plan["action"] == "PROVISION" else "APPROVE_EXACT_STABLE_ROLE_CLOSEOUT"
+    need(approval.get("decision") == expected_decision, "APPROVAL_BINDING")
+    need(approval.get("operationId") == plan["operationId"] and approval.get("planSha256") == digest(plan), "APPROVAL_BINDING")
+    need(approval.get("sourceSha256") == source_sha256 and approval.get("proposalSha256") == proposal_sha256, "APPROVAL_BINDING")
+    return deadline
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, message, headers, newurl):
+        return None
+
+
+class NativeIO:
+    def cli(self, command, deadline):
+        timeout = max(0.1, deadline - time.time())
+        try:
+            completed = subprocess.run(command, capture_output=True, timeout=timeout, check=False)
+        except subprocess.TimeoutExpired:
+            raise Stop("DEADLINE")
+        need(completed.returncode == 0, "COMMAND_FAILED")
+        try:
+            return completed.stdout.decode("utf-8").strip()
+        except UnicodeDecodeError:
+            raise Stop("CLI_SHAPE")
+
+    def https(self, method, url, headers, body, deadline):
+        payload = None if body is None else json.dumps(body, sort_keys=True, separators=(",", ":")).encode()
+        request = urllib.request.Request(url, data=payload, headers=headers, method=method)
+        opener = urllib.request.build_opener(NoRedirect())
+        try:
+            with opener.open(request, timeout=max(0.1, deadline - time.time())) as response:
+                status = response.status
+                raw = response.read(1048577)
+        except urllib.error.HTTPError as error:
+            status = error.code
+            raw = error.read(1048577)
+        except (TimeoutError, urllib.error.URLError):
+            if method == "POST" and url.startswith(IAM_BASE):
+                raise LostResponse()
+            raise Stop("COMMAND_FAILED")
+        need(len(raw) <= 1048576, "HTTP_SHAPE")
+        if not raw:
+            value = {}
+        else:
+            try:
+                value = json.loads(raw)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                raise Stop("HTTP_SHAPE")
+        need(isinstance(value, dict), "HTTP_SHAPE")
+        return status, value
+
+
+class NativeProvisioner:
+    def __init__(self, plan, approval, io, directory, source_sha256, proposal_sha256, clock=time.time):
+        self.plan = plan
+        self.io = io
+        self.directory = Path(directory)
+        self.clock = clock
+        self.last = clock()
+        self.deadline = authorize_native(plan, approval, source_sha256, proposal_sha256, self.last)
+        need(plan["action"] == "PROVISION", "ROLE_PLAN")
+        need(not self.directory.is_symlink() and stat.S_IMODE(self.directory.stat().st_mode) == 0o700, "DIRECTORY")
+        self.cli_count = 0
+        self.https_count = 0
+        self.interrupted = False
+        self.journal = {"attempted": [], "created": [], "unknown": [], "verified": []}
+
+    def check(self):
+        now = self.clock()
+        need(now >= self.last, "CLOCK_ROLLBACK")
+        self.last = now
+        need(now < self.deadline, "DEADLINE")
+        need(not self.interrupted, "INTERRUPTED")
+
+    def cli(self, command):
+        self.check()
+        self.cli_count += 1
+        need(self.cli_count <= CLI_LIMIT, "COMMAND_LIMIT")
+        try:
+            value = self.io.cli(command, self.deadline)
+        except Stop:
+            raise
+        except BaseException:
+            raise Stop("COMMAND_FAILED")
+        self.check()
+        return value
+
+    def https(self, method, url, headers, body=None, mutation=False):
+        self.check()
+        self.https_count += 1
+        need(self.https_count <= HTTPS_LIMIT, "COMMAND_LIMIT")
+        try:
+            value = self.io.https(method, url, headers, body, self.deadline)
+        except LostResponse:
+            raise Stop("LOST_RESPONSE")
+        except Stop:
+            raise
+        except BaseException:
+            raise Stop("COMMAND_FAILED")
+        try:
+            self.check()
+        except BaseException:
+            if mutation:
+                raise Stop("INTERRUPTED" if self.interrupted else "DEADLINE")
+            raise
+        return value
+
+    def save(self):
+        atomic(self.directory / "native-journal.json", self.journal)
+
+    def run(self):
+        reserve(self.directory / "native-attempt.json", {"operationId": self.plan["operationId"], "planSha256": digest(self.plan)})
+        previous = {item: signal.getsignal(item) for item in (signal.SIGINT, signal.SIGTERM)}
+        for item in previous:
+            signal.signal(item, lambda *_: setattr(self, "interrupted", True))
+        result = None
+        bearer = None
+        try:
+            commands = native_cli_commands()
+            owner = self.cli(commands[0])
+            project = self.cli(commands[1])
+            bearer = self.cli(commands[2])
+            need(owner == OWNER, "OWNER_BINDING")
+            need(project == PROJECT, "PROJECT_BINDING")
+            need(isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE")
+            try:
+                service = json.loads(self.cli(commands[3]))
+                project_policy = json.loads(self.cli(commands[4]))
+                identity_policy = json.loads(self.cli(commands[5]))
+            except (json.JSONDecodeError, TypeError):
+                raise Stop("CLI_SHAPE")
+            need(service == {"state": "ENABLED"}, "IAM_API_DISABLED")
+            bindings_absent(project_policy)
+            bindings_absent(identity_policy)
+            headers = {"Authorization": "Bearer " + bearer, "Accept": "application/json"}
+            post_headers = {**headers, "Content-Type": "application/json"}
+            status, permission_result = self.https("POST", permission_url(), post_headers, {"permissions": list(PERMISSIONS)})
+            need(status == 200 and set(permission_result) == {"permissions"}, "HTTP_SHAPE")
+            granted = permission_result["permissions"]
+            need(isinstance(granted, list) and all(isinstance(item, str) for item in granted), "HTTP_SHAPE")
+            need(len(granted) == len(PERMISSIONS) and set(granted) == set(PERMISSIONS), "PERMISSION_DENIED")
+            for role in ROLES:
+                status, _ = self.https("GET", role_url(role), headers)
+                need(status == 404, "COLLISION" if status == 200 else "HTTP_STATUS")
+            for role in ROLES:
+                self.journal["attempted"].append(role["kind"])
+                self.save()
+                try:
+                    status, _ = self.https("POST", create_url(role), post_headers, create_body(role), mutation=True)
+                    need(status == 200, "HTTP_STATUS")
+                except BaseException:
+                    self.journal["unknown"].append(role["kind"])
+                    self.save()
+                    raise
+                self.journal["created"].append(role["kind"])
+                self.save()
+            definitions = {}
+            for role in ROLES:
+                status, value = self.https("GET", role_url(role), headers)
+                need(status == 200, "HTTP_STATUS")
+                definitions[role["kind"]] = digest(exact_definition(value, role))
+                self.journal["verified"].append(role["kind"])
+                self.save()
+            result = {
+                "status": "P08_EXACT_ROLES_CREATED_RETAINED_UNBOUND",
+                "createdCount": 2, "verifiedCount": 2, "retainedUnbound": True,
+                "definitionSha256": definitions, "cliCompleted": self.cli_count,
+                "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
+                "rawOutputRetained": False, "privateInputsAbsent": False,
+            }
+        except BaseException as error:
+            result = {
+                "status": "P08_EXACT_ROLE_PROVISIONING_STOP_UNKNOWN_OWNERSHIP",
+                "reason": safe_reason(error), "createdCount": len(self.journal["created"]),
+                "unknownCount": len(self.journal["unknown"]), "cliCompleted": self.cli_count,
+                "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
+                "rawOutputRetained": False, "privateInputsAbsent": False,
+            }
+        finally:
+            bearer = None
+            for item, handler in previous.items():
+                signal.signal(item, handler)
+            atomic(self.directory / "native-result.json", result)
+        return result
+
+
+class NativeCloseout:
+    def __init__(self, plan, approval, io, directory, source_sha256, proposal_sha256, clock=time.time):
+        self.plan = plan
+        self.io = io
+        self.directory = Path(directory)
+        self.clock = clock
+        self.last = clock()
+        self.deadline = authorize_native(plan, approval, source_sha256, proposal_sha256, self.last)
+        need(plan["action"] == "CLOSEOUT", "ROLE_PLAN")
+        need(not self.directory.is_symlink() and stat.S_IMODE(self.directory.stat().st_mode) == 0o700, "DIRECTORY")
+        self.cli_count = 0
+        self.https_count = 0
+        self.interrupted = False
+
+    def check(self):
+        now = self.clock()
+        need(now >= self.last, "CLOCK_ROLLBACK")
+        self.last = now
+        need(now < self.deadline, "DEADLINE")
+        need(not self.interrupted, "INTERRUPTED")
+
+    def cli(self, command):
+        self.check()
+        self.cli_count += 1
+        need(self.cli_count <= CLI_LIMIT, "COMMAND_LIMIT")
+        try:
+            value = self.io.cli(command, self.deadline)
+        except Stop:
+            raise
+        except BaseException:
+            raise Stop("COMMAND_FAILED")
+        self.check()
+        return value
+
+    def https(self, method, url, headers):
+        self.check()
+        self.https_count += 1
+        need(self.https_count <= HTTPS_LIMIT, "COMMAND_LIMIT")
+        try:
+            value = self.io.https(method, url, headers, None, self.deadline)
+        except Stop:
+            raise
+        except BaseException:
+            raise Stop("COMMAND_FAILED")
+        self.check()
+        return value
+
+    def run(self):
+        reserve(self.directory / "native-closeout-attempt.json", {"operationId": self.plan["operationId"], "planSha256": digest(self.plan)})
+        previous = {item: signal.getsignal(item) for item in (signal.SIGINT, signal.SIGTERM)}
+        for item in previous:
+            signal.signal(item, lambda *_: setattr(self, "interrupted", True))
+        bearer = None
+        reconciled, absent, residuals = [], [], []
+        try:
+            commands = native_cli_commands()
+            owner = self.cli(commands[0])
+            project = self.cli(commands[1])
+            bearer = self.cli(commands[2])
+            need(owner == OWNER, "OWNER_BINDING")
+            need(project == PROJECT, "PROJECT_BINDING")
+            need(isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE")
+            for command in commands[4:]:
+                try:
+                    bindings_absent(json.loads(self.cli(command)))
+                except (json.JSONDecodeError, TypeError):
+                    raise Stop("CLI_SHAPE")
+            headers = {"Authorization": "Bearer " + bearer, "Accept": "application/json"}
+            for role in ROLES:
+                status, value = self.https("GET", role_url(role), headers)
+                if status == 404:
+                    absent.append(role["kind"])
+                elif status == 200:
+                    exact_definition(value, role)
+                    reconciled.append(role["kind"])
+                else:
+                    residuals.append(role["kind"])
+        except BaseException as error:
+            residuals.append(safe_reason(error))
+        finally:
+            bearer = None
+            for item, handler in previous.items():
+                signal.signal(item, handler)
+        result = {
+            "status": "P08_EXACT_ROLE_CLOSEOUT_VERIFIED" if not residuals else "P08_EXACT_ROLE_CLOSEOUT_UNCONFIRMED",
+            "reconciledRetainedCount": len(reconciled), "absentCount": len(absent),
+            "residualCount": len(residuals), "cliCompleted": self.cli_count,
+            "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
+            "retainedUnbound": bool(reconciled) and not residuals,
+            "rawOutputRetained": False, "privateInputsAbsent": False,
+        }
+        atomic(self.directory / "native-closeout.json", result)
+        return result
+
+
+def run_bound(directory, expected_source_sha256, expected_proposal_sha256, io=None, clock=time.time):
+    directory = Path(directory)
+    need(not directory.is_symlink() and stat.S_IMODE(directory.stat().st_mode) == 0o700, "DIRECTORY")
+    plan_path = directory / "launch-plan.json"
+    approval_path = directory / "owner-approval.json"
+    result = None
+    try:
+        plan = private_json(plan_path)
+        approval = private_json(approval_path)
+        source_sha256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+        need(source_sha256 == expected_source_sha256, "SOURCE_BINDING")
+        controller_type = NativeProvisioner if plan.get("action") == "PROVISION" else NativeCloseout
+        controller = controller_type(plan, approval, io or NativeIO(), directory, source_sha256, expected_proposal_sha256, clock)
+        result = controller.run()
+    finally:
+        for path in (plan_path, approval_path):
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+    result["privateInputsAbsent"] = not plan_path.exists() and not approval_path.exists()
+    output = "native-result.json" if plan["action"] == "PROVISION" else "native-closeout.json"
+    atomic(directory / output, result)
+    return result
 
 
 def exact_definition(value, role):
@@ -307,6 +694,15 @@ def main(argv=None):
     if argv in (["--provision"], ["--closeout"]):
         print("P08_EXACT_ROLE_PROVISIONER_REFUSED_UNBOUND")
         return 2
+    if len(argv) == 4 and argv[0] in {"--provision-bound", "--closeout-bound"}:
+        try:
+            result = run_bound(argv[1], argv[2], argv[3])
+        except BaseException as error:
+            print("P08_EXACT_ROLE_PROVISIONER_REFUSED_" + safe_reason(error))
+            return 2
+        print(result["status"])
+        successes = {"P08_EXACT_ROLES_CREATED_RETAINED_UNBOUND", "P08_EXACT_ROLE_CLOSEOUT_VERIFIED"}
+        return 0 if result["status"] in successes else 3
     print("P08_EXACT_ROLE_PROVISIONER_USAGE_REFUSED")
     return 2
 

@@ -1,11 +1,15 @@
 {
   "actualProviderCommands": 0,
-  "commandCeilingModeled": 11,
+  "cliCeilingModeled": 6,
+  "httpsCeilingModeled": 7,
+  "totalExternalCallCeilingModeled": 13,
   "deleteUpdateUndeletePaths": 0,
   "externalBindingEnabled": false,
+  "nativeExternalBindingImplemented": true,
   "providerActionOccurred": false,
-  "sourceSha256": "5a1d736adf8d5d0dc88580cb7eb9ffa29f5eae5ed065fd50bcad79c4db0f08a6",
-  "status": "P08_EXACT_ROLE_LOCAL_PREPARATION_PASSED",
-  "testsPassed": 11,
-  "testsRun": 11
+  "privateInputPurgeTested": true,
+  "sourceSha256": "a7134a14c0d1f1a1027fae4f61cecc2f5016876011ebdddb4d8d19ac9727ec1b",
+  "status": "P08_EXACT_ROLE_LAUNCH_BINDING_LOCAL_PASSED",
+  "testsPassed": 20,
+  "testsRun": 20
 }
