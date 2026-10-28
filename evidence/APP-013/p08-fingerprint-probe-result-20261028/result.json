@@ -1,0 +1,61 @@
+{
+  "cliCount": 3,
+  "closedAt": "2026-10-28T16:18:26.943865Z",
+  "closeoutOnTime": true,
+  "facts": {
+    "notReturnedPermissions": [],
+    "ownerMatched": true,
+    "projectFingerprintMatch": "JSON_STRING_MATCH",
+    "projectMatched": true,
+    "requestedPermissions": [
+      "serviceusage.services.get",
+      "serviceusage.services.enable",
+      "serviceusage.services.use",
+      "serviceusage.operations.get",
+      "apikeys.keys.create",
+      "apikeys.keys.get",
+      "apikeys.keys.delete",
+      "apikeys.keys.getKeyString",
+      "resourcemanager.projects.getIamPolicy"
+    ],
+    "returnedPermissions": [
+      "apikeys.keys.create",
+      "apikeys.keys.delete",
+      "apikeys.keys.get",
+      "apikeys.keys.getKeyString",
+      "resourcemanager.projects.getIamPolicy",
+      "serviceusage.operations.get",
+      "serviceusage.services.enable",
+      "serviceusage.services.get",
+      "serviceusage.services.use"
+    ]
+  },
+  "httpCount": 1,
+  "mutations": false,
+  "operationId": "7b88581c-b602-428f-bf1f-1bac667110ea",
+  "processCloseoutVerified": true,
+  "startedAt": "2026-10-28T16:18:25.474869Z",
+  "status": "P08_CALLER_PROJECT_PERMISSIONS_RECORDED",
+  "steps": [
+    {
+      "at": "2026-10-28T16:18:25.880415Z",
+      "exitCode": 0,
+      "stage": "CLI_1"
+    },
+    {
+      "at": "2026-10-28T16:18:26.483164Z",
+      "exitCode": 0,
+      "stage": "CLI_2"
+    },
+    {
+      "at": "2026-10-28T16:18:26.743736Z",
+      "exitCode": 0,
+      "stage": "CLI_3"
+    },
+    {
+      "at": "2026-10-28T16:18:26.943816Z",
+      "httpStatus": 200,
+      "stage": "HTTP_1"
+    }
+  ]
+}
