@@ -171,6 +171,39 @@ class QualifierTests(unittest.TestCase):
                 self.assertEqual(result["reason"], "ROLE_SHAPE")
                 self.assertNotIn("refuse", json.dumps(result))
 
+    def test_documented_lifecycle_rows_are_normalized_or_excluded_privately(self):
+        alpha_lookup = role("p08_lookup", [q.PERMISSIONS["lookup"]])
+        alpha_lookup.pop("stage")
+        rows = [
+            alpha_lookup,
+            role("p08_signing", [q.PERMISSIONS["signing"]]),
+            role("private_deleted", [q.PERMISSIONS["lookup"]], deleted=True),
+            role("private_eap", [q.PERMISSIONS["signing"]], stage="EAP"),
+            role("private_deprecated", [q.PERMISSIONS["lookup"]], stage="DEPRECATED"),
+            role("private_disabled", [q.PERMISSIONS["signing"]], stage="DISABLED"),
+        ]
+        result = self.controller(rows=rows)[0].run()
+        self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_UNIQUE")
+        self.assertEqual(result["roleCount"], 6)
+        self.assertEqual(result["excludedRoleCount"], 4)
+        self.assertEqual(result["candidates"]["lookup"]["stage"], "ALPHA")
+        saved = (self.root / "result.json").read_text()
+        for private_name in ("private_deleted", "private_eap", "private_deprecated", "private_disabled"):
+            self.assertNotIn(private_name, saved)
+
+    def test_malformed_lifecycle_fields_still_refuse(self):
+        cases = [
+            role("bad_deleted", [q.PERMISSIONS["lookup"]], deleted="false"),
+            role("bad_stage_type", [q.PERMISSIONS["lookup"]], stage=1),
+            role("bad_stage_value", [q.PERMISSIONS["lookup"]], stage="UNKNOWN"),
+        ]
+        for row in cases:
+            with self.subTest(row=row["name"]), tempfile.TemporaryDirectory(dir=self.root) as directory:
+                os.chmod(directory, 0o700)
+                result = q.Controller(self.plan, Adapter([row]), directory, self.source, self.decision, self.clock).run()
+                self.assertEqual(result["status"], "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN")
+                self.assertEqual(result["reason"], "ROLE_SHAPE")
+
     def test_zero_broader_and_multiple_are_decision_required(self):
         cases = [
             ([], {"lookup": "NO_EXACT", "signing": "NO_EXACT"}),
@@ -184,11 +217,10 @@ class QualifierTests(unittest.TestCase):
                 self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_DECISION_REQUIRED")
                 self.assertEqual(result["classifications"], expected)
 
-    def test_malformed_foreign_inactive_duplicate_and_over_cap_stop_truthfully(self):
+    def test_malformed_foreign_duplicate_and_over_cap_stop_truthfully(self):
         cases = [
             "not-a-list",
             [{"name": "projects/foreign/roles/x", "includedPermissions": ["x"], "stage": "GA"}],
-            [role("inactive", ["x"], stage="DISABLED")],
             [role("duplicate_permission", ["x", "x"])],
             [role("duplicate", ["x"]), role("duplicate", ["y"])],
             [role(f"r{i}", [f"permission.{i}"]) for i in range(q.MAX_ROLES + 1)],

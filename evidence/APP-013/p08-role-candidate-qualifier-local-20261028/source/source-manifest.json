@@ -5,9 +5,11 @@
   "approvalCommit": "0f9197b",
   "etagCorrectionProposalCommit": "cd0c703",
   "etagCorrectionApprovalCommit": "95b434f",
+  "lifecycleCorrectionProposalCommit": "02a40a4",
+  "lifecycleCorrectionApprovalCommit": "23f8943",
   "files": {
-    "role_qualifier.py": "b164717be48a45e2c6be86d4c3968d636f028dded95af8d0597d580f9af8083b",
-    "test_role_qualifier.py": "7f387f1c0e64a561adff925ebec5e4ad2751f6cccafeb833710788e3442d5056"
+    "role_qualifier.py": "4d1734d057615ceece5c73f53e1335a1db1aa540cd37007fe94031b0d61f4f44",
+    "test_role_qualifier.py": "1178d2d4a5b5fc90f85dcf986513030d1e68391a481a4dee469eb1829f65935f"
   },
   "reusedRestorationContract": {
     "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",

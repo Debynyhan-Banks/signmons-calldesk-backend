@@ -25,6 +25,7 @@ PERMISSIONS = {
 ROLE_RE = re.compile(r"projects/signmons/roles/[A-Za-z0-9_]+")
 HASH_RE = re.compile(r"[a-f0-9]{64}")
 ACTIVE_STAGES = {"ALPHA", "BETA", "GA"}
+DOCUMENTED_STAGES = {"EAP", "ALPHA", "BETA", "GA", "DEPRECATED", "DISABLED"}
 MAX_ROLES = 200
 OWNER = "debynyhan@signmons.com"
 GCLOUD = "/opt/homebrew/bin/gcloud"
@@ -140,15 +141,16 @@ def _role(row):
     name = row.get("name")
     permissions = row.get("includedPermissions")
     deleted = row.get("deleted", False)
-    stage = row.get("stage")
+    stage = row.get("stage", "ALPHA")
     need(isinstance(name, str) and ROLE_RE.fullmatch(name), "FOREIGN_OR_INVALID_ROLE")
     need(isinstance(permissions, list) and permissions and all(isinstance(x, str) and x for x in permissions), "PERMISSION_SHAPE")
     need(len(permissions) == len(set(permissions)), "DUPLICATE_PERMISSION")
-    need(deleted is False and stage in ACTIVE_STAGES, "INACTIVE_ROLE")
+    need(isinstance(deleted, bool), "ROLE_SHAPE")
+    need(isinstance(stage, str) and stage in DOCUMENTED_STAGES, "ROLE_SHAPE")
     return {
         "name": name,
         "includedPermissions": sorted(permissions),
-        "deleted": False,
+        "deleted": deleted,
         "stage": stage,
     }
 
@@ -159,12 +161,13 @@ def classify(rows):
     normalized = [_role(row) for row in rows]
     names = [row["name"] for row in normalized]
     need(len(names) == len(set(names)), "DUPLICATE_ROLE")
+    eligible = [row for row in normalized if not row["deleted"] and row["stage"] in ACTIVE_STAGES]
 
     candidates = {}
     classifications = {}
     for kind, permission in PERMISSIONS.items():
-        exact = [row for row in normalized if row["includedPermissions"] == [permission]]
-        broader = [row for row in normalized if permission in row["includedPermissions"] and row not in exact]
+        exact = [row for row in eligible if row["includedPermissions"] == [permission]]
+        broader = [row for row in eligible if permission in row["includedPermissions"] and row not in exact]
         if len(exact) == 1:
             classifications[kind] = "UNIQUE_EXACT"
             row = exact[0]
@@ -191,6 +194,7 @@ def classify(rows):
         "status": status,
         "project": PROJECT,
         "roleCount": len(normalized),
+        "excludedRoleCount": len(normalized) - len(eligible),
         "classifications": classifications,
         "candidates": candidates,
         "candidateCount": len(candidates),
