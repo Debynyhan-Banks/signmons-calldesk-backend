@@ -1,0 +1,52 @@
+{
+  "externalActions": 0,
+  "final": {
+    "authenticationTests": {
+      "command": "node --test auth-controller.test.mjs from private no-space source copy",
+      "passed": 60
+    },
+    "diagnosticsStageTests": {
+      "command": "python3 -B -m unittest -v test_diagnostics_stage.py",
+      "passed": 24
+    },
+    "launchBindingTests": {
+      "command": "python3 -B -m unittest -v test_launch_binding.py",
+      "passed": 16
+    },
+    "legacyAccessModelTests": {
+      "command": "python3 -B -m unittest -v test_access_readiness.py",
+      "passed": 40
+    },
+    "restorationTests": {
+      "command": "python3 -B -m unittest -v test_restore.py",
+      "passed": 31
+    }
+  },
+  "initialFindings": [
+    {
+      "correction": "Match the fake Policy Troubleshooter request by principal, full resource and permission",
+      "result": "1 failed subcase on the first 15-test run",
+      "summary": "Two diagnostics share firebaseauth.users.get; the fake indexed only by permission and could not model the owner-specific UNKNOWN_INFO result"
+    },
+    {
+      "correction": "Terminate and wait for an interrupted native CLI child before removing it from the tracked process set; add a direct regression test",
+      "result": "Shift-left source review finding before final evidence",
+      "summary": "A BaseException during communicate could otherwise discard a still-running child before closeout"
+    }
+  ],
+  "networkOrHostCredentialAccessInTests": false,
+  "scratch": {
+    "authenticationCopy": "/private/tmp/p08-auth-launch-5Mtg7x",
+    "absenceVerifiedAfterTests": true,
+    "containedPrivateData": false
+  },
+  "status": "LOCAL_STAGE_A_LAUNCH_BINDING_COMPLETE",
+  "totals": {
+    "launchBinding": 16,
+    "reusedAuthentication": 60,
+    "reusedDiagnosticsStage": 24,
+    "reusedLegacyAccessModel": 40,
+    "reusedRestoration": 31,
+    "totalPassed": 171
+  }
+}

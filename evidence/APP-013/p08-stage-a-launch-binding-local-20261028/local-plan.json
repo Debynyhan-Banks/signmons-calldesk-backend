@@ -1,0 +1,18 @@
+{
+  "acceptanceCriterion": "APP-013 / 3A authentic same-job Sandbox payment and matching signed settlement remains unchanged",
+  "approvedSection": "R1-W01 / APP-013 / 3A / P08",
+  "backendSourceCommit": "2822820",
+  "expectedFiles": [
+    "source/diagnostics_stage.py",
+    "source/launch_binding.py",
+    "source/test_launch_binding.py",
+    "source/source-manifest.json"
+  ],
+  "externalActionAuthorized": false,
+  "governanceProposalCommit": "e758c79",
+  "missingBehaviorEvidence": "The proved Stage A controller intentionally refused native execution because it had no credential resolver or HTTPS binding",
+  "observableFinish": "Disabled source-locked launcher whose fake-bound tests prove exact owner/project/approval/request/closeout contracts and which refuses unbound native execution",
+  "serviceRetentionModeled": "RETAIN_IF_ENABLED",
+  "sourceManifestSha256": "869cc37faab44ed294e5625c75075e2cb26ee4ceaf8d7d0459a1457db9be667e",
+  "stageBAllowed": false
+}

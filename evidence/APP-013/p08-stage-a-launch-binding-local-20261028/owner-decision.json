@@ -1,0 +1,7 @@
+{
+  "decision": "APPROVED_LOCAL_IMPLEMENTATION_AND_ISOLATED_TESTS_ONLY",
+  "owner": "Debynyhan Banks",
+  "proposalCommit": "e758c79",
+  "response": "i approve",
+  "scope": "Disabled P08 Stage A launch binding and fake-bound isolated tests; no external action"
+}
