@@ -148,6 +148,29 @@ class QualifierTests(unittest.TestCase):
         self.assertFalse(result["rawOutputRetained"])
         self.assertFalse(result["providerMutationPossible"])
 
+    def test_documented_etag_is_validated_and_discarded(self):
+        rows = [
+            role("p08_lookup", [q.PERMISSIONS["lookup"]], etag="BwYAbc123="),
+            role("p08_signing", [q.PERMISSIONS["signing"]], etag="BwYDef456="),
+        ]
+        result = self.controller(rows=rows)[0].run()
+        self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_UNIQUE")
+        self.assertNotIn("etag", json.dumps(result))
+        self.assertNotIn("BwYAbc123=", (self.root / "result.json").read_text())
+
+    def test_non_string_etag_and_unknown_fields_stop(self):
+        cases = [
+            role("bad_etag", [q.PERMISSIONS["lookup"]], etag=123),
+            role("unknown_field", [q.PERMISSIONS["lookup"]], unexpected="refuse"),
+        ]
+        for row in cases:
+            with self.subTest(row=row["name"]), tempfile.TemporaryDirectory(dir=self.root) as directory:
+                os.chmod(directory, 0o700)
+                result = q.Controller(self.plan, Adapter([row]), directory, self.source, self.decision, self.clock).run()
+                self.assertEqual(result["status"], "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN")
+                self.assertEqual(result["reason"], "ROLE_SHAPE")
+                self.assertNotIn("refuse", json.dumps(result))
+
     def test_zero_broader_and_multiple_are_decision_required(self):
         cases = [
             ([], {"lookup": "NO_EXACT", "signing": "NO_EXACT"}),

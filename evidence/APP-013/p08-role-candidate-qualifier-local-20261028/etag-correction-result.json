@@ -1,0 +1,12 @@
+{
+  "approvedScope": "LOCAL_CORRECTION_AND_ISOLATED_TESTS_ONLY",
+  "documentedEtagAccepted": true,
+  "etagDiscardedBeforeClassificationAndEvidence": true,
+  "nonStringEtagRefused": true,
+  "providerActionOccurred": false,
+  "sourceSha256": "b164717be48a45e2c6be86d4c3968d636f028dded95af8d0597d580f9af8083b",
+  "status": "P08_ROLE_ETAG_LOCAL_CORRECTION_PASSED",
+  "testsPassed": 21,
+  "testsRun": 21,
+  "unknownFieldRefused": true
+}

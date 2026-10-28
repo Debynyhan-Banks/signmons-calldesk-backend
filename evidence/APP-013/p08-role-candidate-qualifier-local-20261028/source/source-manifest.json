@@ -3,13 +3,15 @@
   "section": "R1-W01 / APP-013 / 3A / P08",
   "proposalCommit": "6548f05",
   "approvalCommit": "0f9197b",
+  "etagCorrectionProposalCommit": "cd0c703",
+  "etagCorrectionApprovalCommit": "95b434f",
   "files": {
-    "role_qualifier.py": "86253263a046e080a7d49cb1e2da6a1b2e39610008bdf428084c780031187856",
-    "test_role_qualifier.py": "552170c5d8ce5d6396a4716a192c337299e7d885c880090828d6685ba028ad3e"
+    "role_qualifier.py": "b164717be48a45e2c6be86d4c3968d636f028dded95af8d0597d580f9af8083b",
+    "test_role_qualifier.py": "7f387f1c0e64a561adff925ebec5e4ad2751f6cccafeb833710788e3442d5056"
   },
   "reusedRestorationContract": {
     "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",
     "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
   },
-  "nativeExternalBinding": false
+  "nativeExternalBinding": true
 }

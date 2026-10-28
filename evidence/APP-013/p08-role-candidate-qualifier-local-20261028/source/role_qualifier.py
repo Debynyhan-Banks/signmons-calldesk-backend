@@ -135,7 +135,8 @@ def approve(plan, approval, source_sha256, decision_sha256):
 
 
 def _role(row):
-    need(isinstance(row, dict) and set(row) <= {"name", "includedPermissions", "deleted", "stage", "title", "description"}, "ROLE_SHAPE")
+    need(isinstance(row, dict) and set(row) <= {"name", "includedPermissions", "deleted", "stage", "title", "description", "etag"}, "ROLE_SHAPE")
+    need("etag" not in row or isinstance(row["etag"], str), "ROLE_SHAPE")
     name = row.get("name")
     permissions = row.get("includedPermissions")
     deleted = row.get("deleted", False)
