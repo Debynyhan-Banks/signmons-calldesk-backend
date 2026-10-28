@@ -1,0 +1,24 @@
+test_accepted_candidates_pass_existing_restoration_role_contract (test_role_qualifier.QualifierTests.test_accepted_candidates_pass_existing_restoration_role_contract) ... ok
+test_bound_path_requires_private_exact_approval_then_runs_fake_native (test_role_qualifier.QualifierTests.test_bound_path_requires_private_exact_approval_then_runs_fake_native) ... ok
+test_clock_rollback_and_deadline_report_unknown_without_result (test_role_qualifier.QualifierTests.test_clock_rollback_and_deadline_report_unknown_without_result) ... ok
+test_concurrent_reservation_has_one_winner (test_role_qualifier.QualifierTests.test_concurrent_reservation_has_one_winner) ... ok
+test_each_native_command_failure_records_started_not_completed_stage (test_role_qualifier.QualifierTests.test_each_native_command_failure_records_started_not_completed_stage) ... ok
+test_full_view_response_page_token_and_shape_refuse_safely (test_role_qualifier.QualifierTests.test_full_view_response_page_token_and_shape_refuse_safely) ... ok
+test_https_client_exact_contract_and_redirect_refusal (test_role_qualifier.QualifierTests.test_https_client_exact_contract_and_redirect_refusal) ... ok
+test_invalid_bearer_refuses_before_https_and_is_not_saved (test_role_qualifier.QualifierTests.test_invalid_bearer_refuses_before_https_and_is_not_saved) ... ok
+test_malformed_foreign_inactive_duplicate_and_over_cap_stop_truthfully (test_role_qualifier.QualifierTests.test_malformed_foreign_inactive_duplicate_and_over_cap_stop_truthfully) ... ok
+test_native_adapter_uses_exact_three_read_only_commands (test_role_qualifier.QualifierTests.test_native_adapter_uses_exact_three_read_only_commands) ... ok
+test_native_entrypoint_refuses_before_any_adapter (test_role_qualifier.QualifierTests.test_native_entrypoint_refuses_before_any_adapter) ... ok
+test_native_owner_and_project_drift_stop_before_role_list (test_role_qualifier.QualifierTests.test_native_owner_and_project_drift_stop_before_role_list) ... ok
+test_one_attempt_reservation_blocks_retry (test_role_qualifier.QualifierTests.test_one_attempt_reservation_blocks_retry) ... ok
+test_result_write_failure_cannot_report_clean_result (test_role_qualifier.QualifierTests.test_result_write_failure_cannot_report_clean_result) ... ok
+test_signal_cancels_real_child_and_never_saves_success (test_role_qualifier.QualifierTests.test_signal_cancels_real_child_and_never_saves_success) ... ok
+test_source_decision_retry_deadline_and_privacy_contract_refuse_before_adapter (test_role_qualifier.QualifierTests.test_source_decision_retry_deadline_and_privacy_contract_refuse_before_adapter) ... ok
+test_unique_candidates_are_sanitized_and_hashed (test_role_qualifier.QualifierTests.test_unique_candidates_are_sanitized_and_hashed) ... ok
+test_untrusted_adapter_error_text_is_not_retained (test_role_qualifier.QualifierTests.test_untrusted_adapter_error_text_is_not_retained) ... ok
+test_zero_broader_and_multiple_are_decision_required (test_role_qualifier.QualifierTests.test_zero_broader_and_multiple_are_decision_required) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.135s
+
+OK

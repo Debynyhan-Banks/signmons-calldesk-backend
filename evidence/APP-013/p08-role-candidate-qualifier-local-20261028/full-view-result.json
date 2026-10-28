@@ -1,0 +1,16 @@
+{
+  "status": "P08_ROLE_LIST_FULL_VIEW_LOCAL_COMPLETE",
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "governanceApprovalCommit": "cc7cbdd",
+  "testsPassed": 19,
+  "testsFailed": 0,
+  "externalRetryPerformed": false,
+  "providerCommands": 0,
+  "providerRequests": 0,
+  "providerMutations": 0,
+  "bearerRetained": false,
+  "rawOutputRetained": false,
+  "privateFixturesRemoved": true,
+  "scopeDeviation": false,
+  "next": "fresh exact FULL-view role inventory operation requires separate approval"
+}

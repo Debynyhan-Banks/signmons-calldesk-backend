@@ -45,26 +45,46 @@ class Adapter:
 
 
 class Runner:
-    def __init__(self, rows, owner=q.OWNER, project=q.PROJECT, fail_at=None):
+    def __init__(self, rows, owner=q.OWNER, project=q.PROJECT, fail_at=None, token=None):
         self.rows = rows
         self.owner = owner
         self.project = project
         self.calls = []
         self.cancelled = False
         self.fail_at = fail_at
+        self.token = token or "ya29." + "x" * 40
 
     def __call__(self, args, deadline):
         self.calls.append(args)
-        stage = "OWNER_CHECK" if args[0] == "auth" else "PROJECT_CHECK" if args[0] == "config" else "ROLE_LIST"
+        stage = "OWNER_CHECK" if args[:2] == ["auth", "list"] else "PROJECT_CHECK" if args[0] == "config" else "BEARER_ACQUISITION"
         if self.fail_at == stage:
             raise ValueError("private-provider-body")
-        if args[0] == "auth":
+        if args[:2] == ["auth", "list"]:
             return self.owner
         if args[0] == "config":
             return self.project
-        if args[:3] == ["iam", "roles", "list"]:
-            return copy.deepcopy(self.rows)
+        if args == ["auth", "print-access-token"]:
+            return self.token
         raise AssertionError("unexpected command")
+
+    def cancel(self):
+        self.cancelled = True
+
+
+class Http:
+    def __init__(self, rows, fail=False, token=None, extra=None):
+        self.rows = rows
+        self.fail = fail
+        self.token = token
+        self.extra = extra or {}
+        self.calls = []
+        self.cancelled = False
+
+    def __call__(self, method, host, path, query, headers, deadline):
+        self.calls.append((method, host, path, query, copy.deepcopy(headers)))
+        if self.fail:
+            raise ValueError("private-http-body")
+        return {"roles": copy.deepcopy(self.rows), **self.extra}
 
     def cancel(self):
         self.cancelled = True
@@ -99,6 +119,7 @@ class QualifierTests(unittest.TestCase):
             "rawOutputRetention": "PROCESS_MEMORY_ONLY",
             "expectedOwner": q.OWNER,
             "commandLimit": 3,
+            "httpsRequestLimit": 1,
         }
         self.rows = [
             role("p08_lookup", [q.PERMISSIONS["lookup"]], title="ignored private title"),
@@ -169,6 +190,7 @@ class QualifierTests(unittest.TestCase):
             ("rawOutputRetention", "FILE"),
             ("expectedOwner", "foreign@example.com"),
             ("commandLimit", 4),
+            ("httpsRequestLimit", 2),
         ]
         for field, value in changes:
             with self.subTest(field=field):
@@ -282,17 +304,23 @@ class QualifierTests(unittest.TestCase):
 
     def test_native_adapter_uses_exact_three_read_only_commands(self):
         runner = Runner(self.rows)
-        result = q.Controller(self.plan, q.NativeAdapter(runner), self.root, self.source, self.decision, self.clock).run()
+        http = Http(self.rows)
+        result = q.Controller(self.plan, q.NativeAdapter(runner, http), self.root, self.source, self.decision, self.clock).run()
         self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_UNIQUE")
         self.assertEqual(result["commandsStarted"], 3)
         self.assertEqual(result["commandsCompleted"], 3)
-        self.assertEqual(result["lastStartedStage"], "ROLE_LIST")
-        self.assertEqual(result["lastCompletedStage"], "ROLE_LIST")
+        self.assertEqual(result["httpsStarted"], 1)
+        self.assertEqual(result["httpsCompleted"], 1)
+        self.assertEqual(result["lastStartedStage"], "ROLE_LIST_FULL")
+        self.assertEqual(result["lastCompletedStage"], "ROLE_LIST_FULL")
         self.assertEqual(runner.calls, [
             ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"],
             ["config", "get-value", "project"],
-            ["iam", "roles", "list", "--project=signmons", "--format=json(name,includedPermissions,deleted,stage)"],
+            ["auth", "print-access-token"],
         ])
+        self.assertEqual(http.calls[0][:4], ("GET", q.IAM_HOST, q.IAM_PATH, q.IAM_QUERY))
+        saved = (self.root / "result.json").read_text()
+        self.assertNotIn("ya29.", saved)
         tokens = [token for command in runner.calls for token in command]
         self.assertFalse(any(token in {"create", "delete", "update", "add-iam-policy-binding", "remove-iam-policy-binding", "set-policy"} for token in tokens))
 
@@ -301,7 +329,7 @@ class QualifierTests(unittest.TestCase):
         for runner, count, stage in cases:
             with self.subTest(owner=runner.owner, project=runner.project), tempfile.TemporaryDirectory(dir=self.root) as directory:
                 os.chmod(directory, 0o700)
-                result = q.Controller(self.plan, q.NativeAdapter(runner), directory, self.source, self.decision, self.clock).run()
+                result = q.Controller(self.plan, q.NativeAdapter(runner, Http(self.rows)), directory, self.source, self.decision, self.clock).run()
                 self.assertEqual(result["status"], "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN")
                 self.assertLess(len(runner.calls), 3)
                 self.assertEqual(result["commandsStarted"], count)
@@ -312,17 +340,85 @@ class QualifierTests(unittest.TestCase):
         for stage, started, completed, last_completed in [
             ("OWNER_CHECK", 1, 0, None),
             ("PROJECT_CHECK", 2, 1, "OWNER_CHECK"),
-            ("ROLE_LIST", 3, 2, "PROJECT_CHECK"),
+            ("BEARER_ACQUISITION", 3, 2, "PROJECT_CHECK"),
+            ("ROLE_LIST_FULL", 3, 3, "BEARER_ACQUISITION"),
         ]:
             with self.subTest(stage=stage), tempfile.TemporaryDirectory(dir=self.root) as directory:
                 os.chmod(directory, 0o700)
-                result = q.Controller(self.plan, q.NativeAdapter(Runner(self.rows, fail_at=stage)), directory, self.source, self.decision, self.clock).run()
+                runner = Runner(self.rows, fail_at=stage)
+                http = Http(self.rows, fail=stage == "ROLE_LIST_FULL")
+                result = q.Controller(self.plan, q.NativeAdapter(runner, http), directory, self.source, self.decision, self.clock).run()
                 self.assertEqual(result["reason"], "ValueError")
                 self.assertEqual(result["commandsStarted"], started)
                 self.assertEqual(result["commandsCompleted"], completed)
+                self.assertEqual(result["httpsStarted"], 1 if stage == "ROLE_LIST_FULL" else 0)
+                self.assertEqual(result["httpsCompleted"], 0)
                 self.assertEqual(result["lastStartedStage"], stage)
                 self.assertEqual(result["lastCompletedStage"], last_completed)
                 self.assertNotIn("private-provider-body", (Path(directory) / "result.json").read_text())
+                self.assertNotIn("private-http-body", (Path(directory) / "result.json").read_text())
+
+    def test_full_view_response_page_token_and_shape_refuse_safely(self):
+        cases = [
+            (Http(self.rows, extra={"nextPageToken": "private-next"}), "ROLE_PAGE_CAP"),
+            (Http(self.rows, extra={"foreign": True}), "RESPONSE_KEYS"),
+        ]
+        for http, reason in cases:
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory(dir=self.root) as directory:
+                os.chmod(directory, 0o700)
+                result = q.Controller(self.plan, q.NativeAdapter(Runner(self.rows), http), directory, self.source, self.decision, self.clock).run()
+                self.assertEqual(result["reason"], reason)
+                self.assertNotIn("private-next", (Path(directory) / "result.json").read_text())
+
+    def test_invalid_bearer_refuses_before_https_and_is_not_saved(self):
+        http = Http(self.rows)
+        result = q.Controller(self.plan, q.NativeAdapter(Runner(self.rows, token="short private token"), http), self.root, self.source, self.decision, self.clock).run()
+        self.assertEqual(result["reason"], "BEARER_SHAPE")
+        self.assertEqual(result["commandsCompleted"], 3)
+        self.assertEqual(result["httpsStarted"], 0)
+        self.assertEqual(http.calls, [])
+        self.assertNotIn("short private token", (self.root / "result.json").read_text())
+
+    def test_https_client_exact_contract_and_redirect_refusal(self):
+        class Response:
+            def __init__(inner, url):
+                inner.url = url
+                inner.status = 200
+
+            def geturl(inner):
+                return inner.url
+
+            def read(inner, limit):
+                return json.dumps({"roles": self.rows}).encode()
+
+        class Opener:
+            def __init__(inner, redirect=False):
+                inner.redirect = redirect
+                inner.requests = []
+
+            def open(inner, request, timeout):
+                inner.requests.append(request)
+                url = request.full_url + ("/redirected" if inner.redirect else "")
+                return Response(url)
+
+        token = "Bearer " + "x" * 40
+        headers = {"Authorization": token, "Accept": "application/json"}
+        opener = Opener()
+        client = q.HttpsClient(opener)
+        response = client("GET", q.IAM_HOST, q.IAM_PATH, q.IAM_QUERY, headers, self.clock() + 30)
+        self.assertEqual(response["roles"], self.rows)
+        self.assertEqual(opener.requests[0].full_url, "https://" + q.IAM_HOST + q.IAM_PATH + "?" + q.IAM_QUERY)
+        for args in [
+            ("POST", q.IAM_HOST, q.IAM_PATH, q.IAM_QUERY),
+            ("GET", "foreign.example", q.IAM_PATH, q.IAM_QUERY),
+            ("GET", q.IAM_HOST, "/v1/projects/foreign/roles", q.IAM_QUERY),
+            ("GET", q.IAM_HOST, q.IAM_PATH, "view=BASIC&pageSize=200"),
+        ]:
+            with self.subTest(args=args), self.assertRaises(q.Stop):
+                client(*args, headers, self.clock() + 30)
+        with self.assertRaises(q.Stop) as stopped:
+            q.HttpsClient(Opener(redirect=True))("GET", q.IAM_HOST, q.IAM_PATH, q.IAM_QUERY, headers, self.clock() + 30)
+        self.assertEqual(stopped.exception.args[0], "HTTPS_REDIRECT")
 
     def test_result_write_failure_cannot_report_clean_result(self):
         controller, _ = self.controller()
@@ -348,7 +444,8 @@ class QualifierTests(unittest.TestCase):
             path.write_text(json.dumps(value))
             os.chmod(path, 0o600)
         runner = Runner(self.rows)
-        result = q.run_bound(plan_path, approval_path, self.root, runner, self.clock)
+        http = Http(self.rows)
+        result = q.run_bound(plan_path, approval_path, self.root, runner=runner, http=http, clock=self.clock)
         self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_UNIQUE")
         self.assertTrue(result["privateInputsAbsent"])
         self.assertFalse(plan_path.exists())
@@ -365,7 +462,7 @@ class QualifierTests(unittest.TestCase):
                 path.write_text(json.dumps(value))
                 os.chmod(path, 0o600)
             with self.assertRaises(q.Stop):
-                q.run_bound(bad_plan_path, bad_approval_path, directory, Runner(self.rows), self.clock)
+                q.run_bound(bad_plan_path, bad_approval_path, directory, runner=Runner(self.rows), http=Http(self.rows), clock=self.clock)
             self.assertFalse(bad_plan_path.exists())
             self.assertFalse(bad_approval_path.exists())
 

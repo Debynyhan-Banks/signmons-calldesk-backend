@@ -11,6 +11,9 @@ import subprocess
 import sys
 import time
 import uuid
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 PROJECT = "signmons"
@@ -25,12 +28,18 @@ ACTIVE_STAGES = {"ALPHA", "BETA", "GA"}
 MAX_ROLES = 200
 OWNER = "debynyhan@signmons.com"
 GCLOUD = "/opt/homebrew/bin/gcloud"
-STAGES = ("OWNER_CHECK", "PROJECT_CHECK", "ROLE_LIST")
+IAM_HOST = "iam.googleapis.com"
+IAM_PATH = "/v1/projects/signmons/roles"
+IAM_QUERY = "view=FULL&pageSize=200"
+STAGES = ("OWNER_CHECK", "PROJECT_CHECK", "BEARER_ACQUISITION", "ROLE_LIST_FULL")
 SAFE_STOP_REASONS = {
     "CLOCK_ROLLBACK", "DEADLINE", "INTERRUPTED", "COMMAND_LIMIT", "COMMAND_COUNT",
     "OWNER_BINDING", "PROJECT_BINDING", "COMMAND_ALLOWLIST", "COMMAND_FAILED",
     "OUTPUT_SHAPE", "ROLE_OUTPUT_CAP", "ROLE_SHAPE", "FOREIGN_OR_INVALID_ROLE",
     "PERMISSION_SHAPE", "DUPLICATE_PERMISSION", "INACTIVE_ROLE", "DUPLICATE_ROLE",
+    "BEARER_SHAPE", "HTTPS_METHOD", "HTTPS_HOST", "HTTPS_PATH", "HTTPS_QUERY",
+    "HTTPS_REDIRECT", "HTTPS_STATUS", "HTTPS_BODY_CAP", "RESPONSE_SHAPE",
+    "RESPONSE_KEYS", "ROLE_PAGE_CAP",
 }
 
 
@@ -85,8 +94,10 @@ def progress(adapter):
     started = list(getattr(adapter, "started", []))
     completed = list(getattr(adapter, "completed", []))
     return {
-        "commandsStarted": len(started),
-        "commandsCompleted": len(completed),
+        "commandsStarted": int(getattr(adapter, "cli_started", 0)),
+        "commandsCompleted": int(getattr(adapter, "cli_completed", 0)),
+        "httpsStarted": int(getattr(adapter, "https_started", 0)),
+        "httpsCompleted": int(getattr(adapter, "https_completed", 0)),
         "lastStartedStage": started[-1] if started else None,
         "lastCompletedStage": completed[-1] if completed else None,
     }
@@ -108,7 +119,7 @@ def authorize(plan, source_sha256, decision_sha256, now):
     need(plan.get("decisionSha256") == decision_sha256 and HASH_RE.fullmatch(decision_sha256), "DECISION_BINDING")
     need(isinstance(plan.get("deadlineEpoch"), (int, float)) and now < plan["deadlineEpoch"] <= now + 300, "DEADLINE")
     need(plan.get("saveCandidateLimit") == 2 and plan.get("rawOutputRetention") == "PROCESS_MEMORY_ONLY", "PRIVACY_CONTRACT")
-    need(plan.get("expectedOwner") == OWNER and plan.get("commandLimit") == 3, "COMMAND_CONTRACT")
+    need(plan.get("expectedOwner") == OWNER and plan.get("commandLimit") == 3 and plan.get("httpsRequestLimit") == 1, "COMMAND_CONTRACT")
     return plan["deadlineEpoch"]
 
 
@@ -250,34 +261,51 @@ class Controller:
 
 
 class NativeAdapter:
-    """Three-command read-only gcloud adapter. Mutation commands are not representable."""
+    """Three CLI reads plus one exact IAM FULL-view HTTPS read."""
 
-    def __init__(self, runner):
+    def __init__(self, runner, http):
         self.runner = runner
+        self.http = http
         self.calls = []
+        self.cli_started = 0
+        self.cli_completed = 0
+        self.https_started = 0
+        self.https_completed = 0
         self.started = []
         self.completed = []
 
-    def _run(self, stage, args, deadline):
+    def _run_cli(self, stage, args, deadline):
         need(stage in STAGES, "COMMAND_ALLOWLIST")
         need(len(self.calls) < 3, "COMMAND_LIMIT")
         self.calls.append(args)
+        self.cli_started += 1
         self.started.append(stage)
         value = self.runner(args, deadline)
+        self.cli_completed += 1
         self.completed.append(stage)
         return value
 
     def list_roles(self, deadline):
-        owner = self._run("OWNER_CHECK", ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"], deadline)
+        owner = self._run_cli("OWNER_CHECK", ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"], deadline)
         need(owner == OWNER, "OWNER_BINDING")
-        project = self._run("PROJECT_CHECK", ["config", "get-value", "project"], deadline)
+        project = self._run_cli("PROJECT_CHECK", ["config", "get-value", "project"], deadline)
         need(project == PROJECT, "PROJECT_BINDING")
-        rows = self._run("ROLE_LIST", ["iam", "roles", "list", "--project=signmons", "--format=json(name,includedPermissions,deleted,stage)"], deadline)
+        bearer = self._run_cli("BEARER_ACQUISITION", ["auth", "print-access-token"], deadline)
+        need(isinstance(bearer, str) and len(bearer) >= 20 and not any(x.isspace() for x in bearer), "BEARER_SHAPE")
         need(len(self.calls) == 3, "COMMAND_COUNT")
-        return rows
+        self.https_started += 1
+        self.started.append("ROLE_LIST_FULL")
+        response = self.http("GET", IAM_HOST, IAM_PATH, IAM_QUERY, {"Authorization": "Bearer " + bearer, "Accept": "application/json"}, deadline)
+        self.https_completed += 1
+        self.completed.append("ROLE_LIST_FULL")
+        need(isinstance(response, dict), "RESPONSE_SHAPE")
+        need(set(response) <= {"roles", "nextPageToken"} and isinstance(response.get("roles", []), list), "RESPONSE_KEYS")
+        need(not response.get("nextPageToken"), "ROLE_PAGE_CAP")
+        return response.get("roles", [])
 
     def cancel(self):
         self.runner.cancel()
+        self.http.cancel()
 
 
 class SubprocessRunner:
@@ -285,7 +313,7 @@ class SubprocessRunner:
         self.child = None
 
     def __call__(self, args, deadline):
-        need(args and args[0] in {"auth", "config", "iam"}, "COMMAND_ALLOWLIST")
+        need(args and args[0] in {"auth", "config"}, "COMMAND_ALLOWLIST")
         timeout = max(0.1, deadline - time.time())
         self.child = subprocess.Popen([GCLOUD, *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
         try:
@@ -295,8 +323,6 @@ class SubprocessRunner:
             raise TimeoutError("COMMAND_TIMEOUT")
         need(self.child.returncode == 0, "COMMAND_FAILED")
         output = output.strip()
-        if args[:3] == ["iam", "roles", "list"]:
-            return json.loads(output)
         return output
 
     def cancel(self):
@@ -309,7 +335,41 @@ class SubprocessRunner:
                 self.child.wait(timeout=2)
 
 
-def run_bound(plan_path, approval_path, directory, runner=None, clock=time.time):
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, file_pointer, code, message, headers, new_url):
+        raise Stop("HTTPS_REDIRECT")
+
+
+class HttpsClient:
+    def __init__(self, opener=None):
+        self.opener = opener or urllib.request.build_opener(NoRedirect())
+
+    def __call__(self, method, host, path, query, headers, deadline):
+        need(method == "GET", "HTTPS_METHOD")
+        need(host == IAM_HOST, "HTTPS_HOST")
+        need(path == IAM_PATH, "HTTPS_PATH")
+        need(query == IAM_QUERY, "HTTPS_QUERY")
+        need(set(headers) == {"Authorization", "Accept"} and headers["Accept"] == "application/json" and headers["Authorization"].startswith("Bearer "), "BEARER_SHAPE")
+        url = "https://" + host + path + "?" + query
+        request = urllib.request.Request(url, method="GET", headers=headers)
+        timeout = max(0.1, deadline - time.time())
+        try:
+            response = self.opener.open(request, timeout=timeout)
+            need(response.geturl() == url, "HTTPS_REDIRECT")
+            need(response.status == 200, "HTTPS_STATUS")
+            body = response.read(2 * 1024 * 1024 + 1)
+            need(len(body) <= 2 * 1024 * 1024, "HTTPS_BODY_CAP")
+            return json.loads(body)
+        except urllib.error.HTTPError:
+            raise Stop("HTTPS_STATUS")
+        except urllib.error.URLError:
+            raise Stop("HTTPS_STATUS")
+
+    def cancel(self):
+        return None
+
+
+def run_bound(plan_path, approval_path, directory, runner=None, http=None, clock=time.time):
     directory = Path(directory)
     plan_path = Path(plan_path)
     approval_path = Path(approval_path)
@@ -322,7 +382,7 @@ def run_bound(plan_path, approval_path, directory, runner=None, clock=time.time)
         source_sha256 = digest(Path(__file__).read_bytes())
         decision_sha256 = plan.get("decisionSha256", "")
         approve(plan, approval, source_sha256, decision_sha256)
-        adapter = NativeAdapter(runner or SubprocessRunner())
+        adapter = NativeAdapter(runner or SubprocessRunner(), http or HttpsClient())
         result = Controller(plan, adapter, directory, source_sha256, decision_sha256, clock).run()
     finally:
         for path in (plan_path, approval_path):
