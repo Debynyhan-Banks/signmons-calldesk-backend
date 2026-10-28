@@ -1,0 +1,9 @@
+{
+  "credentialResolutionAttempted": false,
+  "externalRequests": 0,
+  "failure": "APPROVAL_DOCUMENT_BINDING",
+  "googleMutationAttempted": false,
+  "operationConsumed": true,
+  "status": "P08_STAGE_A_LAUNCH_REFUSED_UNBOUND",
+  "stoppedAt": "2026-10-28T13:15:08-04:00"
+}
