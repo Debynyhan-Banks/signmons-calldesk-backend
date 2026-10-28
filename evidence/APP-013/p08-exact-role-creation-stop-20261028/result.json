@@ -1,0 +1,17 @@
+{
+  "callsCompleted": 4,
+  "cliCompleted": 4,
+  "containment": "VERIFIED",
+  "createdCount": 0,
+  "externalMutationAttempted": false,
+  "failedStage": "CLI_4_IAM_SERVICE_STATE",
+  "httpsCompleted": 0,
+  "operationId": "ee86cf8f-078d-42da-a4bd-04b95909e32c",
+  "privateInputsAbsent": true,
+  "processesAbsent": true,
+  "providerReason": "COMMAND_FAILED",
+  "rawOutputRetained": false,
+  "retryAllowed": false,
+  "status": "P08_EXACT_ROLE_CREATION_STOP_CLI4_COMMAND_FAILED",
+  "unknownCount": 0
+}
