@@ -1,0 +1,16 @@
+test_accepted_candidates_pass_existing_restoration_role_contract (test_role_qualifier.QualifierTests.test_accepted_candidates_pass_existing_restoration_role_contract) ... ok
+test_clock_rollback_and_deadline_report_unknown_without_result (test_role_qualifier.QualifierTests.test_clock_rollback_and_deadline_report_unknown_without_result) ... ok
+test_concurrent_reservation_has_one_winner (test_role_qualifier.QualifierTests.test_concurrent_reservation_has_one_winner) ... ok
+test_malformed_foreign_inactive_duplicate_and_over_cap_stop_truthfully (test_role_qualifier.QualifierTests.test_malformed_foreign_inactive_duplicate_and_over_cap_stop_truthfully) ... ok
+test_native_entrypoint_refuses_before_any_adapter (test_role_qualifier.QualifierTests.test_native_entrypoint_refuses_before_any_adapter) ... ok
+test_one_attempt_reservation_blocks_retry (test_role_qualifier.QualifierTests.test_one_attempt_reservation_blocks_retry) ... ok
+test_signal_cancels_real_child_and_never_saves_success (test_role_qualifier.QualifierTests.test_signal_cancels_real_child_and_never_saves_success) ... ok
+test_source_decision_retry_deadline_and_privacy_contract_refuse_before_adapter (test_role_qualifier.QualifierTests.test_source_decision_retry_deadline_and_privacy_contract_refuse_before_adapter) ... ok
+test_unique_candidates_are_sanitized_and_hashed (test_role_qualifier.QualifierTests.test_unique_candidates_are_sanitized_and_hashed) ... ok
+test_untrusted_adapter_error_text_is_not_retained (test_role_qualifier.QualifierTests.test_untrusted_adapter_error_text_is_not_retained) ... ok
+test_zero_broader_and_multiple_are_decision_required (test_role_qualifier.QualifierTests.test_zero_broader_and_multiple_are_decision_required) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.071s
+
+OK

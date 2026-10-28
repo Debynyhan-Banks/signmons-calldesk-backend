@@ -1,0 +1,14 @@
+{
+  "status": "P08_ROLE_CANDIDATE_QUALIFIER_LOCAL_COMPLETE",
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "testsPassed": 11,
+  "testsFailed": 0,
+  "nativeExternalBinding": false,
+  "providerReads": 0,
+  "providerMutations": 0,
+  "databaseActions": 0,
+  "paymentActions": 0,
+  "syntheticFixturesRemoved": true,
+  "scopeDeviation": false,
+  "next": "separately approved exact read-only project custom-role inventory operation"
+}

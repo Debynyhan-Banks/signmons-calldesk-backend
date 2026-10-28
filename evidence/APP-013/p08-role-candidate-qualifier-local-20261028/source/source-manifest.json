@@ -1,0 +1,15 @@
+{
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "proposalCommit": "6548f05",
+  "approvalCommit": "0f9197b",
+  "files": {
+    "role_qualifier.py": "fca2f544d00e37ae52fc2ca3a790c3851ba8937aeaef7a7d7606fb9ea29c6122",
+    "test_role_qualifier.py": "4104f31b5c5a2b12d8af3fe0a2a4ade7f60580ce948a2014ae90cdc412a677e1"
+  },
+  "reusedRestorationContract": {
+    "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",
+    "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
+  },
+  "nativeExternalBinding": false
+}
