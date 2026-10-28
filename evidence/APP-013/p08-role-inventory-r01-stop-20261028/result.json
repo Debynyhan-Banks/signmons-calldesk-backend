@@ -1,0 +1,11 @@
+{
+  "commandsCompleted": 3,
+  "commandsStarted": 3,
+  "lastCompletedStage": "ROLE_LIST",
+  "lastStartedStage": "ROLE_LIST",
+  "privateInputsAbsent": true,
+  "providerMutationPossible": false,
+  "rawOutputRetained": false,
+  "reason": "PERMISSION_SHAPE",
+  "status": "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN"
+}

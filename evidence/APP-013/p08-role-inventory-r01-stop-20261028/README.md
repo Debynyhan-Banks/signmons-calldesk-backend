@@ -1,0 +1,7 @@
+# APP-013 / 3A / P08 — corrected role-inventory R01 stop
+
+Fresh owner-approved operation `7212ade4-3500-421f-832b-d9738eb0b324` ran once at 6:15 p.m. Eastern on October 28 against backend `5dd0618`. It returned `P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN` with safe reason `PERMISSION_SHAPE`. All three approved read commands started and completed through `ROLE_LIST`. Private plan/approval inputs are absent; process inspection found no qualifier or gcloud child. No mutation is representable. Attempt consumed; no retry.
+
+The result proves the command and provider response completed but the projected role rows did not supply the nonempty `includedPermissions` list required by the parser. It does not prove role absence, a provider denial or malformed project data. Raw output was not retained.
+
+Official IAM `roles.list` documentation states that the default `BASIC` view omits `includedPermissions`; `FULL` is required to return it. The gcloud `iam roles list` command reference does not expose a view flag in its documented synopsis. The smallest proposed correction is a bounded in-memory OAuth HTTPS `projects/signmons/roles?view=FULL` read after the existing owner/project checks, with exact host/path/query, page cap/token refusal, raw suppression and the same classifier/closeout. This needs local implementation approval and later fresh external approval. **Documented output-contract gap; containment verified.**
