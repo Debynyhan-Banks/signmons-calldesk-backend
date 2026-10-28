@@ -1,0 +1,21 @@
+{
+  "backendHead": "ba2336d0587d332de8bf79cc75871872d874d6af",
+  "currentCallerPermissionResultSha256": "6823f5ec39ad8b7d60240c8add4cb5688b151e75bba8437811eb5fa8ee3a242c",
+  "findings": {
+    "apiKeysApiObservedState": "DISABLED_AT_2026-10-28T16:02:55.472613Z",
+    "keyLifecyclePreconditionModeled": false,
+    "modelEnablesPolicyTroubleshooterOnly": true,
+    "modelKeyCreateFollowsDiagnosticEnable": true,
+    "policyTroubleshooterObservedState": "DISABLED_AT_2026-10-28T16:02:56.503463Z",
+    "providerEnableSideEffectsModeled": "UNKNOWN",
+    "serviceRetentionModeled": "RETAIN_IF_ENABLED"
+  },
+  "inspectedSource": {
+    "accessReadinessPath": "evidence/APP-013/p08-access-resolution-local-20261028/source/access_readiness.py",
+    "accessReadinessSha256": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576",
+    "testPath": "evidence/APP-013/p08-access-resolution-local-20261028/source/test_access_readiness.py",
+    "testSha256": "027bdeecaf8ac3c4b436d0f9d119725e3162ac32ec4d92d07681a1014a39c05f"
+  },
+  "scope": "LOCAL_SOURCE_INSPECTION_ONLY",
+  "status": "SEQUENCE_PREREQUISITE_GAP_CONFIRMED"
+}
