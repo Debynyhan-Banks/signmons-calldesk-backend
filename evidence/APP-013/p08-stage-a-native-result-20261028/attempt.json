@@ -1,0 +1,10 @@
+{
+  "approvalCommit": "fc79803642fde8ca131219744f69c406149a9e3e",
+  "backendCommit": "03fccb41f6f40dd77b966b6d76764ec0bd3d8448",
+  "decisionId": "625f96c7-97d2-48b4-928b-db6211f25e5f",
+  "documentSha256": "ad7c319865afb7201d5b654ce6fe10e0205e206abe2c51e3def1d79395cb9b94",
+  "operationIdSha256": "9a373e07c5a4dc9d55b3eabc2db0642aa6acfe202b644aedceebc450d9e77350",
+  "resultDirectoryCreatedAt": "2026-10-28T17:30:25-04:00",
+  "resultWrittenAt": "2026-10-28T17:30:40-04:00",
+  "sourceLockedActualCliCommands": 3
+}
