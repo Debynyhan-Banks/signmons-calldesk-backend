@@ -1,0 +1,7 @@
+Focused command: python3 -B -m unittest -v test_plan_builder.py
+Result: 13 existing cases passed; 2 new coordinator cases failed.
+Cause 1: positive fake returned an incorrect diagnostic response shape.
+Correction 1: use existing overallAccessState=CAN_ACCESS output contract.
+Cause 2: legacy no-provider-builder assertion prohibited the newly approved delegated token-command literal.
+Correction 2: retain prohibitions on direct subprocess/HTTP/authorization/gcloud code and enforce exactly one delegated bearer command.
+Security/authority checks weakened: none.

@@ -1,0 +1,19 @@
+{
+  "externalActions": 0,
+  "privateLivePlans": 0,
+  "status": "LOCAL_NATIVE_PLAN_HANDOFF_CORRECTION_COMPLETE",
+  "sourceManifestsVerified": true,
+  "scratchAbsenceVerified": true,
+  "actualCliContract": ["owner", "project", "bearer"],
+  "tests": {
+    "builderCoordinator": 16,
+    "launcher": 18,
+    "stageA": 24,
+    "accessModel": 40,
+    "restoration": 31,
+    "authentication": 60,
+    "total": 189
+  },
+  "initialFailures": 2,
+  "checksWeakened": false
+}

@@ -1,0 +1,13 @@
+{
+  "correctionProposalCommit": "eb7da758cb9af322769b73e2c8e8bb0f20487587",
+  "files": {
+    "diagnostics_stage.py": "483b27f06ce844632e7bd2b43198920e88307c52d18f94b1b2b6d8ee979526d3",
+    "launch_binding.py": "baa0fea1ac8011c2c167634375647e636db49deaa624d9d3760a6eab03297296",
+    "plan_builder.py": "8af6e83be4e9d9e855f23257229ab0b624c565612d6cf728dac7e036346b7d8d",
+    "source-manifest.json": "88d152858b6002b0fac32ced0b8a4ff05e4c082f56c2e946a36439006993d27a",
+    "test_launch_binding.py": "e8625821c28352b51658039cff0c87219603ca0ddaf62c95067bc7aaa3e23cd9",
+    "test_plan_builder.py": "69f5bf9814acaceb7e8c0cb97090f70cd9c81277ec02e0757b30c267a06ebf4b"
+  },
+  "reusedLauncherCommit": "d19df960d22b53665485cbecc3a6a414067928e8",
+  "status": "DISABLED_NATIVE_PLAN_HANDOFF_CORRECTION_ONLY"
+}
