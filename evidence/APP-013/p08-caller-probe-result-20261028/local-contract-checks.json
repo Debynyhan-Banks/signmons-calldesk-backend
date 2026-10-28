@@ -1,0 +1,34 @@
+{
+  "checks": [
+    "serialized_exact_nine",
+    "removed_method",
+    "duplicate",
+    "wildcard",
+    "foreign",
+    "complete",
+    "subset",
+    "empty",
+    "omitted",
+    "null",
+    "duplicate_response",
+    "foreign_response",
+    "nonlist",
+    "nonstring",
+    "nonobject",
+    "exact_read_only_endpoint",
+    "no_service_state_requests",
+    "consumer_header",
+    "permission_mapping"
+  ],
+  "completedBeforeProviderReads": true,
+  "count": 19,
+  "permissionReferences": [
+    "https://docs.cloud.google.com/iam/docs/roles-permissions/serviceusage",
+    "https://docs.cloud.google.com/api-keys/docs/access-control",
+    "https://docs.cloud.google.com/resource-manager/docs/access-control-proj"
+  ],
+  "proposalSha256": "433ffcede7783a4a6634b9dc1a2a350cb5310441e87210b428aaed954882616a",
+  "requestSha256": "fbd77ec6f5013ed169a84a31c4f76e31c53e9a573237f9f026ee71a15f2fd8eb",
+  "runnerSha256": "d3753439e98393423b113623b521df8d26b930ae576f99b2dc32dff8bd8ea3ad",
+  "status": "PASSED"
+}

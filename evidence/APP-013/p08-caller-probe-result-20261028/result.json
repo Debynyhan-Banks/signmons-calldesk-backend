@@ -1,0 +1,26 @@
+{
+  "cliCount": 2,
+  "closedAt": "2026-10-28T16:11:36.227793Z",
+  "closeoutOnTime": true,
+  "facts": {
+    "ownerMatched": true
+  },
+  "httpCount": 0,
+  "mutations": false,
+  "operationId": "0f717eaa-9f12-4bd2-8059-caf1c6370c07",
+  "processCloseoutVerified": true,
+  "startedAt": "2026-10-28T16:11:35.251800Z",
+  "status": "P08_CALLER_PROBE_STOP_PROJECT_BINDING_DRIFT",
+  "steps": [
+    {
+      "at": "2026-10-28T16:11:35.678204Z",
+      "exitCode": 0,
+      "stage": "CLI_1"
+    },
+    {
+      "at": "2026-10-28T16:11:36.227604Z",
+      "exitCode": 0,
+      "stage": "CLI_2"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "answer": "Approve specific correction and fresh read-only probe",
+  "externalActionAuthorized": true,
+  "operationId": "0f717eaa-9f12-4bd2-8059-caf1c6370c07",
+  "proposalCommit": "a8e8138",
+  "proposalSha256": "433ffcede7783a4a6634b9dc1a2a350cb5310441e87210b428aaed954882616a",
+  "question": "call_65682567dedc44eeaae97265f158219d",
+  "receivedAt": "2026-10-28T16:11:35.251058Z"
+}
