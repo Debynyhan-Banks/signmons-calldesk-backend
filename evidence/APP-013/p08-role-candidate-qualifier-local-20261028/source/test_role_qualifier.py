@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import unittest
+import uuid
 from pathlib import Path
 
 import role_qualifier as q
@@ -42,6 +43,28 @@ class Adapter:
         self.cancelled = True
 
 
+class Runner:
+    def __init__(self, rows, owner=q.OWNER, project=q.PROJECT):
+        self.rows = rows
+        self.owner = owner
+        self.project = project
+        self.calls = []
+        self.cancelled = False
+
+    def __call__(self, args, deadline):
+        self.calls.append(args)
+        if args[0] == "auth":
+            return self.owner
+        if args[0] == "config":
+            return self.project
+        if args[:3] == ["iam", "roles", "list"]:
+            return copy.deepcopy(self.rows)
+        raise AssertionError("unexpected command")
+
+    def cancel(self):
+        self.cancelled = True
+
+
 def role(name, permissions, **extra):
     return {
         "name": f"projects/signmons/roles/{name}",
@@ -69,6 +92,8 @@ class QualifierTests(unittest.TestCase):
             "deadlineEpoch": self.clock() + 120,
             "saveCandidateLimit": 2,
             "rawOutputRetention": "PROCESS_MEMORY_ONLY",
+            "expectedOwner": q.OWNER,
+            "commandLimit": 3,
         }
         self.rows = [
             role("p08_lookup", [q.PERMISSIONS["lookup"]], title="ignored private title"),
@@ -137,6 +162,8 @@ class QualifierTests(unittest.TestCase):
             ("deadlineEpoch", self.clock() - 1),
             ("saveCandidateLimit", 3),
             ("rawOutputRetention", "FILE"),
+            ("expectedOwner", "foreign@example.com"),
+            ("commandLimit", 4),
         ]
         for field, value in changes:
             with self.subTest(field=field):
@@ -247,6 +274,53 @@ class QualifierTests(unittest.TestCase):
         result = subprocess.run([sys.executable, "-B", str(ROOT / "role_qualifier.py"), "--qualify"], capture_output=True, timeout=5)
         self.assertEqual(result.returncode, 2)
         self.assertEqual(result.stdout.decode().strip(), "P08_ROLE_QUALIFIER_REFUSED_UNBOUND")
+
+    def test_native_adapter_uses_exact_three_read_only_commands(self):
+        runner = Runner(self.rows)
+        result = q.Controller(self.plan, q.NativeAdapter(runner), self.root, self.source, self.decision, self.clock).run()
+        self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_UNIQUE")
+        self.assertEqual(runner.calls, [
+            ["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"],
+            ["config", "get-value", "project"],
+            ["iam", "roles", "list", "--project=signmons", "--format=json(name,includedPermissions,deleted,stage)"],
+        ])
+        tokens = [token for command in runner.calls for token in command]
+        self.assertFalse(any(token in {"create", "delete", "update", "add-iam-policy-binding", "remove-iam-policy-binding", "set-policy"} for token in tokens))
+
+    def test_native_owner_and_project_drift_stop_before_role_list(self):
+        for runner in [Runner(self.rows, owner="foreign@example.com"), Runner(self.rows, project="foreign")]:
+            with self.subTest(owner=runner.owner, project=runner.project), tempfile.TemporaryDirectory(dir=self.root) as directory:
+                os.chmod(directory, 0o700)
+                result = q.Controller(self.plan, q.NativeAdapter(runner), directory, self.source, self.decision, self.clock).run()
+                self.assertEqual(result["status"], "P08_ROLE_QUALIFIER_STOP_OUTPUT_UNKNOWN")
+                self.assertLess(len(runner.calls), 3)
+
+    def test_bound_path_requires_private_exact_approval_then_runs_fake_native(self):
+        source = q.digest((ROOT / "role_qualifier.py").read_bytes())
+        decision = "d" * 64
+        plan = copy.deepcopy(self.plan)
+        plan.update({"sourceSha256": source, "decisionSha256": decision, "operationId": str(uuid.uuid4())})
+        approval = {
+            "owner": "Debynyhan Banks", "externalActionAuthorized": True,
+            "decision": "APPROVE_EXACT_ROLE_INVENTORY_READ", "operationId": plan["operationId"],
+            "planSha256": q.digest(plan), "sourceSha256": source, "decisionSha256": decision,
+        }
+        plan_path = self.root / "plan.json"
+        approval_path = self.root / "approval.json"
+        for path, value in [(plan_path, plan), (approval_path, approval)]:
+            path.write_text(json.dumps(value))
+            os.chmod(path, 0o600)
+        runner = Runner(self.rows)
+        result = q.run_bound(plan_path, approval_path, self.root, runner, self.clock)
+        self.assertEqual(result["status"], "P08_ROLE_CANDIDATES_UNIQUE")
+        self.assertEqual(len(runner.calls), 3)
+        bad = copy.deepcopy(approval)
+        bad["externalActionAuthorized"] = False
+        approval_path.write_text(json.dumps(bad))
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            os.chmod(directory, 0o700)
+            with self.assertRaises(q.Stop):
+                q.run_bound(plan_path, approval_path, directory, Runner(self.rows), self.clock)
 
 
 if __name__ == "__main__":

@@ -6,8 +6,11 @@ import json
 import os
 import re
 import signal
+import stat
+import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 PROJECT = "signmons"
@@ -20,6 +23,8 @@ ROLE_RE = re.compile(r"projects/signmons/roles/[A-Za-z0-9_]+")
 HASH_RE = re.compile(r"[a-f0-9]{64}")
 ACTIVE_STAGES = {"ALPHA", "BETA", "GA"}
 MAX_ROLES = 200
+OWNER = "debynyhan@signmons.com"
+GCLOUD = "/opt/homebrew/bin/gcloud"
 
 
 class Stop(Exception):
@@ -46,6 +51,13 @@ def reserve(path, value):
         os.close(fd)
 
 
+def private_json(path):
+    path = Path(path)
+    info = path.lstat()
+    need(stat.S_ISREG(info.st_mode) and not path.is_symlink() and stat.S_IMODE(info.st_mode) == 0o600, "PRIVATE_INPUT")
+    return json.loads(path.read_text())
+
+
 def authorize(plan, source_sha256, decision_sha256, now):
     need(plan.get("mode") == MODE, "MODE")
     need(plan.get("automaticRetryAllowed") is False, "RETRY_POLICY")
@@ -54,7 +66,19 @@ def authorize(plan, source_sha256, decision_sha256, now):
     need(plan.get("decisionSha256") == decision_sha256 and HASH_RE.fullmatch(decision_sha256), "DECISION_BINDING")
     need(isinstance(plan.get("deadlineEpoch"), (int, float)) and now < plan["deadlineEpoch"] <= now + 300, "DEADLINE")
     need(plan.get("saveCandidateLimit") == 2 and plan.get("rawOutputRetention") == "PROCESS_MEMORY_ONLY", "PRIVACY_CONTRACT")
+    need(plan.get("expectedOwner") == OWNER and plan.get("commandLimit") == 3, "COMMAND_CONTRACT")
     return plan["deadlineEpoch"]
+
+
+def approve(plan, approval, source_sha256, decision_sha256):
+    need(str(uuid.UUID(plan.get("operationId", ""))) == plan["operationId"], "OPERATION_ID")
+    need(approval.get("owner") == "Debynyhan Banks", "APPROVAL_OWNER")
+    need(approval.get("externalActionAuthorized") is True, "EXTERNAL_APPROVAL")
+    need(approval.get("decision") == "APPROVE_EXACT_ROLE_INVENTORY_READ", "APPROVAL_DECISION")
+    need(approval.get("operationId") == plan["operationId"], "APPROVAL_OPERATION")
+    need(approval.get("planSha256") == digest(plan), "APPROVAL_PLAN")
+    need(approval.get("sourceSha256") == source_sha256 and approval.get("decisionSha256") == decision_sha256, "APPROVAL_BINDING")
+    return True
 
 
 def _role(row):
@@ -179,11 +203,79 @@ class Controller:
                 signal.signal(sig, handler)
 
 
+class NativeAdapter:
+    """Three-command read-only gcloud adapter. Mutation commands are not representable."""
+
+    def __init__(self, runner):
+        self.runner = runner
+        self.calls = []
+
+    def _run(self, args, deadline):
+        need(len(self.calls) < 3, "COMMAND_LIMIT")
+        self.calls.append(args)
+        return self.runner(args, deadline)
+
+    def list_roles(self, deadline):
+        owner = self._run(["auth", "list", "--filter=status:ACTIVE", "--format=value(account)"], deadline)
+        need(owner == OWNER, "OWNER_BINDING")
+        project = self._run(["config", "get-value", "project"], deadline)
+        need(project == PROJECT, "PROJECT_BINDING")
+        rows = self._run(["iam", "roles", "list", "--project=signmons", "--format=json(name,includedPermissions,deleted,stage)"], deadline)
+        need(len(self.calls) == 3, "COMMAND_COUNT")
+        return rows
+
+    def cancel(self):
+        self.runner.cancel()
+
+
+class SubprocessRunner:
+    def __init__(self):
+        self.child = None
+
+    def __call__(self, args, deadline):
+        need(args and args[0] in {"auth", "config", "iam"}, "COMMAND_ALLOWLIST")
+        timeout = max(0.1, deadline - time.time())
+        self.child = subprocess.Popen([GCLOUD, *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        try:
+            output, _ = self.child.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            self.cancel()
+            raise TimeoutError("COMMAND_TIMEOUT")
+        need(self.child.returncode == 0, "COMMAND_FAILED")
+        output = output.strip()
+        if args[:3] == ["iam", "roles", "list"]:
+            return json.loads(output)
+        return output
+
+    def cancel(self):
+        if self.child and self.child.poll() is None:
+            self.child.terminate()
+            try:
+                self.child.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.child.kill()
+                self.child.wait(timeout=2)
+
+
+def run_bound(plan_path, approval_path, directory, runner=None, clock=time.time):
+    plan = private_json(plan_path)
+    approval = private_json(approval_path)
+    source_sha256 = digest(Path(__file__).read_bytes())
+    decision_sha256 = plan.get("decisionSha256", "")
+    approve(plan, approval, source_sha256, decision_sha256)
+    adapter = NativeAdapter(runner or SubprocessRunner())
+    return Controller(plan, adapter, directory, source_sha256, decision_sha256, clock).run()
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv == ["--qualify"]:
         print("P08_ROLE_QUALIFIER_REFUSED_UNBOUND")
         return 2
+    if len(argv) == 4 and argv[0] == "--qualify-bound":
+        result = run_bound(argv[1], argv[2], argv[3])
+        print(result["status"])
+        return 0 if result["status"] in {"P08_ROLE_CANDIDATES_UNIQUE", "P08_ROLE_CANDIDATES_DECISION_REQUIRED"} else 2
     print("P08_ROLE_QUALIFIER_USAGE_REFUSED")
     return 2
 

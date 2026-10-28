@@ -1,0 +1,5 @@
+Initial native-boundary test run: 14 tests, 13 passed, 1 failed.
+
+Failure: test_native_adapter_uses_exact_three_read_only_commands
+Cause: the negative assertion searched serialized command text for the substring `delete`, which also matched the read-only output field name `deleted` in `--format=json(name,includedPermissions,deleted,stage)`.
+Correction: inspect exact command tokens for mutation verbs. The expected three-command array and production command builder were unchanged.

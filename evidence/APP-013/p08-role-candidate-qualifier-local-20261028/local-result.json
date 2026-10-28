@@ -1,7 +1,7 @@
 {
   "status": "P08_ROLE_CANDIDATE_QUALIFIER_LOCAL_COMPLETE",
   "section": "R1-W01 / APP-013 / 3A / P08",
-  "testsPassed": 11,
+  "testsPassed": 14,
   "testsFailed": 0,
   "nativeExternalBinding": false,
   "providerReads": 0,
@@ -10,5 +10,6 @@
   "paymentActions": 0,
   "syntheticFixturesRemoved": true,
   "scopeDeviation": false,
+  "initialFailure": "native command assertion matched deleted output field as delete command; corrected to exact command tokens",
   "next": "separately approved exact read-only project custom-role inventory operation"
 }
