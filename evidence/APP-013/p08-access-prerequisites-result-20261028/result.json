@@ -1,0 +1,116 @@
+{
+  "cliCount": 3,
+  "closedAt": "2026-10-28T16:02:56.695657Z",
+  "closeoutOnTime": true,
+  "facts": {
+    "ownerMatched": true,
+    "projectMatched": true,
+    "projectNumberSha256": "37d4aa0f46ca5b8f0b81b1148bda235a0f4a9a424b6b4638ec993d889563be54",
+    "services": [
+      {
+        "at": "2026-10-28T16:02:54.763376Z",
+        "service": "serviceusage.googleapis.com",
+        "state": "ENABLED"
+      },
+      {
+        "at": "2026-10-28T16:02:55.138347Z",
+        "service": "cloudresourcemanager.googleapis.com",
+        "state": "ENABLED"
+      },
+      {
+        "at": "2026-10-28T16:02:55.472613Z",
+        "service": "apikeys.googleapis.com",
+        "state": "DISABLED"
+      },
+      {
+        "at": "2026-10-28T16:02:55.824842Z",
+        "service": "iamcredentials.googleapis.com",
+        "state": "ENABLED"
+      },
+      {
+        "at": "2026-10-28T16:02:56.156948Z",
+        "service": "identitytoolkit.googleapis.com",
+        "state": "ENABLED"
+      },
+      {
+        "at": "2026-10-28T16:02:56.503463Z",
+        "service": "policytroubleshooter.googleapis.com",
+        "state": "DISABLED"
+      }
+    ]
+  },
+  "httpCount": 7,
+  "mutations": false,
+  "operationId": "ac8a8999-8836-46a5-83e1-c4aab8bafca4",
+  "processCloseoutVerified": true,
+  "startedAt": "2026-10-28T16:02:52.863968Z",
+  "status": "P08_ACCESS_PREREQUISITES_STOP_HTTP_UNKNOWN_FAILURE",
+  "steps": [
+    {
+      "argvSha256": "947b642fb9390cbb629296b10b8c3cb06084a892492640a4fe8e92354d3d218b",
+      "at": "2026-10-28T16:02:53.319628Z",
+      "exitCode": 0,
+      "stage": "CLI_1"
+    },
+    {
+      "argvSha256": "a628ebf68bd11bd7010dde0ba0756b2c78b6a0da81b3b30f1d820696b812fd97",
+      "at": "2026-10-28T16:02:53.964244Z",
+      "exitCode": 0,
+      "stage": "CLI_2"
+    },
+    {
+      "argvSha256": "7272a492dde4c64f4153442a597eabf1dac8671185fb9605d0b9af546cfd6b80",
+      "at": "2026-10-28T16:02:54.269254Z",
+      "exitCode": 0,
+      "stage": "CLI_3"
+    },
+    {
+      "at": "2026-10-28T16:02:54.763284Z",
+      "httpStatus": 200,
+      "method": "GET",
+      "requestSha256": "1c69fd6ae56a624db6427cd46941ca3467d3871a676f78a38e47593274726d8a",
+      "stage": "HTTP_1"
+    },
+    {
+      "at": "2026-10-28T16:02:55.138276Z",
+      "httpStatus": 200,
+      "method": "GET",
+      "requestSha256": "b13b34238b2a347c63191bf3cfe3a1f339472e386af6c6cc3ff8bc2b2b1a12b2",
+      "stage": "HTTP_2"
+    },
+    {
+      "at": "2026-10-28T16:02:55.472537Z",
+      "httpStatus": 200,
+      "method": "GET",
+      "requestSha256": "2e3afd99132892ea53953c17b147b49fb3fe29f3da040ba12b9c2d2847a5b0f2",
+      "stage": "HTTP_3"
+    },
+    {
+      "at": "2026-10-28T16:02:55.824784Z",
+      "httpStatus": 200,
+      "method": "GET",
+      "requestSha256": "103e8d4ef46a1a26d9fad6c19fc7be89ef55b8ce18d89e8d8f8df9a693722948",
+      "stage": "HTTP_4"
+    },
+    {
+      "at": "2026-10-28T16:02:56.156876Z",
+      "httpStatus": 200,
+      "method": "GET",
+      "requestSha256": "7d6044cd33a46846013c2f6722ad985d98e6f222fc4853c3e29984157469b499",
+      "stage": "HTTP_5"
+    },
+    {
+      "at": "2026-10-28T16:02:56.503388Z",
+      "httpStatus": 200,
+      "method": "GET",
+      "requestSha256": "86b768c3529fb1db79d84c1db052ec8763135556960ad0eb22b00450db2779da",
+      "stage": "HTTP_6"
+    },
+    {
+      "at": "2026-10-28T16:02:56.695479Z",
+      "category": "UNKNOWN_FAILURE",
+      "httpStatus": 400,
+      "stage": "HTTP_7"
+    }
+  ]
+}
