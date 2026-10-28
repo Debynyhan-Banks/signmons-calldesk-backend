@@ -6,10 +6,12 @@
   "deleteUpdateUndeletePaths": 0,
   "externalBindingEnabled": false,
   "nativeExternalBindingImplemented": true,
+  "safeCliErrorCategories": 8,
+  "failedStagePersistenceTested": true,
   "providerActionOccurred": false,
   "privateInputPurgeTested": true,
-  "sourceSha256": "a7134a14c0d1f1a1027fae4f61cecc2f5016876011ebdddb4d8d19ac9727ec1b",
-  "status": "P08_EXACT_ROLE_LAUNCH_BINDING_LOCAL_PASSED",
-  "testsPassed": 20,
-  "testsRun": 20
+  "sourceSha256": "7e5cbd4e6f68f42314bac2d12cd07cda33ed016986db646a61668d465871f430",
+  "status": "P08_EXACT_ROLE_CLI_OBSERVABILITY_LOCAL_PASSED",
+  "testsPassed": 22,
+  "testsRun": 22
 }

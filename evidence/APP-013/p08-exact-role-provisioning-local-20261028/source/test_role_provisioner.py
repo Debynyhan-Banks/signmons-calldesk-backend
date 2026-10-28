@@ -11,6 +11,7 @@ import time
 import unittest
 import uuid
 from pathlib import Path
+from unittest import mock
 
 import role_provisioner as p
 
@@ -29,6 +30,7 @@ class Fake:
         self.lost_create = None
         self.drift = None
         self.signal_create = None
+        self.cli_failure = None
 
     def definition(self, role):
         return {
@@ -67,6 +69,7 @@ class NativeFake:
         self.collision = None
         self.lost_create = None
         self.signal_create = None
+        self.cli_failure = None
         self.private_token = "private-token-" + "x" * 24
 
     def definition(self, role):
@@ -80,6 +83,8 @@ class NativeFake:
         command = tuple(command)
         self.calls.append(("CLI", command))
         commands = p.native_cli_commands()
+        if self.cli_failure and command == commands[self.cli_failure[0]]:
+            raise p.CliFailure(self.cli_failure[1])
         if command == commands[0]: return p.OWNER
         if command == commands[1]: return p.PROJECT
         if command == commands[2]: return self.private_token
@@ -323,12 +328,50 @@ class ProvisionerTests(unittest.TestCase):
                 return value
         result = self.native_controller(Bad()).run()
         self.assertEqual(result["reason"], "CLI_SHAPE")
+        self.assertEqual(result["failedStage"], "CLI_4_IAM_SERVICE_STATE")
+        self.assertEqual(result["errorCategory"], "UNKNOWN")
         self.assertNotIn("private-malformed", json.dumps(result))
         plan, approval, source, proposal = self.native_plan()
         plan["startCutoffEpoch"] = self.clock() - 1
         approval["planSha256"] = p.digest(plan)
         with self.assertRaises(p.Stop):
             p.NativeProvisioner(plan, approval, NativeFake(), self.root, source, proposal, self.clock)
+
+    def test_native_cli_failure_persists_fixed_stage_and_safe_category(self):
+        fake = NativeFake(); fake.cli_failure = (3, "BILLING_OR_SERVICE_DISABLED")
+        result = self.native_controller(fake).run()
+        self.assertEqual(result["reason"], "COMMAND_FAILED")
+        self.assertEqual(result["failedStage"], "CLI_4_IAM_SERVICE_STATE")
+        self.assertEqual(result["errorCategory"], "BILLING_OR_SERVICE_DISABLED")
+        self.assertEqual((result["cliCompleted"], result["httpsCompleted"]), (4, 0))
+        self.assertNotIn(fake.private_token, json.dumps(result))
+
+    def test_native_io_serialization_and_all_safe_error_categories(self):
+        command = p.native_cli_commands()[3]
+        cases = {
+            "AUTH": "ERROR: invalid_grant requires reauthentication private-detail",
+            "PERMISSION_DENIED": "PERMISSION_DENIED private-resource",
+            "BILLING_OR_SERVICE_DISABLED": "BILLING DISABLED for private-account",
+            "NOT_FOUND": "resource not found private-name",
+            "INVALID_ARGUMENT": "INVALID_ARGUMENT private-value",
+            "TRANSPORT": "network connection unavailable private-host",
+            "UNKNOWN": "unclassified private-provider-message",
+        }
+        for expected, stderr in cases.items():
+            with self.subTest(expected=expected), mock.patch.object(p.subprocess, "run") as run:
+                run.return_value = subprocess.CompletedProcess(command, 1, stdout=b"", stderr=stderr.encode())
+                with self.assertRaises(p.CliFailure) as raised:
+                    p.NativeIO().cli(command, time.time() + 10)
+                self.assertEqual(raised.exception.category, expected)
+                self.assertNotIn("private", str(raised.exception))
+                run.assert_called_once_with(command, capture_output=True, timeout=mock.ANY, check=False)
+        with mock.patch.object(p.subprocess, "run", side_effect=subprocess.TimeoutExpired(command, 1)):
+            with self.assertRaises(p.CliFailure) as raised:
+                p.NativeIO().cli(command, time.time() + 10)
+            self.assertEqual(raised.exception.category, "TIMEOUT")
+        with mock.patch.object(p.subprocess, "run") as run:
+            run.return_value = subprocess.CompletedProcess(command, 0, stdout=b'{"state":"ENABLED"}\n', stderr=b"private-warning")
+            self.assertEqual(p.NativeIO().cli(command, time.time() + 10), '{"state":"ENABLED"}')
 
     def test_bound_private_inputs_are_mode_checked_and_always_purged(self):
         plan, approval, source, proposal = self.native_plan()

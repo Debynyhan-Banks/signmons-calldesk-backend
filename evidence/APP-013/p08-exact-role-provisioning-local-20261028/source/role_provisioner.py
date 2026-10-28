@@ -30,6 +30,18 @@ PERMISSIONS = (
     "resourcemanager.projects.getIamPolicy",
     "iam.serviceAccounts.getIamPolicy",
 )
+CLI_STAGES = (
+    "CLI_1_OWNER",
+    "CLI_2_PROJECT",
+    "CLI_3_BEARER",
+    "CLI_4_IAM_SERVICE_STATE",
+    "CLI_5_PROJECT_POLICY",
+    "CLI_6_IDENTITY_POLICY",
+)
+CLI_ERROR_CATEGORIES = {
+    "AUTH", "PERMISSION_DENIED", "BILLING_OR_SERVICE_DISABLED", "NOT_FOUND",
+    "INVALID_ARGUMENT", "TRANSPORT", "TIMEOUT", "UNKNOWN",
+}
 IAM_BASE = "https://iam.googleapis.com/v1"
 RESOURCE_MANAGER_BASE = "https://cloudresourcemanager.googleapis.com/v1"
 ROLES = (
@@ -72,6 +84,13 @@ class NotFound(Exception):
 
 class LostResponse(Exception):
     pass
+
+
+class CliFailure(Stop):
+    def __init__(self, category):
+        need(category in CLI_ERROR_CATEGORIES, "CLI_SHAPE")
+        super().__init__("COMMAND_FAILED")
+        self.category = category
 
 
 def need(value, code):
@@ -141,6 +160,38 @@ def native_cli_commands():
         (GCLOUD, "projects", "get-iam-policy", PROJECT, "--format=json(bindings)"),
         (GCLOUD, "iam", "service-accounts", "get-iam-policy", IDENTITY, "--project=signmons", "--format=json(bindings)"),
     )
+
+
+def classify_cli_failure(stderr):
+    value = stderr.lower()
+    categories = (
+        ("BILLING_OR_SERVICE_DISABLED", ("billing disabled", "billing account", "service disabled", "api has not been used", "serviceusage.services.use")),
+        ("AUTH", ("reauthentication", "login required", "invalid_grant", "credential")),
+        ("PERMISSION_DENIED", ("permission denied", "permission_denied", "does not have permission", "forbidden")),
+        ("NOT_FOUND", ("not found", "not_found", "does not exist")),
+        ("INVALID_ARGUMENT", ("invalid argument", "invalid_argument", "unrecognized arguments", "usage:")),
+        ("TRANSPORT", ("connection", "network", "dns", "unavailable", "temporarily unavailable", "too many requests")),
+    )
+    for category, indicators in categories:
+        if any(indicator in value for indicator in indicators):
+            return category
+    return "UNKNOWN"
+
+
+def cli_json(controller, value, stage):
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        controller.failed_stage = stage
+        controller.error_category = "UNKNOWN"
+        raise Stop("CLI_SHAPE")
+
+
+def cli_need(controller, condition, code, stage, category="UNKNOWN"):
+    if not condition:
+        controller.failed_stage = stage
+        controller.error_category = category
+        raise Stop(code)
 
 
 def permission_url():
@@ -215,8 +266,13 @@ class NativeIO:
         try:
             completed = subprocess.run(command, capture_output=True, timeout=timeout, check=False)
         except subprocess.TimeoutExpired:
-            raise Stop("DEADLINE")
-        need(completed.returncode == 0, "COMMAND_FAILED")
+            raise CliFailure("TIMEOUT")
+        if completed.returncode != 0:
+            try:
+                stderr = completed.stderr[:65536].decode("utf-8", errors="replace")
+            except (AttributeError, TypeError):
+                stderr = ""
+            raise CliFailure(classify_cli_failure(stderr))
         try:
             return completed.stdout.decode("utf-8").strip()
         except UnicodeDecodeError:
@@ -262,6 +318,8 @@ class NativeProvisioner:
         self.cli_count = 0
         self.https_count = 0
         self.interrupted = False
+        self.failed_stage = None
+        self.error_category = None
         self.journal = {"attempted": [], "created": [], "unknown": [], "verified": []}
 
     def check(self):
@@ -271,15 +329,23 @@ class NativeProvisioner:
         need(now < self.deadline, "DEADLINE")
         need(not self.interrupted, "INTERRUPTED")
 
-    def cli(self, command):
+    def cli(self, command, stage):
         self.check()
         self.cli_count += 1
         need(self.cli_count <= CLI_LIMIT, "COMMAND_LIMIT")
         try:
             value = self.io.cli(command, self.deadline)
+        except CliFailure as error:
+            self.failed_stage = stage
+            self.error_category = error.category
+            raise Stop("COMMAND_FAILED")
         except Stop:
+            self.failed_stage = stage
+            self.error_category = self.error_category or "UNKNOWN"
             raise
         except BaseException:
+            self.failed_stage = stage
+            self.error_category = "UNKNOWN"
             raise Stop("COMMAND_FAILED")
         self.check()
         return value
@@ -316,21 +382,28 @@ class NativeProvisioner:
         bearer = None
         try:
             commands = native_cli_commands()
-            owner = self.cli(commands[0])
-            project = self.cli(commands[1])
-            bearer = self.cli(commands[2])
-            need(owner == OWNER, "OWNER_BINDING")
-            need(project == PROJECT, "PROJECT_BINDING")
-            need(isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE")
+            owner = self.cli(commands[0], CLI_STAGES[0])
+            project = self.cli(commands[1], CLI_STAGES[1])
+            bearer = self.cli(commands[2], CLI_STAGES[2])
+            cli_need(self, owner == OWNER, "OWNER_BINDING", CLI_STAGES[0])
+            cli_need(self, project == PROJECT, "PROJECT_BINDING", CLI_STAGES[1])
+            cli_need(self, isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE", CLI_STAGES[2])
+            service = cli_json(self, self.cli(commands[3], CLI_STAGES[3]), CLI_STAGES[3])
+            project_policy = cli_json(self, self.cli(commands[4], CLI_STAGES[4]), CLI_STAGES[4])
+            identity_policy = cli_json(self, self.cli(commands[5], CLI_STAGES[5]), CLI_STAGES[5])
+            cli_need(self, service == {"state": "ENABLED"}, "IAM_API_DISABLED", CLI_STAGES[3], "BILLING_OR_SERVICE_DISABLED")
             try:
-                service = json.loads(self.cli(commands[3]))
-                project_policy = json.loads(self.cli(commands[4]))
-                identity_policy = json.loads(self.cli(commands[5]))
-            except (json.JSONDecodeError, TypeError):
-                raise Stop("CLI_SHAPE")
-            need(service == {"state": "ENABLED"}, "IAM_API_DISABLED")
-            bindings_absent(project_policy)
-            bindings_absent(identity_policy)
+                bindings_absent(project_policy)
+            except Stop:
+                self.failed_stage = CLI_STAGES[4]
+                self.error_category = "UNKNOWN"
+                raise
+            try:
+                bindings_absent(identity_policy)
+            except Stop:
+                self.failed_stage = CLI_STAGES[5]
+                self.error_category = "UNKNOWN"
+                raise
             headers = {"Authorization": "Bearer " + bearer, "Accept": "application/json"}
             post_headers = {**headers, "Content-Type": "application/json"}
             status, permission_result = self.https("POST", permission_url(), post_headers, {"permissions": list(PERMISSIONS)})
@@ -373,6 +446,7 @@ class NativeProvisioner:
                 "reason": safe_reason(error), "createdCount": len(self.journal["created"]),
                 "unknownCount": len(self.journal["unknown"]), "cliCompleted": self.cli_count,
                 "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
+                "failedStage": self.failed_stage, "errorCategory": self.error_category,
                 "rawOutputRetained": False, "privateInputsAbsent": False,
             }
         finally:
@@ -396,6 +470,8 @@ class NativeCloseout:
         self.cli_count = 0
         self.https_count = 0
         self.interrupted = False
+        self.failed_stage = None
+        self.error_category = None
 
     def check(self):
         now = self.clock()
@@ -404,15 +480,23 @@ class NativeCloseout:
         need(now < self.deadline, "DEADLINE")
         need(not self.interrupted, "INTERRUPTED")
 
-    def cli(self, command):
+    def cli(self, command, stage):
         self.check()
         self.cli_count += 1
         need(self.cli_count <= CLI_LIMIT, "COMMAND_LIMIT")
         try:
             value = self.io.cli(command, self.deadline)
+        except CliFailure as error:
+            self.failed_stage = stage
+            self.error_category = error.category
+            raise Stop("COMMAND_FAILED")
         except Stop:
+            self.failed_stage = stage
+            self.error_category = self.error_category or "UNKNOWN"
             raise
         except BaseException:
+            self.failed_stage = stage
+            self.error_category = "UNKNOWN"
             raise Stop("COMMAND_FAILED")
         self.check()
         return value
@@ -439,17 +523,19 @@ class NativeCloseout:
         reconciled, absent, residuals = [], [], []
         try:
             commands = native_cli_commands()
-            owner = self.cli(commands[0])
-            project = self.cli(commands[1])
-            bearer = self.cli(commands[2])
-            need(owner == OWNER, "OWNER_BINDING")
-            need(project == PROJECT, "PROJECT_BINDING")
-            need(isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE")
-            for command in commands[4:]:
+            owner = self.cli(commands[0], CLI_STAGES[0])
+            project = self.cli(commands[1], CLI_STAGES[1])
+            bearer = self.cli(commands[2], CLI_STAGES[2])
+            cli_need(self, owner == OWNER, "OWNER_BINDING", CLI_STAGES[0])
+            cli_need(self, project == PROJECT, "PROJECT_BINDING", CLI_STAGES[1])
+            cli_need(self, isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE", CLI_STAGES[2])
+            for index in (4, 5):
                 try:
-                    bindings_absent(json.loads(self.cli(command)))
-                except (json.JSONDecodeError, TypeError):
-                    raise Stop("CLI_SHAPE")
+                    bindings_absent(cli_json(self, self.cli(commands[index], CLI_STAGES[index]), CLI_STAGES[index]))
+                except Stop:
+                    self.failed_stage = CLI_STAGES[index]
+                    self.error_category = self.error_category or "UNKNOWN"
+                    raise
             headers = {"Authorization": "Bearer " + bearer, "Accept": "application/json"}
             for role in ROLES:
                 status, value = self.https("GET", role_url(role), headers)
@@ -471,6 +557,7 @@ class NativeCloseout:
             "reconciledRetainedCount": len(reconciled), "absentCount": len(absent),
             "residualCount": len(residuals), "cliCompleted": self.cli_count,
             "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
+            "failedStage": self.failed_stage, "errorCategory": self.error_category,
             "retainedUnbound": bool(reconciled) and not residuals,
             "rawOutputRetained": False, "privateInputsAbsent": False,
         }
