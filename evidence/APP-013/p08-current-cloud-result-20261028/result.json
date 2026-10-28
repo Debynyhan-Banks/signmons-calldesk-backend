@@ -1,0 +1,35 @@
+{
+  "cliCount": 3,
+  "closedAt": "2026-10-28T14:49:04.070783Z",
+  "closeoutOnTime": true,
+  "facts": {
+    "ownerMatched": true,
+    "trafficMatched": true
+  },
+  "httpCount": 0,
+  "mutations": false,
+  "operationId": "e46e9aec-ab14-4f04-a3ef-ccf47eb13fbb",
+  "processCloseoutVerified": true,
+  "startedAt": "2026-10-28T14:49:01.774374Z",
+  "status": "P08_CLOUD_QUALIFICATION_STOP_ENV_NAME_DRIFT",
+  "steps": [
+    {
+      "argvSha256": "947b642fb9390cbb629296b10b8c3cb06084a892492640a4fe8e92354d3d218b",
+      "at": "2026-10-28T14:49:02.440124Z",
+      "exitCode": 0,
+      "stage": "CLI_1"
+    },
+    {
+      "argvSha256": "6a0eb7aa7275d97fcd3ab6b0f1cbcea920405fef3fda9025d9a5a1679b3b76bd",
+      "at": "2026-10-28T14:49:03.459465Z",
+      "exitCode": 0,
+      "stage": "CLI_2"
+    },
+    {
+      "argvSha256": "24ee1b778e8f72ba2a2f1d437a6b3cbaeee051066c5139f8b346c84e0f79d8fa",
+      "at": "2026-10-28T14:49:04.063162Z",
+      "exitCode": 0,
+      "stage": "CLI_3"
+    }
+  ]
+}

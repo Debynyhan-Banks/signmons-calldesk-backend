@@ -1,0 +1,7 @@
+# P08 current cloud qualification — stopped safely
+
+Owner approved governance45eb167 through call_7b5de2b01b6b4983a11201f774aa6e9a. Operation e46e9aec-ab14-4f04-a3ef-ccf47eb13fbb ran once; see actual UTC attempt/result. Three CLI reads, zero diagnostic HTTP requests. Existing owner and normal100/candidate0/tag-absent traffic check passed. Candidate metadata failed the strict expected environment-name set comparison: P08_CLOUD_QUALIFICATION_STOP_ENV_NAME_DRIFT. This does not establish which names differ, whether values are unsafe, or whether the error is in preparation versus deployed configuration. No raw environment values/names were retained from the failed comparison; no invented diagnosis or weakening of the check.
+
+All child processes ended before closeout deadline. No OAuth bearer request, key metadata/payload, policy/role read, disabled-identity read, permission diagnostic, database/Firebase-user action, resource mutation, restoration, activation, payment or retry. Consumed operation cannot be resumed. Existing disabled-state observations remain historical; only traffic was refreshed here. No full restoration qualification was created.
+
+Next decision: fresh two-read names-only diagnostic proposal in governance APP013_P08_ENVIRONMENT_NAMES_DIAGNOSTIC_OPERATION_20261028.md; no correction or provider read until approved. 3A remains open. No acceptance counts changed. Unexpected configuration/expectation drift disclosed; diagnostic-only proposal precedes any follow-up action.
