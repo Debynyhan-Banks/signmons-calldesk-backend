@@ -1,0 +1,21 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "operationId": "63964638-5f31-4e5c-ad03-7f1226b1f80b",
+  "startedAtEastern": "2026-10-29T09:46:44-04:00",
+  "closedAtEastern": "2026-10-29T09:46:59-04:00",
+  "status": "P08_COMPOSED_QUALIFICATION_LOCAL_STOPPED",
+  "failure": "CLOUD_DRIFT",
+  "verdict": "DRIFT",
+  "completedDomains": ["cloud"],
+  "cloudFalseFacts": "NOT_RECORDED_BY_CURRENT_CONTROLLER",
+  "closeout": "QUALIFIED",
+  "residuals": [],
+  "cliReads": 26,
+  "httpsRequests": 0,
+  "qualificationSqlStatements": 0,
+  "closeoutSqlStatements": 1,
+  "mutations": false,
+  "automaticRetry": false,
+  "privateInputsAbsent": true,
+  "attemptConsumed": true
+}
