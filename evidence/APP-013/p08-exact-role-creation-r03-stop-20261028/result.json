@@ -1,0 +1,18 @@
+{
+  "callsCompleted": 5,
+  "cliCompleted": 5,
+  "containment": "VERIFIED",
+  "createdCount": 0,
+  "errorCategory": "UNKNOWN",
+  "externalMutationAttempted": false,
+  "failedStage": "CLI_5_IDENTITY_POLICY",
+  "httpsCompleted": 0,
+  "operationId": "d45f0618-c8a9-4c85-910a-c60c9352e9cc",
+  "privateInputsAbsent": true,
+  "processesAbsent": true,
+  "providerReason": "ROLE_DRIFT",
+  "rawOutputRetained": false,
+  "retryAllowed": false,
+  "status": "P08_EXACT_ROLE_CREATION_R03_STOP_POLICY_SHAPE",
+  "unknownCount": 0
+}
