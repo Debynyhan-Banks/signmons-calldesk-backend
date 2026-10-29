@@ -21,29 +21,47 @@ IDENTITY = "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
 GCLOUD = "/opt/homebrew/bin/gcloud"
 MODE = "DISABLED_LOCAL_STABLE_ROLE_PROVISIONER"
 COMMAND_LIMIT = 11
-CLI_LIMIT = 6
-HTTPS_LIMIT = 7
+CLI_LIMIT = 5
+HTTPS_LIMIT = 9
 EXTERNAL_CALL_LIMIT = CLI_LIMIT + HTTPS_LIMIT
 PERMISSIONS = (
     "iam.roles.create",
     "iam.roles.get",
+    "resourcemanager.projects.get",
     "resourcemanager.projects.getIamPolicy",
     "iam.serviceAccounts.getIamPolicy",
+    "serviceusage.services.get",
 )
 CLI_STAGES = (
     "CLI_1_OWNER",
     "CLI_2_PROJECT",
     "CLI_3_BEARER",
-    "CLI_4_IAM_SERVICE_STATE",
-    "CLI_5_PROJECT_POLICY",
-    "CLI_6_IDENTITY_POLICY",
+    "CLI_4_PROJECT_POLICY",
+    "CLI_5_IDENTITY_POLICY",
 )
+HTTPS_STAGES = (
+    "HTTPS_1_PROJECT_METADATA",
+    "HTTPS_2_IAM_SERVICE_STATE",
+    "HTTPS_3_PERMISSION_PROBE",
+    "HTTPS_4_LOOKUP_ABSENCE",
+    "HTTPS_5_SIGNING_ABSENCE",
+    "HTTPS_6_LOOKUP_CREATE",
+    "HTTPS_7_SIGNING_CREATE",
+    "HTTPS_8_LOOKUP_READBACK",
+    "HTTPS_9_SIGNING_READBACK",
+)
+CLOSEOUT_HTTPS_STAGES = ("HTTPS_CLOSEOUT_1_LOOKUP", "HTTPS_CLOSEOUT_2_SIGNING")
 CLI_ERROR_CATEGORIES = {
     "AUTH", "PERMISSION_DENIED", "BILLING_OR_SERVICE_DISABLED", "NOT_FOUND",
     "INVALID_ARGUMENT", "TRANSPORT", "TIMEOUT", "UNKNOWN",
 }
+HTTPS_ERROR_CATEGORIES = {
+    "TRANSPORT", "TIMEOUT", "HTTP_STATUS", "HTTP_SHAPE",
+    "BILLING_OR_SERVICE_DISABLED", "UNKNOWN",
+}
 IAM_BASE = "https://iam.googleapis.com/v1"
 RESOURCE_MANAGER_BASE = "https://cloudresourcemanager.googleapis.com/v1"
+SERVICE_USAGE_BASE = "https://serviceusage.googleapis.com/v1"
 ROLES = (
     {
         "kind": "lookup",
@@ -89,6 +107,13 @@ class LostResponse(Exception):
 class CliFailure(Stop):
     def __init__(self, category):
         need(category in CLI_ERROR_CATEGORIES, "CLI_SHAPE")
+        super().__init__("COMMAND_FAILED")
+        self.category = category
+
+
+class HttpFailure(Stop):
+    def __init__(self, category):
+        need(category in HTTPS_ERROR_CATEGORIES, "HTTP_SHAPE")
         super().__init__("COMMAND_FAILED")
         self.category = category
 
@@ -156,10 +181,17 @@ def native_cli_commands():
         (GCLOUD, "auth", "list", "--filter=status:ACTIVE", "--format=value(account)"),
         (GCLOUD, "config", "get-value", "project"),
         (GCLOUD, "auth", "print-access-token"),
-        (GCLOUD, "services", "describe", "iam.googleapis.com", "--project=signmons", "--format=json(state)"),
         (GCLOUD, "projects", "get-iam-policy", PROJECT, "--format=json(bindings)"),
         (GCLOUD, "iam", "service-accounts", "get-iam-policy", IDENTITY, "--project=signmons", "--format=json(bindings)"),
     )
+
+
+def project_url():
+    return f"{RESOURCE_MANAGER_BASE}/projects/{PROJECT}"
+
+
+def service_url(project_number):
+    return f"{SERVICE_USAGE_BASE}/projects/{project_number}/services/iam.googleapis.com"
 
 
 def classify_cli_failure(stderr):
@@ -192,6 +224,29 @@ def cli_need(controller, condition, code, stage, category="UNKNOWN"):
         controller.failed_stage = stage
         controller.error_category = category
         raise Stop(code)
+
+
+def https_need(controller, condition, code, stage, category="HTTP_SHAPE"):
+    if not condition:
+        controller.failed_stage = stage
+        controller.error_category = category
+        raise Stop(code)
+
+
+def exact_project(value):
+    need(isinstance(value, dict), "HTTP_SHAPE")
+    number = value.get("projectNumber")
+    need(value.get("projectId") == PROJECT, "PROJECT_BINDING")
+    need(value.get("lifecycleState") == "ACTIVE", "PROJECT_BINDING")
+    need(isinstance(number, str) and number.isdigit() and 6 <= len(number) <= 20, "HTTP_SHAPE")
+    return number
+
+
+def exact_service(value, project_number):
+    need(isinstance(value, dict), "HTTP_SHAPE")
+    need(value.get("name") == f"projects/{project_number}/services/iam.googleapis.com", "HTTP_SHAPE")
+    need(value.get("state") == "ENABLED", "IAM_API_DISABLED")
+    return True
 
 
 def permission_url():
@@ -289,19 +344,25 @@ class NativeIO:
         except urllib.error.HTTPError as error:
             status = error.code
             raw = error.read(1048577)
-        except (TimeoutError, urllib.error.URLError):
+        except TimeoutError:
             if method == "POST" and url.startswith(IAM_BASE):
                 raise LostResponse()
-            raise Stop("COMMAND_FAILED")
-        need(len(raw) <= 1048576, "HTTP_SHAPE")
+            raise HttpFailure("TIMEOUT")
+        except urllib.error.URLError:
+            if method == "POST" and url.startswith(IAM_BASE):
+                raise LostResponse()
+            raise HttpFailure("TRANSPORT")
+        if len(raw) > 1048576:
+            raise HttpFailure("HTTP_SHAPE")
         if not raw:
             value = {}
         else:
             try:
                 value = json.loads(raw)
             except (UnicodeDecodeError, json.JSONDecodeError):
-                raise Stop("HTTP_SHAPE")
-        need(isinstance(value, dict), "HTTP_SHAPE")
+                raise HttpFailure("HTTP_SHAPE")
+        if not isinstance(value, dict):
+            raise HttpFailure("HTTP_SHAPE")
         return status, value
 
 
@@ -350,22 +411,34 @@ class NativeProvisioner:
         self.check()
         return value
 
-    def https(self, method, url, headers, body=None, mutation=False):
+    def https(self, method, url, headers, stage, body=None, mutation=False):
         self.check()
         self.https_count += 1
         need(self.https_count <= HTTPS_LIMIT, "COMMAND_LIMIT")
         try:
             value = self.io.https(method, url, headers, body, self.deadline)
         except LostResponse:
+            self.failed_stage = stage
+            self.error_category = "TRANSPORT"
             raise Stop("LOST_RESPONSE")
+        except HttpFailure as error:
+            self.failed_stage = stage
+            self.error_category = error.category
+            raise Stop("COMMAND_FAILED")
         except Stop:
+            self.failed_stage = stage
+            self.error_category = self.error_category or "UNKNOWN"
             raise
         except BaseException:
+            self.failed_stage = stage
+            self.error_category = "UNKNOWN"
             raise Stop("COMMAND_FAILED")
         try:
             self.check()
         except BaseException:
             if mutation:
+                self.failed_stage = stage
+                self.error_category = "TIMEOUT" if not self.interrupted else "UNKNOWN"
                 raise Stop("INTERRUPTED" if self.interrupted else "DEADLINE")
             raise
         return value
@@ -388,38 +461,55 @@ class NativeProvisioner:
             cli_need(self, owner == OWNER, "OWNER_BINDING", CLI_STAGES[0])
             cli_need(self, project == PROJECT, "PROJECT_BINDING", CLI_STAGES[1])
             cli_need(self, isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE", CLI_STAGES[2])
-            service = cli_json(self, self.cli(commands[3], CLI_STAGES[3]), CLI_STAGES[3])
-            project_policy = cli_json(self, self.cli(commands[4], CLI_STAGES[4]), CLI_STAGES[4])
-            identity_policy = cli_json(self, self.cli(commands[5], CLI_STAGES[5]), CLI_STAGES[5])
-            cli_need(self, service == {"state": "ENABLED"}, "IAM_API_DISABLED", CLI_STAGES[3], "BILLING_OR_SERVICE_DISABLED")
+            project_policy = cli_json(self, self.cli(commands[3], CLI_STAGES[3]), CLI_STAGES[3])
+            identity_policy = cli_json(self, self.cli(commands[4], CLI_STAGES[4]), CLI_STAGES[4])
             try:
                 bindings_absent(project_policy)
             except Stop:
-                self.failed_stage = CLI_STAGES[4]
+                self.failed_stage = CLI_STAGES[3]
                 self.error_category = "UNKNOWN"
                 raise
             try:
                 bindings_absent(identity_policy)
             except Stop:
-                self.failed_stage = CLI_STAGES[5]
+                self.failed_stage = CLI_STAGES[4]
                 self.error_category = "UNKNOWN"
                 raise
             headers = {"Authorization": "Bearer " + bearer, "Accept": "application/json"}
             post_headers = {**headers, "Content-Type": "application/json"}
-            status, permission_result = self.https("POST", permission_url(), post_headers, {"permissions": list(PERMISSIONS)})
-            need(status == 200 and set(permission_result) == {"permissions"}, "HTTP_SHAPE")
+            status, project_result = self.https("GET", project_url(), headers, HTTPS_STAGES[0])
+            https_need(self, status == 200, "HTTP_STATUS", HTTPS_STAGES[0], "HTTP_STATUS")
+            try:
+                project_number = exact_project(project_result)
+            except Stop as error:
+                self.failed_stage = HTTPS_STAGES[0]
+                self.error_category = "HTTP_SHAPE"
+                raise error
+            status, service_result = self.https("GET", service_url(project_number), headers, HTTPS_STAGES[1])
+            https_need(self, status == 200, "HTTP_STATUS", HTTPS_STAGES[1], "HTTP_STATUS")
+            try:
+                exact_service(service_result, project_number)
+            except Stop as error:
+                self.failed_stage = HTTPS_STAGES[1]
+                self.error_category = "BILLING_OR_SERVICE_DISABLED" if error.args[0] == "IAM_API_DISABLED" else "HTTP_SHAPE"
+                raise error
+            project_number = None
+            status, permission_result = self.https("POST", permission_url(), post_headers, HTTPS_STAGES[2], {"permissions": list(PERMISSIONS)})
+            https_need(self, status == 200 and set(permission_result) == {"permissions"}, "HTTP_SHAPE", HTTPS_STAGES[2])
             granted = permission_result["permissions"]
-            need(isinstance(granted, list) and all(isinstance(item, str) for item in granted), "HTTP_SHAPE")
-            need(len(granted) == len(PERMISSIONS) and set(granted) == set(PERMISSIONS), "PERMISSION_DENIED")
-            for role in ROLES:
-                status, _ = self.https("GET", role_url(role), headers)
-                need(status == 404, "COLLISION" if status == 200 else "HTTP_STATUS")
-            for role in ROLES:
+            https_need(self, isinstance(granted, list) and all(isinstance(item, str) for item in granted), "HTTP_SHAPE", HTTPS_STAGES[2])
+            https_need(self, len(granted) == len(PERMISSIONS) and set(granted) == set(PERMISSIONS), "PERMISSION_DENIED", HTTPS_STAGES[2], "HTTP_STATUS")
+            for index, role in enumerate(ROLES):
+                stage = HTTPS_STAGES[3 + index]
+                status, _ = self.https("GET", role_url(role), headers, stage)
+                https_need(self, status == 404, "COLLISION" if status == 200 else "HTTP_STATUS", stage, "HTTP_STATUS")
+            for index, role in enumerate(ROLES):
+                stage = HTTPS_STAGES[5 + index]
                 self.journal["attempted"].append(role["kind"])
                 self.save()
                 try:
-                    status, _ = self.https("POST", create_url(role), post_headers, create_body(role), mutation=True)
-                    need(status == 200, "HTTP_STATUS")
+                    status, _ = self.https("POST", create_url(role), post_headers, stage, create_body(role), mutation=True)
+                    https_need(self, status == 200, "HTTP_STATUS", stage, "HTTP_STATUS")
                 except BaseException:
                     self.journal["unknown"].append(role["kind"])
                     self.save()
@@ -427,10 +517,16 @@ class NativeProvisioner:
                 self.journal["created"].append(role["kind"])
                 self.save()
             definitions = {}
-            for role in ROLES:
-                status, value = self.https("GET", role_url(role), headers)
-                need(status == 200, "HTTP_STATUS")
-                definitions[role["kind"]] = digest(exact_definition(value, role))
+            for index, role in enumerate(ROLES):
+                stage = HTTPS_STAGES[7 + index]
+                status, value = self.https("GET", role_url(role), headers, stage)
+                https_need(self, status == 200, "HTTP_STATUS", stage, "HTTP_STATUS")
+                try:
+                    definitions[role["kind"]] = digest(exact_definition(value, role))
+                except Stop:
+                    self.failed_stage = stage
+                    self.error_category = "HTTP_SHAPE"
+                    raise
                 self.journal["verified"].append(role["kind"])
                 self.save()
             result = {
@@ -501,15 +597,23 @@ class NativeCloseout:
         self.check()
         return value
 
-    def https(self, method, url, headers):
+    def https(self, method, url, headers, stage):
         self.check()
         self.https_count += 1
         need(self.https_count <= HTTPS_LIMIT, "COMMAND_LIMIT")
         try:
             value = self.io.https(method, url, headers, None, self.deadline)
+        except HttpFailure as error:
+            self.failed_stage = stage
+            self.error_category = error.category
+            raise Stop("COMMAND_FAILED")
         except Stop:
+            self.failed_stage = stage
+            self.error_category = self.error_category or "UNKNOWN"
             raise
         except BaseException:
+            self.failed_stage = stage
+            self.error_category = "UNKNOWN"
             raise Stop("COMMAND_FAILED")
         self.check()
         return value
@@ -529,7 +633,7 @@ class NativeCloseout:
             cli_need(self, owner == OWNER, "OWNER_BINDING", CLI_STAGES[0])
             cli_need(self, project == PROJECT, "PROJECT_BINDING", CLI_STAGES[1])
             cli_need(self, isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE", CLI_STAGES[2])
-            for index in (4, 5):
+            for index in (3, 4):
                 try:
                     bindings_absent(cli_json(self, self.cli(commands[index], CLI_STAGES[index]), CLI_STAGES[index]))
                 except Stop:
@@ -537,8 +641,8 @@ class NativeCloseout:
                     self.error_category = self.error_category or "UNKNOWN"
                     raise
             headers = {"Authorization": "Bearer " + bearer, "Accept": "application/json"}
-            for role in ROLES:
-                status, value = self.https("GET", role_url(role), headers)
+            for index, role in enumerate(ROLES):
+                status, value = self.https("GET", role_url(role), headers, CLOSEOUT_HTTPS_STAGES[index])
                 if status == 404:
                     absent.append(role["kind"])
                 elif status == 200:

@@ -1,17 +1,19 @@
 {
   "actualProviderCommands": 0,
-  "cliCeilingModeled": 6,
-  "httpsCeilingModeled": 7,
-  "totalExternalCallCeilingModeled": 13,
+  "cliCeilingModeled": 5,
+  "httpsCeilingModeled": 9,
+  "totalExternalCallCeilingModeled": 14,
   "deleteUpdateUndeletePaths": 0,
   "externalBindingEnabled": false,
   "nativeExternalBindingImplemented": true,
   "safeCliErrorCategories": 8,
+  "safeHttpsStageClassificationTested": true,
+  "projectNumberRetained": false,
   "failedStagePersistenceTested": true,
   "providerActionOccurred": false,
   "privateInputPurgeTested": true,
-  "sourceSha256": "7e5cbd4e6f68f42314bac2d12cd07cda33ed016986db646a61668d465871f430",
-  "status": "P08_EXACT_ROLE_CLI_OBSERVABILITY_LOCAL_PASSED",
-  "testsPassed": 22,
-  "testsRun": 22
+  "sourceSha256": "8512c89144280b8d97cacd0aca91883322948d920d14052ef08a9558756e3ec7",
+  "status": "P08_EXACT_ROLE_SERVICE_STATE_HTTPS_LOCAL_PASSED",
+  "testsPassed": 23,
+  "testsRun": 23
 }

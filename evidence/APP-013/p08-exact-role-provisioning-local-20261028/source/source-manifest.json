@@ -1,11 +1,11 @@
 {
-  "status": "DISABLED_LOCAL_CLI_OBSERVABILITY_CORRECTED",
+  "status": "DISABLED_LOCAL_SERVICE_STATE_HTTPS_CORRECTED",
   "section": "R1-W01 / APP-013 / 3A / P08",
-  "proposalCommit": "86b2f79",
-  "approvalCommit": "1fdddd0",
+  "proposalCommit": "4ba955a",
+  "approvalCommit": "7d10f58",
   "files": {
-    "role_provisioner.py": "7e5cbd4e6f68f42314bac2d12cd07cda33ed016986db646a61668d465871f430",
-    "test_role_provisioner.py": "534180490bab2736f3cd8e1866229bcc11d90062f6a217f5a1c0e7655a726bfb"
+    "role_provisioner.py": "8512c89144280b8d97cacd0aca91883322948d920d14052ef08a9558756e3ec7",
+    "test_role_provisioner.py": "90f795391b5bfd6cecf79058b0637a74361d309f54e46dfc8fde72d49a07737b"
   },
   "nativeExternalBinding": true,
   "externalBindingEnabled": false,

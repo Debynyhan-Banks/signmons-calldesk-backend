@@ -70,6 +70,10 @@ class NativeFake:
         self.lost_create = None
         self.signal_create = None
         self.cli_failure = None
+        self.http_failure = None
+        self.project_number = "123456789012"
+        self.project_result = None
+        self.service_state = "ENABLED"
         self.private_token = "private-token-" + "x" * 24
 
     def definition(self, role):
@@ -88,12 +92,23 @@ class NativeFake:
         if command == commands[0]: return p.OWNER
         if command == commands[1]: return p.PROJECT
         if command == commands[2]: return self.private_token
-        if command == commands[3]: return json.dumps({"state": "ENABLED"})
-        if command in commands[4:]: return json.dumps({"bindings": []})
+        if command in commands[3:]: return json.dumps({"bindings": []})
         raise AssertionError(command)
 
     def https(self, method, url, headers, body, deadline):
         self.calls.append(("HTTPS", method, url, copy.deepcopy(headers), copy.deepcopy(body)))
+        if self.http_failure and url == self.http_failure[0]:
+            raise p.HttpFailure(self.http_failure[1])
+        if url == p.project_url():
+            return 200, copy.deepcopy(self.project_result or {
+                "projectId": p.PROJECT, "projectNumber": self.project_number,
+                "lifecycleState": "ACTIVE", "name": "private-project-name",
+            })
+        if url == p.service_url(self.project_number):
+            return 200, {
+                "name": f"projects/{self.project_number}/services/iam.googleapis.com",
+                "state": self.service_state, "config": {"name": "private-config"},
+            }
         if url == p.permission_url():
             return 200, {"permissions": copy.deepcopy(self.permissions)}
         if method == "POST" and url == p.create_url(p.ROLES[0]):
@@ -271,33 +286,36 @@ class ProvisionerTests(unittest.TestCase):
         plan, approval, source, proposal = self.native_plan()
         return p.NativeProvisioner(plan, approval, fake or NativeFake(), directory or self.root, source, proposal, self.clock)
 
-    def test_native_success_uses_exact_six_cli_seven_https_contract(self):
+    def test_native_success_uses_exact_five_cli_nine_https_contract(self):
         fake = NativeFake()
         result = self.native_controller(fake).run()
         self.assertEqual(result["status"], "P08_EXACT_ROLES_CREATED_RETAINED_UNBOUND")
-        self.assertEqual((result["cliCompleted"], result["httpsCompleted"], result["callsCompleted"]), (6, 7, 13))
-        self.assertEqual([item[1] for item in fake.calls[:6]], list(p.native_cli_commands()))
-        https = fake.calls[6:]
+        self.assertEqual((result["cliCompleted"], result["httpsCompleted"], result["callsCompleted"]), (5, 9, 14))
+        self.assertEqual([item[1] for item in fake.calls[:5]], list(p.native_cli_commands()))
+        https = fake.calls[5:]
         self.assertEqual([(item[1], item[2]) for item in https], [
+            ("GET", p.project_url()),
+            ("GET", p.service_url(fake.project_number)),
             ("POST", p.permission_url()),
             ("GET", p.role_url(p.ROLES[0])), ("GET", p.role_url(p.ROLES[1])),
             ("POST", p.create_url(p.ROLES[0])), ("POST", p.create_url(p.ROLES[1])),
             ("GET", p.role_url(p.ROLES[0])), ("GET", p.role_url(p.ROLES[1])),
         ])
-        self.assertEqual(https[0][4], {"permissions": list(p.PERMISSIONS)})
-        self.assertEqual(https[3][4], p.create_body(p.ROLES[0]))
-        self.assertEqual(https[4][4], p.create_body(p.ROLES[1]))
+        self.assertEqual(https[2][4], {"permissions": list(p.PERMISSIONS)})
+        self.assertEqual(https[5][4], p.create_body(p.ROLES[0]))
+        self.assertEqual(https[6][4], p.create_body(p.ROLES[1]))
         for item in https:
             self.assertEqual(item[3]["Authorization"], "Bearer " + fake.private_token)
             self.assertEqual(item[3]["Accept"], "application/json")
             self.assertEqual("Content-Type" in item[3], item[1] == "POST")
         self.assertNotIn(fake.private_token, json.dumps(result))
+        self.assertNotIn(fake.project_number, json.dumps(result))
 
     def test_native_permission_denial_and_collision_stop_before_create(self):
         fake = NativeFake(); fake.permissions = list(p.PERMISSIONS[:-1])
         result = self.native_controller(fake).run()
         self.assertEqual(result["reason"], "PERMISSION_DENIED")
-        self.assertEqual(result["httpsCompleted"], 1)
+        self.assertEqual(result["httpsCompleted"], 3)
         with tempfile.TemporaryDirectory(dir=self.root) as directory:
             os.chmod(directory, 0o700)
             fake = NativeFake(); fake.collision = "lookup"
@@ -311,6 +329,8 @@ class ProvisionerTests(unittest.TestCase):
         self.assertEqual(result["reason"], "LOST_RESPONSE")
         self.assertEqual(result["createdCount"], 1)
         self.assertEqual(result["unknownCount"], 1)
+        self.assertEqual(result["failedStage"], "HTTPS_7_SIGNING_CREATE")
+        self.assertEqual(result["errorCategory"], "TRANSPORT")
         self.assertEqual(sum(item[0] == "HTTPS" and item[1] == "POST" and item[4] == p.create_body(p.ROLES[1]) for item in fake.calls), 1)
 
     def test_native_signal_after_create_records_unknown_and_no_retry(self):
@@ -328,7 +348,7 @@ class ProvisionerTests(unittest.TestCase):
                 return value
         result = self.native_controller(Bad()).run()
         self.assertEqual(result["reason"], "CLI_SHAPE")
-        self.assertEqual(result["failedStage"], "CLI_4_IAM_SERVICE_STATE")
+        self.assertEqual(result["failedStage"], "CLI_4_PROJECT_POLICY")
         self.assertEqual(result["errorCategory"], "UNKNOWN")
         self.assertNotIn("private-malformed", json.dumps(result))
         plan, approval, source, proposal = self.native_plan()
@@ -341,10 +361,30 @@ class ProvisionerTests(unittest.TestCase):
         fake = NativeFake(); fake.cli_failure = (3, "BILLING_OR_SERVICE_DISABLED")
         result = self.native_controller(fake).run()
         self.assertEqual(result["reason"], "COMMAND_FAILED")
-        self.assertEqual(result["failedStage"], "CLI_4_IAM_SERVICE_STATE")
+        self.assertEqual(result["failedStage"], "CLI_4_PROJECT_POLICY")
         self.assertEqual(result["errorCategory"], "BILLING_OR_SERVICE_DISABLED")
         self.assertEqual((result["cliCompleted"], result["httpsCompleted"]), (4, 0))
         self.assertNotIn(fake.private_token, json.dumps(result))
+
+    def test_https_project_service_and_transport_stops_are_sanitized(self):
+        fake = NativeFake()
+        fake.project_result = {"projectId": p.PROJECT, "lifecycleState": "ACTIVE", "projectNumber": "private-invalid"}
+        result = self.native_controller(fake).run()
+        self.assertEqual((result["reason"], result["failedStage"], result["errorCategory"]),
+                         ("HTTP_SHAPE", "HTTPS_1_PROJECT_METADATA", "HTTP_SHAPE"))
+        self.assertNotIn("private-invalid", json.dumps(result))
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            os.chmod(directory, 0o700)
+            fake = NativeFake(); fake.service_state = "DISABLED"
+            result = self.native_controller(fake, directory).run()
+            self.assertEqual((result["reason"], result["failedStage"], result["errorCategory"]),
+                             ("IAM_API_DISABLED", "HTTPS_2_IAM_SERVICE_STATE", "BILLING_OR_SERVICE_DISABLED"))
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            os.chmod(directory, 0o700)
+            fake = NativeFake(); fake.http_failure = (p.project_url(), "TRANSPORT")
+            result = self.native_controller(fake, directory).run()
+            self.assertEqual((result["reason"], result["failedStage"], result["errorCategory"]),
+                             ("COMMAND_FAILED", "HTTPS_1_PROJECT_METADATA", "TRANSPORT"))
 
     def test_native_io_serialization_and_all_safe_error_categories(self):
         command = p.native_cli_commands()[3]
