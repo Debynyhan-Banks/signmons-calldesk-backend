@@ -1,0 +1,17 @@
+{
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "status": "LOCAL_HTTPS_DESCRIPTOR_OBSERVABILITY_VERIFIED",
+  "proposalCommit": "d28f110",
+  "priorR06StopCommit": "c0644b2",
+  "launcherSha256": "6ec3ff9ba73917c1c031e5fff487cea34e08fc678fabc7827901c00f8d803a9d",
+  "sourceManifestSha256": "08cd6b0f39102c7035c6d680e82536fd70293ea92efcbbcfdc527a8dfbd02142",
+  "fixedDescriptorCount": 10,
+  "correctedFocusedModelTestsPassed": 39,
+  "unchangedFocusedModelTestsPassed": 37,
+  "disposablePostgresTestsPassed": 3,
+  "governanceSafeguardTestsPassed": 25,
+  "externalReads": 0,
+  "providerMutations": 0,
+  "qualificationComplete": false,
+  "paymentAuthorized": false
+}
