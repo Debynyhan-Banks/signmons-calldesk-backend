@@ -1,0 +1,17 @@
+{
+  "files": {
+    "packet.py": "ce507681ef2d1a3ce8a2315921b067ba5dfe677165b1c7adbc4c1e37ba4075e3",
+    "test_packet.py": "c7bd92b97ac09e06f90027ee1c2a5c4b6f6c86cbd5359694dac7262ace3d16c9"
+  },
+  "lockedSources": {
+    "auth_adapters": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
+    "auth_controller": "57ab0853630112145e81e10143b05099b2a446f7f450d0eff4598540528ef0c4",
+    "key": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576",
+    "key_restore": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "restore": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "role_check": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18",
+    "roles": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
+    "stage_a": "483b27f06ce844632e7bd2b43198920e88307c52d18f94b1b2b6d8ee979526d3"
+  },
+  "status": "DISABLED_LOCAL_ONLY"
+}
