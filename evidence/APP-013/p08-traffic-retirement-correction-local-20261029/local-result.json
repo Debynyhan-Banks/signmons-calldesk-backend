@@ -1,0 +1,18 @@
+{
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "status": "LOCAL_TRAFFIC_RETIREMENT_CORRECTION_VERIFIED",
+  "proposalCommit": "c62d6fa",
+  "priorDiagnosticCommit": "f86db60",
+  "correctedLauncherSha256": "4af84dc7edbe55407ea68cb8f1479b37cb1a9310cd46658fcf6501016db995e3",
+  "sourceManifestSha256": "28eba82df4644bc397b6bccb02e1269d95ffd804be8d822b3cb3edc50b5a0b53",
+  "focusedModelTestsPassed": 37,
+  "originalFocusedModelTestsPassed": 35,
+  "disposablePostgresTestsPassed": 3,
+  "governanceSafeguardTestsPassed": 25,
+  "initialPostgresSandboxRun": "INITDB_REFUSED_BEFORE_TESTS",
+  "hostPostgresRerun": "PASS_3_OF_3",
+  "externalReads": 0,
+  "providerMutations": 0,
+  "qualificationComplete": false,
+  "paymentAuthorized": false
+}

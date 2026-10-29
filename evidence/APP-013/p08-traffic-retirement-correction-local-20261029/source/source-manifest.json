@@ -1,0 +1,18 @@
+{
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
+  "files": {
+    "composed_qualification.py": "19181d987eddec481a105ecc1dbe89413a42fe2b07436c073934aef6aafde685",
+    "test_composed_qualification.py": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518",
+    "qualification_launch.py": "4af84dc7edbe55407ea68cb8f1479b37cb1a9310cd46658fcf6501016db995e3",
+    "test_qualification_launch.py": "7eb8cf25727c213edda0d196975135533abbb35ba13398e3a8e6e74dfb264444",
+    "test_qualification_launch_postgres.py": "f36936035da9f3069a19d51a098b3df7dc3e4da8e3664d4f3928175ae0233b21"
+  },
+  "lockedSources": {
+    "roles": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
+    "restoration": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "operator": "7b43d332625bbf7f2735187bf5709f0e6ff58c975d98c1b4aef33f911f77807c",
+    "firebase": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
+    "access": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576"
+  },
+  "ownershipSha256": "65409264d701edf8201878f6d058dfbbc3302412e683b36913a81b4578e6b668"
+}
