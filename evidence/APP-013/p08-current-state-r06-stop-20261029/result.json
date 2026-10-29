@@ -1,0 +1,19 @@
+{
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "operationId": "1a744195-a648-4b5e-b306-768bcd86b060",
+  "attemptReservedAtEastern": "2026-10-29 17:02:20 EDT",
+  "closedAtEastern": "2026-10-29 17:02:36 EDT",
+  "status": "P08_COMPOSED_QUALIFICATION_LOCAL_STOPPED",
+  "fixedFailure": "HTTPS_OUTPUT",
+  "completedDomains": ["cloud"],
+  "cloudFactsTrue": 13,
+  "cloudFactsFalse": 0,
+  "accessRequestId": "UNKNOWN",
+  "accessRequestCount": "UNKNOWN",
+  "domainResults": {"cloud": "QUALIFIED", "closeout": "QUALIFIED"},
+  "residuals": [],
+  "privateInputsAbsent": true,
+  "providerMutations": 0,
+  "qualificationComplete": false,
+  "attemptConsumed": true
+}
