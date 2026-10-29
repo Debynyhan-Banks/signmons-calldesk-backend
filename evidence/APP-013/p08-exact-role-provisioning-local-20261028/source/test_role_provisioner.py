@@ -328,6 +328,7 @@ class ProvisionerTests(unittest.TestCase):
 
     def test_policy_shape_normalizes_only_empty_representations_and_sanitizes_receipts(self):
         cases = [
+            (None, "ROOT_NULL"),
             ({}, "ABSENT"),
             ({"bindings": None}, "NULL"),
             ({"bindings": []}, "EMPTY_LIST"),
@@ -337,7 +338,7 @@ class ProvisionerTests(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertEqual(p.policy_shape(policy), expected)
                 self.assertEqual(p.bindings_absent(policy), expected)
-        invalid = [None, [], {"bindings": "private-value"}, {"bindings": [{}]}, {"unexpected": []}]
+        invalid = [[], "private-value", 7, True, {"bindings": "private-value"}, {"bindings": [{}]}, {"unexpected": []}]
         for policy in invalid:
             with self.subTest(policy=policy):
                 self.assertEqual(p.policy_shape(policy), "INVALID")
@@ -345,10 +346,10 @@ class ProvisionerTests(unittest.TestCase):
 
         fake = NativeFake()
         fake.project_policy = {}
-        fake.identity_policy = {"bindings": None}
+        fake.identity_policy = None
         result = self.native_controller(fake).run()
         self.assertEqual(result["status"], "P08_EXACT_ROLES_CREATED_RETAINED_UNBOUND")
-        self.assertEqual(result["policyShapes"], {"project": "ABSENT", "identity": "NULL"})
+        self.assertEqual(result["policyShapes"], {"project": "ABSENT", "identity": "ROOT_NULL"})
         self.assertNotIn(fake.private_token, json.dumps(result))
 
     def test_policy_shape_rejects_target_binding_and_other_malformed_drift(self):

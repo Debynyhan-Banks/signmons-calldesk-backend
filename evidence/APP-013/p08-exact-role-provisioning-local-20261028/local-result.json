@@ -12,12 +12,13 @@
   "failedStagePersistenceTested": true,
   "providerActionOccurred": false,
   "privateInputPurgeTested": true,
-  "safePolicyShapeClassifications": 5,
+  "safePolicyShapeClassifications": 6,
+  "rootNullNormalizesToEmpty": true,
   "nullBindingsNormalizeToEmpty": true,
   "malformedPolicyStillRefuses": true,
   "targetRoleBindingStillRefuses": true,
-  "sourceSha256": "fffd3617c93bc14e6341eb0104abe253e7109925b4e6da10c98f10d367d41e00",
-  "status": "P08_EMPTY_POLICY_NORMALIZATION_LOCAL_PASSED",
+  "sourceSha256": "44735e0f90de00e8062ab08cefe20e33448e732d3181f55c515ae5ad5e2b636d",
+  "status": "P08_ROOT_NULL_POLICY_NORMALIZATION_LOCAL_PASSED",
   "testsPassed": 25,
   "testsRun": 25
 }

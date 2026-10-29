@@ -714,6 +714,8 @@ def exact_definition(value, role):
 
 
 def policy_shape(value):
+    if value is None:
+        return "ROOT_NULL"
     if not isinstance(value, dict) or not set(value) <= {"bindings", "etag", "version"}:
         return "INVALID"
     if "bindings" not in value:
@@ -733,7 +735,7 @@ def policy_shape(value):
 def bindings_absent(value):
     shape = policy_shape(value)
     need(shape != "INVALID", "ROLE_DRIFT")
-    bindings = value.get("bindings") or []
+    bindings = [] if shape == "ROOT_NULL" else value.get("bindings") or []
     role_names = {role["name"] for role in ROLES}
     for binding in bindings:
         if binding["role"] in role_names:
