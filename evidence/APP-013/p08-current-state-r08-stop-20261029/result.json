@@ -1,0 +1,19 @@
+{
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "operationId": "3a156c4b-cdec-43ad-b053-0ec1d191e0b3",
+  "attemptReservedAtEastern": "2026-10-29 17:50:28 EDT",
+  "closedAtEastern": "2026-10-29 17:50:44 EDT",
+  "status": "P08_COMPOSED_QUALIFICATION_LOCAL_STOPPED",
+  "fixedFailure": "HTTPS_OUTPUT:service_1:OVERSIZE",
+  "serviceDescriptor": "iam.googleapis.com",
+  "maxResponseBytes": 65536,
+  "completedDomains": ["cloud"],
+  "cloudFactsTrue": 13,
+  "cloudFactsFalse": 0,
+  "domainResults": {"cloud": "QUALIFIED", "closeout": "QUALIFIED"},
+  "residuals": [],
+  "privateInputsAbsent": true,
+  "providerMutations": 0,
+  "qualificationComplete": false,
+  "attemptConsumed": true
+}

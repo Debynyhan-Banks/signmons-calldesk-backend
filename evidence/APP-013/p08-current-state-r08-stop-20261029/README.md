@@ -1,0 +1,7 @@
+# P08 R08 read-only qualification safe stop
+
+Section R1-W01 / APP-013 / 3A / P08. The exact owner-approved R08 operation `3a156c4b-cdec-43ad-b053-0ec1d191e0b3` reserved its sole attempt at 5:50:28 p.m. Eastern October 29, 2026, before its 6:00 start cutoff. The owner reported `P08_COMPOSED_QUALIFICATION_LOCAL_STOPPED`. Sanitized journal: `HTTPS_OUTPUT:service_1:OVERSIZE` after Cloud qualified with thirteen true and zero false facts. `service_1` is the Service Usage metadata read for `iam.googleapis.com`; its response exceeded the existing 65,536-byte bound. The actual byte count and response contents are not retained. Do not infer service state, provider outage or a different failure mechanism.
+
+Access, database and Firebase qualification did not complete. No authentication, runtime, IAM, payment or other mutation path ran. Mandatory read-only closeout qualified with empty residuals. `private-input-retirement.json` and filesystem readback confirm exact `plan.json` and `binding.json` absent by 5:50:44. No closeout-only invocation was needed. R08 is consumed/no retry; R07 remains independently consumed.
+
+The current `services.get` response includes service configuration as well as state, while this qualification uses only `state`. A bounded partial-response proposal is the next owner decision; no source or external operation is changed by this receipt. P08/3A remain open; accepted walkthrough 4/8, newly closed R1 0/27, legacy 6/60 and intelligence 0/13. **Unintended oversized output stop disclosed; no scope deviation implemented.**
