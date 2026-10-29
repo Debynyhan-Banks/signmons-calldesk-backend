@@ -1,0 +1,14 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "operationId": "43ab2bc3-7511-42e3-9a2e-81961bb1c46b",
+  "status": "P08_R03_EXPIRED_UNSTARTED",
+  "startCutoffEastern": "2026-10-29T09:25:00-04:00",
+  "reconciledAfterCutoffEastern": "2026-10-29T09:29:18-04:00",
+  "attemptAbsent": true,
+  "journalAbsent": true,
+  "externalReads": 0,
+  "passwordPrompted": false,
+  "mutations": false,
+  "privateInputsAbsent": true,
+  "reusable": false
+}
