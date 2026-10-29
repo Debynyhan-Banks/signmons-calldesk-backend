@@ -1,0 +1,11 @@
+# P08 bounded HTTPS output-category local correction
+
+Section R1-W01 / APP-013 / 3A / P08. Owner approved Alternative 1 in governance `APP013_P08_SERVICE_RESPONSE_CATEGORY_PROPOSAL_20261029.md` at commit `0275493` after the consumed R07 `HTTPS_OUTPUT:service_1` safe stop. This is a fresh disabled copy of backend `9888e7c`; the old source and R07 receipt were not changed. Acceptance gap: R07 identified the fixed IAM Service Usage request but could not safely distinguish the bounded response failure class before the same-job payment-readiness workflow.
+
+`qualification_launch.py` now raises only fixed `HTTPS_OUTPUT:<allowlisted ID>:<category>` for oversized, invalid UTF-8 or invalid JSON HTTPS bodies. A valid JSON object or array follows the unchanged strict parser. A scalar/wrong-shape body retains the old generic `HTTPS_OUTPUT:<ID>` refusal, and unknown descriptors still stop before transport. The native HTTP reader reports oversize without retaining the response. No URL, bearer, response bytes/length, status body, raw exception or dynamic identifier is written to the journal.
+
+The CLI, 26/10/2 ceilings, source/approval/clock bindings, exclusive reservation, USD0/no retry, signal/deadline cleanup, mandatory read-only closeout and private-input purge are unchanged. Source manifest SHA256 `c5d3f54456fc82cc6ff1910b197a56c3304d1aa043adb9a4887b18d5eaf3b31e`; launcher SHA256 `94b73ea8be71410f0f51e1d3a5d20f14eba126b1aa7370da7af537c9586a15f0`. The native entry remains unbound and refuses without a separately approved future plan/binding.
+
+Verification: 41 corrected focused/controller tests, 39 unchanged predecessor tests, three disposable PostgreSQL contract tests, locked-source/manifest checks, architecture and governance gates. Fake responses covered all ten fixed request IDs and all three categories, wrong-shape refusal, normal JSON, unknown ID, journal privacy, native oversize, signal/deadline, collision, closeout and private purge. No real provider, database or Firebase account was read or changed. No browser test is applicable to this backend-only parser.
+
+R07 remains consumed/no retry. A fresh external read requires a separate exact card, window and owner approval. P08/3A remain open; accepted walkthrough 4/8, newly closed R1 0/27, legacy 6/60 and intelligence 0/13. **No scope deviation beyond the approved local correction.**
