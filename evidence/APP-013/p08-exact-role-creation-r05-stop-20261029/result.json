@@ -1,0 +1,21 @@
+{
+  "callsCompleted": 13,
+  "cliCompleted": 5,
+  "containment": "VERIFIED",
+  "createdCount": 2,
+  "errorCategory": "HTTP_SHAPE",
+  "failedStage": "HTTPS_8_LOOKUP_READBACK",
+  "httpsCompleted": 8,
+  "operationId": "bdbbbe2c-3142-4b3f-8acf-98414f3e35a9",
+  "policyShapes": {
+    "identity": "ROOT_NULL",
+    "project": "NONEMPTY_LIST"
+  },
+  "privateInputsAbsent": true,
+  "processesAbsent": true,
+  "providerReason": "ROLE_DRIFT",
+  "rawOutputRetained": false,
+  "retryAllowed": false,
+  "status": "P08_EXACT_ROLE_CREATION_R05_STOP_DEFINITION_SHAPE",
+  "unknownCount": 0
+}

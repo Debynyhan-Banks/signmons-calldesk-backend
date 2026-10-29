@@ -1,0 +1,17 @@
+{
+  "absentCount": 0,
+  "callsCompleted": 6,
+  "cliCompleted": 5,
+  "closeoutOperationId": "027e40c2-db13-44d4-81c0-c2117a50acaf",
+  "errorCategory": null,
+  "externalMutationAttempted": false,
+  "failedStage": null,
+  "httpsCompleted": 1,
+  "policiesPassedUnboundCheck": true,
+  "privateInputsAbsent": true,
+  "processesAbsent": true,
+  "rawOutputRetained": false,
+  "reconciledRetainedCount": 0,
+  "residualCount": 1,
+  "status": "P08_EXACT_ROLE_CLOSEOUT_UNCONFIRMED"
+}
