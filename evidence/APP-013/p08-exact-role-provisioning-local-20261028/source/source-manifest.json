@@ -1,11 +1,11 @@
 {
-  "status": "DISABLED_LOCAL_ROOT_NULL_POLICY_NORMALIZED",
+  "status": "DISABLED_LOCAL_OMITTED_DELETED_NORMALIZED",
   "section": "R1-W01 / APP-013 / 3A / P08",
-  "proposalCommit": "f4f7813",
-  "approvalCommit": "a582e2a",
+  "proposalCommit": "f30bb9d",
+  "approvalCommit": "665eee9",
   "files": {
-    "role_provisioner.py": "44735e0f90de00e8062ab08cefe20e33448e732d3181f55c515ae5ad5e2b636d",
-    "test_role_provisioner.py": "4188e77a779805c417835e478eaf0e9b8a66ea1e0c247c849eab06a0bcab29e4"
+    "role_provisioner.py": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
+    "test_role_provisioner.py": "82e69fd2a774da4771b69d04e50fe7caa9c891497fd5f31cf60d472556a864e6"
   },
   "nativeExternalBinding": true,
   "externalBindingEnabled": false,

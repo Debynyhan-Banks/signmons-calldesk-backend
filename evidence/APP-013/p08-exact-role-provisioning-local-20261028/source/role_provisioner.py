@@ -382,6 +382,7 @@ class NativeProvisioner:
         self.failed_stage = None
         self.error_category = None
         self.policy_shapes = {}
+        self.definition_shapes = {}
         self.journal = {"attempted": [], "created": [], "unknown": [], "verified": []}
 
     def check(self):
@@ -525,6 +526,7 @@ class NativeProvisioner:
                 status, value = self.https("GET", role_url(role), headers, stage)
                 https_need(self, status == 200, "HTTP_STATUS", stage, "HTTP_STATUS")
                 try:
+                    self.definition_shapes[role["kind"]] = definition_shape(value, role)
                     definitions[role["kind"]] = digest(exact_definition(value, role))
                 except Stop:
                     self.failed_stage = stage
@@ -537,7 +539,7 @@ class NativeProvisioner:
                 "createdCount": 2, "verifiedCount": 2, "retainedUnbound": True,
                 "definitionSha256": definitions, "cliCompleted": self.cli_count,
                 "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
-                "policyShapes": self.policy_shapes,
+                "policyShapes": self.policy_shapes, "definitionShapes": self.definition_shapes,
                 "rawOutputRetained": False, "privateInputsAbsent": False,
             }
         except BaseException as error:
@@ -547,7 +549,7 @@ class NativeProvisioner:
                 "unknownCount": len(self.journal["unknown"]), "cliCompleted": self.cli_count,
                 "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
                 "failedStage": self.failed_stage, "errorCategory": self.error_category,
-                "policyShapes": self.policy_shapes,
+                "policyShapes": self.policy_shapes, "definitionShapes": self.definition_shapes,
                 "rawOutputRetained": False, "privateInputsAbsent": False,
             }
         finally:
@@ -630,6 +632,7 @@ class NativeCloseout:
             signal.signal(item, lambda *_: setattr(self, "interrupted", True))
         bearer = None
         reconciled, absent, residuals = [], [], []
+        definition_shapes = {}
         try:
             commands = native_cli_commands()
             owner = self.cli(commands[0], CLI_STAGES[0])
@@ -651,6 +654,7 @@ class NativeCloseout:
                 if status == 404:
                     absent.append(role["kind"])
                 elif status == 200:
+                    definition_shapes[role["kind"]] = definition_shape(value, role)
                     exact_definition(value, role)
                     reconciled.append(role["kind"])
                 else:
@@ -667,6 +671,7 @@ class NativeCloseout:
             "residualCount": len(residuals), "cliCompleted": self.cli_count,
             "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
             "failedStage": self.failed_stage, "errorCategory": self.error_category,
+            "definitionShapes": definition_shapes,
             "retainedUnbound": bool(reconciled) and not residuals,
             "rawOutputRetained": False, "privateInputsAbsent": False,
         }
@@ -700,13 +705,25 @@ def run_bound(directory, expected_source_sha256, expected_proposal_sha256, io=No
     return result
 
 
+def definition_shape(value, role):
+    allowed = {"name", "title", "description", "includedPermissions", "stage", "deleted", "etag"}
+    if not isinstance(value, dict) or not set(value) <= allowed:
+        return "INVALID"
+    if "etag" in value and not isinstance(value["etag"], str):
+        return "INVALID"
+    if value.get("name") != role["name"]:
+        return "INVALID"
+    if value.get("title") != role["title"] or value.get("description") != role["description"]:
+        return "INVALID"
+    if value.get("includedPermissions") != [role["permission"]] or value.get("stage") != "GA":
+        return "INVALID"
+    if "deleted" not in value:
+        return "EXACT_ACTIVE_DEFAULTED"
+    return "EXACT_ACTIVE_EXPLICIT" if value["deleted"] is False else "INVALID"
+
+
 def exact_definition(value, role):
-    need(isinstance(value, dict) and set(value) <= {"name", "title", "description", "includedPermissions", "stage", "deleted", "etag"}, "ROLE_DRIFT")
-    need("etag" not in value or isinstance(value["etag"], str), "ROLE_DRIFT")
-    need(value.get("name") == role["name"], "ROLE_DRIFT")
-    need(value.get("title") == role["title"] and value.get("description") == role["description"], "ROLE_DRIFT")
-    need(value.get("includedPermissions") == [role["permission"]], "ROLE_DRIFT")
-    need(value.get("stage") == "GA" and value.get("deleted") is False, "ROLE_DRIFT")
+    need(definition_shape(value, role) != "INVALID", "ROLE_DRIFT")
     return {
         "name": role["name"], "includedPermissions": [role["permission"]],
         "stage": "GA", "deleted": False,

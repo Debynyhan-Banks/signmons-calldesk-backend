@@ -77,13 +77,16 @@ class NativeFake:
         self.private_token = "private-token-" + "x" * 24
         self.project_policy = {"bindings": []}
         self.identity_policy = {"bindings": []}
+        self.omit_deleted = False
 
     def definition(self, role):
-        return {
+        value = {
             "name": role["name"], "title": role["title"], "description": role["description"],
             "includedPermissions": [role["permission"]], "stage": "GA", "deleted": False,
             "etag": "BwYNativeFixture=",
         }
+        if self.omit_deleted: value.pop("deleted")
+        return value
 
     def cli(self, command, deadline):
         command = tuple(command)
@@ -369,6 +372,37 @@ class ProvisionerTests(unittest.TestCase):
             self.assertEqual(result["policyShapes"]["identity"], "INVALID")
             self.assertEqual(result["httpsCompleted"], 0)
             self.assertNotIn("private-member", json.dumps(result))
+
+    def test_definition_shape_defaults_only_omitted_false_and_closeout_verifies_both(self):
+        role = p.ROLES[0]
+        explicit = NativeFake().definition(role)
+        omitted = copy.deepcopy(explicit); omitted.pop("deleted")
+        self.assertEqual(p.definition_shape(explicit, role), "EXACT_ACTIVE_EXPLICIT")
+        self.assertEqual(p.definition_shape(omitted, role), "EXACT_ACTIVE_DEFAULTED")
+        self.assertEqual(p.exact_definition(omitted, role)["deleted"], False)
+
+        invalid = []
+        for deleted in (True, None, "false", 0):
+            value = copy.deepcopy(explicit); value["deleted"] = deleted; invalid.append(value)
+        for key in ("name", "title", "description", "includedPermissions", "stage"):
+            value = copy.deepcopy(omitted); value.pop(key); invalid.append(value)
+        value = copy.deepcopy(omitted); value["unexpected"] = "private-value"; invalid.append(value)
+        for value in invalid:
+            with self.subTest(value=value):
+                self.assertEqual(p.definition_shape(value, role), "INVALID")
+                with self.assertRaises(p.Stop): p.exact_definition(value, role)
+
+        plan, approval, source, proposal = self.native_plan()
+        plan["action"] = "CLOSEOUT"
+        approval["decision"] = "APPROVE_EXACT_STABLE_ROLE_CLOSEOUT"
+        approval["planSha256"] = p.digest(plan)
+        fake = NativeFake(); fake.omit_deleted = True
+        for item in p.ROLES: fake.roles[item["kind"]] = fake.definition(item)
+        result = p.NativeCloseout(plan, approval, fake, self.root, source, proposal, self.clock).run()
+        self.assertEqual(result["status"], "P08_EXACT_ROLE_CLOSEOUT_VERIFIED")
+        self.assertEqual(result["reconciledRetainedCount"], 2)
+        self.assertEqual(result["definitionShapes"], {"lookup": "EXACT_ACTIVE_DEFAULTED", "signing": "EXACT_ACTIVE_DEFAULTED"})
+        self.assertEqual((result["cliCompleted"], result["httpsCompleted"]), (5, 2))
 
     def test_native_lost_response_records_unknown_without_retry(self):
         fake = NativeFake(); fake.lost_create = "signing"
