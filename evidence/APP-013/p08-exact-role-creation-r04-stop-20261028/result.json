@@ -1,0 +1,22 @@
+{
+  "callsCompleted": 5,
+  "cliCompleted": 5,
+  "containment": "VERIFIED",
+  "createdCount": 0,
+  "errorCategory": "UNKNOWN",
+  "externalMutationAttempted": false,
+  "failedStage": "CLI_5_IDENTITY_POLICY",
+  "httpsCompleted": 0,
+  "operationId": "743447a5-f14f-4a48-8dd0-f674d024a94c",
+  "policyShapes": {
+    "identity": "INVALID",
+    "project": "NONEMPTY_LIST"
+  },
+  "privateInputsAbsent": true,
+  "processesAbsent": true,
+  "providerReason": "ROLE_DRIFT",
+  "rawOutputRetained": false,
+  "retryAllowed": false,
+  "status": "P08_EXACT_ROLE_CREATION_R04_STOP_IDENTITY_POLICY_INVALID",
+  "unknownCount": 0
+}
