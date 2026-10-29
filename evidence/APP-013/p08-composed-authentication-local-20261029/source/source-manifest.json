@@ -1,0 +1,14 @@
+{
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
+  "files": {
+    "composed_auth.py": "5291c865a553b44ca3b551ab6ecbd3624687d3ec9747fe860d326a2ce23a7c2f",
+    "test_composed_auth.py": "fa6ca50b5964430c25cc7341291aaed7774fa2ce54aad22c712a2f268adde513"
+  },
+  "lockedSources": {
+    "restoration": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "access": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576",
+    "authAuthority": "51c5250ace4ff095a7cc2e5b6f4e099a863389fa095c2bfe26151c832480d965",
+    "authController": "57ab0853630112145e81e10143b05099b2a446f7f450d0eff4598540528ef0c4",
+    "authAdapters": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a"
+  }
+}

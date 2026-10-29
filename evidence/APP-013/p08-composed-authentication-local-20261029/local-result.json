@@ -1,0 +1,49 @@
+{
+  "kind": "P08_COMPOSED_AUTHENTICATION_LOCAL_PREPARATION_ONLY",
+  "recordedAtUtc": "2026-10-29T11:24:05Z",
+  "governanceApprovalCommit": "8082d44",
+  "proposalCommit": "d7f0ed2",
+  "proposalSha256": "5009670c7a7bb3284a8c2a99c79eeebf1381fb131f874cc3271aa5564aa9c43f",
+  "sourceManifestSha256": "79878da465233e221e5bf4796769d4b12654d1838baa4442d1751e99e3e26599",
+  "nativeStatus": "P08_COMPOSED_AUTH_REFUSED_UNBOUND",
+  "newTests": 17,
+  "reusedRestorationTests": 31,
+  "reusedAccessResolutionTests": 40,
+  "reusedAuthenticationTests": 60,
+  "allFinalTestsPassed": true,
+  "lockedSourcesUnchanged": true,
+  "applicationSourcesChanged": false,
+  "databaseOrSqlChanged": false,
+  "browserOrUiChanged": false,
+  "realCredentialResolutions": 0,
+  "realProviderRequests": 0,
+  "realDatabaseActions": 0,
+  "realIamOrKeyActions": 0,
+  "realSigningOrTokenActions": 0,
+  "realStripeOrPaymentActions": 0,
+  "nativeTransportAvailable": false,
+  "scopeDeviation": false,
+  "verified": [
+    "Strict owner-approved parent to provider-receipt-derived child authority; no generated child owner decision.",
+    "Both exact stable role IDs and one-permission scopes are pinned; no role creation path exists.",
+    "Canonical numeric project key resource, exact owned receipt, in-memory key hash, exact request contracts and reverse cleanup are modeled.",
+    "Unknown key creation is neither adopted nor deleted; acknowledged ownership is required before deletion.",
+    "Signals, deadlines, clock rollback, reservation races, partial failures, drift, secret non-persistence and native refusal are covered.",
+    "Unchanged restoration, access-resolution and authentication suites passed from their locked snapshots."
+  ],
+  "initialFailuresAndCorrections": [
+    "A negative test supplied a different valid UUID and incorrectly expected rejection; changed it to malformed UUID input.",
+    "Initial cleanup could attempt key deletion after an unacknowledged create response; deletion now requires acknowledged exact ownership and unknown creation remains residual.",
+    "Malformed UUID raised raw ValueError; exact UUID parsing now returns a fixed fail-closed classification.",
+    "Shift-left interface review found the lifecycle uses a canonical numeric project resource while the older authentication authority accepted only the project alias; the wrapper now binds the exact private project number and provider-returned canonical resource without changing locked sources.",
+    "The unchanged authentication test uses URL pathname text and fails from a checkout path containing spaces before any test executes; the same locked snapshot was copied to a private no-space scratch directory and all 60 tests passed."
+  ],
+  "limitations": [
+    "This is an injected fake-transport composition model, not a live launcher or qualified provider operation.",
+    "Current API states, lifecycle permissions, target account/job state, canonical project number, runtime state, allowance and operation window remain unqualified.",
+    "Control-plane key deletion is not proof of immediate global invalidation or permanent erasure.",
+    "Local tests do not complete P08, 3A or any customer payment capability."
+  ],
+  "acceptedMilestones": "1A/1B/2A/2B = 4/8",
+  "r1Counts": "0/27 newly closed, 6/60 legacy, 0/13 intelligence"
+}
