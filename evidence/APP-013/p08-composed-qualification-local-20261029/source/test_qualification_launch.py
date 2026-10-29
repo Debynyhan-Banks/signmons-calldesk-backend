@@ -34,7 +34,7 @@ class FakeIO:
         elif i=="project_permissions":v={"status":200,"body":{"permissions":list(model.PERMISSIONS)}}
         elif i=="identity_permissions":v={"status":200,"body":{"permissions":list(model.PERMISSIONS)}}
         elif i=="key_absence":v={"status":404,"body":{"error":{"status":"NOT_FOUND"}}}
-        else:v={"status":200,"body":{"users":[{"localId":UID,"disabled":True,"email":launch.TARGET_EMAIL,"displayName":launch.TARGET_NAME,"customAttributes":json.dumps({"tenantId":model.TENANT,"role":"admin","testOnly":True}),"tokensValidAfterTime":"2026-10-26T13:18:00Z"}]}}
+        else:v={"status":200,"body":{"users":[{"localId":UID,"disabled":True,"email":launch.TARGET_EMAIL,"displayName":launch.TARGET_NAME,"customAttributes":json.dumps({"tenantId":model.TENANT,"role":"admin","testOnly":True}),"validSince":str(launch.REVOCATION_LOWER_BOUND_MS//1000)}]}}
         return copy.deepcopy(self.override.get(i,v))
     def sql(self,d,password,deadline):
         self.calls.append(("sql",d));v=database_raw() if d["id"]=="qualification" else {"sessionsAbsent":True};return copy.deepcopy(self.override.get(d["id"],v))
@@ -94,9 +94,11 @@ class Tests(unittest.TestCase):
                 self.tearDown();self.setUp();raw=database_raw();raw["operator"][key]=value;self.io.override["qualification"]=raw
                 result=model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run();self.assertNotEqual(result["verdict"],"QUALIFIED")
     def test_firebase_claims_and_revocation_are_parsed_and_bounded(self):
-        for patch_value in [{"customAttributes":"{}"},{"tokensValidAfterTime":"2026-10-26T13:17:00Z"},{"localId":"40000000-0000-4000-8000-000000000001"}]:
-            self.tearDown();self.setUp();user={"localId":UID,"disabled":True,"email":launch.TARGET_EMAIL,"displayName":launch.TARGET_NAME,"customAttributes":json.dumps({"tenantId":model.TENANT,"role":"admin","testOnly":True}),"tokensValidAfterTime":"2026-10-26T13:18:00Z"};user.update(patch_value);self.io.override["firebase"]={"status":200,"body":{"users":[user]}}
+        boundary=str(launch.REVOCATION_LOWER_BOUND_MS//1000)
+        for patch_value in [{"customAttributes":"{}"},{"validSince":str(int(boundary)-1)},{"validSince":"-1"},{"validSince":"1.5"},{"validSince":"9223372036854775808"},{"validSince":None},{"localId":"40000000-0000-4000-8000-000000000001"},{"tokensValidAfterTime":"2026-10-26T13:18:00Z"}]:
+            self.tearDown();self.setUp();user={"localId":UID,"disabled":True,"email":launch.TARGET_EMAIL,"displayName":launch.TARGET_NAME,"customAttributes":json.dumps({"tenantId":model.TENANT,"role":"admin","testOnly":True}),"validSince":boundary};user.update(patch_value);self.io.override["firebase"]={"status":200,"body":{"users":[user]}}
             self.assertNotEqual(model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run()["verdict"],"QUALIFIED")
+        self.tearDown();self.setUp();sdk_only={"localId":UID,"disabled":True,"email":launch.TARGET_EMAIL,"displayName":launch.TARGET_NAME,"customAttributes":json.dumps({"tenantId":model.TENANT,"role":"admin","testOnly":True}),"tokensValidAfterTime":"2026-10-26T13:18:00Z"};self.io.override["firebase"]={"status":200,"body":{"users":[sdk_only]}};self.assertNotEqual(model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run()["verdict"],"QUALIFIED")
     def test_exact_private_input_purge_checks_scope_mode_and_absence(self):
         directory=Path(self.tmp.name);paths=[directory/"plan.json",directory/"binding.json"]
         for path in paths:path.write_text("{}\n");os.chmod(path,0o600)

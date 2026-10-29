@@ -1,0 +1,37 @@
+{
+  "kind": "P08_FIREBASE_VALID_SINCE_CONTRACT_CORRECTION_LOCAL_ONLY",
+  "recordedAtUtc": "2026-10-29T12:23:24Z",
+  "governanceApprovalCommit": "5c23efb",
+  "proposalCommit": "fe4e9b3",
+  "sourceManifestSha256": "f3a159b8a240cdf5298c2c5f5e01f77513feec1c4267d20990d14c2d2af87fd5",
+  "verified": {
+    "restField": "validSince",
+    "encoding": "strict decimal int64 seconds",
+    "retainedBoundaryComparison": "validSince >= REVOCATION_LOWER_BOUND_MS // 1000",
+    "boundaryAccepted": true,
+    "earlierMissingNegativeFractionalOverflowRejected": true,
+    "adminSdkOnlyRejected": true,
+    "ambiguousDualFieldRejected": true,
+    "fakeAndModelCases": 30,
+    "disposablePostgreSqlCases": 3,
+    "roleRegression": "26/26",
+    "restorationRegression": "37/37",
+    "accessRegression": "40/40",
+    "authenticationRegression": "60/60"
+  },
+  "withdrawnOperation": {
+    "operationId": "82ad7bf3-1bc8-455b-8c7b-0049387af3b5",
+    "attempted": false,
+    "commandReleased": false,
+    "passwordPrompted": false,
+    "externalReads": 0,
+    "privateInputsAbsent": true,
+    "reusable": false
+  },
+  "realCredentialsResolved": 0,
+  "realExternalReads": 0,
+  "realExternalMutations": 0,
+  "scopeDeviation": false,
+  "acceptedMilestones": "1A/1B/2A/2B = 4/8",
+  "r1Counts": "0/27 newly closed, 6/60 legacy, 0/13 intelligence"
+}

@@ -273,9 +273,11 @@ class Adapter:
         need(envelope["status"] == 200, "FIREBASE_DENIED")
         users = envelope["body"].get("users"); need(isinstance(users, list) and len(users) == 1, "FIREBASE_OUTPUT")
         user = users[0]
-        try: claims = json.loads(user.get("customAttributes", "")); revoked = model.timestamp(user.get("tokensValidAfterTime")) * 1000
-        except (json.JSONDecodeError, TypeError, model.Stop): claims = None; revoked = -1
-        return {"existsOne": True, "uidExact": user.get("localId") == self.firebase_uid, "disabled": user.get("disabled") is True, "identityExact": user.get("email") == TARGET_EMAIL and user.get("displayName") == TARGET_NAME, "claimsExact": claims == {"tenantId": model.TENANT, "role": "admin", "testOnly": True}, "tokensRevoked": revoked >= REVOCATION_LOWER_BOUND_MS}
+        try: claims = json.loads(user.get("customAttributes", ""))
+        except (json.JSONDecodeError, TypeError): claims = None
+        raw_valid_since = user.get("validSince")
+        valid_since = int(raw_valid_since) if isinstance(raw_valid_since, str) and re.fullmatch(r"[0-9]{1,19}", raw_valid_since) and int(raw_valid_since) <= 9223372036854775807 else -1
+        return {"existsOne": True, "uidExact": user.get("localId") == self.firebase_uid, "disabled": user.get("disabled") is True, "identityExact": user.get("email") == TARGET_EMAIL and user.get("displayName") == TARGET_NAME, "claimsExact": claims == {"tenantId": model.TENANT, "role": "admin", "testOnly": True}, "tokensRevoked": valid_since >= REVOCATION_LOWER_BOUND_MS // 1000 and "tokensValidAfterTime" not in user}
 
     def closeout(self, deadline):
         try:
