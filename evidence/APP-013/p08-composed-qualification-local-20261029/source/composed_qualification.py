@@ -85,7 +85,7 @@ def verify_local_manifest():
     value = json.loads(path.read_text())
     need(value.get("status") == "DISABLED_LOCAL_PREPARATION_ONLY" and value.get("lockedSources") == SOURCE_HASHES, "LOCAL_MANIFEST")
     need(value.get("ownershipSha256") == OWNERSHIP_SHA256, "LOCAL_MANIFEST")
-    need(set(value.get("files", {})) == {"composed_qualification.py", "test_composed_qualification.py"}, "LOCAL_MANIFEST_SET")
+    need(set(value.get("files", {})) == {"composed_qualification.py", "test_composed_qualification.py", "qualification_launch.py", "test_qualification_launch.py"}, "LOCAL_MANIFEST_SET")
     for name, expected in value["files"].items():
         target = ROOT / name
         need(target.is_file() and not target.is_symlink() and hashlib.sha256(target.read_bytes()).hexdigest() == expected, "LOCAL_SOURCE_DRIFT")

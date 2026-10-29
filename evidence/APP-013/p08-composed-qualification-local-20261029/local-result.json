@@ -4,8 +4,8 @@
   "governanceApprovalCommit": "635795f",
   "proposalCommit": "747eec6",
   "proposalSha256": "8f28bfdeb3b924e6a9c282c9579338ae352ad1fccda93531b7bf5f908849d157",
-  "sourceManifestSha256": "d0557e14ebf46b917de4ebc63684eed3b61db9dd5a273b6527bb8285c8582996",
-  "nativeStatus": "P08_COMPOSED_QUALIFICATION_REFUSED_UNBOUND",
+  "sourceManifestSha256": "3d43ad47465a3cb3540b50859de871982746fb1fbc35e9f4e501706786f8cee9",
+  "nativeStatus": "P08_COMPOSED_QUALIFICATION_LAUNCH_REFUSED_UNBOUND",
   "newTests": 15,
   "reusedRoleTests": 26,
   "reusedRestorationTests": 31,
@@ -28,7 +28,27 @@
   "realExternalReads": 0,
   "realExternalMutations": 0,
   "realStripeOrPaymentActions": 0,
-  "nativeTransportAvailable": false,
+  "nativeTransportAvailable": true,
+  "launchCompletion": {
+    "recordedAtUtc": "2026-10-29T11:46:47Z",
+    "governanceApprovalCommit": "4a025ac",
+    "proposalCommit": "aef3b62",
+    "proposalSha256": "1225d18577221bff810c6d5b4633df937a3fd9d6dd3ae91265ec4d9c6dbd247e",
+    "focusedLaunchTests": 10,
+    "combinedLaunchAndClassifierTests": 25,
+    "cliCeiling": 26,
+    "httpsCeiling": 10,
+    "sqlCeiling": 2,
+    "nativeUnboundBeforeCredentialAccess": true,
+    "closeoutOnlyNormalReads": 0,
+    "realCredentialResolutions": 0,
+    "realExternalReads": 0,
+    "realExternalMutations": 0,
+    "unchangedRoleTests": 26,
+    "unchangedRestorationTests": 37,
+    "unchangedAccessTests": 40,
+    "unchangedAuthenticationTests": 60
+  },
   "scopeDeviation": false,
   "verified": [
     "Strict local plan, source, ownership, prospective-operation, inventory, window and no-retry gates.",
@@ -43,7 +63,7 @@
     "The unchanged authentication test cannot resolve a checkout path containing spaces; the exact locked snapshot ran from a private no-space scratch directory, all 60 tests passed, and scratch was deleted with absence readback."
   ],
   "limitations": [
-    "This is an injected read-adapter model, not a live qualification launcher.",
+    "The launcher remains disabled until a separately reviewed exact private operation plan and owner decision are bound.",
     "Current Cloud, database and Firebase facts remain unknown until a separately approved exact attended read-only operation.",
     "No API enablement path exists; a disabled required service will stop as NOT_READY.",
     "Local success does not complete P08, 3A or any customer payment capability."
