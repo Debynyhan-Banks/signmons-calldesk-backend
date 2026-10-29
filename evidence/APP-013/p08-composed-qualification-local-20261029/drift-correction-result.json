@@ -1,0 +1,45 @@
+{
+  "kind": "P08_QUALIFICATION_LAUNCH_DRIFT_CORRECTION_LOCAL_ONLY",
+  "recordedAtUtc": "2026-10-29T12:01:50Z",
+  "governanceApprovalCommit": "9db37a4",
+  "proposalCommit": "f2c722d",
+  "approvedProposalSha256": "c9a8f5e6ac9a1725b747e12033acef006af58f10f06c0fa58ad2d0f6bce1da9a",
+  "sourceManifestSha256": "4b00a79262ee52e3eef5a4118607c5010fa27c0d9dee64a367249a77f7765c43",
+  "nativeStatus": "P08_COMPOSED_QUALIFICATION_LAUNCH_REFUSED_UNBOUND",
+  "verified": {
+    "constantTrueDatabaseReductionRemoved": true,
+    "repeatableReadExactProjection": true,
+    "disposablePostgreSqlCases": 3,
+    "fakeAndModelCases": 30,
+    "firebaseUidDerivedAfterDatabaseQualification": true,
+    "firebaseClaimsParsed": true,
+    "revocationLowerBoundEnforced": true,
+    "dynamicProjectAndBillingFingerprints": true,
+    "rawDynamicIdentifiersPersisted": false,
+    "externalOperationApprovalSeparated": true,
+    "privatePlanAndBindingPurgeWithAbsence": true,
+    "cliCeiling": 26,
+    "httpsCeiling": 10,
+    "sqlCeiling": 2
+  },
+  "regressions": {
+    "role": "26/26",
+    "restoration": "37/37",
+    "access": "40/40",
+    "authentication": "60/60"
+  },
+  "realCredentialResolutions": 0,
+  "realExternalReads": 0,
+  "realExternalMutations": 0,
+  "realPayments": 0,
+  "applicationSourcesChanged": false,
+  "schemaOrMigrationChanged": false,
+  "scopeDeviation": false,
+  "acceptedMilestones": "1A/1B/2A/2B = 4/8",
+  "r1Counts": "0/27 newly closed, 6/60 legacy, 0/13 intelligence",
+  "limitations": [
+    "Current Cloud, database and Firebase facts remain unknown until a separately approved attended read-only operation runs.",
+    "This local result does not complete P08, 3A or customer payment acceptance.",
+    "No previous availability or approval is reusable for the future operation."
+  ]
+}

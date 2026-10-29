@@ -9,16 +9,21 @@ from test_composed_qualification import NOW,access,cloud,database,firebase,plan
 
 def binding(p):
     environment=[{"name":"A"},{"name":"B"}]
-    b={"mode":"P08_READ_ONLY_QUALIFICATION_LAUNCH","proposalSha256":launch.APPROVAL_SHA256,"planSha256":model.digest(p),"sourceManifestSha256":launch.source_manifest_sha256(),"externalReadAuthorized":True,"mutationsAuthorized":False,"allowanceUsd":0,"automaticRetryAllowed":False,"operationId":p["operationId"],"prospectiveOperationId":p["prospectiveOperationId"],"cliLimit":26,"httpsLimit":10,"sqlLimit":2,"projectNumber":"123456789012","billingAccountResource":"billingAccounts/ABCDEF-123456","firebaseUid":"11111111-2222-4333-8444-555555555555","candidateImage":"us-east5-docker.pkg.dev/signmons/signmons/signmons-calldesk-backend@sha256:"+"a"*64,"environmentSha256":model.digest(environment),"normalRevision":"signmons-calldesk-staging-app013dbrot2","databasePassword":"private-password","firebase":{"email":"debynyhan@signmons.com","displayName":"Debynyhan Banks","customAttributes":"{\"role\":\"admin\",\"testOnly\":true,\"tenantId\":\"a1adcfd4-15be-404b-9ac3-5edb1fda20f0\"}","tokensValidAfterTime":"2026-10-26T13:15:00Z"}}
-    b["ownerApproval"]={"decision":"APPROVE_EXACT_P08_READ_ONLY_QUALIFICATION","owner":"Debynyhan Banks","operationId":p["operationId"],"bindingSha256":model.digest({k:v for k,v in b.items() if k!="databasePassword"})}
+    b={"mode":"P08_READ_ONLY_QUALIFICATION_LAUNCH","localPreparationSha256":launch.LOCAL_PREPARATION_SHA256,"operationProposalSha256":"9"*64,"planSha256":model.digest(p),"sourceManifestSha256":launch.source_manifest_sha256(),"externalReadAuthorized":True,"mutationsAuthorized":False,"allowanceUsd":0,"automaticRetryAllowed":False,"operationId":p["operationId"],"prospectiveOperationId":p["prospectiveOperationId"],"cliLimit":26,"httpsLimit":10,"sqlLimit":2,"candidateImage":"us-east5-docker.pkg.dev/signmons/signmons/signmons-calldesk-backend@sha256:"+"a"*64,"environmentSha256":model.digest(environment),"normalRevision":"signmons-calldesk-staging-app013dbrot2","databasePassword":"private-password"}
+    b["ownerApproval"]={"decision":"APPROVE_EXACT_P08_READ_ONLY_QUALIFICATION","owner":"Debynyhan Banks","operationId":p["operationId"],"operationProposalSha256":b["operationProposalSha256"],"bindingSha256":model.digest({k:v for k,v in b.items() if k!="databasePassword"})}
     return b
+
+
+UID="11111111-2222-4333-8444-555555555555"
+def database_raw():
+    return {"jobCount":1,"job":{"id":model.JOB,"tenantId":model.TENANT,"policySnapshot":{"intakeAdmission":{"humanReviewed":True}},"calendarEventId":None},"tenantCount":1,"tenant":{"id":model.TENANT,"status":"ACTIVE"},"operatorCount":1,"operator":{"id":UID,"tenantId":model.TENANT,"email":launch.TARGET_EMAIL,"fullName":launch.TARGET_NAME,"role":"ADMIN","status":"DISABLED"},"calendarCount":0,"roleCount":0,"sessionCount":0}
 
 
 class FakeIO:
     def __init__(self,b,p):self.b=b;self.p=p;self.calls=[];self.closed=False;self.override={}
     def cli(self,d,deadline):
         self.calls.append(("cli",d));i=d["id"]
-        values={"owner":[{"account":model.OWNER,"status":"ACTIVE"}],"config":{"core":{"project":model.PROJECT},"auth":{}},"project":{"projectId":model.PROJECT,"projectNumber":self.b["projectNumber"],"lifecycleState":"ACTIVE"},"billing_project":{"billingAccountName":"private","billingEnabled":True,"projectId":model.PROJECT},"billing_account":{"open":True},"service":{"status":{"latestReadyRevisionName":launch.REVISION,"traffic":[{"revisionName":self.b["normalRevision"],"percent":100},{"revisionName":launch.REVISION,"percent":0}]}},"revision":{"metadata":{"name":launch.REVISION},"spec":{"serviceAccountName":model.IDENTITY,"containers":[{"image":self.b["candidateImage"],"env":[{"name":"A"},{"name":"B"}]}]},"status":{"conditions":[{"type":"Ready","status":"True"}]}},"identity":{"email":model.IDENTITY,"disabled":True,"uniqueId":"123"},"project_policy":{"bindings":[]},"identity_policy":{"bindings":[]},"lookup_role":{"name":model.LOOKUP_ROLE,"includedPermissions":["firebaseauth.users.get"],"stage":"GA","deleted":False},"signing_role":{"name":model.SIGNING_ROLE,"includedPermissions":["iam.serviceAccounts.signBlob"],"stage":"GA","deleted":False},"token":{"accessToken":"x"*32}}
+        values={"owner":[{"account":model.OWNER,"status":"ACTIVE"}],"config":{"core":{"project":model.PROJECT},"auth":{}},"project":{"projectId":model.PROJECT,"projectNumber":"123456789012","lifecycleState":"ACTIVE"},"billing_project":{"billingAccountName":"billingAccounts/ABCDEF-123456","billingEnabled":True,"projectId":model.PROJECT},"billing_account":{"open":True},"service":{"status":{"latestReadyRevisionName":launch.REVISION,"traffic":[{"revisionName":self.b["normalRevision"],"percent":100},{"revisionName":launch.REVISION,"percent":0}]}},"revision":{"metadata":{"name":launch.REVISION},"spec":{"serviceAccountName":model.IDENTITY,"containers":[{"image":self.b["candidateImage"],"env":[{"name":"A"},{"name":"B"}]}]},"status":{"conditions":[{"type":"Ready","status":"True"}]}},"identity":{"email":model.IDENTITY,"disabled":True,"uniqueId":"123"},"project_policy":{"bindings":[]},"identity_policy":{"bindings":[]},"lookup_role":{"name":model.LOOKUP_ROLE,"includedPermissions":["firebaseauth.users.get"],"stage":"GA","deleted":False},"signing_role":{"name":model.SIGNING_ROLE,"includedPermissions":["iam.serviceAccounts.signBlob"],"stage":"GA","deleted":False},"token":{"accessToken":"x"*32}}
         if i.startswith("secret_state_"):v={"name":i,"state":"DISABLED"}
         elif i.startswith("secret_policy_"):v={"bindings":[],"etag":"x","version":1}
         else:v=values[i]
@@ -29,21 +34,25 @@ class FakeIO:
         elif i=="project_permissions":v={"status":200,"body":{"permissions":list(model.PERMISSIONS)}}
         elif i=="identity_permissions":v={"status":200,"body":{"permissions":list(model.PERMISSIONS)}}
         elif i=="key_absence":v={"status":404,"body":{"error":{"status":"NOT_FOUND"}}}
-        else:v={"status":200,"body":{"users":[{"localId":self.b["firebaseUid"],"disabled":True,**self.b["firebase"]}]}}
+        else:v={"status":200,"body":{"users":[{"localId":UID,"disabled":True,"email":launch.TARGET_EMAIL,"displayName":launch.TARGET_NAME,"customAttributes":json.dumps({"tenantId":model.TENANT,"role":"admin","testOnly":True}),"tokensValidAfterTime":"2026-10-26T13:18:00Z"}]}}
         return copy.deepcopy(self.override.get(i,v))
     def sql(self,d,password,deadline):
-        self.calls.append(("sql",d));v=database() if d["id"]=="qualification" else {"sessionsAbsent":True};return copy.deepcopy(self.override.get(d["id"],v))
+        self.calls.append(("sql",d));v=database_raw() if d["id"]=="qualification" else {"sessionsAbsent":True};return copy.deepcopy(self.override.get(d["id"],v))
     def close(self,deadline):self.calls.append(("close",None));self.closed=True;return True
 
 
 class Tests(unittest.TestCase):
     def setUp(self):
+        self.patchers=[patch.object(launch,"PROJECT_NUMBER_SHA256",model.digest("123456789012")),patch.object(launch,"BILLING_ACCOUNT_SHA256",hashlib.sha256(b"billingAccounts/ABCDEF-123456").hexdigest()),patch.object(launch,"TARGET_SHA256",hashlib.sha256(json.dumps(database_raw()["operator"],separators=(",",":")).encode()).hexdigest())]
+        for item in self.patchers:item.start()
         self.p=plan();self.b=binding(self.p);self.io=FakeIO(self.b,self.p);self.tmp=tempfile.TemporaryDirectory(prefix="p08-launch-");os.chmod(self.tmp.name,0o700)
-    def tearDown(self):self.tmp.cleanup()
+    def tearDown(self):
+        self.tmp.cleanup()
+        for item in reversed(self.patchers):item.stop()
     def adapter(self):return launch.Adapter(self.b,self.p,self.io,lambda:NOW)
     def test_exact_serialized_contracts_are_read_only(self):
-        cli=launch.cli_contract(self.b["billingAccountResource"]);self.assertEqual(len(cli),26);self.assertTrue(all(x["argv"][0]==launch.GCLOUD for x in cli));self.assertFalse(any(a in {"create","delete","enable","disable","add-iam-policy-binding","remove-iam-policy-binding","set-iam-policy"} for x in cli for a in x["argv"]))
-        http=launch.https_contract(self.b["projectNumber"],self.p["prospectiveKeyId"],self.b["firebaseUid"]);self.assertEqual(len(http),10);self.assertTrue(all(x["method"] in {"GET","POST"} for x in http));self.assertFalse(any(s in x["url"] for x in http for s in (":enable",":signBlob","keyString","accounts:update")))
+        cli=launch.cli_contract();self.assertEqual(len(cli),26);self.assertTrue(all(x["argv"][0]==launch.GCLOUD for x in cli));self.assertFalse(any(a in {"create","delete","enable","disable","add-iam-policy-binding","remove-iam-policy-binding","set-iam-policy"} for x in cli for a in x["argv"]))
+        http=(*launch.access_https_contract("123456789012",self.p["prospectiveKeyId"]),launch.firebase_https_contract(UID));self.assertEqual(len(http),10);self.assertTrue(all(x["method"] in {"GET","POST"} for x in http));self.assertFalse(any(s in x["url"] for x in http for s in (":enable",":signBlob","keyString","accounts:update")))
         sql=launch.sql_contract();self.assertEqual(len(sql),2);self.assertTrue(all(x["readOnly"] for x in sql));self.assertNotIn("UPDATE",json.dumps(sql));self.assertNotIn("DELETE FROM",json.dumps(sql));self.assertNotIn("INSERT",json.dumps(sql))
     def test_fake_transport_proves_exact_counts_and_positive_model(self):
         a=self.adapter();result=model.Coordinator(self.p,a,self.tmp.name,clock=lambda:NOW).run();self.assertEqual(result["status"],"P08_COMPOSED_QUALIFICATION_LOCAL_VERIFIED")
@@ -54,13 +63,13 @@ class Tests(unittest.TestCase):
             code=launch.native()
         self.assertEqual(code,2);self.assertEqual(output.getvalue().strip(),"P08_COMPOSED_QUALIFICATION_LAUNCH_REFUSED_UNBOUND")
     def test_binding_drift_refuses_before_transport(self):
-        changes={"mode":"bad","proposalSha256":"0"*64,"planSha256":"0"*64,"sourceManifestSha256":"0"*64,"externalReadAuthorized":False,"mutationsAuthorized":True,"allowanceUsd":1,"automaticRetryAllowed":True,"operationId":"bad","prospectiveOperationId":"bad","cliLimit":27,"httpsLimit":11,"sqlLimit":3}
+        changes={"mode":"bad","localPreparationSha256":"0"*64,"operationProposalSha256":"bad","planSha256":"0"*64,"sourceManifestSha256":"0"*64,"externalReadAuthorized":False,"mutationsAuthorized":True,"allowanceUsd":1,"automaticRetryAllowed":True,"operationId":"bad","prospectiveOperationId":"bad","cliLimit":27,"httpsLimit":11,"sqlLimit":3}
         for key,value in changes.items():
             b=copy.deepcopy(self.b);b[key]=value
             with self.subTest(key=key),self.assertRaises(model.Stop):launch.Adapter(b,self.p,self.io,lambda:NOW)
         self.assertEqual(self.io.calls,[])
     def test_each_domain_drift_and_denial_stops_with_closeout(self):
-        cases=[("project",{"projectId":"other","projectNumber":self.b["projectNumber"],"lifecycleState":"ACTIVE"},"DRIFT"),("service_0",{"status":403,"body":{"error":{"status":"PERMISSION_DENIED"}}},"UNKNOWN"),("key_absence",{"status":200,"body":{"name":"collision"}},"NOT_READY"),("qualification",{**database(),"jobExact":False},"DRIFT"),("firebase",{"status":403,"body":{"error":{"status":"PERMISSION_DENIED"}}},"UNKNOWN")]
+        cases=[("project",{"projectId":"other","projectNumber":"123456789012","lifecycleState":"ACTIVE"},"DRIFT"),("service_0",{"status":403,"body":{"error":{"status":"PERMISSION_DENIED"}}},"UNKNOWN"),("key_absence",{"status":200,"body":{"name":"collision"}},"NOT_READY"),("qualification",{**database_raw(),"jobCount":0},"DRIFT"),("firebase",{"status":403,"body":{"error":{"status":"PERMISSION_DENIED"}}},"UNKNOWN")]
         for key,value,verdict in cases:
             with self.subTest(key=key):
                 self.tearDown();self.setUp();self.io.override[key]=value
@@ -74,6 +83,35 @@ class Tests(unittest.TestCase):
     def test_closeout_mode_cannot_perform_normal_reads(self):
         adapter=launch.Adapter(self.b,self.p,self.io,lambda:NOW,mode="closeout")
         self.assertTrue(adapter.closeout(adapter.times["closeoutEnd"]));self.assertEqual([kind for kind,_ in self.io.calls],["sql","close"]);self.assertEqual(self.io.calls[0][1]["id"],"closeout")
+    def test_database_projection_never_synthesizes_missing_facts(self):
+        changes=[("jobCount",0),("tenantCount",0),("operatorCount",0),("calendarCount",1),("roleCount",1),("sessionCount",1)]
+        for key,value in changes:
+            with self.subTest(key=key):
+                self.tearDown();self.setUp();raw=database_raw();raw[key]=value;self.io.override["qualification"]=raw
+                result=model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run();self.assertNotEqual(result["verdict"],"QUALIFIED")
+        for key,value in [("email","foreign@example.invalid"),("role","OWNER"),("status","ACTIVE"),("tenantId","40000000-0000-4000-8000-000000000001")]:
+            with self.subTest(operator=key):
+                self.tearDown();self.setUp();raw=database_raw();raw["operator"][key]=value;self.io.override["qualification"]=raw
+                result=model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run();self.assertNotEqual(result["verdict"],"QUALIFIED")
+    def test_firebase_claims_and_revocation_are_parsed_and_bounded(self):
+        for patch_value in [{"customAttributes":"{}"},{"tokensValidAfterTime":"2026-10-26T13:17:00Z"},{"localId":"40000000-0000-4000-8000-000000000001"}]:
+            self.tearDown();self.setUp();user={"localId":UID,"disabled":True,"email":launch.TARGET_EMAIL,"displayName":launch.TARGET_NAME,"customAttributes":json.dumps({"tenantId":model.TENANT,"role":"admin","testOnly":True}),"tokensValidAfterTime":"2026-10-26T13:18:00Z"};user.update(patch_value);self.io.override["firebase"]={"status":200,"body":{"users":[user]}}
+            self.assertNotEqual(model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run()["verdict"],"QUALIFIED")
+    def test_exact_private_input_purge_checks_scope_mode_and_absence(self):
+        directory=Path(self.tmp.name);paths=[directory/"plan.json",directory/"binding.json"]
+        for path in paths:path.write_text("{}\n");os.chmod(path,0o600)
+        self.assertTrue(launch.purge_private_inputs(directory,paths));self.assertTrue(all(not path.exists() for path in paths));receipt=json.loads((directory/"private-input-retirement.json").read_text());self.assertTrue(receipt["privateInputsAbsent"]);self.assertEqual(receipt["absence"],{"plan.json":True,"binding.json":True})
+    def test_native_sql_executes_only_exact_read_contract_without_locked_substitution(self):
+        completed=subprocess.CompletedProcess([],0,stdout=json.dumps(database_raw()).encode(),stderr=b"")
+        with patch("subprocess.run",return_value=completed) as run:
+            value=launch.NativeIO(lambda:NOW,self.p["operationId"]).sql(launch.sql_contract()[0],"private-password",NOW+10)
+        self.assertEqual(value,database_raw());argv=run.call_args.args[0];self.assertIn(launch.QUALIFICATION_SQL,argv);self.assertNotIn("private-password",argv);self.assertEqual(run.call_args.kwargs["stdin"],subprocess.DEVNULL);self.assertEqual(run.call_args.kwargs["stderr"],subprocess.DEVNULL)
+    def test_bound_stop_purges_exact_inputs_before_any_password_prompt(self):
+        directory=Path(self.tmp.name);paths=[directory/"plan.json",directory/"binding.json"]
+        paths[0].write_text(json.dumps(self.p));bad={**self.b,"externalReadAuthorized":False};paths[1].write_text(json.dumps(bad))
+        for path in paths:os.chmod(path,0o600)
+        with patch("getpass.getpass",side_effect=AssertionError("credential prompt forbidden")),self.assertRaises(model.Stop):launch.native(["--qualify",str(paths[0]),str(paths[1]),str(directory)])
+        self.assertTrue(all(not path.exists() for path in paths));self.assertTrue(json.loads((directory/"private-input-retirement.json").read_text())["privateInputsAbsent"])
     def test_disabled_service_and_role_definition_drift_are_not_ready_or_drift(self):
         self.io.override["service_0"]={"status":200,"body":{"state":"DISABLED"}}
         result=model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run();self.assertEqual(result["verdict"],"NOT_READY")

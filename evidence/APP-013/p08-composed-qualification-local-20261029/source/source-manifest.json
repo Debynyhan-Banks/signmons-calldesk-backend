@@ -1,10 +1,11 @@
 {
   "status": "DISABLED_LOCAL_PREPARATION_ONLY",
   "files": {
-    "composed_qualification.py": "591e8e5079fd4625553789b1cf978ba0c184b86eca4373cf29f9710e738eebff",
+    "composed_qualification.py": "4bd166dfd8ce094b3dc3757f93888f10d7ffad589586c15ecf5da696670d6386",
     "test_composed_qualification.py": "9c13ac04621a53f05e1989b34241ccd5c8662f2ac485fd509c9dd74b08676a5c",
-    "qualification_launch.py": "5be21383b09254dc8c0d36863e8ffe0c17dcd4292887f4386154c5129b5617b1",
-    "test_qualification_launch.py": "834bba1d6f11bb043a633ac9de2e126c4007fe62e4316780cf7724c33c107b96"
+    "qualification_launch.py": "bd514f36088b31cf94ee0f1de30f127ff8850adb1a595b1e35482d39c63d9200",
+    "test_qualification_launch.py": "2186ac8097429d2d0a4eeb1cee51d5936d30676d44bd4a33f59f3b6e0de650f4",
+    "test_qualification_launch_postgres.py": "f36936035da9f3069a19d51a098b3df7dc3e4da8e3664d4f3928175ae0233b21"
   },
   "lockedSources": {
     "roles": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
