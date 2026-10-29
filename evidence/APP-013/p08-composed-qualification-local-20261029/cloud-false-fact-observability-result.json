@@ -1,0 +1,20 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "status": "P08_CLOUD_FALSE_FACT_OBSERVABILITY_LOCAL_VERIFIED",
+  "approvalCommit": "1604787",
+  "sourceManifestSha256": "92e3b3e3f85a86a6c370a4b16414fa248ca4f48c7de60c9430fa07937f9c5a55",
+  "cloudPredicateCount": 13,
+  "falseFactNamesAllowlisted": true,
+  "trueFalseCountsOnly": true,
+  "rawCloudValuesRetained": false,
+  "malformedExtraMissingNonBooleanRefused": true,
+  "focusedModelTests": 35,
+  "qualificationPostgresTests": 3,
+  "roleRegressionTests": 26,
+  "restorationRegressionTests": 37,
+  "accessRegressionTests": 40,
+  "authenticationRegressionTests": 60,
+  "externalReads": 0,
+  "mutations": false,
+  "newOperationAuthorized": false
+}

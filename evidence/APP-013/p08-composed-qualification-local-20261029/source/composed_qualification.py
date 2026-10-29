@@ -126,8 +126,15 @@ FIREBASE_KEYS = {"existsOne", "uidExact", "disabled", "identityExact", "claimsEx
 
 
 def classify_cloud(value):
+    observation = cloud_observation(value)
+    return "QUALIFIED" if observation["falseCount"] == 0 else "DRIFT"
+
+
+def cloud_observation(value):
     need(isinstance(value, dict) and set(value) == CLOUD_KEYS, "CLOUD_SHAPE")
-    return "QUALIFIED" if all(value.values()) else "DRIFT"
+    need(all(type(item) is bool for item in value.values()), "CLOUD_SHAPE")
+    false_facts = sorted(key for key, item in value.items() if item is False)
+    return {"falseFacts": false_facts, "falseCount": len(false_facts), "trueCount": len(CLOUD_KEYS) - len(false_facts)}
 
 
 def classify_access(value):
@@ -182,7 +189,9 @@ class Coordinator:
         try:
             self.save()
             for domain,classifier in [("cloud",classify_cloud),("access",classify_access),("database",classify_database),("firebase",classify_firebase)]:
-                verdict=classifier(self.call("read_"+domain));self.journal["domains"][domain]=verdict;self.journal["completed"].append(domain);self.save()
+                value=self.call("read_"+domain)
+                if domain=="cloud":self.journal["safeObservations"]={"cloud":cloud_observation(value)}
+                verdict=classifier(value);self.journal["domains"][domain]=verdict;self.journal["completed"].append(domain);self.save()
                 if verdict!="QUALIFIED":raise Stop(domain.upper()+"_"+verdict)
         except BaseException as error:
             failure=str(error) if isinstance(error,Stop) else "ADAPTER_REFUSED_OR_UNKNOWN";self.journal["failure"]=failure;self.save()

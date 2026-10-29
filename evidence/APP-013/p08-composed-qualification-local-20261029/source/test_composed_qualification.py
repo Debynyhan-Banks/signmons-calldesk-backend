@@ -39,6 +39,20 @@ class Tests(unittest.TestCase):
   for key in m.CLOUD_KEYS:
    value=cloud();value[key]=False
    with self.subTest(key=key):self.assertEqual(m.classify_cloud(value),"DRIFT")
+ def test_cloud_observation_retains_only_allowlisted_false_names_and_counts(self):
+  value=cloud();value["billingOpen"]=False;value["candidateReady"]=False
+  self.fake.values["cloud"]=value;r=self.controller().run();self.assertEqual(r["failure"],"CLOUD_DRIFT")
+  saved=json.loads((Path(self.tmp.name)/"journal.json").read_text());observation=saved["safeObservations"]["cloud"]
+  self.assertEqual(observation,{"falseFacts":["billingOpen","candidateReady"],"falseCount":2,"trueCount":len(m.CLOUD_KEYS)-2})
+  self.assertEqual(set(observation["falseFacts"])<=m.CLOUD_KEYS,True);self.assertNotIn("signmons",json.dumps(observation));self.assertNotIn("@",json.dumps(observation))
+ def test_cloud_observation_rejects_extra_missing_and_non_boolean_values(self):
+  values=[]
+  extra=cloud();extra["foreign"]=False;values.append(extra)
+  missing=cloud();missing.pop("billingOpen");values.append(missing)
+  for changed in [None,0,1,"false",[],{}]:
+   value=cloud();value["billingOpen"]=changed;values.append(value)
+  for value in values:
+   with self.subTest(value=value),self.assertRaises(m.Stop):m.cloud_observation(value)
  def test_access_disabled_denied_present_and_unknown(self):
   v=access();v["services"][m.SERVICES[0]]="DISABLED";self.assertEqual(m.classify_access(v),"NOT_READY")
   v=access();v["permissions"][m.PERMISSIONS[0]]="DENIED";self.assertEqual(m.classify_access(v),"NOT_READY")
