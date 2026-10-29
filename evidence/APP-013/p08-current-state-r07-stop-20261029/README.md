@@ -1,0 +1,7 @@
+# P08 R07 read-only qualification safe stop
+
+Owner-approved operation `d685d715-c232-4ed5-86ac-1b7ed3e04e3d` reserved its sole attempt at 5:18:38 p.m. Eastern on October 29, 2026, before the strict 5:30 cutoff. The owner reported `P08_COMPOSED_QUALIFICATION_LOCAL_STOPPED`. The sanitized journal records `HTTPS_OUTPUT:service_1` after the Cloud domain qualified with thirteen true and zero false facts. The fixed descriptor maps to the metadata-only Service Usage check for `iam.googleapis.com`. It does not identify whether the response was oversized, malformed JSON or invalid UTF-8; no raw response, URL, bearer or provider error is retained. Do not infer a provider outage or a particular source defect.
+
+Access, database and Firebase qualification did not complete. No authentication activation, runtime restoration, payment or other mutation path ran. The mandatory read-only closeout qualified with empty residuals. `private-input-retirement.json` and filesystem readback confirm absence of the exact `plan.json` and `binding.json`. R07 is consumed and must not be retried.
+
+Next decision: a bounded local-only diagnosis of the `service_1` response contract, preserving strict parsing and no raw output; only after an approved local correction or a demonstrated provider cause could a fresh separately approved read-only operation be considered. P08/3A remain open. Accepted milestones 4/8; newly closed R1 0/27, legacy 6/60 and intelligence 0/13. **Unintended HTTPS output stop disclosed; no scope deviation implemented.**
