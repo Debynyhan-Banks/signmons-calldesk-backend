@@ -1,0 +1,7 @@
+# P08 composed qualification R05 safe stop
+
+Approved read-only operation `3fb6d82c-b7e5-4851-bee0-98949081f360` reserved once at 2:16:21 p.m. Eastern on October 29, 2026. Its saved sanitized journal closed at 2:16:37 with Cloud `DRIFT` / `CLOUD_DRIFT`. The sole false allowlisted fact is `trafficRetired`; the other twelve Cloud facts were true. Read-only database-session closeout qualified, residuals were empty, and the private plan and binding were deleted with absence readback. The attempt is consumed; no retry is authorized.
+
+The `trafficRetired` predicate combines three conditions: one exact normal revision at 100%, one named candidate revision at 0%, and absence of the old candidate tag. The safe journal does not identify which subcondition failed, so no traffic change or expectation correction is justified yet. Source control flow shows 26 bounded CLI reads, zero HTTPS requests, zero qualification SQL statements and one exact closeout-only SQL statement. No mutation path was used. Provider values, password and dynamic identifiers were not retained in this evidence.
+
+The next decision is whether to authorize a bounded read-only, sanitized traffic-shape diagnostic for only the named service/revisions. It must identify the failed subcondition without exposing raw routing metadata and cannot reuse R05 authority. P08 and 3A remain open; accepted milestones and R1 denominators do not change. **No scope deviation.**
