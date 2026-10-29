@@ -1,0 +1,15 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "status": "LOCAL_PREPARATION_VERIFIED_ONLY",
+  "approvedProposalCommit": "28ca95539d6751e480e600c17dc739dee30e520d",
+  "approvedPurpose": "bounded local traffic-shape sanitizer and isolated tests",
+  "focusedTestsPassed": 16,
+  "existingQualificationTestsPassed": 35,
+  "realProviderReads": 0,
+  "realMutations": 0,
+  "readCeilingForFutureSeparateOperation": 3,
+  "liveTrafficSubcondition": "UNKNOWN",
+  "authenticationOrPaymentAuthorized": false,
+  "acceptedWalkthroughMilestones": 4,
+  "walkthroughDenominator": 8
+}

@@ -1,0 +1,19 @@
+# P08 traffic-shape diagnostic — local preparation result
+
+Section R1-W01 / APP-013 / 3A / P08. Debynyhan Banks approved Alternative 1 in governance `APP013_P08_TRAFFIC_SHAPE_DIAGNOSTIC_PROPOSAL_20261029.md` (commit `28ca955`) for bounded local preparation and isolated tests only. The source of the gap is R05's sole false `trafficRetired` fact; R05 evidence is backend `f458723`. This supports the 3A entry to the admitted same-job Sandbox payment journey without introducing a new release section or changing acceptance.
+
+## Readiness record
+
+| Prerequisite | Inspected source and evidence | Local verification | Current owner/status |
+| --- | --- | --- | --- |
+| R05 traffic predicate and exact Cloud resource pins | Backend `a4c5f49`, `qualification_launch.py` and R05 sanitized journal at 2:16:37 p.m. Eastern October 29 | New helper imports locked R05 CLI descriptors; source hash checks pass. Exact normal/candidate/tag constants are fixed in plan validation. | Implementer: locally verified; current live subcondition UNKNOWN |
+| Provider command/output contract | Existing `gcloud auth list`, `config list`, `run services describe` arguments from `qualification_launch.py`; R05 reached all 26 CLI reads | 16 isolated tests cover exact three-CLI serialization, JSON bytes, null/missing, malformed/oversized, duplicates, tags, percentages, owner and config. | Implementer: mocked boundary verified; current provider shape UNKNOWN |
+| Identity and access | R05 active-owner/override facts true; existing owner principal and project pins in locked source | Strict owner/config checks, no ambient credential override, no bearer or additional permission path. | Owner: current authorization at a future attempt UNKNOWN |
+| Time, retry, interruption and closeout | R05 consumed; proposal `28ca955` | Exact window/cutoff and one-use attempt reservation; child process group kill on timeout; SIGTERM handling; sanitized stop; collision refusal; private 0600 input purge/absence receipt tested. | Implementer: locally verified; future operation timing UNKNOWN |
+| Cost, retention and exclusions | Approved Alternative 1 only; USD0 future read ceiling in proposal | Three CLI reads maximum, zero HTTPS/SQL/Stripe, fixed booleans/counts only in journal, no raw owner/revision/provider output. | Owner: separate external approval required; no spend or mutation authorized |
+
+Source files are `source/traffic_diagnostic.py` SHA256 `1b6170a8a1b825b6f8676efead4142897550fdbe8324a7f7ce2b9915490ef3ef` and `source/test_traffic_diagnostic.py` SHA256 `661fcb34c30e069db329a76569fe854776e3054028f71ca7e1ab123ec2349eb0`. The helper locks the existing R05 model/launcher source hashes and refuses a bare invocation. A later exact private plan/binding, distinct operation proposal and owner decision are required before its native path can read Cloud metadata.
+
+Local checklist: exact classifier and fixed CLI contract complete; positive/negative/malformed/timeout/collision/cleanup cases complete; existing R05 source unchanged; 16 focused tests and 35 existing qualification tests pass; architecture, cross-repository governance baseline, frozen baseline, docs consistency and whitespace pass. Browser and database gates are not applicable to this CLI-only local helper; no provider read or customer flow was demonstrated.
+
+Next observable result, subject to a new exact external-read approval: four fixed traffic facts identifying whether the named normal 100% entry, named candidate 0% entry or old-tag absence failed. A missing candidate entry may be a safe retirement shape, but that remains an inference until a current read and contract review. Do not weaken R05 or change traffic automatically. P08 and 3A remain open; accepted 4/8; newly closed R1 0/27, legacy 6/60, intelligence 0/13. **No scope deviation from approved local preparation.**
