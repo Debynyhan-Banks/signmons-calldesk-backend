@@ -1,0 +1,20 @@
+{
+  "operationId": "edad7640-780f-4b0d-b3b2-8cb6d1e541a7",
+  "attemptReservedAtEastern": "2026-10-29 15:00:31 EDT",
+  "closedAtEastern": "2026-10-29 15:00:33 EDT",
+  "status": "P08_TRAFFIC_SHAPE_DIAGNOSIS_COMPLETE",
+  "cliReads": 3,
+  "entryCount": 2,
+  "facts": {
+    "candidatePresent": false,
+    "candidateZeroExactlyOne": false,
+    "normal100ExactlyOne": true,
+    "oldTagAbsent": true
+  },
+  "falseFacts": ["candidatePresent", "candidateZeroExactlyOne"],
+  "residuals": [],
+  "privateInputsAbsent": true,
+  "providerMutation": false,
+  "qualificationComplete": false,
+  "attemptConsumed": true
+}
