@@ -1,0 +1,7 @@
+# P08 exact traffic-shape read safe stop
+
+Owner-approved operation `581346e1-445f-48f1-909c-b86137a9c1a3` reserved once at 2:45:08 p.m. Eastern on October 29, 2026. The helper returned `P08_TRAFFIC_SHAPE_DIAGNOSIS_STOPPED`; the sanitized journal records `CLI_REFUSED` on the first, owner-list CLI command. No traffic CLI command ran, so the R05 `trafficRetired` subcondition remains UNKNOWN. The journal reports empty residuals, and private plan/binding deletion has an affirmative absence receipt. No mutation path ran. The attempt is consumed/no retry.
+
+The existing helper maps a nonzero CLI exit, oversized stdout or process-launch error to the same fixed `CLI_REFUSED` result, and suppresses stderr. Consequently this evidence cannot distinguish owner authorization from command execution/output failure. Local filesystem inspection confirms the configured `/opt/homebrew/bin/gcloud` symlink resolves to an executable; that does not prove owner authentication or any provider response. No second Cloud command was issued under this approval.
+
+Next decision: approve a bounded local-only safe failure-category correction/test, preserving stderr suppression and the three-command ceiling, or defer. A fresh exact external operation would require separate approval after that preparation. P08 and 3A remain open; accepted 4/8, newly closed R1 0/27, legacy 6/60, intelligence 0/13. **Unintended CLI stop disclosed; no scope deviation implemented.**

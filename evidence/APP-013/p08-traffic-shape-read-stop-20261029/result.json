@@ -1,0 +1,16 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "operationId": "581346e1-445f-48f1-909c-b86137a9c1a3",
+  "startedAtEastern": "2026-10-29T14:45:08-04:00",
+  "closedAtEastern": "2026-10-29T14:45:08-04:00",
+  "status": "P08_TRAFFIC_SHAPE_DIAGNOSIS_STOPPED",
+  "failure": "CLI_REFUSED",
+  "cliAttempts": 1,
+  "trafficCliAttempted": false,
+  "trafficFacts": null,
+  "residuals": [],
+  "privateInputsAbsent": true,
+  "mutations": false,
+  "automaticRetry": false,
+  "attemptConsumed": true
+}
