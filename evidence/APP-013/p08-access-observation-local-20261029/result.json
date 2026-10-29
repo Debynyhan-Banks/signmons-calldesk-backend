@@ -1,0 +1,15 @@
+{
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
+  "approvedProposalCommit": "0ec07ec",
+  "sourceManifestSha256": "4875fcde92b78054d91331d33e7a859ee1cab45a31a651956beaaecd3a0c1b4b",
+  "modelSha256": "2c2f9603cb71957239816f4942549be8277c446cbcc5f2b7bae1f139fd552df4",
+  "launcherSha256": "acaa9dd0248b18a6b95ff4aecb6c71ac278772f5c399ae35a34ceb1f64294dce",
+  "correctedFocusedTestsPassed": 45,
+  "unchangedPredecessorTestsPassed": 43,
+  "disposablePostgreSQLTestsPassed": 3,
+  "realExternalReads": 0,
+  "realExternalMutations": 0,
+  "r09Consumed": true,
+  "p08Accepted": false
+}
