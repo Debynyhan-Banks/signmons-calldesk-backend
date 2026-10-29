@@ -1,0 +1,53 @@
+{
+  "kind": "P08_COMPOSED_QUALIFICATION_LOCAL_PREPARATION_ONLY",
+  "recordedAtUtc": "2026-10-29T11:31:38Z",
+  "governanceApprovalCommit": "635795f",
+  "proposalCommit": "747eec6",
+  "proposalSha256": "8f28bfdeb3b924e6a9c282c9579338ae352ad1fccda93531b7bf5f908849d157",
+  "sourceManifestSha256": "d0557e14ebf46b917de4ebc63684eed3b61db9dd5a273b6527bb8285c8582996",
+  "nativeStatus": "P08_COMPOSED_QUALIFICATION_REFUSED_UNBOUND",
+  "newTests": 15,
+  "reusedRoleTests": 26,
+  "reusedRestorationTests": 31,
+  "reusedAccessTests": 40,
+  "reusedTimelessOperatorReadTests": 14,
+  "reusedAuthenticationTests": 60,
+  "allApplicableFinalTestsPassed": true,
+  "historicalOperatorSuiteAttempt": {
+    "total": 42,
+    "passed": 25,
+    "failedOrErrored": 17,
+    "classification": "STALE_EXPIRED_OR_MISSING_PRIVATE_FIXTURES",
+    "sourceChangedToForcePass": false
+  },
+  "lockedSourcesUnchanged": true,
+  "applicationSourcesChanged": false,
+  "databaseOrSqlChanged": false,
+  "browserOrUiChanged": false,
+  "realCredentialResolutions": 0,
+  "realExternalReads": 0,
+  "realExternalMutations": 0,
+  "realStripeOrPaymentActions": 0,
+  "nativeTransportAvailable": false,
+  "scopeDeviation": false,
+  "verified": [
+    "Strict local plan, source, ownership, prospective-operation, inventory, window and no-retry gates.",
+    "Cloud/runtime, access/roles/services/permissions/key absence, database/job/operator/role and Firebase account domains require exact shapes.",
+    "Disabled service, denied permission or present key is NOT_READY; denial is not key absence; unknown remains UNKNOWN; drift remains DRIFT.",
+    "Stripe and all mutations are absent from the read inventory.",
+    "One exclusive attempt, deadlines, clock rollback, signals, mandatory closeout, secret non-persistence and native refusal are covered."
+  ],
+  "initialFailuresAndCorrections": [
+    "The first inventory test incorrectly treated the required getKeyString permission qualification as a forbidden key-string action; the assertion now distinguishes permission testing from an absent key-string request.",
+    "The full historical operator suite depends on expired October 23 windows and deleted private /private/tmp fixtures; the failure was retained and 14 timeless SQL/classifier/Firebase/closeout contracts were rerun unchanged and passed.",
+    "The unchanged authentication test cannot resolve a checkout path containing spaces; the exact locked snapshot ran from a private no-space scratch directory, all 60 tests passed, and scratch was deleted with absence readback."
+  ],
+  "limitations": [
+    "This is an injected read-adapter model, not a live qualification launcher.",
+    "Current Cloud, database and Firebase facts remain unknown until a separately approved exact attended read-only operation.",
+    "No API enablement path exists; a disabled required service will stop as NOT_READY.",
+    "Local success does not complete P08, 3A or any customer payment capability."
+  ],
+  "acceptedMilestones": "1A/1B/2A/2B = 4/8",
+  "r1Counts": "0/27 newly closed, 6/60 legacy, 0/13 intelligence"
+}
