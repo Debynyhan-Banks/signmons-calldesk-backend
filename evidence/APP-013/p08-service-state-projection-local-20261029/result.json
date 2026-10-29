@@ -1,0 +1,18 @@
+{
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
+  "approvedProposalCommit": "e9b1478",
+  "sourceManifestSha256": "ab3cd392974d7b157b8702fe9f18e8ffb20b570cf19471e4d6e0b1c23af7dbd2",
+  "launcherSha256": "acaa9dd0248b18a6b95ff4aecb6c71ac278772f5c399ae35a34ceb1f64294dce",
+  "serviceGetFields": "state",
+  "serviceGetCount": 6,
+  "httpsRequestCeiling": 10,
+  "maxResponseBytes": 65536,
+  "correctedFocusedTestsPassed": 43,
+  "unchangedPredecessorTestsPassed": 41,
+  "disposablePostgreSQLTestsPassed": 3,
+  "realExternalReads": 0,
+  "realExternalMutations": 0,
+  "r08Consumed": true,
+  "p08Accepted": false
+}
