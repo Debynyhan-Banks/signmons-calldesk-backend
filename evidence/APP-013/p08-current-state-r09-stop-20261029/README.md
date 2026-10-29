@@ -1,0 +1,7 @@
+# P08 R09 read-only qualification safe stop
+
+Section R1-W01 / APP-013 / 3A / P08. Exact owner-approved operation `e31b475c-199e-4ea3-98bb-150be414a06d` reserved its sole attempt at 6:06:39 p.m. Eastern October 29, 2026, before the strict 6:10 cutoff. The owner reported `P08_COMPOSED_QUALIFICATION_LOCAL_STOPPED`. Sanitized journal records Cloud `QUALIFIED` (13 true, zero false), access `UNKNOWN`, fixed failure `ACCESS_UNKNOWN`, read-only closeout `QUALIFIED` and empty residuals. The access domain completed, so the prior Service Usage oversized-response stop did not recur; this does not prove all access prerequisites. Current sanitized evidence does not identify which fixed service, permission or key-absence fact was unknown. Do not infer its cause.
+
+Database and Firebase qualification did not run. No authentication, runtime, IAM, payment or other mutation path ran. The private-input retirement receipt and filesystem readback confirm exact `plan.json` and `binding.json` absent by 6:07:22. No closeout-only invocation was needed. R09 is consumed/no retry; earlier attempts remain independently consumed.
+
+Next decision: bounded local-only access-fact observability using only already-allowlisted names/enums, or defer. No source change or external operation follows from this receipt. P08/3A remain open; accepted walkthrough 4/8, newly closed R1 0/27, legacy 6/60 and intelligence 0/13. **Unintended access-unknown stop disclosed; no scope deviation implemented.**
