@@ -233,6 +233,42 @@ class DiagnosticTests(unittest.TestCase):
         kill.assert_called_once_with(child.pid, diag.signal.SIGKILL)
         self.assertTrue(child.dead)
 
+    def test_native_cli_failure_categories_are_fixed_and_private(self):
+        class CompletedChild:
+            pid = 12345
+            def __init__(self, code, output): self.returncode = code; self.output = output
+            def communicate(self, timeout): return self.output, b"private stderr never captured"
+            def poll(self): return self.returncode
+
+        cases = [
+            (CompletedChild(1, b"private account detail"), "CLI_NONZERO_EXIT"),
+            (CompletedChild(0, b"private account detail" * (diag.MAX_OUTPUT // 10)), "CLI_OUTPUT_TOO_LARGE"),
+        ]
+        for child, code in cases:
+            with self.subTest(code=code), patch.object(diag.subprocess, "Popen", return_value=child):
+                with self.assertRaisesRegex(diag.Stop, code) as caught:
+                    diag.NativeTransport(lambda: NOW).cli(diag.descriptors()[0], NOW + 10)
+                self.assertEqual(str(caught.exception), code)
+        with patch.object(diag.subprocess, "Popen", side_effect=FileNotFoundError("private local path")):
+            with self.assertRaisesRegex(diag.Stop, "CLI_LAUNCH_ERROR") as caught:
+                diag.NativeTransport(lambda: NOW).cli(diag.descriptors()[0], NOW + 10)
+            self.assertEqual(str(caught.exception), "CLI_LAUNCH_ERROR")
+
+    def test_native_fake_nonzero_stop_purges_without_raw_output(self):
+        diag.reserve(self.dir / "plan.json", self.p)
+        diag.reserve(self.dir / "binding.json", self.b)
+        fake = FakeTransport(failure="owner")
+        def nonzero(_descriptor, _deadline):
+            raise diag.Stop("CLI_NONZERO_EXIT")
+        fake.cli = nonzero
+        with patch.object(diag.time, "time", return_value=NOW), patch.object(diag, "NativeTransport", return_value=fake):
+            self.assertEqual(diag.native(["--diagnose", str(self.dir / "plan.json"), str(self.dir / "binding.json"), str(self.dir)]), 2)
+        journal = (self.dir / "journal.json").read_text()
+        self.assertEqual(json.loads(journal)["failure"], "CLI_NONZERO_EXIT")
+        self.assertNotIn(diag.model.OWNER, journal)
+        self.assertFalse((self.dir / "plan.json").exists())
+        self.assertFalse((self.dir / "binding.json").exists())
+
     def test_native_purge_failure_reports_unconfirmed(self):
         diag.reserve(self.dir / "plan.json", self.p)
         diag.reserve(self.dir / "binding.json", self.b)

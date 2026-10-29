@@ -178,10 +178,13 @@ class NativeTransport:
         try:
             self.child = subprocess.Popen(descriptor["argv"], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, start_new_session=True)
             raw, _ = self.child.communicate(timeout=max(0.1, min(15, deadline - self.clock())))
-            need(self.child.returncode == 0 and len(raw) <= MAX_OUTPUT, "CLI_REFUSED")
+            need(self.child.returncode == 0, "CLI_NONZERO_EXIT")
+            need(len(raw) <= MAX_OUTPUT, "CLI_OUTPUT_TOO_LARGE")
             return raw
         except subprocess.TimeoutExpired:
             raise Stop("CLI_TIMEOUT") from None
+        except OSError:
+            raise Stop("CLI_LAUNCH_ERROR") from None
         finally:
             need(self.close(), "CHILD_CONTAINMENT")
 
@@ -213,7 +216,7 @@ def run(plan, binding, directory, transport, clock=time.time):
             raws.append(transport.cli(descriptor, times["readEnd"]))
         observation = classify(*raws)
     except (Stop, KeyboardInterrupt, OSError) as error:
-        failure = error.args[0] if isinstance(error, Stop) else "INTERRUPTED" if isinstance(error, KeyboardInterrupt) else "CLI_REFUSED"
+        failure = error.args[0] if isinstance(error, Stop) else "INTERRUPTED" if isinstance(error, KeyboardInterrupt) else "CLI_LAUNCH_ERROR"
     finally:
         try:
             contained = transport.close() is True

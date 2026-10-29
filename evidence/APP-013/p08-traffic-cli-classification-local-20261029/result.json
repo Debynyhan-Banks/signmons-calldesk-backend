@@ -1,0 +1,20 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "status": "LOCAL_CLI_FAILURE_CLASSIFICATION_VERIFIED_ONLY",
+  "approvedPurpose": "bounded local correction and isolated tests only",
+  "preDecisionGovernanceCommit": "61c7e5dec5ed65e817434df6e8b8258a6bbf0499",
+  "fixedCategories": [
+    "CLI_NONZERO_EXIT",
+    "CLI_OUTPUT_TOO_LARGE",
+    "CLI_LAUNCH_ERROR",
+    "CLI_TIMEOUT"
+  ],
+  "focusedTestsPassed": 18,
+  "unchangedQualificationTestsPassed": 35,
+  "realProviderReads": 0,
+  "realMutations": 0,
+  "priorLiveCliCause": "UNKNOWN",
+  "priorOperationConsumed": true,
+  "acceptedWalkthroughMilestones": 4,
+  "walkthroughDenominator": 8
+}
