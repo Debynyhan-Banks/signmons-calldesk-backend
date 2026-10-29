@@ -1,0 +1,22 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "status": "P08_CONFIG_OUTPUT_CORRECTION_LOCAL_VERIFIED",
+  "approvalCommit": "8675063",
+  "sourceManifestSha256": "830cf5babc2af0eacafe2d191ca5d7eff62aa3338767fc55e72ea257782db85e",
+  "safeConfigShapes": [
+    "AUTH_SECTION_OMITTED",
+    "AUTH_SECTION_EMPTY"
+  ],
+  "unsafeConfigShapesRefused": true,
+  "ambientCredentialOverridesRefused": true,
+  "ambientDatabaseOverridesRefused": true,
+  "focusedModelTests": 33,
+  "qualificationPostgresTests": 3,
+  "roleRegressionTests": 26,
+  "restorationRegressionTests": 37,
+  "accessRegressionTests": 40,
+  "authenticationRegressionTests": 60,
+  "externalReads": 0,
+  "mutations": false,
+  "newOperationAuthorized": false
+}

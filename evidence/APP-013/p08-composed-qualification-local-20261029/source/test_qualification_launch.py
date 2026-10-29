@@ -57,6 +57,38 @@ class Tests(unittest.TestCase):
     def test_fake_transport_proves_exact_counts_and_positive_model(self):
         a=self.adapter();result=model.Coordinator(self.p,a,self.tmp.name,clock=lambda:NOW).run();self.assertEqual(result["status"],"P08_COMPOSED_QUALIFICATION_LOCAL_VERIFIED")
         self.assertEqual(sum(k=="cli" for k,_ in self.io.calls),26);self.assertEqual(sum(k=="https" for k,_ in self.io.calls),10);self.assertEqual(sum(k=="sql" for k,_ in self.io.calls),2);self.assertTrue(self.io.closed);self.assertIsNone(a.token);self.assertIsNone(a.binding["databasePassword"])
+    def test_config_output_accepts_only_two_exact_safe_shapes(self):
+        self.assertEqual(launch.config_output_shape({"core":{"project":model.PROJECT}}),"AUTH_SECTION_OMITTED")
+        self.assertEqual(launch.config_output_shape({"core":{"project":model.PROJECT},"auth":{}}),"AUTH_SECTION_EMPTY")
+        self.io.override["config"]={"core":{"project":model.PROJECT}}
+        result=model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run();self.assertEqual(result["verdict"],"QUALIFIED")
+    def test_config_output_rejects_every_other_shape(self):
+        values=[
+            {"core":{"project":"foreign"}},
+            {"core":{}},
+            {"auth":{}},
+            {"core":{"project":model.PROJECT,"extra":True}},
+            {"core":{"project":model.PROJECT},"auth":{"impersonate_service_account":"foreign"}},
+            {"core":{"project":model.PROJECT},"auth":{},"extra":True},
+            [],
+            "not-json",
+        ]
+        for value in values:
+            self.tearDown();self.setUp();self.io.override["config"]=value
+            result=model.Coordinator(self.p,self.adapter(),self.tmp.name,clock=lambda:NOW).run()
+            expected="CLI_OUTPUT" if value=="not-json" else "CONFIG_OUTPUT"
+            self.assertEqual(result["verdict"],"UNKNOWN");self.assertEqual(result["failure"],expected);self.assertEqual(self.io.calls[-1][0],"close")
+    def test_native_io_refuses_ambient_credential_and_database_overrides(self):
+        cases=[
+            {"GOOGLE_APPLICATION_CREDENTIALS":"foreign.json"},
+            {"CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT":"foreign@example.invalid"},
+            {"CLOUDSDK_AUTH_ACCESS_TOKEN":"private"},
+            {"DATABASE_URL":"postgres://foreign"},
+            {"PGHOST":"foreign"},
+        ]
+        for values in cases:
+            with self.subTest(values=tuple(values)),patch.dict(os.environ,values,clear=True),self.assertRaises(model.Stop):
+                launch.NativeIO(lambda:NOW,self.p["operationId"])
     def test_native_refuses_before_process_network_or_environment(self):
         output=io.StringIO()
         with patch("subprocess.Popen",side_effect=AssertionError("no process")),patch("socket.socket",side_effect=AssertionError("no network")),patch.dict(os.environ,{"GOOGLE_APPLICATION_CREDENTIALS":"do-not-read"}),contextlib.redirect_stdout(output):

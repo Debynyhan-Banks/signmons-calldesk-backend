@@ -41,6 +41,13 @@ TARGET_EMAIL = "debynyhan@signmons.com"
 TARGET_NAME = "Signmons Test Administrator"
 REVOCATION_LOWER_BOUND_MS = 1793020648538
 MAX_OUTPUT = 65536
+CREDENTIAL_OVERRIDE_KEYS = {
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE",
+    "CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT",
+    "CLOUDSDK_AUTH_ACCESS_TOKEN",
+    "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE",
+}
 
 
 def need(value, code):
@@ -150,6 +157,14 @@ def bounded_json(value, code):
     return value
 
 
+def config_output_shape(value):
+    if value == {"core": {"project": model.PROJECT}}:
+        return "AUTH_SECTION_OMITTED"
+    if value == {"core": {"project": model.PROJECT}, "auth": {}}:
+        return "AUTH_SECTION_EMPTY"
+    raise model.Stop("CONFIG_OUTPUT")
+
+
 class Adapter:
     """Turns injected raw transport responses into the accepted strict shapes."""
     def __init__(self, binding, plan, io, clock, mode="qualify"):
@@ -204,7 +219,7 @@ class Adapter:
         secret_states = [self.cli[f"secret_state_{i}"] for i in range(6)]
         secret_policies = [self.cli[f"secret_policy_{i}"] for i in range(7)]
         need(isinstance(owner, list) and len(owner) == 1 and isinstance(owner[0], dict) and set(owner[0]) == {"account", "status"}, "OWNER_OUTPUT")
-        need(isinstance(config, dict) and set(config) == {"core", "auth"}, "CONFIG_OUTPUT")
+        config_shape = config_output_shape(config)
         need(isinstance(project, dict) and set(project) == {"projectId", "projectNumber", "lifecycleState"}, "PROJECT_OUTPUT")
         need(isinstance(bp, dict) and set(bp) == {"billingAccountName", "billingEnabled", "projectId"}, "BILLING_OUTPUT")
         need(isinstance(ba, dict) and set(ba) == {"open"}, "BILLING_OUTPUT")
@@ -215,7 +230,7 @@ class Adapter:
         candidate = [x for x in traffic if x.get("revisionName") == REVISION and x.get("percent", 0) == 0]
         return {
             "ownerExact": owner == [{"account": model.OWNER, "status": "ACTIVE"}],
-            "overridesAbsent": config == {"core": {"project": model.PROJECT}, "auth": {}},
+            "overridesAbsent": config_shape in {"AUTH_SECTION_OMITTED", "AUTH_SECTION_EMPTY"},
             "projectExact": project.get("projectId") == model.PROJECT and project.get("lifecycleState") == "ACTIVE",
             "projectNumberBound": model.digest(self.project_number) == PROJECT_NUMBER_SHA256,
             "billingEnabled": bp.get("billingEnabled") is True and bp.get("projectId") == model.PROJECT,
@@ -299,12 +314,14 @@ class NativeIO:
     """Future exact transport. Construction occurs only after all public gates."""
     def __init__(self, clock, operation_id):
         model.exact_uuid(operation_id, "OPERATION_ID")
+        need(not any(os.environ.get(key) for key in CREDENTIAL_OVERRIDE_KEYS), "CREDENTIAL_OVERRIDE")
+        need(not os.environ.get("DATABASE_URL") and not any(key.startswith("PG") and value for key, value in os.environ.items()), "DATABASE_OVERRIDE")
         self.clock = clock; self.children = set(); self.closed = False; self.binding_operation_id = operation_id.replace("-", "")
 
     def cli(self, descriptor, deadline):
         need(not self.closed and self.clock() < deadline, "CLI_DEADLINE")
         argv = descriptor["argv"]; need(argv and argv[0] == GCLOUD, "CLI_EXECUTABLE")
-        env = {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in {"GOOGLE_APPLICATION_CREDENTIALS", "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE", "CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT", "CLOUDSDK_AUTH_ACCESS_TOKEN", "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE"}}
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
         timeout = max(1, min(30, int(deadline - self.clock())))
         try:
             result = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env, timeout=timeout, check=False)
