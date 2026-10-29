@@ -1,0 +1,20 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "operationId": "56e8b2e6-58ec-46fc-9ba0-c4cbc74918ac",
+  "startedAtEastern": "2026-10-29T08:47:57-04:00",
+  "closedAtEastern": "2026-10-29T08:48:17-04:00",
+  "status": "P08_COMPOSED_QUALIFICATION_LOCAL_STOPPED",
+  "failure": "CONFIG_OUTPUT",
+  "verdict": "UNKNOWN",
+  "completedDomains": [],
+  "closeout": "QUALIFIED",
+  "residuals": [],
+  "cliReads": 26,
+  "httpsRequests": 0,
+  "qualificationSqlStatements": 0,
+  "closeoutSqlStatements": 1,
+  "mutations": false,
+  "automaticRetry": false,
+  "privateInputsAbsent": true,
+  "attemptConsumed": true
+}
