@@ -12,8 +12,12 @@
   "failedStagePersistenceTested": true,
   "providerActionOccurred": false,
   "privateInputPurgeTested": true,
-  "sourceSha256": "8512c89144280b8d97cacd0aca91883322948d920d14052ef08a9558756e3ec7",
-  "status": "P08_EXACT_ROLE_SERVICE_STATE_HTTPS_LOCAL_PASSED",
-  "testsPassed": 23,
-  "testsRun": 23
+  "safePolicyShapeClassifications": 5,
+  "nullBindingsNormalizeToEmpty": true,
+  "malformedPolicyStillRefuses": true,
+  "targetRoleBindingStillRefuses": true,
+  "sourceSha256": "fffd3617c93bc14e6341eb0104abe253e7109925b4e6da10c98f10d367d41e00",
+  "status": "P08_EMPTY_POLICY_NORMALIZATION_LOCAL_PASSED",
+  "testsPassed": 25,
+  "testsRun": 25
 }

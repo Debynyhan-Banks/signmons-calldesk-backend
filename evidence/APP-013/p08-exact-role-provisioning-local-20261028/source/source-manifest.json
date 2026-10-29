@@ -1,11 +1,11 @@
 {
-  "status": "DISABLED_LOCAL_SERVICE_STATE_HTTPS_CORRECTED",
+  "status": "DISABLED_LOCAL_EMPTY_POLICY_NORMALIZED",
   "section": "R1-W01 / APP-013 / 3A / P08",
-  "proposalCommit": "4ba955a",
-  "approvalCommit": "7d10f58",
+  "proposalCommit": "e9bfe05",
+  "approvalCommit": "d0dfc55",
   "files": {
-    "role_provisioner.py": "8512c89144280b8d97cacd0aca91883322948d920d14052ef08a9558756e3ec7",
-    "test_role_provisioner.py": "90f795391b5bfd6cecf79058b0637a74361d309f54e46dfc8fde72d49a07737b"
+    "role_provisioner.py": "fffd3617c93bc14e6341eb0104abe253e7109925b4e6da10c98f10d367d41e00",
+    "test_role_provisioner.py": "53fb3cb79ced56ae7a81118db5580793099b0f198090ed9b42375dac641ba6b5"
   },
   "nativeExternalBinding": true,
   "externalBindingEnabled": false,

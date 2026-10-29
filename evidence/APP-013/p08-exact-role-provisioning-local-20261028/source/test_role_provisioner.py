@@ -75,6 +75,8 @@ class NativeFake:
         self.project_result = None
         self.service_state = "ENABLED"
         self.private_token = "private-token-" + "x" * 24
+        self.project_policy = {"bindings": []}
+        self.identity_policy = {"bindings": []}
 
     def definition(self, role):
         return {
@@ -92,7 +94,8 @@ class NativeFake:
         if command == commands[0]: return p.OWNER
         if command == commands[1]: return p.PROJECT
         if command == commands[2]: return self.private_token
-        if command in commands[3:]: return json.dumps({"bindings": []})
+        if command == commands[3]: return json.dumps(self.project_policy)
+        if command == commands[4]: return json.dumps(self.identity_policy)
         raise AssertionError(command)
 
     def https(self, method, url, headers, body, deadline):
@@ -322,6 +325,49 @@ class ProvisionerTests(unittest.TestCase):
             result = self.native_controller(fake, directory).run()
             self.assertEqual(result["reason"], "COLLISION")
             self.assertFalse(any(item[0] == "HTTPS" and item[1] == "POST" and item[2].startswith(p.IAM_BASE) for item in fake.calls))
+
+    def test_policy_shape_normalizes_only_empty_representations_and_sanitizes_receipts(self):
+        cases = [
+            ({}, "ABSENT"),
+            ({"bindings": None}, "NULL"),
+            ({"bindings": []}, "EMPTY_LIST"),
+            ({"bindings": [{"role": "roles/viewer", "members": ["private-member"]}]}, "NONEMPTY_LIST"),
+        ]
+        for policy, expected in cases:
+            with self.subTest(expected=expected):
+                self.assertEqual(p.policy_shape(policy), expected)
+                self.assertEqual(p.bindings_absent(policy), expected)
+        invalid = [None, [], {"bindings": "private-value"}, {"bindings": [{}]}, {"unexpected": []}]
+        for policy in invalid:
+            with self.subTest(policy=policy):
+                self.assertEqual(p.policy_shape(policy), "INVALID")
+                with self.assertRaises(p.Stop): p.bindings_absent(policy)
+
+        fake = NativeFake()
+        fake.project_policy = {}
+        fake.identity_policy = {"bindings": None}
+        result = self.native_controller(fake).run()
+        self.assertEqual(result["status"], "P08_EXACT_ROLES_CREATED_RETAINED_UNBOUND")
+        self.assertEqual(result["policyShapes"], {"project": "ABSENT", "identity": "NULL"})
+        self.assertNotIn(fake.private_token, json.dumps(result))
+
+    def test_policy_shape_rejects_target_binding_and_other_malformed_drift(self):
+        fake = NativeFake()
+        fake.identity_policy = {"bindings": [{"role": p.ROLES[0]["name"], "members": ["private-member"]}]}
+        result = self.native_controller(fake).run()
+        self.assertEqual((result["reason"], result["failedStage"]), ("BINDING_PRESENT", "CLI_5_IDENTITY_POLICY"))
+        self.assertEqual(result["policyShapes"]["identity"], "NONEMPTY_LIST")
+        self.assertEqual(result["httpsCompleted"], 0)
+        self.assertNotIn("private-member", json.dumps(result))
+
+        with tempfile.TemporaryDirectory(dir=self.root) as directory:
+            os.chmod(directory, 0o700)
+            fake = NativeFake(); fake.identity_policy = {"bindings": [{"members": ["private-member"]}]}
+            result = self.native_controller(fake, directory).run()
+            self.assertEqual((result["reason"], result["failedStage"]), ("ROLE_DRIFT", "CLI_5_IDENTITY_POLICY"))
+            self.assertEqual(result["policyShapes"]["identity"], "INVALID")
+            self.assertEqual(result["httpsCompleted"], 0)
+            self.assertNotIn("private-member", json.dumps(result))
 
     def test_native_lost_response_records_unknown_without_retry(self):
         fake = NativeFake(); fake.lost_create = "signing"

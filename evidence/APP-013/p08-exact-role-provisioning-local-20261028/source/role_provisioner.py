@@ -381,6 +381,7 @@ class NativeProvisioner:
         self.interrupted = False
         self.failed_stage = None
         self.error_category = None
+        self.policy_shapes = {}
         self.journal = {"attempted": [], "created": [], "unknown": [], "verified": []}
 
     def check(self):
@@ -463,12 +464,14 @@ class NativeProvisioner:
             cli_need(self, isinstance(bearer, str) and 20 <= len(bearer) <= 8192, "CLI_SHAPE", CLI_STAGES[2])
             project_policy = cli_json(self, self.cli(commands[3], CLI_STAGES[3]), CLI_STAGES[3])
             identity_policy = cli_json(self, self.cli(commands[4], CLI_STAGES[4]), CLI_STAGES[4])
+            self.policy_shapes["project"] = policy_shape(project_policy)
             try:
                 bindings_absent(project_policy)
             except Stop:
                 self.failed_stage = CLI_STAGES[3]
                 self.error_category = "UNKNOWN"
                 raise
+            self.policy_shapes["identity"] = policy_shape(identity_policy)
             try:
                 bindings_absent(identity_policy)
             except Stop:
@@ -534,6 +537,7 @@ class NativeProvisioner:
                 "createdCount": 2, "verifiedCount": 2, "retainedUnbound": True,
                 "definitionSha256": definitions, "cliCompleted": self.cli_count,
                 "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
+                "policyShapes": self.policy_shapes,
                 "rawOutputRetained": False, "privateInputsAbsent": False,
             }
         except BaseException as error:
@@ -543,6 +547,7 @@ class NativeProvisioner:
                 "unknownCount": len(self.journal["unknown"]), "cliCompleted": self.cli_count,
                 "httpsCompleted": self.https_count, "callsCompleted": self.cli_count + self.https_count,
                 "failedStage": self.failed_stage, "errorCategory": self.error_category,
+                "policyShapes": self.policy_shapes,
                 "rawOutputRetained": False, "privateInputsAbsent": False,
             }
         finally:
@@ -708,16 +713,32 @@ def exact_definition(value, role):
     }
 
 
+def policy_shape(value):
+    if not isinstance(value, dict) or not set(value) <= {"bindings", "etag", "version"}:
+        return "INVALID"
+    if "bindings" not in value:
+        return "ABSENT"
+    bindings = value["bindings"]
+    if bindings is None:
+        return "NULL"
+    if not isinstance(bindings, list):
+        return "INVALID"
+    if not bindings:
+        return "EMPTY_LIST"
+    if not all(isinstance(binding, dict) and isinstance(binding.get("role"), str) for binding in bindings):
+        return "INVALID"
+    return "NONEMPTY_LIST"
+
+
 def bindings_absent(value):
-    need(isinstance(value, dict) and set(value) <= {"bindings", "etag", "version"}, "ROLE_DRIFT")
-    bindings = value.get("bindings", [])
-    need(isinstance(bindings, list), "ROLE_DRIFT")
+    shape = policy_shape(value)
+    need(shape != "INVALID", "ROLE_DRIFT")
+    bindings = value.get("bindings") or []
     role_names = {role["name"] for role in ROLES}
     for binding in bindings:
-        need(isinstance(binding, dict) and isinstance(binding.get("role"), str), "ROLE_DRIFT")
         if binding["role"] in role_names:
             raise Stop("BINDING_PRESENT")
-    return True
+    return shape
 
 
 def reserve(path, value):
