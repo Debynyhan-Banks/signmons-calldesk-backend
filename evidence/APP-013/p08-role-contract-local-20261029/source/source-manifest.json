@@ -1,0 +1,18 @@
+{
+  "files": {
+    "composed_qualification.py": "2c2f9603cb71957239816f4942549be8277c446cbcc5f2b7bae1f139fd552df4",
+    "qualification_launch.py": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18",
+    "test_composed_qualification.py": "744c8ecc41e20bc7c30202b3b3ef5e4ae9d5fe172247eca490d22d1f3d122985",
+    "test_qualification_launch.py": "bf97fe4b850c3f6a1df6f1ee7a048376e3521a00df083234f3a1065d918f044d",
+    "test_qualification_launch_postgres.py": "f36936035da9f3069a19d51a098b3df7dc3e4da8e3664d4f3928175ae0233b21"
+  },
+  "lockedSources": {
+    "access": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576",
+    "firebase": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
+    "operator": "7b43d332625bbf7f2735187bf5709f0e6ff58c975d98c1b4aef33f911f77807c",
+    "restoration": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "roles": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9"
+  },
+  "ownershipSha256": "65409264d701edf8201878f6d058dfbbc3302412e683b36913a81b4578e6b668",
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY"
+}

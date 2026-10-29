@@ -1,0 +1,17 @@
+{
+  "section": "R1-W01 / APP-013 / 3A / P08",
+  "status": "LOCAL_ROLE_CONTRACT_CORRECTION_VERIFIED_DISABLED",
+  "providerAction": false,
+  "liveQualification": false,
+  "newModelTestsPassed": 19,
+  "newLauncherTestsPassed": 29,
+  "newDisposablePostgresTestsPassed": 3,
+  "predecessorModelTestsPassed": 19,
+  "predecessorLauncherTestsPassed": 26,
+  "nativeUnboundRefused": true,
+  "sourceManifestSha256": "21ab3557a8817a011dc3b8317bebe9f1eec847f57dbdeb1dc0d720eb6ef6900f",
+  "launcherSha256": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18",
+  "apiKeysServiceResolved": false,
+  "r10Consumed": true,
+  "acceptedWalkthrough": "4/8"
+}
