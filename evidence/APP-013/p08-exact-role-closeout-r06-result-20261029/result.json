@@ -1,0 +1,21 @@
+{
+  "absentCount": 0,
+  "callsCompleted": 7,
+  "cliCompleted": 5,
+  "containment": "VERIFIED",
+  "definitionShapes": {
+    "lookup": "EXACT_ACTIVE_DEFAULTED",
+    "signing": "EXACT_ACTIVE_DEFAULTED"
+  },
+  "externalMutationAttempted": false,
+  "httpsCompleted": 2,
+  "operationId": "e9124155-47a9-4478-a8de-3e435d67459a",
+  "privateInputsAbsent": true,
+  "processesAbsent": true,
+  "rawOutputRetained": false,
+  "reconciledRetainedCount": 2,
+  "residualCount": 0,
+  "retainedUnbound": true,
+  "retryAllowed": false,
+  "status": "P08_EXACT_ROLE_CLOSEOUT_VERIFIED"
+}
