@@ -1,0 +1,13 @@
+{
+  "status": "DISABLED_LOCAL_ONLY",
+  "files": {
+    "auth-authority-owned.mjs": "d334685e5867a17364b2d92b8a5e53867cade3527f20a71f7ae5ca8ed94d0681",
+    "auth-controller.mjs": "a0ae26bc39cc6ee34080c38408659a2fa93d5c77f726ee0438240bd951b9d4a8",
+    "auth-handoff.mjs": "252e88f5659b7e5f3f8e4d0cabf5b5b06a1a90902ec66df6c230026aa992aec5",
+    "auth-handoff.test.mjs": "029f5bd09ca01179c1f9b7cde9b8ae9e12b2cc06a380b1f148f14fab5ec678c7"
+  },
+  "lockedExternal": {
+    "../../../p08-native-bridge-local-20261029/source/owned-key-authority.mjs": "0a5c902a963c035010d00b9b98d52ec40f27bd1350d0891d7baf62260d5f613f",
+    "../../../p08-authentication-local-20261026/source/auth-controller.mjs": "57ab0853630112145e81e10143b05099b2a446f7f450d0eff4598540528ef0c4"
+  }
+}

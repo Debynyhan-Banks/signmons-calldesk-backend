@@ -1,0 +1,28 @@
+// Fresh disabled authority copy: historical source remains immutable.
+import {plan as bridgePlan} from '../../../p08-authentication-local-20261026/source/reuse/operator-bridge.mjs';
+import {readFileSync,lstatSync,realpathSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+export const hash=v=>createHash('sha256').update(typeof v==='string'||Buffer.isBuffer(v)?v:JSON.stringify(v)).digest('hex');
+export const need=(v,c)=>{if(!v)throw Object.assign(Error(c),{code:c})};
+const caps=new WeakMap();const uuid=v=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v);
+export const privateJson=path=>{const s=lstatSync(path);need(!s.isSymbolicLink()&&s.isFile()&&realpathSync(path)===path&&(s.mode&0o777)===0o600,'PRIVATE_INPUT');return JSON.parse(readFileSync(path))};
+export function authorize(p,a,{now=Date.now,proposal,sources,ownership,mode='authenticate'}={}){
+ need(p?.status==='PROPOSED_EXACT_OPERATOR_AUTHENTICATION'&&p.automaticRetryAllowed===false,'EXACT_OPERATION_REQUIRED');
+ need(uuid(p.operationId)&&uuid(p.target?.id)&&uuid(p.target?.tenantId)&&p.target.role==='ADMIN'&&p.target.status==='DISABLED'&&typeof p.target.email==='string'&&p.target.fullName==='Signmons Test Administrator','TARGET_REQUIRED');
+ need(Object.keys(p.target).sort().join(',')==='email,fullName,id,role,status,tenantId'&&p.target.tenantId==='a1adcfd4-15be-404b-9ac3-5edb1fda20f0'&&p.jobId==='9180bef4-561d-47a0-869f-925e6a3dfd96','EXACT_JOB_TENANT');
+ need(ownership?.appOwned===true&&ownership.firebaseOwned===true&&ownership.claimsSet===true&&ownership.status==='LOCAL_DISABLED_PAIR_CLOSED'&&ownership.stage==='CLOSEOUT_FINISHED'&&!ownership.appUncertain&&!ownership.firebaseUncertain&&ownership.residuals?.length===0&&ownership.targetHash===hash(p.target)&&hash(ownership)===p.ownershipSha256,'OWNERSHIP_REQUIRED');
+ need(p.ownershipPath==='/private/tmp/p08-account-proof-0bac708b-c4fb-4440-b9c6-f26ded85ea73/journal.json'&&ownership.operationId==='0bac708b-c4fb-4440-b9c6-f26ded85ea73','OWNERSHIP_PROVENANCE');
+ need(p.ownerPrincipal===p.target.email&&p.ownerPrincipalHash===hash(p.ownerPrincipal),'OWNER_REQUIRED');
+ need(p.database?.host==='ep-jolly-flower-ayc6w9hv.c-5.us-east-2.aws.neon.tech'&&p.database.database==='neondb'&&p.database.user==='neondb_owner'&&p.database.port===5432&&p.database.tls==='VERIFY_FULL','DATABASE_TARGET');
+ need(p.proposalCommit?.match(/^[a-f0-9]{40}$/)&&hash(proposal)===p.proposalSha256,'PROPOSAL_SOURCE');
+ need(a?.owner==='Debynyhan Banks'&&a.externalActionAuthorized===true&&a.decision==='APPROVE_EXACT_OPERATOR_AUTHENTICATION'&&a.operationId===p.operationId&&a.planSha256===hash(p)&&a.proposalCommit===p.proposalCommit&&a.proposalSha256===p.proposalSha256&&a.questionCallId?.startsWith('call_')&&a.sourceManifestSha256===hash(sources),'EXACT_OWNER_APPROVAL_REQUIRED');
+ need(p.actions?.join(',')==='ownerOAuth,exactAccountRead,conditionalActivation,signBlob,exchange,exactJobRead,disable,revoke,sessionReadback,privatePurge,exactApiKeyRead','ACTION_PLAN');
+ need(p.signing?.serviceAccount==='signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'&&p.exchange?.keyResource?.match(/^projects\/[0-9]{6,20}\/locations\/global\/keys\/signmons-p08-[a-f0-9]{32}$/)&&/^[a-f0-9]{64}$/.test(p.exchange.keySha256??''),'SIGNING_EXCHANGE_UNBOUND');
+ const origin=new URL(p.runtime?.origin??'https://invalid.invalid');need(origin.protocol==='https:'&&origin.hostname.endsWith('.run.app')&&origin.origin===p.runtime.origin&&p.runtime.origin===bridgePlan.origin&&p.runtime.jobId===p.jobId&&p.runtime.tenantId===p.target.tenantId&&p.runtime.devAuthEnabled===false&&p.runtime.revocationRequired===true&&p.runtime.identityQualified===true&&p.runtime.restorationApproved===true&&p.runtime.serviceAccount===p.signing.serviceAccount&&p.runtime.revision==='signmons-calldesk-staging-app013p07atomic1'&&p.runtime.image==='us-east5-docker.pkg.dev/signmons/signmons/signmons-calldesk-backend@sha256:36f887749947c0b01db683482c081ca663534e7ffe597560b24597f3d46be9da'&&p.runtime.sourceSha256?.match(/^[a-f0-9]{64}$/)&&Number.isFinite(Date.parse(p.runtime.qualifiedUntil)),'RUNTIME_UNQUALIFIED');
+ const w=p.window;need(w&&Object.keys(w).sort().join(',')==='cleanupEnd,cutoff,purgeEnd,start,workEnd'&&Object.values(w).every(v=>/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(v)),'WINDOW_FORMAT');
+ const t=Object.fromEntries(Object.entries(w).map(([k,v])=>[k,Date.parse(v)]));need(t.start<t.cutoff&&t.cutoff<t.workEnd&&t.workEnd<t.cleanupEnd&&t.cleanupEnd<t.purgeEnd&&t.purgeEnd-t.start<=3600000&&Date.parse(p.runtime.qualifiedUntil)>=t.cleanupEnd,'WINDOW_ORDER');need(['authenticate','closeout'].includes(mode),'MODE');need(now()>=t.start,'BEFORE_START');need(now()<(mode==='authenticate'?t.cutoff:t.cleanupEnd),'START_CUTOFF');
+ const cap=Object.freeze({});caps.set(cap,{p:structuredClone(p),t,now,mode});return cap;
+}
+export function gate(cap,cleanup=false){const c=caps.get(cap);need(c,'CAPABILITY_REQUIRED');need(c.now()>=c.t.start&&c.now()<(cleanup?c.t.cleanupEnd:c.t.workEnd),'OPERATION_DEADLINE');if(!cleanup)need(c.mode==='authenticate','CLOSEOUT_ONLY');return c}
+export function exactIdentity(f,s,disabled){need(f?.uid===s.id&&f.email===s.email&&f.displayName===s.fullName&&f.disabled===disabled&&f.emailVerified===false,'IDENTITY_DRIFT');need(JSON.stringify(Object.keys(f.customClaims??{}).sort())===JSON.stringify(['role','tenantId','testOnly'])&&f.customClaims.tenantId===s.tenantId&&f.customClaims.role==='admin'&&f.customClaims.testOnly===true,'CLAIMS_DRIFT');return f}
+export function exactApp(u,s,status){need(u?.id===s.id&&u.tenantId===s.tenantId&&u.email===s.email&&u.fullName===s.fullName&&u.role==='ADMIN'&&u.status===status,'APPLICATION_DRIFT');return u}
