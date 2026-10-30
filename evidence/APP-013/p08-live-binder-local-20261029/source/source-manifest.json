@@ -1,0 +1,8 @@
+{
+  "bridgeSha256": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce",
+  "files": {
+    "closeout.py": "801f18a9c23404a751fbc8a56c935c13f27174422fffb13be004832a85a5e6af",
+    "test_closeout.py": "2d4f25be0ccf489c5025a7f1d2328735136dd6786e40d9995d811618a1fcb582"
+  },
+  "status": "DISABLED_LOCAL_ONLY"
+}
