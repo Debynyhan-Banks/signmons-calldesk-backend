@@ -1,0 +1,23 @@
+{
+  "files": {
+    "bound-child.mjs": "8d817ef9a473e9712ae59f3ebdb8a9c863cd4c166d0b3f5c3497f042b2f6062f",
+    "bound-clients.mjs": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1",
+    "bound_handoff.py": "d768ff2436a9e459c6f67a66d7ff9cf8d300fe6aac45ed380bb0cfe157152fb2",
+    "recovery-sequence.mjs": "2bc5d0c5f214fcf4c4c2ade475ad46ac895179935f9a8bedb510096071b933cb",
+    "test_bound.mjs": "8a199f902344f7ab6a8b1d46794dae4a9c029d779596b33da0f8b6a521902868",
+    "test_bound.py": "a2604c5b52435fc5de19b41026fcbf3aab461691ba1ef38ee53b6be6bb324f24"
+  },
+  "sourceLocks": {
+    "adapter": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c",
+    "authority": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
+    "bridge": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce",
+    "bridge_plan": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",
+    "client": "0ae21eed01f6d0af2fc5497e825f9c05a5ecd3a0f75476616b04d81054d589c9",
+    "coordinator": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
+    "historical_adapters": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
+    "historical_launch": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
+    "sequence": "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c",
+    "serialized_handoff": "5c8c1be27f6056db550045a66cdb470e353afb86ee7d0e81a11c37f5a028809e"
+  },
+  "status": "DISABLED_LOCAL_ONLY"
+}
