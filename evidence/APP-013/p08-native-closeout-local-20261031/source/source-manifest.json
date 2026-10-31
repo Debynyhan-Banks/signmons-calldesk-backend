@@ -1,0 +1,9 @@
+{
+  "status": "DISABLED_LOCAL_ONLY",
+  "coordinatorSha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
+  "files": {
+    "adapter.py": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c",
+    "test_adapter.py": "c1b6e8a75477032b9d8d78981fc2bc00fd27bc86dd1bc805474442308318f40f",
+    "fixture_handoff.mjs": "4b0e38e15e93d321e70a07f0085b60da7b4b10828a7af35227798148c187bcb1"
+  }
+}
