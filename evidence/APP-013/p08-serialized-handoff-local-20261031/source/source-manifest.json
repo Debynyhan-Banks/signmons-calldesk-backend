@@ -1,0 +1,17 @@
+{
+  "files": {
+    "child.mjs": "0cc64f264663eb9a8a9d21617ff98974643ceb2b2b2b4e5f5d1548691cb84186",
+    "handoff.py": "5c8c1be27f6056db550045a66cdb470e353afb86ee7d0e81a11c37f5a028809e",
+    "test_handoff.py": "e4d79266e80a902a196f9008bbb2082d9c42871873a3d92e634822f0aca054a2"
+  },
+  "sourceLocks": {
+    "adapter": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c",
+    "authority": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
+    "bridge": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce",
+    "bridge_plan": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",
+    "client": "0ae21eed01f6d0af2fc5497e825f9c05a5ecd3a0f75476616b04d81054d589c9",
+    "coordinator": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
+    "sequence": "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c"
+  },
+  "status": "DISABLED_LOCAL_ONLY"
+}
