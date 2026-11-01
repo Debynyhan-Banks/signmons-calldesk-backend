@@ -1,0 +1,575 @@
+"""Local entry proofs only: synthetic config/cache/HTTP; no user credentials or provider access."""
+import copy
+import datetime as dt
+import fcntl
+import io
+import json
+import os
+from pathlib import Path
+import shutil
+import sqlite3
+import tempfile
+import socket
+import subprocess
+import sys
+import time
+import unittest
+import uuid
+from unittest.mock import patch
+
+import access_check as a
+
+def make_cache(root,expires):
+    root=Path(root);os.chmod(root,0o700)
+    (root/'configurations').mkdir(mode=0o700)
+    (root/'active_config').write_text('default\n')
+    (root/'configurations/config_default').write_text('[core]\naccount = '+a.OWNER+'\nproject = signmons\n')
+    path=root/'access_tokens.db';c=sqlite3.connect(path)
+    c.execute(a.CACHE_SCHEMA)
+    expiry=dt.datetime.fromtimestamp(expires,dt.timezone.utc).replace(tzinfo=None).isoformat(' ')
+    c.execute('INSERT INTO access_tokens(account_id,access_token,token_expiry) VALUES (?,?,?)',
+              (a.OWNER,'SYNTHETIC_BEARER_NEVER_PERSIST',expiry))
+    c.execute('INSERT INTO access_tokens(account_id,access_token,token_expiry) VALUES (?,?,?)',
+              ('other@example.invalid','OTHER_ACCOUNT_MUST_NOT_READ',expiry))
+    c.commit();c.close();os.chmod(path,0o600)
+    return path
+
+class CacheTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-cache-synthetic-')
+        self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
+        self.end=time.time()+600;self.db=make_cache(self.root,self.end+1000)
+    def read(self):return a.read_cached_token(self.root,self.end,env={})
+    def mutate(self,sql,params=()):
+        c=sqlite3.connect(self.db);c.execute(sql,params);c.commit();c.close()
+    def inventory(self):
+        return {str(p.relative_to(self.root)):(p.read_bytes(),p.stat().st_mode,p.stat().st_mtime_ns)
+                for p in self.root.rglob('*') if p.is_file()}
+    def test_exact_owner_read_no_network_no_other_secret_no_cache_or_sidecar_write(self):
+        before=self.inventory();queries=[];original=a.cache_query
+        def query(c,q,params=()):
+            queries.append((q,params));return original(c,q,params)
+        with patch.object(a,'cache_query',side_effect=query),patch.object(socket.socket,'connect',side_effect=AssertionError('NETWORK_FORBIDDEN')):
+            self.assertEqual(self.read(),'SYNTHETIC_BEARER_NEVER_PERSIST')
+        self.assertEqual(queries,[(a.SCHEMA_QUERY,()),(a.TOKEN_QUERY,(a.OWNER,))])
+        self.assertEqual(before,self.inventory())
+    def test_missing_foreign_or_expired_cached_token_refuses_without_refresh(self):
+        for expiry in [None,'not-a-date','2020-01-01 00:00:00',dt.datetime.fromtimestamp(self.end,dt.timezone.utc).replace(tzinfo=None).isoformat(' '),'2099-01-01T00:00:00+00:00']:
+            self.mutate('UPDATE access_tokens SET token_expiry=? WHERE account_id=?',(expiry,a.OWNER))
+            with self.subTest(expiry=expiry),self.assertRaises(a.Stop):self.read()
+        self.mutate('DELETE FROM access_tokens WHERE account_id=?',(a.OWNER,))
+        with self.assertRaisesRegex(a.Stop,'CACHED_TOKEN_MISSING'):self.read()
+    def test_token_shape_and_restrictions_refuse(self):
+        for token in [None,'','short','x'*4097,'x'*25+'\nHeader:bad']:
+            self.mutate('UPDATE access_tokens SET access_token=? WHERE account_id=?',(token,a.OWNER))
+            with self.assertRaisesRegex(a.Stop,'TOKEN_SHAPE'):self.read()
+        self.mutate('UPDATE access_tokens SET access_token=?,regional_access_boundary=? WHERE account_id=?',('x'*25,'restricted',a.OWNER))
+        with self.assertRaisesRegex(a.Stop,'TOKEN_RESTRICTION_UNSUPPORTED'):self.read()
+    def test_schema_and_missing_database_fail_without_creation(self):
+        self.mutate('ALTER TABLE access_tokens ADD COLUMN unexpected TEXT')
+        with self.assertRaisesRegex(a.Stop,'CACHE_SCHEMA_UNSUPPORTED'):self.read()
+        self.db.unlink()
+        with self.assertRaisesRegex(a.Stop,'CACHE_READ_UNCONFIRMED'):self.read()
+        self.assertFalse(self.db.exists())
+    def test_symlink_hardlink_mode_and_owner_refuse(self):
+        original=self.db.with_suffix('.original');self.db.rename(original);self.db.symlink_to(original)
+        with self.assertRaisesRegex(a.Stop,'CACHE_FILE_UNSAFE'):self.read()
+        self.db.unlink();os.link(original,self.db)
+        with self.assertRaisesRegex(a.Stop,'CACHE_FILE_UNSAFE'):self.read()
+        self.db.unlink();original.rename(self.db);os.chmod(self.db,0o644)
+        with self.assertRaisesRegex(a.Stop,'CACHE_FILE_UNSAFE'):self.read()
+        os.chmod(self.db,0o600)
+        with patch.object(a.os,'getuid',return_value=os.getuid()+1),self.assertRaises(a.Stop):self.read()
+    def test_config_identity_unknown_sections_defaults_and_environment_refuse(self):
+        config=self.root/'configurations/config_default';original=config.read_text()
+        for text in [original.replace(a.OWNER,'foreign'),original+'universe_domain = other.example\n',
+                     original+'[auth]\naccess_token_file = forbidden\n',original+'[proxy]\naddress = foreign\n',
+                     '[DEFAULT]\naccount = '+a.OWNER+'\n[core]\nproject = signmons\n',original+'api_endpoint_overrides = foreign\n']:
+            config.write_text(text)
+            with self.assertRaises(a.Stop):self.read()
+        config.write_text(original)
+        for key in ['CLOUDSDK_CONFIG','CLOUDSDK_CORE_ACCOUNT','GOOGLE_APPLICATION_CREDENTIALS','HTTPS_PROXY','https_proxy','SSL_CERT_FILE','PGHOST','DATABASE_URL']:
+            with self.subTest(key=key),self.assertRaisesRegex(a.Stop,'CREDENTIAL_OVERRIDE'):
+                a.read_cached_token(self.root,self.end,env={key:'forbidden'})
+    def test_journals_and_wal_format_refuse_without_side_effects(self):
+        for suffix in ['-journal','-wal','-shm']:
+            p=Path(str(self.db)+suffix);p.write_bytes(b'synthetic')
+            before=self.inventory()
+            with self.assertRaisesRegex(a.Stop,'CACHE_JOURNAL_UNSUPPORTED'):self.read()
+            self.assertEqual(before,self.inventory());p.unlink()
+        with self.db.open('r+b') as f:f.seek(18);f.write(b'\x02\x02')
+        with self.assertRaisesRegex(a.Stop,'CACHE_FORMAT_UNSUPPORTED'):self.read()
+    def test_authorizer_and_query_allowlist_deny_mutations_and_other_secrets(self):
+        original=a.cache_query
+        def query(c,q,params=()):
+            if q==a.TOKEN_QUERY:
+                for sql in ['DELETE FROM access_tokens','CREATE TABLE evil(x)','ATTACH DATABASE ":memory:" AS evil',
+                            'PRAGMA user_version=1','SELECT rapt_token FROM access_tokens','SELECT id_token FROM access_tokens',
+                            'SELECT load_extension("evil")']:
+                    with self.subTest(sql=sql),self.assertRaises(sqlite3.DatabaseError):c.execute(sql)
+                with self.assertRaisesRegex(a.Stop,'CACHE_QUERY_SCOPE'):original(c,'SELECT access_token FROM access_tokens')
+            return original(c,q,params)
+        before=self.inventory()
+        with patch.object(a,'cache_query',side_effect=query):self.read()
+        self.assertEqual(before,self.inventory())
+    def test_competing_real_sqlite_writer_is_blocked_during_query(self):
+        original=a.cache_query
+        def query(c,q,params=()):
+            if q==a.TOKEN_QUERY:
+                r=subprocess.run([sys.executable,'-c',
+                  "import sqlite3,sys;c=sqlite3.connect(sys.argv[1],timeout=0)\ntry:c.execute('DELETE FROM access_tokens');c.commit();print('UNSAFE')\nexcept sqlite3.OperationalError:print('BLOCKED')",str(self.db)],capture_output=True,text=True,timeout=5)
+                self.assertEqual(r.stdout.strip(),'BLOCKED',r.stderr)
+            return original(c,q,params)
+        before=self.inventory()
+        with patch.object(a,'cache_query',side_effect=query):self.read()
+        self.assertEqual(before,self.inventory())
+    def test_existing_writer_refuses_without_wait_or_retry(self):
+        child=subprocess.Popen([sys.executable,'-u','-c',
+          "import sqlite3,sys;c=sqlite3.connect(sys.argv[1],timeout=0);c.execute('BEGIN IMMEDIATE');print('LOCKED',flush=True);sys.stdin.readline();c.rollback();c.close()",str(self.db)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+        try:
+            self.assertEqual(child.stdout.readline().strip(),'LOCKED')
+            with self.assertRaisesRegex(a.Stop,'CACHE_BUSY'):self.read()
+        finally:
+            child.communicate('done\n',timeout=5)
+        self.assertEqual(child.returncode,0)
+    def test_database_replacement_and_config_drift_refuse(self):
+        original=a.cache_query
+        def query(c,q,params=()):
+            result=original(c,q,params)
+            if q==a.TOKEN_QUERY:
+                replacement=self.root/'replacement.db';shutil.copyfile(self.db,replacement);os.chmod(replacement,0o600);os.replace(replacement,self.db)
+            return result
+        with patch.object(a,'cache_query',side_effect=query),self.assertRaisesRegex(a.Stop,'CACHE_CHANGED'):self.read()
+        def config_change(c,q,params=()):
+            result=original(c,q,params)
+            if q==a.TOKEN_QUERY:(self.root/'active_config').write_text('other')
+            return result
+        with patch.object(a,'cache_query',side_effect=config_change),self.assertRaises(a.Stop):self.read()
+    def test_query_exception_closes_connection_and_releases_writer_lock(self):
+        original=a.cache_query
+        with patch.object(a,'cache_query',side_effect=RuntimeError('PRIVATE_TOKEN_NEVER_EXPORT')):
+            with self.assertRaisesRegex(a.Stop,'^CACHE_READ_UNCONFIRMED$'):self.read()
+        r=subprocess.run([sys.executable,'-c',"import sqlite3,sys;c=sqlite3.connect(sys.argv[1],timeout=0);c.execute('BEGIN IMMEDIATE');c.rollback();c.close()",str(self.db)],capture_output=True,text=True,timeout=5)
+        self.assertEqual(r.returncode,0,r.stderr)
+
+    def test_config_file_symlink_and_cache_oversize_refuse(self):
+        path=self.root/'active_config';original=self.root/'old_config';path.rename(original);path.symlink_to(original)
+        with self.assertRaisesRegex(a.Stop,'CACHE_FILE_UNSAFE'):self.read()
+        path.unlink();original.rename(path)
+        with self.db.open('r+b') as f:f.truncate(16*1024*1024+1)
+        with self.assertRaisesRegex(a.Stop,'CACHE_FILE_UNSAFE'):self.read()
+    def test_total_cache_deadline_closes_database_and_releases_lock(self):
+        def slow_query(*args):time.sleep(.1)
+        with patch.object(a,'cache_query',side_effect=slow_query):
+            with self.assertRaisesRegex(a.Stop,'HTTP_TIMEOUT'):
+                with a.http_deadline(.02):self.read()
+        r=subprocess.run([sys.executable,'-c',"import sqlite3,sys;c=sqlite3.connect(sys.argv[1],timeout=0);c.execute('BEGIN IMMEDIATE');c.rollback();c.close()",str(self.db)],capture_output=True,text=True,timeout=5)
+        self.assertEqual(r.returncode,0,r.stderr)
+
+class FakeIO:
+    proof=True
+    def __init__(self,case,cap):self.case=case;self.cap=cap;self.calls=[];self.closed=False
+    def cached_token(self,deadline):
+        self.calls.append(('cache',0))
+        if self.case.break_at==len(self.calls):raise a.Stop('INTERRUPTED')
+        return 'SYNTHETIC_BEARER_NEVER_PERSIST'
+    def https(self,i,number,token,deadline):
+        self.calls.append(('https',i))
+        if self.case.break_at==len(self.calls):raise a.Stop('INTERRUPTED')
+        self.case.assertEqual(number,None if i==0 else self.case.number)
+        self.case.assertEqual(token,'SYNTHETIC_BEARER_NEVER_PERSIST')
+        values=[{'projectId':'signmons','projectNumber':self.case.number,'lifecycleState':'ACTIVE'},
+          *[json.loads(v) for v in self.case.role_json],
+          {'permissions':a.PROJECT_PERMISSIONS},{'permissions':a.IDENTITY_PERMISSIONS},
+          {'name':a.http_contract(number)[5]['url'].split('/v1/')[1],'state':self.case.service}]
+        return self.case.http_override.get(i,{'status':200,'body':json.dumps(values[i]).encode()})
+    def close(self):self.closed=True;return not self.case.close_failure
+
+class AccessTests(unittest.TestCase):
+    def setUp(self):
+        self.number='123456789012'
+        self.original_project_hash=a.PROJECT_HASH
+        self.hash_patch=patch.object(a,'PROJECT_HASH',a.digest(self.number));self.hash_patch.start();self.addCleanup(self.hash_patch.stop)
+        op=str(uuid.uuid4());self.root=Path('/private/tmp/p08-access-check-'+op);self.root.mkdir(mode=0o700)
+        self.addCleanup(lambda:shutil.rmtree(self.root))
+        now=int(time.time())-1
+        iso=lambda n:dt.datetime.fromtimestamp(now+n,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        self.p={'version':2,'section':'APP-013/3A/P08','operationId':op,'execution':'PROOF_ONLY',
+          'project':'signmons','ownerPrincipal':a.OWNER,'identity':a.IDENTITY,'projectNumberSha256':a.PROJECT_HASH,
+          'contractSha256':a.contract_hash(),'limits':dict(a.LIMITS),
+          'window':dict(zip(('start','cutoff','readEnd','closeoutEnd','purgeEnd'),map(iso,(0,120,240,540,600)))),
+          'sourceManifestSha256':a.digest((a.HERE/'source-manifest.json').read_bytes()),'sourceCommit':'0'*40}
+        self.path=self.root/'plan.json';self.seal()
+        self.role_json=[]
+        for role in a.sources()[1].ROLES:
+            self.role_json.append(json.dumps({'name':role['name'],'title':role['title'],
+              'description':role['description'],'includedPermissions':[role['permission']],'stage':'GA'}))
+        self.http_override={};self.service='ENABLED';self.close_failure=False
+        self.break_at=None;self.io=None;self.factory_calls=0
+    def seal(self):
+        self.p['decision']={'decision':'APPROVE_LOCAL_NARROW_ACCESS_PROOF','scopeSha256':a.digest({k:v for k,v in self.p.items() if k!='decision'})}
+        if self.path.exists():self.path.unlink()
+        a.reserve(self.path,self.p)
+    def factory(self,cap):
+        self.factory_calls+=1;self.io=FakeIO(self,cap);return self.io
+    def run_entry(self):return a.run(self.path,io_factory=self.factory)
+    def reset_run(self):
+        for p in self.root.iterdir():p.unlink()
+        self.seal();self.io=None;self.factory_calls=0
+    def external(self):
+        self.p['execution']='EXTERNAL'
+        scope=a.digest({k:v for k,v in self.p.items() if k!='decision'})
+        raw=json.dumps({'decision':'APPROVE_EXACT_P08_NARROW_ACCESS_READ','owner':'Debynyhan Banks',
+          'operationId':self.p['operationId'],'scopeSha256':scope,
+          'sourceManifestSha256':self.p['sourceManifestSha256'],'readOnly':True}).encode()
+        self.p['decision']={'commit':'1'*40,'path':'APP013_P08_ACCESS_READ_OPERATION_20261101.json','sha256':a.digest(raw)}
+        self.path.unlink();a.reserve(self.path,self.p)
+        return lambda repo,commit,path:raw if repo==a.GOV else (a.BACKEND/path).read_bytes()
+
+    def test_positive_exact_entry_counts_and_private_purge(self):
+        r=self.run_entry()
+        self.assertEqual(r['status'],'NARROW_ACCESS_OBSERVED');self.assertEqual(r['counts'],{'cli':0,'https':6,'cache':1})
+        self.assertFalse(r['executionReady'] or r['externalObservation']);self.assertTrue(r['privateInputsAbsent'])
+        self.assertFalse(self.path.exists());self.assertTrue(self.io.closed)
+        self.assertEqual(self.io.calls,[tuple(v) for v in a.CALLS])
+        retained=''.join(p.read_text() for p in self.root.iterdir())
+        for raw in [self.number,a.OWNER,'SYNTHETIC_BEARER_NEVER_PERSIST','includedPermissions']:
+            self.assertNotIn(raw,retained)
+    def test_disabled_service_is_blocker_without_mutation(self):
+        self.service='DISABLED';r=self.run_entry();self.assertEqual(r['status'],'SERVICE_DISABLED')
+        self.assertEqual(r['counts'],{'cli':0,'https':6,'cache':1});self.assertEqual(r['residuals'],[])
+    def test_explicit_false_and_missing_deleted_use_existing_validator(self):
+        for i,s in enumerate(self.role_json):
+            d=json.loads(s);d['deleted']=False;self.role_json[i]=json.dumps(d)
+        self.assertEqual(self.run_entry()['status'],'NARROW_ACCESS_OBSERVED')
+    def test_native_default_refuses_local_before_attempt_or_credentials(self):
+        with self.assertRaisesRegex(a.Stop,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY'):a.run(self.path)
+        self.assertFalse((self.root/'attempt.json').exists())
+    def test_external_authority_constructor_does_not_resolve_credentials(self):
+        get=self.external();cap=a.ReadCapability(self.p,self.root,read_commit=get)
+        with patch.object(a,'read_cached_token',side_effect=AssertionError('NO_CREDENTIAL_READ')):
+            io=a.NativeIO(cap);self.assertTrue(io.close())
+        self.assertFalse((self.root/'attempt.json').exists())
+    def test_missing_external_commit_refuses_before_factory(self):
+        self.external()
+        with self.assertRaisesRegex(Exception,'COMMITTED_EVIDENCE_MISSING'):self.run_entry()
+        self.assertEqual(self.factory_calls,0)
+    def test_plan_source_scope_and_approval_drift_refuse(self):
+        original=copy.deepcopy(self.p)
+        for key,value in [('contractSha256','0'*64),('sourceManifestSha256','0'*64),('ownerPrincipal','foreign'),
+                          ('limits',{'cli':26,'https':10,'sql':2,'mutations':0,'retry':0}),('decision',{})]:
+            self.p=copy.deepcopy(original);self.p[key]=value
+            self.path.unlink();a.reserve(self.path,self.p)
+            with self.assertRaises(a.Stop):self.run_entry()
+            self.assertEqual(self.factory_calls,0)
+    def test_committed_source_or_decision_drift_refuses(self):
+        get=self.external()
+        with self.assertRaisesRegex(a.Stop,'COMMITTED_MANIFEST'):
+            a.ReadCapability(self.p,self.root,read_commit=lambda repo,commit,path:get(repo,commit,path) if repo==a.GOV else b'bad')
+        self.p['decision']['sha256']='0'*64
+        with self.assertRaisesRegex(a.Stop,'EXACT_OWNER_APPROVAL'):a.ReadCapability(self.p,self.root,read_commit=get)
+    def test_project_and_invalid_output_stop_early(self):
+        for value in ['null','{}',b'\xff','x'*65537,json.dumps({'projectId':'foreign'})]:
+            self.reset_run();self.http_override={0:{'status':200,'body':value}}
+            r=self.run_entry();self.assertIn(r['failure'],('HTTP_BODY_UNKNOWN','PROJECT_DRIFT'))
+            self.assertEqual(r['counts'],{'cli':0,'https':1,'cache':1});self.assertFalse(r['executionReady'])
+    def test_role_null_deleted_broader_and_foreign_refuse(self):
+        original=json.loads(self.role_json[0])
+        cases=[None,{**original,'deleted':None},{**original,'deleted':True},
+               {**original,'includedPermissions':['foreign']},{**original,'name':'foreign'},
+               {**original,'extra':'unexpected'}]
+        for value in cases:
+            self.reset_run();self.http_override={1:{'status':200,'body':json.dumps(value)}}
+            r=self.run_entry();self.assertIn(r['failure'],('ROLE_DRIFT','HTTP_BODY_UNKNOWN'))
+            self.assertEqual(r['counts'],{'cli':0,'https':2,'cache':1})
+    def test_permission_empty_missing_null_duplicate_foreign_refuse(self):
+        cases=[{}, {'permissions':[]},{'permissions':None},{'permissions':['foreign']},
+          {'permissions':a.PROJECT_PERMISSIONS+[a.PROJECT_PERMISSIONS[0]]}, {'permissions':[5]},None]
+        for value in cases:
+            self.reset_run();self.http_override={3:{'status':200,'body':json.dumps(value)}}
+            r=self.run_entry();self.assertIn(r['failure'],('PERMISSION_DENIED','PERMISSION_SHAPE','HTTP_BODY_UNKNOWN'))
+            self.assertEqual(r['counts'],{'cli':0,'https':4,'cache':1})
+    def test_http_denial_redirect_oversize_encoding_and_shape(self):
+        cases=[{'status':403,'body':'{}'},{'status':302,'body':'{}'}, {'status':200,'body':'x'*65537},
+          {'status':200,'body':b'\xff'}, {'status':200,'body':'not json'}, {'status':True,'body':'{}'}]
+        for value in cases:
+            self.reset_run();self.http_override={0:value};r=self.run_entry()
+            self.assertEqual(r['status'],'NARROW_ACCESS_STOPPED');self.assertEqual(r['counts'],{'cli':0,'https':1,'cache':1})
+    def test_service_null_and_wrong_resource_refuse(self):
+        for value in [None,{'name':'foreign','state':'ENABLED'}, {'state':None}]:
+            self.reset_run();self.http_override={5:{'status':200,'body':json.dumps(value)}}
+            self.assertIn(self.run_entry()['failure'],('HTTP_BODY_UNKNOWN','SERVICE_SHAPE'))
+    def test_duplicate_and_concurrent_attempts_refuse(self):
+        fd=os.open(self.root/'entry.lock',os.O_CREAT|os.O_WRONLY,0o600)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with self.assertRaisesRegex(a.Stop,'ENTRY_RUNNING'):self.run_entry()
+            self.assertEqual(self.factory_calls,0)
+        finally:os.close(fd)
+        a.reserve(self.root/'attempt.json',{})
+        with self.assertRaises(FileExistsError):self.run_entry()
+        self.assertEqual(self.io.calls,[])
+    def test_foreign_symlink_hardlink_and_wrong_mode_refuse(self):
+        foreign=self.root/'foreign';foreign.write_text('foreign');os.chmod(foreign,0o600)
+        with self.assertRaisesRegex(a.Stop,'PRIVATE_INVENTORY'):self.run_entry()
+        foreign.unlink();(self.root/'journal.json').symlink_to(self.path)
+        with self.assertRaisesRegex(a.Stop,'PRIVATE_INVENTORY'):self.run_entry()
+        (self.root/'journal.json').unlink();os.link(self.path,self.root/'journal.json')
+        with self.assertRaisesRegex(a.Stop,'PRIVATE_INPUT'):self.run_entry()
+        (self.root/'journal.json').unlink();os.chmod(self.path,0o644)
+        with self.assertRaisesRegex(a.Stop,'PRIVATE_INPUT'):self.run_entry()
+    def test_cutoff_late_cleanup_and_clock_rollback(self):
+        for mode,key in [('read','cutoff'),('closeout','closeoutEnd')]:
+            with self.assertRaisesRegex(a.Stop,'ENTRY_CUTOFF'):
+                a.run(self.path,mode,self.factory,clock=lambda:a.utc(self.p['window'][key]))
+        cap=a.ReadCapability(self.p,self.root);cap.clock=lambda:cap.last-1
+        with self.assertRaisesRegex(a.Stop,'CLOCK_ROLLBACK'):cap.gate()
+    def test_interrupt_every_reserved_call_never_retries(self):
+        for call in range(1,8):
+            self.reset_run();self.break_at=call;r=self.run_entry()
+            self.assertEqual(r['failure'],'INTERRUPTED');self.assertEqual(len(self.io.calls),call)
+            self.assertEqual(len(set(self.io.calls)),call);self.assertTrue(self.io.closed)
+            self.assertTrue(r['privateInputsAbsent']);self.assertEqual(r['residuals'],[])
+    def seed_interruption(self,pending=False,scratch=False):
+        cap=a.ReadCapability(self.p,self.root);reader=a.Reader(cap,None)
+        a.reserve(self.root/'attempt.json',{'operationId':self.p['operationId'],'planSha256':cap.hash})
+        reader.j['calls']=[['cache',0]];reader.j['pending']=['cache',0] if pending else None
+        reader.j['transportSettled']=not pending
+        a.reserve(self.root/'journal.json',reader.j)
+        if scratch:a.reserve(self.root/'journal-next.json',reader.j)
+    def test_independent_cleanup_after_cutoff_performs_zero_provider_calls(self):
+        self.seed_interruption()
+        r=a.run(self.path,'closeout',self.factory,clock=lambda:a.utc(self.p['window']['cutoff'])+1)
+        self.assertEqual(r['status'],'NARROW_ACCESS_STOPPED');self.assertEqual(r['residuals'],[])
+        self.assertEqual(self.factory_calls,0);self.assertTrue(r['privateInputsAbsent'])
+    def test_unknown_orphan_and_interrupted_journal_remain_residuals(self):
+        self.seed_interruption(pending=True,scratch=True)
+        r=a.run(self.path,'closeout',self.factory)
+        self.assertEqual(r['status'],'CONTAINMENT_UNCONFIRMED')
+        self.assertEqual(r['residuals'],['JOURNAL_WRITE_INTERRUPTED','PROCESS_OUTCOME_UNKNOWN'])
+        self.assertEqual(self.factory_calls,0);self.assertTrue(r['privateInputsAbsent'])
+    def test_fresh_cleanup_recovers_finished_reads_without_replay(self):
+        with patch.object(a.Reader,'closeout',side_effect=SystemExit('simulated parent exit')):
+            with self.assertRaises(SystemExit):self.run_entry()
+        self.assertEqual(self.io.calls,[tuple(v) for v in a.CALLS])
+        self.assertTrue(self.io.closed)
+        r=a.run(self.path,'closeout',self.factory,clock=lambda:a.utc(self.p['window']['cutoff'])+1)
+        self.assertEqual(r['status'],'NARROW_ACCESS_OBSERVED');self.assertEqual(self.factory_calls,1)
+        self.assertTrue(r['privateInputsAbsent'])
+    def test_foreign_journal_cannot_authorize_cleanup(self):
+        self.seed_interruption();p=self.root/'journal.json';j=a.read(p);j['operationId']=str(uuid.uuid4())
+        p.unlink();a.reserve(p,j)
+        with self.assertRaisesRegex(a.Stop,'JOURNAL_BINDING'):a.run(self.path,'closeout',self.factory)
+        self.assertTrue(self.path.exists());self.assertEqual(self.factory_calls,0)
+    def test_close_failure_cannot_report_success(self):
+        self.close_failure=True;r=self.run_entry()
+        self.assertEqual(r['status'],'CONTAINMENT_UNCONFIRMED');self.assertIn('PROCESS_CLOSE_UNCONFIRMED',r['residuals'])
+    def native_for_serialization_test(self):
+        get=self.external();cap=a.ReadCapability(self.p,self.root,read_commit=get)
+        return cap,a.NativeIO(cap)
+    def test_cli_removed_and_old_contract_refused(self):
+        self.assertFalse(hasattr(a.NativeIO,'cli') or hasattr(a.NativeIO,'_command'))
+        self.p['version']=1;self.seal()
+        with self.assertRaisesRegex(a.Stop,'PLAN_MODE'):self.run_entry()
+        self.assertEqual(self.factory_calls,0)
+    def test_actual_native_https_serialization_redirect_and_body_close(self):
+        cap,io=self.native_for_serialization_test()
+        class Response:
+            status=200;closed=False
+            def read(self,n):return b'{"permissions":[]}'
+            def close(self):self.closed=True
+        response=Response()
+        with patch.object(a.urllib.request,'build_opener') as factory:
+            factory.return_value.open.return_value=response
+            r=io.https(3,self.number,'SYNTHETIC_BEARER',cap.times['readEnd'])
+            req=factory.return_value.open.call_args.args[0]
+            self.assertEqual(req.full_url,a.http_contract(self.number)[3]['url'])
+            self.assertEqual(json.loads(req.data),{'permissions':a.PROJECT_PERMISSIONS})
+            self.assertTrue(response.closed);self.assertEqual(r['status'],200)
+            response.status=302
+            with self.assertRaisesRegex(a.Stop,'HTTP_REDIRECT'):io.https(0,self.number,'SYNTHETIC_BEARER',cap.times['readEnd'])
+            self.assertTrue(response.closed)
+        self.assertIsNone(a.NoRedirect().redirect_request(None,None,302,'',{},'https://foreign.invalid'))
+    def test_total_http_deadline_closes_slow_response(self):
+        cap,io=self.native_for_serialization_test()
+        class SlowResponse:
+            status=200;closed=False
+            def read(self,n):time.sleep(.2);return b'{}'
+            def close(self):self.closed=True
+        response=SlowResponse()
+        with patch.object(a.urllib.request,'build_opener') as factory:
+            factory.return_value.open.return_value=response
+            with self.assertRaisesRegex(a.Stop,'HTTP_TIMEOUT'):
+                io.https(0,self.number,'SYNTHETIC_TOKEN',time.time()+.03)
+        self.assertTrue(response.closed);self.assertIsNone(io.response)
+    def test_call_ceiling_refuses_before_transport(self):
+        cap=a.ReadCapability(self.p,self.root);io=FakeIO(self,cap);r=a.Reader(cap,io)
+        r.j['calls']=copy.deepcopy(a.CALLS)
+        with self.assertRaisesRegex(a.Stop,'CALL_LIMIT'):r.call('https',2)
+        self.assertEqual(io.calls,[])
+    def test_final_source_gate_and_sdk_fact(self):
+        self.assertEqual(set(a.verify_sources()['files']),{'access_check.py'})
+        self.assertEqual(a.native_readiness(),{'ready':False,'localTransportReady':True,'reason':'EXTERNAL_QUALIFICATION_NOT_AUTHORIZED'})
+        self.assertEqual(self.original_project_hash,a.sources()[0].PROJECT_NUMBER_SHA256)
+    def test_actual_command_entry_reports_source_and_refuses_local_native(self):
+        result=subprocess.run([sys.executable,'-B',str(a.HERE/'access_check.py'),'--check-source'],capture_output=True,text=True,timeout=5)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(json.loads(result.stdout),{'ready':False,'localTransportReady':True,'reason':'EXTERNAL_QUALIFICATION_NOT_AUTHORIZED'})
+        with patch.object(a,'PROJECT_HASH',self.original_project_hash):
+            self.p['projectNumberSha256']=a.PROJECT_HASH;self.p['contractSha256']=a.contract_hash();self.seal()
+        result=subprocess.run([sys.executable,'-B',str(a.HERE/'access_check.py'),'--read',str(self.path)],capture_output=True,text=True,timeout=5)
+        self.assertEqual(result.returncode,2);self.assertEqual(result.stderr,'')
+        self.assertEqual(json.loads(result.stdout),{'status':'NARROW_ACCESS_REFUSED_OR_UNCONFIRMED'})
+        self.assertFalse((self.root/'attempt.json').exists())
+
+    def test_native_entry_uses_actual_synthetic_cache_and_six_fixed_requests(self):
+        get=self.external();responses=[];requests=[]
+        with tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-native-cache-') as tmp:
+            root=Path(tmp);db=make_cache(root,a.utc(self.p['window']['purgeEnd'])+1000)
+            before={p.relative_to(root):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+            values=[{'projectId':'signmons','projectNumber':self.number,'lifecycleState':'ACTIVE'},
+              *[json.loads(v) for v in self.role_json],{'permissions':a.PROJECT_PERMISSIONS},
+              {'permissions':a.IDENTITY_PERMISSIONS},{'name':a.http_contract(self.number)[5]['url'].split('/v1/')[1],'state':'ENABLED'}]
+            class Response:
+                status=200
+                def __init__(self,value):self.value=value;self.closed=False
+                def read(self,n):return json.dumps(self.value).encode()
+                def close(self):self.closed=True
+            def open_request(req,timeout):
+                requests.append(req);r=Response(values[len(requests)-1]);responses.append(r);return r
+            original=a.read_cached_token
+            def cached(*args,**kwargs):
+                j=a.read(self.root/'journal.json');self.assertEqual(j['pending'],['cache',0]);self.assertEqual(j['calls'],[['cache',0]])
+                return original(*args,**kwargs)
+            with patch.object(a,'CONFIG_ROOT',root),patch.dict(os.environ,{},clear=True),                 patch.object(a,'read_cached_token',side_effect=cached) as cache,                 patch.object(socket.socket,'connect',side_effect=AssertionError('NETWORK_FORBIDDEN')),                 patch.object(a.urllib.request,'build_opener') as factory:
+                factory.return_value.open.side_effect=open_request
+                result=a.run(self.path,read_commit=get)
+                self.assertEqual(cache.call_count,1)
+            self.assertEqual(result['status'],'NARROW_ACCESS_OBSERVED',result)
+            self.assertEqual(result['counts'],{'cli':0,'https':6,'cache':1});self.assertFalse(result['executionReady'])
+            self.assertEqual([r.full_url for r in requests],[d['url'] for d in a.http_contract(self.number)])
+            for req,d in zip(requests,a.http_contract(self.number)):
+                self.assertEqual(req.method,d['method']);self.assertEqual(None if req.data is None else json.loads(req.data),d['body'])
+                self.assertEqual(req.get_header('Authorization'),'Bearer SYNTHETIC_BEARER_NEVER_PERSIST')
+            self.assertTrue(all(r.closed for r in responses));self.assertEqual(len(responses),6)
+            self.assertEqual(before,{p.relative_to(root):p.read_bytes() for p in root.rglob('*') if p.is_file()})
+            for p in self.root.iterdir():self.assertNotIn('SYNTHETIC_BEARER',p.read_text())
+    def test_native_failures_attempt_once_and_cache_failure_prevents_https(self):
+        get=self.external()
+        with tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-native-negative-') as tmp:
+            root=Path(tmp);make_cache(root,a.utc(self.p['window']['purgeEnd'])+1000)
+            for status in [401,429,503,302]:
+                for p in self.root.iterdir():p.unlink()
+                a.reserve(self.path,self.p)
+                class Response:
+                    closed=False
+                    def read(self,n):return b'{}'
+                    def close(self):self.closed=True
+                response=Response();response.status=status
+                with patch.object(a,'CONFIG_ROOT',root),patch.dict(os.environ,{},clear=True),patch.object(a.urllib.request,'build_opener') as factory:
+                    factory.return_value.open.return_value=response
+                    result=a.run(self.path,read_commit=get)
+                    self.assertEqual(factory.return_value.open.call_count,1)
+                self.assertEqual(result['status'],'NARROW_ACCESS_STOPPED');self.assertTrue(response.closed)
+            for p in self.root.iterdir():p.unlink()
+            a.reserve(self.path,self.p);(root/'access_tokens.db').unlink()
+            with patch.object(a,'CONFIG_ROOT',root),patch.dict(os.environ,{},clear=True),patch.object(a.urllib.request,'build_opener') as factory:
+                result=a.run(self.path,read_commit=get);factory.assert_not_called()
+            self.assertEqual(result['counts'],{'cli':0,'https':0,'cache':1});self.assertTrue(result['privateInputsAbsent'])
+
+    def test_native_http_error_and_connection_timeout_have_one_attempt_no_proxy(self):
+        cap,transport=self.native_for_serialization_test()
+        for status in [401,429,503,302]:
+            body=io.BytesIO(b'{}')
+            error=a.urllib.error.HTTPError('https://synthetic.invalid',status,'synthetic',{},body)
+            with patch.object(a.urllib.request,'build_opener') as factory:
+                factory.return_value.open.side_effect=error
+                if status==302:
+                    with self.assertRaisesRegex(a.Stop,'HTTP_REDIRECT'):transport.https(0,None,'SYNTHETIC_TOKEN',cap.times['readEnd'])
+                else:self.assertEqual(transport.https(0,None,'SYNTHETIC_TOKEN',cap.times['readEnd'])['status'],status)
+                self.assertEqual(factory.return_value.open.call_count,1)
+                self.assertIsInstance(factory.call_args.args[0],a.urllib.request.ProxyHandler)
+                self.assertEqual(factory.call_args.args[0].proxies,{})
+                self.assertTrue(body.closed)
+        with patch.object(a.urllib.request,'build_opener') as factory:
+            factory.return_value.open.side_effect=TimeoutError('PRIVATE_OUTPUT')
+            with self.assertRaisesRegex(a.Stop,'^HTTP_UNCONFIRMED$'):transport.https(0,None,'SYNTHETIC_TOKEN',cap.times['readEnd'])
+            self.assertEqual(factory.return_value.open.call_count,1)
+        self.assertTrue(transport.close())
+
+SDK_PROBE = r'''
+import json,os,socket,sys,tempfile,time
+from unittest.mock import patch
+sdk='/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib'
+sys.path[:0]=[sdk,sdk+'/third_party']
+with tempfile.TemporaryDirectory(prefix='p08-sdk-anonymous-',dir='/private/tmp') as config:
+ os.environ['CLOUDSDK_CONFIG']=config
+ with patch.object(socket.socket,'connect',side_effect=AssertionError('NETWORK_FORBIDDEN')), \
+      patch.object(socket.socket,'connect_ex',side_effect=AssertionError('NETWORK_FORBIDDEN')), \
+      patch.object(time,'sleep',return_value=None):
+  import httplib2
+  from googlecloudsdk.generated_clients.apis.iam.v1 import iam_v1_client
+  from googlecloudsdk.generated_clients.apis.cloudresourcemanager.v1 import cloudresourcemanager_v1_client
+  from google.oauth2 import credentials, _client
+  from google.auth import exceptions
+  class FakeHTTP:
+   connections={}
+   def __init__(self):self.calls=0
+   def request(self,*args,**kwargs):
+    self.calls+=1
+    return httplib2.Response({'status':'503','content-type':'application/json'}),b'{"error":{"code":503,"message":"synthetic"}}'
+  def generated(kind,one_attempt=False):
+   http=FakeHTTP()
+   cls=iam_v1_client.IamV1 if kind=='iam' else cloudresourcemanager_v1_client.CloudresourcemanagerV1
+   client=cls(get_credentials=False,http=http)
+   if one_attempt:client.num_retries=0
+   try:
+    if kind=='iam':client.organizations_roles.Get(client.MESSAGES_MODULE.IamOrganizationsRolesGetRequest(name='projects/synthetic/roles/synthetic'))
+    else:client.projects.Get(client.MESSAGES_MODULE.CloudresourcemanagerProjectsGetRequest(projectId='synthetic'))
+   except Exception as error:
+    assert type(error).__name__ in ('HttpError','HttpServiceUnavailableError','BadStatusCodeError'),type(error).__name__
+   return http.calls
+  class Response:
+   status=503;data=b'{"error":"temporarily_unavailable"}';headers={}
+  class Request:
+   def __init__(self):self.calls=0
+   def __call__(self,**kwargs):self.calls+=1;return Response()
+  def token(actual_credential):
+   request=Request()
+   try:
+    if actual_credential:
+     cred=credentials.Credentials(None,refresh_token='synthetic-refresh',token_uri='https://oauth2.googleapis.com/token',client_id='synthetic-id',client_secret='synthetic-secret')
+     cred.refresh(request)
+    else:
+     _client.refresh_grant(request,'https://oauth2.googleapis.com/token','synthetic-refresh','synthetic-id','synthetic-secret',can_retry=False)
+   except exceptions.RefreshError:pass
+   return request.calls
+  result={'iam_default_attempts':generated('iam'),'project_default_attempts':generated('project'),
+   'iam_explicit_zero_attempts':generated('iam',True),'project_explicit_zero_attempts':generated('project',True),
+   'credential_refresh_attempts':token(True),'low_level_refresh_no_retry_attempts':token(False),
+   'real_network_calls':0,'real_credentials_loaded':False}
+  print(json.dumps(result))
+'''
+
+class SDKRetryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Separate interpreter, fake transports and anonymous SDK clients only.
+        env={k:v for k,v in os.environ.items() if not k.startswith(('CLOUDSDK_','GOOGLE_','PG')) and k!='DATABASE_URL'}
+        r=subprocess.run([sys.executable,'-B','-c',SDK_PROBE],capture_output=True,text=True,timeout=15,env=env)
+        if r.returncode:raise AssertionError(r.stderr)
+        cls.result=json.loads(r.stdout)
+    def test_iam_default_repeats_synthetic_unavailable_response(self):
+        self.assertEqual(self.result['iam_default_attempts'],5)
+    def test_project_default_repeats_synthetic_unavailable_response(self):
+        self.assertEqual(self.result['project_default_attempts'],5)
+    def test_real_credential_class_refresh_repeats_synthetic_response(self):
+        self.assertEqual(self.result['credential_refresh_attempts'],3)
+    def test_explicit_library_controls_do_not_prove_cli_exposure(self):
+        self.assertEqual(self.result['iam_explicit_zero_attempts'],1)
+        self.assertEqual(self.result['project_explicit_zero_attempts'],1)
+        self.assertEqual(self.result['low_level_refresh_no_retry_attempts'],1)
+        self.assertFalse(self.result['real_credentials_loaded'])
+        self.assertEqual(self.result['real_network_calls'],0)
+
+if __name__=='__main__':unittest.main()

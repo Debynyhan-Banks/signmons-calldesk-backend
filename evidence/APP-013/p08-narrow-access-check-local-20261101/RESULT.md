@@ -1,0 +1,64 @@
+# APP-013 / 3A / P08 — narrow access adapter local result
+
+**Current approved amendment result:** see `NO_RETRY_AMENDMENT_RESULT_20261101.md`. The version-2 zero-CLI/six-HTTPS/cached-token-only path passes 49 focused tests. The old SDK retry gate/results/hashes below are historical; current source validation reports localTransportReady=true, ready=false, EXTERNAL_QUALIFICATION_NOT_AUTHORIZED. No live credentials/provider action occurred.
+
+**Later local diagnostic review:** `SDK_RETRY_REVIEW_20261101.md` supersedes only the retry uncertainty and test provenance below. Full module now has 33 passing cases; unchanged runtime remains blocked. Default generated clients repeated five synthetic attempts; OAuth refresh repeated three. Current test manifest SHA256 is `4b9a867633f4c9ecfb467e1b162601c8ae881a3657491dbd79a6300f3e8dd2dc`. The original 29-case implementation closeout below is historical. A concrete six-HTTPS/cached-token-only amendment is proposed in governance, not implemented or approved.
+
+**Implemented and locally tested; live execution BLOCKED.** Owner approved the finite local adapter and tests with “yes i agree” on November 1, 2026. This fulfills the local card's instruction to report a specific remaining blocker when the exact external operation cannot safely be prepared. No external operation, credential resolution or provider action occurred.
+
+Source entry backend `d5f1f876e8f17f8236d2262d1856a6fa323a86a4`; governance `996cc7fb5be906ddf64d1d337c7fa6dc24a3a001`; changes remain uncommitted. Verification timestamp: 2026-11-01 14:05:37 UTC. Existing dirty changes, production application code and historical launchers/manifests were preserved.
+
+## Approved deliverable
+
+One runtime module `source/access_check.py` implements the proposal's exact eight CLI invocations and three direct HTTPS descriptors. It requires the exact owner/project/identity and numeric-project fingerprint, both strict role definitions, the approved twelve permission names, absolute 0/120/240/540/600-second window offsets and source/request/committed-owner bindings. It short-circuits on denial/unknown output and records later checks as not observed. A disabled service is a blocker, never permission to enable it. SQL/password/account/mutation routes are absent.
+
+One operation root, lock, exclusive attempt and ordered call journal enforce duplicate/concurrent refusal and reserve every descriptor before dispatch. Independent closeout performs no provider/credential calls. It can finish an interrupted parent after read completion, or report uncertain orphan/process/journal state without guessing PID ownership or replaying a read. Foreign/symlink/mode/link inventory refuses; exact private plan and owned interrupted temporary journal are purged, while sanitized reservations/journal/result remain. In-memory token references are cleared; no secure memory-erasure claim. Finished observations always carry `executionReady:false`.
+
+Native serialization uses fixed descriptors, no arbitrary command/URL inputs, output bounds, explicit credential/config checks, redirect refusal, total HTTP alarm deadline, and owned subprocess stop/reap. These paths were tested with mock external primitives and owned local Python children. Tests use a synthetic project number with a test-only fingerprint replacement; the production fingerprint was separately checked against the historical source. No runtime bypass flag or environment variable enables native execution.
+
+The native SDK readiness gate is deliberately closed. Local proof cannot invoke native defaults; even an exact externally bound capability refuses before credentials/attempt/native process launch while SDK retry policy is unqualified. Test-only monkeypatching exercises serialization without changing that runtime gate.
+
+## Source and provenance
+
+- Runtime source SHA256: `40b4e2921e752236a2b77c6e3a7bc8d9eb739cc8262d3e7ad461471432957729`.
+- Runtime manifest SHA256: `2bc1858ec57385d2b9c6f9867cf77783995b77ea1722a786fa311fa299d2697b`.
+- Separate test manifest SHA256: `0cf93d07a98538c748ca76b7ddd83eab2bb4284efccfb8a5005487ce85283aae`.
+- Runtime manifest locks the single runtime file, five directly reused source files and three installed SDK evidence files. Historical validators additionally check their transitive source sets. Test provenance is not added to the strict runtime file set.
+
+## Fresh verification
+
+`python3 -B evidence/APP-013/p08-narrow-access-check-local-20261101/source/test_access_check.py -v`: **29 PASS**. This includes enabled/disabled service; exact eight/three sequence and call ceiling; strict omitted/explicit role fields; empty/missing/null/foreign/duplicate permissions; owner/override/project/source/approval drift; invalid encoding/oversize/HTTP denial/redirect; every reserved-call interruption; duplicate/concurrent attempts; cutoff/rollback; foreign/symlink/hardlink/mode inventory; independent after-cutoff cleanup; unknown orphan/atomic-write residuals; actual CLI entry refusal; native serializer construction with mocks; total HTTP timeout and response close; actual owned local child timeout/oversize stop and reap; secret non-disclosure.
+
+`python3 -B evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py --check-source`: source integrity PASS; returned `{"ready":false,"reason":"SDK_INTERNAL_RETRIES_UNQUALIFIED"}`. This is a verified refusal, not a readiness pass. Separate test-manifest hashes and untracked-file whitespace PASS after finalization.
+
+Backend cross-repository baseline/queue check and architecture PASS. Governance frozen baseline, docs consistency and 25 safeguard tests PASS. Whitespace checks PASS in both repositories. No browser/SQL tests apply because neither interface is included; unrelated historical runtime tests, TypeScript build/lint and full application tests were not rerun or claimed fresh.
+
+Initial development run had 24 setup errors because importing the reused authority could not resolve its sibling `private_inventory` module. Scoped source-directory import resolution fixed that without editing historical modules or weakening assertions; subsequent 24, 27 and final 29-case runs passed. Final source/test manifests were regenerated before final actual source validation and the final 29-case run. Cleanup review added process-group uncertainty and total HTTP deadline guards before finalization.
+
+## Specific launch blocker
+
+Installed SDK version-directory: `/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk`.
+
+- `lib/third_party/apitools/base/py/base_api.py:243-258` declares `BaseApiClient.__init__(..., num_retries=5, ...)` and assigns that retry value.
+- Generated IAM and Resource Manager V1 clients inherit this base; inspected `googlecloudsdk/api_lib/iam/util.py` creates the IAM client through `apis.GetClientInstance`.
+- `lib/googlecloudsdk/api_lib/util/apis.py:182-239` classifies missing responses, rate limits, 5xx and some API-disabled responses as retriable.
+- No inspected source established a supported no-retry override for all approved gcloud command/credential-refresh paths. The `max_retries` property found in `core/properties.py` belongs to storage operations, not a proven global switch. No such override was invented or applied.
+
+This establishes that the current CLI path cannot be certified as no-retry from the evidence inspected; it does not claim a provider retry actually occurred. Eight subprocess invocations and an eight-second timeout are not proof of one underlying HTTP attempt. `native_readiness()` verifies the pinned SDK evidence and returns a blocking result; no input or owner flag can turn this into ready. The SDK was not patched, a transport was not substituted, the request inventory was not expanded, and the owner rule was not weakened.
+
+## Readiness and responsibility
+
+| Prerequisite | Evidence/result at the timestamp above | Responsible role / next observable result |
+| --- | --- | --- |
+| Exact local source/authority/request contract | Final source validators and 29 local cases PASS; hashes above | Implementer maintains source pins. |
+| Parser/serialization/output limits | Actual entry and mocked native serialization tests PASS; strict reusable role/parser logic retained | Implementer; current provider outputs remain UNKNOWN. |
+| One attempt/concurrency/deadlines/interruption | Local cases PASS; independent cleanup does zero external I/O; unknown orphan remains residual | Implementer; no optimistic live containment claim. |
+| Exact private inventory/retention | Local purge/privacy/refusal cases PASS; no live private input created | Implementer; current live private state UNKNOWN. |
+| Underlying CLI/credential retry policy | **BLOCKED: SDK_INTERNAL_RETRIES_UNQUALIFIED**; pinned installed SDK source above | Implementer must establish a source-backed compliant path, or owner chooses the already-proposed administrator-evidence alternative. Any changed request/transport contract requires advance approval. |
+| Exact committed external source/owner decision/window | ABSENT; no operation scheduled | Owner approves only a concrete executable operation after local blockers are resolved. |
+| Current owner permissions/API service/roles | UNKNOWN; local fake outputs are not current provider qualification | Owner/provider administrator; separately authorized current evidence. |
+| Billing/runtime/CHILD/Firebase/job/key/payment | UNKNOWN and excluded | Later bounded qualification/operation and same-job payment acceptance. |
+
+Finite local checklist 1–4 is implemented/tested. Item 5 is closed with this specific blocking result rather than an unsafe external operation. The next observable result must resolve the SDK retry contract or provide owner/administrator evidence for the narrow access facts. No additional helper, native transport switch, SDK modification, fresh provider read or broad R10 replay is authorized by this result. No execution approval is requested while this blocker remains.
+
+3A open; accepted 1A/1B/2A/2B **4/8**; newly closed R1 **0/27**; R10 consumed. No merge, push, deployment, credentials, API/IAM/key changes, database/customer action, payment or spending occurred. Rollback removes this fresh directory/references only. **No scope deviation beyond the approved local read adapter.**

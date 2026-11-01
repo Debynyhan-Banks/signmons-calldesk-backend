@@ -1,0 +1,7 @@
+{
+  "files": {
+    "bound-postgres-fixture.mjs": "89b8fef3ea555ed8d2e8c85e8644fbf27c430cb16f656391cc835f604e9393f9",
+    "test_bound_postgres.py": "e4f32ddf4b65c9d0c1a156a5d5a9054af3c671844630deb54395437af20bbda5"
+  },
+  "status": "LOCAL_TEST_PROVENANCE_ONLY"
+}

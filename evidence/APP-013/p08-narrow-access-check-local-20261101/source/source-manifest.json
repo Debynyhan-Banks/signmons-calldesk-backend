@@ -1,0 +1,20 @@
+{
+  "files": {
+    "access_check.py": "861b0f549488fa3c281d2c4a7b3807c6c83bfa6f2a4d0a535367d2c2f0164b4d"
+  },
+  "lockedSources": {
+    "p08-exact-role-provisioning-local-20261028/source/role_provisioner.py": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
+    "p08-native-entry-local-20261101/source/authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+    "p08-restoration-local-20261028/source/restore.py": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "p08-role-contract-local-20261029/source/composed_qualification.py": "2c2f9603cb71957239816f4942549be8277c446cbcc5f2b7bae1f139fd552df4",
+    "p08-role-contract-local-20261029/source/qualification_launch.py": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
+  },
+  "sdkFiles": {
+    "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/bin/gcloud": "8628b9f971d07c5e52fd2c6d469ee4a0940c75eb51820d628c3dd068981bd260",
+    "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/apis.py": "0110f091c7c86a18ce4e917c66cb0134c6a62a3cfc44c868bb6606c971f055fa",
+    "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/config.py": "fc06f07045d0a8054355f904fa4aac12151a1d1e08c6c366620b405c4ee98f52",
+    "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/creds.py": "f16148370c895672dcbacaeedd8ce14cedc9019ac665ca7019771a7a1b8021a9",
+    "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/third_party/apitools/base/py/base_api.py": "5e2ad1e9565f101fe347302a4085494079dfa6ceead73c2240e2a15f8318733c"
+  },
+  "status": "LOCAL_ONLY_NO_EXTERNAL_OPERATION"
+}

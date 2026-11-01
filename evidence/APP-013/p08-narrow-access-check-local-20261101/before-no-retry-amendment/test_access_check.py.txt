@@ -1,0 +1,371 @@
+"""Local entry proofs only: synthetic CLI/HTTP; owned loopback-free child teardown."""
+import copy
+import datetime as dt
+import fcntl
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import time
+import unittest
+import uuid
+from unittest.mock import patch
+
+import access_check as a
+
+class FakeIO:
+    proof=True
+    def __init__(self,case,cap):self.case=case;self.cap=cap;self.calls=[];self.closed=False
+    def cli(self,i,deadline):
+        self.calls.append(('cli',i))
+        if self.case.break_at==len(self.calls):raise a.Stop('INTERRUPTED')
+        q=self.case
+        values=[a.OWNER,'(unset)','','(unset)',json.dumps({'projectId':'signmons',
+          'projectNumber':q.number,'lifecycleState':'ACTIVE'}),*q.role_json,'SYNTHETIC_BEARER_NEVER_PERSIST']
+        return q.cli_override.get(i,values[i]).encode() if isinstance(q.cli_override.get(i,values[i]),str) else q.cli_override[i]
+    def https(self,i,number,token,deadline):
+        self.calls.append(('https',i))
+        if self.case.break_at==len(self.calls):raise a.Stop('INTERRUPTED')
+        self.case.assertEqual(number,self.case.number)
+        self.case.assertEqual(token,'SYNTHETIC_BEARER_NEVER_PERSIST')
+        value={'permissions':[a.PROJECT_PERMISSIONS,a.IDENTITY_PERMISSIONS][i]} if i<2 else {
+          'name':a.http_contract(number)[2]['url'].split('/v1/')[1],'state':self.case.service}
+        return self.case.http_override.get(i,{'status':200,'body':json.dumps(value).encode()})
+    def close(self):self.closed=True;return not self.case.close_failure
+
+class AccessTests(unittest.TestCase):
+    def setUp(self):
+        self.number='123456789012'
+        self.original_project_hash=a.PROJECT_HASH
+        self.hash_patch=patch.object(a,'PROJECT_HASH',a.digest(self.number));self.hash_patch.start();self.addCleanup(self.hash_patch.stop)
+        op=str(uuid.uuid4());self.root=Path('/private/tmp/p08-access-check-'+op);self.root.mkdir(mode=0o700)
+        self.addCleanup(lambda:shutil.rmtree(self.root))
+        now=int(time.time())-1
+        iso=lambda n:dt.datetime.fromtimestamp(now+n,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        self.p={'version':1,'section':'APP-013/3A/P08','operationId':op,'execution':'PROOF_ONLY',
+          'project':'signmons','ownerPrincipal':a.OWNER,'identity':a.IDENTITY,'projectNumberSha256':a.PROJECT_HASH,
+          'contractSha256':a.contract_hash(),'limits':{'cli':8,'https':3,'sql':0,'mutations':0,'retry':0},
+          'window':dict(zip(('start','cutoff','readEnd','closeoutEnd','purgeEnd'),map(iso,(0,120,240,540,600)))),
+          'sourceManifestSha256':a.digest((a.HERE/'source-manifest.json').read_bytes()),'sourceCommit':'0'*40}
+        self.path=self.root/'plan.json';self.seal()
+        self.role_json=[]
+        for role in a.sources()[1].ROLES:
+            self.role_json.append(json.dumps({'name':role['name'],'title':role['title'],
+              'description':role['description'],'includedPermissions':[role['permission']],'stage':'GA'}))
+        self.cli_override={};self.http_override={};self.service='ENABLED';self.close_failure=False
+        self.break_at=None;self.io=None;self.factory_calls=0
+    def seal(self):
+        self.p['decision']={'decision':'APPROVE_LOCAL_NARROW_ACCESS_PROOF','scopeSha256':a.digest({k:v for k,v in self.p.items() if k!='decision'})}
+        if self.path.exists():self.path.unlink()
+        a.reserve(self.path,self.p)
+    def factory(self,cap):
+        self.factory_calls+=1;self.io=FakeIO(self,cap);return self.io
+    def run_entry(self):return a.run(self.path,io_factory=self.factory)
+    def reset_run(self):
+        for p in self.root.iterdir():p.unlink()
+        self.seal();self.io=None;self.factory_calls=0
+    def external(self):
+        self.p['execution']='EXTERNAL'
+        scope=a.digest({k:v for k,v in self.p.items() if k!='decision'})
+        raw=json.dumps({'decision':'APPROVE_EXACT_P08_NARROW_ACCESS_READ','owner':'Debynyhan Banks',
+          'operationId':self.p['operationId'],'scopeSha256':scope,
+          'sourceManifestSha256':self.p['sourceManifestSha256'],'readOnly':True}).encode()
+        self.p['decision']={'commit':'1'*40,'path':'APP013_P08_ACCESS_READ_OPERATION_20261101.json','sha256':a.digest(raw)}
+        self.path.unlink();a.reserve(self.path,self.p)
+        return lambda repo,commit,path:raw if repo==a.GOV else (a.BACKEND/path).read_bytes()
+
+    def test_positive_exact_entry_counts_and_private_purge(self):
+        r=self.run_entry()
+        self.assertEqual(r['status'],'NARROW_ACCESS_OBSERVED');self.assertEqual(r['counts'],{'cli':8,'https':3})
+        self.assertFalse(r['executionReady'] or r['externalObservation']);self.assertTrue(r['privateInputsAbsent'])
+        self.assertFalse(self.path.exists());self.assertTrue(self.io.closed)
+        self.assertEqual(self.io.calls,[('cli',i) for i in range(8)]+[('https',i) for i in range(3)])
+        retained=''.join(p.read_text() for p in self.root.iterdir())
+        for raw in [self.number,a.OWNER,'SYNTHETIC_BEARER_NEVER_PERSIST','includedPermissions']:
+            self.assertNotIn(raw,retained)
+    def test_disabled_service_is_blocker_without_mutation(self):
+        self.service='DISABLED';r=self.run_entry();self.assertEqual(r['status'],'SERVICE_DISABLED')
+        self.assertEqual(r['counts'],{'cli':8,'https':3});self.assertEqual(r['residuals'],[])
+    def test_explicit_false_and_missing_deleted_use_existing_validator(self):
+        for i,s in enumerate(self.role_json):
+            d=json.loads(s);d['deleted']=False;self.role_json[i]=json.dumps(d)
+        self.assertEqual(self.run_entry()['status'],'NARROW_ACCESS_OBSERVED')
+    def test_native_default_refuses_local_before_attempt_or_credentials(self):
+        with self.assertRaisesRegex(a.Stop,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY'):a.run(self.path)
+        self.assertFalse((self.root/'attempt.json').exists())
+    def test_external_authority_is_verified_but_sdk_retry_blocks_native(self):
+        get=self.external()
+        cap=a.ReadCapability(self.p,self.root,read_commit=get);self.assertTrue(cap.external)
+        with patch('access_check.subprocess.Popen') as launch:
+            with self.assertRaisesRegex(a.Stop,'SDK_INTERNAL_RETRIES_UNQUALIFIED'):a.run(self.path,read_commit=get)
+            launch.assert_not_called()
+        self.assertFalse((self.root/'attempt.json').exists())
+    def test_missing_external_commit_refuses_before_factory(self):
+        self.external()
+        with self.assertRaisesRegex(Exception,'COMMITTED_EVIDENCE_MISSING'):self.run_entry()
+        self.assertEqual(self.factory_calls,0)
+    def test_plan_source_scope_and_approval_drift_refuse(self):
+        original=copy.deepcopy(self.p)
+        for key,value in [('contractSha256','0'*64),('sourceManifestSha256','0'*64),('ownerPrincipal','foreign'),
+                          ('limits',{'cli':26,'https':10,'sql':2,'mutations':0,'retry':0}),('decision',{})]:
+            self.p=copy.deepcopy(original);self.p[key]=value
+            self.path.unlink();a.reserve(self.path,self.p)
+            with self.assertRaises(a.Stop):self.run_entry()
+            self.assertEqual(self.factory_calls,0)
+    def test_committed_source_or_decision_drift_refuses(self):
+        get=self.external()
+        with self.assertRaisesRegex(a.Stop,'COMMITTED_MANIFEST'):
+            a.ReadCapability(self.p,self.root,read_commit=lambda repo,commit,path:get(repo,commit,path) if repo==a.GOV else b'bad')
+        self.p['decision']['sha256']='0'*64
+        with self.assertRaisesRegex(a.Stop,'EXACT_OWNER_APPROVAL'):a.ReadCapability(self.p,self.root,read_commit=get)
+    def test_wrong_owner_overrides_project_and_invalid_output_stop_early(self):
+        cases=[(0,'foreign','OWNER_DRIFT'),(1,'override','OWNER_OVERRIDE'),(4,'null','CLI_JSON'),
+               (4,'{}','PROJECT_DRIFT'),(0,b'\xff','CLI_OUTPUT_ENCODING'),(0,'x'*65537,'CLI_OUTPUT_SIZE')]
+        for index,value,code in cases:
+            self.reset_run();self.cli_override={index:value}
+            r=self.run_entry();self.assertEqual(r['failure'],code,r)
+            self.assertEqual(r['counts'],{'cli':index+1,'https':0});self.assertFalse(r['executionReady'])
+    def test_role_null_deleted_broader_and_foreign_refuse(self):
+        original=json.loads(self.role_json[0])
+        cases=[None,{**original,'deleted':None},{**original,'deleted':True},
+               {**original,'includedPermissions':['foreign']},{**original,'name':'foreign'},
+               {**original,'extra':'unexpected'}]
+        for value in cases:
+            self.reset_run();self.cli_override={5:json.dumps(value)}
+            r=self.run_entry();self.assertIn(r['failure'],('ROLE_DRIFT','CLI_JSON'))
+            self.assertEqual(r['counts'],{'cli':6,'https':0})
+    def test_permission_empty_missing_null_duplicate_foreign_refuse(self):
+        cases=[{}, {'permissions':[]},{'permissions':None},{'permissions':['foreign']},
+          {'permissions':a.PROJECT_PERMISSIONS+[a.PROJECT_PERMISSIONS[0]]}, {'permissions':[5]},None]
+        for value in cases:
+            self.reset_run();self.http_override={0:{'status':200,'body':json.dumps(value)}}
+            r=self.run_entry();self.assertIn(r['failure'],('PERMISSION_DENIED','PERMISSION_SHAPE','HTTP_BODY_UNKNOWN'))
+            self.assertEqual(r['counts'],{'cli':8,'https':1})
+    def test_http_denial_redirect_oversize_encoding_and_shape(self):
+        cases=[{'status':403,'body':'{}'},{'status':302,'body':'{}'}, {'status':200,'body':'x'*65537},
+          {'status':200,'body':b'\xff'}, {'status':200,'body':'not json'}, {'status':True,'body':'{}'}]
+        for value in cases:
+            self.reset_run();self.http_override={0:value};r=self.run_entry()
+            self.assertEqual(r['status'],'NARROW_ACCESS_STOPPED');self.assertEqual(r['counts'],{'cli':8,'https':1})
+    def test_service_null_and_wrong_resource_refuse(self):
+        for value in [None,{'name':'foreign','state':'ENABLED'}, {'state':None}]:
+            self.reset_run();self.http_override={2:{'status':200,'body':json.dumps(value)}}
+            self.assertIn(self.run_entry()['failure'],('HTTP_BODY_UNKNOWN','SERVICE_SHAPE'))
+    def test_duplicate_and_concurrent_attempts_refuse(self):
+        fd=os.open(self.root/'entry.lock',os.O_CREAT|os.O_WRONLY,0o600)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with self.assertRaisesRegex(a.Stop,'ENTRY_RUNNING'):self.run_entry()
+            self.assertEqual(self.factory_calls,0)
+        finally:os.close(fd)
+        a.reserve(self.root/'attempt.json',{})
+        with self.assertRaises(FileExistsError):self.run_entry()
+        self.assertEqual(self.io.calls,[])
+    def test_foreign_symlink_hardlink_and_wrong_mode_refuse(self):
+        foreign=self.root/'foreign';foreign.write_text('foreign');os.chmod(foreign,0o600)
+        with self.assertRaisesRegex(a.Stop,'PRIVATE_INVENTORY'):self.run_entry()
+        foreign.unlink();(self.root/'journal.json').symlink_to(self.path)
+        with self.assertRaisesRegex(a.Stop,'PRIVATE_INVENTORY'):self.run_entry()
+        (self.root/'journal.json').unlink();os.link(self.path,self.root/'journal.json')
+        with self.assertRaisesRegex(a.Stop,'PRIVATE_INPUT'):self.run_entry()
+        (self.root/'journal.json').unlink();os.chmod(self.path,0o644)
+        with self.assertRaisesRegex(a.Stop,'PRIVATE_INPUT'):self.run_entry()
+    def test_cutoff_late_cleanup_and_clock_rollback(self):
+        for mode,key in [('read','cutoff'),('closeout','closeoutEnd')]:
+            with self.assertRaisesRegex(a.Stop,'ENTRY_CUTOFF'):
+                a.run(self.path,mode,self.factory,clock=lambda:a.utc(self.p['window'][key]))
+        cap=a.ReadCapability(self.p,self.root);cap.clock=lambda:cap.last-1
+        with self.assertRaisesRegex(a.Stop,'CLOCK_ROLLBACK'):cap.gate()
+    def test_interrupt_every_reserved_call_never_retries(self):
+        for call in range(1,12):
+            self.reset_run();self.break_at=call;r=self.run_entry()
+            self.assertEqual(r['failure'],'INTERRUPTED');self.assertEqual(len(self.io.calls),call)
+            self.assertEqual(len(set(self.io.calls)),call);self.assertTrue(self.io.closed)
+            self.assertTrue(r['privateInputsAbsent']);self.assertEqual(r['residuals'],[])
+    def seed_interruption(self,pending=False,scratch=False):
+        cap=a.ReadCapability(self.p,self.root);reader=a.Reader(cap,None)
+        a.reserve(self.root/'attempt.json',{'operationId':self.p['operationId'],'planSha256':cap.hash})
+        reader.j['calls']=[['cli',0]];reader.j['pending']=['cli',0] if pending else None
+        reader.j['transportSettled']=not pending
+        a.reserve(self.root/'journal.json',reader.j)
+        if scratch:a.reserve(self.root/'journal-next.json',reader.j)
+    def test_independent_cleanup_after_cutoff_performs_zero_provider_calls(self):
+        self.seed_interruption()
+        r=a.run(self.path,'closeout',self.factory,clock=lambda:a.utc(self.p['window']['cutoff'])+1)
+        self.assertEqual(r['status'],'NARROW_ACCESS_STOPPED');self.assertEqual(r['residuals'],[])
+        self.assertEqual(self.factory_calls,0);self.assertTrue(r['privateInputsAbsent'])
+    def test_unknown_orphan_and_interrupted_journal_remain_residuals(self):
+        self.seed_interruption(pending=True,scratch=True)
+        r=a.run(self.path,'closeout',self.factory)
+        self.assertEqual(r['status'],'CONTAINMENT_UNCONFIRMED')
+        self.assertEqual(r['residuals'],['JOURNAL_WRITE_INTERRUPTED','PROCESS_OUTCOME_UNKNOWN'])
+        self.assertEqual(self.factory_calls,0);self.assertTrue(r['privateInputsAbsent'])
+    def test_fresh_cleanup_recovers_finished_reads_without_replay(self):
+        with patch.object(a.Reader,'closeout',side_effect=SystemExit('simulated parent exit')):
+            with self.assertRaises(SystemExit):self.run_entry()
+        self.assertEqual(self.io.calls,[('cli',i) for i in range(8)]+[('https',i) for i in range(3)])
+        self.assertTrue(self.io.closed)
+        r=a.run(self.path,'closeout',self.factory,clock=lambda:a.utc(self.p['window']['cutoff'])+1)
+        self.assertEqual(r['status'],'NARROW_ACCESS_OBSERVED');self.assertEqual(self.factory_calls,1)
+        self.assertTrue(r['privateInputsAbsent'])
+    def test_foreign_journal_cannot_authorize_cleanup(self):
+        self.seed_interruption();p=self.root/'journal.json';j=a.read(p);j['operationId']=str(uuid.uuid4())
+        p.unlink();a.reserve(p,j)
+        with self.assertRaisesRegex(a.Stop,'JOURNAL_BINDING'):a.run(self.path,'closeout',self.factory)
+        self.assertTrue(self.path.exists());self.assertEqual(self.factory_calls,0)
+    def test_close_failure_cannot_report_success(self):
+        self.close_failure=True;r=self.run_entry()
+        self.assertEqual(r['status'],'CONTAINMENT_UNCONFIRMED');self.assertIn('PROCESS_CLOSE_UNCONFIRMED',r['residuals'])
+    def native_for_serialization_test(self):
+        get=self.external();cap=a.ReadCapability(self.p,self.root,read_commit=get)
+        # Test-only replacements. No runtime flag or environment switch bypasses the SDK gate.
+        with patch.object(a,'native_readiness',return_value={'ready':True,'reason':'TEST_ONLY'}),\
+             patch.object(cap.restore,'local_environment_gate'):
+            io=a.NativeIO(cap)
+        return cap,io
+    def test_actual_native_cli_serializer_and_allowlist(self):
+        cap,io=self.native_for_serialization_test()
+        with patch.object(io,'_command',return_value=b'{}') as runner:
+            io.cli(4,cap.times['readEnd'])
+            argv,deadline,env=runner.call_args.args
+            self.assertEqual(argv,[a.GCLOUD,*a.cli_contract()[4]])
+            self.assertEqual(env['CLOUDSDK_CORE_SHOULD_PROMPT_TO_ENABLE_API'],'false')
+            self.assertNotIn('DATABASE_URL',env)
+            with self.assertRaisesRegex(a.Stop,'CLI_SCOPE'):io.cli(8,deadline)
+            self.assertEqual(runner.call_count,1)
+    def test_actual_native_https_serialization_redirect_and_body_close(self):
+        cap,io=self.native_for_serialization_test()
+        class Response:
+            status=200;closed=False
+            def read(self,n):return b'{"permissions":[]}'
+            def close(self):self.closed=True
+        response=Response()
+        with patch.object(a.urllib.request,'build_opener') as factory:
+            factory.return_value.open.return_value=response
+            r=io.https(0,self.number,'SYNTHETIC_BEARER',cap.times['readEnd'])
+            req=factory.return_value.open.call_args.args[0]
+            self.assertEqual(req.full_url,a.http_contract(self.number)[0]['url'])
+            self.assertEqual(json.loads(req.data),{'permissions':a.PROJECT_PERMISSIONS})
+            self.assertTrue(response.closed);self.assertEqual(r['status'],200)
+            response.status=302
+            with self.assertRaisesRegex(a.Stop,'HTTP_REDIRECT'):io.https(0,self.number,'SYNTHETIC_BEARER',cap.times['readEnd'])
+            self.assertTrue(response.closed)
+        self.assertIsNone(a.NoRedirect().redirect_request(None,None,302,'',{},'https://foreign.invalid'))
+    def test_owned_local_subprocess_oversize_and_timeout_reaped(self):
+        cap,io=self.native_for_serialization_test()
+        with self.assertRaisesRegex(a.Stop,'CLI_OUTPUT_SIZE'):
+            io._command([sys.executable,'-B','-c','import sys;sys.stdout.write("x"*70000)'],time.time()+2,dict(os.environ))
+        self.assertEqual(io.children,set())
+        with self.assertRaisesRegex(a.Stop,'CLI_TIMEOUT'):
+            io._command([sys.executable,'-B','-c','import time;time.sleep(2)'],time.time()+.05,dict(os.environ))
+        self.assertEqual(io.children,set());self.assertTrue(io.close())
+    def test_total_http_deadline_closes_slow_response(self):
+        cap,io=self.native_for_serialization_test()
+        class SlowResponse:
+            status=200;closed=False
+            def read(self,n):time.sleep(.2);return b'{}'
+            def close(self):self.closed=True
+        response=SlowResponse()
+        with patch.object(a.urllib.request,'build_opener') as factory:
+            factory.return_value.open.return_value=response
+            with self.assertRaisesRegex(a.Stop,'HTTP_TIMEOUT'):
+                io.https(0,self.number,'SYNTHETIC_TOKEN',time.time()+.03)
+        self.assertTrue(response.closed);self.assertIsNone(io.response)
+    def test_call_ceiling_refuses_before_transport(self):
+        cap=a.ReadCapability(self.p,self.root);io=FakeIO(self,cap);r=a.Reader(cap,io)
+        r.j['calls']=[['cli',i] for i in range(8)]+[['https',i] for i in range(3)]
+        with self.assertRaisesRegex(a.Stop,'CALL_LIMIT'):r.call('https',2)
+        self.assertEqual(io.calls,[])
+    def test_final_source_gate_and_sdk_fact(self):
+        self.assertEqual(set(a.verify_sources()['files']),{'access_check.py'})
+        self.assertEqual(a.native_readiness(),{'ready':False,'reason':'SDK_INTERNAL_RETRIES_UNQUALIFIED'})
+        self.assertEqual(self.original_project_hash,a.sources()[0].PROJECT_NUMBER_SHA256)
+    def test_actual_command_entry_reports_source_and_refuses_local_native(self):
+        result=subprocess.run([sys.executable,'-B',str(a.HERE/'access_check.py'),'--check-source'],capture_output=True,text=True,timeout=5)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(json.loads(result.stdout),{'ready':False,'reason':'SDK_INTERNAL_RETRIES_UNQUALIFIED'})
+        with patch.object(a,'PROJECT_HASH',self.original_project_hash):
+            self.p['projectNumberSha256']=a.PROJECT_HASH;self.p['contractSha256']=a.contract_hash();self.seal()
+        result=subprocess.run([sys.executable,'-B',str(a.HERE/'access_check.py'),'--read',str(self.path)],capture_output=True,text=True,timeout=5)
+        self.assertEqual(result.returncode,2);self.assertEqual(result.stderr,'')
+        self.assertEqual(json.loads(result.stdout),{'status':'NARROW_ACCESS_REFUSED_OR_UNCONFIRMED'})
+        self.assertFalse((self.root/'attempt.json').exists())
+
+SDK_PROBE = r'''
+import json,os,socket,sys,tempfile,time
+from unittest.mock import patch
+sdk='/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib'
+sys.path[:0]=[sdk,sdk+'/third_party']
+with tempfile.TemporaryDirectory(prefix='p08-sdk-anonymous-',dir='/private/tmp') as config:
+ os.environ['CLOUDSDK_CONFIG']=config
+ with patch.object(socket.socket,'connect',side_effect=AssertionError('NETWORK_FORBIDDEN')), \
+      patch.object(socket.socket,'connect_ex',side_effect=AssertionError('NETWORK_FORBIDDEN')), \
+      patch.object(time,'sleep',return_value=None):
+  import httplib2
+  from googlecloudsdk.generated_clients.apis.iam.v1 import iam_v1_client
+  from googlecloudsdk.generated_clients.apis.cloudresourcemanager.v1 import cloudresourcemanager_v1_client
+  from google.oauth2 import credentials, _client
+  from google.auth import exceptions
+  class FakeHTTP:
+   connections={}
+   def __init__(self):self.calls=0
+   def request(self,*args,**kwargs):
+    self.calls+=1
+    return httplib2.Response({'status':'503','content-type':'application/json'}),b'{"error":{"code":503,"message":"synthetic"}}'
+  def generated(kind,one_attempt=False):
+   http=FakeHTTP()
+   cls=iam_v1_client.IamV1 if kind=='iam' else cloudresourcemanager_v1_client.CloudresourcemanagerV1
+   client=cls(get_credentials=False,http=http)
+   if one_attempt:client.num_retries=0
+   try:
+    if kind=='iam':client.organizations_roles.Get(client.MESSAGES_MODULE.IamOrganizationsRolesGetRequest(name='projects/synthetic/roles/synthetic'))
+    else:client.projects.Get(client.MESSAGES_MODULE.CloudresourcemanagerProjectsGetRequest(projectId='synthetic'))
+   except Exception as error:
+    assert type(error).__name__ in ('HttpError','HttpServiceUnavailableError','BadStatusCodeError'),type(error).__name__
+   return http.calls
+  class Response:
+   status=503;data=b'{"error":"temporarily_unavailable"}';headers={}
+  class Request:
+   def __init__(self):self.calls=0
+   def __call__(self,**kwargs):self.calls+=1;return Response()
+  def token(actual_credential):
+   request=Request()
+   try:
+    if actual_credential:
+     cred=credentials.Credentials(None,refresh_token='synthetic-refresh',token_uri='https://oauth2.googleapis.com/token',client_id='synthetic-id',client_secret='synthetic-secret')
+     cred.refresh(request)
+    else:
+     _client.refresh_grant(request,'https://oauth2.googleapis.com/token','synthetic-refresh','synthetic-id','synthetic-secret',can_retry=False)
+   except exceptions.RefreshError:pass
+   return request.calls
+  result={'iam_default_attempts':generated('iam'),'project_default_attempts':generated('project'),
+   'iam_explicit_zero_attempts':generated('iam',True),'project_explicit_zero_attempts':generated('project',True),
+   'credential_refresh_attempts':token(True),'low_level_refresh_no_retry_attempts':token(False),
+   'real_network_calls':0,'real_credentials_loaded':False}
+  print(json.dumps(result))
+'''
+
+class SDKRetryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Separate interpreter, fake transports and anonymous SDK clients only.
+        env={k:v for k,v in os.environ.items() if not k.startswith(('CLOUDSDK_','GOOGLE_','PG')) and k!='DATABASE_URL'}
+        r=subprocess.run([sys.executable,'-B','-c',SDK_PROBE],capture_output=True,text=True,timeout=15,env=env)
+        if r.returncode:raise AssertionError(r.stderr)
+        cls.result=json.loads(r.stdout)
+    def test_iam_default_repeats_synthetic_unavailable_response(self):
+        self.assertEqual(self.result['iam_default_attempts'],5)
+    def test_project_default_repeats_synthetic_unavailable_response(self):
+        self.assertEqual(self.result['project_default_attempts'],5)
+    def test_real_credential_class_refresh_repeats_synthetic_response(self):
+        self.assertEqual(self.result['credential_refresh_attempts'],3)
+    def test_explicit_library_controls_do_not_prove_cli_exposure(self):
+        self.assertEqual(self.result['iam_explicit_zero_attempts'],1)
+        self.assertEqual(self.result['project_explicit_zero_attempts'],1)
+        self.assertEqual(self.result['low_level_refresh_no_retry_attempts'],1)
+        self.assertFalse(self.result['real_credentials_loaded'])
+        self.assertEqual(self.result['real_network_calls'],0)
+
+if __name__=='__main__':unittest.main()

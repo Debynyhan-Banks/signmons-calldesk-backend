@@ -1,0 +1,456 @@
+"""Exact P08 read-only adapter. No external operation is authorized by installation."""
+import datetime as dt
+from contextlib import contextmanager
+import fcntl
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+import selectors
+import signal
+import stat
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+import uuid
+
+HERE = Path(__file__).resolve().parent
+APP = HERE.parent.parent
+BACKEND = APP.parent.parent
+GOV = Path('/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery')
+GCLOUD = '/opt/homebrew/bin/gcloud'
+OWNER = 'debynyhan@signmons.com'
+IDENTITY = 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'
+PROJECT_HASH = '37d4aa0f46ca5b8f0b81b1148bda235a0f4a9a424b6b4638ec993d889563be54'
+NAMES = {'plan.json','attempt.json','journal.json','journal-next.json','closeout.json',
+         'independent-closeout.json','entry.lock','result.json'}
+PROJECT_PERMISSIONS = ['resourcemanager.projects.getIamPolicy','resourcemanager.projects.setIamPolicy',
+ 'apikeys.keys.create','apikeys.keys.get','apikeys.keys.getKeyString','apikeys.keys.delete',
+ 'serviceusage.operations.get','serviceusage.services.get','serviceusage.services.enable','serviceusage.services.use']
+IDENTITY_PERMISSIONS = ['iam.serviceAccounts.getIamPolicy','iam.serviceAccounts.setIamPolicy']
+MAX_OUTPUT = 65536
+
+class Stop(Exception):
+    pass
+
+def need(value, code):
+    if not value:
+        raise Stop(code)
+
+def digest(value):
+    raw = value if isinstance(value, bytes) else json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+def load(path, name):
+    spec=importlib.util.spec_from_file_location(name,path)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    return module
+
+def verify_sources():
+    p=HERE/'source-manifest.json'
+    need(p.is_file() and not p.is_symlink(),'SOURCE_MANIFEST')
+    m=json.loads(p.read_text())
+    need(set(m)=={'status','files','lockedSources','sdkFiles'} and
+         m['status']=='LOCAL_ONLY_NO_EXTERNAL_OPERATION' and set(m['files'])=={'access_check.py'},'MANIFEST_SHAPE')
+    expected={'p08-role-contract-local-20261029/source/qualification_launch.py',
+      'p08-role-contract-local-20261029/source/composed_qualification.py',
+      'p08-exact-role-provisioning-local-20261028/source/role_provisioner.py',
+      'p08-restoration-local-20261028/source/restore.py',
+      'p08-native-entry-local-20261101/source/authority.py'}
+    need(set(m['lockedSources'])==expected,'SOURCE_SET')
+    for base,entries in [(HERE,m['files']),(APP,m['lockedSources'])]:
+        for name,h in entries.items():
+            path=base/name
+            need(not Path(name).is_absolute() and '..' not in Path(name).parts and
+                 path.is_file() and not path.is_symlink() and digest(path.read_bytes())==h,'SOURCE_DRIFT')
+    return m
+
+def sources():
+    verify_sources()
+    root=APP/'p08-role-contract-local-20261029/source'
+    model=load(root/'composed_qualification.py','narrow_model')
+    model.verify_local_manifest();model.verify_locked_sources()
+    previous=sys.modules.get('composed_qualification')
+    sys.modules['composed_qualification']=model
+    try:q=load(root/'qualification_launch.py','narrow_parsers')
+    finally:
+        if previous is None:sys.modules.pop('composed_qualification',None)
+        else:sys.modules['composed_qualification']=previous
+    roles=load(APP/'p08-exact-role-provisioning-local-20261028/source/role_provisioner.py','narrow_roles')
+    restore=load(APP/'p08-restoration-local-20261028/source/restore.py','narrow_environment')
+    native_root=APP/'p08-native-entry-local-20261101/source'
+    sys.path.insert(0,str(native_root))
+    try:
+        authority=load(native_root/'authority.py','narrow_source_authority')
+        authority.verify_sources()
+    finally:sys.path.remove(str(native_root))
+    return q,roles,restore,authority
+
+def cli_contract():
+    projection='--format=json(name,title,description,includedPermissions,stage,deleted,etag)'
+    return [
+      ['auth','list','--filter=status:ACTIVE','--format=value(account)'],
+      ['config','get-value','auth/impersonate_service_account'],
+      ['config','get-value','auth/credential_file_override'],
+      ['config','get-value','auth/access_token_file'],
+      ['projects','describe','signmons','--format=json(projectId,projectNumber,lifecycleState)'],
+      ['iam','roles','describe','signmonsP08FirebaseUserLookup','--project=signmons',projection],
+      ['iam','roles','describe','signmonsP08ServiceAccountSignBlob','--project=signmons',projection],
+      ['auth','print-access-token','--account='+OWNER]]
+
+def http_contract(number):
+    need(isinstance(number,str) and re.fullmatch(r'[0-9]{6,20}',number),'PROJECT_NUMBER')
+    return [
+      {'method':'POST','url':f'https://cloudresourcemanager.googleapis.com/v1/projects/{number}:testIamPermissions','body':{'permissions':PROJECT_PERMISSIONS}},
+      {'method':'POST','url':f'https://iam.googleapis.com/v1/projects/-/serviceAccounts/{IDENTITY}:testIamPermissions','body':{'permissions':IDENTITY_PERMISSIONS}},
+      {'method':'GET','url':f'https://serviceusage.googleapis.com/v1/projects/{number}/services/apikeys.googleapis.com','body':None}]
+
+def contract_hash():
+    # Numeric project is derived at runtime and fingerprinted, not supplied by callers.
+    return digest({'cli':cli_contract(),'https':http_contract('000000'),'projectHash':PROJECT_HASH})
+
+def inspect(root,operation):
+    root=Path(root)
+    need(str(uuid.UUID(operation))==operation and str(root)=='/private/tmp/p08-access-check-'+operation,'ROOT_SCOPE')
+    info=root.lstat()
+    need(stat.S_ISDIR(info.st_mode) and not root.is_symlink() and root.resolve()==root and
+         stat.S_IMODE(info.st_mode)==0o700,'ROOT_MODE')
+    for p in root.iterdir():
+        s=p.lstat()
+        need(p.name in NAMES and stat.S_ISREG(s.st_mode) and not p.is_symlink() and
+             stat.S_IMODE(s.st_mode)==0o600 and s.st_nlink==1 and s.st_size<=MAX_OUTPUT,'PRIVATE_INVENTORY')
+    return root
+
+def read(path):
+    s=path.lstat()
+    need(stat.S_ISREG(s.st_mode) and not path.is_symlink() and stat.S_IMODE(s.st_mode)==0o600 and
+         s.st_nlink==1 and s.st_size<=MAX_OUTPUT,'PRIVATE_INPUT')
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW)
+    with os.fdopen(fd,'rb') as f:return json.loads(f.read(MAX_OUTPUT+1))
+
+def reserve(path,value):
+    data=json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+    need(len(data)<=MAX_OUTPUT,'PRIVATE_OUTPUT_SIZE')
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    try:
+        with os.fdopen(fd,'wb',closefd=False) as f:f.write(data);f.flush();os.fsync(fd)
+    finally:os.close(fd)
+
+def utc(value):
+    need(isinstance(value,str) and re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ',value),'UTC_FORMAT')
+    return dt.datetime.fromisoformat(value.replace('Z','+00:00')).timestamp()
+
+class ReadCapability:
+    def __init__(self,p,root,mode='read',clock=time.time,read_commit=None):
+        self.q,self.roles,self.restore,self.authority=sources()
+        p=json.loads(json.dumps(p))
+        need(set(p)=={'version','section','operationId','execution','project','ownerPrincipal','identity',
+          'projectNumberSha256','contractSha256','limits','window','sourceManifestSha256','sourceCommit','decision'},'PLAN_SHAPE')
+        need(type(p['version']) is int and p['version']==1 and p['section']=='APP-013/3A/P08' and
+          p['execution'] in ('PROOF_ONLY','EXTERNAL') and mode in ('read','closeout'),'PLAN_MODE')
+        need(p['project']=='signmons' and p['ownerPrincipal']==OWNER and p['identity']==IDENTITY and
+          p['projectNumberSha256']==PROJECT_HASH and p['contractSha256']==contract_hash() and
+          p['limits']=={'cli':8,'https':3,'sql':0,'mutations':0,'retry':0} and
+          all(type(v) is int for v in p['limits'].values()),'PLAN_SCOPE')
+        need(p['sourceManifestSha256']==digest((HERE/'source-manifest.json').read_bytes()),'MANIFEST_BINDING')
+        need(set(p['window'])=={'start','cutoff','readEnd','closeoutEnd','purgeEnd'},'WINDOW_SHAPE')
+        times={k:utc(v) for k,v in p['window'].items()}
+        need([times[k]-times['start'] for k in ('start','cutoff','readEnd','closeoutEnd','purgeEnd')]==[0,120,240,540,600],'WINDOW_BOUNDS')
+        need(times['start']<=clock()<times['cutoff' if mode=='read' else 'closeoutEnd'],'ENTRY_CUTOFF')
+        scope=digest({k:v for k,v in p.items() if k!='decision'})
+        if p['execution']=='PROOF_ONLY':
+            need(p['decision']=={'decision':'APPROVE_LOCAL_NARROW_ACCESS_PROOF','scopeSha256':scope},'LOCAL_AUTHORITY')
+        else:
+            d=p['decision']
+            need(set(d)=={'commit','path','sha256'} and re.fullmatch(r'APP013_P08_ACCESS_READ_OPERATION_[0-9]{8}\.json',d['path']),'EXTERNAL_REFERENCE')
+            get=read_commit or self.authority.committed
+            raw=get(GOV,d['commit'],d['path'])
+            need(digest(raw)==d['sha256'] and json.loads(raw)=={'decision':'APPROVE_EXACT_P08_NARROW_ACCESS_READ',
+              'owner':'Debynyhan Banks','operationId':p['operationId'],'scopeSha256':scope,
+              'sourceManifestSha256':p['sourceManifestSha256'],'readOnly':True},'EXACT_OWNER_APPROVAL')
+            rel=str(HERE.relative_to(BACKEND))
+            need(get(BACKEND,p['sourceCommit'],rel+'/source-manifest.json')==(HERE/'source-manifest.json').read_bytes(),'COMMITTED_MANIFEST')
+            need(get(BACKEND,p['sourceCommit'],rel+'/access_check.py')==(HERE/'access_check.py').read_bytes(),'COMMITTED_SOURCE')
+        self.p,self.root,self.mode,self.clock=p,inspect(root,p['operationId']),mode,clock
+        self.external=p['execution']=='EXTERNAL';self.times=times;self.last=clock();self.abort=False
+        self.hash=digest(p)
+
+    def gate(self,cleanup=False):
+        now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
+        need(self.times['start']<=now<self.times['closeoutEnd' if cleanup else 'readEnd'],'DEADLINE')
+        need(cleanup or (self.mode=='read' and not self.abort),'READ_INTERRUPTED')
+        inspect(self.root,self.p['operationId'])
+        return self.times['closeoutEnd' if cleanup else 'readEnd']
+
+
+def native_readiness():
+    m=verify_sources()
+    # Installed SDK has implicit retries; there is deliberately no override or owner-approval bypass.
+    for path,h in m['sdkFiles'].items():
+        p=Path(path)
+        need(p.is_file() and digest(p.read_bytes())==h,'SDK_SOURCE_DRIFT')
+    return {'ready':False,'reason':'SDK_INTERNAL_RETRIES_UNQUALIFIED'}
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self,*args,**kwargs):return None
+
+@contextmanager
+def http_deadline(seconds):
+    need(seconds>0 and signal.getitimer(signal.ITIMER_REAL)==(0.0,0.0),'HTTP_TIMER_CONFLICT')
+    previous=signal.getsignal(signal.SIGALRM)
+    def expired(signum,frame):raise Stop('HTTP_TIMEOUT')
+    signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,seconds)
+    try:yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL,0);signal.signal(signal.SIGALRM,previous)
+
+class NativeIO:
+    proof=False
+    def __init__(self,cap):
+        need(isinstance(cap,ReadCapability) and cap.external,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY')
+        self.cap=cap;self.children=set();self.response=None;self.closed=False;self.group_unknown=False
+        readiness=native_readiness()
+        need(readiness['ready'],readiness['reason'])
+        cap.restore.local_environment_gate()
+
+    def cli(self,index,deadline):
+        need(not self.closed and type(index) is int and 0<=index<8,'CLI_SCOPE')
+        self.cap.gate()
+        env={k:v for k,v in os.environ.items() if not k.startswith(('PG','CLOUDSDK_')) and
+             k not in ('DATABASE_URL','GOOGLE_APPLICATION_CREDENTIALS')}
+        env.update({'CLOUDSDK_CONFIG':'/Users/debynyhanbanks/.config/gcloud',
+          'CLOUDSDK_CORE_DISABLE_PROMPTS':'true','CLOUDSDK_CORE_DISABLE_FILE_LOGGING':'true',
+          'CLOUDSDK_CORE_LOG_HTTP':'false','CLOUDSDK_CORE_SHOULD_PROMPT_TO_ENABLE_API':'false'})
+        return self._command([GCLOUD,*cli_contract()[index]],deadline,env)
+
+    def _command(self,argv,deadline,env):
+        # Private method accepts only internal descriptors; tests use an owned local sleeper for teardown.
+        p=subprocess.Popen(argv,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
+                           env=env,start_new_session=True,close_fds=True)
+        self.children.add(p);out=bytearray();end=min(deadline,self.cap.clock()+8)
+        sel=selectors.DefaultSelector();sel.register(p.stdout,selectors.EVENT_READ)
+        try:
+            while sel.get_map():
+                self.cap.gate();remaining=end-self.cap.clock();need(remaining>0,'CLI_TIMEOUT')
+                for key,_ in sel.select(min(.1,remaining)):
+                    chunk=os.read(key.fileobj.fileno(),8192)
+                    if not chunk:sel.unregister(key.fileobj)
+                    else:out.extend(chunk);need(len(out)<=MAX_OUTPUT,'CLI_OUTPUT_SIZE')
+            need(p.wait(timeout=max(.01,end-self.cap.clock()))==0,'CLI_REFUSED')
+            self.cap.gate();return bytes(out)
+        except Stop:raise
+        except Exception:raise Stop('CLI_UNCONFIRMED') from None
+        finally:
+            sel.close();p.stdout.close()
+            self._reap(p)
+            need(not self.group_unknown,'PROCESS_GROUP_UNCONFIRMED')
+
+    def _reap(self,p):
+        # Only signal the new session while its directly owned leader is still alive.
+        if p.poll() is None:
+            try:os.killpg(p.pid,signal.SIGKILL)
+            except ProcessLookupError:pass
+        p.wait();self.children.discard(p)
+        try:
+            os.killpg(p.pid,0)
+            self.group_unknown=True  # Never signal a group after its leader exited or infer PID ownership.
+        except ProcessLookupError:pass
+        except PermissionError:self.group_unknown=True
+
+    def https(self,index,number,token,deadline):
+        need(not self.closed and type(index) is int and 0<=index<3,'HTTP_SCOPE')
+        self.cap.gate();d=http_contract(number)[index]
+        body=None if d['body'] is None else json.dumps(d['body'],separators=(',',':')).encode()
+        req=urllib.request.Request(d['url'],data=body,method=d['method'],headers={
+          'Authorization':'Bearer '+token,'Content-Type':'application/json','x-goog-user-project':'signmons'})
+        try:
+            with http_deadline(min(8,deadline-self.cap.clock())):
+                try:self.response=urllib.request.build_opener(NoRedirect).open(req,timeout=max(.01,min(8,deadline-self.cap.clock())))
+                except urllib.error.HTTPError as error:self.response=error
+                raw=self.response.read(MAX_OUTPUT+1);status=self.response.status
+            need(len(raw)<=MAX_OUTPUT,'HTTP_OUTPUT_SIZE');need(not 300<=status<400,'HTTP_REDIRECT')
+            self.cap.gate();return {'status':status,'body':raw}
+        except Stop:raise
+        except Exception:raise Stop('HTTP_UNCONFIRMED') from None
+        finally:
+            if self.response is not None:self.response.close();self.response=None
+
+    def close(self):
+        if self.response is not None:self.response.close();self.response=None
+        for p in list(self.children):
+            self._reap(p)
+        self.closed=True
+        return not self.children and not self.group_unknown
+
+class Reader:
+    def __init__(self,cap,io):
+        self.cap,self.io,self.root=cap,io,cap.root
+        self.j={'operationId':cap.p['operationId'],'planSha256':cap.hash,'contractSha256':contract_hash(),
+          'calls':[],'pending':None,'transportSettled':True,'phase':'PREPARED','failure':None,
+          'service':'NOT_RUN','permissions':'NOT_RUN','roles':'NOT_RUN','residuals':[]}
+        self.token='';self.number=None
+
+    def save(self):
+        reserve(self.root/'journal-next.json',self.j)
+        os.replace(self.root/'journal-next.json',self.root/'journal.json')
+
+    def call(self,kind,index):
+        self.cap.gate()
+        ordinal=len(self.j['calls'])
+        need(ordinal<11,'CALL_LIMIT')
+        need((kind,index)==([('cli',i) for i in range(8)]+[('https',i) for i in range(3)])[ordinal],'CALL_ORDER')
+        self.j['calls'].append([kind,index]);self.j['pending']=[kind,index]
+        self.j['transportSettled']=False;self.save()
+        result=self.io.cli(index,self.cap.times['readEnd']) if kind=='cli' else self.io.https(index,self.number,self.token,self.cap.times['readEnd'])
+        self.cap.gate();self.j['pending']=None;self.j['transportSettled']=True;self.save()
+        return result
+
+    def text(self,value):
+        need(isinstance(value,(str,bytes)),'CLI_OUTPUT_SHAPE')
+        if isinstance(value,bytes):
+            need(len(value)<=MAX_OUTPUT,'CLI_OUTPUT_SIZE')
+            try:value=value.decode('utf-8','strict')
+            except UnicodeError:raise Stop('CLI_OUTPUT_ENCODING') from None
+        need(len(value.encode())<=MAX_OUTPUT,'CLI_OUTPUT_SIZE')
+        return value.strip()
+
+    def json(self,value):
+        try:return self.cap.q.bounded_json(value,'CLI_OUTPUT')
+        except Exception:raise Stop('CLI_JSON') from None
+
+    def execute(self):
+        need(self.text(self.call('cli',0))==OWNER,'OWNER_DRIFT')
+        for i in range(1,4):need(self.text(self.call('cli',i)) in ('','(unset)'),'OWNER_OVERRIDE')
+        project=self.json(self.call('cli',4))
+        need(isinstance(project,dict) and set(project)=={'projectId','projectNumber','lifecycleState'} and
+          project['projectId']=='signmons' and project['lifecycleState']=='ACTIVE' and
+          isinstance(project['projectNumber'],str) and re.fullmatch(r'[0-9]{6,20}',project['projectNumber']) and
+          digest(project['projectNumber'])==PROJECT_HASH,'PROJECT_DRIFT')
+        self.number=project['projectNumber']
+        for i,role in enumerate(self.cap.roles.ROLES):
+            need(self.cap.roles.definition_shape(self.json(self.call('cli',5+i)),role) in
+                 ('EXACT_ACTIVE_EXPLICIT','EXACT_ACTIVE_DEFAULTED'),'ROLE_DRIFT')
+        self.j['roles']='EXACT';self.save()
+        self.token=self.text(self.call('cli',7))
+        need(20<=len(self.token)<=4096 and not any(c.isspace() for c in self.token),'TOKEN_SHAPE')
+        for i in range(3):
+            raw=self.call('https',i)
+            need(isinstance(raw,dict) and set(raw)=={'status','body'} and type(raw['status']) is int,'HTTP_ENVELOPE')
+            need(raw['status']==200,'HTTP_DENIED_OR_UNKNOWN')
+            try:value=self.cap.q.bounded_https_json(raw['body'])
+            except Exception:raise Stop('HTTP_BODY_UNKNOWN') from None
+            need(isinstance(value,dict),'HTTP_BODY_UNKNOWN')
+            if i<2:
+                expected=[PROJECT_PERMISSIONS,IDENTITY_PERMISSIONS][i]
+                need(set(value)<={'permissions'},'PERMISSION_SHAPE')
+                values=value.get('permissions',[])
+                need(isinstance(values,list) and all(isinstance(v,str) for v in values) and
+                     len(values)==len(set(values)) and set(values)<=set(expected),'PERMISSION_SHAPE')
+                need(set(values)==set(expected),'PERMISSION_DENIED')
+            else:
+                need(value.get('name')==http_contract(self.number)[2]['url'].split('/v1/')[1] and
+                     value.get('state') in ('ENABLED','DISABLED'),'SERVICE_SHAPE')
+                self.j['service']=value['state']
+            if i==1:self.j['permissions']='OBSERVED'
+            self.save()
+        self.j['phase']='READ_FINISHED';self.save()
+
+    def closeout(self,independent=False):
+        self.cap.gate(True)
+        reserve(self.root/('independent-closeout.json' if independent else 'closeout.json'),
+                {'operationId':self.cap.p['operationId'],'planSha256':self.cap.hash})
+        residuals=[]
+        if independent:
+            self.j=read(self.root/'journal.json')
+            need(set(self.j)=={'operationId','planSha256','contractSha256','calls','pending','transportSettled',
+                 'phase','failure','service','permissions','roles','residuals'} and
+                 self.j['operationId']==self.cap.p['operationId'] and self.j['planSha256']==self.cap.hash and
+                 self.j['contractSha256']==contract_hash(),'JOURNAL_BINDING')
+            allowed=[['cli',i] for i in range(8)]+[['https',i] for i in range(3)]
+            need(isinstance(self.j['calls'],list) and self.j['calls']==allowed[:len(self.j['calls'])] and
+                 len(self.j['calls'])<=11,'JOURNAL_SCOPE')
+            need(self.j['pending'] is None or (self.j['calls'] and self.j['pending']==self.j['calls'][-1]),'JOURNAL_PENDING')
+            # A dead parent/available lock does not prove a possibly orphaned CLI child died.
+            if self.j['transportSettled'] is not True:residuals.append('PROCESS_OUTCOME_UNKNOWN')
+        else:
+            try:
+                need(self.io.close() is True,'PROCESS_CLOSE_UNCONFIRMED')
+                self.j['transportSettled']=True
+            except BaseException:residuals.append('PROCESS_CLOSE_UNCONFIRMED')
+        self.token='';self.number=None
+        if (self.root/'journal-next.json').exists():
+            residuals.append('JOURNAL_WRITE_INTERRUPTED')
+            (self.root/'journal-next.json').unlink()  # exact inventoried owned scratch; never promote its claims
+        read_finished=self.j['phase']=='READ_FINISHED' and len(self.j['calls'])==11 and self.j['pending'] is None
+        self.j['residuals']=sorted(set(self.j['residuals']+residuals));self.j['phase']='CLOSED';self.save()
+        private_absent=False
+        try:
+            need(self.cap.clock()<self.cap.times['purgeEnd'],'PURGE_DEADLINE')
+            inspect(self.root,self.cap.p['operationId'])
+            (self.root/'plan.json').unlink()
+            private_absent=not (self.root/'plan.json').exists() and self.cap.clock()<self.cap.times['purgeEnd']
+            need(private_absent,'PURGE_UNCONFIRMED')
+        except Exception:self.j['residuals'].append('PRIVATE_PURGE_UNCONFIRMED');self.save()
+        observed=read_finished and self.j['service']=='ENABLED' and self.j['permissions']=='OBSERVED' and self.j['roles']=='EXACT' and self.j['failure'] is None
+        result={'status':'CONTAINMENT_UNCONFIRMED' if self.j['residuals'] else
+          'NARROW_ACCESS_OBSERVED' if observed else 'SERVICE_DISABLED' if self.j['service']=='DISABLED' else 'NARROW_ACCESS_STOPPED',
+          'operationId':self.cap.p['operationId'],'failure':self.j['failure'],'residuals':self.j['residuals'],
+          'privateInputsAbsent':private_absent,'externalObservation':self.cap.external,
+          'executionReady':False,'counts':{'cli':sum(c[0]=='cli' for c in self.j['calls']),
+                                         'https':sum(c[0]=='https' for c in self.j['calls'])}}
+        reserve(self.root/'result.json',result)
+        return result
+
+
+def run(path,mode='read',io_factory=NativeIO,clock=time.time,read_commit=None):
+    path=Path(path);need(path.name=='plan.json','PLAN_PATH')
+    cap=ReadCapability(read(path),path.parent,mode,clock,read_commit)
+    fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW,0o600)
+    io=None;handlers={}
+    try:
+        try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError:raise Stop('ENTRY_RUNNING') from None
+        inspect(cap.root,cap.p['operationId'])
+        if mode=='closeout':
+            need(read(cap.root/'attempt.json')=={'operationId':cap.p['operationId'],'planSha256':cap.hash},'ATTEMPT_BINDING')
+            return Reader(cap,None).closeout(True)
+        io=io_factory(cap)
+        need(cap.external is (not io.proof),'TRANSPORT_AUTHORITY')
+        reserve(cap.root/'attempt.json',{'operationId':cap.p['operationId'],'planSha256':cap.hash})
+        reader=Reader(cap,io);reserve(cap.root/'journal.json',reader.j)
+        def interrupted(signum,frame):
+            cap.abort=True;raise Stop('INTERRUPTED')
+        for sig in (signal.SIGINT,signal.SIGTERM):
+            handlers[sig]=signal.signal(sig,interrupted)
+        try:reader.execute()
+        except BaseException as error:
+            reader.j['failure']=str(error) if isinstance(error,Stop) and re.fullmatch('[A-Z_]+',str(error)) else 'UNEXPECTED_LOCAL_FAILURE'
+            # A failed atomic journal stays visible to closeout; never erase its evidence here.
+            if not (cap.root/'journal-next.json').exists():reader.save()
+        finally:
+            for sig,h in handlers.items():signal.signal(sig,h)
+            handlers={}
+        return reader.closeout()
+    finally:
+        for sig,h in handlers.items():signal.signal(sig,h)
+        if io is not None:
+            try:io.close()
+            except BaseException:pass
+        fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def main(argv):
+    if argv==['--check-source']:
+        sources();print(json.dumps(native_readiness()));return 0
+    need(len(argv)==2 and argv[0] in ('--read','--closeout'),'ENTRY_UNBOUND')
+    result=run(argv[1],argv[0][2:]);print(json.dumps(result))
+    return 0 if result['status']=='NARROW_ACCESS_OBSERVED' else 2
+
+if __name__=='__main__':
+    try:raise SystemExit(main(sys.argv[1:]))
+    except Exception:
+        print('{"status":"NARROW_ACCESS_REFUSED_OR_UNCONFIRMED"}');raise SystemExit(2)
