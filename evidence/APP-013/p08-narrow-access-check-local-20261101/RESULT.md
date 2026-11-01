@@ -1,5 +1,7 @@
 # APP-013 / 3A / P08 — narrow access adapter local result
 
+**Current real qualification result:** the approved November 1 attempt is consumed and closed. CACHED_TOKEN_EXPIRED stopped before HTTPS (cache 1, CLI 0, HTTPS 0); independent cleanup verification passed at 15:31:17 UTC. See `ACCESS_QUALIFICATION_RESULT_20261101.md` and its immutable sanitized receipts. No refresh/retry; current provider facts remain UNKNOWN. Earlier local-only results below are historical.
+
 **Current approved amendment result:** see `NO_RETRY_AMENDMENT_RESULT_20261101.md`. The version-2 zero-CLI/six-HTTPS/cached-token-only path passes 49 focused tests. The old SDK retry gate/results/hashes below are historical; current source validation reports localTransportReady=true, ready=false, EXTERNAL_QUALIFICATION_NOT_AUTHORIZED. No live credentials/provider action occurred.
 
 **Later local diagnostic review:** `SDK_RETRY_REVIEW_20261101.md` supersedes only the retry uncertainty and test provenance below. Full module now has 33 passing cases; unchanged runtime remains blocked. Default generated clients repeated five synthetic attempts; OAuth refresh repeated three. Current test manifest SHA256 is `4b9a867633f4c9ecfb467e1b162601c8ae881a3657491dbd79a6300f3e8dd2dc`. The original 29-case implementation closeout below is historical. A concrete six-HTTPS/cached-token-only amendment is proposed in governance, not implemented or approved.

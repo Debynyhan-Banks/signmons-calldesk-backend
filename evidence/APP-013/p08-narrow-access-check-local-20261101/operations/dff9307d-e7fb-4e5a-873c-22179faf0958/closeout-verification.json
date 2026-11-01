@@ -1,0 +1,28 @@
+{
+  "approvalCommit": "4c125a9aaa753935dd420189a2ed734ee402902a",
+  "attemptFileTimestamp": "2026-11-01T15:30:31.883508+00:00",
+  "counts": {
+    "cache": 1,
+    "cli": 0,
+    "https": 0
+  },
+  "exclusiveOperationLockAcquired": true,
+  "nativeResiduals": [],
+  "operationId": "dff9307d-e7fb-4e5a-873c-22179faf0958",
+  "planSha256": "57a71135ca78ae499c208607161f5f994a69b12196e07e75085b2965ceb764fc",
+  "privatePlanAbsent": true,
+  "readProcessExitCode": 2,
+  "resultFileTimestamp": "2026-11-01T15:30:31.888561+00:00",
+  "retainedSanitizedFileSha256": {
+    "attempt.json": "fb14d2adf3265f03119f641c561dec379c4363b31391d072fad6e637179d6b14",
+    "closeout.json": "fb14d2adf3265f03119f641c561dec379c4363b31391d072fad6e637179d6b14",
+    "entry.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "journal.json": "65bcec1589a91dad8a29a461d393b1a760ebc0f51817778df0df49a6f66f269e",
+    "result.json": "e2ff9b8d21231e45a429c00cf82a77fbfc1d876218f7408b910d94128de0a9e8"
+  },
+  "sourceCommit": "8e35617dc178ac8ce757548fac830b0013108ad7",
+  "status": "CONSUMED_STOPPED_CACHED_TOKEN_VALIDITY",
+  "temporaryJournalAbsent": true,
+  "verifiedAt": "2026-11-01T15:31:17.901734+00:00",
+  "verifiedBeforePurgeDeadline": true
+}
