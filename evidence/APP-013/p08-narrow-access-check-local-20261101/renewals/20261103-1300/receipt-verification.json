@@ -1,0 +1,10 @@
+{
+  "privatePlanOrTokenFileCreated": false,
+  "receiptSha256": {
+    "attempt.json": "61c379573caf18c5e68745c6b655056e9f7356460d7fc4c5335a9f28eb3159a1",
+    "result.json": "4457a7083f15ab10ac92e39e873dd269ebc9d513ac22923792e1db41c537bfba"
+  },
+  "sanitizedInventoryOnly": true,
+  "secondCacheReadPerformed": false,
+  "verifiedAt": "2026-11-03T13:01:48.837079+00:00"
+}
