@@ -1,0 +1,16 @@
+{
+  "exactSanitizedInventory": true,
+  "exclusiveLockAcquired": true,
+  "operationId": "584a906c-aeae-4142-9601-26a75e8bf859",
+  "privatePlanAbsent": true,
+  "readProcessExitCode": 0,
+  "retainedSha256": {
+    "attempt.json": "3fe07661d9ed163c0131dc9ff116e391d671c5f7ebbcbf7897ad5817e24e4fd9",
+    "entry.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "result.json": "dad40825e1421c9312126e83fb138e68add663bddeac1c74d4f28b29e3184b1a"
+  },
+  "status": "CONSUMED_VALID_THROUGH_CUTOFF",
+  "temporaryJournalAbsent": true,
+  "verifiedAt": "2026-11-03T13:46:17.321611+00:00",
+  "verifiedBeforeCloseout": true
+}
