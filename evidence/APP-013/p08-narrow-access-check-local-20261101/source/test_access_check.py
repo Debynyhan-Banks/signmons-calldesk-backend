@@ -19,6 +19,28 @@ from unittest.mock import patch
 
 import access_check as a
 
+class ManifestTests(unittest.TestCase):
+    def verify(self,manifest):
+        self.assertEqual(manifest['runtimeManifestSha256'],a.digest((a.HERE/'source-manifest.json').read_bytes()))
+        self.assertEqual(set(manifest['files']),{'test_access_check.py'})
+        for name,expected in manifest['files'].items():
+            self.assertEqual(a.digest((a.HERE/name).read_bytes()),expected)
+        self.assertTrue(manifest['sdkReviewFiles'])
+        for name,expected in manifest['sdkReviewFiles'].items():
+            self.assertEqual(a.digest(Path(name).read_bytes()),expected)
+
+    def test_current_manifest_runtime_test_and_sdk_hashes(self):
+        self.verify(json.loads((a.HERE/'test-manifest.json').read_text()))
+
+    def test_stale_runtime_test_or_sdk_hash_is_rejected(self):
+        original=json.loads((a.HERE/'test-manifest.json').read_text())
+        for kind in ('runtime','test','sdk'):
+            manifest=copy.deepcopy(original)
+            if kind=='runtime':manifest['runtimeManifestSha256']='0'*64
+            elif kind=='test':manifest['files']['test_access_check.py']='0'*64
+            else:manifest['sdkReviewFiles'][next(iter(manifest['sdkReviewFiles']))]='0'*64
+            with self.subTest(kind=kind),self.assertRaises(AssertionError):self.verify(manifest)
+
 def make_cache(root,expires):
     root=Path(root);os.chmod(root,0o700)
     (root/'configurations').mkdir(mode=0o700)

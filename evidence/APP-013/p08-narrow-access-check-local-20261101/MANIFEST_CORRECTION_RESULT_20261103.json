@@ -1,0 +1,17 @@
+{
+  "section": "APP-013/3A/P08",
+  "verifiedAt": "2026-11-03T14:31:13.066575+00:00",
+  "priorBackend": "d6b729b866385186a864d587a391a838355b1e3d",
+  "focusedTests": 101,
+  "newManifestCases": 2,
+  "runtimeUnchanged": true,
+  "files": {
+    "access_check.py": "495258008e1e6454fda779724a3c3cfc85b27459af7e217ba39dd2ab24472d9e",
+    "source-manifest.json": "3db5e61e6ec460a8425819c6ea0272dda8cf63606230ee9dd1fb63e1fa31528b",
+    "test_access_check.py": "39aab40cac65567454833f2ed1b1df37559969904db138d46aa8d3ee1e3ea4ef",
+    "test-manifest.json": "dc12ace939abfa306fbf5672b3e40a744e18c8c3ca1ddbc8f77765d8e320031d"
+  },
+  "sdkReviewHashesMatched": 21,
+  "credentialReads": 0,
+  "providerRequests": 0
+}
