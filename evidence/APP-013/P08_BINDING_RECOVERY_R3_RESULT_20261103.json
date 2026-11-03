@@ -1,0 +1,46 @@
+{
+  "recordedAt": "2026-11-03T21:51:33.165270+00:00",
+  "operationId": "ff5697fb-2411-4745-a145-079f8e9daac4",
+  "approvalCommit": "e29a376",
+  "sourceCommit": "2a39aacbee27dc610b48539bd81741d2fed88ef9",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "RECOVERY_READ_UNCONFIRMED",
+    "liveObserved": true,
+    "purgeEnd": "2026-11-03T22:45:00Z",
+    "residuals": [
+      "MAIN_SESSIONS_UNCONFIRMED",
+      "INDEPENDENT_SESSIONS_UNCONFIRMED",
+      "INDEPENDENT_PROCESSES_UNCONFIRMED"
+    ],
+    "status": "BINDING_INPUT_RECOVERY_UNQUALIFIED"
+  },
+  "resourceCloseout": {
+    "residuals": [
+      "MAIN_SESSIONS_UNCONFIRMED",
+      "INDEPENDENT_SESSIONS_UNCONFIRMED",
+      "INDEPENDENT_PROCESSES_UNCONFIRMED"
+    ],
+    "verified": false
+  },
+  "privatePurge": {
+    "completedAt": 1793742652.065443,
+    "onTime": true,
+    "operationId": "ff5697fb-2411-4745-a145-079f8e9daac4",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "reservedDispatches": [
+    "read-cli-owner.json",
+    "read-cli-project.json"
+  ],
+  "requestAbsent": true,
+  "recoveredFileAbsent": true,
+  "qualificationInputAbsent": true,
+  "providerRequestCount": "UNKNOWN",
+  "sqlDispatchCount": 0,
+  "cliDispatchCount": 2
+}
