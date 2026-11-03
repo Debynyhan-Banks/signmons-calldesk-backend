@@ -1,0 +1,52 @@
+{
+  "recordedAt": "2026-11-03T22:31:58.326696+00:00",
+  "qualificationId": "471b2bea-0256-42a8-b404-7966cffba419",
+  "approvalCommit": "d9cec75",
+  "sourceCommit": "18556673a986328f36de9b7f67d189f1c7f1bdfd",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "PROCESS_TIMEOUT",
+    "liveObserved": true,
+    "residuals": [],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED"
+  },
+  "independentCloseout": {
+    "operationId": "471b2bea-0256-42a8-b404-7966cffba419"
+  },
+  "sqlReservations": [
+    "read-sql-1.json",
+    "read-sql-2.json"
+  ],
+  "sdkInvocationCount": "UNKNOWN_NOT_PERSISTED",
+  "directHttpsCount": "UNKNOWN_NOT_PERSISTED",
+  "cacheInspectionCount": "UNKNOWN_NOT_PERSISTED",
+  "providerRequestCount": "UNKNOWN",
+  "r5ResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "r5PrivatePurge": {
+    "completedAt": 1793745016.222723,
+    "onTime": true,
+    "operationId": "4b0121f4-b43f-433d-ae59-a94860b79080",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "qualificationInputAbsent": true,
+  "recoveredInputAbsent": true,
+  "r5RequestAbsent": true,
+  "r5GuardRecordedPidAbsent": true,
+  "timingsUtc": {
+    "attempt.json": "2026-11-03T22:30:16.217363+00:00",
+    "read-sql-1.json": "2026-11-03T22:31:03.024602+00:00",
+    "independent-closeout.json": "2026-11-03T22:31:04.367826+00:00",
+    "read-sql-2.json": "2026-11-03T22:31:04.385090+00:00",
+    "result.json": "2026-11-03T22:31:04.617278+00:00"
+  },
+  "accepted": "4/8",
+  "section3A": "OPEN",
+  "r1NewlyClosed": "0/27"
+}
