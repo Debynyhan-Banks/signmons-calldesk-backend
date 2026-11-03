@@ -1,0 +1,17 @@
+{
+  "operationId": "112f0eed-6230-4137-8f16-d4ec1beb9675",
+  "status": "INDEPENDENT_CLOSEOUT_VERIFIED",
+  "verifiedAt": "2026-11-03T14:20:33Z",
+  "exclusiveLockAcquired": true,
+  "exactInventory": true,
+  "privatePlanAbsent": true,
+  "scratchAbsent": true,
+  "filesSha256": {
+    "result.json": "9b716e6981a67c410be0cbb37b275ed2d64b7559d45cf5b03d7c886c71c6d9dd",
+    "attempt.json": "b89c7987bbd295bc6d8c005fed1579002b8098fa81b29b330ca2cac9c992d7a2",
+    "entry.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "residuals": [],
+  "credentialReads": 0,
+  "providerRequests": 0
+}
