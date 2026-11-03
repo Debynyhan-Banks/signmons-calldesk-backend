@@ -1,0 +1,28 @@
+{
+  "recordedAt": "2026-11-03T22:12:07.417785+00:00",
+  "operationId": "4b0121f4-b43f-433d-ae59-a94860b79080",
+  "approvalCommit": "3242d16",
+  "sourceCommit": "66a809b3cb612d8de1aa1709a9e4cdf3f65c310d",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": null,
+    "liveObserved": true,
+    "purgeEnd": "2026-11-03T22:45:00Z",
+    "residuals": [],
+    "status": "HANDOFF_RETAINED"
+  },
+  "resourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "cliDispatchCount": 2,
+  "sqlDispatchCount": 3,
+  "providerRequestCount": "UNKNOWN",
+  "guardRecordedPidPresent": true,
+  "privatePurgeStatus": "PENDING_HANDOFF_OR_EXPIRY",
+  "purgeEnd": "2026-11-03T22:45:00Z",
+  "requestAbsent": true,
+  "qualificationLaunched": false
+}
