@@ -1,0 +1,21 @@
+{
+  "operation": "renewal-20261103-1440",
+  "status": "INDEPENDENT_CLOSEOUT_VERIFIED",
+  "verifiedAt": "2026-11-03T14:41:04Z",
+  "exclusiveLockAcquired": true,
+  "ownedProcessGroupAbsent": true,
+  "privatePlanTokenOutputAbsent": true,
+  "temporaryPostcheckReceiptRemoved": true,
+  "postcheckReservation": {
+    "cacheCeiling": 1,
+    "operation": "renewal-20261103-1440",
+    "reservedAt": "2026-11-03T14:40:34Z"
+  },
+  "postcheckReservationSha256": "f4b397b9673af097cc80c8f955ca34333e1696ed3bf532ffb3c5f756343bc4dd",
+  "filesSha256": {
+    "result.json": "cf0c167ddff9535cc659d0de16bad495805eec4df8db3beb8fc71e039bd6cea1",
+    "attempt.json": "7b9a0da83b554a84f7ad1b3a7d5e0f48462dfdeb28156aa4c86108ab6989299b",
+    "entry.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "residuals": []
+}

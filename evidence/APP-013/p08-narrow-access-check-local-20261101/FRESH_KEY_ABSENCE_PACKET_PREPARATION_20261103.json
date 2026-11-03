@@ -1,0 +1,20 @@
+{
+  "section": "APP-013/3A/P08",
+  "preparedAt": "2026-11-03T14:41:48Z",
+  "operationId": "f5f91122-d2b6-4dc2-8af2-ef59acf7351c",
+  "supersededUnapprovedOperationId": "651d475e-9344-47f1-b08c-abba317e17d9",
+  "sourceCommit": "5be6d5772394062395f735e23c7ae32423180d14",
+  "scopeSha256": "c8a31d634dffbba3471681e2e98c0df08e2563a4915c93d9e03f227c3d5a1967",
+  "draftSha256": "7a41f61ee1750f645979c90c439b8dc30b7d198e8f29a2bdcc69b8db4100825e",
+  "packetChecks": [
+    "committed_source_synthetic_approval_PASS",
+    "target_refusal_PASS",
+    "budget_refusal_PASS",
+    "cutoff_refusal_PASS",
+    "actual_pending_refusal_PASS"
+  ],
+  "credentialReads": 0,
+  "providerRequests": 0,
+  "operationalRootAbsent": true,
+  "executionReady": false
+}
