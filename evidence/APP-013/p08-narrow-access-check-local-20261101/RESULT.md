@@ -1,5 +1,11 @@
 # APP-013 / 3A / P08 — narrow access adapter local result
 
+## November 3 — fresh six-read qualification consumed; API Keys API disabled
+
+Owner exact approval governance 163e9c6; source 8e35617 unchanged. Operation 29e9ebff-2b7c-43a5-b459-217910a1475f ran once 13:15:20–13:15:22 UTC and returned SERVICE_DISABLED: cache 1, CLI 0, HTTPS 6, no failure/residuals. Exact project and both role definitions passed; all twelve requested owner permissions observed; apikeys.googleapis.com DISABLED. No refresh/retry/mutation. Independent lock/inventory/receipt/private-plan-absence verification PASS at 13:15:35 UTC, before 13:25 deadline. Evidence ACCESS_QUALIFICATION_RESULT_20261103.md and immutable operations/29e9ebff-2b7c-43a5-b459-217910a1475f/. Qualification procedure 1–6 complete; approval consumed, executionReady=false. Remaining/blocker: owner/provider administrator decision on separately bounded API enablement, or deferral; no configuration action authorized here. Next observable result is that decision and later authorized service-state evidence. Billing/runtime/Firebase/database/job/key/payment/full qualification UNKNOWN. Exact role definitions and owner permission tests do not demonstrate runtime usability. Accepted 4/8, R1 0/27, 3A open; prior operations/renewal consumed. **No scope deviation.**
+
+Earlier results below are historical.
+
 **Current real qualification result:** the approved November 1 attempt is consumed and closed. CACHED_TOKEN_EXPIRED stopped before HTTPS (cache 1, CLI 0, HTTPS 0); independent cleanup verification passed at 15:31:17 UTC. See `ACCESS_QUALIFICATION_RESULT_20261101.md` and its immutable sanitized receipts. No refresh/retry; current provider facts remain UNKNOWN. Earlier local-only results below are historical.
 
 **Current approved amendment result:** see `NO_RETRY_AMENDMENT_RESULT_20261101.md`. The version-2 zero-CLI/six-HTTPS/cached-token-only path passes 49 focused tests. The old SDK retry gate/results/hashes below are historical; current source validation reports localTransportReady=true, ready=false, EXTERNAL_QUALIFICATION_NOT_AUTHORIZED. No live credentials/provider action occurred.
