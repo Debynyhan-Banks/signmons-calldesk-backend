@@ -1,0 +1,33 @@
+{
+  "approvalCommit": "eac414af063ffbbc6c3620d16b7cb6c7bee8921f",
+  "attemptFileTimestamp": "2026-11-03T13:50:24.166457+00:00",
+  "counts": {
+    "cache": 1,
+    "cli": 0,
+    "https": 6
+  },
+  "enableAttempts": 1,
+  "exclusiveOperationLockAcquired": true,
+  "nativeResiduals": [],
+  "operationId": "308b0ec1-571f-4c20-8abd-85e1945560d7",
+  "operationPollObservations": 1,
+  "planSha256": "84e4c90eca698979706b5c8c5f750fd51abda2cb0c3d8deff9565cb6b56453fc",
+  "privatePlanAbsent": true,
+  "readProcessExitCode": 0,
+  "resultFileTimestamp": "2026-11-03T13:50:28.443749+00:00",
+  "retainedSanitizedFileSha256": {
+    "attempt.json": "d9439ca07f0cf8a18d6c4eb26b597ac67d179b5f574d138557d22efc300cebf4",
+    "closeout.json": "d9439ca07f0cf8a18d6c4eb26b597ac67d179b5f574d138557d22efc300cebf4",
+    "entry.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "journal.json": "df70e48262ecd0024957b1caff29ec9b45c5c9ebc9ebb360fadfc7e1fb94c815",
+    "result.json": "6268466968018ef03080f8da67bde0ddc693a115f414d352c72ccee9630f269a"
+  },
+  "serviceAfter": "ENABLED",
+  "serviceBefore": "DISABLED",
+  "serviceRetention": "RETAIN_ENABLED",
+  "sourceCommit": "a7adc1fa846d889432ed9295ead5395d71cac7de",
+  "status": "CONSUMED_SERVICE_ENABLEMENT_OBSERVED",
+  "temporaryJournalAbsent": true,
+  "verifiedAt": "2026-11-03T13:50:41.721842+00:00",
+  "verifiedBeforePurgeDeadline": true
+}
