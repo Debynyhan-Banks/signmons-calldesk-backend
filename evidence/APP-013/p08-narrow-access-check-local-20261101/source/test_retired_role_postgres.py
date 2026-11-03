@@ -78,6 +78,14 @@ class RetiredRolePostgres(unittest.TestCase):
         self.assertEqual(output,result);self.assertEqual(io.calls,1);self.assertTrue(io.closed)
         self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE usename='p07_payment_runtime'"),'0')
 
+    def test_lifecycle_query_adds_only_expiry_and_preserves_acl_projection(self):
+        retired=self.observation();lifecycle=json.loads(self.command(a.lifecycle_role_query()))
+        expiry=lifecycle.pop('expires')
+        self.assertEqual(lifecycle,retired);self.assertTrue(isinstance(expiry,str))
+        result,legacy=a.classify_role_acl(lifecycle['acl'],'neondb',a.expected_retired_acl())
+        self.assertEqual(result['roleAclSha256'],a.digest(legacy))
+        self.assertEqual(result['roleAclSha256'],self.classify()['roleAclSha256'])
+
     def test_02_column_drift_that_legacy_hash_misses_refuses(self):
         before=self.classify();adapter=self.restore.NativeAdapter(None,'synthetic',sql=lambda sql,deadline:self.command(sql))
         self.command('GRANT UPDATE ("status") ON "Job" TO p07_payment_runtime;')

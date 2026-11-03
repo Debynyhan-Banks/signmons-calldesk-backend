@@ -9,11 +9,55 @@ import time
 from pathlib import Path
 from authority import Capability, committed, digest, load
 from private_inventory import Stop, need, inspect, read, reserve, purge
-from native_io import NativeIO
+from native_io import NativeIO, load_acl
 from handoff import Handoff
 
 readbacks = load('p08-native-closeout-local-20261031/source/adapter.py', 'entry_readback_contract')
 c, bridge, restore = readbacks.load_sources()
+
+
+class RuntimeAdapter(restore.NativeAdapter):
+    """Full ACL validation at each inherited phase readback, including independent closure."""
+    def __init__(self, cap, io, clock=time.time):
+        super().__init__(None, '', runner=io.cloud, sql=io.sql, clock=clock)
+        self.cap = cap
+        self.acl = load_acl()
+
+    def role(self, deadline):
+        def unique(pairs):
+            result = {}
+            for key, value in pairs:
+                need(key not in result, 'ROLE_OUTPUT_UNKNOWN')
+                result[key] = value
+            return result
+        try:
+            need(self.clock() < deadline, 'ROLE_DEADLINE')
+            raw = self.sql(self.acl.lifecycle_role_query(), deadline)
+            need(isinstance(raw, str) and len(raw.encode('utf-8')) <= 65536, 'ROLE_OUTPUT_UNKNOWN')
+            v = json.loads(raw, object_pairs_hook=unique)
+            fields = {'role','database','user','count','login','limit','expires','expiryFinite','expired',
+                      'unsafe','memberships','owned','sessions','schemaCreate','databaseTemp','acl'}
+            need(isinstance(v, dict) and set(v) == fields, 'ROLE_OUTPUT_UNKNOWN')
+            need(v['role'] == self.acl.RETIRED_ROLE and
+                 v['database'] == self.cap.e['database']['database'] and
+                 v['user'] == self.cap.e['database']['user'], 'ROLE_IDENTITY_UNKNOWN')
+            need(all(type(v[k]) is int and v[k] >= 0 for k in ('count','limit','memberships','owned','sessions')) and
+                 all(type(v[k]) is bool for k in ('login','expiryFinite','expired','unsafe','schemaCreate','databaseTemp')),
+                 'ROLE_OUTPUT_UNKNOWN')
+            need(v['count'] == 1 and v['expiryFinite'] and not v['unsafe'] and
+                 v['memberships'] == v['owned'] == 0 and not v['schemaCreate'] and not v['databaseTemp'],
+                 'ROLE_NOT_READY')
+            need(isinstance(v['expires'], str) and 0 < len(v['expires']) <= 64, 'ROLE_OUTPUT_UNKNOWN')
+            expiry = datetime.datetime.fromisoformat(v['expires'])
+            need(expiry.tzinfo is not None, 'ROLE_OUTPUT_UNKNOWN')
+            _, legacy = self.acl.classify_role_acl(v['acl'], v['database'], self.acl.expected_retired_acl())
+            need(self.clock() < deadline, 'ROLE_DEADLINE')
+            return {**{k:v[k] for k in ('count','login','limit','expires','expired','unsafe','memberships','owned','sessions')},
+                    'acl':legacy}
+        except BaseException as error:
+            if isinstance(error, Stop): raise
+            if isinstance(error, self.acl.Stop): raise Stop(str(error)) from None
+            raise Stop('ROLE_READ_UNCONFIRMED') from None
 
 
 class Ports(bridge.Ports):
@@ -97,7 +141,7 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
         try: fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError: raise Stop('ENTRY_ALREADY_RUNNING') from None
         inspect(cap.root, cap.plan['operationId'])
-        runtime = restore.NativeAdapter(None, '', runner=io.cloud, sql=io.sql, clock=clock)
+        runtime = RuntimeAdapter(cap, io, clock=clock)
         runtime.q = cap.e['qualification']
         handoff = Handoff(cap, io)
         runtime.close_authentication = lambda plan, deadline: handoff.closeout_only()

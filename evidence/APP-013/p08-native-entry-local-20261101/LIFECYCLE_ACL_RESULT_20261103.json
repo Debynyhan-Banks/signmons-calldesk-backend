@@ -1,0 +1,44 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "timestamp": "2026-11-03T15:43:28.190457+00:00",
+  "approvalCardCommit": "60082c6",
+  "sourceBaseline": "2972104745134d42062afdf259d9c9f34bc7833f",
+  "status": "LIFECYCLE_ACL_LOCAL_VERIFIED",
+  "tests": {
+    "narrowUnit": 111,
+    "assembledEntry": 21,
+    "nodeTransport": 6,
+    "ownedPostgres": 8,
+    "ownedTLSPostgres": 8,
+    "governance": 25
+  },
+  "providerCalls": 0,
+  "liveObserved": false,
+  "executionReady": false,
+  "cleanup": {
+    "ownedServerReaped": true,
+    "ownedScratchAbsent": true
+  },
+  "files": {
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py": "c8305243c9fd84cb027a0af5d1406f39da36b2ff249b52cd8a6159c032b0d195",
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/source-manifest.json": "30446f0d171ce00ef28052dea27660faa3c8e11f5e8df335a649df6a54c37253",
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/test-manifest.json": "a5e722e7e19081bc3c8b29e5d476f72aa3d7197f5fe82cf0ff9218fb79c3a2fc",
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/test_access_check.py": "ff295f9a3ede451c43e8bf276d9d083dc229c28e02f81f0b8701a6a4ae3664d1",
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/test_retired_role_postgres.py": "93e1264c03dac523979766c610631aacf2589fe9c0ba8ba1337c961b84856638",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py": "c11a65bb991055205594333a17c82f61e6bb1902f0d93d8c331c02f94e504388",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py": "213012477705dfa3477eb2f7dc80938d881d76df4d11ee1ceda3128a768c92b3",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json": "0faaa16509f574db174cdbb4b1c3ffb0c722e856ae10384facd2d5fe44ceb799",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json": "5b491bcffffef467f07f3b629aef3258adcc34a62e4d937613e52b677b049cdd",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py": "f9d0727a662dacee20dfe1ecbe00a6fde624db6b505522e5926e7b22de716d9a",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test_native_postgres.py": "1892b65519f32e9d06ad8ab0e5009028bd53f2bbd7a0e420b4999446ff68421e"
+  },
+  "historicalLockedCodeAndConsumedReceiptsUnchanged": true,
+  "checks": {
+    "source": "PASS",
+    "architecture": "PASS",
+    "frozenBaseline": "PASS",
+    "crossRepository": "PASS",
+    "docsConsistency": "PASS",
+    "whitespace": "PASS"
+  }
+}

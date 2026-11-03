@@ -4,8 +4,17 @@ import os
 import subprocess
 import urllib.error
 import urllib.request
-from authority import load
+from authority import load, HERE, APP, digest
 from private_inventory import need
+
+
+def load_acl():
+    relative = 'p08-narrow-access-check-local-20261101/source/access_check.py'
+    manifest = json.loads((HERE / 'source-manifest.json').read_text())
+    path = APP / relative
+    need(not path.is_symlink() and digest(path.read_bytes()) == manifest['lockedSources'].get(relative),
+         'ACL_SOURCE_DRIFT')
+    return load(relative, 'native_lifecycle_acl')
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -25,12 +34,7 @@ class NativeIO:
              'database': self.legacy.DB_NAME, 'user': self.legacy.DB_ADMIN}, 'NATIVE_DATABASE_PIN')
         self.allowed_sql = {self.restore.role_sql(True, cap.plan['window']['workEnd']),
                             self.restore.role_sql(False)}
-        probe = self.restore.NativeAdapter(None, '', sql=lambda query, deadline: self._capture_sql(query))
-        probe.role(0)
-
-    def _capture_sql(self, query):
-        self.allowed_sql.add(query)
-        return '{}'
+        self.allowed_sql.add(load_acl().lifecycle_role_query())
 
     def env(self):
         env = {k: v for k, v in os.environ.items() if not k.startswith('PG') and

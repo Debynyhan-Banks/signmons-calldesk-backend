@@ -871,7 +871,16 @@ def classify_retired_role(observation,expected_acl):
          all(type(v[k]) is int and v[k]>=0 for k in ('limit','memberships','owned','sessions')),'ROLE_OUTPUT_UNKNOWN')
     need(v['login'] is False and v['limit']==0 and v['expiryFinite'] and v['expired'] and not v['unsafe'] and
          v['memberships']==v['owned']==v['sessions']==0 and not v['schemaCreate'] and not v['databaseTemp'],'ROLE_NOT_READY')
-    rows=v['acl'];need(isinstance(rows,list) and len(rows)<=512,'ROLE_ACL_UNKNOWN')
+    result,legacy=classify_role_acl(v['acl'],v['database'],expected_acl)
+    return {'status':'ROLE_CONTRACT_LOCAL_VERIFIED',**result,'liveObserved':False,'executionReady':False}
+
+def lifecycle_role_query():
+    return retired_role_query().replace("'expiryFinite',", "'expires',(SELECT rolvaliduntil::text FROM r),'expiryFinite',",1)
+
+def classify_role_acl(rows,database,expected_acl):
+    need(expected_acl==expected_retired_acl(),'ROLE_EXPECTATION_DRIFT')
+    need(isinstance(database,str) and 0<len(database)<=128,'ROLE_IDENTITY_UNKNOWN')
+    need(isinstance(rows,list) and len(rows)<=512,'ROLE_ACL_UNKNOWN')
     normalized=[];legacy=[];seen=set()
     for row in rows:
         need(isinstance(row,dict) and set(row)=={'kind','object','column','privilege_type','is_grantable'} and
@@ -880,14 +889,14 @@ def classify_retired_role(observation,expected_acl):
         key=(row['kind'],row['object'],row['column'],row['privilege_type'],row['is_grantable'])
         need(key not in seen,'ROLE_ACL_UNKNOWN');seen.add(key)
         item=dict(row)
-        if item['kind']=='database' and item['object']==v['database']:item['object']='$DATABASE'
+        if item['kind']=='database' and item['object']==database:item['object']='$DATABASE'
         normalized.append(item)
         if row['kind']!='column':legacy.append({k:val for k,val in row.items() if k!='column'})
     normalized.sort(key=lambda row:(row['kind'],row['object'],row['column'],row['privilege_type'],row['is_grantable']))
     need(normalized==expected_acl,'ROLE_ACL_DRIFT')
     legacy.sort(key=lambda row:(row['kind'],row['object'],row['privilege_type'],row['is_grantable']))
-    return {'status':'ROLE_CONTRACT_LOCAL_VERIFIED','fullAclSha256':digest(normalized),
-            'roleAclSha256':digest(legacy),'aclRows':len(rows),'liveObserved':False,'executionReady':False}
+    return {'fullAclSha256':digest(normalized),'roleAclSha256':digest(legacy),'aclRows':len(rows)},legacy
+
 
 def retired_role_evidence(io,expected,deadline,clock=time.time):
     """Local injected proof only; no native credentials, connection factory or CLI mode."""

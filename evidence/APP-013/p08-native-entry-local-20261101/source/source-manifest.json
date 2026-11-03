@@ -2,10 +2,10 @@
   "files": {
     "authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
     "authority_bridge.mjs": "904749fe2ae7692632f8ad55d93f25a769be379d313044b466caa0faa5c7c9d9",
-    "entry.py": "92bf5b8d0a2b656c76c6eb5600f7cad22f903219d41439ffd359c509b28e5111",
+    "entry.py": "c11a65bb991055205594333a17c82f61e6bb1902f0d93d8c331c02f94e504388",
     "handoff.py": "73c648a6f7a1358da29fc1961a37e8a3493d400393528deb52b25912bbc9ab8c",
     "native_child.mjs": "f5179bcffc844e0c6b6bc2c7be33b69760efd4bc0f1c73213b8eff5045f812c4",
-    "native_io.py": "4eca2d6a66b3616db59380d635be8937291b4dd50fd290e727caf578c2c8f498",
+    "native_io.py": "213012477705dfa3477eb2f7dc80938d881d76df4d11ee1ceda3128a768c92b3",
     "private_inventory.py": "7996957c8cab7374b683f4db5d46c6536d8ba4023d8395edd1ed163a3bc03b78",
     "transports.mjs": "d1dab20ada57215d55ed74aa2e43eaa764006e4de0b7a508f304685232ea6ec4"
   },
@@ -13,6 +13,7 @@
     "p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "p08-coordinator-auth-local-20261031/source/authority.mjs": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
     "p08-live-binder-local-20261029/source/coordinator.py": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
+    "p08-narrow-access-check-local-20261101/source/access_check.py": "c8305243c9fd84cb027a0af5d1406f39da36b2ff249b52cd8a6159c032b0d195",
     "p08-native-bridge-local-20261029/source/bridge.py": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce",
     "p08-native-closeout-local-20261031/source/adapter.py": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c",
     "p08-real-client-binding-local-20261031/source/bound-clients.mjs": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1",

@@ -43,6 +43,12 @@ class EntryTests(unittest.TestCase):
         self.e['qualification']={'status':'QUALIFIED_FOR_NATIVE_ENTRY','operationId':f.p['operationId'],
             'scopeSha256':a.digest(scope),'qualifiedUntil':iso(900),**f.q,
             'checks':{k:True for k in ('owner','billing','effectiveAccess','services','database','firebase','job','retiredRuntime','privateInventory')}}
+        self.acl=entry.load_acl();self.role_reads=0;self.role_mutator=None
+        rows=self.acl.expected_retired_acl()
+        for row in rows:
+            if row['kind']=='database':row['object']=self.e['database']['database']
+        f.q['roleAclSha256']=self.acl.classify_role_acl(rows,self.e['database']['database'],self.acl.expected_retired_acl())[0]['roleAclSha256']
+        self.e['qualification']['roleAclSha256']=f.q['roleAclSha256']
         self.scenario='normal';self.calls=0;self.io=None;self.capture_recovery=False;self.snapshot=None
         self.seal()
 
@@ -68,6 +74,16 @@ class EntryTests(unittest.TestCase):
                 return f.cloud(v,d)
             def sql(self,q,d):
                 cap.spend('sql',self.cleanup);test.calls+=1
+                if q==test.acl.lifecycle_role_query():
+                    test.role_reads+=1
+                    v=json.loads(f.sql(q,d))
+                    v.update(role=test.acl.RETIRED_ROLE,database=cap.e['database']['database'],
+                             user=cap.e['database']['user'],expiryFinite=True,schemaCreate=False,databaseTemp=False,
+                             acl=test.acl.expected_retired_acl())
+                    for row in v['acl']:
+                        if row['kind']=='database':row['object']=v['database']
+                    if test.role_mutator:test.role_mutator(v,self.cleanup)
+                    return json.dumps(v)
                 return f.sql(q,d)
             def https(self,d):
                 cap.spend('https',self.cleanup);test.calls+=1
@@ -177,6 +193,9 @@ class EntryTests(unittest.TestCase):
 
     def test_final_source_gate_and_separate_test_provenance(self):
         self.assertEqual(set(a.verify_sources()['files']),a.FILES)
+        manifest=json.loads((a.HERE/'test-manifest.json').read_text())
+        self.assertEqual(manifest['runtimeManifestSha256'],a.digest((a.HERE/'source-manifest.json').read_bytes()))
+        for name,sha in manifest['files'].items():self.assertEqual(sha,a.digest((a.HERE/name).read_bytes()))
         self.assertEqual(self.e['sourceManifestSha256'],a.digest((a.HERE/'source-manifest.json').read_bytes()))
 
     def test_independent_closeout_recovers_interrupted_parent_after_start_cutoff(self):
@@ -226,6 +245,70 @@ class EntryTests(unittest.TestCase):
         with self.assertRaisesRegex(Stop,'COMMITTED_SOURCE_MANIFEST'):a.Capability(self.e,self.root,read_commit=source_drift)
         self.assertEqual(self.calls,0)
 
+    def test_lifecycle_column_drift_at_each_phase_blocks_success(self):
+        for phase in ('preflight','enabled','retired'):
+            with self.subTest(phase=phase):
+                t=EntryTests();t.setUp()
+                try:
+                    seen=[False]
+                    def mutate(v,cleanup):
+                        if v['login']:seen[0]=True
+                        drift=(phase=='preflight' or phase=='enabled' and v['login'] or
+                               phase=='retired' and seen[0] and not v['login'])
+                        if drift:v['acl'].append(dict(kind='column',object='public.Job',column='status',
+                                                      privilege_type='UPDATE',is_grantable=False))
+                    t.role_mutator=mutate;r=t.run_entry()
+                    self.assertFalse(r['authProofReady'])
+                    if phase!='enabled':self.assertEqual(r['status'],'ENTRY_CONTAINMENT_UNCONFIRMED',r)
+                    else:self.assertFalse(r['authenticationObserved'])
+                    if phase=='preflight':self.assertIsNone(r['childResultSha256'])
+                    self.assertGreater(t.role_reads,0)
+                finally:t.doCleanups()
+
+    def test_independent_closeout_rechecks_full_acl_after_interruption(self):
+        self.capture_recovery=True;self.assertEqual(self.run_entry()['status'],'ENTRY_CLOSED')
+        files,state,bindings,key=self.snapshot
+        for p in self.root.iterdir():p.unlink()
+        for name,data in files.items():
+            (self.root/name).write_bytes(data);os.chmod(self.root/name,0o600)
+        self.f.runtime_state.clear();self.f.runtime_state.update(state)
+        self.f.transport.bindings=bindings;self.f.transport.key=key
+        def drift(v,cleanup):v['acl'].pop()
+        self.role_mutator=drift;before=self.role_reads
+        r=entry.run_entry(self.path,'closeout',self.factory,
+                          clock=lambda:ta.restore.timestamp(self.f.p['window']['cutoff'])+1)
+        self.assertEqual(r['status'],'ENTRY_CONTAINMENT_UNCONFIRMED',r)
+        self.assertTrue(r['residuals']);self.assertFalse(r['authProofReady'])
+        self.assertGreater(self.role_reads,before)
+
+    def test_lifecycle_strict_output_and_phase_predicates(self):
+        cap=a.Capability(self.e,self.root);io=self.factory(cap)
+        cap.coordinator=SimpleNamespace(abort=False,j={'nativeEntry':{'calls':dict.fromkeys(('cli','https','sql','child'),0)}},save=lambda:None)
+        runtime=entry.RuntimeAdapter(cap,io);runtime.q=self.e['qualification']
+        deadline=time.time()+30
+        self.assertTrue(runtime.readback('role',ta.restore.ROLE,False,self.f.p,deadline))
+        self.f.runtime_state[('role',ta.restore.ROLE)]=True
+        self.assertTrue(runtime.readback('role',ta.restore.ROLE,True,self.f.p,deadline))
+        changes=[('database','foreign'),('user','foreign'),('role','foreign'),('count',True),('count',0),
+                 ('login',None),('limit',True),('expiryFinite',False),('expires','infinity'),
+                 ('unsafe',True),('memberships',1),('owned',1),('schemaCreate',True),('databaseTemp',True)]
+        for key,value in changes:
+            with self.subTest(key=key,value=value):
+                self.role_mutator=lambda v,c,k=key,x=value:v.update({k:x})
+                with self.assertRaises(Stop):runtime.role(deadline)
+        for key in ('acl','expires','expired'):
+            self.role_mutator=lambda v,c,k=key:v.pop(k)
+            with self.assertRaises(Stop):runtime.role(deadline)
+        for key,value in [('expires','2000-01-01T00:00:00+00:00'),('limit',5),('login',False)]:
+            self.role_mutator=lambda v,c,k=key,x=value:v.update({k:x})
+            self.assertFalse(runtime.readback('role',ta.restore.ROLE,True,self.f.p,deadline))
+        self.f.runtime_state[('role',ta.restore.ROLE)]=False
+        self.role_mutator=lambda v,c:v.update(sessions=1)
+        self.assertFalse(runtime.readback('role',ta.restore.ROLE,False,self.f.p,deadline))
+        for raw in ('null','{}','{"count":1,"count":1}', 'x'*65537):
+            runtime.sql_runner=lambda q,d,r=raw:r
+            with self.assertRaises(Stop):runtime.role(deadline)
+
     def native_fixture(self):
         legacy=a.load('p08-restoration-local-20261028/source/legacy/controller.py','native_io_test_legacy')
         self.e['database']={'host':legacy.DB_HOST,'port':5432,'database':legacy.DB_NAME,'user':legacy.DB_ADMIN}
@@ -259,6 +342,8 @@ class EntryTests(unittest.TestCase):
                 with self.assertRaisesRegex(Stop,code):io.sql(query,0)
         with patch('native_io.subprocess.run') as run:
             with self.assertRaisesRegex(Stop,'SQL_ALLOWLIST'):io.sql('SELECT foreign',0)
+            old=[];ta.restore.NativeAdapter(None,'',sql=lambda q,d:old.append(q) or '{}').role(0)
+            with self.assertRaisesRegex(Stop,'SQL_ALLOWLIST'):io.sql(old[0],0)
             run.assert_not_called()
         io.clear();self.assertEqual((io.token,io.password),('',''))
 

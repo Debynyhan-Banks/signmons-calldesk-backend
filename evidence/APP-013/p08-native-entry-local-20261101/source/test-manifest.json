@@ -4,10 +4,10 @@
     "fixture_envelope.py": "3495b9fa9a5822029c26ad10854c044477232067b75f0b51fb12066c0e541742",
     "fixture_ports.mjs": "997f1ec95806ee98434b091dc9714274d1dae61c2d64bf83690aa1b68efbb2c6",
     "postgres_driver.mjs": "c176dd4491b048f19ff19a2cf1e8d0ce619633e2da6db4a83153d40e98dea199",
-    "test_entry.py": "ed8f4c07c94655187e45b95f5644669f92e17fbf1377a68d39f9bb254846d46a",
-    "test_native_postgres.py": "4dc392e8c8db6f29a686e45c36c5c9faf0570b3507ba84d49ae1918e377d8a15",
+    "test_entry.py": "f9d0727a662dacee20dfe1ecbe00a6fde624db6b505522e5926e7b22de716d9a",
+    "test_native_postgres.py": "1892b65519f32e9d06ad8ab0e5009028bd53f2bbd7a0e420b4999446ff68421e",
     "test_transports.mjs": "6fa6b6c5e5f93ad1ba23731d386c2b9625bcaf34fefe039c930de080a1ccd5a8"
   },
-  "runtimeManifestSha256": "8b3ba5afcba4c80a73df8e8e4d0a61e5edc93025efda4775aef02e5711206201",
+  "runtimeManifestSha256": "0faaa16509f574db174cdbb4b1c3ffb0c722e856ae10384facd2d5fe44ceb799",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }

@@ -1241,6 +1241,15 @@ class RetiredRoleTests(unittest.TestCase):
         for method in ('connect','connect_ex'):
             p=patch.object(socket.socket,method,side_effect=AssertionError('NETWORK_FORBIDDEN'));p.start();self.addCleanup(p.stop)
     def classify(self):return a.classify_retired_role(self.value,self.expected['acl'])
+    def test_shared_acl_is_phase_independent_but_retired_classifier_is_not(self):
+        value=dict(self.value,login=True,limit=6,expired=False)
+        result,legacy=a.classify_role_acl(value['acl'],value['database'],self.expected['acl'])
+        self.assertEqual(result['roleAclSha256'],a.digest(legacy))
+        self.assertEqual(result['fullAclSha256'],a.classify_retired_role(self.value,self.expected['acl'])['fullAclSha256'])
+        with self.assertRaisesRegex(a.Stop,'ROLE_NOT_READY'):a.classify_retired_role(value,self.expected['acl'])
+        self.assertEqual(a.lifecycle_role_query().count("'expires'"),1)
+        self.assertNotIn("'expires'",a.retired_role_query())
+
     def test_exact_retained_role_has_local_hashes_only(self):
         result=self.classify();self.assertEqual(result['status'],'ROLE_CONTRACT_LOCAL_VERIFIED')
         self.assertFalse(result['liveObserved']);self.assertFalse(result['executionReady'])
