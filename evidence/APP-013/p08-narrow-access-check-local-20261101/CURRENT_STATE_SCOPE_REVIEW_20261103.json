@@ -1,0 +1,19 @@
+{
+  "section": "APP-013/3A/P08",
+  "reviewedAt": "2026-11-03T15:11:12.516093+00:00",
+  "backendEntry": "a3f7ade46b3167f463c3f6623d57be096ad672aa",
+  "governanceEntry": "5380f1ea7c343e827521166c76a1f65514706295",
+  "sourceSha256": {
+    "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18",
+    "evidence/APP-013/p08-role-contract-local-20261029/source/composed_qualification.py": "2c2f9603cb71957239816f4942549be8277c446cbcc5f2b7bae1f139fd552df4",
+    "evidence/APP-013/p08-restoration-local-20261028/source/restore.py": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py": "92bf5b8d0a2b656c76c6eb5600f7cad22f903219d41439ffd359c509b28e5111"
+  },
+  "codeChanges": 0,
+  "credentialReads": 0,
+  "providerRequests": 0,
+  "roleState": "UNKNOWN",
+  "decision": "PENDING_ROLE_CONTRACT_ALIGNMENT",
+  "executionReady": false
+}
