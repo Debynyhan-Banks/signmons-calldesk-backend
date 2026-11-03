@@ -713,4 +713,292 @@ class CacheTransportTests(CacheBindingTests):
 for _name in list(CacheBindingTests.__dict__):
     if _name.startswith('test_'):setattr(CacheTransportTests,_name,None)
 
+class BindingRecoveryTests(unittest.TestCase):
+    def setUp(self):
+        import uuid,time,shutil
+        self.raw=database_raw();self.now=int(time.time());self.guards=[]
+        self.e=self.envelope(self.now)
+        self.cap=launch.BindingRecoveryCapability(self.e)
+        self.root=self.cap.root
+        self.addCleanup(self.cleanup)
+        original=launch.start_binding_guard
+        def track(cap):
+            p=original(cap);self.guards.append(p);return p
+        patcher=patch.object(launch,'start_binding_guard',side_effect=track);patcher.start();self.addCleanup(patcher.stop)
+        case=self
+        class ProofIO:
+            proof=True
+            def __init__(obj,cap,independent=False):obj.cap=cap;obj.second=independent;obj.calls=[];obj.closed=False;obj.overrides={}
+            def cli(obj,d,deadline):
+                obj.cap.gate('cli',d['id']);obj.calls.append(('cli',d['id']))
+                return copy.deepcopy(obj.overrides.get(d['id'],[{'account':model.OWNER,'status':'ACTIVE'}] if d['id']=='owner' else {'projectId':model.PROJECT,'projectNumber':'123456789012','lifecycleState':'ACTIVE'}))
+            def sql(obj,d,password,deadline):
+                cleanup=d['id']=='closeout';label=('closeout-independent' if obj.second else 'closeout-main') if cleanup else 'qualification'
+                obj.cap.gate('sql',label,cleanup);obj.calls.append(('sql',label))
+                if obj.overrides.get('interrupt') and not cleanup:
+                    import signal
+                    os.kill(os.getpid(),signal.SIGINT)
+                return copy.deepcopy(obj.overrides.get(label,{'sessionsAbsent':True} if cleanup else case.raw))
+            def close(obj,deadline):obj.closed=True;return obj.overrides.get('close',True)
+            def independent(obj):
+                fresh=ProofIO(obj.cap,True);fresh.overrides=copy.deepcopy(obj.overrides);case.fresh=fresh;return fresh
+        self.io=ProofIO(self.cap);self.fresh=None
+    def envelope(self,now,purge=500):
+        import uuid
+        m=model.verify_local_manifest();iso=lambda x:dt.datetime.fromtimestamp(now+x,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        e={'version':1,'execution':'PROOF_ONLY','operationId':str(uuid.uuid4()),'qualificationId':str(uuid.uuid4()),
+          'project':model.PROJECT,'owner':model.OWNER,'database':{'host':launch._operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'},
+          'projectNumberSha256':model.digest('123456789012'),'targetSha256':hashlib.sha256(json.dumps(self.raw['operator'],separators=(',',':')).encode()).hexdigest(),
+          'window':{k:iso(v) for k,v in {'start':-10,'cutoff':30,'readEnd':60,'closeoutEnd':400,'purgeEnd':purge}.items()},
+          'limits':copy.deepcopy(launch.RECOVERY_LIMITS),'sdkException':'SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPORT',
+          'sdkFilesSha256':model.digest(m['sdkReview']['files']),'manifestSha256':launch.source_manifest_sha256(),'sourceCommit':'0'*40}
+        return self.seal(e)
+    def seal(self,e):
+        e.pop('decision',None);e['decision']={'decision':'APPROVE_LOCAL_BINDING_RECOVERY_PROOF','scopeSha256':model.digest(e)};return e
+    def cleanup(self):
+        import shutil
+        for guard in self.guards:
+            if guard.poll() is None:
+                if self.root.exists() and not (self.root/'purge-now.json').exists():model.reserve(self.root/'purge-now.json',{})
+                try:guard.wait(timeout=5)
+                except subprocess.TimeoutExpired:guard.terminate();guard.wait(timeout=3)
+        shutil.rmtree(self.root,ignore_errors=True);shutil.rmtree(self.cap.input_root,ignore_errors=True)
+    def run_recovery(self):return launch.run_binding_recovery(self.cap,self.io)
+    def test_positive_two_cli_three_sql_then_private_handoff_and_purge(self):
+        r,guard=self.run_recovery();self.assertEqual(r['status'],'HANDOFF_RETAINED',r)
+        self.assertFalse(r['liveObserved'] or r['executionReady']);self.assertIsNone(r['candidate'])
+        self.assertEqual(self.io.calls,[('cli','owner'),('cli','project'),('sql','qualification'),('sql','closeout-main')])
+        self.assertEqual(self.fresh.calls,[('sql','closeout-independent')]);self.assertTrue(self.io.closed and self.fresh.closed)
+        h=launch.BindingRecoveryCapability(self.e,mode='handoff')
+        self.assertEqual(launch.read_recovered_bindings(h),{'projectNumber':'123456789012','targetId':UID})
+        text=''.join(p.read_text() for p in self.root.glob('*.json') if p.name!='recovered-inputs.json')
+        for value in ('123456789012',UID,'SYNTHETIC_RECOVERY_ONLY'):self.assertNotIn(value,text)
+        model.reserve(self.root/'purge-now.json',{});guard.wait(timeout=5)
+        receipt=launch.private_json(self.root/'purge-result.json');self.assertTrue(receipt['rawFilesAbsent'] and receipt['onTime'])
+        self.assertFalse((self.root/'recovered-inputs.json').exists())
+    def test_same_operation_and_read_reservations_cannot_replay(self):
+        self.run_recovery()
+        with self.assertRaisesRegex(model.Stop,'RECOVERY_CONSUMED'):launch.BindingRecoveryCapability(self.e)
+        with self.assertRaises(FileExistsError):self.cap.gate('cli','owner')
+        for kind,label in [('https','anything'),('cache','anything'),('cli','token'),('sql','retired_role')]:
+            with self.assertRaises(model.Stop):self.cap.gate(kind,label)
+    def test_wrong_owner_stops_before_project_database_or_password(self):
+        self.io.overrides['owner']=[{'account':'foreign@example.invalid','status':'ACTIVE'}]
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('unexpected credential')):r,g=self.run_recovery()
+        self.assertEqual(self.io.calls,[('cli','owner')]);self.assertEqual(r['status'],'BINDING_INPUT_RECOVERY_UNQUALIFIED')
+        self.assertFalse((self.root/'recovered-inputs.json').exists());self.assertIsNotNone(g.poll())
+    def test_wrong_project_stops_before_database(self):
+        self.io.overrides['project']={'projectId':'foreign','projectNumber':'123456789012','lifecycleState':'ACTIVE'}
+        r,_=self.run_recovery();self.assertEqual(r['failure'],'RECOVERY_PROJECT')
+        self.assertEqual(len(self.io.calls),2);self.assertFalse((self.root/'recovered-inputs.json').exists())
+    def test_wrong_target_and_cleanup_failure_never_publish(self):
+        self.raw['operator']['status']='ACTIVE';self.io.overrides['close']=False
+        r,_=self.run_recovery();self.assertEqual(r['status'],'BINDING_INPUT_RECOVERY_UNQUALIFIED')
+        self.assertIn('MAIN_PROCESSES_UNCONFIRMED',r['residuals']);self.assertFalse((self.root/'recovered-inputs.json').exists())
+    def test_actual_parent_sigint_closes_both_ports_without_handoff(self):
+        self.io.overrides['interrupt']=True;r,g=self.run_recovery()
+        self.assertEqual(r['failure'],'INTERRUPTED');self.assertTrue(self.io.closed and self.fresh.closed)
+        self.assertFalse((self.root/'recovered-inputs.json').exists());self.assertIsNotNone(g.poll())
+    def test_guard_sigterm_purges_its_owned_file(self):
+        _,g=self.run_recovery();g.terminate();g.wait(timeout=5)
+        self.assertFalse((self.root/'recovered-inputs.json').exists());self.assertTrue(launch.private_json(self.root/'purge-result.json')['rawFilesAbsent'])
+    def test_guard_sigkill_requires_explicit_reconciliation_and_no_provider_replay(self):
+        _,g=self.run_recovery();g.kill();g.wait(timeout=3)
+        self.assertTrue((self.root/'recovered-inputs.json').exists());self.assertFalse((self.root/'purge-result.json').exists())
+        c=launch.BindingRecoveryCapability(self.e,mode='closeout')
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('replay')):r=launch.closeout_binding_recovery(c)
+        self.assertTrue(r['rawFilesAbsent']);self.assertTrue(r['resourceCloseout']['verified']);self.assertIsNone(r['candidate'])
+    def test_unknown_replacement_is_not_deleted(self):
+        _,g=self.run_recovery();g.kill();g.wait(timeout=3)
+        p=self.root/'recovered-inputs.json';raw=p.read_bytes();p.unlink();p.write_bytes(raw);p.chmod(0o600)
+        # Force a different inode deterministically, rather than assuming allocator behavior.
+        registry=launch.private_json(self.root/'owned-files.json');registry['recovered']['file'][1]=-1
+        launch.save_owned_registry(self.cap,registry)
+        r=launch.purge_recovery_files(self.cap)
+        self.assertFalse(r['rawFilesAbsent']);self.assertTrue(p.exists())
+    def test_symlink_and_hardlink_inventory_refuse_without_following(self):
+        launch.initialize_recovery(self.cap)
+        victim=self.root/'fixture-victim';victim.write_text('synthetic');victim.chmod(0o600)
+        p=self.root/'recovered-inputs.json';p.symlink_to(victim)
+        with self.assertRaises(model.Stop):launch.purge_recovery_files(self.cap)
+        self.assertEqual(victim.read_text(),'synthetic');p.unlink();victim.unlink()
+        p.write_text('synthetic');p.chmod(0o600);os.link(p,self.root/'extra-link')
+        with self.assertRaises(model.Stop):launch.purge_recovery_files(self.cap)
+    def test_deadline_guard_purges_pending_inode_intent(self):
+        import time
+        # Same source-bound guard, with a valid historic work window ending shortly now.
+        e=copy.deepcopy(self.e);iso=lambda x:dt.datetime.fromtimestamp(time.time()+x,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        e['window']={k:iso(v) for k,v in {'start':-500,'cutoff':-490,'readEnd':-400,'closeoutEnd':-50,'purgeEnd':4}.items()}
+        self.seal(e);cap=launch.BindingRecoveryCapability(e,mode='guard');self.cap=cap
+        launch.initialize_recovery(cap);g=launch.start_binding_guard(cap)
+        with launch.recovery_lock(cap):
+            launch.record_private_file(cap,'recovered',{'projectNumber':'123456789012','targetId':UID})
+            reg=launch.private_json(self.root/'owned-files.json');reg['recovered']['file']=None;launch.save_owned_registry(cap,reg)
+        g.wait(timeout=6);self.assertFalse((self.root/'recovered-inputs.json').exists())
+        self.assertTrue(launch.private_json(self.root/'purge-result.json')['onTime'])
+    def test_late_purge_reports_retention_breach(self):
+        _,g=self.run_recovery();g.kill();g.wait(timeout=3)
+        self.cap.clock=lambda:self.cap.times['purgeEnd']+1
+        r=launch.purge_recovery_files(self.cap);self.assertTrue(r['rawFilesAbsent']);self.assertFalse(r['onTime']);self.assertEqual(r['status'],'PRIVATE_PURGE_LATE')
+    def test_expired_unknown_fields_and_wrong_limits_fail_before_transport(self):
+        for mutate in [lambda e:e.update(extra=True),lambda e:e['limits'].update(cli=3),lambda e:e.update(owner='foreign'),lambda e:e['window'].update(purgeEnd='2099-01-01T00:00:00Z')]:
+            e=copy.deepcopy(self.e);mutate(e);self.seal(e)
+            with self.assertRaises(Exception):launch.BindingRecoveryCapability(e)
+        with self.assertRaisesRegex(model.Stop,'RECOVERY_EXTERNAL_ONLY'):launch.BindingRecoveryIO(self.cap)
+    def test_malformed_duplicate_and_null_reducer_refuses(self):
+        for raw in [None,{}, {**self.raw,'operatorCount':2},{**self.raw,'operator':None},{**self.raw,'extra':1}]:
+            with self.assertRaises(Exception):launch.recovery_values(self.cap,[{'account':model.OWNER,'status':'ACTIVE'}],{'projectId':model.PROJECT,'projectNumber':'123456789012','lifecycleState':'ACTIVE'},raw)
+        with self.assertRaises(model.Stop):launch.strict_json(b'{"a":1,"a":2}')
+
+
+    def test_guard_survives_actual_parent_sigkill_and_purges(self):
+        import time
+        e=copy.deepcopy(self.e);iso=lambda x:dt.datetime.fromtimestamp(time.time()+x,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        e['window']={k:iso(v) for k,v in {'start':-500,'cutoff':-490,'readEnd':-400,'closeoutEnd':-50,'purgeEnd':6}.items()};self.seal(e)
+        input_path=Path(str(self.root)+'-synthetic-request.json');model.reserve(input_path,e);self.addCleanup(lambda:input_path.unlink(missing_ok=True))
+        code="""import sys,time
+sys.path.insert(0,sys.argv[1])
+import qualification_launch as q
+c=q.BindingRecoveryCapability(q.private_json(sys.argv[2]),mode='guard')
+q.initialize_recovery(c);g=q.start_binding_guard(c)
+with q.recovery_lock(c):
+ q.record_private_file(c,'recovered',{'projectNumber':'123456789012','targetId':'11111111-2222-4333-8444-555555555555'})
+ q.model.reserve(c.root/'handoff-published.json',{'scopeSha256':c.hash})
+time.sleep(20)
+"""
+        parent=subprocess.Popen([launch.SDK_ENV['CLOUDSDK_PYTHON'],'-I','-B','-c',code,str(model.ROOT),str(input_path)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+        try:
+            until=time.monotonic()+3
+            while time.monotonic()<until and not (self.root/'handoff-published.json').exists():
+                self.assertIsNone(parent.poll());time.sleep(.01)
+            self.assertTrue((self.root/'recovered-inputs.json').exists())
+            guard_pid=launch.private_json(self.root/'guard-ready.json')['pid']
+            parent.kill();parent.wait(timeout=3)
+            until=time.monotonic()+7
+            while time.monotonic()<until and not (self.root/'purge-result.json').exists():time.sleep(.02)
+            self.assertTrue(launch.private_json(self.root/'purge-result.json')['rawFilesAbsent'])
+            self.assertFalse((self.root/'recovered-inputs.json').exists())
+            until=time.monotonic()+2
+            while time.monotonic()<until:
+                probe=subprocess.run(['/bin/ps','-o','pid=','-p',str(guard_pid)],capture_output=True)
+                if probe.returncode==1:break
+                time.sleep(.02)
+            self.assertEqual(probe.returncode,1,'orphan guard process absence unconfirmed')
+        finally:
+            if parent.poll() is None:parent.kill();parent.wait(timeout=3)
+    def test_handoff_storage_uses_guard_ack_and_same_expiry(self):
+        from types import SimpleNamespace
+        _,guard=self.run_recovery();self.cap.mode='handoff';self.cap.external=True
+        # This test isolates storage transaction after separately tested authority validation.
+        plan={k:None for k in ('mode','externalActionAuthorized','automaticRetryAllowed','allowanceUsd','project','projectNumber','projectNumberSha256','tenantId','jobId','ownerPrincipal','runtimeIdentity','serviceRetention','operationId','keyId','window')}
+        plan['projectNumber']='123456789012';plan['window']={k:None for k in ('start','cutoff','workEnd','cleanupEnd','purgeEnd')}
+        qualified=SimpleNamespace(plan={'operationId':self.e['qualificationId']},times={'purgeEnd':self.cap.times['purgeEnd']},scope={'target':{'id':UID},'plan':plan})
+        with patch.object(launch,'QualificationCapability',return_value=qualified):
+            r=launch.handoff_recovered_bindings(self.cap,{'synthetic':'noncredential envelope'})
+        self.assertEqual(r['status'],'QUALIFICATION_INPUT_TRANSFERRED');self.assertFalse((self.root/'recovered-inputs.json').exists())
+        self.assertTrue((self.cap.input_root/'envelope.json').exists())
+        self.assertEqual(set(launch.private_json(self.root/'owned-files.json')),{'recovered','qualification'})
+        model.reserve(self.root/'purge-now.json',{});guard.wait(timeout=5)
+        self.assertFalse((self.cap.input_root/'envelope.json').exists());self.assertTrue(launch.private_json(self.root/'purge-result.json')['rawFilesAbsent'])
+    def test_handoff_never_uses_dead_guard_or_extends_expiry(self):
+        from types import SimpleNamespace
+        _,guard=self.run_recovery();self.cap.mode='handoff';self.cap.external=True
+        plan={k:None for k in ('mode','externalActionAuthorized','automaticRetryAllowed','allowanceUsd','project','projectNumber','projectNumberSha256','tenantId','jobId','ownerPrincipal','runtimeIdentity','serviceRetention','operationId','keyId','window')}
+        plan['projectNumber']='123456789012';plan['window']={k:None for k in ('start','cutoff','workEnd','cleanupEnd','purgeEnd')}
+        qualified=SimpleNamespace(plan={'operationId':self.e['qualificationId']},times={'purgeEnd':self.cap.times['purgeEnd']+1},scope={'target':{'id':UID},'plan':plan})
+        with patch.object(launch,'QualificationCapability',return_value=qualified):
+            with self.assertRaisesRegex(model.Stop,'RECOVERY_HANDOFF_SCOPE'):launch.handoff_recovered_bindings(self.cap,{})
+        guard.kill();guard.wait(timeout=3);qualified.times['purgeEnd']-=1
+        with patch.object(launch,'QualificationCapability',return_value=qualified):
+            with self.assertRaisesRegex(model.Stop,'PURGE_GUARD_UNCONFIRMED'):launch.handoff_recovered_bindings(self.cap,{})
+        self.assertFalse(self.cap.input_root.exists())
+        launch.purge_recovery_files(self.cap)
+
+
+    def test_recovery_closeout_cannot_race_active_parent(self):
+        import fcntl
+        _,guard=self.run_recovery();fd=os.open(self.root/'entry.lock',os.O_WRONLY)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with patch.object(launch,'hidden_password',side_effect=AssertionError('concurrent closeout prompt')):
+                with self.assertRaises(BlockingIOError):launch.closeout_binding_recovery(launch.BindingRecoveryCapability(self.e,mode='closeout'))
+            self.assertTrue((self.root/'recovered-inputs.json').exists())
+        finally:os.close(fd)
+    def test_clock_rollback_refuses_reads_and_guard_purges(self):
+        launch.initialize_recovery(self.cap)
+        original=self.cap.clock;self.cap.clock=lambda:self.cap.last-1
+        with self.assertRaisesRegex(model.Stop,'CLOCK_ROLLBACK'):self.cap.gate('cli','owner')
+        self.cap.clock=original
+        with launch.recovery_lock(self.cap):launch.record_private_file(self.cap,'recovered',{'projectNumber':'123456789012','targetId':UID})
+        now=original();values=iter([now,now-1]);self.cap.clock=lambda:next(values,now-1)
+        result=launch.binding_purge_guard(self.cap)
+        self.assertTrue(result['rawFilesAbsent']);self.assertFalse((self.root/'recovered-inputs.json').exists())
+    def test_lost_resource_history_never_claims_closeout(self):
+        launch.initialize_recovery(self.cap)
+        r=launch.closeout_binding_recovery(launch.BindingRecoveryCapability(self.e,mode='closeout'))
+        self.assertFalse(r['resourceCloseout']['verified']);self.assertIn('OWNED_PROCESS_HISTORY_UNKNOWN',r['resourceCloseout']['residuals'])
+        self.assertIsNone(r['candidate'])
+
+
+    def test_cli_closeout_does_not_confuse_private_purge_with_resource_closeout(self):
+        launch.initialize_recovery(self.cap);out=io.StringIO()
+        with contextlib.redirect_stdout(out):code=launch.recovery_main(['--closeout-binding-inputs',str(self.root)])
+        self.assertEqual(code,2);self.assertEqual(out.getvalue().strip(),'BINDING_RECOVERY_CLOSEOUT_UNCONFIRMED')
+        self.assertTrue(launch.private_json(self.root/'purge-result.json')['rawFilesAbsent'])
+
+
+class BindingRecoveryAuthorityTests(unittest.TestCase):
+    def setUp(self):
+        import shutil
+        self.base=ExternalBindingTests();self.base.setUp();self.addCleanup(self.base.doCleanups)
+        helper=BindingRecoveryTests();helper.raw=copy.deepcopy(self.base.case.raw)
+        self.e=helper.envelope(self.base.case.now);self.e['execution']='EXTERNAL_READ_ONLY';self.e['sourceCommit']=self.base.e['sourceCommit']
+        self.bind()
+        self.root=Path('/private/tmp/p08-binding-recovery-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+    def bind(self,action='APPROVE_EXACT_P08_BINDING_INPUT_RECOVERY'):
+        self.e.pop('decision',None);raw=json.dumps({'owner':'Debynyhan Banks','decision':action,'externalReadAuthorized':True,'scopeSha256':model.digest(self.e)},sort_keys=True).encode()
+        name='APP013_P08_BINDING_RECOVERY_OPERATION_20261103.json';(self.base.repo/name).write_bytes(raw)
+        self.base.git('add',name);self.base.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic recovery decision')
+        self.e['decision']={'commit':self.base.git('rev-parse','HEAD'),'path':name,'sha256':model.digest(raw)}
+    def cap(self):return launch.BindingRecoveryCapability(self.e,read_commit=self.base.read_commit)
+    def test_actual_committed_recovery_decision_is_distinct(self):
+        cap=self.cap();self.assertTrue(cap.external);self.assertFalse(self.root.exists())
+        self.bind('APPROVE_EXACT_P08_CURRENT_QUALIFICATION')
+        with self.assertRaisesRegex(model.Stop,'RECOVERY_OWNER_APPROVAL'):self.cap()
+    def test_uncommitted_forged_foreign_fingerprints_and_source_refuse(self):
+        saved=copy.deepcopy(self.e)
+        for mutate in [lambda e:e['decision'].update(commit='0'*40),lambda e:e['decision'].update(sha256='0'*64),
+                       lambda e:e.update(targetSha256='0'*64),lambda e:e.update(projectNumberSha256='0'*64)]:
+            mutate(self.e)
+            with self.assertRaises(Exception):self.cap()
+            self.e=copy.deepcopy(saved)
+        self.e['sourceCommit']='0'*40;self.bind()
+        with self.assertRaises(Exception):self.cap()
+    def test_actual_serializers_only_two_cli_three_sql_no_https_or_cache(self):
+        cap=self.cap();launch.initialize_recovery(cap);cap.prepare();io=launch.BindingRecoveryIO(cap)
+        with patch.object(io,'_owned_run',return_value=b'[]') as run:
+            io.cli(launch.cli_contract()[0],cap.times['readEnd']);io.cli(launch.cli_contract()[2],cap.times['readEnd'])
+            self.assertEqual(run.call_count,2);self.assertEqual(run.call_args.args[1]['CLOUDSDK_CORE_MAX_LOG_DAYS'],'0')
+            with self.assertRaises(FileExistsError):io.cli(launch.cli_contract()[0],cap.times['readEnd'])
+            token=next(d for d in launch.cli_contract() if d['id']=='token')
+            with self.assertRaises(model.Stop):io.cli(token,cap.times['readEnd'])
+        with patch.object(io,'_owned_run',return_value=b'{"sessionsAbsent":true}') as run:
+            io.sql(launch.sql_contract()[0],'SYNTHETIC',cap.times['readEnd']);io.sql(launch.sql_contract()[1],'SYNTHETIC',cap.times['closeoutEnd'])
+            self.assertEqual(run.call_count,2);self.assertEqual(run.call_args.args[1]['PGSSLMODE'],'verify-full')
+        fresh=io.independent()
+        with patch.object(fresh,'_owned_run',return_value=b'{"sessionsAbsent":true}') as run:
+            fresh.sql(launch.sql_contract()[1],'SYNTHETIC',cap.times['closeoutEnd']);self.assertEqual(run.call_count,1)
+            with self.assertRaises(FileExistsError):fresh.sql(launch.sql_contract()[1],'SYNTHETIC',cap.times['closeoutEnd'])
+            with self.assertRaises(model.Stop):fresh.sql(launch.sql_contract()[0],'SYNTHETIC',cap.times['closeoutEnd'])
+        with self.assertRaises(model.Stop):io.https({},'synthetic',cap.times['readEnd'])
+        self.assertTrue(io.close(cap.times['closeoutEnd']) and fresh.close(cap.times['closeoutEnd']))
+    def test_refused_cli_purges_private_request_before_any_credential(self):
+        import shutil
+        root=Path('/private/tmp/p08-binding-request-'+self.e['operationId']);root.mkdir(mode=0o700);self.addCleanup(lambda:shutil.rmtree(root,ignore_errors=True))
+        path=root/'envelope.json';model.reserve(path,self.e)
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('credentials before authority')):
+            with self.assertRaises(Exception):launch.recovery_main(['--recover-binding-inputs',str(path)])
+        self.assertFalse(path.exists() or root.exists())
+
+
 if __name__=="__main__":unittest.main()

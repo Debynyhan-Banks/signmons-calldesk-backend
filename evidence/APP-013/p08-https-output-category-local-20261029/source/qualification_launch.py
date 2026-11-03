@@ -435,7 +435,7 @@ class NativeIO:
     def cli(self, descriptor, deadline):
         need(not self.closed and self.clock() < deadline, "CLI_DEADLINE")
         argv = descriptor["argv"]; need(argv and argv[0] == GCLOUD, "CLI_EXECUTABLE")
-        env = sdk_environment(os.environ) if isinstance(self,QualificationIO) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
+        env = sdk_environment(os.environ) if isinstance(self,(QualificationIO,BindingRecoveryIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
         timeout = max(1, min(30, int(deadline - self.clock())))
         need(descriptor in current_cli_contract() or descriptor in current_cli_contract(argv[4] if descriptor['id']=='billing_account' and len(argv)>4 else '<discovered-account>'),'CLI_SCOPE')
         raw=self._owned_run(argv,env,min(deadline,self.clock()+30))
@@ -486,7 +486,7 @@ class NativeIO:
         need(descriptor in current_sql_contract(), "SQL_ALLOWLIST")
         sql = descriptor["sql"]
         need(sql is not None, "SQL_ALLOWLIST")
-        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,QualificationIO) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
+        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
         env.update({"PGPASSWORD": password, "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/cert.pem", "PGCONNECT_TIMEOUT": "10", "PGAPPNAME": "signmons_p08_qualification_" + self.binding_operation_id, "PGOPTIONS": "-c statement_timeout=15000 -c lock_timeout=5000"})
         timeout = max(1, min(25, int(deadline - self.clock())))
         try:
@@ -1105,7 +1105,435 @@ def current_main(argv=None):
         if directory.exists() and not any(directory.iterdir()):directory.rmdir()
 
 
+# Binding-input recovery is a separate authority, not a relaxed qualification.
+RECOVERY_LIMITS={'cli':2,'sql':3,'https':0,'cache':0}
+RECOVERY_MARKERS={'entry.lock','purge.lock','guard-envelope.json','attempt.json','guard-ready.json',
+    'owned-files.json','owned-files.next','handoff-published.json','purge-now.json','purge-result.json',
+    'resource-closeout.json','recovery-result.json','recovered-inputs.json','guard-sync.json','guard-ack.json',
+    'read-cli-owner.json','read-cli-project.json','read-sql-qualification.json',
+    'read-sql-closeout-main.json','read-sql-closeout-independent.json'}
+
+
+def recovery_source_check(e,manifest,authority,read_commit):
+    get=read_commit or authority.committed;d=e['decision']
+    need(set(d)=={'commit','path','sha256'} and re.fullmatch(r'APP013_P08_BINDING_RECOVERY_OPERATION_[0-9]{8}\.json',d['path']),'RECOVERY_DECISION_REFERENCE')
+    raw=get(authority.GOV,d['commit'],d['path'])
+    need(model.digest(raw)==d['sha256'] and strict_json(raw)=={'owner':'Debynyhan Banks',
+        'decision':'APPROVE_EXACT_P08_BINDING_INPUT_RECOVERY','externalReadAuthorized':True,
+        'scopeSha256':model.digest({k:v for k,v in e.items() if k!='decision'})},'RECOVERY_OWNER_APPROVAL')
+    rel=str(model.ROOT.relative_to(authority.BACKEND))
+    paths={rel+'/'+n:h for n,h in manifest['files'].items()}
+    paths.update({'evidence/APP-013/'+n:h for n,h in manifest['producerDependencies'].items()})
+    paths.update({str(model.SOURCE_PATHS[n].relative_to(authority.BACKEND)):h for n,h in model.SOURCE_HASHES.items()})
+    need(get(authority.BACKEND,e['sourceCommit'],rel+'/source-manifest.json')==(model.ROOT/'source-manifest.json').read_bytes(),'RECOVERY_COMMITTED_MANIFEST')
+    for path,h in paths.items():need(model.digest(get(authority.BACKEND,e['sourceCommit'],path))==h,'RECOVERY_COMMITTED_SOURCE')
+
+
+class BindingRecoveryCapability:
+    def __init__(self,envelope,clock=model.time.time,mode='recover',read_commit=None):
+        manifest=model.verify_local_manifest();model.verify_locked_sources()
+        authority=current_module('authority');authority.verify_sources();e=copy.deepcopy(envelope)
+        need(set(e)=={'version','execution','operationId','qualificationId','project','owner','database',
+            'projectNumberSha256','targetSha256','window','limits','sdkException','sdkFilesSha256',
+            'manifestSha256','sourceCommit','decision'},'RECOVERY_ENVELOPE')
+        need(e['version']==1 and e['execution'] in ('PROOF_ONLY','EXTERNAL_READ_ONLY') and mode in ('recover','closeout','guard','handoff'),'RECOVERY_MODE')
+        for k in ('operationId','qualificationId'):model.exact_uuid(e[k],'RECOVERY_OPERATION')
+        need(e['operationId']!=e['qualificationId'],'RECOVERY_OPERATION')
+        operator=_operator_module()
+        need(e['project']==model.PROJECT and e['owner']==model.OWNER and e['database']=={
+            'host':operator.DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'},'RECOVERY_RESOURCE_PINS')
+        need(e['limits']==RECOVERY_LIMITS and all(type(x) is int for x in e['limits'].values()),'RECOVERY_LIMITS')
+        need(e['sdkException']=='SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPORT' and
+             e['sdkFilesSha256']==model.digest(manifest['sdkReview']['files']) and
+             e['manifestSha256']==source_manifest_sha256(),'RECOVERY_SOURCE_BINDING')
+        need(set(e['window'])=={'start','cutoff','readEnd','closeoutEnd','purgeEnd'},'RECOVERY_WINDOW')
+        times={k:model.timestamp(v) for k,v in e['window'].items()}
+        need(times['start']<times['cutoff']<times['readEnd']<times['closeoutEnd']<times['purgeEnd'] and
+             times['purgeEnd']-times['start']<=3600 and times['closeoutEnd']-times['readEnd']>=300,'RECOVERY_WINDOW')
+        need(clock()>=times['start'],'RECOVERY_NOT_STARTED')
+        if mode=='recover':need(clock()<times['cutoff'],'RECOVERY_CUTOFF')
+        if mode=='handoff':need(clock()<times['purgeEnd'],'RECOVERY_RETENTION_EXPIRED')
+        need(all(isinstance(e[k],str) and re.fullmatch('[a-f0-9]{64}',e[k]) for k in ('projectNumberSha256','targetSha256')),'RECOVERY_HASH_PINS')
+        self.external=e['execution']=='EXTERNAL_READ_ONLY'
+        if self.external:
+            need(e['projectNumberSha256']==PROJECT_NUMBER_SHA256 and e['targetSha256']==TARGET_SHA256,'RECOVERY_HASH_PINS')
+            recovery_source_check(e,manifest,authority,read_commit)
+        else:
+            need(e['decision']=={'decision':'APPROVE_LOCAL_BINDING_RECOVERY_PROOF',
+                 'scopeSha256':model.digest({k:v for k,v in e.items() if k!='decision'})},'RECOVERY_PROOF_APPROVAL')
+        self.e=e;self.clock=clock;self.times=times;self.mode=mode;self.last=clock();self.manifest=manifest
+        self.root=Path('/private/tmp/p08-binding-recovery-'+e['operationId'])
+        self.input_root=Path('/private/tmp/p08-current-input-'+e['qualificationId'])
+        self.hash=model.digest(e);self.config=None;self.observed=False
+        if mode=='recover':
+            need(not os.path.lexists(self.root) and not os.path.lexists(self.input_root) and
+                 not os.path.lexists(Path('/private/tmp/p08-current-external-'+e['qualificationId'])),'RECOVERY_CONSUMED')
+    def prepare(self):
+        need(self.external and self.mode=='recover','RECOVERY_EXTERNAL_ONLY')
+        sdk_environment(os.environ)
+        self.config=current_module('acl').config_snapshot(CONFIG_ROOT,os.environ)
+    def gate(self,kind,label,cleanup=False):
+        now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
+        need(self.times['start']<=now<self.times['closeoutEnd' if cleanup else 'readEnd'],'RECOVERY_DEADLINE')
+        need(cleanup or self.mode=='recover','RECOVERY_CLOSEOUT_ONLY')
+        allowed={'cli':{'owner','project'},'sql':{'qualification','closeout-main','closeout-independent'}}
+        need(kind in allowed and label in allowed[kind] and (not cleanup or label.startswith('closeout-')),'RECOVERY_READ_SCOPE')
+        need(not (self.mode=='closeout' and label!='closeout-independent'),'RECOVERY_CLOSEOUT_ONLY')
+        self.inspect()
+        if self.external:
+            paths=self.manifest['sdkReview']['files'] if not cleanup else {_operator_module().PSQL:self.manifest['sdkReview']['files'][_operator_module().PSQL]}
+            for path,h in paths.items():need(model.digest(Path(path).read_bytes())==h,'RECOVERY_EXECUTABLE_DRIFT')
+        model.reserve(self.root/('read-'+kind+'-'+label+'.json'),{'operationId':self.e['operationId']})
+        return self.times['closeoutEnd' if cleanup else 'readEnd']
+    def inspect(self):
+        inspect_current_root(self.root,RECOVERY_MARKERS)
+        a=private_json(self.root/'attempt.json');st=self.root.stat()
+        need(a=={'operationId':self.e['operationId'],'scopeSha256':self.hash,'rootIdentity':[st.st_dev,st.st_ino]},'RECOVERY_ROOT_BINDING')
+
+
+class BindingRecoveryIO(NativeIO):
+    def __init__(self,cap,independent=False):
+        need(type(cap) is BindingRecoveryCapability and cap.external,'RECOVERY_EXTERNAL_ONLY')
+        super().__init__(cap.clock,cap.e['operationId']);self.cap=cap;self.independent_read=independent
+    def cli(self,d,deadline):
+        need(not self.independent_read and d in cli_contract()[:1]+cli_contract()[2:3],'RECOVERY_CLI_SCOPE')
+        end=self.cap.gate('cli',d['id'])
+        need(current_module('acl').config_snapshot(CONFIG_ROOT,os.environ)==self.cap.config,'CONFIG_CHANGED')
+        value=super().cli(d,min(deadline,end))
+        if d['id']=='project':self.cap.observed=True
+        return value
+    def sql(self,d,password,deadline):
+        need(d in sql_contract() and (not self.independent_read or d==sql_contract()[1]),'RECOVERY_SQL_SCOPE')
+        cleanup=d==sql_contract()[1]
+        label=('closeout-independent' if self.independent_read else 'closeout-main') if cleanup else 'qualification'
+        end=self.cap.gate('sql',label,cleanup);result=super().sql(d,password,min(deadline,end))
+        self.cap.observed=True;return result
+    def https(self,*_):raise model.Stop('RECOVERY_HTTPS_FORBIDDEN')
+    def independent(self):return BindingRecoveryIO(self.cap,True)
+
+
+def initialize_recovery(cap):
+    cap.root.mkdir(mode=0o700)
+    st=cap.root.stat()
+    model.reserve(cap.root/'entry.lock',{})
+    model.reserve(cap.root/'purge.lock',{})
+    model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.hash,'rootIdentity':[st.st_dev,st.st_ino]})
+    model.reserve(cap.root/'guard-envelope.json',cap.e)
+    model.reserve(cap.root/'owned-files.json',{})
+
+
+def recovery_lock(cap):
+    import contextlib,fcntl
+    @contextlib.contextmanager
+    def locked():
+        cap.inspect();fd=os.open(cap.root/'purge.lock',os.O_WRONLY|os.O_NOFOLLOW)
+        try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB);yield
+        finally:fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+    return locked()
+
+
+def save_owned_registry(cap,value):
+    path=cap.root/'owned-files.next';model.reserve(path,value)
+    os.replace(path,cap.root/'owned-files.json')
+
+
+def recovery_slot(cap,slot):
+    need(slot in ('recovered','qualification'),'RECOVERY_PRIVATE_SLOT')
+    return cap.root/'recovered-inputs.json' if slot=='recovered' else cap.input_root/'envelope.json'
+
+
+def record_private_file(cap,slot,value):
+    """Write-ahead hash intent permits safe purge even if the writer dies before inode receipt."""
+    need(cap.clock()<cap.times['purgeEnd'],'RECOVERY_RETENTION_EXPIRED')
+    path=recovery_slot(cap,slot);registry=private_json(cap.root/'owned-files.json')
+    need(slot not in registry and not os.path.lexists(path),'RECOVERY_PRIVATE_REPLAY')
+    raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode();need(len(raw)<=MAX_OUTPUT,'RECOVERY_PRIVATE_SIZE')
+    st=path.parent.stat()
+    registry[slot]={'sha256':model.digest(raw),'directory':[st.st_dev,st.st_ino],'file':None}
+    save_owned_registry(cap,registry)
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    try:
+        need(os.write(fd,raw)==len(raw),'RECOVERY_PRIVATE_WRITE');os.fsync(fd);st=os.fstat(fd)
+    finally:os.close(fd)
+    registry[slot]['file']=[st.st_dev,st.st_ino];save_owned_registry(cap,registry)
+
+
+def matched_private_file(cap,slot,record):
+    path=recovery_slot(cap,slot)
+    need(set(record)=={'sha256','directory','file'},'RECOVERY_OWNERSHIP_RECORD')
+    if not os.path.lexists(path):return None
+    parent=path.parent.lstat();st=path.lstat()
+    need(not path.parent.is_symlink() and stat.S_ISDIR(parent.st_mode) and parent.st_uid==os.getuid() and
+         stat.S_IMODE(parent.st_mode)==0o700 and [parent.st_dev,parent.st_ino]==record['directory'],'RECOVERY_DIRECTORY_REPLACED')
+    need(stat.S_ISREG(st.st_mode) and st.st_uid==os.getuid() and st.st_nlink==1 and stat.S_IMODE(st.st_mode)==0o600 and
+         (record['file'] is None or [st.st_dev,st.st_ino]==record['file']),'RECOVERY_FILE_REPLACED')
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW)
+    try:
+        need(os.fstat(fd).st_ino==st.st_ino and st.st_size<=MAX_OUTPUT,'RECOVERY_FILE_REPLACED')
+        raw=os.read(fd,MAX_OUTPUT+1);need(len(raw)<=MAX_OUTPUT and model.digest(raw)==record['sha256'],'RECOVERY_FILE_REPLACED')
+    finally:os.close(fd)
+    return path
+
+
+def purge_recovery_files(cap):
+    residuals=[]
+    with recovery_lock(cap):
+        registry=private_json(cap.root/'owned-files.json')
+        need(set(registry)<= {'recovered','qualification'},'RECOVERY_OWNERSHIP_RECORD')
+        for slot,record in registry.items():
+            try:
+                path=matched_private_file(cap,slot,record)
+                if path is not None:path.unlink()
+            except Exception:residuals.append(slot.upper()+'_FILE_UNCONFIRMED')
+        for slot in ('recovered','qualification'):
+            if os.path.lexists(recovery_slot(cap,slot)):residuals.append(slot.upper()+'_FILE_REMAINS')
+        on_time=cap.clock()<=cap.times['purgeEnd']
+        result={'operationId':cap.e['operationId'],'status':'PRIVATE_PURGE_UNCONFIRMED' if residuals else ('PRIVATE_PURGE_VERIFIED' if on_time else 'PRIVATE_PURGE_LATE'),
+                'rawFilesAbsent':not residuals,'onTime':on_time,'completedAt':cap.clock(),'residuals':sorted(set(residuals))}
+        if (cap.root/'purge-result.json').exists():
+            prior=private_json(cap.root/'purge-result.json')
+            if not residuals and prior.get('rawFilesAbsent') is True and prior.get('onTime') is True:return prior
+        # Immutable first receipt; a later reconciliation cannot overwrite a failed receipt.
+        if not (cap.root/'purge-result.json').exists():model.reserve(cap.root/'purge-result.json',result)
+        return result
+
+
+def binding_purge_guard(cap):
+    import signal,time
+    cap.inspect();stop=False;last=cap.clock();hard=time.monotonic()+max(0,cap.times['purgeEnd']-2-last)
+    def interrupted(*_):
+        nonlocal stop
+        stop=True
+    old={s:signal.signal(s,interrupted) for s in (signal.SIGINT,signal.SIGTERM)}
+    try:
+        model.reserve(cap.root/'guard-ready.json',{'scopeSha256':cap.hash,'pid':os.getpid()})
+        while not stop:
+            now=cap.clock()
+            if now<last or now>=cap.times['purgeEnd']-2 or time.monotonic()>=hard or (cap.root/'purge-now.json').exists():break
+            last=now
+            if (cap.root/'guard-sync.json').exists() and not (cap.root/'guard-ack.json').exists():
+                request=private_json(cap.root/'guard-sync.json')
+                need(set(request)=={'scopeSha256','nonce'} and request['scopeSha256']==cap.hash and re.fullmatch('[0-9a-f]{32}',request['nonce']),'PURGE_GUARD_SYNC')
+                model.reserve(cap.root/'guard-ack.json',{**request,'expiresAt':min(now+3,cap.times['purgeEnd']-2)})
+            if (cap.root/'handoff-published.json').exists() and not any(os.path.lexists(recovery_slot(cap,s)) for s in ('recovered','qualification')):break
+            time.sleep(min(.05,max(.001,hard-time.monotonic())))
+        # A short held writer lock does not defeat expiry; no writes begin at/after expiry.
+        until=time.monotonic()+2
+        while True:
+            try:return purge_recovery_files(cap)
+            except BlockingIOError:
+                if time.monotonic()>=until:raise model.Stop('PURGE_LOCK_UNCONFIRMED')
+                time.sleep(.01)
+    finally:
+        for s,h in old.items():signal.signal(s,h)
+
+
+def start_binding_guard(cap):
+    import time
+    python=SDK_ENV['CLOUDSDK_PYTHON']
+    need(model.digest(Path(python).read_bytes())==cap.manifest['sdkReview']['files'][python],'PURGE_INTERPRETER_DRIFT')
+    process=subprocess.Popen([python,'-I','-B','-c',
+        "import sys;sys.path.insert(0,sys.argv[1]);import qualification_launch as q;raise SystemExit(q.recovery_main(['--binding-input-purge-guard',sys.argv[2]]))",
+        str(model.ROOT),str(cap.root)],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+        start_new_session=True,env={'PATH':'/usr/bin:/bin','HOME':'/Users/debynyhanbanks','PYTHONDONTWRITEBYTECODE':'1'})
+    until=time.monotonic()+5
+    while time.monotonic()<until and process.poll() is None:
+        if (cap.root/'guard-ready.json').exists():
+            ready=private_json(cap.root/'guard-ready.json')
+            need(ready=={'scopeSha256':cap.hash,'pid':process.pid},'PURGE_GUARD_BINDING');return process
+        time.sleep(.01)
+    if process.poll() is None:process.terminate();process.wait(timeout=3)
+    raise model.Stop('PURGE_GUARD_NOT_READY')
+
+
+def validate_recovery_project(cap,project):
+    need(isinstance(project,dict) and set(project)=={'projectId','projectNumber','lifecycleState'} and
+         project['projectId']==model.PROJECT and project['lifecycleState']=='ACTIVE' and
+         isinstance(project['projectNumber'],str) and re.fullmatch('[0-9]{6,20}',project['projectNumber']) and
+         model.digest(project['projectNumber'])==cap.e['projectNumberSha256'],'RECOVERY_PROJECT')
+
+
+def recovery_values(cap,owner,project,raw):
+    need(owner==[{'account':model.OWNER,'status':'ACTIVE'}],'RECOVERY_OWNER')
+    validate_recovery_project(cap,project)
+    fields={'jobCount','job','tenantCount','tenant','operatorCount','operator','calendarCount','roleCount','sessionCount'}
+    need(isinstance(raw,dict) and set(raw)==fields and all(type(raw[k]) is int and raw[k]>=0 for k in
+         ('jobCount','tenantCount','operatorCount','calendarCount','roleCount','sessionCount')) and raw['operatorCount']==1,'RECOVERY_SQL_OUTPUT')
+    row=raw['operator'];need(isinstance(row,dict) and set(row)=={'id','tenantId','email','fullName','role','status'},'RECOVERY_TARGET')
+    model.exact_uuid(row['id'],'RECOVERY_TARGET')
+    ordered={k:row[k] for k in ('id','tenantId','email','fullName','role','status')}
+    need(row['tenantId']==model.TENANT and row['email']==TARGET_EMAIL and row['fullName']==TARGET_NAME and
+         row['role']=='ADMIN' and row['status']=='DISABLED' and
+         hashlib.sha256(json.dumps(ordered,separators=(',',':')).encode()).hexdigest()==cap.e['targetSha256'],'RECOVERY_TARGET')
+    return {'projectNumber':project['projectNumber'],'targetId':row['id']}
+
+
+def run_binding_recovery(cap,io):
+    import fcntl,signal
+    need(type(cap) is BindingRecoveryCapability and cap.mode=='recover' and
+         ((cap.external and type(io) is BindingRecoveryIO) or (not cap.external and getattr(io,'proof',None) is True)),'RECOVERY_PORT')
+    initialize_recovery(cap);fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW)
+    password=None;values=None;guard=None;failure=None;residuals=[];cleaning=False
+    def interrupted(*_):
+        if not cleaning:raise model.Stop('INTERRUPTED')
+    old={s:signal.signal(s,interrupted) for s in (signal.SIGINT,signal.SIGTERM)}
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        try:
+            guard=start_binding_guard(cap)
+            if cap.external:cap.prepare()
+            owner=strict_json(io.cli(cli_contract()[0],cap.times['readEnd']))
+            need(owner==[{'account':model.OWNER,'status':'ACTIVE'}],'RECOVERY_OWNER')
+            project=strict_json(io.cli(cli_contract()[2],cap.times['readEnd']))
+            validate_recovery_project(cap,project)
+            if cap.external:
+                with current_module('acl').http_deadline(max(.01,min(30,cap.times['readEnd']-cap.clock()))):password=hidden_password()
+            else:password='SYNTHETIC_RECOVERY_ONLY'
+            raw=strict_json(io.sql(sql_contract()[0],password,cap.times['readEnd']))
+            values=recovery_values(cap,owner,project,raw);raw=None
+        except BaseException as error:
+            failure=str(error) if isinstance(error,model.Stop) and re.fullmatch('[A-Z_]+',str(error)) else 'RECOVERY_READ_UNCONFIRMED'
+        finally:
+            cleaning=True
+            try:
+                need(password is not None and strict_json(io.sql(sql_contract()[1],password,cap.times['closeoutEnd']))=={'sessionsAbsent':True},'RECOVERY_SESSIONS')
+            except BaseException:residuals.append('MAIN_SESSIONS_UNCONFIRMED')
+            finally:
+                try:need(io.close(cap.times['closeoutEnd']) is True,'RECOVERY_PROCESS_CLOSEOUT')
+                except BaseException:residuals.append('MAIN_PROCESSES_UNCONFIRMED')
+            fresh=None
+            try:
+                need(password is not None,'RECOVERY_NO_PASSWORD');fresh=io.independent();need(fresh is not io,'RECOVERY_INDEPENDENT')
+                need(strict_json(fresh.sql(sql_contract()[1],password,cap.times['closeoutEnd']))=={'sessionsAbsent':True},'RECOVERY_SESSIONS')
+            except BaseException:residuals.append('INDEPENDENT_SESSIONS_UNCONFIRMED')
+            finally:
+                password=None
+                try:need(fresh is not None and fresh.close(cap.times['closeoutEnd']) is True,'RECOVERY_PROCESS_CLOSEOUT')
+                except BaseException:residuals.append('INDEPENDENT_PROCESSES_UNCONFIRMED')
+        model.reserve(cap.root/'resource-closeout.json',{'verified':not residuals,'residuals':residuals})
+        if not failure and not residuals:
+            need(guard is not None and guard.poll() is None,'PURGE_GUARD_LOST')
+            with recovery_lock(cap):
+                need(not (cap.root/'purge-result.json').exists(),'PURGE_ALREADY_FINISHED')
+                record_private_file(cap,'recovered',values);model.reserve(cap.root/'handoff-published.json',{'scopeSha256':cap.hash})
+            status='HANDOFF_RETAINED'
+        else:
+            status='BINDING_INPUT_RECOVERY_UNQUALIFIED'
+            model.reserve(cap.root/'purge-now.json',{})
+            if guard is not None:
+                try:guard.wait(timeout=5)
+                except subprocess.TimeoutExpired:residuals.append('PURGE_GUARD_UNCONFIRMED')
+            need(purge_recovery_files(cap)['rawFilesAbsent'],'PRIVATE_PURGE_UNCONFIRMED')
+        result={'status':status,'execution':cap.e['execution'],'liveObserved':cap.observed,'executionReady':False,
+            'failure':failure,'residuals':residuals,'purgeEnd':cap.e['window']['purgeEnd'],'candidate':None}
+        model.reserve(cap.root/'recovery-result.json',result);return result,guard
+    finally:
+        password=None;values=None
+        for s,h in old.items():signal.signal(s,h)
+        fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def read_recovered_bindings(cap):
+    need(cap.mode=='handoff' and cap.clock()<cap.times['purgeEnd'],'RECOVERY_RETENTION_EXPIRED')
+    with recovery_lock(cap):
+        need(private_json(cap.root/'resource-closeout.json')['verified'] is True,'RECOVERY_CLOSEOUT_UNCONFIRMED')
+        record=private_json(cap.root/'owned-files.json').get('recovered');need(record is not None,'RECOVERY_INPUT_ABSENT')
+        path=matched_private_file(cap,'recovered',record);need(path is not None,'RECOVERY_INPUT_ABSENT')
+        value=private_json(path);need(set(value)=={'projectNumber','targetId'},'RECOVERY_INPUT_SHAPE')
+        row={'id':value['targetId'],'tenantId':model.TENANT,'email':TARGET_EMAIL,'fullName':TARGET_NAME,'role':'ADMIN','status':'DISABLED'}
+        need(model.digest(value['projectNumber'])==cap.e['projectNumberSha256'] and
+             hashlib.sha256(json.dumps(row,separators=(',',':')).encode()).hexdigest()==cap.e['targetSha256'],'RECOVERY_INPUT_BINDING')
+        return value  # Trusted in-memory packet construction only; no CLI prints these values.
+
+
+def synchronize_recovery_guard(cap):
+    import time,uuid
+    request={'scopeSha256':cap.hash,'nonce':uuid.uuid4().hex}
+    model.reserve(cap.root/'guard-sync.json',request);until=time.monotonic()+2;last=cap.clock()
+    while time.monotonic()<until:
+        now=cap.clock();need(now>=last and now<cap.times['purgeEnd']-2,'RECOVERY_RETENTION_EXPIRED');last=now
+        if (cap.root/'guard-ack.json').exists():
+            ack=private_json(cap.root/'guard-ack.json')
+            need(set(ack)=={'scopeSha256','nonce','expiresAt'} and all(ack[k]==v for k,v in request.items()) and
+                 now<ack['expiresAt']<=cap.times['purgeEnd']-2,'PURGE_GUARD_SYNC')
+            return ack['expiresAt']
+        time.sleep(.01)
+    raise model.Stop('PURGE_GUARD_UNCONFIRMED')
+
+
+def handoff_recovered_bindings(cap,envelope):
+    need(cap.external and cap.mode=='handoff','RECOVERY_HANDOFF_AUTHORITY')
+    values=read_recovered_bindings(cap)
+    qualified=QualificationCapability(envelope,clock=cap.clock)
+    need(set(qualified.scope['plan'])=={'mode','externalActionAuthorized','automaticRetryAllowed','allowanceUsd','project',
+         'projectNumber','projectNumberSha256','tenantId','jobId','ownerPrincipal','runtimeIdentity','serviceRetention','operationId','keyId','window'} and
+         set(qualified.scope['plan']['window'])=={'start','cutoff','workEnd','cleanupEnd','purgeEnd'},'RECOVERY_HANDOFF_PLAN_FIELDS')
+    need(qualified.plan['operationId']==cap.e['qualificationId'] and qualified.times['purgeEnd']<=cap.times['purgeEnd'] and
+         qualified.scope['target']['id']==values['targetId'] and
+         str(qualified.scope['plan']['projectNumber'])==values['projectNumber'],'RECOVERY_HANDOFF_SCOPE')
+    lease=synchronize_recovery_guard(cap)
+    with recovery_lock(cap):
+        need(cap.clock()<lease and not (cap.root/'purge-result.json').exists(),'RECOVERY_RETENTION_EXPIRED')
+        cap.input_root.mkdir(mode=0o700)
+        record_private_file(cap,'qualification',envelope)
+        record=private_json(cap.root/'owned-files.json')['recovered']
+        path=matched_private_file(cap,'recovered',record);need(path is not None,'RECOVERY_INPUT_ABSENT');path.unlink()
+    values=None
+    return {'status':'QUALIFICATION_INPUT_TRANSFERRED','executionReady':False}
+
+
+def closeout_binding_recovery(cap):
+    import fcntl
+    cap.inspect();fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW);password=None;io=None
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        # Pure purge remains permitted after expiry; it does not renew any provider-read allowance.
+        if not (cap.root/'purge-now.json').exists():model.reserve(cap.root/'purge-now.json',{})
+        result=purge_recovery_files(cap)
+        if (cap.root/'resource-closeout.json').exists():return {**result,'resourceCloseout':private_json(cap.root/'resource-closeout.json'),'candidate':None}
+        residuals=['OWNED_PROCESS_HISTORY_UNKNOWN']
+        if cap.external and cap.clock()<cap.times['closeoutEnd'] and not (cap.root/'read-sql-closeout-independent.json').exists():
+            try:
+                with current_module('acl').http_deadline(max(.01,min(30,cap.times['closeoutEnd']-cap.clock()))):password=hidden_password()
+                io=BindingRecoveryIO(cap,True)
+                need(strict_json(io.sql(sql_contract()[1],password,cap.times['closeoutEnd']))=={'sessionsAbsent':True},'RECOVERY_SESSIONS')
+            except BaseException:residuals.append('SESSIONS_UNCONFIRMED')
+            finally:
+                password=None
+                try:need(io is not None and io.close(cap.times['closeoutEnd']) is True,'RECOVERY_PROCESS_CLOSEOUT')
+                except BaseException:residuals.append('PROCESS_CLOSEOUT_UNCONFIRMED')
+        else:residuals.append('SESSIONS_UNCONFIRMED')
+        return {**result,'resourceCloseout':{'verified':False,'residuals':residuals},'candidate':None}
+    finally:password=None;fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def recovery_main(argv):
+    modes={'--recover-binding-inputs':'recover','--closeout-binding-inputs':'closeout','--binding-input-purge-guard':'guard'}
+    need(len(argv)==2 and argv[0] in modes,'RECOVERY_ARGUMENTS');mode=modes[argv[0]];path=Path(argv[1])
+    if mode=='recover':
+        need(path.name=='envelope.json' and path.parent.parent==Path('/private/tmp') and
+             re.fullmatch(r'p08-binding-request-[0-9a-f-]{36}',path.parent.name),'RECOVERY_INPUT_PATH')
+        inspect_current_root(path.parent,{'envelope.json'})
+        try:
+            e=private_json(path);need(path.parent.name=='p08-binding-request-'+e['operationId'],'RECOVERY_INPUT_SCOPE')
+            cap=BindingRecoveryCapability(e);need(cap.external,'RECOVERY_EXTERNAL_ONLY')
+            path.unlink();path.parent.rmdir()
+            result,_=run_binding_recovery(cap,BindingRecoveryIO(cap));print(result['status']);return 0 if result['status']=='HANDOFF_RETAINED' else 2
+        finally:
+            if path.exists() and not path.is_symlink():path.unlink()
+            if path.parent.exists() and not any(path.parent.iterdir()):path.parent.rmdir()
+    need(path.parent==Path('/private/tmp') and re.fullmatch(r'p08-binding-recovery-[0-9a-f-]{36}',path.name),'RECOVERY_ROOT')
+    cap=BindingRecoveryCapability(private_json(path/'guard-envelope.json'),mode=mode);need(cap.root==path,'RECOVERY_ROOT')
+    result=binding_purge_guard(cap) if mode=='guard' else closeout_binding_recovery(cap)
+    complete=result['rawFilesAbsent'] and result.get('onTime')
+    if mode!='guard':
+        complete=complete and result.get('resourceCloseout',{}).get('verified') is True
+        print('BINDING_RECOVERY_CLOSED' if complete else 'BINDING_RECOVERY_CLOSEOUT_UNCONFIRMED')
+    return 0 if complete else 2
+
+
+
 if __name__ == "__main__":
-    try:raise SystemExit(current_main())
+    try:raise SystemExit(recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
     except Exception:
         print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)

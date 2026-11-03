@@ -138,6 +138,45 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
         self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
 
 
+    def recovery_sql_fixture(self,drift=False):
+        import shutil
+        t=self.case;helper=current_tests.BindingRecoveryTests();helper.raw=copy.deepcopy(t.raw)
+        e=helper.envelope(int(time.time()));cap=launch.BindingRecoveryCapability(e)
+        self.addCleanup(lambda:shutil.rmtree(cap.root,ignore_errors=True))
+        if drift:self.command('UPDATE "User" SET status=\'ACTIVE\';')
+        local_type=type(self.native_sql);clients=[]
+        class Ports:
+            proof=True
+            def __init__(obj,independent=False):
+                obj.independent_read=independent;obj.native=local_type(time.time,e['operationId']);clients.append(obj.native)
+            def cli(obj,d,deadline):
+                cap.gate('cli',d['id'])
+                return [{'account':model.OWNER,'status':'ACTIVE'}] if d['id']=='owner' else {'projectId':model.PROJECT,'projectNumber':'123456789012','lifecycleState':'ACTIVE'}
+            def sql(obj,d,password,deadline):
+                cleanup=d['id']=='closeout';label=('closeout-independent' if obj.independent_read else 'closeout-main') if cleanup else 'qualification'
+                cap.gate('sql',label,cleanup);return obj.native.sql(d,password,time.time()+20)
+            def close(obj,deadline):return obj.native.close(time.time()+5)
+            def independent(obj):return Ports(True)
+        result,guard=launch.run_binding_recovery(cap,Ports())
+        try:
+            if drift:
+                self.assertEqual(result['status'],'BINDING_INPUT_RECOVERY_UNQUALIFIED');self.assertFalse((cap.root/'recovered-inputs.json').exists())
+            else:
+                self.assertEqual(result['status'],'HANDOFF_RETAINED',result)
+                self.assertEqual(launch.private_json(cap.root/'recovered-inputs.json')['targetId'],t.scope['target']['id'])
+                model.reserve(cap.root/'purge-now.json',{})
+            guard.wait(timeout=5)
+        finally:
+            if guard.poll() is None:guard.terminate();guard.wait(timeout=3)
+        self.assertEqual(len(list(cap.root.glob('read-sql-*.json'))),3)
+        self.assertEqual(len(clients),2);self.assertTrue(all(c.closed and not c.children for c in clients))
+        self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
+        self.assertFalse((cap.root/'recovered-inputs.json').exists())
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+    def test_recovery_actual_tls_two_reads_three_sql_and_guard_cleanup(self):self.recovery_sql_fixture()
+    def test_recovery_actual_tls_target_drift_refuses_and_closes(self):self.recovery_sql_fixture(True)
+
+
 for _name in dir(tls_fixture.LifecyclePostgres):
     if _name.startswith('test_') and _name not in CurrentEvidenceTLS.__dict__:setattr(CurrentEvidenceTLS,_name,None)
 

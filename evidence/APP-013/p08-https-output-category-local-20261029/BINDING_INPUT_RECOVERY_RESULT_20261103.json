@@ -1,0 +1,51 @@
+{
+  "acceptedMilestones": "1A/1B/2A/2B (4/8)",
+  "approvedCard": "be2b341",
+  "checks": {
+    "architecture": "PASS",
+    "crossRepositoryConsistency": "PASS",
+    "frozenBaseline": "PASS",
+    "whitespace": "PASS"
+  },
+  "cleanup": {
+    "normalGuardReaped": true,
+    "orphanGuardPidAbsenceObserved": true,
+    "ownedSqlSessionsAbsent": true,
+    "ownedTlsScratchAbsent": true,
+    "ownedTlsServerReaped": true,
+    "syntheticPrivateFilesPurged": true
+  },
+  "executionReady": false,
+  "files": {
+    "composed_qualification.py": "7285ebda3f77d0e0c769e29f4f0e304f9239fd93e5c545a13c965a1d30d7cb69",
+    "qualification_launch.py": "3440c1c8eda5506ff15743226b6db3ec26536d47d5fc91492ecd52b7fa9bd2d8",
+    "test_composed_qualification.py": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518",
+    "test_qualification_launch.py": "50fa0ed18bdfbb8696be30433297d6681b999d31eb38b4b0190e4d6f875a6ac8",
+    "test_qualification_launch_postgres.py": "0b28711eb763b249373b092d469d52f5f42465b62344dabe740fdc10a900f38b"
+  },
+  "limits": {
+    "cli": 2,
+    "directHttps": 0,
+    "explicitCacheInspections": 0,
+    "retentionSecondsMaximum": 3600,
+    "sql": 3
+  },
+  "liveObserved": false,
+  "manifestSha256": "5521929f0f549b30842a16e7af90ed92120501633a591a916d9ffcd50c500872",
+  "providerCalls": 0,
+  "r1NewlyClosed": "0/27",
+  "recordedAt": "2026-11-03T18:24:03.591300+00:00",
+  "section": "R1-W01/APP-013/3A/P08",
+  "section3A": "OPEN",
+  "sourceBaseline": "7413bfae67ee1fd9a8fa590a81dfbd69b7ba4930",
+  "status": "BINDING_INPUT_RECOVERY_LOCAL_VERIFIED",
+  "testTotal": 264,
+  "tests": {
+    "composedModel": 17,
+    "governanceSafeguards": 25,
+    "narrowRegression": 111,
+    "nativeEntryRegression": 21,
+    "ownedPostgresTLS": 9,
+    "producerAuthorityCacheRecoveryGuard": 81
+  }
+}

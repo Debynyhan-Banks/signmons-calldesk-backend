@@ -1,5 +1,10 @@
 # Current-evidence section card
 
+## November 3 — approved binding-input recovery locally verified
+
+Owner approved cardbe2b341 before implementation. Checklist1–6 complete locally;264 tests pass, including owned guard interruption/purge and SQL/TLS boundaries. See BINDING_INPUT_RECOVERY_RESULT_20261103.md/.json. Real identifiers/provider/credential facts UNKNOWN; no live recovery or3A acceptance. Next exact recovery packet requires separate external approval. No scope deviation beyond the approved recovery/retention card.
+
+
 ## November 3 — external binding locally implemented
 
 Owner-approved card4c8011e and amendmentdc90069 completed locally. See EXTERNAL_BINDING_RESULT_20261103.md/.json for exact source,212 runtime/local tests, credential/authority/independent cleanup proof and live UNKNOWNs. No live access or3A acceptance. No scope deviation beyond the approved amendment.
