@@ -1,0 +1,22 @@
+{
+  "operationId": "f5f91122-d2b6-4dc2-8af2-ef59acf7351c",
+  "status": "INDEPENDENT_CLOSEOUT_VERIFIED",
+  "verifiedAt": "2026-11-03T15:00:42Z",
+  "exclusiveLockAcquired": true,
+  "exactInventory": true,
+  "planSha256": "3b790e1ae30b2d875e1c089679291e0d6a5431403d5414124b059575bd792f16",
+  "sourceCommit": "5be6d5772394062395f735e23c7ae32423180d14",
+  "approvalCommit": "3b30daa37575810ccd4ddb02bbaa7b2c0ad12d54",
+  "privatePlanAbsent": true,
+  "scratchAbsent": true,
+  "filesSha256": {
+    "result.json": "d60282738e6f4bfe0486b7ce47525eecdf30a4f35e6b2a1be382e9755950d506",
+    "journal.json": "ac60d05a78f4d21c84712f0a5c973e3996e04effe9b47c712f3873e32d4bc283",
+    "attempt.json": "f7d6d00535454d6222589fa4ec32e885cf3018101d662976a959687f83b2e0c0",
+    "closeout.json": "f7d6d00535454d6222589fa4ec32e885cf3018101d662976a959687f83b2e0c0",
+    "entry.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "residuals": [],
+  "credentialReads": 0,
+  "providerRequests": 0
+}
