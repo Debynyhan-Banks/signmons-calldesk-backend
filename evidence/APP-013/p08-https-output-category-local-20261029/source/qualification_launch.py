@@ -1107,6 +1107,24 @@ def current_main(argv=None):
 
 # Binding-input recovery is a separate authority, not a relaxed qualification.
 RECOVERY_LIMITS={'cli':2,'sql':3,'https':0,'cache':0}
+
+
+def recovery_password(deadline,clock=model.time.time):
+    need(sys.stdin.isatty(),'HIDDEN_INPUT_REQUIRED')
+    seconds=min(120,deadline-clock())
+    need(seconds>0,'RECOVERY_DEADLINE')
+    acl=current_module('acl')
+    print(f'Enter the SQL password and press Return within {seconds:.0f} seconds. Input is hidden.',flush=True)
+    try:
+        with acl.http_deadline(seconds):
+            value=hidden_password()
+            need(clock()<deadline,'RECOVERY_DEADLINE')
+            return value
+    except acl.Stop as error:
+        if str(error)=='HTTP_TIMEOUT':raise model.Stop('RECOVERY_PASSWORD_TIMEOUT') from None
+        raise
+
+
 RECOVERY_MARKERS={'entry.lock','purge.lock','guard-envelope.json','attempt.json','guard-ready.json',
     'owned-files.json','owned-files.next','handoff-published.json','purge-now.json','purge-result.json',
     'resource-closeout.json','recovery-result.json','recovered-inputs.json','guard-sync.json','guard-ack.json',
@@ -1387,7 +1405,7 @@ def run_binding_recovery(cap,io):
             project=strict_json(io.cli(cli_contract()[2],cap.times['readEnd']))
             validate_recovery_project(cap,project)
             if cap.external:
-                with current_module('acl').http_deadline(max(.01,min(30,cap.times['readEnd']-cap.clock()))):password=hidden_password()
+                password=recovery_password(cap.times['readEnd'],cap.clock)
             else:password='SYNTHETIC_RECOVERY_ONLY'
             raw=strict_json(io.sql(sql_contract()[0],password,cap.times['readEnd']))
             values=recovery_values(cap,owner,project,raw);raw=None
@@ -1494,10 +1512,11 @@ def closeout_binding_recovery(cap):
         residuals=['OWNED_PROCESS_HISTORY_UNKNOWN']
         if cap.external and cap.clock()<cap.times['closeoutEnd'] and not (cap.root/'read-sql-closeout-independent.json').exists():
             try:
-                with current_module('acl').http_deadline(max(.01,min(30,cap.times['closeoutEnd']-cap.clock()))):password=hidden_password()
+                password=recovery_password(cap.times['closeoutEnd'],cap.clock)
                 io=BindingRecoveryIO(cap,True)
                 need(strict_json(io.sql(sql_contract()[1],password,cap.times['closeoutEnd']))=={'sessionsAbsent':True},'RECOVERY_SESSIONS')
-            except BaseException:residuals.append('SESSIONS_UNCONFIRMED')
+            except BaseException as error:
+                residuals.append('RECOVERY_PASSWORD_TIMEOUT' if isinstance(error,model.Stop) and str(error)=='RECOVERY_PASSWORD_TIMEOUT' else 'SESSIONS_UNCONFIRMED')
             finally:
                 password=None
                 try:need(io is not None and io.close(cap.times['closeoutEnd']) is True,'RECOVERY_PROCESS_CLOSEOUT')
@@ -1518,7 +1537,9 @@ def recovery_main(argv):
             e=private_json(path);need(path.parent.name=='p08-binding-request-'+e['operationId'],'RECOVERY_INPUT_SCOPE')
             cap=BindingRecoveryCapability(e);need(cap.external,'RECOVERY_EXTERNAL_ONLY')
             path.unlink();path.parent.rmdir()
-            result,_=run_binding_recovery(cap,BindingRecoveryIO(cap));print(result['status']);return 0 if result['status']=='HANDOFF_RETAINED' else 2
+            result,_=run_binding_recovery(cap,BindingRecoveryIO(cap))
+            if result['failure']=='RECOVERY_PASSWORD_TIMEOUT':print('RECOVERY_PASSWORD_TIMEOUT')
+            print(result['status']);return 0 if result['status']=='HANDOFF_RETAINED' else 2
         finally:
             if path.exists() and not path.is_symlink():path.unlink()
             if path.parent.exists() and not any(path.parent.iterdir()):path.parent.rmdir()

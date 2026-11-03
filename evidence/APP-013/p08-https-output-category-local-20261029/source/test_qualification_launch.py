@@ -1001,4 +1001,64 @@ class BindingRecoveryAuthorityTests(unittest.TestCase):
         self.assertFalse(path.exists() or root.exists())
 
 
+class RecoveryPasswordTests(unittest.TestCase):
+    def test_cap_and_deadline_and_secret_not_printed(self):
+        import types
+        observed=[]
+        @contextlib.contextmanager
+        def timer(seconds):observed.append(seconds);yield
+        acl=types.SimpleNamespace(http_deadline=timer,Stop=type('TimerStop',(Exception,),{}))
+        output=io.StringIO()
+        with patch.object(launch.sys.stdin,'isatty',return_value=True),patch.object(launch,'current_module',return_value=acl),patch.object(launch,'hidden_password',return_value='SYNTHETIC_ONLY'),contextlib.redirect_stdout(output):
+            self.assertEqual(launch.recovery_password(1000,lambda:0),'SYNTHETIC_ONLY')
+            self.assertEqual(launch.recovery_password(45,lambda:0),'SYNTHETIC_ONLY')
+        self.assertEqual(observed,[120,45]);self.assertNotIn('SYNTHETIC_ONLY',output.getvalue())
+        self.assertIn('120 seconds',output.getvalue());self.assertIn('45 seconds',output.getvalue())
+    def test_expired_and_no_tty_never_prompt(self):
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('prompt')):
+            with patch.object(launch.sys.stdin,'isatty',return_value=True):
+                with self.assertRaisesRegex(model.Stop,'RECOVERY_DEADLINE'):launch.recovery_password(1,lambda:1)
+            with patch.object(launch.sys.stdin,'isatty',return_value=False):
+                with self.assertRaisesRegex(model.Stop,'HIDDEN_INPUT_REQUIRED'):launch.recovery_password(1000,lambda:0)
+    def test_actual_timer_classification_and_restoration(self):
+        import signal,time
+        previous=signal.getsignal(signal.SIGALRM)
+        with patch.object(launch.sys.stdin,'isatty',return_value=True),patch.object(launch,'hidden_password',side_effect=lambda:time.sleep(.2)),contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(model.Stop,'RECOVERY_PASSWORD_TIMEOUT'):launch.recovery_password(time.time()+.03)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL),(0.,0.));self.assertEqual(signal.getsignal(signal.SIGALRM),previous)
+    def test_interrupt_restores_timer(self):
+        import signal,time
+        previous=signal.getsignal(signal.SIGALRM)
+        with patch.object(launch.sys.stdin,'isatty',return_value=True),patch.object(launch,'hidden_password',side_effect=KeyboardInterrupt),contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaises(KeyboardInterrupt):launch.recovery_password(time.time()+120)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL),(0.,0.));self.assertEqual(signal.getsignal(signal.SIGALRM),previous)
+    def test_clock_advance_after_input_refuses(self):
+        with patch.object(launch.sys.stdin,'isatty',return_value=True),patch.object(launch,'hidden_password',return_value='SYNTHETIC_ONLY'),contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(model.Stop,'RECOVERY_DEADLINE'):launch.recovery_password(10,iter([0,11]).__next__)
+    def test_actual_pty_hidden_input_after_old_thirty_second_limit(self):
+        import pty,select,time
+        master,slave=pty.openpty()
+        code="import sys,time;sys.path.insert(0,sys.argv[1]);import qualification_launch as q;v=q.recovery_password(time.time()+120);print('SYNTHETIC_INPUT_ACCEPTED' if v=='synthetic-pty-only' else 'BAD_INPUT')"
+        process=subprocess.Popen([launch.sys.executable,'-I','-B','-c',code,str(model.ROOT)],stdin=slave,stdout=slave,stderr=slave,start_new_session=True)
+        os.close(slave);output=b''
+        try:
+            end=time.monotonic()+8
+            while b'Qualification SQL password (hidden):' not in output and time.monotonic()<end:
+                if select.select([master],[],[],.1)[0]:output+=os.read(master,4096)
+            self.assertIn(b'Qualification SQL password (hidden):',output)
+            time.sleep(31)
+            self.assertIsNone(process.poll())
+            os.write(master,b'synthetic-pty-only\n')
+            end=time.monotonic()+5
+            while b'SYNTHETIC_INPUT_ACCEPTED' not in output and time.monotonic()<end:
+                if select.select([master],[],[],.1)[0]:
+                    try:output+=os.read(master,4096)
+                    except OSError:break
+            self.assertEqual(process.wait(timeout=5),0)
+            self.assertIn(b'SYNTHETIC_INPUT_ACCEPTED',output);self.assertNotIn(b'synthetic-pty-only',output)
+        finally:
+            if process.poll() is None:process.kill();process.wait(timeout=5)
+            os.close(master)
+
+
 if __name__=="__main__":unittest.main()
