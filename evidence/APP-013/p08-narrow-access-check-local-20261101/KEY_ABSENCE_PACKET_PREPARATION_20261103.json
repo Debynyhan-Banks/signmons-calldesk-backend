@@ -1,0 +1,37 @@
+{
+  "section": "APP-013/3A/P08",
+  "preparedAt": "2026-11-03T14:13:12Z",
+  "sourceCommit": "ce36c1195acf31726e560e97b2c05432d19e79d1",
+  "sourceFiles": {
+    "access_check.py": "495258008e1e6454fda779724a3c3cfc85b27459af7e217ba39dd2ab24472d9e",
+    "source-manifest.json": "3db5e61e6ec460a8425819c6ea0272dda8cf63606230ee9dd1fb63e1fa31528b",
+    "test_access_check.py": "4c6cf779d79898bbac0906feb3e1965c6bb9fd3b8602a744321d871efbbadf2a",
+    "test-manifest.json": "3815633210d40882110dd19b21026eaa26ab41df6881d6514a2badc1e7eef73f"
+  },
+  "executableSha256": "2cbb3ee843d8abcf93ed35bb9102391f18eefccb03d47908547bd8db67bc395c",
+  "draftSha256": "0175bc7831f819d1d71f77101293a8ba7e3c1d7ddd9148d25e641ccfd5099630",
+  "scopeSha256": "7dcc5b18be3727df5598ec4da97b8eaf78a4aa74d207d541faf54e55e53d6605",
+  "contractSha256": "668095072a9d6baae2360a64b898fc807393a6e9d3a013d90354feb97d3112f4",
+  "packetBindingChecks": [
+    "actual_committed_source_and_synthetic_exact_approval_PASS",
+    "target_drift_PASS",
+    "budget_drift_PASS",
+    "exact_cutoff_refusal_PASS",
+    "actual_pending_packet_refused_before_root_PASS"
+  ],
+  "sourceCheck": "PASS_LOCAL_TRANSPORT_ONLY",
+  "sdkHashesVerified": 5,
+  "operationalRootAbsent": true,
+  "realCredentialReads": 0,
+  "providerRequests": 0,
+  "qualificationOnly": true,
+  "executionReady": false,
+  "preparationChecks": {
+    "baseline": "PASS",
+    "docsConsistency": "PASS",
+    "architecture": "PASS",
+    "governanceSafeguards": 25,
+    "backendWhitespace": "PASS",
+    "governanceWhitespace": "PASS"
+  }
+}
