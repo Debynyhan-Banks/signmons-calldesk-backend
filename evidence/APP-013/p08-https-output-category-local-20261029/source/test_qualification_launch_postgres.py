@@ -116,7 +116,7 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
         t=self.case;cap=object.__new__(launch.QualificationCapability)
         cap.plan=t.p;cap.scope=t.scope;cap.clock=lambda:t.now;cap.last=t.now;cap.mode='qualify'
         cap.times=model.authorize(t.p,t.now);cap.hash=model.digest({'synthetic':t.p});cap.observed=False
-        cap.counts={'cli':0,'https':0,'sql':0,'cache':0};cap.e={'sdkReview':{'files':{launch._operator_module().PSQL:model.digest(Path(launch._operator_module().PSQL).read_bytes())},'limits':{'cli':27,'https':20,'sql':4,'cache':1}}}
+        cap.counts={'cli':0,'https':0,'sql':0,'cache':0};cap.e={'version':1,'plan':t.p,'nativeScope':t.scope,'sourceCommit':'0'*40,'manifestSha256':launch.source_manifest_sha256(),'decision':{'synthetic':True},'sdkReview':{'files':{launch._operator_module().PSQL:model.digest(Path(launch._operator_module().PSQL).read_bytes())},'limits':{'cli':27,'https':20,'sql':4,'cache':1}}}
         cap.root=Path('/private/tmp/p08-current-external-'+t.p['operationId']);cap.prepare=lambda:None
         self.addCleanup(lambda:shutil.rmtree(cap.root,ignore_errors=True))
         case=self;original=launch.NativeIO._owned_run;fresh=[]
@@ -130,7 +130,7 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
         def independent():
             obj=io.independent();fresh.append(obj);return obj
         t.io.independent=independent
-        with patch.object(launch.QualificationIO,'_owned_run',owned),patch.object(launch,'hidden_password',return_value='SYNTHETIC_TLS_ONLY'):
+        with patch.object(launch.QualificationIO,'_owned_run',owned),patch.object(launch.sys.stdin,'isatty',return_value=True),patch.object(launch,'hidden_password',return_value='SYNTHETIC_TLS_ONLY'):
             result=launch._produce_current(t.p,t.scope,t.io,cap.clock,capability=cap)
         self.assertIsNotNone(result['candidate'],result);self.assertFalse(result['executionReady'])
         self.assertEqual(cap.counts['sql'],4);self.assertEqual(len(fresh),1);self.assertIsNot(fresh[0],io)
@@ -175,6 +175,20 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
         self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
     def test_recovery_actual_tls_two_reads_three_sql_and_guard_cleanup(self):self.recovery_sql_fixture()
     def test_recovery_actual_tls_target_drift_refuses_and_closes(self):self.recovery_sql_fixture(True)
+
+
+    def test_public_restart_after_parent_death_uses_fresh_actual_tls_sql(self):
+        import subprocess,shutil
+        helper=current_tests.ExternalBindingTests();helper.setUp();self.addCleanup(helper.doCleanups)
+        directory=Path('/private/tmp/p08-current-input-'+helper.case.p['operationId']);directory.mkdir(mode=0o700)
+        self.addCleanup(lambda:shutil.rmtree(directory,ignore_errors=True));path=directory/'envelope.json';model.reserve(path,helper.e)
+        parent=subprocess.run([launch.sys.executable,'-I','-B','-c',current_tests.restart_child_code(helper.repo,True),str(model.ROOT),'--qualify-current',str(path)],capture_output=True,timeout=15)
+        self.assertEqual(parent.returncode,-9,parent.stderr.decode());self.assertFalse(directory.exists())
+        child=subprocess.run([launch.sys.executable,'-I','-B','-c',current_tests.restart_child_code(helper.repo,pg=(self.port,self.cert)),str(model.ROOT),'--closeout-current',str(helper.root)],capture_output=True,timeout=20)
+        self.assertEqual(child.returncode,2,child.stderr.decode());result=json.loads((helper.root/'recovery-result.json').read_text())
+        self.assertEqual(result['residuals'],['OWNED_PROCESS_HISTORY_UNKNOWN']);self.assertTrue(result['privateInputsAbsent']);self.assertIsNone(result['candidate'])
+        self.assertEqual(len(list(helper.root.glob('read-sql-*.json'))),1)
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
 
 
 for _name in dir(tls_fixture.LifecyclePostgres):

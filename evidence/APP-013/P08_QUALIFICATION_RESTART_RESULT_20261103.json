@@ -1,0 +1,41 @@
+{
+  "recordedAt": "2026-11-03T22:25:36.882898+00:00",
+  "status": "QUALIFICATION_RESTART_LOCAL_VERIFIED",
+  "approvedProposal": "063d5e1",
+  "sourceBaseline": "66a809b3cb612d8de1aa1709a9e4cdf3f65c310d",
+  "manifestSha256": "750a1464c8fd83fabf2875f3de6774c1f4142b62bf5102bb70b33fe637f91732",
+  "files": {
+    "composed_qualification.py": "7285ebda3f77d0e0c769e29f4f0e304f9239fd93e5c545a13c965a1d30d7cb69",
+    "qualification_launch.py": "dcd502d5d1206c08dcd3816f0633e24d55546d13edaa1182b21a6c3811269711",
+    "test_composed_qualification.py": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518",
+    "test_qualification_launch.py": "465913c5cb90de745a8a1ae37b058498877b1f65bf877913a6ffdc47f4f7fcd0",
+    "test_qualification_launch_postgres.py": "37e44eb24cd476304589ec8c128fdd8c5d95b7e84ebc4a7de269aa167b187640"
+  },
+  "tests": {
+    "producerRecovery": 98,
+    "composedModel": 17,
+    "ownedPostgresTLS": 10,
+    "governance": 25
+  },
+  "testTotal": 150,
+  "providerCalls": 0,
+  "liveObserved": false,
+  "executionReady": false,
+  "cleanup": {
+    "ownedParentKilledAndReaped": true,
+    "freshPublicRestartPassed": true,
+    "ownedTlsServerReaped": true,
+    "ownedTlsScratchAbsent": true,
+    "ownedSqlSessionsAbsent": true,
+    "syntheticRawInputAbsent": true
+  },
+  "checks": {
+    "architecture": "PASS",
+    "frozenBaseline": "PASS",
+    "crossRepositoryConsistency": "PASS",
+    "whitespace": "PASS"
+  },
+  "accepted": "4/8",
+  "section3A": "OPEN",
+  "r1NewlyClosed": "0/27"
+}

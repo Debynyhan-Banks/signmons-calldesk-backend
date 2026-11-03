@@ -511,6 +511,7 @@ class OwnedProcessTests(unittest.TestCase):
 class ExternalBindingTests(unittest.TestCase):
     def setUp(self):
         import tempfile,subprocess,shutil
+        tty=patch.object(launch.sys.stdin,'isatty',return_value=True);tty.start();self.addCleanup(tty.stop)
         self.case=CurrentProofTests();self.case.setUp();self.addCleanup(self.case.doCleanups)
         t=self.case;t.scope['database']={'host':launch._operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'}
         t.p['nativeScopeSha256']=model.digest(t.scope)
@@ -534,7 +535,7 @@ class ExternalBindingTests(unittest.TestCase):
     def bind_decision(self,action="APPROVE_EXACT_P08_CURRENT_QUALIFICATION"):
         self.e.pop('decision',None)
         decision={'owner':'Debynyhan Banks','decision':action,'externalReadAuthorized':True,
-            'scopeSha256':model.digest(self.e)}
+            'scopeSha256':model.digest(self.e),'cleanupScopeSha256':model.digest(launch.qualification_cleanup_scope(self.e))}
         path='APP013_P08_CURRENT_QUALIFICATION_20261103.json';raw=json.dumps(decision,sort_keys=True).encode()
         (self.repo/path).write_bytes(raw);self.git('add',path);self.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic owner decision')
         self.e['decision']={'commit':self.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
@@ -587,7 +588,8 @@ class ExternalBindingTests(unittest.TestCase):
         cap=self.cap('closeout');self.root.mkdir(mode=0o700)
         model.reserve(self.root/'entry.lock',{})
         model.reserve(self.root/'attempt.json',{'operationId':cap.plan['operationId'],
-            'scopeSha256':cap.plan['nativeScopeSha256'],'authoritySha256':cap.hash})
+            'scopeSha256':cap.plan['nativeScopeSha256'],'cleanupScopeSha256':model.digest(launch.qualification_cleanup_scope(cap.e))})
+        model.reserve(self.root/'cleanup-envelope.json',{'scope':launch.qualification_cleanup_scope(cap.e),'decision':cap.e['decision']})
         with patch.object(launch,'hidden_password',return_value='synthetic'),patch.object(launch.QualificationIO,'sql',return_value={'sessionsAbsent':True}) as sql:
             result=launch.recover_current_external(cap)
         self.assertIsNone(result['candidate']);self.assertIn('OWNED_PROCESS_HISTORY_UNKNOWN',result['residuals']);self.assertEqual(sql.call_count,1)
@@ -627,7 +629,7 @@ class ExternalBindingTests(unittest.TestCase):
     def test_concurrent_recovery_lock_refuses_before_password(self):
         import fcntl,os
         cap=self.cap('closeout');self.root.mkdir(mode=0o700);model.reserve(self.root/'entry.lock',{})
-        model.reserve(self.root/'attempt.json',{'operationId':cap.plan['operationId'],'scopeSha256':cap.plan['nativeScopeSha256'],'authoritySha256':cap.hash})
+        model.reserve(self.root/'attempt.json',{'operationId':cap.plan['operationId'],'scopeSha256':cap.plan['nativeScopeSha256'],'cleanupScopeSha256':model.digest(launch.qualification_cleanup_scope(cap.e))})
         fd=os.open(self.root/'entry.lock',os.O_WRONLY)
         try:
             fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -1059,6 +1061,126 @@ class RecoveryPasswordTests(unittest.TestCase):
         finally:
             if process.poll() is None:process.kill();process.wait(timeout=5)
             os.close(master)
+
+
+def restart_child_code(repo,crash=False,pg=None):
+    # Only committed-source reads are redirected to a disposable Git repository.
+    # Public command, authority checks, input purge, locks and SQL serializer are real.
+    return "\n".join([
+        "import sys,os,json,signal;from pathlib import Path",
+        "sys.path.insert(0,sys.argv[1]);import qualification_launch as q",
+        "original=q.current_module;a=original('authority');read=a.committed",
+        f"a.committed=lambda repo,commit,path:read(Path({str(repo)!r}),commit,path)",
+        "q.current_module=lambda name:a if name=='authority' else original(name)",
+        "q.QualificationCapability.prepare=lambda cap:None" if crash else "",
+        "q.recovery_password=lambda *args:os.kill(os.getpid(),signal.SIGKILL)" if crash else "q.recovery_password=lambda *args:'synthetic-restart-only'",
+        "old_run=q.NativeIO._owned_run",
+        "def cleanup_sql(self,argv,env,deadline):",
+        " assert argv[-1]==q.CLOSEOUT_SQL and env['PGSSLMODE']=='verify-full'",
+        " assert env['PGAPPNAME'].startswith('signmons_p08_qualification_')",
+        (f" argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',{str(pg[0])!r}];return old_run(self,argv,{{**env,'PGSSLROOTCERT':{str(pg[1])!r}}},deadline)" if pg else " return b'{\"sessionsAbsent\":true}'"),
+        "q.NativeIO._owned_run=cleanup_sql",
+        "raise SystemExit(q.current_main(sys.argv[2:]))",
+    ])
+
+
+class QualificationRestartTests(unittest.TestCase):
+    setUp=ExternalBindingTests.setUp
+    bind_decision=ExternalBindingTests.bind_decision
+    read_commit=ExternalBindingTests.read_commit
+    cap=ExternalBindingTests.cap
+    def seed(self):
+        cap=self.cap();self.root.mkdir(mode=0o700)
+        model.reserve(self.root/'entry.lock',{})
+        model.reserve(self.root/'attempt.json',{'operationId':cap.plan['operationId'],'scopeSha256':cap.plan['nativeScopeSha256'],'cleanupScopeSha256':model.digest(launch.qualification_cleanup_scope(cap.e))})
+        model.reserve(self.root/'cleanup-envelope.json',{'scope':launch.qualification_cleanup_scope(cap.e),'decision':cap.e['decision']})
+        return launch.QualificationCleanupCapability(self.root,lambda:self.case.now,self.read_commit)
+    def test_actual_parent_death_then_fresh_public_closeout_without_original_input(self):
+        import shutil
+        directory=Path('/private/tmp/p08-current-input-'+self.case.p['operationId']);directory.mkdir(mode=0o700)
+        self.addCleanup(lambda:shutil.rmtree(directory,ignore_errors=True));path=directory/'envelope.json';model.reserve(path,self.e)
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',restart_child_code(self.repo,True),str(model.ROOT),'--qualify-current',str(path)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,-9,p.stderr.decode());self.assertFalse(path.exists() or directory.exists())
+        self.assertTrue((self.root/'cleanup-envelope.json').exists());self.assertFalse((self.root/'independent-closeout.json').exists())
+        retained=''.join(p.read_text() for p in self.root.iterdir())
+        self.assertNotIn(self.e['nativeScope']['target']['id'],retained);self.assertNotIn(self.e['nativeScope']['plan']['projectNumber'],retained)
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',restart_child_code(self.repo),str(model.ROOT),'--closeout-current',str(self.root)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,2,p.stderr.decode());result=json.loads((self.root/'recovery-result.json').read_text())
+        self.assertEqual(result['residuals'],['OWNED_PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(result['candidate']);self.assertTrue(result['privateInputsAbsent'])
+        self.assertEqual(len(list(self.root.glob('read-sql-*.json'))),1)
+        with patch.object(launch,'recovery_password',side_effect=AssertionError('replay prompt')):
+            with self.assertRaisesRegex(model.Stop,'INDEPENDENT_CLOSEOUT_CONSUMED'):
+                launch.recover_current_external(launch.QualificationCleanupCapability(self.root,lambda:self.case.now,self.read_commit))
+    def test_cleanup_capability_cannot_dispatch_work(self):
+        cap=self.seed()
+        with self.assertRaises(model.Stop):launch.QualificationIO(cap)
+        io=launch.QualificationIO(cap,True)
+        for call in [lambda:io.cli(launch.current_cli_contract()[0],self.case.now+10),lambda:io.https({},'x',self.case.now+10),lambda:io.sql(launch.sql_contract()[0],'synthetic',self.case.now+10)]:
+            with self.assertRaises(model.Stop):call()
+        self.assertFalse(list(self.root.glob('read-sql-*.json')))
+    def test_total_four_sql_reservations_cannot_reset_across_restart(self):
+        cap=self.seed()
+        for _ in range(4):launch.reserve_qualification_sql(self.root,cap.plan['operationId'])
+        model.reserve(self.root/'independent-closeout.json',{'operationId':cap.plan['operationId']})
+        with patch.object(launch.NativeIO,'_owned_run',side_effect=AssertionError('over budget')):
+            with self.assertRaisesRegex(model.Stop,'QUALIFIER_SQL_BUDGET'):launch.QualificationIO(cap,True).sql(launch.sql_contract()[1],'synthetic',self.case.now+100)
+    def test_expired_restart_purges_owned_input_without_password_or_sql(self):
+        import shutil
+        cap=self.seed();directory=Path('/private/tmp/p08-current-input-'+cap.plan['operationId']);directory.mkdir(mode=0o700)
+        self.addCleanup(lambda:shutil.rmtree(directory,ignore_errors=True));model.reserve(directory/'envelope.json',self.e)
+        self.case.now=int(cap.times['purgeEnd'])+1
+        cap=launch.QualificationCleanupCapability(self.root,lambda:self.case.now,self.read_commit)
+        with patch.object(launch,'recovery_password',side_effect=AssertionError('expired prompt')):
+            result=launch.recover_current_external(cap)
+        self.assertFalse(directory.exists());self.assertIn('QUALIFIER_DEADLINE',result['residuals']);self.assertFalse(list(self.root.glob('read-sql-*.json')))
+    def test_foreign_raw_input_is_not_purged(self):
+        import shutil
+        cap=self.seed();directory=Path('/private/tmp/p08-current-input-'+cap.plan['operationId']);directory.mkdir(mode=0o700)
+        self.addCleanup(lambda:shutil.rmtree(directory,ignore_errors=True));model.reserve(directory/'envelope.json',{'foreign':True})
+        with patch.object(launch,'recovery_password',side_effect=AssertionError('foreign prompt')):
+            with self.assertRaisesRegex(model.Stop,'CLEANUP_INPUT_SCOPE'):launch.recover_current_external(cap)
+        self.assertTrue((directory/'envelope.json').exists())
+    def test_forged_cleanup_scope_or_missing_committed_cleanup_hash_refuses(self):
+        self.seed();path=self.root/'cleanup-envelope.json';record=json.loads(path.read_text());record['scope']['window']['closeoutEnd']='2099-01-01T00:00:00Z';path.write_text(json.dumps(record))
+        with self.assertRaises(model.Stop):launch.QualificationCleanupCapability(self.root,lambda:self.case.now,self.read_commit)
+    def test_cleanup_decision_reference_source_and_original_input_path_refuse(self):
+        self.seed();path=self.root/'cleanup-envelope.json';original=path.read_text()
+        for field,value in [('sha256','0'*64),('commit','0'*40),('path','APP013_P08_BINDING_RECOVERY_OPERATION_20261103.json')]:
+            record=json.loads(original);record['decision'][field]=value;path.write_text(json.dumps(record))
+            with self.assertRaises(Exception):launch.QualificationCleanupCapability(self.root,lambda:self.case.now,self.read_commit)
+        path.write_text(original)
+        def drift(repo,commit,path):
+            raw=self.read_commit(repo,commit,path)
+            return raw+b' ' if path.endswith('source-manifest.json') else raw
+        with self.assertRaisesRegex(model.Stop,'QUALIFIER_COMMITTED_MANIFEST'):
+            launch.QualificationCleanupCapability(self.root,lambda:self.case.now,drift)
+        with self.assertRaisesRegex(model.Stop,'CLEANUP_ROOT_SCOPE'):
+            launch.current_main(['--closeout-current',str(Path('/private/tmp/p08-current-input-'+self.case.p['operationId'])/'envelope.json')])
+    def test_legacy_approval_without_cleanup_scope_is_not_restart_authority(self):
+        self.seed();p=self.repo/'APP013_P08_CURRENT_QUALIFICATION_20261103.json';decision=json.loads(p.read_text());decision.pop('cleanupScopeSha256');p.write_text(json.dumps(decision))
+        self.git('add',p.name);self.git('-c','core.hooksPath=/dev/null','commit','-qm','synthetic legacy missing cleanup authority')
+        path=self.root/'cleanup-envelope.json';record=json.loads(path.read_text());record['decision']={'commit':self.git('rev-parse','HEAD'),'path':p.name,'sha256':model.digest(p.read_bytes())};path.write_text(json.dumps(record))
+        with self.assertRaisesRegex(model.Stop,'QUALIFIER_OWNER_APPROVAL'):
+            launch.QualificationCleanupCapability(self.root,lambda:self.case.now,self.read_commit)
+    def test_prompt_timeout_is_sanitized_and_consumes_independent_attempt(self):
+        cap=self.seed()
+        with patch.object(launch,'recovery_password',side_effect=model.Stop('RECOVERY_PASSWORD_TIMEOUT')):
+            result=launch.recover_current_external(cap)
+        self.assertIn('RECOVERY_PASSWORD_TIMEOUT',result['residuals']);self.assertTrue((self.root/'independent-closeout.json').exists());self.assertFalse(list(self.root.glob('read-sql-*.json')))
+    def test_concurrent_restart_refuses_before_prompt(self):
+        import fcntl
+        cap=self.seed();fd=os.open(self.root/'entry.lock',os.O_WRONLY)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with patch.object(launch,'recovery_password',side_effect=AssertionError('concurrent prompt')):
+                with self.assertRaises(BlockingIOError):launch.recover_current_external(cap)
+        finally:os.close(fd)
+    def test_work_prompt_failure_still_writes_unqualified_result(self):
+        cap=self.cap();t=self.case
+        with patch.object(launch,'recovery_password',side_effect=model.Stop('RECOVERY_PASSWORD_TIMEOUT')):
+            result=launch._produce_current(t.p,t.scope,t.io,lambda:t.now,capability=cap)
+        self.assertEqual(result['failure'],'RECOVERY_PASSWORD_TIMEOUT');self.assertIsNone(result['candidate'])
+        self.assertTrue((self.root/'cleanup-envelope.json').exists());self.assertTrue((self.root/'result.json').exists())
 
 
 if __name__=="__main__":unittest.main()
