@@ -1,0 +1,30 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "approvalProposal": "5ea7d22",
+  "baselineImplementation": "18556673a986328f36de9b7f67d189f1c7f1bdfd",
+  "verifiedAt": "2026-11-03T22:43:34.734912+00:00",
+  "status": "LOCAL_DIAGNOSTICS_VERIFIED",
+  "tests": {
+    "qualificationAndModelAndOwnedPostgresTLS": 133,
+    "governance": 25,
+    "total": 158
+  },
+  "checks": [
+    "source manifest file hashes",
+    "architecture",
+    "frozen baseline",
+    "cross-repository docs consistency",
+    "whitespace"
+  ],
+  "liveOperation": false,
+  "providerCalls": 0,
+  "historicalFailedSDKDescriptor": "UNKNOWN",
+  "executionReady": false,
+  "acceptance": {
+    "walkthroughAccepted": 4,
+    "walkthroughTotal": 8,
+    "section3A": "OPEN",
+    "newlyClosedR1": 0
+  },
+  "scopeDeviation": "None beyond owner-approved local metadata correction"
+}

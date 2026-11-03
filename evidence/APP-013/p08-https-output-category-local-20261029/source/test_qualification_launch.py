@@ -699,6 +699,8 @@ class CacheTransportTests(CacheBindingTests):
         cap.times={'start':cap.last-1,'readEnd':cap.last+50,'closeoutEnd':cap.last+100,'purgeEnd':self.end}
         cap.e={'sdkReview':{'files':{},'limits':{'cli':27,'https':20,'sql':4,'cache':1}}}
         cap.counts={'cli':0,'https':0,'sql':0,'cache':0}
+        temp=tempfile.TemporaryDirectory(dir='/private/tmp');self.addCleanup(temp.cleanup);cap.root=Path(temp.name)
+        cap.e.update(plan={**cap.plan,'window':cap.times,'nativeScopeSha256':'0'*64},nativeScope={'database':{}},sourceCommit='0'*40,manifestSha256='0'*64)
         with patch.dict(launch.os.environ,{'HOME':'/Users/debynyhanbanks'},clear=True):
             io=launch.QualificationIO(cap)
             d=next(d for d in launch.current_cli_contract() if d['id']=='token')
@@ -707,6 +709,7 @@ class CacheTransportTests(CacheBindingTests):
                 self.assertEqual(cap.counts['cache'],1)
                 with self.assertRaisesRegex(model.Stop,'QUALIFIER_LIMIT'):io.cli(d,cap.times['readEnd'])
             cap.counts={'cli':0,'https':0,'sql':0,'cache':0}
+            second=tempfile.TemporaryDirectory(dir='/private/tmp');self.addCleanup(second.cleanup);cap.root=Path(second.name)
             with patch.object(io,'_owned_run',return_value=b'SYNTHETIC_MISMATCHED_BEARER'):
                 with self.assertRaisesRegex(model.Stop,'TOKEN_CACHE_MISMATCH'):io.cli(d,cap.times['readEnd'])
             self.assertEqual(cap.counts['https'],0);self.assertTrue(io.close(cap.times['closeoutEnd']))
@@ -1181,6 +1184,81 @@ class QualificationRestartTests(unittest.TestCase):
             result=launch._produce_current(t.p,t.scope,t.io,lambda:t.now,capability=cap)
         self.assertEqual(result['failure'],'RECOVERY_PASSWORD_TIMEOUT');self.assertIsNone(result['candidate'])
         self.assertTrue((self.root/'cleanup-envelope.json').exists());self.assertTrue((self.root/'result.json').exists())
+
+
+class SDKDiagnosticTests(unittest.TestCase):
+    setUp=ExternalBindingTests.setUp
+    bind_decision=ExternalBindingTests.bind_decision
+    read_commit=ExternalBindingTests.read_commit
+    cap=ExternalBindingTests.cap
+    seed=QualificationRestartTests.seed
+    def work(self):
+        cap=self.cap();self.seed();return cap
+    def test_all_labels_and_dynamic_account_never_record_raw_values(self):
+        cap=self.work()
+        for i,d in enumerate(launch.current_cli_contract('billingAccounts/ABCDEF-123456'),1):
+            cap.counts['cli']=i
+            self.assertEqual(launch.observed_qualification_cli(cap,d,lambda:b'SYNTHETIC_SECRET_RESPONSE'),b'SYNTHETIC_SECRET_RESPONSE')
+            r=json.loads((self.root/f'cli-result-{i:02d}.json').read_text())
+            self.assertEqual(r['descriptorId'],d['id']);self.assertEqual(r['status'],'RETURNED');self.assertIsNone(r['failureCode'])
+        text=''.join(p.read_text() for p in self.root.glob('cli-*.json'))
+        for secret in ['SYNTHETIC_SECRET_RESPONSE','billingAccounts/ABCDEF-123456','argv','accessToken']:
+            self.assertNotIn(secret,text)
+        self.assertEqual(len(list(self.root.glob('cli-*.json'))),54)
+    def test_unknown_descriptor_or_changed_argv_refuses_before_record_or_invoke(self):
+        cap=self.work();cap.counts['cli']=1;d=copy.deepcopy(launch.current_cli_contract()[0]);d['argv']=(*d['argv'],'SYNTHETIC_SECRET_ARGV')
+        for value in [d,{'id':'SYNTHETIC_SECRET_LABEL','argv':()}]:
+            with self.assertRaises(model.Stop):launch.observed_qualification_cli(cap,value,lambda:self.fail('invoke'))
+        self.assertFalse(list(self.root.glob('cli-*.json')))
+    def test_actual_owned_timeout_identifies_label_and_closes_child(self):
+        cap=self.work();io=launch.QualificationIO(cap);d=launch.current_cli_contract()[2]
+        def slow(argv,env,deadline):return launch.NativeIO._owned_run(io,[launch.sys.executable,'-c','import time;time.sleep(5)'],{'PATH':'/usr/bin:/bin'},io.clock()+2.3)
+        try:
+            with patch.object(io,'_owned_run',side_effect=slow):
+                with self.assertRaisesRegex(model.Stop,'PROCESS_TIMEOUT'):io.cli(d,cap.times['readEnd'])
+            r=json.loads((self.root/'cli-result-01.json').read_text())
+            self.assertEqual((r['descriptorId'],r['status'],r['failureCode']),('project','FAILED','PROCESS_TIMEOUT'))
+            self.assertGreaterEqual(r['elapsedMilliseconds'],200);self.assertFalse(io.children)
+        finally:self.assertTrue(io.close(cap.times['closeoutEnd']))
+    def test_unrecognized_exception_text_is_never_retained_or_propagated(self):
+        cap=self.work();cap.counts['cli']=1
+        with self.assertRaisesRegex(model.Stop,'^CLI_UNCONFIRMED$'):
+            launch.observed_qualification_cli(cap,launch.current_cli_contract()[0],lambda:(_ for _ in ()).throw(model.Stop('SYNTHETIC_SECRET_ERROR')))
+        self.assertNotIn('SYNTHETIC_SECRET_ERROR',''.join(p.read_text() for p in self.root.iterdir()))
+    def test_duplicate_and_over_limit_reservations_never_dispatch(self):
+        cap=self.work();cap.counts['cli']=1;d=launch.current_cli_contract()[0]
+        launch.observed_qualification_cli(cap,d,lambda:b'[]')
+        with self.assertRaisesRegex(model.Stop,'CLI_DIAGNOSTIC_WRITE_UNCONFIRMED'):launch.observed_qualification_cli(cap,d,lambda:self.fail('duplicate invoke'))
+        cap.counts['cli']=28
+        with self.assertRaisesRegex(model.Stop,'CLI_DIAGNOSTIC_LIMIT'):launch.observed_qualification_cli(cap,d,lambda:self.fail('limit invoke'))
+    def test_partial_receipt_does_not_block_cleanup_or_create_candidate(self):
+        cap=self.seed();model.reserve(self.root/'cli-attempt-01.json',{'status':'RESERVED'})
+        (self.root/'cli-result-01.json').write_text('{');(self.root/'cli-result-01.json').chmod(0o600)
+        with patch.object(launch,'recovery_password',return_value='synthetic'),patch.object(launch.NativeIO,'_owned_run',return_value=b'{"sessionsAbsent":true}'):
+            r=launch.recover_current_external(cap)
+        self.assertIsNone(r['candidate']);self.assertEqual(r['residuals'],['OWNED_PROCESS_HISTORY_UNKNOWN'])
+        self.assertNotIn('transportReservations',r)
+    def test_diagnostic_write_failure_stops_work_but_preserves_independent_cleanup(self):
+        cap=self.cap();t=self.case;reserve=model.reserve
+        def write(path,value):
+            if Path(path).name=='cli-result-01.json':raise OSError('synthetic unavailable')
+            return reserve(path,value)
+        def cloud(adapter,deadline):
+            cap.counts['cli']=1
+            return launch.observed_qualification_cli(cap,launch.current_cli_contract()[0],lambda:b'[]')
+        with patch.object(model,'reserve',side_effect=write),patch.object(launch.CurrentAdapter,'read_cloud',cloud),patch.object(launch,'recovery_password',return_value='synthetic'):
+            r=launch._produce_current(t.p,t.scope,t.io,cap.clock,capability=cap)
+        self.assertEqual(r['failure'],'CLI_DIAGNOSTIC_WRITE_UNCONFIRMED');self.assertIsNone(r['candidate']);self.assertEqual(r['residuals'],[])
+        self.assertEqual(r['transportReservations']['cli'],1);self.assertEqual(r['reservationSemantics'],'RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS')
+    def test_actual_crash_leaves_reservation_unknown_and_fresh_cleanup_still_works(self):
+        import shutil
+        directory=Path('/private/tmp/p08-current-input-'+self.case.p['operationId']);directory.mkdir(mode=0o700);self.addCleanup(lambda:shutil.rmtree(directory,ignore_errors=True));path=directory/'envelope.json';model.reserve(path,self.e)
+        code=restart_child_code(self.repo,True).replace("q.recovery_password=lambda *args:os.kill(os.getpid(),signal.SIGKILL)","q.recovery_password=lambda *args:'synthetic'")
+        code=code.replace('q.NativeIO._owned_run=cleanup_sql',f"q.CONFIG_ROOT=Path({str(self.repo/'synthetic-config')!r});q.NativeIO._owned_run=lambda *args:os.kill(os.getpid(),signal.SIGKILL)")
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',code,str(model.ROOT),'--qualify-current',str(path)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,-9,p.stderr.decode());self.assertFalse(directory.exists());self.assertTrue((self.root/'cli-attempt-01.json').exists());self.assertFalse((self.root/'cli-result-01.json').exists())
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',restart_child_code(self.repo),str(model.ROOT),'--closeout-current',str(self.root)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,2,p.stderr.decode());r=json.loads((self.root/'recovery-result.json').read_text());self.assertEqual(r['residuals'],['OWNED_PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(r['candidate'])
 
 
 if __name__=="__main__":unittest.main()

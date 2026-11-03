@@ -437,7 +437,7 @@ class NativeIO:
         argv = descriptor["argv"]; need(argv and argv[0] == GCLOUD, "CLI_EXECUTABLE")
         env = sdk_environment(os.environ) if isinstance(self,(QualificationIO,BindingRecoveryIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
         timeout = max(1, min(30, int(deadline - self.clock())))
-        need(descriptor in current_cli_contract() or descriptor in current_cli_contract(argv[4] if descriptor['id']=='billing_account' and len(argv)>4 else '<discovered-account>'),'CLI_SCOPE')
+        validate_cli_descriptor(descriptor)
         raw=self._owned_run(argv,env,min(deadline,self.clock()+30))
         if descriptor["id"] == "token":
             token = raw.decode("utf-8", "strict").strip(); need(20 <= len(token) <= 4096, "TOKEN_OUTPUT"); return {"accessToken": token}
@@ -884,6 +884,9 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
         result={'status':('CURRENT_EVIDENCE_OBSERVED' if capability else 'CURRENT_EVIDENCE_LOCAL_VERIFIED') if candidate else 'CURRENT_EVIDENCE_UNQUALIFIED',
                 'execution':'EXTERNAL_READ_ONLY' if capability else 'PROOF_ONLY','liveObserved':bool(capability and capability.observed),'executionReady':False,'failure':failure,
                 'residuals':sorted(set(residuals)),'candidate':candidate}
+        if capability is not None:
+            result['transportReservations']=copy.deepcopy(capability.counts)
+            result['reservationSemantics']='RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS'
         model.reserve(root/'result.json',result);return result
     finally:
         password=None
@@ -892,7 +895,8 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
 
 
 CURRENT_MARKERS={'entry.lock','attempt.json','cleanup-envelope.json','independent-closeout.json',
-    'result.json','recovery-result.json',*[f'read-sql-{i}.json' for i in range(1,5)]}
+    'result.json','recovery-result.json',*[f'read-sql-{i}.json' for i in range(1,5)],
+    *[f'cli-{kind}-{i:02d}.json' for kind in ('attempt','result') for i in range(1,28)]}
 
 
 def qualification_cleanup_scope(e):
@@ -1092,6 +1096,42 @@ def hidden_password():
     return value
 
 
+def validate_cli_descriptor(descriptor):
+    need(isinstance(descriptor,dict) and isinstance(descriptor.get('argv'),(tuple,list)),'CLI_SCOPE')
+    argv=descriptor['argv']
+    need(descriptor in current_cli_contract() or descriptor in current_cli_contract(
+        argv[4] if descriptor.get('id')=='billing_account' and len(argv)>4 else '<discovered-account>'),'CLI_SCOPE')
+
+
+CLI_FAILURE_CODES=frozenset({'PROCESS_DEADLINE','PROCESS_TIMEOUT','PROCESS_OUTPUT_LIMIT','PROCESS_REFUSED',
+    'PROCESS_UNCONFIRMED','PROCESS_CLEANUP_UNCONFIRMED','CLOCK_ROLLBACK','TOKEN_OUTPUT','CLI_DEADLINE',
+    'CLI_EXECUTABLE','CLI_SCOPE'})
+
+
+def observed_qualification_cli(cap,descriptor,invoke):
+    validate_cli_descriptor(descriptor)
+    ordinal=cap.counts['cli']
+    need(type(ordinal) is int and 1<=ordinal<=27,'CLI_DIAGNOSTIC_LIMIT')
+    inspect_current_root(cap.root,CURRENT_MARKERS)
+    common={'operationId':cap.plan['operationId'],'cleanupScopeSha256':model.digest(qualification_cleanup_scope(cap.e)),
+        'ordinal':ordinal,'descriptorId':descriptor['id']}
+    try:model.reserve(cap.root/f'cli-attempt-{ordinal:02d}.json',
+        {**common,'reservedAtMilliseconds':int(cap.clock()*1000),'status':'RESERVED'})
+    except Exception:raise model.Stop('CLI_DIAGNOSTIC_WRITE_UNCONFIRMED') from None
+    started=model.time.monotonic();failure=None;status='FAILED'
+    try:
+        value=invoke();status='RETURNED';return value
+    except BaseException as error:
+        failure=str(error) if isinstance(error,model.Stop) and str(error) in CLI_FAILURE_CODES else 'CLI_UNCONFIRMED'
+        if isinstance(error,(KeyboardInterrupt,SystemExit)):raise
+        raise model.Stop(failure) from None
+    finally:
+        elapsed=max(0,min(3600000,int((model.time.monotonic()-started)*1000)))
+        try:model.reserve(cap.root/f'cli-result-{ordinal:02d}.json',
+            {**common,'status':status,'elapsedMilliseconds':elapsed,'failureCode':failure})
+        except Exception:raise model.Stop('CLI_DIAGNOSTIC_WRITE_UNCONFIRMED') from None
+
+
 class QualificationIO(NativeIO):
     def __init__(self,capability,cleanup_only=False):
         need(type(capability) in (QualificationCapability,QualificationCleanupCapability) and
@@ -1100,11 +1140,12 @@ class QualificationIO(NativeIO):
         self.capability=capability;self.cleanup_only=cleanup_only
     def cli(self,d,deadline):
         need(not self.cleanup_only,'QUALIFIER_CLOSEOUT_ONLY')
+        validate_cli_descriptor(d)
         cap=self.capability;cap.gate('cli')
         acl=current_module('acl');snapshot=acl.config_snapshot(cap.config_root,os.environ)
         if cap.config is None:cap.config=snapshot
         need(snapshot==cap.config,'CONFIG_CHANGED')
-        value=super().cli(d,min(deadline,cap.times['readEnd']))
+        value=observed_qualification_cli(cap,d,lambda:super(QualificationIO,self).cli(d,min(deadline,cap.times['readEnd'])))
         if d['id']=='token':
             cap.gate('cache')
             cached=None
