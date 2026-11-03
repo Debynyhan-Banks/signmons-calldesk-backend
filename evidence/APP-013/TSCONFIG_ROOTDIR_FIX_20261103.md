@@ -1,0 +1,13 @@
+# APP-013 / 3A — owner-requested TypeScript configuration fix
+
+Approved by the owner's November 3 instruction to fix the reported common-source-directory diagnostic before recovery. Source baseline 2a39aacbee27dc610b48539bd81741d2fed88ef9. This is a finite build configuration repair, not a new acceptance section.
+
+Acceptance: explicitly set compilerOptions.rootDir to ./src, preserve existing dist/main.js output consumed by start:prod, and verify both base and build configurations. Inspected tsconfig.json omits rootDir; tsconfig.build.json extends it; nest-cli.json uses src; package.json starts dist/main; no test directory exists and tests reside under src. TypeScript 6 migration documentation confirms explicit rootDir preserves the prior inferred layout. Installed compiler is 5.9.3; no dependency upgrade authorized or required.
+
+Reuse existing TypeScript/Nest compiler and governance checks. Change only tsconfig.json plus this evidence. No data, identity, retention, API or runtime behavior changes. Checklist: (1) record card before edit; (2) add one explicit setting; (3) base no-emit check, production build and emitted entrypoint check; (4) architecture/baseline/consistency/whitespace checks and record results. Negative/concurrency/recovery/browser tests are not applicable to this compiler path setting; no new tests or live operation required. Rollback removes the added setting only. Owner authorized the fix; implementer verifies. No scope deviation. Accepted 1A/1B/2A/2B remain 4/8, R1 newly closed 0/27, 3A OPEN.
+
+Recovery packet 48db612 was separately approved by the same user message, with the explicit ordering condition that this fix comes first. No recovery launch during this repair. Original November 3 window and cutoff remain unchanged; approval is not an extension.
+
+## Verification result
+
+Added rootDir ./src. npm run build PASS (Prisma generation and Nest build); dist/main.js exists and dist/src/main.js does not. Base tsc --noEmit --incremental false reports 46 pre-existing test-file diagnostics. An in-memory TypeScript compiler comparison with only rootDir removed produces the identical 46 diagnostic codes/files/positions/messages; no new diagnostic introduced. Installed TypeScript 5.9.3 only; editor TypeScript 6 not exercised. Architecture, backend governance baseline, governance frozen baseline/docs consistency, all 25 safeguard tests and whitespace PASS. Removed only the newly generated untracked tsconfig.build.tsbuildinfo artifact. Unrelated AGENTS.md preserved. No application/runtime/provider action or acceptance advancement. Fix complete; existing test typing debt remains outside this single-setting repair. No scope deviation.
