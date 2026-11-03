@@ -1,0 +1,36 @@
+{
+  "operationId": "773f6c40-34a8-4be7-ba63-b503c611a868",
+  "approval": "47bb9a7",
+  "sourceCommit": "ef023e2f3e9f504e6c6ff7c3232a9f2b9cc3b2b2",
+  "observedAt": "2026-11-03T23:02:31.195401+00:00",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": null,
+    "liveObserved": true,
+    "purgeEnd": "2026-11-03T23:45:00Z",
+    "residuals": [],
+    "status": "HANDOFF_RETAINED"
+  },
+  "resourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "reservationLabels": [
+    "read-cli-owner.json",
+    "read-cli-project.json",
+    "read-sql-closeout-independent.json",
+    "read-sql-closeout-main.json",
+    "read-sql-qualification.json"
+  ],
+  "guard": {
+    "pid": 46948,
+    "scopeSha256": "da294c3f24dc69decd799e56a9c091f3a57d165bda3e7f3279e62f5225efca96"
+  },
+  "guardPresence": "verified with signal zero at 23:02Z",
+  "requestAbsent": true,
+  "privateRetention": "original deadline 2026-11-03T23:45:00Z; purge pending",
+  "providerInternalRequests": "UNKNOWN",
+  "fingerprintsMatched": true
+}
