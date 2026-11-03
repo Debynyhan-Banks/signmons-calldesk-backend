@@ -1,0 +1,16 @@
+{
+  "section": "APP-013/3A/P08",
+  "reviewedAt": "2026-11-03T15:06:01.063047+00:00",
+  "backendEntry": "ae88f559ac955d644333e8590ed7b0d1093a9def",
+  "governanceEntry": "72f82b4fd28372585df47dc4fd6a6012acf8f7b7",
+  "sourceSha256": {
+    "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+    "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18",
+    "evidence/APP-013/p08-role-contract-local-20261029/source/composed_qualification.py": "2c2f9603cb71957239816f4942549be8277c446cbcc5f2b7bae1f139fd552df4"
+  },
+  "latestReceiptHashes": "PASS",
+  "credentialsRead": 0,
+  "providerRequests": 0,
+  "runtimeChanges": 0,
+  "executionReady": false
+}
