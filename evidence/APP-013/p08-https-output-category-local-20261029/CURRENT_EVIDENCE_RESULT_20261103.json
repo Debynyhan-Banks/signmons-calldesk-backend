@@ -1,0 +1,61 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "timestamp": "2026-11-03T16:22:12.473977+00:00",
+  "approvalCardCommit": "0504f46",
+  "baseline": "d306ca3e2e6d05f1c9555849d8d511507be699c1",
+  "status": "CURRENT_EVIDENCE_LOCAL_VERIFIED",
+  "execution": "PROOF_ONLY",
+  "executionReady": false,
+  "liveObserved": false,
+  "providerCalls": 0,
+  "tests": {
+    "producerAndTransports": 41,
+    "composedModel": 17,
+    "ownedPostgresAndTLS": 6,
+    "nativeEntryRegression": 21,
+    "narrowRegression": 111,
+    "governance": 25
+  },
+  "totalTests": 221,
+  "proofContract": {
+    "cli": 27,
+    "https": 20,
+    "sqlIncludingIndependentCloseout": 4
+  },
+  "manifestSha256": "44b11e16ace28cc4dad9811755cae1af3b87c0dd9ce03c02257e6860d69e964d",
+  "files": {
+    "composed_qualification.py": "7285ebda3f77d0e0c769e29f4f0e304f9239fd93e5c545a13c965a1d30d7cb69",
+    "test_composed_qualification.py": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518",
+    "qualification_launch.py": "4e5921310578612f653ae1fd134d16b5a88252732be6eeeadb262680c25b8bee",
+    "test_qualification_launch.py": "e0fee5c95cf4e661e190efed2aa830d389f32a242c6dc8b9e6e77eb5493edc9d",
+    "test_qualification_launch_postgres.py": "d64edfff314aa2c60290cab7cb832a0f343d50cf21da96d74b7b97fa94ed7911"
+  },
+  "producerDependencies": {
+    "p08-narrow-access-check-local-20261101/source/access_check.py": "c8305243c9fd84cb027a0af5d1406f39da36b2ff249b52cd8a6159c032b0d195",
+    "p08-native-entry-local-20261101/source/authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+    "p08-same-day-renewal-filename-local-20261028/source/launch_binding.py": "baa0fea1ac8011c2c167634375647e636db49deaa624d9d3760a6eab03297296",
+    "p08-restoration-local-20261028/source/auth/reuse/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca"
+  },
+  "cleanup": {
+    "ownedServerReaped": true,
+    "ownedScratchAbsent": true,
+    "runtimeSessionsAbsent": true,
+    "ownedChildGroupsAbsent": true,
+    "earlierExactChildrenAbsent": [
+      75234,
+      75247
+    ]
+  },
+  "initialFailures": [
+    "macOS transitional process-group EPERM during reaping; fixed bounded probes that never classify EPERM as absence",
+    "imported unit-test class initially duplicated seven tests in SQL suite; removed duplicate discovery without removing coverage"
+  ],
+  "checks": {
+    "sourceManifest": "PASS",
+    "architecture": "PASS",
+    "frozenBaseline": "PASS",
+    "crossRepository": "PASS",
+    "docsConsistency": "PASS",
+    "whitespace": "PASS"
+  }
+}

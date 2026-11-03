@@ -1,11 +1,11 @@
 {
   "status": "DISABLED_LOCAL_PREPARATION_ONLY",
   "files": {
-    "composed_qualification.py": "19181d987eddec481a105ecc1dbe89413a42fe2b07436c073934aef6aafde685",
+    "composed_qualification.py": "7285ebda3f77d0e0c769e29f4f0e304f9239fd93e5c545a13c965a1d30d7cb69",
     "test_composed_qualification.py": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518",
-    "qualification_launch.py": "94b73ea8be71410f0f51e1d3a5d20f14eba126b1aa7370da7af537c9586a15f0",
-    "test_qualification_launch.py": "78ee0b7e6d40d9c84b28ac56ba5e26f5c788842ff4b58aad2ba8ea60a39ed40c",
-    "test_qualification_launch_postgres.py": "f36936035da9f3069a19d51a098b3df7dc3e4da8e3664d4f3928175ae0233b21"
+    "qualification_launch.py": "4e5921310578612f653ae1fd134d16b5a88252732be6eeeadb262680c25b8bee",
+    "test_qualification_launch.py": "e0fee5c95cf4e661e190efed2aa830d389f32a242c6dc8b9e6e77eb5493edc9d",
+    "test_qualification_launch_postgres.py": "d64edfff314aa2c60290cab7cb832a0f343d50cf21da96d74b7b97fa94ed7911"
   },
   "lockedSources": {
     "roles": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
@@ -14,5 +14,11 @@
     "firebase": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
     "access": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576"
   },
-  "ownershipSha256": "65409264d701edf8201878f6d058dfbbc3302412e683b36913a81b4578e6b668"
+  "ownershipSha256": "65409264d701edf8201878f6d058dfbbc3302412e683b36913a81b4578e6b668",
+  "producerDependencies": {
+    "p08-narrow-access-check-local-20261101/source/access_check.py": "c8305243c9fd84cb027a0af5d1406f39da36b2ff249b52cd8a6159c032b0d195",
+    "p08-native-entry-local-20261101/source/authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+    "p08-same-day-renewal-filename-local-20261028/source/launch_binding.py": "baa0fea1ac8011c2c167634375647e636db49deaa624d9d3760a6eab03297296",
+    "p08-restoration-local-20261028/source/auth/reuse/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca"
+  }
 }

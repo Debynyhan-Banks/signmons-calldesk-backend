@@ -59,4 +59,59 @@ INSERT INTO "Job" VALUES ('%s','%s','{"intakeAdmission":{"humanReviewed":true}}'
 for name in list(fixture.PostgreSQLContract.__dict__):
     if name.startswith("test_"): setattr(QualificationLaunchPostgreSQL, name, None)
 
+
+# Reuse the existing owned TLS cluster and full grant fixture; no external endpoint is opened.
+import sys,subprocess,time,os,copy
+sys.path.insert(0,str(ROOT.parent.parent/'p08-native-entry-local-20261101/source'))
+import test_native_postgres as tls_fixture
+import test_qualification_launch as current_tests
+
+class CurrentEvidenceTLS(tls_fixture.LifecyclePostgres):
+    def setUp(self):
+        super().setUp()
+        self.case=current_tests.CurrentProofTests();self.case.setUp();self.addCleanup(self.case.doCleanups)
+        t=self.case;target=t.scope['target']
+        def literal(value):return "'"+str(value).replace("'","''")+"'"
+        self.command('UPDATE "User" SET id='+literal(target['id'])+',"fullName"='+literal(target['fullName'])+';')
+        customer='20000000-0000-4000-8000-000000000001';address='30000000-0000-4000-8000-000000000001';service='40000000-0000-4000-8000-000000000001'
+        tenant=model.TENANT
+        self.command(f'''INSERT INTO "Customer"(id,"tenantId",phone,"fullName","updatedAt") VALUES('{customer}','{tenant}','synthetic','Fictional',now());
+INSERT INTO "PropertyAddress"(id,"tenantId","customerId","customerTenantId","formattedAddress","addressComponents","updatedAt") VALUES('{address}','{tenant}','{customer}','{tenant}','Fictional','{{}}',now());
+INSERT INTO "ServiceCategory"(id,"tenantId",name,"updatedAt") VALUES('{service}','{tenant}','Fictional',now());
+INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddressId","propertyAddressTenantId","serviceCategoryId","serviceCategoryTenantId",status,urgency,"pricingSnapshot","policySnapshot","updatedAt") VALUES('{model.JOB}','{tenant}','{customer}','{tenant}','{address}','{tenant}','{service}','{tenant}','CREATED','STANDARD','{{}}','{{"intakeAdmission":{{"humanReviewed":true}}}}',now());''')
+        t.scope['database']={'host':'127.0.0.1','port':int(self.port),'database':'neondb','user':'neondb_owner'}
+        t.p['nativeScopeSha256']=model.digest(t.scope)
+        case=self
+        class LocalNative(launch.NativeIO):
+            proof=True
+            def _owned_run(obj,argv,env,deadline):
+                case.assertEqual(argv[0],launch._operator_module().PSQL)
+                case.assertIn(argv[-1],[d['sql'] for d in launch.current_sql_contract()])
+                case.assertEqual(env['PGSSLMODE'],'verify-full')
+                case.assertTrue(str(case.cert).startswith('/private/tmp/p08-pg-'))
+                argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',case.port]
+                return super()._owned_run(argv,{**env,'PGSSLROOTCERT':str(case.cert)},deadline)
+        self.native_sql=LocalNative(time.time,t.p['operationId']);old_sql=t.io.sql
+        def actual(d,password,deadline):
+            t.io.calls.append(('sql',d));return self.native_sql.sql(d,password,time.time()+20)
+        t.io.sql=actual;t.io.close=lambda deadline:self.native_sql.close(time.time()+5)
+        def independent():
+            fresh=LocalNative(time.time,t.p['operationId']);self.addCleanup(lambda:fresh.close(time.time()+5));return fresh
+        t.io.independent=independent
+        self.addCleanup(lambda:self.native_sql.close(time.time()+5))
+    def test_actual_current_producer_sql_tls_positive_and_cleanup(self):
+        r=self.case.run_proof();self.assertEqual(r['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',r)
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+        self.assertFalse(self.native_sql.children)
+    def test_actual_current_producer_acl_drift_refuses(self):
+        self.command('GRANT UPDATE(status) ON "Job" TO p07_payment_runtime;')
+        r=self.case.run_proof();self.assertIsNone(r['candidate']);self.assertFalse(self.native_sql.children)
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+    def test_actual_current_producer_wrong_job_refuses(self):
+        self.command('UPDATE "Job" SET "policySnapshot"=\'{}\';')
+        r=self.case.run_proof();self.assertIsNone(r['candidate']);self.assertFalse(self.native_sql.children)
+
+for _name in dir(tls_fixture.LifecyclePostgres):
+    if _name.startswith('test_') and _name not in CurrentEvidenceTLS.__dict__:setattr(CurrentEvidenceTLS,_name,None)
+
 if __name__ == "__main__": unittest.main()
