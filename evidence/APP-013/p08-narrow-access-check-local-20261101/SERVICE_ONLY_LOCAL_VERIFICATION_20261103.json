@@ -1,0 +1,34 @@
+{
+  "acceptedWalkthrough": "4/8",
+  "approvedProposalGovernance": "da40c11",
+  "architecture": "PASS",
+  "baseline": "PASS",
+  "docsConsistency": "PASS",
+  "entryBackend": "a0d352b736e78c29925649073f024d7256668ba7",
+  "focusedTests": {
+    "newServiceCases": 27,
+    "passed": 76,
+    "priorCasesRetained": 49
+  },
+  "governanceTestsPassed": 25,
+  "immutablePriorReceipts": "PASS",
+  "liveCredentialReads": 0,
+  "liveProviderRequests": 0,
+  "operationCreated": false,
+  "r1NewlyClosed": "0/27",
+  "section": "APP-013/3A/P08",
+  "sourceCheck": {
+    "localTransportReady": true,
+    "ready": false,
+    "reason": "EXTERNAL_QUALIFICATION_NOT_AUTHORIZED"
+  },
+  "sourceSha256": {
+    "access_check.py": "c608a7ea3d9b8feee7af0131eaa37d7f92c7e2abb6739f513866d27d840e5616",
+    "source-manifest.json": "816b1c774f46bb515b20ad9beeeaa3e4d30332884b4750faa8f6a66083974715",
+    "test-manifest.json": "65c929a6b410918a965ffaaffa6f5989eaba5adcacff854a6c218bcd4cf763ab",
+    "test_access_check.py": "521ed9f2b8f1532a108d8f1c616d9d61305f374bd8137a023e3d163a05c009e2"
+  },
+  "status": "LOCAL_IMPLEMENTATION_TESTED_NO_EXTERNAL_AUTHORITY",
+  "verifiedAt": "2026-11-03T13:30:47Z",
+  "whitespace": "PASS"
+}

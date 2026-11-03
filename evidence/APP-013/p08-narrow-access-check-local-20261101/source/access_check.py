@@ -141,17 +141,32 @@ def utc(value):
     return dt.datetime.fromisoformat(value.replace('Z','+00:00')).timestamp()
 
 class ReadCapability:
+    version=2
+    limits=LIMITS
+    extra_fields=set()
+    local_decision='APPROVE_LOCAL_NARROW_ACCESS_PROOF'
+    decision_pattern=r'APP013_P08_ACCESS_READ_OPERATION_[0-9]{8}\.json'
+
+    def contract_digest(self):return contract_hash()
+
+    def owner_decision(self,scope):
+        return {'decision':'APPROVE_EXACT_P08_NARROW_ACCESS_READ','owner':'Debynyhan Banks',
+          'operationId':self.p['operationId'],'scopeSha256':scope,
+          'sourceManifestSha256':self.p['sourceManifestSha256'],'readOnly':True}
+
     def __init__(self,p,root,mode='read',clock=time.time,read_commit=None):
         self.q,self.roles,self.restore,self.authority=sources()
         p=json.loads(json.dumps(p))
         need(set(p)=={'version','section','operationId','execution','project','ownerPrincipal','identity',
-          'projectNumberSha256','contractSha256','limits','window','sourceManifestSha256','sourceCommit','decision'},'PLAN_SHAPE')
-        need(type(p['version']) is int and p['version']==2 and p['section']=='APP-013/3A/P08' and
+          'projectNumberSha256','contractSha256','limits','window','sourceManifestSha256','sourceCommit','decision'} | self.extra_fields,'PLAN_SHAPE')
+        need(type(p['version']) is int and p['version']==self.version and p['section']=='APP-013/3A/P08' and
           p['execution'] in ('PROOF_ONLY','EXTERNAL') and mode in ('read','closeout'),'PLAN_MODE')
         need(p['project']=='signmons' and p['ownerPrincipal']==OWNER and p['identity']==IDENTITY and
-          p['projectNumberSha256']==PROJECT_HASH and p['contractSha256']==contract_hash() and
-          p['limits']==LIMITS and
+          p['projectNumberSha256']==PROJECT_HASH and p['contractSha256']==self.contract_digest() and
+          p['limits']==self.limits and
           all(type(v) is int for v in p['limits'].values()),'PLAN_SCOPE')
+        if self.version==3:need(p['serviceRetention']=='RETAIN_ENABLED','SERVICE_RETENTION')
+        self.p=p
         need(p['sourceManifestSha256']==digest((HERE/'source-manifest.json').read_bytes()),'MANIFEST_BINDING')
         need(set(p['window'])=={'start','cutoff','readEnd','closeoutEnd','purgeEnd'},'WINDOW_SHAPE')
         times={k:utc(v) for k,v in p['window'].items()}
@@ -159,15 +174,13 @@ class ReadCapability:
         need(times['start']<=clock()<times['cutoff' if mode=='read' else 'closeoutEnd'],'ENTRY_CUTOFF')
         scope=digest({k:v for k,v in p.items() if k!='decision'})
         if p['execution']=='PROOF_ONLY':
-            need(p['decision']=={'decision':'APPROVE_LOCAL_NARROW_ACCESS_PROOF','scopeSha256':scope},'LOCAL_AUTHORITY')
+            need(p['decision']=={'decision':self.local_decision,'scopeSha256':scope},'LOCAL_AUTHORITY')
         else:
             d=p['decision']
-            need(set(d)=={'commit','path','sha256'} and re.fullmatch(r'APP013_P08_ACCESS_READ_OPERATION_[0-9]{8}\.json',d['path']),'EXTERNAL_REFERENCE')
+            need(set(d)=={'commit','path','sha256'} and re.fullmatch(self.decision_pattern,d['path']),'EXTERNAL_REFERENCE')
             get=read_commit or self.authority.committed
             raw=get(GOV,d['commit'],d['path'])
-            need(digest(raw)==d['sha256'] and json.loads(raw)=={'decision':'APPROVE_EXACT_P08_NARROW_ACCESS_READ',
-              'owner':'Debynyhan Banks','operationId':p['operationId'],'scopeSha256':scope,
-              'sourceManifestSha256':p['sourceManifestSha256'],'readOnly':True},'EXACT_OWNER_APPROVAL')
+            need(digest(raw)==d['sha256'] and json.loads(raw)==self.owner_decision(scope),'EXACT_OWNER_APPROVAL')
             rel=str(HERE.relative_to(BACKEND))
             need(get(BACKEND,p['sourceCommit'],rel+'/source-manifest.json')==(HERE/'source-manifest.json').read_bytes(),'COMMITTED_MANIFEST')
             need(get(BACKEND,p['sourceCommit'],rel+'/access_check.py')==(HERE/'access_check.py').read_bytes(),'COMMITTED_SOURCE')
@@ -329,8 +342,9 @@ def http_deadline(seconds):
 
 class NativeIO:
     proof=False
+    capability_type=ReadCapability
     def __init__(self,cap):
-        need(isinstance(cap,ReadCapability) and cap.external,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY')
+        need(type(cap) is self.capability_type and cap.external,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY')
         self.cap=cap;self.response=None;self.closed=False
         need(native_readiness()['localTransportReady'],'LOCAL_TRANSPORT_UNVERIFIED')
 
@@ -344,6 +358,9 @@ class NativeIO:
         need(not self.closed and type(index) is int and 0<=index<6,'HTTP_SCOPE')
         self.cap.gate();need(index<3 or number is not None,'PROJECT_NUMBER')
         d=http_contract(number)[index]
+        return self.request(d,token,deadline)
+
+    def request(self,d,token,deadline):
         body=None if d['body'] is None else json.dumps(d['body'],separators=(',',':')).encode()
         req=urllib.request.Request(d['url'],data=body,method=d['method'],headers={
           'Authorization':'Bearer '+token,'Content-Type':'application/json','x-goog-user-project':'signmons'})
@@ -365,9 +382,11 @@ class NativeIO:
         return True
 
 class Reader:
+    journal_fields={'operationId','planSha256','contractSha256','calls','pending','transportSettled',
+                    'phase','failure','service','permissions','roles','residuals'}
     def __init__(self,cap,io):
         self.cap,self.io,self.root=cap,io,cap.root
-        self.j={'operationId':cap.p['operationId'],'planSha256':cap.hash,'contractSha256':contract_hash(),
+        self.j={'operationId':cap.p['operationId'],'planSha256':cap.hash,'contractSha256':cap.contract_digest(),
           'calls':[],'pending':None,'transportSettled':True,'phase':'PREPARED','failure':None,
           'service':'NOT_RUN','permissions':'NOT_RUN','roles':'NOT_RUN','residuals':[]}
         self.token='';self.number=None
@@ -425,6 +444,26 @@ class Reader:
             self.save()
         self.j['phase']='READ_FINISHED';self.save()
 
+    def validate_journal(self):
+        need(set(self.j)==self.journal_fields and
+             self.j['operationId']==self.cap.p['operationId'] and self.j['planSha256']==self.cap.hash and
+             self.j['contractSha256']==self.cap.contract_digest(),'JOURNAL_BINDING')
+        need(isinstance(self.j['calls'],list) and self.j['calls']==CALLS[:len(self.j['calls'])] and
+             len(self.j['calls'])<=len(CALLS),'JOURNAL_SCOPE')
+        need(self.j['pending'] is None or (self.j['calls'] and self.j['pending']==self.j['calls'][-1]),'JOURNAL_PENDING')
+
+    def observation(self):
+        return (self.j['phase']=='READ_FINISHED' and len(self.j['calls'])==len(CALLS) and
+                self.j['pending'] is None and self.j['service']=='ENABLED' and
+                self.j['permissions']=='OBSERVED' and self.j['roles']=='EXACT' and self.j['failure'] is None)
+
+    def remote_residuals(self):return []
+
+    def result_status(self,observed):
+        return 'NARROW_ACCESS_OBSERVED' if observed else 'SERVICE_DISABLED' if self.j['service']=='DISABLED' else 'NARROW_ACCESS_STOPPED'
+
+    def clear_private(self):self.token='';self.number=None
+
     def closeout(self,independent=False):
         self.cap.gate(True)
         reserve(self.root/('independent-closeout.json' if independent else 'closeout.json'),
@@ -432,14 +471,7 @@ class Reader:
         residuals=[]
         if independent:
             self.j=read(self.root/'journal.json')
-            need(set(self.j)=={'operationId','planSha256','contractSha256','calls','pending','transportSettled',
-                 'phase','failure','service','permissions','roles','residuals'} and
-                 self.j['operationId']==self.cap.p['operationId'] and self.j['planSha256']==self.cap.hash and
-                 self.j['contractSha256']==contract_hash(),'JOURNAL_BINDING')
-            allowed=CALLS
-            need(isinstance(self.j['calls'],list) and self.j['calls']==allowed[:len(self.j['calls'])] and
-                 len(self.j['calls'])<=len(CALLS),'JOURNAL_SCOPE')
-            need(self.j['pending'] is None or (self.j['calls'] and self.j['pending']==self.j['calls'][-1]),'JOURNAL_PENDING')
+            self.validate_journal()
             # An interrupted reservation remains unconfirmed; independent cleanup never replays it.
             if self.j['transportSettled'] is not True:residuals.append('PROCESS_OUTCOME_UNKNOWN')
         else:
@@ -447,12 +479,12 @@ class Reader:
                 need(self.io.close() is True,'PROCESS_CLOSE_UNCONFIRMED')
                 self.j['transportSettled']=True
             except BaseException:residuals.append('PROCESS_CLOSE_UNCONFIRMED')
-        self.token='';self.number=None
+        self.clear_private()
         if (self.root/'journal-next.json').exists():
             residuals.append('JOURNAL_WRITE_INTERRUPTED')
             (self.root/'journal-next.json').unlink()  # exact inventoried owned scratch; never promote its claims
-        read_finished=self.j['phase']=='READ_FINISHED' and len(self.j['calls'])==len(CALLS) and self.j['pending'] is None
-        self.j['residuals']=sorted(set(self.j['residuals']+residuals));self.j['phase']='CLOSED';self.save()
+        observed=self.observation()
+        self.j['residuals']=sorted(set(self.j['residuals']+residuals+self.remote_residuals()));self.j['phase']='CLOSED';self.save()
         private_absent=False
         try:
             need(self.cap.clock()<self.cap.times['purgeEnd'],'PURGE_DEADLINE')
@@ -461,9 +493,8 @@ class Reader:
             private_absent=not (self.root/'plan.json').exists() and self.cap.clock()<self.cap.times['purgeEnd']
             need(private_absent,'PURGE_UNCONFIRMED')
         except Exception:self.j['residuals'].append('PRIVATE_PURGE_UNCONFIRMED');self.save()
-        observed=read_finished and self.j['service']=='ENABLED' and self.j['permissions']=='OBSERVED' and self.j['roles']=='EXACT' and self.j['failure'] is None
         result={'status':'CONTAINMENT_UNCONFIRMED' if self.j['residuals'] else
-          'NARROW_ACCESS_OBSERVED' if observed else 'SERVICE_DISABLED' if self.j['service']=='DISABLED' else 'NARROW_ACCESS_STOPPED',
+          self.result_status(observed),
           'operationId':self.cap.p['operationId'],'failure':self.j['failure'],'residuals':self.j['residuals'],
           'privateInputsAbsent':private_absent,'externalObservation':self.cap.external,
           'executionReady':False,'counts':{'cli':sum(c[0]=='cli' for c in self.j['calls']),
@@ -473,22 +504,201 @@ class Reader:
         return result
 
 
-def run(path,mode='read',io_factory=NativeIO,clock=time.time,read_commit=None):
+SERVICE_PERMISSIONS=['serviceusage.services.get','serviceusage.services.enable',
+                     'serviceusage.services.use','serviceusage.operations.get']
+SERVICE_LIMITS={'cli':0,'https':10,'cache':1,'sql':0,'mutations':1,'retry':0}
+SERVICE_PREFIX=[['cache',0]]+[['https',i] for i in range(9)]
+
+def service_operation_name(value):
+    need(isinstance(value,str) and re.fullmatch(r'operations/[A-Za-z0-9_.-]{1,200}',value), 'OPERATION_SCOPE')
+    return value
+
+def service_descriptor(index,number,operation=None):
+    need(type(index) is int and 0<=index<=9,'HTTP_SCOPE')
+    if index==0:return http_contract()[0]
+    need(isinstance(number,str) and re.fullmatch(r'[0-9]{6,20}',number),'PROJECT_NUMBER')
+    service=f'projects/{number}/services/apikeys.googleapis.com'
+    host='https://serviceusage.googleapis.com/v1/'
+    if index==1:
+        return {'method':'POST','url':f'https://cloudresourcemanager.googleapis.com/v1/projects/{number}:testIamPermissions',
+                'body':{'permissions':SERVICE_PERMISSIONS}}
+    if index in (2,9):return {'method':'GET','url':host+service,'body':None}
+    if index==3:return {'method':'POST','url':host+service+':enable','body':None}
+    return {'method':'GET','url':host+service_operation_name(operation),'body':None}
+
+def service_contract_hash():
+    return digest({'version':3,'https':[service_descriptor(i,'000000','operations/pinned') for i in range(10)],
+                   'cache':'EXACT_OWNER_CACHED_TOKEN_NO_REFRESH','limits':SERVICE_LIMITS,
+                   'runtime':LOCAL_RUNTIME,'projectHash':PROJECT_HASH,'retention':'RETAIN_ENABLED',
+                   'pollIntervalSeconds':2,'operationDoneUnset':False})
+
+class ServiceCapability(ReadCapability):
+    version=3
+    limits=SERVICE_LIMITS
+    extra_fields={'serviceRetention'}
+    local_decision='APPROVE_LOCAL_SERVICE_ENABLEMENT_PROOF'
+    decision_pattern=r'APP013_P08_SERVICE_ENABLE_OPERATION_[0-9]{8}\.json'
+
+    def contract_digest(self):return service_contract_hash()
+
+    def owner_decision(self,scope):
+        return {'decision':'APPROVE_EXACT_P08_SERVICE_ENABLEMENT','owner':'Debynyhan Banks',
+          'operationId':self.p['operationId'],'scopeSha256':scope,
+          'sourceManifestSha256':self.p['sourceManifestSha256'],'serviceRetention':'RETAIN_ENABLED',
+          'service':'apikeys.googleapis.com','maxEnableAttempts':1}
+
+class ServiceNativeIO(NativeIO):
+    capability_type=ServiceCapability
+
+    def https(self,index,number,token,deadline,operation=None):
+        need(not self.closed,'TRANSPORT_CLOSED');self.cap.gate()
+        return self.request(service_descriptor(index,number,operation),token,deadline)
+
+    def wait_pending(self,deadline):
+        self.cap.gate()
+        need(deadline-self.cap.clock()>2,'DEADLINE')
+        time.sleep(2)
+        self.cap.gate()
+
+class ServiceReader(Reader):
+    journal_fields=Reader.journal_fields | {'enableAttempted','operationSha256','operationDone','serviceBefore'}
+
+    def __init__(self,cap,io):
+        super().__init__(cap,io)
+        self.operation=None
+        self.j.update(enableAttempted=False,operationSha256=None,operationDone=False,serviceBefore='NOT_RUN')
+
+    def validate_journal(self):
+        j=self.j
+        need(set(j)==self.journal_fields and j['operationId']==self.cap.p['operationId'] and
+             j['planSha256']==self.cap.hash and j['contractSha256']==self.cap.contract_digest(),'JOURNAL_BINDING')
+        calls=j['calls']
+        need(isinstance(calls,list) and len(calls)<=11,'JOURNAL_SCOPE')
+        prefix=calls[:-1] if calls and calls[-1]==['https',9] else calls
+        need(prefix==SERVICE_PREFIX[:len(prefix)] and len(prefix)<=len(SERVICE_PREFIX) and
+             (prefix==calls or len(prefix)>=5),'JOURNAL_SCOPE')
+        need(j['pending'] is None or (calls and j['pending']==calls[-1]),'JOURNAL_PENDING')
+        need(type(j['enableAttempted']) is bool and j['enableAttempted']==(['https',3] in calls) and
+             type(j['operationDone']) is bool and type(j['transportSettled']) is bool and
+             (j['operationSha256'] is None or isinstance(j['operationSha256'],str) and
+              re.fullmatch('[a-f0-9]{64}',j['operationSha256'])) and
+             j['serviceBefore'] in ('NOT_RUN','ENABLED','DISABLED') and
+             j['service'] in ('NOT_RUN','ENABLED','DISABLED') and
+             j['permissions'] in ('NOT_RUN','OBSERVED') and j['roles']=='NOT_RUN' and
+             j['phase'] in ('PREPARED','READ_FINISHED','CLOSED') and isinstance(j['residuals'],list) and
+             all(isinstance(v,str) and re.fullmatch('[A-Z_]+',v) for v in j['residuals']) and
+             (j['failure'] is None or isinstance(j['failure'],str) and re.fullmatch('[A-Z_]+',j['failure'])), 'JOURNAL_STATE')
+        need(not j['enableAttempted'] or j['serviceBefore']=='DISABLED','JOURNAL_STATE')
+        need(not j['operationDone'] or j['enableAttempted'] and j['operationSha256'] is not None,'JOURNAL_STATE')
+
+    def call(self,kind,index):
+        self.cap.gate();calls=self.j['calls']
+        if index==9 and kind=='https':
+            need(self.j['operationDone'] and 5<=len(calls)<=10 and calls==SERVICE_PREFIX[:len(calls)],'CALL_ORDER')
+        else:
+            need(len(calls)<len(SERVICE_PREFIX),'CALL_LIMIT')
+            need([kind,index]==SERVICE_PREFIX[len(calls)],'CALL_ORDER')
+        if kind=='https' and index==3:
+            need(self.j['serviceBefore']=='DISABLED' and self.j['permissions']=='OBSERVED' and
+                 not self.j['enableAttempted'],'ENABLE_PRECONDITION')
+            self.j['enableAttempted']=True
+        if kind=='https' and 4<=index<=8:
+            need(self.operation is not None and not self.j['operationDone'],'POLL_PRECONDITION')
+        calls.append([kind,index]);self.j['pending']=[kind,index];self.j['transportSettled']=False;self.save()
+        value=self.io.cached_token(self.cap.times['readEnd']) if kind=='cache' else self.io.https(
+            index,self.number,self.token,self.cap.times['readEnd'],self.operation)
+        self.cap.gate();self.j['pending']=None;self.j['transportSettled']=True;self.save()
+        return value
+
+    def service_state(self,value):
+        need(value.get('name')==f'projects/{self.number}/services/apikeys.googleapis.com' and
+             value.get('state') in ('ENABLED','DISABLED'),'SERVICE_SHAPE')
+        return value['state']
+
+    def operation_result(self,value):
+        need(set(value)<={'name','done','metadata','error','response'},'OPERATION_SHAPE')
+        name=service_operation_name(value.get('name'))
+        need(self.operation is None or self.operation==name,'OPERATION_DRIFT')
+        done=value.get('done')
+        if done is None:done=False
+        need(type(done) is bool and (value.get('metadata') is None or isinstance(value['metadata'],dict)), 'OPERATION_SHAPE')
+        error,response=value.get('error'),value.get('response')
+        need(error is None or response is None,'OPERATION_SHAPE')
+        if not done:need(error is None and response is None,'OPERATION_SHAPE')
+        else:
+            need(error is None,'SERVICE_OPERATION_FAILED')
+            need(isinstance(response,dict) and set(response)<={'@type','service'} and
+                 ('@type' not in response or response['@type']=='type.googleapis.com/google.api.serviceusage.v1.EnableServiceResponse') and
+                 isinstance(response.get('service'),dict),'OPERATION_RESPONSE')
+            need(self.service_state(response['service'])=='ENABLED','SERVICE_ENABLE_RESPONSE')
+        self.operation=name;self.j['operationSha256']=digest(name);self.j['operationDone']=done;self.save()
+        return done
+
+    def execute(self):
+        self.token=self.call('cache',0);validate_token(self.token)
+        project=self.http_json(0)
+        need(set(project)=={'projectId','projectNumber','lifecycleState'} and
+             project['projectId']=='signmons' and project['lifecycleState']=='ACTIVE' and
+             isinstance(project['projectNumber'],str) and re.fullmatch(r'[0-9]{6,20}',project['projectNumber']) and
+             digest(project['projectNumber'])==PROJECT_HASH,'PROJECT_DRIFT')
+        self.number=project['projectNumber']
+        permissions=self.http_json(1)
+        values=permissions.get('permissions',[])
+        need(set(permissions)<={'permissions'} and isinstance(values,list) and
+             all(isinstance(v,str) for v in values) and len(values)==len(set(values)) and
+             set(values)<=set(SERVICE_PERMISSIONS),'PERMISSION_SHAPE')
+        need(set(values)==set(SERVICE_PERMISSIONS),'PERMISSION_DENIED')
+        self.j['permissions']='OBSERVED';self.save()
+        self.j['serviceBefore']=self.j['service']=self.service_state(self.http_json(2));self.save()
+        if self.j['service']=='DISABLED':
+            done=self.operation_result(self.http_json(3))
+            for index in range(4,9):
+                if done:break
+                self.io.wait_pending(self.cap.times['readEnd']);self.cap.gate()
+                done=self.operation_result(self.http_json(index))
+            need(done,'OPERATION_POLL_LIMIT')
+            self.j['service']=self.service_state(self.http_json(9));self.save()
+            need(self.j['service']=='ENABLED','SERVICE_READBACK')
+        self.j['phase']='READ_FINISHED';self.save()
+
+    def observation(self):
+        self.validate_journal()
+        return (self.j['phase']=='READ_FINISHED' and self.j['pending'] is None and
+                self.j['failure'] is None and self.j['service']=='ENABLED' and
+                self.j['permissions']=='OBSERVED' and
+                ((self.j['serviceBefore']=='ENABLED' and self.j['calls']==SERVICE_PREFIX[:4]) or
+                 (self.j['enableAttempted'] and self.j['operationDone'] and self.j['calls'][-1]==['https',9])))
+
+    def remote_residuals(self):
+        return ['SERVICE_ENABLE_OUTCOME_UNKNOWN'] if self.j['enableAttempted'] and not self.observation() else []
+
+    def result_status(self,observed):
+        return ('SERVICE_ENABLEMENT_OBSERVED' if self.j['enableAttempted'] else 'SERVICE_PREEXISTING_ENABLED') if observed else 'SERVICE_ENABLEMENT_STOPPED'
+
+    def clear_private(self):
+        super().clear_private();self.operation=None
+
+
+def run(path,mode='read',io_factory=None,clock=time.time,read_commit=None):
     path=Path(path);need(path.name=='plan.json','PLAN_PATH')
-    cap=ReadCapability(read(path),path.parent,mode,clock,read_commit)
+    need(mode in ('read','closeout','enable','closeout-enable'),'ENTRY_MODE')
+    service=mode in ('enable','closeout-enable');cleanup=mode in ('closeout','closeout-enable')
+    cap_type,reader_type,native_type=(ServiceCapability,ServiceReader,ServiceNativeIO) if service else (ReadCapability,Reader,NativeIO)
+    cap=cap_type(read(path),path.parent,'closeout' if cleanup else 'read',clock,read_commit)
+    io_factory=io_factory or native_type
     fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW,0o600)
-    io=None;handlers={}
+    io=None;reader=None;handlers={}
     try:
         try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise Stop('ENTRY_RUNNING') from None
         inspect(cap.root,cap.p['operationId'])
-        if mode=='closeout':
+        if cleanup:
             need(read(cap.root/'attempt.json')=={'operationId':cap.p['operationId'],'planSha256':cap.hash},'ATTEMPT_BINDING')
-            return Reader(cap,None).closeout(True)
+            return reader_type(cap,None).closeout(True)
         io=io_factory(cap)
         need(cap.external is (not io.proof),'TRANSPORT_AUTHORITY')
         reserve(cap.root/'attempt.json',{'operationId':cap.p['operationId'],'planSha256':cap.hash})
-        reader=Reader(cap,io);reserve(cap.root/'journal.json',reader.j)
+        reader=reader_type(cap,io);reserve(cap.root/'journal.json',reader.j)
         def interrupted(signum,frame):
             cap.abort=True;raise Stop('INTERRUPTED')
         for sig in (signal.SIGINT,signal.SIGTERM):
@@ -504,6 +714,7 @@ def run(path,mode='read',io_factory=NativeIO,clock=time.time,read_commit=None):
         return reader.closeout()
     finally:
         for sig,h in handlers.items():signal.signal(sig,h)
+        if reader is not None:reader.clear_private()
         if io is not None:
             try:io.close()
             except BaseException:pass
@@ -513,9 +724,9 @@ def run(path,mode='read',io_factory=NativeIO,clock=time.time,read_commit=None):
 def main(argv):
     if argv==['--check-source']:
         sources();print(json.dumps(native_readiness()));return 0
-    need(len(argv)==2 and argv[0] in ('--read','--closeout'),'ENTRY_UNBOUND')
+    need(len(argv)==2 and argv[0] in ('--read','--closeout','--enable','--closeout-enable'),'ENTRY_UNBOUND')
     result=run(argv[1],argv[0][2:]);print(json.dumps(result))
-    return 0 if result['status']=='NARROW_ACCESS_OBSERVED' else 2
+    return 0 if result['status'] in ('NARROW_ACCESS_OBSERVED','SERVICE_ENABLEMENT_OBSERVED','SERVICE_PREEXISTING_ENABLED') else 2
 
 if __name__=='__main__':
     try:raise SystemExit(main(sys.argv[1:]))

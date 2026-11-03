@@ -38,7 +38,7 @@ class CacheTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-cache-synthetic-')
         self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
-        self.end=time.time()+600;self.db=make_cache(self.root,self.end+1000)
+        self.end=int(time.time())+600;self.db=make_cache(self.root,self.end+1000)
     def read(self):return a.read_cached_token(self.root,self.end,env={})
     def mutate(self,sql,params=()):
         c=sqlite3.connect(self.db);c.execute(sql,params);c.commit();c.close()
@@ -571,5 +571,344 @@ class SDKRetryTests(unittest.TestCase):
         self.assertEqual(self.result['low_level_refresh_no_retry_attempts'],1)
         self.assertFalse(self.result['real_credentials_loaded'])
         self.assertEqual(self.result['real_network_calls'],0)
+
+class ServiceFakeIO(FakeIO):
+    def https(self,index,number,token,deadline,operation=None):
+        self.calls.append(('https',index))
+        if self.case.break_at==len(self.calls):raise a.Stop('INTERRUPTED')
+        if index==3:
+            j=a.read(self.cap.root/'journal.json')
+            self.case.assertTrue(j['enableAttempted']);self.case.assertEqual(j['pending'],['https',3])
+        if 4<=index<=8:self.case.assertEqual(operation,self.case.operation)
+        return self.case.http_override.get(index,{'status':200,'body':json.dumps(self.case.value(index)).encode()})
+    def wait_pending(self,deadline):
+        self.case.waits+=1
+        if self.case.wait_failure:raise a.Stop('INTERRUPTED')
+
+class ServiceTests(unittest.TestCase):
+    def setUp(self):
+        AccessTests.setUp(self)
+        self.p.update(version=3,limits=dict(a.SERVICE_LIMITS),contractSha256=a.service_contract_hash(),serviceRetention='RETAIN_ENABLED')
+        self.seal();self.service='DISABLED';self.pending=0;self.waits=0;self.wait_failure=False
+        self.operation='operations/synthetic-operation';self.after='ENABLED'
+        for method in ('connect','connect_ex'):
+            p=patch.object(socket.socket,method,side_effect=AssertionError('NETWORK_FORBIDDEN'));p.start();self.addCleanup(p.stop)
+    def seal(self):
+        self.p['decision']={'decision':'APPROVE_LOCAL_SERVICE_ENABLEMENT_PROOF',
+          'scopeSha256':a.digest({k:v for k,v in self.p.items() if k!='decision'})}
+        if self.path.exists():self.path.unlink()
+        a.reserve(self.path,self.p)
+    reset_run=AccessTests.reset_run
+    def factory(self,cap):
+        self.factory_calls+=1;self.io=ServiceFakeIO(self,cap);return self.io
+    def run_entry(self,**kwargs):return a.run(self.path,'enable',self.factory,**kwargs)
+    def value(self,index):
+        service={'name':f'projects/{self.number}/services/apikeys.googleapis.com','state':self.after}
+        if index==0:return {'projectId':'signmons','projectNumber':self.number,'lifecycleState':'ACTIVE'}
+        if index==1:return {'permissions':a.SERVICE_PERMISSIONS}
+        if index==2:return {**service,'state':self.service}
+        if index==9:return service
+        return {'name':self.operation} if index<3+self.pending else {
+            'name':self.operation,'done':True,'response':{'@type':'type.googleapis.com/google.api.serviceusage.v1.EnableServiceResponse','service':service}}
+    def external(self):
+        self.p['execution']='EXTERNAL'
+        scope=a.digest({k:v for k,v in self.p.items() if k!='decision'})
+        raw=json.dumps({'decision':'APPROVE_EXACT_P08_SERVICE_ENABLEMENT','owner':'Debynyhan Banks',
+            'operationId':self.p['operationId'],'scopeSha256':scope,'sourceManifestSha256':self.p['sourceManifestSha256'],
+            'serviceRetention':'RETAIN_ENABLED','service':'apikeys.googleapis.com','maxEnableAttempts':1}).encode()
+        self.p['decision']={'commit':'1'*40,'path':'APP013_P08_SERVICE_ENABLE_OPERATION_20261103.json','sha256':a.digest(raw)}
+        self.path.unlink();a.reserve(self.path,self.p)
+        return lambda repo,commit,path:raw if repo==a.GOV else (a.BACKEND/path).read_bytes()
+    def test_enable_once_and_preexisting_skip_mutation(self):
+        r=self.run_entry();self.assertEqual(r['status'],'SERVICE_ENABLEMENT_OBSERVED',r)
+        self.assertEqual(r['counts'],dict(cli=0,cache=1,https=5));self.assertEqual(self.waits,0)
+        self.assertFalse(r['executionReady']);self.assertTrue(r['privateInputsAbsent'])
+        self.assertEqual(self.io.calls,[('cache',0),('https',0),('https',1),('https',2),('https',3),('https',9)])
+        self.reset_run();self.service='ENABLED';r=self.run_entry()
+        self.assertEqual(r['status'],'SERVICE_PREEXISTING_ENABLED');self.assertEqual(r['counts']['https'],3)
+        self.assertFalse(a.read(self.root/'journal.json')['enableAttempted'])
+    def test_five_successful_pending_observations_ceiling_and_poll_exhaustion(self):
+        self.pending=5;r=self.run_entry();self.assertEqual(r['status'],'SERVICE_ENABLEMENT_OBSERVED',r)
+        self.assertEqual(r['counts']['https'],10);self.assertEqual(self.waits,5)
+        self.reset_run();self.waits=0;self.pending=6;r=self.run_entry()
+        self.assertEqual(r['failure'],'OPERATION_POLL_LIMIT');self.assertEqual(self.waits,5)
+        self.assertEqual(r['counts']['https'],9);self.assertEqual(r['residuals'],['SERVICE_ENABLE_OUTCOME_UNKNOWN'])
+    def test_done_absent_null_and_false_are_pending_with_same_operation(self):
+        for done in ('absent',None,False):
+            self.reset_run();self.waits=0
+            value={'name':self.operation,'metadata':None}
+            if done!='absent':value['done']=done
+            self.http_override={3:{'status':200,'body':json.dumps(value)}}
+            self.assertEqual(self.run_entry()['status'],'SERVICE_ENABLEMENT_OBSERVED');self.assertEqual(self.waits,1)
+    def test_operation_shapes_fail_without_retry_and_preserve_remote_unknown(self):
+        valid=self.value(3)
+        cases=[None,{}, {'name':'https://evil.invalid/operations/x'}, {'name':'operations/x?key=bad'},
+            {'name':'operations/x%2Fy'}, {'name':'operations/../x'}, {'name':'projects/foreign/operations/x'},
+            {**valid,'done':1},{**valid,'done':'true'},{**valid,'metadata':[]},{**valid,'extra':True},
+            {**valid,'error':{}},{**valid,'response':None},{**valid,'response':{}},
+            {**valid,'response':{'@type':'foreign','service':valid['response']['service']}},
+            {'name':self.operation,'done':False,'response':{}},
+            {'name':self.operation,'done':True,'error':{'code':7}}]
+        for value in cases:
+            self.reset_run();self.http_override={3:{'status':200,'body':json.dumps(value)}}
+            r=self.run_entry();self.assertEqual(r['status'],'CONTAINMENT_UNCONFIRMED',value)
+            self.assertEqual(r['counts']['https'],4);self.assertIn('SERVICE_ENABLE_OUTCOME_UNKNOWN',r['residuals'])
+            self.assertTrue(r['privateInputsAbsent'])
+    def test_operation_name_change_and_foreign_completed_service_refuse(self):
+        self.pending=1
+        for value in [{**self.value(4),'name':'operations/foreign'},
+                      {'name':self.operation,'done':True,'response':{'service':{'name':'foreign','state':'ENABLED'}}}]:
+            self.reset_run();self.http_override={4:{'status':200,'body':json.dumps(value)}}
+            r=self.run_entry();self.assertEqual(r['counts']['https'],5);self.assertIn('SERVICE_ENABLE_OUTCOME_UNKNOWN',r['residuals'])
+    def test_final_readback_required_and_no_rollback(self):
+        for value in ({'name':f'projects/{self.number}/services/apikeys.googleapis.com','state':'DISABLED'},None,{}):
+            self.reset_run();self.http_override={9:{'status':200,'body':json.dumps(value)}}
+            r=self.run_entry();self.assertIn('SERVICE_ENABLE_OUTCOME_UNKNOWN',r['residuals'])
+            self.assertEqual([x for x in self.io.calls if x==('https',3)],[('https',3)])
+    def test_project_permissions_service_null_or_drift_stops_before_enable(self):
+        cases=[(0,None),(0,{'projectId':'foreign'}),(1,{}),(1,{'permissions':None}),
+               (1,{'permissions':a.SERVICE_PERMISSIONS*2}),(1,{'permissions':['foreign']}),
+               (2,None),(2,{}),(2,{'name':'foreign','state':'DISABLED'})]
+        for index,value in cases:
+            self.reset_run();self.http_override={index:{'status':200,'body':json.dumps(value)}}
+            r=self.run_entry();self.assertEqual(r['status'],'SERVICE_ENABLEMENT_STOPPED');self.assertEqual(r['residuals'],[])
+            self.assertNotIn(('https',3),self.io.calls)
+    def test_every_reserved_call_interruption_is_single_attempt_and_private_purged(self):
+        self.pending=5
+        for n in range(1,12):
+            self.reset_run();self.break_at=n;r=self.run_entry()
+            self.assertEqual(r['failure'],'INTERRUPTED');self.assertEqual(len(self.io.calls),n)
+            self.assertEqual(len(set(self.io.calls)),n);self.assertTrue(r['privateInputsAbsent']);self.assertTrue(self.io.closed)
+            self.assertEqual('SERVICE_ENABLE_OUTCOME_UNKNOWN' in r['residuals'],n>=5)
+    def test_interrupted_wait_and_failed_poll_never_retry(self):
+        self.pending=1;self.wait_failure=True;r=self.run_entry()
+        self.assertEqual(r['failure'],'INTERRUPTED');self.assertEqual(r['counts']['https'],4)
+        self.reset_run();self.wait_failure=False;self.http_override={4:{'status':503,'body':b'{}'}}
+        r=self.run_entry();self.assertEqual(r['counts']['https'],5);self.assertIn('SERVICE_ENABLE_OUTCOME_UNKNOWN',r['residuals'])
+    def test_cross_mode_local_native_and_source_authority_refusals_before_io(self):
+        with self.assertRaisesRegex(a.Stop,'PLAN_SHAPE'):a.run(self.path,'read',self.factory)
+        with self.assertRaisesRegex(a.Stop,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY'):a.run(self.path,'enable')
+        self.assertFalse((self.root/'attempt.json').exists());self.assertEqual(self.factory_calls,0)
+        get=self.external();cap=a.ServiceCapability(self.p,self.root,read_commit=get)
+        with self.assertRaisesRegex(a.Stop,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY'):a.NativeIO(cap)
+        with self.assertRaisesRegex(a.Stop,'COMMITTED_MANIFEST'):
+            a.ServiceCapability(self.p,self.root,read_commit=lambda repo,c,p:get(repo,c,p) if repo==a.GOV else b'bad')
+        with self.assertRaisesRegex(Exception,'COMMITTED_EVIDENCE_MISSING'):a.run(self.path,'enable')
+    def test_exact_retention_budget_decision_and_version_refuse(self):
+        original=copy.deepcopy(self.p)
+        for key,value in [('version',2),('serviceRetention','DISABLE'),('contractSha256','0'*64),
+                          ('limits',{**a.SERVICE_LIMITS,'mutations':2}),('ownerPrincipal','foreign')]:
+            self.p=copy.deepcopy(original);self.p[key]=value;self.seal()
+            with self.assertRaises(a.Stop):self.run_entry()
+            self.assertEqual(self.factory_calls,0)
+        self.p=original;self.seal();self.p['decision']['decision']='APPROVE_LOCAL_NARROW_ACCESS_PROOF'
+        self.path.unlink();a.reserve(self.path,self.p)
+        with self.assertRaisesRegex(a.Stop,'LOCAL_AUTHORITY'):self.run_entry()
+        self.p=original;self.seal();get=self.external();self.p['decision']['path']='APP013_P08_ACCESS_READ_OPERATION_20261103.json'
+        with self.assertRaisesRegex(a.Stop,'EXTERNAL_REFERENCE'):a.ServiceCapability(self.p,self.root,read_commit=get)
+    def test_duplicate_concurrent_and_foreign_inventory_refuse(self):
+        AccessTests.test_duplicate_and_concurrent_attempts_refuse(self)
+        self.reset_run();AccessTests.test_foreign_symlink_hardlink_and_wrong_mode_refuse(self)
+    def test_all_deadlines_clock_rollback_and_poll_wait_bound(self):
+        for mode,key in [('enable','cutoff'),('closeout-enable','closeoutEnd')]:
+            with self.assertRaisesRegex(a.Stop,'ENTRY_CUTOFF'):
+                a.run(self.path,mode,self.factory,clock=lambda:a.utc(self.p['window'][key]))
+        with self.assertRaisesRegex(a.Stop,'ENTRY_CUTOFF'):
+            self.run_entry(clock=lambda:a.utc(self.p['window']['start'])-1)
+        cap=a.ServiceCapability(self.p,self.root);cap.clock=lambda:cap.last-1
+        with self.assertRaisesRegex(a.Stop,'CLOCK_ROLLBACK'):cap.gate()
+        get=self.external();cap=a.ServiceCapability(self.p,self.root,read_commit=get);native=a.ServiceNativeIO(cap)
+        with patch.object(time,'sleep') as sleep:
+            native.wait_pending(cap.times['readEnd']);sleep.assert_called_once_with(2)
+            with self.assertRaisesRegex(a.Stop,'DEADLINE'):native.wait_pending(time.time()+1)
+        cap.clock=lambda:cap.times['readEnd']
+        with self.assertRaisesRegex(a.Stop,'DEADLINE'):cap.gate()
+        cap.clock=lambda:cap.times['closeoutEnd']
+        with self.assertRaisesRegex(a.Stop,'DEADLINE'):cap.gate(True)
+    def test_independent_closeout_preserves_pending_remote_and_calls_no_factory(self):
+        self.break_at=5
+        with patch.object(a.ServiceReader,'closeout',side_effect=SystemExit('parent exit')):
+            with self.assertRaises(SystemExit):self.run_entry()
+        self.assertTrue(self.io.closed)
+        before=self.factory_calls
+        r=a.run(self.path,'closeout-enable',self.factory,clock=lambda:a.utc(self.p['window']['cutoff'])+1)
+        self.assertEqual(self.factory_calls,before);self.assertTrue(r['privateInputsAbsent'])
+        self.assertIn('SERVICE_ENABLE_OUTCOME_UNKNOWN',r['residuals']);self.assertIn('PROCESS_OUTCOME_UNKNOWN',r['residuals'])
+    def test_independent_closeout_recovers_completed_without_remote_replay(self):
+        with patch.object(a.ServiceReader,'closeout',side_effect=SystemExit('parent exit')):
+            with self.assertRaises(SystemExit):self.run_entry()
+        r=a.run(self.path,'closeout-enable',self.factory)
+        self.assertEqual(r['status'],'SERVICE_ENABLEMENT_OBSERVED');self.assertEqual(self.factory_calls,1)
+    def test_forged_journal_refuses_and_missing_journal_does_not_invent_success(self):
+        cap=a.ServiceCapability(self.p,self.root)
+        a.reserve(self.root/'attempt.json',dict(operationId=self.p['operationId'],planSha256=cap.hash))
+        with self.assertRaises(FileNotFoundError):a.run(self.path,'closeout-enable',self.factory)
+        self.assertTrue(self.path.exists());self.assertEqual(self.factory_calls,0)
+        (self.root/'independent-closeout.json').unlink()
+        reader=a.ServiceReader(cap,None);reader.j['calls']=[['cache',0],['https',9]]
+        a.reserve(self.root/'journal.json',reader.j)
+        with self.assertRaisesRegex(a.Stop,'JOURNAL_SCOPE'):a.run(self.path,'closeout-enable',self.factory)
+        self.assertTrue(self.path.exists())
+    def test_retained_receipts_contain_no_private_payloads(self):
+        self.pending=1;r=self.run_entry();self.assertTrue(r['privateInputsAbsent'])
+        retained=''.join(p.read_text() for p in self.root.iterdir())
+        for raw in [self.number,self.operation,a.OWNER,'SYNTHETIC_BEARER_NEVER_PERSIST','type.googleapis.com']:
+            self.assertNotIn(raw,retained)
+    def test_http_errors_output_bounds_and_secret_safe_failures(self):
+        for raw in [{'status':403,'body':'{}'},{'status':302,'body':'{}'},{'status':True,'body':'{}'},
+                    {'status':200,'body':b'\xff'},{'status':200,'body':b'x'*65537}]:
+            self.reset_run();self.http_override={3:raw};r=self.run_entry()
+            self.assertEqual(r['counts']['https'],4);self.assertIn('SERVICE_ENABLE_OUTCOME_UNKNOWN',r['residuals'])
+        self.reset_run()
+        with patch.object(ServiceFakeIO,'https',side_effect=RuntimeError('SECRET_MUST_NOT_EXPORT')):
+            r=self.run_entry()
+        self.assertEqual(r['failure'],'UNEXPECTED_LOCAL_FAILURE');self.assertNotIn('SECRET_MUST_NOT_EXPORT',json.dumps(r))
+    def test_native_service_entry_actual_synthetic_cache_and_serialized_requests(self):
+        get=self.external();self.pending=1;indices=[0,1,2,3,4,9];requests=[];responses=[]
+        with tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-service-synthetic-') as tmp:
+            root=Path(tmp);make_cache(root,a.utc(self.p['window']['purgeEnd'])+1000)
+            before={p.relative_to(root):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+            class Response:
+                status=200
+                def __init__(self,value):self.value=value;self.closed=False
+                def read(self,n):return json.dumps(self.value).encode()
+                def close(self):self.closed=True
+            def open_request(req,timeout):
+                index=indices[len(requests)];requests.append(req)
+                if index==3:self.assertTrue(a.read(self.root/'journal.json')['enableAttempted'])
+                r=Response(self.value(index));responses.append(r);return r
+            original=a.read_cached_token
+            with patch.object(a,'CONFIG_ROOT',root),patch.dict(os.environ,{},clear=True), \
+                 patch.object(a,'read_cached_token',side_effect=original) as cache, \
+                 patch.object(a.urllib.request,'build_opener') as opener,patch.object(time,'sleep') as sleep:
+                opener.return_value.open.side_effect=open_request
+                r=a.run(self.path,'enable',read_commit=get)
+                self.assertEqual(cache.call_count,1);sleep.assert_called_once_with(2)
+                for call in opener.call_args_list:
+                    self.assertIsInstance(call.args[0],a.urllib.request.ProxyHandler)
+                    self.assertEqual(call.args[0].proxies,{})
+            self.assertEqual(r['status'],'SERVICE_ENABLEMENT_OBSERVED',r);self.assertTrue(all(x.closed for x in responses))
+            self.assertEqual(before,{p.relative_to(root):p.read_bytes() for p in root.rglob('*') if p.is_file()})
+            for index,req in zip(indices,requests):
+                d=a.service_descriptor(index,self.number,self.operation)
+                self.assertEqual(req.full_url,d['url']);self.assertEqual(req.method,d['method'])
+                self.assertEqual(None if req.data is None else json.loads(req.data),d['body'])
+                self.assertEqual(req.get_header('X-goog-user-project'),'signmons')
+            self.assertIsNone(requests[3].data)
+    def test_native_service_timeout_redirect_oversize_and_no_retry(self):
+        get=self.external();cap=a.ServiceCapability(self.p,self.root,read_commit=get);native=a.ServiceNativeIO(cap)
+        class Response:
+            status=200;closed=False;raw=b'{}';slow=False
+            def read(self,n):
+                if self.slow:time.sleep(.1)
+                return self.raw
+            def close(self):self.closed=True
+        for status,raw,slow,code in [(302,b'{}',False,'HTTP_REDIRECT'),(200,b'x'*65537,False,'HTTP_OUTPUT_SIZE'),(200,b'{}',True,'HTTP_TIMEOUT')]:
+            response=Response();response.status=status;response.raw=raw;response.slow=slow
+            with patch.object(a.urllib.request,'build_opener') as opener:
+                opener.return_value.open.return_value=response
+                with self.assertRaisesRegex(a.Stop,code):native.https(3,self.number,'SYNTHETIC_TOKEN',time.time()+.02)
+                self.assertEqual(opener.return_value.open.call_count,1)
+            self.assertTrue(response.closed)
+        with patch.object(a.urllib.request,'build_opener') as opener:
+            for name in ('https://evil.invalid','operations/x?x=y','operations/x%2Fy'):
+                with self.assertRaisesRegex(a.Stop,'OPERATION_SCOPE'):native.https(4,self.number,'SYNTHETIC',cap.times['readEnd'],name)
+            opener.assert_not_called()
+    def test_cli_new_mode_refuses_local_before_cache_and_pre_marker(self):
+        with patch.object(a,'PROJECT_HASH',self.original_project_hash):
+            self.p['projectNumberSha256']=a.PROJECT_HASH;self.p['contractSha256']=a.service_contract_hash();self.seal()
+        r=subprocess.run([sys.executable,'-B',str(a.HERE/'access_check.py'),'--enable',str(self.path)],capture_output=True,text=True,timeout=5)
+        self.assertEqual(r.returncode,2);self.assertEqual(r.stderr,'');self.assertFalse((self.root/'attempt.json').exists())
+
+    def test_actual_committed_reader_pending_approved_and_source_drift(self):
+        # Disposable Git only; no fixture decision is written to real governance.
+        with tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-service-git-proof-') as tmp:
+            repo=Path(tmp)
+            def git(*args):
+                r=subprocess.run(['/usr/bin/git','-C',str(repo),*args],capture_output=True,text=True,timeout=5)
+                self.assertEqual(r.returncode,0,r.stderr);return r.stdout.strip()
+            git('init','-q');git('config','user.name','Synthetic Proof');git('config','user.email','proof@example.invalid')
+            rel=a.HERE.relative_to(a.BACKEND);(repo/rel).mkdir(parents=True)
+            for name in ('source-manifest.json','access_check.py'):(repo/rel/name).write_bytes((a.HERE/name).read_bytes())
+            git('add','.');git('commit','-qm','Synthetic source');self.p['sourceCommit']=git('rev-parse','HEAD')
+            get_fixture=self.external();path=self.p['decision']['path']
+            approved=json.loads(get_fixture(a.GOV,'',path));pending={**approved,'decision':'PENDING_OWNER_APPROVAL'}
+            authority=a.sources()[3]
+            actual=lambda original,commit,path:authority.committed(repo,commit,path)
+            def commit_decision(value):
+                raw=json.dumps(value).encode();(repo/path).write_bytes(raw)
+                git('add',path);git('commit','-qm','Synthetic decision')
+                self.p['decision'].update(commit=git('rev-parse','HEAD'),sha256=a.digest(raw))
+            commit_decision(pending)
+            with self.assertRaisesRegex(a.Stop,'EXACT_OWNER_APPROVAL'):a.ServiceCapability(self.p,self.root,read_commit=actual)
+            commit_decision(approved)
+            cap=a.ServiceCapability(self.p,self.root,read_commit=actual)
+            self.assertTrue(cap.external);self.assertFalse((self.root/'attempt.json').exists())
+            (repo/rel/'access_check.py').write_text('synthetic drift')
+            git('add','.');git('commit','-qm','Synthetic drift');self.p['sourceCommit']=git('rev-parse','HEAD')
+            # Rebind exact decision scope, so committed-source validation itself is exercised.
+            approved['scopeSha256']=a.digest({k:v for k,v in self.p.items() if k!='decision'});commit_decision(approved)
+            with self.assertRaisesRegex(a.Stop,'COMMITTED_SOURCE'):a.ServiceCapability(self.p,self.root,read_commit=actual)
+
+    def test_close_failure_and_purge_failure_never_claim_containment(self):
+        self.close_failure=True;r=self.run_entry()
+        self.assertIn('PROCESS_CLOSE_UNCONFIRMED',r['residuals']);self.assertEqual(r['status'],'CONTAINMENT_UNCONFIRMED')
+        self.reset_run();self.close_failure=False
+        original=Path.unlink
+        def cannot_purge(path,*args,**kwargs):
+            if path==self.path:raise PermissionError('synthetic refusal')
+            return original(path,*args,**kwargs)
+        with patch.object(Path,'unlink',cannot_purge):r=self.run_entry()
+        self.assertFalse(r['privateInputsAbsent']);self.assertIn('PRIVATE_PURGE_UNCONFIRMED',r['residuals'])
+        self.assertTrue(self.path.exists())
+
+    def test_purge_deadline_and_private_reference_clear_on_closeout_failure(self):
+        cap=a.ServiceCapability(self.p,self.root);reader=a.ServiceReader(cap,ServiceFakeIO(self,cap))
+        # Gate first succeeds; clock advances to the exact purge cutoff before unlink.
+        original=reader.save
+        def save_then_expire():
+            original()
+            if reader.j['phase']=='CLOSED':cap.clock=lambda:cap.times['purgeEnd']
+        with patch.object(reader,'save',side_effect=save_then_expire):r=reader.closeout()
+        self.assertFalse(r['privateInputsAbsent']);self.assertIn('PRIVATE_PURGE_UNCONFIRMED',r['residuals'])
+        self.reset_run();captured=[];original_init=a.ServiceReader.__init__
+        def capture(obj,*args):original_init(obj,*args);captured.append(obj)
+        with patch.object(a.ServiceReader,'__init__',capture),patch.object(a.ServiceReader,'closeout',side_effect=SystemExit('crash')):
+            with self.assertRaises(SystemExit):self.run_entry()
+        self.assertEqual(captured[0].token,'');self.assertIsNone(captured[0].number);self.assertIsNone(captured[0].operation)
+
+    def test_atomic_journal_interruption_retained_and_never_replayed(self):
+        original=os.replace;failed=[False]
+        def interrupted(source,dest):
+            value=a.read(Path(source))
+            if value.get('pending')==['https',3] and not failed[0]:
+                failed[0]=True;raise a.Stop('INTERRUPTED')
+            return original(source,dest)
+        with patch.object(a.os,'replace',side_effect=interrupted):r=self.run_entry()
+        self.assertEqual(r['failure'],'INTERRUPTED');self.assertNotIn(('https',3),self.io.calls)
+        self.assertIn('JOURNAL_WRITE_INTERRUPTED',r['residuals']);self.assertIn('SERVICE_ENABLE_OUTCOME_UNKNOWN',r['residuals'])
+        self.assertTrue(r['privateInputsAbsent']);self.assertFalse((self.root/'journal-next.json').exists())
+
+    def test_persistent_journal_failure_leaves_private_cleanup_unconfirmed(self):
+        original=os.replace
+        def unavailable(source,dest):
+            if a.read(Path(source)).get('pending')==['https',3]:raise a.Stop('INTERRUPTED')
+            return original(source,dest)
+        with patch.object(a.os,'replace',side_effect=unavailable):
+            with self.assertRaisesRegex(a.Stop,'INTERRUPTED'):self.run_entry()
+        self.assertTrue(self.path.exists());self.assertFalse((self.root/'result.json').exists())
+        self.assertTrue(self.io.closed);self.assertNotIn(('https',3),self.io.calls)
+
+    def test_expired_cache_and_read_deadline_stop_before_mutation(self):
+        with patch.object(ServiceFakeIO,'cached_token',side_effect=a.Stop('CACHED_TOKEN_EXPIRED')):r=self.run_entry()
+        self.assertEqual(r['counts'],dict(cache=1,https=0,cli=0));self.assertEqual(r['residuals'],[])
+        self.reset_run();now=[a.utc(self.p['window']['start'])+1];original=ServiceFakeIO.https
+        def expires_after_preflight(obj,*args,**kwargs):
+            result=original(obj,*args,**kwargs)
+            if args[0]==2:now[0]=a.utc(self.p['window']['readEnd'])
+            return result
+        with patch.object(ServiceFakeIO,'https',expires_after_preflight):r=self.run_entry(clock=lambda:now[0])
+        self.assertEqual(r['failure'],'DEADLINE');self.assertEqual(r['counts']['https'],3)
+        self.assertNotIn(('https',3),self.io.calls);self.assertTrue(r['privateInputsAbsent'])
 
 if __name__=='__main__':unittest.main()
