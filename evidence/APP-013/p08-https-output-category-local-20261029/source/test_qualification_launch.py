@@ -508,4 +508,209 @@ class OwnedProcessTests(unittest.TestCase):
             self.assertTrue(r.closed)
 
 
+class ExternalBindingTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile,subprocess,shutil
+        self.case=CurrentProofTests();self.case.setUp();self.addCleanup(self.case.doCleanups)
+        t=self.case;t.scope['database']={'host':launch._operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'}
+        t.p['nativeScopeSha256']=model.digest(t.scope)
+        self.temp=tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-binding-git-');self.addCleanup(self.temp.cleanup)
+        self.repo=Path(self.temp.name)
+        config=self.repo/'synthetic-config';config.mkdir(mode=0o700);(config/'configurations').mkdir(mode=0o700)
+        (config/'active_config').write_text('default\n');(config/'configurations/config_default').write_text('[core]\naccount = '+model.OWNER+'\nproject = signmons\n')
+        cp=patch.object(launch,'CONFIG_ROOT',config);cp.start();self.addCleanup(cp.stop)
+        self.git=lambda *args:subprocess.check_output(['/usr/bin/git',*args],cwd=self.repo,stderr=subprocess.DEVNULL).decode().strip()
+        self.git('init','-q');self.git('config','user.name','Synthetic Proof');self.git('config','user.email','proof@example.invalid')
+        authority=launch.current_module('authority');self.authority=authority;self.real_committed=authority.committed
+        manifest=model.verify_local_manifest();paths=[model.ROOT/'source-manifest.json',*[model.ROOT/n for n in manifest['files']],
+            *[model.ROOT.parent.parent/n for n in manifest['producerDependencies']],*model.SOURCE_PATHS.values()]
+        for p in paths:
+            dest=self.repo/p.relative_to(authority.BACKEND);dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(p.read_bytes())
+        self.git('add','.');self.git('-c','core.hooksPath=/dev/null','commit','-qm','synthetic exact source')
+        self.e={'version':1,'plan':t.p,'nativeScope':t.scope,'sourceCommit':self.git('rev-parse','HEAD'),
+            'manifestSha256':launch.source_manifest_sha256(),'sdkReview':manifest['sdkReview']}
+        self.bind_decision()
+        self.root=Path('/private/tmp/p08-current-external-'+t.p['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+    def bind_decision(self,action="APPROVE_EXACT_P08_CURRENT_QUALIFICATION"):
+        self.e.pop('decision',None)
+        decision={'owner':'Debynyhan Banks','decision':action,'externalReadAuthorized':True,
+            'scopeSha256':model.digest(self.e)}
+        path='APP013_P08_CURRENT_QUALIFICATION_20261103.json';raw=json.dumps(decision,sort_keys=True).encode()
+        (self.repo/path).write_bytes(raw);self.git('add',path);self.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic owner decision')
+        self.e['decision']={'commit':self.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
+    def read_commit(self,repo,commit,path):return self.real_committed(self.repo,commit,path)
+    def cap(self,mode='qualify'):return launch.QualificationCapability(self.e,lambda:self.case.now,mode,self.read_commit)
+    def test_actual_committed_decision_and_source_before_credentials(self):
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('must not prompt')):
+            cap=self.cap();self.assertEqual(cap.counts,{'cli':0,'https':0,'sql':0,'cache':0})
+        self.assertFalse(cap.root.exists());self.assertEqual(cap.e['sdkReview']['limits']['cache'],1)
+    def test_forged_uncommitted_wrong_action_and_source_refuse(self):
+        for field,value in [('sha256','0'*64),('commit','0'*40),('path','APP013_P08_NATIVE_OPERATION_20261103.json')]:
+            saved=copy.deepcopy(self.e)
+            with self.subTest(field=field):
+                self.e['decision'][field]=value
+                with self.assertRaises(Exception):self.cap()
+                self.e=saved
+        self.bind_decision(action='APPROVE_EXACT_P08_NATIVE_ENTRY')
+        with self.assertRaisesRegex(model.Stop,'QUALIFIER_OWNER_APPROVAL'):self.cap()
+        self.e['sourceCommit']='0'*40;self.bind_decision()
+        with self.assertRaises(Exception):self.cap()
+    def test_scope_unknown_field_budget_and_expiry_refuse(self):
+        for mutate in [lambda e:e.update(extra=True),lambda e:e['plan'].update(extra=True),
+            lambda e:e['sdkReview']['limits'].update(cache=2),lambda e:e['nativeScope']['database'].update(host='foreign.invalid'),
+            lambda e:e['plan']['window'].update(cutoff=e['plan']['window']['start'])]:
+            saved=copy.deepcopy(self.e);mutate(self.e)
+            with self.assertRaises(Exception):self.cap()
+            self.e=saved
+    def test_complete_external_branch_with_injected_observations_and_no_native_entry(self):
+        cap=self.cap();t=self.case
+        with patch.object(launch,'hidden_password',return_value='SYNTHETIC_HIDDEN_PASSWORD') as password:
+            result=launch._produce_current(t.p,t.scope,t.io,lambda:t.now,capability=cap)
+        self.assertEqual(result['status'],'CURRENT_EVIDENCE_OBSERVED',result)
+        self.assertFalse(result['liveObserved'] or result['executionReady']) # injected I/O is not provider evidence
+        self.assertEqual(password.call_count,1)
+        self.assertEqual(result['candidate']['scopeSha256'],model.digest(t.scope))
+        text=''.join(p.read_text() for p in self.root.iterdir())
+        self.assertNotIn('SYNTHETIC_HIDDEN_PASSWORD',text);self.assertNotIn(t.scope['target']['email'],text)
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('replay prompted')):
+            with self.assertRaises(Exception):self.cap()
+            with self.assertRaises(FileExistsError):launch._produce_current(t.p,t.scope,t.io,lambda:t.now,capability=cap)
+    def test_cleanup_cannot_read_work_and_budget_rollback_refuse(self):
+        cap=self.cap();io=launch.QualificationIO(cap,True)
+        with self.assertRaisesRegex(model.Stop,'CLOSEOUT_ONLY'):io.cli(launch.current_cli_contract()[0],self.case.now+1)
+        with self.assertRaisesRegex(model.Stop,'CLOSEOUT_ONLY'):io.https({},'synthetic',self.case.now+1)
+        cap.gate('cache')
+        with self.assertRaisesRegex(model.Stop,'QUALIFIER_LIMIT'):cap.gate('cache')
+        self.case.now-=1
+        with self.assertRaisesRegex(model.Stop,'CLOCK_ROLLBACK'):cap.gate('sql',True)
+    def test_recovery_one_read_never_qualifies_or_replays(self):
+        cap=self.cap('closeout');self.root.mkdir(mode=0o700)
+        model.reserve(self.root/'entry.lock',{})
+        model.reserve(self.root/'attempt.json',{'operationId':cap.plan['operationId'],
+            'scopeSha256':cap.plan['nativeScopeSha256'],'authoritySha256':cap.hash})
+        with patch.object(launch,'hidden_password',return_value='synthetic'),patch.object(launch.QualificationIO,'sql',return_value={'sessionsAbsent':True}) as sql:
+            result=launch.recover_current_external(cap)
+        self.assertIsNone(result['candidate']);self.assertIn('OWNED_PROCESS_HISTORY_UNKNOWN',result['residuals']);self.assertEqual(sql.call_count,1)
+        with self.assertRaises(model.Stop):launch.recover_current_external(cap)
+    def test_foreign_inventory_refuses_before_recovery_password(self):
+        cap=self.cap('closeout');self.root.mkdir(mode=0o700);model.reserve(self.root/'foreign.json',{})
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('must not prompt')):
+            with self.assertRaisesRegex(model.Stop,'PRIVATE_INVENTORY'):launch.recover_current_external(cap)
+        self.assertTrue((self.root/'foreign.json').exists())
+    def test_sdk_environment_overrides_and_pinned_suppression(self):
+        safe=launch.sdk_environment({'HOME':'/Users/debynyhanbanks','PATH':'/untrusted','PYTHONPATH':'/untrusted'})
+        self.assertEqual(safe['CLOUDSDK_CORE_MAX_LOG_DAYS'],'0');self.assertEqual(safe['CLOUDSDK_CORE_DISABLE_FILE_LOGGING'],'true')
+        self.assertNotIn('PYTHONPATH',safe);self.assertEqual(safe['PATH'],'/usr/bin:/bin:/opt/homebrew/bin')
+        for key in ('CLOUDSDK_CONFIG','HTTPS_PROXY','GOOGLE_APPLICATION_CREDENTIALS','PGHOST','DATABASE_URL'):
+            with self.assertRaises(model.Stop):launch.sdk_environment({'HOME':'/Users/debynyhanbanks',key:'foreign'})
+    def test_cli_private_input_is_purged_on_refused_authority_without_prompt(self):
+        import shutil
+        directory=Path('/private/tmp/p08-current-input-'+self.case.p['operationId']);directory.mkdir(mode=0o700)
+        self.addCleanup(lambda:shutil.rmtree(directory,ignore_errors=True));path=directory/'envelope.json'
+        bad=copy.deepcopy(self.e);bad['decision']['sha256']='0'*64;model.reserve(path,bad)
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('must not prompt')):
+            with self.assertRaises(Exception):launch.current_main(['--qualify-current',str(path)])
+        self.assertFalse(path.exists() or directory.exists())
+
+    def test_public_dispatch_after_actual_committed_approval(self):
+        original=launch.current_module;authority=self.authority
+        authority.committed=self.read_commit
+        # Save the real reader separately: the injected function still uses real git show.
+        self.addCleanup(lambda:setattr(authority,'committed',original('authority').committed))
+        def modules(name):return authority if name=='authority' else original(name)
+        t=self.case
+        def password():
+            self.assertTrue((self.root/'attempt.json').exists());return 'synthetic'
+        with patch.object(launch,'current_module',side_effect=modules),patch.object(launch,'QualificationIO',return_value=t.io),patch.object(launch,'hidden_password',side_effect=password):
+            result=launch.current_dispatch(self.e,'qualify',lambda:t.now)
+        self.assertIsNotNone(result['candidate']);self.assertFalse(result['executionReady'] or result['liveObserved'])
+    def test_concurrent_recovery_lock_refuses_before_password(self):
+        import fcntl,os
+        cap=self.cap('closeout');self.root.mkdir(mode=0o700);model.reserve(self.root/'entry.lock',{})
+        model.reserve(self.root/'attempt.json',{'operationId':cap.plan['operationId'],'scopeSha256':cap.plan['nativeScopeSha256'],'authoritySha256':cap.hash})
+        fd=os.open(self.root/'entry.lock',os.O_WRONLY)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with patch.object(launch,'hidden_password',side_effect=AssertionError('must not prompt')):
+                with self.assertRaises(BlockingIOError):launch.recover_current_external(cap)
+        finally:os.close(fd)
+        self.assertFalse((self.root/'independent-closeout.json').exists())
+
+
+class CacheBindingTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile,importlib.util,sys,time
+        path=model.ROOT.parent.parent/'p08-narrow-access-check-local-20261101/source'
+        sys.path.insert(0,str(path));spec=importlib.util.spec_from_file_location('cache_binding_tests',path/'test_access_check.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        self.helper=module;self.acl=module.a
+        self.temp=tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-binding-cache-');self.addCleanup(self.temp.cleanup)
+        self.root=Path(self.temp.name);self.end=int(time.time())+600;self.db=module.make_cache(self.root,self.end+1000)
+    def test_actual_cache_expiry_and_token_matching_boundary(self):
+        token=self.acl.read_cached_token(self.root,self.end,env={});self.assertEqual(token,'SYNTHETIC_BEARER_NEVER_PERSIST')
+        import sqlite3
+        with sqlite3.connect(self.db) as c:c.execute('UPDATE access_tokens SET token_expiry=? WHERE account_id=?',('2000-01-01 00:00:00',self.acl.OWNER))
+        c.close()
+        with self.assertRaisesRegex(self.acl.Stop,'CACHED_TOKEN_EXPIRED'):self.acl.read_cached_token(self.root,self.end,env={})
+    def test_foreign_owner_and_sidecar_cache_refuse(self):
+        import sqlite3
+        sidecar=Path(str(self.db)+'-wal');sidecar.write_bytes(b'synthetic')
+        with self.assertRaisesRegex(self.acl.Stop,'CACHE_JOURNAL_UNSUPPORTED'):self.acl.read_cached_token(self.root,self.end,env={})
+        sidecar.unlink()
+        with sqlite3.connect(self.db) as c:c.execute('DELETE FROM access_tokens WHERE account_id=?',(self.acl.OWNER,))
+        c.close()
+        with self.assertRaisesRegex(self.acl.Stop,'CACHED_TOKEN_MISSING'):self.acl.read_cached_token(self.root,self.end,env={})
+    def test_installed_sdk_log_controls_execute_actual_method_bodies_without_sdk_launch(self):
+        import ast,types
+        sdk=Path('/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib')
+        tree=ast.parse((sdk/'googlecloudsdk/core/log.py').read_text())
+        methods={node.name:node for node in ast.walk(tree) if isinstance(node,ast.FunctionDef) and node.name in ('AddLogsDir','_CleanUpLogs','_GetMaxLogDays')}
+        logtree=ast.Module(body=list(methods.values()),type_ignores=[])
+        class Setting:
+            def __init__(self,value):self.value=value
+            def GetBool(self):return self.value
+            def GetInt(self):return self.value
+        ns={'properties':types.SimpleNamespace(VALUES=types.SimpleNamespace(core=types.SimpleNamespace(
+            disable_file_logging=Setting(True),max_log_days=Setting(0))))}
+        exec(compile(logtree,'installed-sdk-log-methods','exec'),ns)
+        holder=types.SimpleNamespace(_logs_dirs=[],_CleanLogsDir=lambda _:self.fail('ambient logs deleted'),_SetupLogsDir=lambda _:self.fail('log created'))
+        holder._GetMaxLogDays=types.MethodType(ns['_GetMaxLogDays'],holder)
+        holder._CleanUpLogs=types.MethodType(ns['_CleanUpLogs'],holder)
+        ns['AddLogsDir'](holder,'/synthetic/logs');self.assertEqual(holder._logs_dirs,['/synthetic/logs'])
+        tree=ast.parse((sdk/'googlecloudsdk/api_lib/util/api_enablement.py').read_text())
+        fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='PromptToEnableApi')
+        console_tree=ast.parse((sdk/'googlecloudsdk/core/console/console_io.py').read_text())
+        prompt=next(n for n in console_tree.body if isinstance(n,ast.FunctionDef) and n.name=='PromptContinue')
+        prompt_ns={'properties':types.SimpleNamespace(VALUES=types.SimpleNamespace(core=types.SimpleNamespace(disable_prompts=Setting(True))))}
+        exec(compile(ast.Module(body=[prompt],type_ignores=[]),'installed-sdk-prompt','exec'),prompt_ns)
+        ns={'console_io':types.SimpleNamespace(PromptContinue=prompt_ns['PromptContinue']),
+            'enable_api':types.SimpleNamespace(EnableService=lambda *_:self.fail('API enable attempted'))}
+        exec(compile(ast.Module(body=[fn],type_ignores=[]),'installed-sdk-enable-method','exec'),ns)
+        self.assertFalse(ns['PromptToEnableApi']('synthetic','synthetic'))
+
+class CacheTransportTests(CacheBindingTests):
+    def test_real_cache_through_transport_compares_token_once_before_https(self):
+        import time
+        cap=object.__new__(launch.QualificationCapability)
+        cap.clock=time.time;cap.plan={'operationId':'12345678-1234-4234-8234-123456789abc'}
+        cap.config_root=self.root;cap.config=None;cap.mode='qualify';cap.last=time.time()
+        cap.times={'start':cap.last-1,'readEnd':cap.last+50,'closeoutEnd':cap.last+100,'purgeEnd':self.end}
+        cap.e={'sdkReview':{'files':{},'limits':{'cli':27,'https':20,'sql':4,'cache':1}}}
+        cap.counts={'cli':0,'https':0,'sql':0,'cache':0}
+        with patch.dict(launch.os.environ,{'HOME':'/Users/debynyhanbanks'},clear=True):
+            io=launch.QualificationIO(cap)
+            d=next(d for d in launch.current_cli_contract() if d['id']=='token')
+            with patch.object(io,'_owned_run',return_value=b'SYNTHETIC_BEARER_NEVER_PERSIST'):
+                self.assertEqual(io.cli(d,cap.times['readEnd']),{'accessToken':'SYNTHETIC_BEARER_NEVER_PERSIST'})
+                self.assertEqual(cap.counts['cache'],1)
+                with self.assertRaisesRegex(model.Stop,'QUALIFIER_LIMIT'):io.cli(d,cap.times['readEnd'])
+            cap.counts={'cli':0,'https':0,'sql':0,'cache':0}
+            with patch.object(io,'_owned_run',return_value=b'SYNTHETIC_MISMATCHED_BEARER'):
+                with self.assertRaisesRegex(model.Stop,'TOKEN_CACHE_MISMATCH'):io.cli(d,cap.times['readEnd'])
+            self.assertEqual(cap.counts['https'],0);self.assertTrue(io.close(cap.times['closeoutEnd']))
+
+# Do not duplicate the helper's three independent cases through subclass discovery.
+for _name in list(CacheBindingTests.__dict__):
+    if _name.startswith('test_'):setattr(CacheTransportTests,_name,None)
+
 if __name__=="__main__":unittest.main()

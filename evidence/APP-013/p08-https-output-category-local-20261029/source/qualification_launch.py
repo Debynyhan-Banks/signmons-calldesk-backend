@@ -435,7 +435,7 @@ class NativeIO:
     def cli(self, descriptor, deadline):
         need(not self.closed and self.clock() < deadline, "CLI_DEADLINE")
         argv = descriptor["argv"]; need(argv and argv[0] == GCLOUD, "CLI_EXECUTABLE")
-        env = {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
+        env = sdk_environment(os.environ) if isinstance(self,QualificationIO) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
         timeout = max(1, min(30, int(deadline - self.clock())))
         need(descriptor in current_cli_contract() or descriptor in current_cli_contract(argv[4] if descriptor['id']=='billing_account' and len(argv)>4 else '<discovered-account>'),'CLI_SCOPE')
         raw=self._owned_run(argv,env,min(deadline,self.clock()+30))
@@ -486,7 +486,7 @@ class NativeIO:
         need(descriptor in current_sql_contract(), "SQL_ALLOWLIST")
         sql = descriptor["sql"]
         need(sql is not None, "SQL_ALLOWLIST")
-        env = {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"}
+        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,QualificationIO) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
         env.update({"PGPASSWORD": password, "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/cert.pem", "PGCONNECT_TIMEOUT": "10", "PGAPPNAME": "signmons_p08_qualification_" + self.binding_operation_id, "PGOPTIONS": "-c statement_timeout=15000 -c lock_timeout=5000"})
         timeout = max(1, min(25, int(deadline - self.clock())))
         try:
@@ -506,10 +506,16 @@ class NativeIO:
 
 
 def private_json(path):
-    path = Path(path); info = path.lstat()
-    need(stat.S_ISREG(info.st_mode) and not path.is_symlink() and stat.S_IMODE(info.st_mode) == 0o600, "PRIVATE_INPUT")
-    value = json.loads(path.read_text()); need(isinstance(value, dict), "PRIVATE_INPUT")
-    return value
+    path=Path(path);fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW)
+    try:
+        info=os.fstat(fd)
+        need(stat.S_ISREG(info.st_mode) and info.st_uid==os.getuid() and info.st_nlink==1 and
+             stat.S_IMODE(info.st_mode)==0o600 and info.st_size<=MAX_OUTPUT,'PRIVATE_INPUT')
+        stamp=lambda st:(st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns,st.st_ctime_ns,st.st_uid,st.st_nlink,st.st_mode)
+        raw=os.read(fd,MAX_OUTPUT+1)
+        need(len(raw)<=MAX_OUTPUT and stamp(os.fstat(fd))==stamp(info) and stamp(path.stat(follow_symlinks=False))==stamp(info),'PRIVATE_INPUT_CHANGED')
+        value=strict_json(raw);need(isinstance(value,dict),'PRIVATE_INPUT');return value
+    finally:os.close(fd)
 
 
 def purge_private_inputs(directory, paths):
@@ -656,12 +662,12 @@ def environment_digest(rows):
     return model.digest(rows)
 
 class CurrentAdapter(Adapter):
-    def __init__(self,plan,scope,io,clock):
+    def __init__(self,plan,scope,io,clock,password="SYNTHETIC_CURRENT_PROOF_ONLY"):
         self.plan=copy.deepcopy(plan);self.scope=copy.deepcopy(scope);self.io=io;self.clock=clock
         self.times=model.authorize(plan,clock());self.cli={};self.http={};self.closed=False
         self.token=None;self.project_number=None;self.billing_account=None;self.firebase_uid=None
         self.binding={'candidateImage':scope['resources']['image'],'normalRevision':scope['resources']['normalRevision'],
-                      'databasePassword':'SYNTHETIC_CURRENT_PROOF_ONLY'}
+                      'databasePassword':password}
         self.seen=set();self.last=clock();self.role_result=None;self.target=None
     def _gate(self,cleanup=False):
         now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
@@ -801,28 +807,37 @@ def recover_current_proof(plan,native_scope,io,clock=model.time.time):
 
 
 def produce_native_qualification(plan,native_scope,io,clock=model.time.time):
-    """Produces a candidate only inside an owned local proof; never resolves native credentials."""
-    import fcntl,signal,threading
     need(getattr(io,'proof',None) is True,'CURRENT_PROOF_ONLY')
+    return _produce_current(plan,native_scope,io,clock)
+
+
+def _produce_current(plan,native_scope,io,clock,capability=None):
+    """Shared reducer; only a separately verified capability enables qualification I/O."""
+    import fcntl,signal,threading
+    need((capability is not None and type(capability) is QualificationCapability) or getattr(io,'proof',None) is True,'CURRENT_PROOF_ONLY')
     model.verify_local_manifest();model.verify_locked_sources()
     need(set(native_scope)=={'plan','target','database','resources','limits'},'CURRENT_SCOPE')
     need(plan.get('producerDecision')=='APPROVE_LOCAL_CURRENT_EVIDENCE_PROOF' and
          plan.get('producerManifestSha256')==source_manifest_sha256() and
          plan.get('nativeScopeSha256')==model.digest(native_scope),'CURRENT_DECISION_BINDING')
     need(plan['prospectiveOperationId']==native_scope['plan']['operationId'],'CURRENT_OPERATION_BINDING')
-    times=model.authorize(plan,clock());root=Path('/private/tmp/p08-current-proof-'+plan['operationId'])
+    times=model.authorize(plan,clock());root=capability.root if capability else Path('/private/tmp/p08-current-proof-'+plan['operationId'])
     root.mkdir(mode=0o700)  # A consumed operation cannot be retried.
     fd=os.open(root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-    adapter=None;failure=None;residuals=[];candidate=None;cleaning=False;handlers={}
+    adapter=None;failure=None;residuals=[];candidate=None;cleaning=False;handlers={};password=None if capability else 'SYNTHETIC_CURRENT_PROOF_ONLY'
     def interrupted(*_):
         if not cleaning:raise model.Stop('INTERRUPTED')
     if threading.current_thread() is threading.main_thread():
         for sig in (signal.SIGINT,signal.SIGTERM):handlers[sig]=signal.signal(sig,interrupted)
     try:
         fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        model.reserve(root/'attempt.json',{'operationId':plan['operationId'],'scopeSha256':plan['nativeScopeSha256']})
+        model.reserve(root/'attempt.json',{'operationId':plan['operationId'],'scopeSha256':plan['nativeScopeSha256'],**({'authoritySha256':capability.hash} if capability else {})})
         try:
-            adapter=CurrentAdapter(plan,native_scope,io,clock)
+            if capability is not None:
+                capability.prepare()
+                with current_module('acl').http_deadline(max(.01,min(30,times['readEnd']-clock()))):
+                    password=hidden_password()
+            adapter=CurrentAdapter(plan,native_scope,io,clock,password)
             need(model.classify_cloud(adapter.read_cloud(times['readEnd']))=='QUALIFIED','CLOUD_NOT_READY')
             need(adapter.read_access(times['readEnd']) is True,'ACCESS_NOT_READY')
             need(model.classify_database(adapter.read_database(times['readEnd']))=='QUALIFIED','DATABASE_NOT_READY')
@@ -836,9 +851,10 @@ def produce_native_qualification(plan,native_scope,io,clock=model.time.time):
             # Fresh process/connection ownership is required, not reuse of a closed client verdict.
             fresh=None
             try:
-                fresh=io.independent();need(fresh is not io and getattr(fresh,'proof',None) is True,'INDEPENDENT_SCOPE')
+                need(password is not None,'CREDENTIAL_INPUT_UNAVAILABLE')
+                fresh=io.independent();need(fresh is not io and (capability is not None or getattr(fresh,'proof',None) is True),'INDEPENDENT_SCOPE')
                 model.reserve(root/'independent-closeout.json',{'operationId':plan['operationId']})
-                need(strict_json(fresh.sql(sql_contract()[1],'SYNTHETIC_CURRENT_PROOF_ONLY',times['closeoutEnd']))=={'sessionsAbsent':True},'SESSIONS_REMAIN')
+                need(strict_json(fresh.sql(sql_contract()[1],password,times['closeoutEnd']))=={'sessionsAbsent':True},'SESSIONS_REMAIN')
             except BaseException:residuals.append('INDEPENDENT_UNCONFIRMED')
             finally:
                 try:need(fresh is not None and fresh.close(times['closeoutEnd']) is True,'INDEPENDENT_UNCONFIRMED')
@@ -847,6 +863,7 @@ def produce_native_qualification(plan,native_scope,io,clock=model.time.time):
         # This proof persists only sanitized markers; no raw private input or output file is permitted.
         need(set(p.name for p in root.iterdir())=={'entry.lock','attempt.json','independent-closeout.json'} and
              all(not p.is_symlink() and stat.S_IMODE(p.stat().st_mode)==0o600 for p in root.iterdir()),'PRIVATE_INVENTORY')
+        if capability is not None:inspect_current_root(root,{'entry.lock','attempt.json','independent-closeout.json'})
         if not failure and not residuals:
             authority=current_module('authority');authority.verify_sources()
             until=native_scope['plan']['window']['cleanupEnd']
@@ -856,18 +873,239 @@ def produce_native_qualification(plan,native_scope,io,clock=model.time.time):
                'runtimeEnvironmentSha256':adapter.binding['environmentSha256'],
                'roleAclSha256':adapter.role_result['roleAclSha256'],
                'checks':{k:True for k in ('owner','billing','effectiveAccess','services','database','firebase','job','retiredRuntime','privateInventory')}}
-            envelope={'version':1,'execution':'PROOF_ONLY',**native_scope,'qualification':candidate,
-                'sourceManifestSha256':authority.digest((authority.HERE/'source-manifest.json').read_bytes()),'sourceCommit':'0'*40}
-            envelope['decision']={'decision':'APPROVE_LOCAL_NATIVE_ENTRY_PROOF','scopeSha256':authority.digest(envelope)}
-            authority.Capability(envelope,Path('/private/tmp/p08-coordinator-'+plan['prospectiveOperationId']),clock=clock)
-        result={'status':'CURRENT_EVIDENCE_LOCAL_VERIFIED' if candidate else 'CURRENT_EVIDENCE_UNQUALIFIED',
-                'execution':'PROOF_ONLY','liveObserved':False,'executionReady':False,'failure':failure,
+            if capability is None:
+                envelope={'version':1,'execution':'PROOF_ONLY',**native_scope,'qualification':candidate,
+                    'sourceManifestSha256':authority.digest((authority.HERE/'source-manifest.json').read_bytes()),'sourceCommit':'0'*40}
+                envelope['decision']={'decision':'APPROVE_LOCAL_NATIVE_ENTRY_PROOF','scopeSha256':authority.digest(envelope)}
+                authority.Capability(envelope,Path('/private/tmp/p08-coordinator-'+plan['prospectiveOperationId']),clock=clock)
+        result={'status':('CURRENT_EVIDENCE_OBSERVED' if capability else 'CURRENT_EVIDENCE_LOCAL_VERIFIED') if candidate else 'CURRENT_EVIDENCE_UNQUALIFIED',
+                'execution':'EXTERNAL_READ_ONLY' if capability else 'PROOF_ONLY','liveObserved':bool(capability and capability.observed),'executionReady':False,'failure':failure,
                 'residuals':sorted(set(residuals)),'candidate':candidate}
         model.reserve(root/'result.json',result);return result
     finally:
+        password=None
         for sig,handler in handlers.items():signal.signal(sig,handler)
         fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
 
 
+class QualificationCapability:
+    """Read-only authority; never grants native entry or credential renewal."""
+    def __init__(self, envelope, clock=model.time.time, mode='qualify', read_commit=None):
+        authority=current_module('authority');authority.verify_sources()
+        manifest=model.verify_local_manifest();model.verify_locked_sources()
+        need(mode in ('qualify','closeout'),'QUALIFICATION_MODE')
+        e=copy.deepcopy(envelope)
+        need(set(e)=={'version','plan','nativeScope','sourceCommit','manifestSha256','sdkReview','decision'},'QUALIFIER_ENVELOPE')
+        need(e['version']==1 and e['manifestSha256']==source_manifest_sha256(),'QUALIFIER_SOURCE')
+        p=e['plan'];scope=e['nativeScope']
+        need(set(p)=={'mode','externalReadAuthorized','operationId','prospectiveOperationId','automaticRetryAllowed','allowanceUsd',
+            'project','jobId','tenantId','ownerPrincipal','runtimeIdentity','roles','services','permissions','ownershipSha256',
+            'sourceHashes','proposalSha256','prospectiveKeyId','readInventory','window','producerDecision','producerManifestSha256','nativeScopeSha256'},'QUALIFIER_PLAN')
+        need(p['producerDecision']=='APPROVE_LOCAL_CURRENT_EVIDENCE_PROOF' and p['producerManifestSha256']==e['manifestSha256'] and
+             p['nativeScopeSha256']==model.digest(scope),'QUALIFIER_SCOPE_HASH')
+        need(set(p['window'])=={'start','cutoff','readEnd','closeoutEnd','purgeEnd'},'QUALIFIER_WINDOW')
+        self.times=model.authorize(p,clock(),mode)
+        need(p['operationId']!=p['prospectiveOperationId'],'QUALIFIER_DISTINCT_OPERATION')
+        need(set(scope)=={'plan','target','database','resources','limits'} and p['prospectiveOperationId']==scope['plan']['operationId'],'QUALIFIER_SCOPE')
+        # Pure existing coordinator validators verify the prospective scope, not an execution approval.
+        c=authority.load('p08-live-binder-local-20261029/source/coordinator.py','qualifier_scope_validator')
+        modules=c.sources();np=scope['plan']
+        c.authorize(np,{'decision':'APPROVE_LOCAL_SINGLE_COORDINATOR','externalActionAuthorized':False,
+            'operationId':np['operationId'],'planSha256':model.digest(np)},modules,
+            model.timestamp(np['window']['start']))
+        restore=modules['restore'];operator=_operator_module()
+        need(scope['resources']=={'candidate':restore.CANDIDATE,'image':restore.IMAGE,'normalRevision':restore.NORMAL,
+            'identity':restore.IDENTITY,'secretVersions':{s:'1' for s in restore.SECRETS}},'QUALIFIER_RESOURCE_PINS')
+        need(scope['database']=={'host':operator.DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'},'QUALIFIER_DATABASE_PINS')
+        target=scope['target'];model.exact_uuid(target.get('id'),'QUALIFIER_TARGET')
+        need(set(target)=={'id','tenantId','email','fullName','role'} and target['tenantId']==model.TENANT and
+             target['email']==model.OWNER and target['fullName']==TARGET_NAME and target['role']=='ADMIN','QUALIFIER_TARGET')
+        need(set(scope['limits'])=={'cli','https','sql','child','childRequests'} and all(type(v) is int and 1<=v<=512 for v in scope['limits'].values()) and scope['limits']['child']<=8,'QUALIFIER_NATIVE_LIMITS')
+        need(model.timestamp(np['window']['cleanupEnd'])<=self.times['purgeEnd'],'QUALIFIER_EXPIRY')
+        review=e['sdkReview']
+        need(set(review)=={'files','limits','credentialPolicy','exception','reviewComplete'} and review['reviewComplete'] is True and
+             review['limits']=={'cli':27,'https':20,'sql':4,'cache':1} and
+             review['credentialPolicy']=='EXISTING_OWNER_SDK_THEN_MATCHED_CACHE_EXPIRY_AFTER_PURGE' and
+             review['exception']=='EXACT_REVIEWED_SDK_REFRESH_CACHE_INTERNAL_RETRIES_ONLY','SDK_REVIEW_REQUIRED')
+        need(isinstance(review['files'],dict) and len(review['files'])>=1,'SDK_REVIEW_FILES')
+        # An exact committed review is required; an arbitrary nonempty file list is not a review.
+        need(review==manifest.get('sdkReview'),'SDK_REVIEW_INCOMPLETE')
+        d=e['decision'];need(set(d)=={'commit','path','sha256'} and re.fullmatch(r'APP013_P08_CURRENT_QUALIFICATION_[0-9]{8}\.json',d['path']),'QUALIFIER_DECISION_REFERENCE')
+        get=read_commit or authority.committed
+        raw=get(authority.GOV,d['commit'],d['path'])
+        need(model.digest(raw)==d['sha256'] and strict_json(raw)=={'owner':'Debynyhan Banks',
+            'decision':'APPROVE_EXACT_P08_CURRENT_QUALIFICATION','externalReadAuthorized':True,
+            'scopeSha256':model.digest({k:v for k,v in e.items() if k!='decision'})},'QUALIFIER_OWNER_APPROVAL')
+        rel=str(model.ROOT.relative_to(authority.BACKEND))
+        need(get(authority.BACKEND,e['sourceCommit'],rel+'/source-manifest.json')==(model.ROOT/'source-manifest.json').read_bytes(),'QUALIFIER_COMMITTED_MANIFEST')
+        for name,h in manifest['files'].items():
+            need(model.digest(get(authority.BACKEND,e['sourceCommit'],rel+'/'+name))==h,'QUALIFIER_COMMITTED_SOURCE')
+        for relative,h in manifest['producerDependencies'].items():
+            need(model.digest(get(authority.BACKEND,e['sourceCommit'],'evidence/APP-013/'+relative))==h,'QUALIFIER_COMMITTED_DEPENDENCY')
+        for name,h in model.SOURCE_HASHES.items():
+            path=str(model.SOURCE_PATHS[name].relative_to(authority.BACKEND))
+            need(model.digest(get(authority.BACKEND,e['sourceCommit'],path))==h,'QUALIFIER_COMMITTED_LOCKED_SOURCE')
+        for path,h in review['files'].items():
+            need(model.digest(Path(path).read_bytes())==h,'SDK_REVIEW_DRIFT')
+        acl=current_module('acl')
+        # The configuration snapshot reads no credential payload; it refuses all ambient overrides.
+        self.config_root=CONFIG_ROOT
+        self.config=None  # Config is inspected only after committed authority and attempt reservation.
+        self.e=e;self.plan=p;self.scope=scope;self.clock=clock;self.mode=mode;self.last=clock()
+        self.root=Path('/private/tmp/p08-current-external-'+p['operationId'])
+        self.counts={'cli':0,'https':0,'sql':0,'cache':0};self.hash=model.digest(e);self.observed=False
+        if mode=='qualify':need(not os.path.lexists(self.root),'QUALIFIER_CONSUMED')
+
+    def prepare(self):
+        sdk_environment(os.environ)
+        self.config=current_module('acl').config_snapshot(self.config_root,os.environ)
+
+    def gate(self,kind,cleanup=False):
+        now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
+        need(self.times['start']<=now<self.times['closeoutEnd' if cleanup else 'readEnd'],'QUALIFIER_DEADLINE')
+        need(cleanup or self.mode=='qualify','QUALIFIER_CLOSEOUT_ONLY')
+        if cleanup:
+            path=_operator_module().PSQL
+            need(model.digest(Path(path).read_bytes())==self.e['sdkReview']['files'].get(path),'SQL_EXECUTABLE_DRIFT')
+        if not cleanup:
+            for path,h in self.e['sdkReview']['files'].items():
+                need(model.digest(Path(path).read_bytes())==h,'SDK_REVIEW_DRIFT')
+        need(self.counts[kind]<self.e['sdkReview']['limits'][kind],'QUALIFIER_LIMIT')
+        self.counts[kind]+=1
+        return self.times['closeoutEnd' if cleanup else 'readEnd']
+
+
+CONFIG_ROOT=Path('/Users/debynyhanbanks/.config/gcloud')
+SDK_ENV={'CLOUDSDK_CORE_DISABLE_FILE_LOGGING':'true','CLOUDSDK_CORE_MAX_LOG_DAYS':'0',
+         'CLOUDSDK_CORE_DISABLE_USAGE_REPORTING':'true','CLOUDSDK_CORE_DISABLE_PROMPTS':'true',
+         'CLOUDSDK_PYTHON':'/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14'}
+
+
+def sdk_environment(environment):
+    need(not any(v for k,v in environment.items() if k.startswith(('CLOUDSDK_','GOOGLE_','GCLOUD_','PG')) or
+        k.upper() in ('DATABASE_URL','HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','NO_PROXY','SSL_CERT_FILE',
+                     'SSL_CERT_DIR','REQUESTS_CA_BUNDLE','CURL_CA_BUNDLE')),'CREDENTIAL_OVERRIDE')
+    need(environment.get('HOME')=='/Users/debynyhanbanks','HOME_OVERRIDE')
+    return {'HOME':'/Users/debynyhanbanks','PATH':'/usr/bin:/bin:/opt/homebrew/bin','LANG':'en_US.UTF-8',
+            'PYTHONDONTWRITEBYTECODE':'1',**SDK_ENV}
+
+
+def hidden_password():
+    need(sys.stdin.isatty(),'HIDDEN_INPUT_REQUIRED')
+    value=getpass.getpass('Qualification SQL password (hidden): ')
+    need(isinstance(value,str) and 0<len(value)<=4096,'PASSWORD_SHAPE')
+    return value
+
+
+class QualificationIO(NativeIO):
+    def __init__(self,capability,cleanup_only=False):
+        need(type(capability) is QualificationCapability,'QUALIFIER_CAPABILITY')
+        super().__init__(capability.clock,capability.plan['operationId'])
+        self.capability=capability;self.cleanup_only=cleanup_only
+    def cli(self,d,deadline):
+        need(not self.cleanup_only,'QUALIFIER_CLOSEOUT_ONLY')
+        cap=self.capability;cap.gate('cli')
+        acl=current_module('acl');snapshot=acl.config_snapshot(cap.config_root,os.environ)
+        if cap.config is None:cap.config=snapshot
+        need(snapshot==cap.config,'CONFIG_CHANGED')
+        value=super().cli(d,min(deadline,cap.times['readEnd']))
+        if d['id']=='token':
+            cap.gate('cache')
+            cached=None
+            try:
+                with acl.http_deadline(max(.01,min(15,cap.times['readEnd']-cap.clock()))):
+                    cached=acl.read_cached_token(cap.config_root,cap.times['purgeEnd'])
+                need(value=={'accessToken':cached},'TOKEN_CACHE_MISMATCH')
+            finally:cached=None
+        return value
+    def https(self,d,token,deadline):
+        need(not self.cleanup_only,'QUALIFIER_CLOSEOUT_ONLY');self.capability.gate('https')
+        result=super().https(d,token,min(deadline,self.capability.times['readEnd']))
+        self.capability.observed=True;return result
+    def sql(self,d,password,deadline):
+        cleanup=d==sql_contract()[1]
+        need(not self.cleanup_only or cleanup,'QUALIFIER_CLOSEOUT_ONLY');end=self.capability.gate('sql',cleanup)
+        result=super().sql(d,password,min(deadline,end))
+        self.capability.observed=True;return result
+    def independent(self):return QualificationIO(self.capability,True)
+
+
+def current_dispatch(envelope,mode,clock=model.time.time):
+    cap=QualificationCapability(envelope,clock,mode)
+    # No hidden credential input or transport construction occurs before every capability gate.
+    if mode=='closeout':return recover_current_external(cap)
+    io=QualificationIO(cap)
+    return _produce_current(cap.plan,cap.scope,io,clock,capability=cap)
+
+
+
+def inspect_current_root(root, allowed):
+    need(root.is_dir() and not root.is_symlink() and root.resolve()==root and
+         root.stat().st_uid==os.getuid() and stat.S_IMODE(root.stat().st_mode)==0o700,'PRIVATE_DIRECTORY')
+    need(set(p.name for p in root.iterdir())<=set(allowed),'PRIVATE_INVENTORY')
+    for p in root.iterdir():
+        st=p.lstat()
+        need(stat.S_ISREG(st.st_mode) and not p.is_symlink() and st.st_nlink==1 and
+             st.st_uid==os.getuid() and stat.S_IMODE(st.st_mode)==0o600,'PRIVATE_INVENTORY')
+
+
+def recover_current_external(cap):
+    """One cleanup read after interruption; never resumes work or produces a candidate."""
+    import fcntl
+    root=cap.root;password=None;io=None;fd=None
+    inspect_current_root(root,{'entry.lock','attempt.json'})
+    fd=os.open(root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        need(private_json(root/'attempt.json')=={'operationId':cap.plan['operationId'],
+            'scopeSha256':cap.plan['nativeScopeSha256'],'authoritySha256':cap.hash},'RECOVERY_SCOPE')
+        # A reserved independent-closeout marker consumes its read even if interrupted.
+        model.reserve(root/'independent-closeout.json',{'operationId':cap.plan['operationId']})
+        residuals=['OWNED_PROCESS_HISTORY_UNKNOWN']
+        try:
+            sdk_environment(os.environ)
+            with current_module('acl').http_deadline(max(.01,min(30,cap.times['closeoutEnd']-cap.clock()))):
+                password=hidden_password()
+            io=QualificationIO(cap,True)
+            need(strict_json(io.sql(sql_contract()[1],password,cap.times['closeoutEnd']))=={'sessionsAbsent':True},'SESSIONS_REMAIN')
+        except BaseException:residuals.append('SESSIONS_UNCONFIRMED')
+        finally:
+            password=None
+            try:need(io is not None and io.close(cap.times['closeoutEnd']) is True,'PROCESS_CLEANUP_UNCONFIRMED')
+            except BaseException:residuals.append('PROCESS_CLEANUP_UNCONFIRMED')
+        need(cap.last<=cap.clock()<cap.times['purgeEnd'],'PURGE_DEADLINE')
+        inspect_current_root(root,{'entry.lock','attempt.json','independent-closeout.json'})
+        result={'status':'CURRENT_EVIDENCE_UNQUALIFIED','execution':'EXTERNAL_READ_ONLY',
+            'liveObserved':cap.observed,'executionReady':False,'candidate':None,'residuals':residuals}
+        model.reserve(root/'recovery-result.json',result);return result
+    finally:
+        if fd is not None:fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def current_main(argv=None):
+    argv=sys.argv[1:] if argv is None else argv
+    if not argv or argv[0] not in ('--qualify-current','--closeout-current'):return native(argv)
+    need(len(argv)==2,'QUALIFIER_ARGUMENTS')
+    path=Path(argv[1]);directory=path.parent
+    need(path.name=='envelope.json' and directory.parent==Path('/private/tmp') and
+         re.fullmatch(r'p08-current-input-[0-9a-f-]{36}',directory.name),'QUALIFIER_INPUT_PATH')
+    inspect_current_root(directory,{'envelope.json'})
+    try:
+        envelope=private_json(path)
+        need(directory.name=='p08-current-input-'+envelope['plan']['operationId'],'QUALIFIER_INPUT_SCOPE')
+        mode='qualify' if argv[0]=='--qualify-current' else 'closeout'
+        cap=QualificationCapability(envelope,mode=mode)
+        # Raw input is purged before credentials and before any candidate may be persisted.
+        path.unlink();directory.rmdir()
+        result=recover_current_external(cap) if mode=='closeout' else _produce_current(cap.plan,cap.scope,QualificationIO(cap),cap.clock,capability=cap)
+        print(result['status']);return 0 if result['candidate'] else 2
+    finally:
+        # Only the exact inspected input is owned; never remove foreign content.
+        if path.exists() and not path.is_symlink():path.unlink()
+        if directory.exists() and not any(directory.iterdir()):directory.rmdir()
+
+
 if __name__ == "__main__":
-    raise SystemExit(native())
+    try:raise SystemExit(current_main())
+    except Exception:
+        print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)

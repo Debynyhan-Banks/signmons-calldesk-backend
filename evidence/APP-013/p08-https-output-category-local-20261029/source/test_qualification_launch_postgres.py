@@ -111,6 +111,33 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
         self.command('UPDATE "Job" SET "policySnapshot"=\'{}\';')
         r=self.case.run_proof();self.assertIsNone(r['candidate']);self.assertFalse(self.native_sql.children)
 
+    def test_external_binding_actual_tls_and_independent_factory(self):
+        import shutil
+        t=self.case;cap=object.__new__(launch.QualificationCapability)
+        cap.plan=t.p;cap.scope=t.scope;cap.clock=lambda:t.now;cap.last=t.now;cap.mode='qualify'
+        cap.times=model.authorize(t.p,t.now);cap.hash=model.digest({'synthetic':t.p});cap.observed=False
+        cap.counts={'cli':0,'https':0,'sql':0,'cache':0};cap.e={'sdkReview':{'files':{launch._operator_module().PSQL:model.digest(Path(launch._operator_module().PSQL).read_bytes())},'limits':{'cli':27,'https':20,'sql':4,'cache':1}}}
+        cap.root=Path('/private/tmp/p08-current-external-'+t.p['operationId']);cap.prepare=lambda:None
+        self.addCleanup(lambda:shutil.rmtree(cap.root,ignore_errors=True))
+        case=self;original=launch.NativeIO._owned_run;fresh=[]
+        def owned(obj,argv,env,deadline):
+            case.assertEqual(argv[0],launch._operator_module().PSQL)
+            case.assertIn(argv[-1],[d['sql'] for d in launch.current_sql_contract()]);case.assertEqual(env['PGSSLMODE'],'verify-full')
+            argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',case.port]
+            return original(obj,argv,{**env,'PGSSLROOTCERT':str(case.cert)},time.time()+20)
+        io=launch.QualificationIO(cap)
+        t.io.sql=io.sql;t.io.close=io.close
+        def independent():
+            obj=io.independent();fresh.append(obj);return obj
+        t.io.independent=independent
+        with patch.object(launch.QualificationIO,'_owned_run',owned),patch.object(launch,'hidden_password',return_value='SYNTHETIC_TLS_ONLY'):
+            result=launch._produce_current(t.p,t.scope,t.io,cap.clock,capability=cap)
+        self.assertIsNotNone(result['candidate'],result);self.assertFalse(result['executionReady'])
+        self.assertEqual(cap.counts['sql'],4);self.assertEqual(len(fresh),1);self.assertIsNot(fresh[0],io)
+        self.assertTrue(io.closed and fresh[0].closed);self.assertFalse(io.children or fresh[0].children)
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+
+
 for _name in dir(tls_fixture.LifecyclePostgres):
     if _name.startswith('test_') and _name not in CurrentEvidenceTLS.__dict__:setattr(CurrentEvidenceTLS,_name,None)
 

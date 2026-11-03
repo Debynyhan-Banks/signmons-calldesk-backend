@@ -1,24 +1,72 @@
 {
-  "status": "DISABLED_LOCAL_PREPARATION_ONLY",
   "files": {
     "composed_qualification.py": "7285ebda3f77d0e0c769e29f4f0e304f9239fd93e5c545a13c965a1d30d7cb69",
+    "qualification_launch.py": "7a912d1ead9ee1c4c033934bbdea79927488e28970f3bcb6f5036cfaba3db685",
     "test_composed_qualification.py": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518",
-    "qualification_launch.py": "4e5921310578612f653ae1fd134d16b5a88252732be6eeeadb262680c25b8bee",
-    "test_qualification_launch.py": "e0fee5c95cf4e661e190efed2aa830d389f32a242c6dc8b9e6e77eb5493edc9d",
-    "test_qualification_launch_postgres.py": "d64edfff314aa2c60290cab7cb832a0f343d50cf21da96d74b7b97fa94ed7911"
+    "test_qualification_launch.py": "67f1d372714f06ac4321904288ddbf48e57e5a3ae44c01eefe5ec9e2384372fe",
+    "test_qualification_launch_postgres.py": "caa29077c471a79bdb9e7db11aac56c26f903ffde5c0c0b2cb6d6f814d255210"
   },
   "lockedSources": {
-    "roles": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
-    "restoration": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
-    "operator": "7b43d332625bbf7f2735187bf5709f0e6ff58c975d98c1b4aef33f911f77807c",
+    "access": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576",
     "firebase": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
-    "access": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576"
+    "operator": "7b43d332625bbf7f2735187bf5709f0e6ff58c975d98c1b4aef33f911f77807c",
+    "restoration": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+    "roles": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9"
   },
   "ownershipSha256": "65409264d701edf8201878f6d058dfbbc3302412e683b36913a81b4578e6b668",
   "producerDependencies": {
     "p08-narrow-access-check-local-20261101/source/access_check.py": "c8305243c9fd84cb027a0af5d1406f39da36b2ff249b52cd8a6159c032b0d195",
     "p08-native-entry-local-20261101/source/authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
-    "p08-same-day-renewal-filename-local-20261028/source/launch_binding.py": "baa0fea1ac8011c2c167634375647e636db49deaa624d9d3760a6eab03297296",
-    "p08-restoration-local-20261028/source/auth/reuse/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca"
-  }
+    "p08-restoration-local-20261028/source/auth/reuse/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",
+    "p08-same-day-renewal-filename-local-20261028/source/launch_binding.py": "baa0fea1ac8011c2c167634375647e636db49deaa624d9d3760a6eab03297296"
+  },
+  "sdkReview": {
+    "credentialPolicy": "EXISTING_OWNER_SDK_THEN_MATCHED_CACHE_EXPIRY_AFTER_PURGE",
+    "exception": "EXACT_REVIEWED_SDK_REFRESH_CACHE_INTERNAL_RETRIES_ONLY",
+    "files": {
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/bin/gcloud": "8628b9f971d07c5e52fd2c6d469ee4a0940c75eb51820d628c3dd068981bd260",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/billing/billing_client.py": "1ebf0662c545c9365d0ca51430de0ea8f3887b73f2db750a7c55ca729b6a8f54",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/cloudresourcemanager/projects_api.py": "e08ed37b822d57201fab09c7d117e31fa5ab2fbb840f600cbdf87402e6370823",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/secrets/api.py": "44f4c1dd801fc060d93b5f150908af0d19ed52bc89ce52abbb7a922818ab3cd8",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/api_enablement.py": "771dd7387c07e5bb52a30e242207f52048bb0ddc06e72ec377d5d79ff0b7add2",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/apis.py": "0110f091c7c86a18ce4e917c66cb0134c6a62a3cfc44c868bb6606c971f055fa",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/auth/auth_util.py": "f9991b16c3207c4765f3cac9bd4dfbccb743820e793f53b68bc14fe74cbf7418",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/run/connection_context.py": "84cb229a9db64ed61e67c709c512482a244ed858fd064661fa4fad0e3675348f",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/run/serverless_operations.py": "b7ca29dcc6eb77739965267323e842da3d55c76f28b65cf4f9baefc1d02ada02",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/config.py": "fc06f07045d0a8054355f904fa4aac12151a1d1e08c6c366620b405c4ee98f52",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/console/console_io.py": "29250aaf0ab0a605140ad42a49d678c8be6d07dbeda40ac0f5faecd87a6f47f9",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/creds.py": "f16148370c895672dcbacaeedd8ce14cedc9019ac665ca7019771a7a1b8021a9",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/store.py": "1fcb3b856eb1584491d6f6160983808ca1f3574e44de86f53ac8d86f882e2a6f",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/transport.py": "c3852175a2fe84eed488179a0ec91cd1d92776f089d42ab203874064397f00a9",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/log.py": "b503b94fbc53943de0ec4a7ca93bc02fa764d35553f658a92e93a38fd4427b3e",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/properties.py": "840eb7f6f5adcb68d94c5ca3607e0436d40e9d26e09c9338e83307af36c974ba",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/auth/list.py": "5e6effb9cd500b77f157ca4ee2480ac2dbaa6a03a89a56c1bb9b8fd8c08f2c9f",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/auth/print_access_token.py": "9cbe0e02400cc72bfe14aa75638f831b44585e7e9b957b53725ae094107b3cf4",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/billing/accounts/describe.py": "b70d7c049d9323ba92c75fed147dbcbcd2ba9ea503300b0b4d8f456b9cb3f03f",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/billing/projects/describe.py": "c153cc30fcdc331ecc1e7ee978f1a40384fe3fac8b4254d556ba20f39bed65d0",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/config/list.py": "2d357f67bc0dd418768442652adc7257fc1aa923d3a8e0b7795930bbc9427e3c",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/roles/describe.py": "cd591253cbe70fcf12f3145cca2667203fa606b9842afa344de24c6c2eac3739",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/service_accounts/describe.py": "e44a2fa74029ddf2205212c4ae5242abb396926389d01e7df0b7dc84c2ad9e97",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/service_accounts/get_iam_policy.py": "d462fb1e622d70dc1396b9834a3e73cfd42253939fc8d38f018a0a2b368493cb",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/projects/describe.py": "2a52b106094f65f096b7f0a971583483ef3186c8768f3bdd5c076836acb4787b",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/projects/get_iam_policy.py": "8c4b508f7d8edb65469e8379960af9fab9ad111b56b9867a4c1657598fa3b5b5",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/run/revisions/describe.py": "8359ec90fc94143ce1a38ca96643dc80ffaa9a47c44cb1bc09e177129a65d390",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/run/services/describe.py": "a845123bfef78944a64225b6cbf04d7334792241e817166e9be32f07dbc4b89c",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/secrets/get_iam_policy.py": "8abd46e74184b8f105eac05123f1236987f3e617bf86e425d18e4009b214bb5f",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/secrets/versions/describe.py": "c794b72f40428065a27c141830fdfa8df2eff2096dffe6497e7cfd02c657eddf",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/third_party/apitools/base/py/base_api.py": "5e2ad1e9565f101fe347302a4085494079dfa6ceead73c2240e2a15f8318733c",
+      "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/third_party/apitools/base/py/http_wrapper.py": "7d87e9abe3cb3813b22b34d640bf21d8c3572e7efeb04e3543a24495f749e1f0",
+      "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14": "2cbb3ee843d8abcf93ed35bb9102391f18eefccb03d47908547bd8db67bc395c",
+      "/opt/homebrew/bin/gcloud": "8628b9f971d07c5e52fd2c6d469ee4a0940c75eb51820d628c3dd068981bd260",
+      "/opt/homebrew/opt/postgresql@16/bin/psql": "e67224e11a8d29541c02528b814b17c0757da7d961f16c58003561e20263528d"
+    },
+    "limits": {
+      "cache": 1,
+      "cli": 27,
+      "https": 20,
+      "sql": 4
+    },
+    "reviewComplete": true
+  },
+  "status": "DISABLED_LOCAL_PREPARATION_ONLY"
 }

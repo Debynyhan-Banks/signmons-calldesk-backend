@@ -1,5 +1,10 @@
 # Current-evidence section card
 
+## November 3 — external binding locally implemented
+
+Owner-approved card4c8011e and amendmentdc90069 completed locally. See EXTERNAL_BINDING_RESULT_20261103.md/.json for exact source,212 runtime/local tests, credential/authority/independent cleanup proof and live UNKNOWNs. No live access or3A acceptance. No scope deviation beyond the approved amendment.
+
+
 ## November 3 — owner approved bounded current-evidence implementation
 
 Owner “i approve” approves exact local card0504f46 before coding. Backend entryd306ca3. Six-step checklist, six source/test/manifest files,27CLI/20HTTPS/4SQL proof contract, approved entry-access semantics, owned cleanup tests, exclusions and rollback incorporated. Baseline PASS before edits; no external credential/provider/SDK exception authorized. Source reinspection notes historical native(argv) has a gated external branch despite prior “unbound” prose; this local-only implementation must explicitly refuse that branch before any credential/transport dispatch, preserving historical source in Git.
