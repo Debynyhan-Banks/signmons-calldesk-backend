@@ -1,0 +1,23 @@
+{
+  "section": "APP-013/3A/P08",
+  "verifiedAt": "2026-11-03T14:10:53Z",
+  "status": "LOCAL_PROOF_ONLY",
+  "sourceBase": "a7adc1fa846d889432ed9295ead5395d71cac7de",
+  "files": {
+    "access_check.py": "495258008e1e6454fda779724a3c3cfc85b27459af7e217ba39dd2ab24472d9e",
+    "source-manifest.json": "3db5e61e6ec460a8425819c6ea0272dda8cf63606230ee9dd1fb63e1fa31528b",
+    "test_access_check.py": "4c6cf779d79898bbac0906feb3e1965c6bb9fd3b8602a744321d871efbbadf2a",
+    "test-manifest.json": "3815633210d40882110dd19b21026eaa26ab41df6881d6514a2badc1e7eef73f"
+  },
+  "focusedTests": {
+    "passed": 99,
+    "priorCases": 76,
+    "newCases": 23
+  },
+  "governanceTests": 25,
+  "realCredentialReads": 0,
+  "providerRequests": 0,
+  "keyCreationAuthorized": false,
+  "executionReady": false,
+  "liveWindow": null
+}

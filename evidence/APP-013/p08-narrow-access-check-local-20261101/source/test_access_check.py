@@ -911,4 +911,300 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(r['failure'],'DEADLINE');self.assertEqual(r['counts']['https'],3)
         self.assertNotIn(('https',3),self.io.calls);self.assertTrue(r['privateInputsAbsent'])
 
+class KeyFakeIO(FakeIO):
+    def https(self,i,number,token,deadline):
+        self.calls.append(('https',i))
+        self.case.assertEqual(a.read(self.cap.root/'journal.json')['pending'],['https',i])
+        if self.case.break_at==len(self.calls):raise a.Stop('INTERRUPTED')
+        self.case.assertEqual(number,None if i==0 else self.case.number)
+        self.case.assertEqual(token,'SYNTHETIC_BEARER_NEVER_PERSIST')
+        return self.case.http_override.get(i,{'status':404 if i==2 else 200,'body':json.dumps(self.case.value(i)).encode()})
+
+class KeyAbsenceTests(unittest.TestCase):
+    def setUp(self):
+        AccessTests.setUp(self)
+        prospective=str(uuid.uuid4())
+        self.p.update(version=4,limits=dict(a.KEY_LIMITS),contractSha256=a.key_contract_hash(),
+                      prospectiveAuthenticationOperationId=prospective,prospectiveKeyId=a.prospective_key(prospective))
+        self.seal()
+        for method in ('connect','connect_ex'):
+            p=patch.object(socket.socket,method,side_effect=AssertionError('NETWORK_FORBIDDEN'));p.start();self.addCleanup(p.stop)
+    def seal(self):
+        self.p['decision']={'decision':'APPROVE_LOCAL_KEY_ABSENCE_PROOF',
+                           'scopeSha256':a.digest({k:v for k,v in self.p.items() if k!='decision'})}
+        if self.path.exists():self.path.unlink()
+        a.reserve(self.path,self.p)
+    reset_run=AccessTests.reset_run
+    def factory(self,cap):
+        self.factory_calls+=1;self.io=KeyFakeIO(self,cap);return self.io
+    def run_entry(self,**kwargs):return a.run(self.path,'key-absence',self.factory,**kwargs)
+    def value(self,index):
+        if index==0:return {'projectId':'signmons','projectNumber':self.number,'lifecycleState':'ACTIVE'}
+        if index==1:return {'name':f'projects/{self.number}/services/apikeys.googleapis.com','state':self.service}
+        return {'error':{'status':'NOT_FOUND','code':404,'message':'PRIVATE_PROVIDER_MESSAGE','details':['PRIVATE_DETAILS']}}
+    def external(self):
+        self.p['execution']='EXTERNAL'
+        scope=a.digest({k:v for k,v in self.p.items() if k!='decision'})
+        raw=json.dumps({'decision':'APPROVE_EXACT_P08_KEY_ABSENCE_READ','owner':'Debynyhan Banks',
+          'operationId':self.p['operationId'],'scopeSha256':scope,'sourceManifestSha256':self.p['sourceManifestSha256'],
+          'readOnly':True,'prospectiveAuthenticationOperationId':self.p['prospectiveAuthenticationOperationId'],
+          'prospectiveKeyId':self.p['prospectiveKeyId']}).encode()
+        self.p['decision']={'commit':'1'*40,'path':'APP013_P08_KEY_ABSENCE_OPERATION_20261103.json','sha256':a.digest(raw)}
+        self.path.unlink();a.reserve(self.path,self.p)
+        return lambda repo,commit,path:raw if repo==a.GOV else (a.BACKEND/path).read_bytes()
+    def test_absence_exact_counts_and_sanitized_purged_receipts(self):
+        r=self.run_entry();self.assertEqual(r['status'],'KEY_ABSENCE_OBSERVED')
+        self.assertEqual(r['counts'],dict(cache=1,https=3,cli=0));self.assertTrue(r['privateInputsAbsent'])
+        self.assertFalse(r['externalObservation']);self.assertFalse(r['executionReady'])
+        for p in self.root.iterdir():
+            for secret in ('SYNTHETIC_BEARER','PRIVATE_PROVIDER_MESSAGE','PRIVATE_DETAILS',self.number,self.p['prospectiveKeyId']):
+                self.assertNotIn(secret,p.read_text())
+    def test_not_found_requires_exact_status_and_optional_integer_code(self):
+        for error,expected in [({'status':'NOT_FOUND'},True),({'status':'NOT_FOUND','code':404},True),
+                              ({'status':'NOT_FOUND','code':True},False),({'status':'NOT_FOUND','code':'404'},False),
+                              ({'status':'NOT_FOUND','code':404.0},False),({'status':'NOT_FOUND','code':None},False),
+                              ({'status':'NOT_FOUND','code':403},False),({},False),({'status':None},False),
+                              ({'status':'PERMISSION_DENIED'},False),(None,False),([],False)]:
+            self.reset_run();self.http_override[2]={'status':404,'body':json.dumps({'error':error}).encode()}
+            r=self.run_entry();self.assertEqual(r['status'],'KEY_ABSENCE_OBSERVED' if expected else 'KEY_RESPONSE_UNKNOWN',error)
+    def test_present_including_deleted_key_never_available(self):
+        name=a.key_descriptor(2,self.number,self.p['prospectiveAuthenticationOperationId'])['url'].split('/v2/')[1]
+        for value,expected in [({'name':name},'KEY_PRESENT_STOP'),({'name':name,'deleteTime':'PRIVATE_METADATA'},'KEY_PRESENT_STOP'),
+                               ({},'KEY_RESPONSE_UNKNOWN'),({'name':None},'KEY_RESPONSE_UNKNOWN'),
+                               ({'name':name+'x'},'KEY_RESPONSE_UNKNOWN')]:
+            self.reset_run();self.http_override[2]={'status':200,'body':json.dumps(value).encode()}
+            self.assertEqual(self.run_entry()['status'],expected)
+    def test_denial_and_other_status_never_absence_or_retry(self):
+        for status in (401,403,429,500,503,204,True):
+            self.reset_run();self.http_override[2]={'status':status,'body':json.dumps(self.value(2)).encode()}
+            r=self.run_entry();self.assertEqual(r['status'],'KEY_ACCESS_DENIED' if status in (401,403) else 'KEY_RESPONSE_UNKNOWN')
+            self.assertEqual(len(self.io.calls),4)
+    def test_malformed_null_missing_oversize_and_encoding_unknown(self):
+        for raw in (b'null',b'[]',b'{}',b'{',b'\xff',b'x'*65537,b'{"error":{"status":null}}'):
+            self.reset_run();self.http_override[2]={'status':404,'body':raw}
+            self.assertEqual(self.run_entry()['status'],'KEY_RESPONSE_UNKNOWN')
+    def test_project_service_preconditions_stop_before_key(self):
+        for index,value in [(0,{'projectId':'foreign'}),(1,{'name':'foreign','state':'ENABLED'}),
+                            (1,{'name':f'projects/{self.number}/services/apikeys.googleapis.com','state':None})]:
+            self.reset_run();self.http_override={index:{'status':200,'body':json.dumps(value).encode()}}
+            self.assertEqual(self.run_entry()['status'],'KEY_ABSENCE_STOPPED');self.assertNotIn(('https',2),self.io.calls)
+        self.reset_run();self.http_override={};self.service='DISABLED'
+        r=self.run_entry();self.assertEqual(r['failure'],'SERVICE_DISABLED');self.assertEqual(r['counts']['https'],2)
+    def test_uuid_target_scope_limits_version_and_manifest_refuse_before_io(self):
+        original=json.loads(json.dumps(self.p))
+        changes=[('prospectiveAuthenticationOperationId',None),('prospectiveAuthenticationOperationId','../../evil'),
+                 ('prospectiveAuthenticationOperationId',self.p['operationId']),
+                 ('prospectiveAuthenticationOperationId',self.p['prospectiveAuthenticationOperationId'].upper()),
+                 ('prospectiveKeyId','other'),('version',3),('limits',{**a.KEY_LIMITS,'https':4}),
+                 ('limits',{**a.KEY_LIMITS,'mutations':False}),('sourceManifestSha256','0'*64),('contractSha256','0'*64)]
+        for key,value in changes:
+            self.p=json.loads(json.dumps(original));self.p[key]=value;self.seal()
+            with self.assertRaises(a.Stop):self.run_entry()
+            self.assertEqual(self.factory_calls,0);self.assertFalse((self.root/'attempt.json').exists())
+    def test_cross_mode_native_and_decision_source_refusals(self):
+        with self.assertRaisesRegex(a.Stop,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY'):a.run(self.path,'key-absence')
+        for mode in ('read','enable'):
+            with self.assertRaises(a.Stop):a.run(self.path,mode,self.factory)
+        get=self.external();cap=a.KeyAbsenceCapability(self.p,self.root,read_commit=get)
+        for native in (a.NativeIO,a.ServiceNativeIO):
+            with self.assertRaisesRegex(a.Stop,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY'):native(cap)
+        for wrong in (b'{}',b'{"decision":"APPROVE_EXACT_P08_NARROW_ACCESS_READ"}'):
+            with self.assertRaises(a.Stop):a.KeyAbsenceCapability(self.p,self.root,read_commit=lambda *args:wrong)
+        with self.assertRaisesRegex(a.Stop,'COMMITTED_MANIFEST'):
+            a.KeyAbsenceCapability(self.p,self.root,read_commit=lambda repo,*args:get(repo,*args) if repo==a.GOV else b'drift')
+        self.assertFalse((self.root/'attempt.json').exists())
+    def test_interrupt_each_reservation_never_retries(self):
+        for ordinal in range(1,5):
+            self.reset_run();self.break_at=ordinal;r=self.run_entry()
+            self.assertEqual(r['failure'],'INTERRUPTED');self.assertEqual(len(self.io.calls),ordinal)
+            self.assertTrue(r['privateInputsAbsent']);self.assertNotEqual(r['status'],'KEY_ABSENCE_OBSERVED')
+    def test_cutoff_read_closeout_deadlines_and_clock_rollback(self):
+        for mode,key in [('key-absence','cutoff'),('closeout-key-absence','closeoutEnd')]:
+            with self.assertRaisesRegex(a.Stop,'ENTRY_CUTOFF'):a.run(self.path,mode,self.factory,clock=lambda:a.utc(self.p['window'][key]))
+        with self.assertRaisesRegex(a.Stop,'ENTRY_CUTOFF'):self.run_entry(clock=lambda:a.utc(self.p['window']['start'])-1)
+        cap=a.KeyAbsenceCapability(self.p,self.root);cap.clock=lambda:cap.last-1
+        with self.assertRaisesRegex(a.Stop,'CLOCK_ROLLBACK'):cap.gate()
+        for key,cleanup in [('readEnd',False),('closeoutEnd',True)]:
+            cap.clock=lambda:cap.times[key]
+            with self.assertRaisesRegex(a.Stop,'DEADLINE'):cap.gate(cleanup)
+    def test_independent_pending_and_finished_cleanup_never_calls_io(self):
+        for interrupted in (True,False):
+            self.reset_run();self.break_at=4 if interrupted else None
+            with patch.object(a.KeyAbsenceReader,'closeout',side_effect=SystemExit('exit')):
+                with self.assertRaises(SystemExit):self.run_entry()
+            r=a.run(self.path,'closeout-key-absence',self.factory,clock=lambda:a.utc(self.p['window']['cutoff'])+1)
+            self.assertEqual(self.factory_calls,1);self.assertTrue(r['privateInputsAbsent'])
+            self.assertEqual(r['status'],'CONTAINMENT_UNCONFIRMED' if interrupted else 'KEY_ABSENCE_OBSERVED')
+    def test_native_entry_synthetic_cache_three_gets_and_no_proxy(self):
+        get=self.external();requests=[];responses=[]
+        with tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-key-synthetic-') as tmp:
+            root=Path(tmp);make_cache(root,a.utc(self.p['window']['purgeEnd'])+1000)
+            before={p.relative_to(root):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+            class Response:
+                def __init__(self,status,value):self.status=status;self.value=value;self.closed=False
+                def read(self,n):return json.dumps(self.value).encode()
+                def close(self):self.closed=True
+            def open_request(req,timeout):
+                index=len(requests);requests.append(req)
+                self.assertEqual(a.read(self.root/'journal.json')['pending'],['https',index])
+                r=Response(404 if index==2 else 200,self.value(index));responses.append(r);return r
+            with patch.object(a,'CONFIG_ROOT',root),patch.dict(os.environ,{},clear=True),patch.object(a.urllib.request,'build_opener') as opener:
+                opener.return_value.open.side_effect=open_request
+                r=a.run(self.path,'key-absence',read_commit=get)
+                for call in opener.call_args_list:
+                    self.assertEqual(call.args[0].proxies,{});self.assertIs(call.args[1],a.NoRedirect)
+            self.assertEqual(r['status'],'KEY_ABSENCE_OBSERVED');self.assertTrue(all(x.closed for x in responses))
+            self.assertEqual(len(requests),3)
+            self.assertEqual(before,{p.relative_to(root):p.read_bytes() for p in root.rglob('*') if p.is_file()})
+            for index,req in enumerate(requests):
+                self.assertEqual(req.full_url,a.key_descriptor(index,self.number,self.p['prospectiveAuthenticationOperationId'])['url'])
+                self.assertEqual(req.method,'GET');self.assertIsNone(req.data)
+                self.assertEqual(req.get_header('Authorization'),'Bearer SYNTHETIC_BEARER_NEVER_PERSIST')
+                self.assertEqual(req.get_header('X-goog-user-project'),'signmons')
+    def test_native_final_http_error_404_is_bounded_and_closed(self):
+        get=self.external();cap=a.KeyAbsenceCapability(self.p,self.root,read_commit=get);native=a.KeyAbsenceNativeIO(cap)
+        body=io.BytesIO(json.dumps(self.value(2)).encode())
+        error=a.urllib.error.HTTPError('https://synthetic.invalid',404,'private',{},body)
+        with patch.object(a.urllib.request,'build_opener') as opener:
+            opener.return_value.open.side_effect=error
+            raw=native.https(2,self.number,'SYNTHETIC',cap.times['readEnd'])
+            reader=a.KeyAbsenceReader(cap,None);reader.number=self.number
+            self.assertEqual(reader.key_state(raw),'KEY_ABSENCE_OBSERVED');self.assertEqual(opener.return_value.open.call_count,1)
+        self.assertTrue(body.closed)
+
+    def test_duplicate_concurrent_and_foreign_inventory_refuse(self):
+        AccessTests.test_duplicate_and_concurrent_attempts_refuse(self)
+        self.reset_run();AccessTests.test_foreign_symlink_hardlink_and_wrong_mode_refuse(self)
+
+    def test_forged_journal_refuses_and_missing_journal_does_not_invent_success(self):
+        cap=a.KeyAbsenceCapability(self.p,self.root)
+        a.reserve(self.root/'attempt.json',dict(operationId=self.p['operationId'],planSha256=cap.hash))
+        with self.assertRaises(FileNotFoundError):a.run(self.path,'closeout-key-absence',self.factory)
+        self.assertTrue(self.path.exists());self.assertEqual(self.factory_calls,0)
+        (self.root/'independent-closeout.json').unlink()
+        reader=a.KeyAbsenceReader(cap,None);reader.j['calls']=[['cache',0],['https',9]]
+        a.reserve(self.root/'journal.json',reader.j)
+        with self.assertRaisesRegex(a.Stop,'JOURNAL_SCOPE'):a.run(self.path,'closeout-key-absence',self.factory)
+        self.assertTrue(self.path.exists())
+
+    def test_cli_new_mode_refuses_local_before_cache_and_pre_marker(self):
+        with patch.object(a,'PROJECT_HASH',self.original_project_hash):
+            self.p['projectNumberSha256']=a.PROJECT_HASH;self.p['contractSha256']=a.key_contract_hash();self.seal()
+        r=subprocess.run([sys.executable,'-B',str(a.HERE/'access_check.py'),'--key-absence',str(self.path)],capture_output=True,text=True,timeout=5)
+        self.assertEqual(r.returncode,2);self.assertEqual(r.stderr,'');self.assertFalse((self.root/'attempt.json').exists())
+
+
+    def test_actual_committed_reader_pending_approved_and_source_drift(self):
+        # Disposable Git only; no fixture decision is written to real governance.
+        with tempfile.TemporaryDirectory(dir='/private/tmp',prefix='p08-service-git-proof-') as tmp:
+            repo=Path(tmp)
+            def git(*args):
+                r=subprocess.run(['/usr/bin/git','-C',str(repo),*args],capture_output=True,text=True,timeout=5)
+                self.assertEqual(r.returncode,0,r.stderr);return r.stdout.strip()
+            git('init','-q');git('config','user.name','Synthetic Proof');git('config','user.email','proof@example.invalid')
+            rel=a.HERE.relative_to(a.BACKEND);(repo/rel).mkdir(parents=True)
+            for name in ('source-manifest.json','access_check.py'):(repo/rel/name).write_bytes((a.HERE/name).read_bytes())
+            git('add','.');git('commit','-qm','Synthetic source');self.p['sourceCommit']=git('rev-parse','HEAD')
+            get_fixture=self.external();path=self.p['decision']['path']
+            approved=json.loads(get_fixture(a.GOV,'',path));pending={**approved,'decision':'PENDING_OWNER_APPROVAL'}
+            authority=a.sources()[3]
+            actual=lambda original,commit,path:authority.committed(repo,commit,path)
+            def commit_decision(value):
+                raw=json.dumps(value).encode();(repo/path).write_bytes(raw)
+                git('add',path);git('commit','-qm','Synthetic decision')
+                self.p['decision'].update(commit=git('rev-parse','HEAD'),sha256=a.digest(raw))
+            commit_decision(pending)
+            with self.assertRaisesRegex(a.Stop,'EXACT_OWNER_APPROVAL'):a.KeyAbsenceCapability(self.p,self.root,read_commit=actual)
+            commit_decision(approved)
+            cap=a.KeyAbsenceCapability(self.p,self.root,read_commit=actual)
+            self.assertTrue(cap.external);self.assertFalse((self.root/'attempt.json').exists())
+            (repo/rel/'access_check.py').write_text('synthetic drift')
+            git('add','.');git('commit','-qm','Synthetic drift');self.p['sourceCommit']=git('rev-parse','HEAD')
+            # Rebind exact decision scope, so committed-source validation itself is exercised.
+            approved['scopeSha256']=a.digest({k:v for k,v in self.p.items() if k!='decision'});commit_decision(approved)
+            with self.assertRaisesRegex(a.Stop,'COMMITTED_SOURCE'):a.KeyAbsenceCapability(self.p,self.root,read_commit=actual)
+
+
+    def test_close_failure_and_purge_failure_never_claim_containment(self):
+        self.close_failure=True;r=self.run_entry()
+        self.assertIn('PROCESS_CLOSE_UNCONFIRMED',r['residuals']);self.assertEqual(r['status'],'CONTAINMENT_UNCONFIRMED')
+        self.reset_run();self.close_failure=False
+        original=Path.unlink
+        def cannot_purge(path,*args,**kwargs):
+            if path==self.path:raise PermissionError('synthetic refusal')
+            return original(path,*args,**kwargs)
+        with patch.object(Path,'unlink',cannot_purge):r=self.run_entry()
+        self.assertFalse(r['privateInputsAbsent']);self.assertIn('PRIVATE_PURGE_UNCONFIRMED',r['residuals'])
+        self.assertTrue(self.path.exists())
+
+
+    def test_purge_deadline_and_private_reference_clear_on_closeout_failure(self):
+        cap=a.KeyAbsenceCapability(self.p,self.root);reader=a.KeyAbsenceReader(cap,KeyFakeIO(self,cap))
+        # Gate first succeeds; clock advances to the exact purge cutoff before unlink.
+        original=reader.save
+        def save_then_expire():
+            original()
+            if reader.j['phase']=='CLOSED':cap.clock=lambda:cap.times['purgeEnd']
+        with patch.object(reader,'save',side_effect=save_then_expire):r=reader.closeout()
+        self.assertFalse(r['privateInputsAbsent']);self.assertIn('PRIVATE_PURGE_UNCONFIRMED',r['residuals'])
+        self.reset_run();captured=[];original_init=a.KeyAbsenceReader.__init__
+        def capture(obj,*args):original_init(obj,*args);captured.append(obj)
+        with patch.object(a.KeyAbsenceReader,'__init__',capture),patch.object(a.KeyAbsenceReader,'closeout',side_effect=SystemExit('crash')):
+            with self.assertRaises(SystemExit):self.run_entry()
+        self.assertEqual(captured[0].token,'');self.assertIsNone(captured[0].number)
+
+
+    def test_persistent_journal_failure_leaves_private_cleanup_unconfirmed(self):
+        original=os.replace
+        def unavailable(source,dest):
+            if a.read(Path(source)).get('pending')==['https',2]:raise a.Stop('INTERRUPTED')
+            return original(source,dest)
+        with patch.object(a.os,'replace',side_effect=unavailable):
+            with self.assertRaisesRegex(a.Stop,'INTERRUPTED'):self.run_entry()
+        self.assertTrue(self.path.exists());self.assertFalse((self.root/'result.json').exists())
+        self.assertTrue(self.io.closed);self.assertNotIn(('https',2),self.io.calls)
+
+
+    def test_native_timeout_redirect_oversize_and_request_ceiling(self):
+        get=self.external();cap=a.KeyAbsenceCapability(self.p,self.root,read_commit=get);native=a.KeyAbsenceNativeIO(cap)
+        class Response:
+            status=200;closed=False;raw=b'{}';slow=False
+            def read(self,n):
+                if self.slow:time.sleep(.1)
+                return self.raw
+            def close(self):self.closed=True
+        for status,raw,slow,code in [(302,b'{}',False,'HTTP_REDIRECT'),(404,b'x'*65537,False,'HTTP_OUTPUT_SIZE'),(404,b'{}',True,'HTTP_TIMEOUT')]:
+            response=Response();response.status=status;response.raw=raw;response.slow=slow
+            with patch.object(a.urllib.request,'build_opener') as opener:
+                opener.return_value.open.return_value=response
+                with self.assertRaisesRegex(a.Stop,code):native.https(2,self.number,'SYNTHETIC',time.time()+.02)
+                self.assertEqual(opener.return_value.open.call_count,1)
+            self.assertTrue(response.closed)
+        with patch.object(a.urllib.request,'build_opener') as opener:
+            for index in (-1,3,True):
+                with self.assertRaisesRegex(a.Stop,'HTTP_SCOPE'):native.https(index,self.number,'SYNTHETIC',cap.times['readEnd'])
+            opener.assert_not_called()
+        reader=a.KeyAbsenceReader(cap,None);reader.j['calls']=list(a.KEY_CALLS)
+        with self.assertRaisesRegex(a.Stop,'CALL_LIMIT'):reader.call('https',2)
+    def test_atomic_journal_interruption_stops_before_transport(self):
+        original=os.replace;failed=[False]
+        def interrupted(source,dest):
+            if a.read(Path(source)).get('pending')==['https',2] and not failed[0]:
+                failed[0]=True;raise a.Stop('INTERRUPTED')
+            return original(source,dest)
+        with patch.object(a.os,'replace',side_effect=interrupted):r=self.run_entry()
+        self.assertEqual(r['failure'],'INTERRUPTED');self.assertNotIn(('https',2),self.io.calls)
+        self.assertIn('JOURNAL_WRITE_INTERRUPTED',r['residuals']);self.assertTrue(r['privateInputsAbsent'])
+    def test_expired_cache_and_read_deadline_stop_before_key(self):
+        with patch.object(KeyFakeIO,'cached_token',side_effect=a.Stop('CACHED_TOKEN_EXPIRED')):r=self.run_entry()
+        self.assertEqual(r['counts'],dict(cache=1,https=0,cli=0));self.assertTrue(r['privateInputsAbsent'])
+        self.reset_run();now=[a.utc(self.p['window']['start'])+1];original=KeyFakeIO.https
+        def expires(obj,*args,**kwargs):
+            result=original(obj,*args,**kwargs)
+            if args[0]==1:now[0]=a.utc(self.p['window']['readEnd'])
+            return result
+        with patch.object(KeyFakeIO,'https',expires):r=self.run_entry(clock=lambda:now[0])
+        self.assertEqual(r['failure'],'DEADLINE');self.assertNotIn(('https',2),self.io.calls)
+        self.assertEqual(r['counts']['https'],2);self.assertTrue(r['privateInputsAbsent'])
+
 if __name__=='__main__':unittest.main()

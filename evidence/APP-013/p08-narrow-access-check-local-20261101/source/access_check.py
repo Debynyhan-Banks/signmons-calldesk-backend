@@ -679,11 +679,139 @@ class ServiceReader(Reader):
         super().clear_private();self.operation=None
 
 
+KEY_LIMITS={'cli':0,'https':3,'cache':1,'sql':0,'mutations':0,'retry':0}
+KEY_CALLS=[['cache',0]]+[['https',i] for i in range(3)]
+KEY_STATES={'NOT_RUN','KEY_ABSENCE_OBSERVED','KEY_PRESENT_STOP','KEY_ACCESS_DENIED','KEY_RESPONSE_UNKNOWN'}
+
+def prospective_key(operation):
+    need(isinstance(operation,str),'TARGET_UUID')
+    try:canonical=str(uuid.UUID(operation))
+    except (ValueError,AttributeError):raise Stop('TARGET_UUID') from None
+    need(canonical==operation,'TARGET_UUID')
+    return 'signmons-p08-'+operation.replace('-','')
+
+def key_descriptor(index,number,operation):
+    need(type(index) is int and 0<=index<3,'HTTP_SCOPE')
+    key=prospective_key(operation)
+    if index==0:return http_contract()[0]
+    need(isinstance(number,str) and re.fullmatch(r'[0-9]{6,20}',number),'PROJECT_NUMBER')
+    if index==1:return http_contract(number)[5]
+    return {'method':'GET','url':f'https://apikeys.googleapis.com/v2/projects/{number}/locations/global/keys/{key}','body':None}
+
+def key_contract_hash():
+    return digest({'version':4,'https':[key_descriptor(i,'000000','00000000-0000-0000-0000-000000000001') for i in range(3)],
+                   'cache':'EXACT_OWNER_CACHED_TOKEN_NO_REFRESH','limits':KEY_LIMITS,
+                   'runtime':LOCAL_RUNTIME,'projectHash':PROJECT_HASH,'target':'CANONICAL_DISTINCT_UUID_DERIVED_KEY'})
+
+class KeyAbsenceCapability(ReadCapability):
+    version=4
+    limits=KEY_LIMITS
+    extra_fields={'prospectiveAuthenticationOperationId','prospectiveKeyId'}
+    local_decision='APPROVE_LOCAL_KEY_ABSENCE_PROOF'
+    decision_pattern=r'APP013_P08_KEY_ABSENCE_OPERATION_[0-9]{8}\.json'
+
+    def __init__(self,p,*args,**kwargs):
+        need(isinstance(p,dict),'PLAN_SHAPE')
+        key=prospective_key(p.get('prospectiveAuthenticationOperationId'))
+        prospective_key(p.get('operationId'))
+        need(p['operationId']!=p['prospectiveAuthenticationOperationId'] and p.get('prospectiveKeyId')==key,'TARGET_SCOPE')
+        super().__init__(p,*args,**kwargs)
+
+    def contract_digest(self):return key_contract_hash()
+
+    def owner_decision(self,scope):
+        return {'decision':'APPROVE_EXACT_P08_KEY_ABSENCE_READ','owner':'Debynyhan Banks',
+                'operationId':self.p['operationId'],'scopeSha256':scope,
+                'sourceManifestSha256':self.p['sourceManifestSha256'],'readOnly':True,
+                'prospectiveAuthenticationOperationId':self.p['prospectiveAuthenticationOperationId'],
+                'prospectiveKeyId':self.p['prospectiveKeyId']}
+
+class KeyAbsenceNativeIO(NativeIO):
+    capability_type=KeyAbsenceCapability
+
+    def https(self,index,number,token,deadline):
+        need(not self.closed,'TRANSPORT_CLOSED');self.cap.gate()
+        return self.request(key_descriptor(index,number,self.cap.p['prospectiveAuthenticationOperationId']),token,deadline)
+
+class KeyAbsenceReader(Reader):
+    journal_fields=Reader.journal_fields | {'targetSha256','keyState'}
+
+    def __init__(self,cap,io):
+        super().__init__(cap,io)
+        self.j.update(targetSha256=digest(cap.p['prospectiveKeyId']),keyState='NOT_RUN')
+
+    def call(self,kind,index):
+        self.cap.gate();ordinal=len(self.j['calls'])
+        need(ordinal<len(KEY_CALLS),'CALL_LIMIT')
+        need([kind,index]==KEY_CALLS[ordinal],'CALL_ORDER')
+        self.j['calls'].append([kind,index]);self.j['pending']=[kind,index]
+        self.j['transportSettled']=False;self.save()
+        result=self.io.cached_token(self.cap.times['readEnd']) if kind=='cache' else self.io.https(index,self.number,self.token,self.cap.times['readEnd'])
+        self.cap.gate();self.j['pending']=None;self.j['transportSettled']=True;self.save()
+        return result
+
+    def key_state(self,raw):
+        if not isinstance(raw,dict) or set(raw)!={'status','body'} or type(raw['status']) is not int:return 'KEY_RESPONSE_UNKNOWN'
+        if raw['status'] in (401,403):return 'KEY_ACCESS_DENIED'
+        try:value=self.cap.q.bounded_https_json(raw['body'])
+        except Exception:return 'KEY_RESPONSE_UNKNOWN'
+        if not isinstance(value,dict):return 'KEY_RESPONSE_UNKNOWN'
+        if raw['status']==200:
+            expected=key_descriptor(2,self.number,self.cap.p['prospectiveAuthenticationOperationId'])['url'].split('/v2/')[1]
+            return 'KEY_PRESENT_STOP' if value.get('name')==expected else 'KEY_RESPONSE_UNKNOWN'
+        error=value.get('error')
+        if (raw['status']==404 and isinstance(error,dict) and error.get('status')=='NOT_FOUND' and
+            ('code' not in error or type(error['code']) is int and error['code']==404)):
+            return 'KEY_ABSENCE_OBSERVED'
+        return 'KEY_RESPONSE_UNKNOWN'
+
+    def execute(self):
+        self.token=self.call('cache',0);validate_token(self.token)
+        project=self.http_json(0)
+        need(set(project)=={'projectId','projectNumber','lifecycleState'} and
+             project['projectId']=='signmons' and project['lifecycleState']=='ACTIVE' and
+             isinstance(project['projectNumber'],str) and re.fullmatch(r'[0-9]{6,20}',project['projectNumber']) and
+             digest(project['projectNumber'])==PROJECT_HASH,'PROJECT_DRIFT')
+        self.number=project['projectNumber']
+        value=self.http_json(1)
+        need(value.get('name')==f'projects/{self.number}/services/apikeys.googleapis.com' and
+             value.get('state') in ('ENABLED','DISABLED'),'SERVICE_SHAPE')
+        self.j['service']=value['state'];self.save()
+        need(self.j['service']=='ENABLED','SERVICE_DISABLED')
+        self.j['keyState']=self.key_state(self.call('https',2))
+        self.j['phase']='READ_FINISHED';self.save()
+
+    def validate_journal(self):
+        j=self.j;calls=j['calls']
+        need(set(j)==self.journal_fields and j['operationId']==self.cap.p['operationId'] and
+             j['planSha256']==self.cap.hash and j['contractSha256']==self.cap.contract_digest() and
+             j['targetSha256']==digest(self.cap.p['prospectiveKeyId']),'JOURNAL_BINDING')
+        need(isinstance(calls,list) and len(calls)<=len(KEY_CALLS) and calls==KEY_CALLS[:len(calls)],'JOURNAL_SCOPE')
+        need(j['pending'] is None or (calls and j['pending']==calls[-1]),'JOURNAL_PENDING')
+        need(type(j['transportSettled']) is bool and j['keyState'] in KEY_STATES and
+             j['service'] in ('NOT_RUN','ENABLED','DISABLED') and j['permissions']==j['roles']=='NOT_RUN' and
+             j['phase'] in ('PREPARED','READ_FINISHED','CLOSED') and isinstance(j['residuals'],list) and
+             all(isinstance(v,str) and re.fullmatch('[A-Z_]+',v) for v in j['residuals']) and
+             (j['failure'] is None or isinstance(j['failure'],str) and re.fullmatch('[A-Z_]+',j['failure'])), 'JOURNAL_STATE')
+        need(j['keyState']=='NOT_RUN' or calls==KEY_CALLS and j['pending'] is None and j['service']=='ENABLED','JOURNAL_STATE')
+
+    def observation(self):
+        self.validate_journal()
+        return (self.j['phase']=='READ_FINISHED' and self.j['calls']==KEY_CALLS and self.j['pending'] is None and
+                self.j['failure'] is None and self.j['service']=='ENABLED' and self.j['keyState']=='KEY_ABSENCE_OBSERVED')
+
+    def result_status(self,observed):
+        if observed:return 'KEY_ABSENCE_OBSERVED'
+        if self.j['keyState'] in ('KEY_PRESENT_STOP','KEY_ACCESS_DENIED','KEY_RESPONSE_UNKNOWN'):return self.j['keyState']
+        return 'KEY_ABSENCE_STOPPED'
+
+
 def run(path,mode='read',io_factory=None,clock=time.time,read_commit=None):
     path=Path(path);need(path.name=='plan.json','PLAN_PATH')
-    need(mode in ('read','closeout','enable','closeout-enable'),'ENTRY_MODE')
-    service=mode in ('enable','closeout-enable');cleanup=mode in ('closeout','closeout-enable')
+    need(mode in ('read','closeout','enable','closeout-enable','key-absence','closeout-key-absence'),'ENTRY_MODE')
+    service=mode in ('enable','closeout-enable');cleanup=mode in ('closeout','closeout-enable','closeout-key-absence')
     cap_type,reader_type,native_type=(ServiceCapability,ServiceReader,ServiceNativeIO) if service else (ReadCapability,Reader,NativeIO)
+    if mode in ('key-absence','closeout-key-absence'):cap_type,reader_type,native_type=KeyAbsenceCapability,KeyAbsenceReader,KeyAbsenceNativeIO
     cap=cap_type(read(path),path.parent,'closeout' if cleanup else 'read',clock,read_commit)
     io_factory=io_factory or native_type
     fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW,0o600)
@@ -724,9 +852,9 @@ def run(path,mode='read',io_factory=None,clock=time.time,read_commit=None):
 def main(argv):
     if argv==['--check-source']:
         sources();print(json.dumps(native_readiness()));return 0
-    need(len(argv)==2 and argv[0] in ('--read','--closeout','--enable','--closeout-enable'),'ENTRY_UNBOUND')
+    need(len(argv)==2 and argv[0] in ('--read','--closeout','--enable','--closeout-enable','--key-absence','--closeout-key-absence'),'ENTRY_UNBOUND')
     result=run(argv[1],argv[0][2:]);print(json.dumps(result))
-    return 0 if result['status'] in ('NARROW_ACCESS_OBSERVED','SERVICE_ENABLEMENT_OBSERVED','SERVICE_PREEXISTING_ENABLED') else 2
+    return 0 if result['status'] in ('NARROW_ACCESS_OBSERVED','SERVICE_ENABLEMENT_OBSERVED','SERVICE_PREEXISTING_ENABLED','KEY_ABSENCE_OBSERVED') else 2
 
 if __name__=='__main__':
     try:raise SystemExit(main(sys.argv[1:]))
