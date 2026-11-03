@@ -1,0 +1,30 @@
+{
+  "section": "R1-W01/APP-013/3A/P08",
+  "timestamp": "2026-11-03T15:26:19.908003+00:00",
+  "approvalCardCommit": "48bc2a9",
+  "entryBackend": "9cad4b6",
+  "status": "ROLE_CONTRACT_LOCAL_VERIFIED",
+  "unitTests": 110,
+  "disposablePostgresTests": 7,
+  "providerCalls": 0,
+  "liveObserved": false,
+  "executionReady": false,
+  "ownedServerReaped": true,
+  "ownedScratchAbsent": true,
+  "files": {
+    "access_check.py": "50994959a47400f651ee37ad4591cde486fbcf417d31b4eccecddf1564f7bf70",
+    "test_access_check.py": "b84eeac03a108f960eab545538a41072cff6852de6f071c1493f0b2ce9709f23",
+    "test_retired_role_postgres.py": "819569f9e1b503e12c5684624f12630b7c9ace117e7ba5dceeb229fcc70fa579",
+    "source-manifest.json": "4a3b0b03f15ab12f5bd480e5560cdd30e02637241103f0a18c8edad6a3aafd74",
+    "test-manifest.json": "99ccebc088ae979be7faea9476fdb20425a3c6b67495fe6f03e09915128a73dc"
+  },
+  "governanceTests": 25,
+  "checks": {
+    "source": "PASS",
+    "architecture": "PASS",
+    "frozenBaseline": "PASS",
+    "crossRepository": "PASS",
+    "docsConsistency": "PASS",
+    "whitespace": "PASS"
+  }
+}

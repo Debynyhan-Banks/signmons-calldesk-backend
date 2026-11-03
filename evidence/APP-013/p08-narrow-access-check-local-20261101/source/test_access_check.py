@@ -22,7 +22,7 @@ import access_check as a
 class ManifestTests(unittest.TestCase):
     def verify(self,manifest):
         self.assertEqual(manifest['runtimeManifestSha256'],a.digest((a.HERE/'source-manifest.json').read_bytes()))
-        self.assertEqual(set(manifest['files']),{'test_access_check.py'})
+        self.assertEqual(set(manifest['files']),{'test_access_check.py','test_retired_role_postgres.py'})
         for name,expected in manifest['files'].items():
             self.assertEqual(a.digest((a.HERE/name).read_bytes()),expected)
         self.assertTrue(manifest['sdkReviewFiles'])
@@ -1228,5 +1228,113 @@ class KeyAbsenceTests(unittest.TestCase):
         with patch.object(KeyFakeIO,'https',expires):r=self.run_entry(clock=lambda:now[0])
         self.assertEqual(r['failure'],'DEADLINE');self.assertNotIn(('https',2),self.io.calls)
         self.assertEqual(r['counts']['https'],2);self.assertTrue(r['privateInputsAbsent'])
+
+class RetiredRoleTests(unittest.TestCase):
+    def setUp(self):
+        self.expected={'fixtureSha256':a.ROLE_FIXTURE_SHA,'database':'local_role_proof','user':'local_owner','acl':a.expected_retired_acl()}
+        rows=copy.deepcopy(self.expected['acl'])
+        for row in rows:
+            if row['kind']=='database':row['object']=self.expected['database']
+        self.value=dict(role=a.RETIRED_ROLE,database=self.expected['database'],user=self.expected['user'],count=1,
+                        login=False,limit=0,expiryFinite=True,expired=True,unsafe=False,memberships=0,owned=0,
+                        sessions=0,schemaCreate=False,databaseTemp=False,acl=rows)
+        for method in ('connect','connect_ex'):
+            p=patch.object(socket.socket,method,side_effect=AssertionError('NETWORK_FORBIDDEN'));p.start();self.addCleanup(p.stop)
+    def classify(self):return a.classify_retired_role(self.value,self.expected['acl'])
+    def test_exact_retained_role_has_local_hashes_only(self):
+        result=self.classify();self.assertEqual(result['status'],'ROLE_CONTRACT_LOCAL_VERIFIED')
+        self.assertFalse(result['liveObserved']);self.assertFalse(result['executionReady'])
+        self.assertNotIn(self.expected['database'],json.dumps(result));self.assertNotIn('acl',result)
+        self.assertEqual(len(result['roleAclSha256']),64)
+    def test_absent_multiple_and_unsafe_role_refuse(self):
+        for key,value in [('count',0),('count',2),('login',True),('limit',6),('expiryFinite',False),
+                          ('expired',False),('unsafe',True),('memberships',1),('owned',1),('sessions',1),
+                          ('schemaCreate',True),('databaseTemp',True)]:
+            with self.subTest(key=key),patch.dict(self.value,{key:value}),self.assertRaisesRegex(a.Stop,'ROLE_NOT_READY'):self.classify()
+    def test_missing_null_wrong_type_identity_and_extra_fields_refuse(self):
+        original=copy.deepcopy(self.value)
+        for key in original:
+            self.value=copy.deepcopy(original);del self.value[key]
+            with self.subTest(missing=key),self.assertRaises(a.Stop):self.classify()
+            self.value=copy.deepcopy(original);self.value[key]=None
+            with self.subTest(null=key),self.assertRaises(a.Stop):self.classify()
+        for key,value in [('limit',False),('count',True),('owned',0.0),('expired',1),('role','foreign')]:
+            self.value=copy.deepcopy(original);self.value[key]=value
+            with self.subTest(key=key),self.assertRaises(a.Stop):self.classify()
+        self.value=original;self.value['extra']=True
+        with self.assertRaises(a.Stop):self.classify()
+    def test_complete_acl_rejects_missing_extra_duplicate_grant_option_and_column_drift(self):
+        original=copy.deepcopy(self.value['acl'])
+        for change in ('missing','extra_column','extra_table','grant','duplicate','malformed','foreign_database','routine','default'):
+            rows=copy.deepcopy(original)
+            if change=='missing':rows.pop()
+            elif change=='duplicate':rows.append(rows[0])
+            elif change=='grant':rows[0]['is_grantable']=True
+            elif change=='malformed':rows[0]['is_grantable']=0
+            else:
+                rows.append(dict(kind={'extra_column':'column','extra_table':'relation','foreign_database':'database'}.get(change,change),
+                                 object='public.Job' if change.startswith('extra') else 'foreign',column='status' if change=='extra_column' else '',privilege_type='UPDATE',is_grantable=False))
+            self.value['acl']=rows
+            with self.subTest(change=change),self.assertRaises(a.Stop):self.classify()
+    def test_expected_acl_cannot_be_rebased_to_observed(self):
+        self.value['acl']=[]
+        with self.assertRaisesRegex(a.Stop,'ROLE_EXPECTATION_DRIFT'):a.classify_retired_role(self.value,[])
+        self.value['acl']=a.expected_retired_acl();self.value['acl'][0]['is_grantable']=True
+        with self.assertRaisesRegex(a.Stop,'ROLE_EXPECTATION_DRIFT'):a.classify_retired_role(self.value,self.value['acl'])
+    def test_readonly_query_has_columns_and_fixed_target_no_business_mutations(self):
+        query=a.retired_role_query()
+        for required in ('READ ONLY','pg_attribute','t.attacl','statement_timeout','lock_timeout',"rolname='p07_payment_runtime'",'ROLLBACK'):
+            self.assertIn(required,query)
+        for word in ('ALTER ROLE','CREATE ROLE','GRANT ','DROP ','pg_terminate_backend','PASSWORD'):self.assertNotIn(word,query)
+    def test_injected_proof_executes_once_and_closes(self):
+        case=self
+        class IO:
+            proof=True;calls=0;closed=False
+            def sql(self,query,deadline):
+                case.assertEqual(query,a.retired_role_query());self.calls+=1;return json.dumps(case.value).encode()
+            def close(self,deadline):self.closed=True;return True
+        io=IO();result=a.retired_role_evidence(io,self.expected,time.time()+5)
+        self.assertEqual(io.calls,1);self.assertTrue(io.closed);self.assertEqual(result['status'],'ROLE_CONTRACT_LOCAL_VERIFIED')
+        io=IO();io.proof=False
+        with self.assertRaisesRegex(a.Stop,'ROLE_LOCAL_ONLY'):a.retired_role_evidence(io,self.expected,time.time()+5)
+        self.assertEqual(io.calls,0)
+    def test_deadline_clock_rollback_interruption_bad_output_and_cleanup_failure(self):
+        case=self
+        class IO:
+            proof=True;calls=0;closed=False;raw=b'{}';failure=None;close_result=True
+            def sql(self,query,deadline):
+                self.calls+=1
+                if self.failure:raise self.failure
+                return self.raw
+            def close(self,deadline):self.closed=True;return self.close_result
+        for raw in (b'{}',b'null',b'\xff',b'x'*65537):
+            io=IO();io.raw=raw
+            with self.assertRaises(a.Stop):a.retired_role_evidence(io,self.expected,time.time()+5)
+            self.assertEqual(io.calls,1);self.assertTrue(io.closed)
+        for failure in (KeyboardInterrupt(),RuntimeError('PRIVATE_ERROR'),a.Stop('INTERRUPTED')):
+            io=IO();io.failure=failure
+            with self.assertRaises(a.Stop) as error:a.retired_role_evidence(io,self.expected,time.time()+5)
+            self.assertNotIn('PRIVATE_ERROR',str(error.exception));self.assertEqual(io.calls,1);self.assertTrue(io.closed)
+        io=IO()
+        with self.assertRaisesRegex(a.Stop,'DEADLINE'):a.retired_role_evidence(io,self.expected,1,clock=lambda:1)
+        self.assertEqual(io.calls,0);self.assertTrue(io.closed)
+        io=IO();io.raw=json.dumps(self.value).encode();times=iter([2,1])
+        with self.assertRaisesRegex(a.Stop,'DEADLINE'):a.retired_role_evidence(io,self.expected,5,clock=lambda:next(times))
+        self.assertTrue(io.closed)
+        io=IO();io.raw=json.dumps(self.value).encode();times=iter([1,2,6])
+        with self.assertRaisesRegex(a.Stop,'DEADLINE'):a.retired_role_evidence(io,self.expected,5,clock=lambda:next(times))
+        self.assertTrue(io.closed)
+        io=IO();io.close_result=False
+        with self.assertRaisesRegex(a.Stop,'ROLE_CLEANUP_UNCONFIRMED'):a.retired_role_evidence(io,self.expected,time.time()+5)
+    def test_fixture_hash_and_expected_identity_refuse(self):
+        class IO:
+            proof=True;closed=False
+            def sql(obj,query,deadline):return json.dumps(self.value).encode()
+            def close(obj,deadline):obj.closed=True;return True
+        bad={**self.expected,'fixtureSha256':'0'*64}
+        with self.assertRaisesRegex(a.Stop,'ROLE_EXPECTATION_DRIFT'):a.retired_role_evidence(IO(),bad,time.time()+5)
+        io=IO()
+        with self.assertRaisesRegex(a.Stop,'ROLE_IDENTITY_UNKNOWN'):a.retired_role_evidence(io,{**self.expected,'user':'foreign'},time.time()+5)
+        self.assertTrue(io.closed)
 
 if __name__=='__main__':unittest.main()

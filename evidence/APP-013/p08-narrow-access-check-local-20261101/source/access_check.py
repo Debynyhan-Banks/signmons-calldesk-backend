@@ -806,6 +806,116 @@ class KeyAbsenceReader(Reader):
         return 'KEY_ABSENCE_STOPPED'
 
 
+# Local-only current-state contract proof. No native SQL transport or CLI entry.
+ROLE_FIXTURE_SHA='35785d3857f6fc9b01042d6dee3137eebb18950601fb1b8e7644e340be8fb83c'
+RETIRED_ROLE='p07_payment_runtime'
+
+def expected_retired_acl():
+    rows=[]
+    def add(kind,obj,privilege,columns=('',)):
+        rows.extend(dict(kind=kind,object=obj,column=column,privilege_type=privilege,is_grantable=False) for column in columns)
+    add('schema','public','USAGE')
+    add('database','$DATABASE','CONNECT')
+    for table in ('Job','Payment','StripeEvent','AuditLog','ServiceCategory','User','RoutingRule','ServiceArea'):
+        add('relation','public.'+table,'SELECT')
+    grants={
+      ('TenantOrganization','SELECT'):'id status settings stripeConnectAccountId chargesEnabled timezone',
+      ('TenantOrganization','UPDATE'):'updatedAt',
+      ('Job','UPDATE'):'policySnapshot pricingSnapshot updatedAt',
+      ('CalendarOperation','SELECT'):'id tenantId jobId finishedAt',
+      ('Payment','INSERT'):'id tenantId jobId jobTenantId status requestKeyHash requestedAt destinationAccountId amountTotalCents applicationFeeAmountCents currency refundStatus createdAt updatedAt',
+      ('Payment','UPDATE'):'status requestKeyHash requestedAt checkoutExpiresAt stripeCheckoutSessionId stripePaymentIntentId stripeChargeId destinationAccountId amountTotalCents applicationFeeAmountCents currency refundStatus refundAmountCents stripeRefundId refundReason updatedAt',
+      ('StripeEvent','INSERT'):'id tenantId stripeEventId type payload processingStatus receivedAt',
+      ('StripeEvent','UPDATE'):'processingStatus processedAt errorMessage',
+      ('AuditLog','INSERT'):'id tenantId action actorType actorUserId actorUserTenantId actorId entityType entityId metadata traceId createdAt',
+      ('UserServiceCapability','SELECT'):'id tenantId userId userTenantId serviceCategoryId serviceCategoryTenantId isEnabled proficiency',
+      ('UserAvailabilityBlock','SELECT'):'id tenantId userId userTenantId type startAt endAt',
+      ('PropertyAddress','SELECT'):'id tenantId addressComponents formattedAddress'}
+    for (table,privilege),columns in grants.items():add('column','public.'+table,privilege,columns.split())
+    return sorted(rows,key=lambda row:(row['kind'],row['object'],row['column'],row['privilege_type'],row['is_grantable']))
+
+def retired_role_query():
+    return """BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s';
+WITH r AS (SELECT * FROM pg_roles WHERE rolname='p07_payment_runtime'), grants AS (
+ SELECT 'relation' AS kind,n.nspname||'.'||c.relname AS object,''::text AS "column",a.privilege_type,a.is_grantable FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL aclexplode(c.relacl) a WHERE a.grantee=(SELECT oid FROM r)
+ UNION ALL SELECT 'column',n.nspname||'.'||c.relname,t.attname,a.privilege_type,a.is_grantable FROM pg_attribute t JOIN pg_class c ON c.oid=t.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL aclexplode(t.attacl) a WHERE t.attnum>0 AND a.grantee=(SELECT oid FROM r)
+ UNION ALL SELECT 'schema',n.nspname,'',a.privilege_type,a.is_grantable FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) a WHERE a.grantee=(SELECT oid FROM r)
+ UNION ALL SELECT 'routine',p.oid::regprocedure::text,'',a.privilege_type,a.is_grantable FROM pg_proc p CROSS JOIN LATERAL aclexplode(p.proacl) a WHERE a.grantee=(SELECT oid FROM r)
+ UNION ALL SELECT 'database',d.datname,'',a.privilege_type,a.is_grantable FROM pg_database d CROSS JOIN LATERAL aclexplode(d.datacl) a WHERE a.grantee=(SELECT oid FROM r)
+ UNION ALL SELECT 'default',d.defaclnamespace::text||':'||d.defaclobjtype::text,'',a.privilege_type,a.is_grantable FROM pg_default_acl d CROSS JOIN LATERAL aclexplode(d.defaclacl) a WHERE a.grantee=(SELECT oid FROM r)
+)
+SELECT json_build_object('role','p07_payment_runtime','database',current_database(),'user',current_user,
+ 'count',(SELECT count(*) FROM r),'login',(SELECT rolcanlogin FROM r),'limit',(SELECT rolconnlimit FROM r),
+ 'expiryFinite',(SELECT isfinite(rolvaliduntil) FROM r),'expired',(SELECT rolvaliduntil<now() FROM r),
+ 'unsafe',(SELECT rolinherit OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls FROM r),
+ 'memberships',(SELECT count(*) FROM pg_auth_members WHERE member=(SELECT oid FROM r) OR roleid=(SELECT oid FROM r)),
+ 'owned',(SELECT count(*) FROM pg_shdepend WHERE refclassid='pg_authid'::regclass AND refobjid=(SELECT oid FROM r) AND deptype='o'),
+ 'sessions',(SELECT count(*) FROM pg_stat_activity WHERE usename='p07_payment_runtime'),
+ 'schemaCreate',has_schema_privilege((SELECT oid FROM r),'public','CREATE'),
+ 'databaseTemp',has_database_privilege((SELECT oid FROM r),current_database(),'TEMP'),
+ 'acl',COALESCE((SELECT json_agg(row_to_json(g) ORDER BY kind COLLATE "C",object COLLATE "C","column" COLLATE "C",privilege_type COLLATE "C",is_grantable) FROM grants g),'[]'::json))::text;
+ROLLBACK;"""
+
+def classify_retired_role(observation,expected_acl):
+    # An expectation cannot be chosen from the observation being judged.
+    need(expected_acl==expected_retired_acl(),'ROLE_EXPECTATION_DRIFT')
+    fields={'role','database','user','count','login','limit','expiryFinite','expired','unsafe',
+            'memberships','owned','sessions','schemaCreate','databaseTemp','acl'}
+    need(isinstance(observation,dict) and set(observation)==fields,'ROLE_OUTPUT_UNKNOWN')
+    v=observation
+    need(v['role']==RETIRED_ROLE and all(isinstance(v[k],str) and 0<len(v[k])<=128 for k in ('database','user')),'ROLE_IDENTITY_UNKNOWN')
+    need(type(v['count']) is int and v['count']>=0,'ROLE_OUTPUT_UNKNOWN')
+    need(v['count']==1,'ROLE_NOT_READY')
+    need(all(type(v[k]) is bool for k in ('login','expiryFinite','expired','unsafe','schemaCreate','databaseTemp')) and
+         all(type(v[k]) is int and v[k]>=0 for k in ('limit','memberships','owned','sessions')),'ROLE_OUTPUT_UNKNOWN')
+    need(v['login'] is False and v['limit']==0 and v['expiryFinite'] and v['expired'] and not v['unsafe'] and
+         v['memberships']==v['owned']==v['sessions']==0 and not v['schemaCreate'] and not v['databaseTemp'],'ROLE_NOT_READY')
+    rows=v['acl'];need(isinstance(rows,list) and len(rows)<=512,'ROLE_ACL_UNKNOWN')
+    normalized=[];legacy=[];seen=set()
+    for row in rows:
+        need(isinstance(row,dict) and set(row)=={'kind','object','column','privilege_type','is_grantable'} and
+             all(isinstance(row[k],str) and len(row[k])<=512 for k in ('kind','object','column','privilege_type')) and
+             type(row['is_grantable']) is bool,'ROLE_ACL_UNKNOWN')
+        key=(row['kind'],row['object'],row['column'],row['privilege_type'],row['is_grantable'])
+        need(key not in seen,'ROLE_ACL_UNKNOWN');seen.add(key)
+        item=dict(row)
+        if item['kind']=='database' and item['object']==v['database']:item['object']='$DATABASE'
+        normalized.append(item)
+        if row['kind']!='column':legacy.append({k:val for k,val in row.items() if k!='column'})
+    normalized.sort(key=lambda row:(row['kind'],row['object'],row['column'],row['privilege_type'],row['is_grantable']))
+    need(normalized==expected_acl,'ROLE_ACL_DRIFT')
+    legacy.sort(key=lambda row:(row['kind'],row['object'],row['privilege_type'],row['is_grantable']))
+    return {'status':'ROLE_CONTRACT_LOCAL_VERIFIED','fullAclSha256':digest(normalized),
+            'roleAclSha256':digest(legacy),'aclRows':len(rows),'liveObserved':False,'executionReady':False}
+
+def retired_role_evidence(io,expected,deadline,clock=time.time):
+    """Local injected proof only; no native credentials, connection factory or CLI mode."""
+    need(getattr(io,'proof',None) is True,'ROLE_LOCAL_ONLY')
+    need(isinstance(expected,dict) and set(expected)=={'fixtureSha256','database','user','acl'} and
+         expected['fixtureSha256']==ROLE_FIXTURE_SHA and expected['acl']==expected_retired_acl(),'ROLE_EXPECTATION_DRIFT')
+    need(all(isinstance(expected[k],str) and expected[k] for k in ('database','user')),'ROLE_EXPECTATION_DRIFT')
+    value=None;raw=None;result=None;failure=None;started=clock()
+    try:
+        need(started<deadline,'DEADLINE')
+        raw=io.sql(retired_role_query(),deadline)
+        need(started<=clock()<deadline,'DEADLINE')
+        need(isinstance(raw,bytes) and len(raw)<=MAX_OUTPUT,'ROLE_OUTPUT_UNKNOWN')
+        try:value=json.loads(raw.decode('utf-8','strict'))
+        except Exception:raise Stop('ROLE_OUTPUT_UNKNOWN') from None
+        need(isinstance(value,dict) and value.get('database')==expected['database'] and value.get('user')==expected['user'],'ROLE_IDENTITY_UNKNOWN')
+        result=classify_retired_role(value,expected['acl'])
+    except BaseException as error:
+        failure=str(error) if isinstance(error,Stop) and re.fullmatch('[A-Z_]+',str(error)) else 'ROLE_READ_UNCONFIRMED'
+    finally:
+        value=None;raw=None
+        try:need(io.close(deadline) is True,'ROLE_CLEANUP_UNCONFIRMED')
+        except BaseException:failure='ROLE_CLEANUP_UNCONFIRMED'
+    if failure:raise Stop(failure)
+    need(started<=clock()<deadline,'DEADLINE')
+    return result
+
+
 def run(path,mode='read',io_factory=None,clock=time.time,read_commit=None):
     path=Path(path);need(path.name=='plan.json','PLAN_PATH')
     need(mode in ('read','closeout','enable','closeout-enable','key-absence','closeout-key-absence'),'ENTRY_MODE')
