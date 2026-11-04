@@ -18,6 +18,7 @@ import stat
 import sys
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 from pathlib import Path
 
 import composed_qualification as model
@@ -618,6 +619,8 @@ def current_https_contract(number,key):
           'url':f'https://secretmanager.googleapis.com/v1/projects/signmons/secrets/{secret}:testIamPermissions','body':{'permissions':permissions}})
     rows.append({'id':'run_permissions','method':'POST','url':f'https://run.googleapis.com/v2/projects/signmons/locations/{REGION}/services/{SERVICE}:testIamPermissions',
                  'body':{'permissions':['run.services.get','run.services.update']}})
+    for row in rows:
+        if row['id'].startswith('service_'):row['url']+='?fields=name,state'
     need(len(rows)==19,'CURRENT_HTTP_CONTRACT');return tuple(rows)
 
 def current_sql_contract():
@@ -732,7 +735,7 @@ class CurrentAdapter(Adapter):
         for d in descriptors:
             v=self._https(d);body=v['body']
             if d['id'].startswith('service_'):
-                need(v['status']==200 and body.get('state')=='ENABLED' and body.get('name')==d['url'].split('/v1/')[1],'SERVICE_NOT_READY')
+                need(v['status']==200 and body.get('state')=='ENABLED' and body.get('name')==urlsplit(d['url']).path.removeprefix('/v1/'),'SERVICE_NOT_READY')
             elif d['body'] and 'permissions' in d['body']:
                 ps=body.get('permissions');need(v['status']==200 and set(body)=={'permissions'} and isinstance(ps,list) and all(isinstance(x,str) for x in ps) and len(ps)==len(set(ps)) and set(ps)==set(d['body']['permissions']),'OWNER_PERMISSION_NOT_READY')
             else:need(v=={'status':404,'body':{'error':{'code':404,'status':'NOT_FOUND'}}},'KEY_ABSENCE_UNKNOWN')

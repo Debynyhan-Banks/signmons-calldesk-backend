@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-11-04T20:29:31.842746+00:00",
+  "approvalProposal": "7eb83da",
+  "baselineSource": "ef023e2f3e9f504e6c6ff7c3232a9f2b9cc3b2b2",
+  "status": "LOCAL_SERVICE_PROJECTION_VERIFIED",
+  "tests": {
+    "qualificationRecoveryModelOwnedTLS": 138,
+    "governance": 25,
+    "total": 163
+  },
+  "checks": [
+    "manifest hashes",
+    "SDK and dependency pins unchanged",
+    "architecture",
+    "frozen baseline",
+    "complete cross-repository consistency",
+    "whitespace"
+  ],
+  "providerCalls": 0,
+  "liveProjectionBehavior": "UNKNOWN",
+  "executionReady": false,
+  "section": "APP-013 / 3A / P08",
+  "acceptedWalkthrough": "4/8",
+  "newlyClosedR1": 0,
+  "scopeDeviation": "None beyond approved projection correction"
+}

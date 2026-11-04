@@ -303,7 +303,7 @@ class CurrentProofTests(unittest.TestCase):
             def https(obj,d,token,deadline):
                 obj.calls.append(('https',d));i=d['id']
                 if i in obj.override:return copy.deepcopy(obj.override[i])
-                if i.startswith('service_'):return {'status':200,'body':{'name':d['url'].split('/v1/')[1],'state':'ENABLED'}}
+                if i.startswith('service_'):return {'status':200,'body':{'name':d['url'].split('/v1/')[1].split('?')[0],'state':'ENABLED'}}
                 if d['body'] and 'permissions' in d['body']:return {'status':200,'body':{'permissions':d['body']['permissions']}}
                 if i=='key_absence':return {'status':404,'body':{'error':{'code':404,'status':'NOT_FOUND'}}}
                 return {'status':200,'body':{'users':[{'localId':case.scope['target']['id'],'disabled':True,
@@ -1259,6 +1259,80 @@ class SDKDiagnosticTests(unittest.TestCase):
         self.assertEqual(p.returncode,-9,p.stderr.decode());self.assertFalse(directory.exists());self.assertTrue((self.root/'cli-attempt-01.json').exists());self.assertFalse((self.root/'cli-result-01.json').exists())
         p=subprocess.run([launch.sys.executable,'-I','-B','-c',restart_child_code(self.repo),str(model.ROOT),'--closeout-current',str(self.root)],capture_output=True,timeout=15)
         self.assertEqual(p.returncode,2,p.stderr.decode());r=json.loads((self.root/'recovery-result.json').read_text());self.assertEqual(r['residuals'],['OWNED_PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(r['candidate'])
+
+
+class ServiceProjectionTests(unittest.TestCase):
+    setUp=CurrentProofTests.setUp
+    run_proof=CurrentProofTests.run_proof
+    def test_eight_fixed_masks_and_legacy_contract_unchanged(self):
+        rows=launch.current_https_contract('123456789012',self.p['prospectiveKeyId'])
+        services=[d for d in rows if d['id'].startswith('service_')]
+        self.assertEqual(len(rows),19);self.assertEqual(len(services),8)
+        for i,d in enumerate(services):
+            self.assertEqual(d,{'id':f'service_{i}','method':'GET','url':'https://serviceusage.googleapis.com/v1/projects/123456789012/services/'+launch.CURRENT_SERVICES[i]+'?fields=name,state','body':None})
+        legacy=launch.access_https_contract('123456789012',self.p['prospectiveKeyId'])
+        self.assertTrue(all('?' not in d['url'] for d in legacy))
+        self.assertTrue(all('?' not in d['url'] for d in rows if not d['id'].startswith('service_')))
+    def test_actual_request_projects_large_config_and_exact_names_parse(self):
+        from urllib.parse import urlsplit,parse_qs
+        native=launch.NativeIO(lambda:self.now,self.p['operationId']);original=self.io.https
+        captured=[];responses=[]
+        class Response:
+            status=200;closed=False
+            def __init__(self,body):self.body=body
+            def read(self,n):return self.body[:n]
+            def close(self):self.closed=True
+        def opened(request,timeout):
+            u=urlsplit(request.full_url);captured.append(request)
+            self.assertEqual(request.get_method(),'GET');self.assertIsNone(request.data)
+            self.assertEqual(parse_qs(u.query),{'fields':['name,state']})
+            full={'name':u.path.removeprefix('/v1/'),'state':'ENABLED','config':{'documentation':'SYNTHETIC_PRIVATE_CONFIG'+'x'*launch.MAX_OUTPUT}}
+            self.assertGreater(len(json.dumps(full).encode()),launch.MAX_OUTPUT)
+            projected={k:full[k] for k in ('name','state')};response=Response(json.dumps(projected).encode());responses.append(response);return response
+        def https(d,token,deadline):
+            if d['id'].startswith('service_'):return native.https(d,token,deadline)
+            return original(d,token,deadline)
+        with patch.object(self.io,'https',side_effect=https),patch('urllib.request.build_opener') as opener:
+            opener.return_value.open.side_effect=opened
+            result=self.run_proof()
+        self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',result)
+        self.assertEqual(len(captured),8);self.assertTrue(all(r.closed for r in responses))
+        self.assertTrue(self.io.closed and self.fresh.closed)
+        self.assertNotIn('SYNTHETIC_PRIVATE_CONFIG',''.join(p.read_text() for p in self.root.glob('*.json')))
+    def test_current_boundary_rejects_missing_changed_masks_and_foreign_resources(self):
+        base=launch.current_https_contract('123456789012',self.p['prospectiveKeyId'])[0]
+        urls=[base['url'].split('?')[0],base['url'].replace('name,state','*'),base['url']+'&fields=config',base['url']+'&key=secret',base['url'].replace('123456789012','123456789013'),base['url'].replace('serviceusage.googleapis.com?','foreign.googleapis.com?')]
+        for url in urls:
+            adapter=launch.CurrentAdapter(self.p,self.scope,self.io,lambda:self.now);adapter.project_number='123456789012';adapter.token='x'*32
+            with patch.object(self.io,'https') as transport,self.assertRaisesRegex(model.Stop,'CURRENT_HTTP_SCOPE'):
+                adapter._https({**base,'url':url})
+            transport.assert_not_called()
+        for url in urls[1:4]:
+            with patch('urllib.request.build_opener') as opener,self.assertRaisesRegex(model.Stop,'HTTPS_DESCRIPTOR_SCOPE'):
+                launch.NativeIO(lambda:self.now,self.p['operationId']).https({**base,'url':url},'x'*32,self.now+10)
+            opener.assert_not_called()
+    def test_bad_projected_response_refuses_and_cleanup_still_runs(self):
+        import shutil
+        name='projects/123456789012/services/serviceusage.googleapis.com'
+        bodies=[{}, {'name':None,'state':'ENABLED'},{'name':name,'state':None},{'name':name+'?fields=name,state','state':'ENABLED'},{'name':name.replace('123456789012','123456789013'),'state':'ENABLED'},{'name':name,'state':'DISABLED'},b'\xff',b'{broken']
+        for status,body in [(200,b) for b in bodies]+[(403,{'name':name,'state':'ENABLED'})]:
+            with self.subTest(status=status,body=body):
+                shutil.rmtree(self.root,ignore_errors=True);self.io.override={'service_0':{'status':status,'body':body}}
+                result=self.run_proof();self.assertIsNone(result['candidate']);self.assertEqual(result['status'],'CURRENT_EVIDENCE_UNQUALIFIED')
+                self.assertTrue(self.io.closed and self.fresh.closed)
+    def test_projection_ignored_oversize_still_refuses_without_retry_or_payload(self):
+        d=launch.current_https_contract('123456789012',self.p['prospectiveKeyId'])[0]
+        class Response:
+            status=200;closed=False
+            def read(self,n):return (b'SYNTHETIC_PRIVATE_RESPONSE'+b'x'*launch.MAX_OUTPUT)[:n]
+            def close(self):self.closed=True
+        response=Response()
+        with patch('urllib.request.build_opener') as opener:
+            opener.return_value.open.return_value=response
+            with self.assertRaisesRegex(model.Stop,'^HTTPS_OUTPUT_OVERSIZE$') as error:
+                launch.NativeIO(lambda:self.now,self.p['operationId']).https(d,'x'*32,self.now+10)
+            self.assertEqual(opener.return_value.open.call_count,1)
+        self.assertTrue(response.closed);self.assertNotIn('SYNTHETIC_PRIVATE_RESPONSE',str(error.exception));self.assertEqual(launch.MAX_OUTPUT,65536)
 
 
 if __name__=="__main__":unittest.main()
