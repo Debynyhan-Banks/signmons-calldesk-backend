@@ -1,0 +1,23 @@
+{
+  "observedAt": "2026-11-04T02:05:35.293958+00:00",
+  "qualificationId": "b4a78473-9082-44aa-8ba4-6da40c393c68",
+  "qualificationStatus": "EXPIRED_NO_EXECUTION_RECEIPT",
+  "qualificationRootAbsent": true,
+  "recoveryCloseout": {
+    "completedAt": 1793749498.05692,
+    "onTime": true,
+    "operationId": "773f6c40-34a8-4be7-ba63-b503c611a868",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "resourceCloseout": {
+      "residuals": [],
+      "verified": true
+    },
+    "candidate": null
+  },
+  "guardPidState": "ABSENT",
+  "recoveredInputsAbsent": true,
+  "qualificationInputAbsent": true,
+  "newProviderCalls": 0
+}
