@@ -1,0 +1,296 @@
+{
+  "observedAt": "2026-11-04T19:02:03.409735+00:00",
+  "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+  "approval": "13b8c24",
+  "sourceCommit": "ef023e2f3e9f504e6c6ff7c3232a9f2b9cc3b2b2",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "HTTPS_OUTPUT_OVERSIZE",
+    "liveObserved": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 2,
+      "sql": 2
+    }
+  },
+  "cliResults": [
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "owner",
+      "elapsedMilliseconds": 362,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 1,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "config",
+      "elapsedMilliseconds": 221,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 2,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "project",
+      "elapsedMilliseconds": 481,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 3,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "billing_project",
+      "elapsedMilliseconds": 507,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 4,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "billing_account",
+      "elapsedMilliseconds": 548,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 5,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "service",
+      "elapsedMilliseconds": 751,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 6,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "revision",
+      "elapsedMilliseconds": 594,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 7,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "identity",
+      "elapsedMilliseconds": 455,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 8,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_state_0",
+      "elapsedMilliseconds": 574,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 9,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_state_1",
+      "elapsedMilliseconds": 482,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 10,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_state_2",
+      "elapsedMilliseconds": 485,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 11,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_state_3",
+      "elapsedMilliseconds": 545,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 12,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_state_4",
+      "elapsedMilliseconds": 433,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 13,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_state_5",
+      "elapsedMilliseconds": 514,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 14,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_policy_0",
+      "elapsedMilliseconds": 603,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 15,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_policy_1",
+      "elapsedMilliseconds": 561,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 16,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_policy_2",
+      "elapsedMilliseconds": 493,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 17,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_policy_3",
+      "elapsedMilliseconds": 589,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 18,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_policy_4",
+      "elapsedMilliseconds": 588,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 19,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_policy_5",
+      "elapsedMilliseconds": 596,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 20,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "secret_policy_6",
+      "elapsedMilliseconds": 601,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 21,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "project_policy",
+      "elapsedMilliseconds": 493,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 22,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "identity_policy",
+      "elapsedMilliseconds": 587,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 23,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "lookup_role",
+      "elapsedMilliseconds": 503,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 24,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "signing_role",
+      "elapsedMilliseconds": 471,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 25,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "token",
+      "elapsedMilliseconds": 224,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 26,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "1e81b779b0ce33cee6a894a8ef32ca2adf283b36353ed828d0495fab95b60e6c",
+      "descriptorId": "stripe_state",
+      "elapsedMilliseconds": 493,
+      "failureCode": null,
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8",
+      "ordinal": 27,
+      "status": "RETURNED"
+    }
+  ],
+  "sqlReservations": [
+    {
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8"
+    },
+    {
+      "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8"
+    }
+  ],
+  "independentCloseout": {
+    "operationId": "8d77b311-32cb-452f-82fb-f0763ffb6ab8"
+  },
+  "recoveryCloseout": {
+    "completedAt": 1793818815.533037,
+    "onTime": true,
+    "operationId": "36511ab7-a07c-4490-a5f7-14c18510c31f",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "resourceCloseout": {
+      "residuals": [],
+      "verified": true
+    },
+    "candidate": null
+  },
+  "guardPidState": "ABSENT",
+  "recoveredInputsAbsent": true,
+  "qualificationInputAbsent": true,
+  "newProviderCallsDuringCloseout": 0,
+  "providerInternalRequests": "UNKNOWN"
+}
