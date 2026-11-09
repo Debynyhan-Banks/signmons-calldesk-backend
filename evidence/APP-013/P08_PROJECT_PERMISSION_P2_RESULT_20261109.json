@@ -1,0 +1,76 @@
+{
+  "recordedAt": "2026-11-09T16:40:51.767777+00:00",
+  "sourceCommit": "74eae7123565fa71419f76b2a4a194c3cd8101b8",
+  "approvalCommit": "0cf008a0b27142e637b2c302beca3315d47af3e2",
+  "receipts": {
+    "result.json": {
+      "cacheReservations": 1,
+      "candidate": null,
+      "cliReservations": 3,
+      "executionReady": false,
+      "failure": null,
+      "httpsReservations": 1,
+      "liveObserved": true,
+      "operationId": "4f2b0b16-3bc7-4856-a463-18ff4b7564aa",
+      "ownerMatched": true,
+      "permissionDiagnostic": {
+        "httpStatus": 200,
+        "missingPermissions": [],
+        "outcome": "COMPLETE"
+      },
+      "processCleanupVerified": true,
+      "projectMatched": true,
+      "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+      "residuals": [],
+      "scopeSha256": "9c290a2ae77bf65894a0fd0c630ee251c84a2577fe182dc339b7e8471fd1ebbc",
+      "status": "PROJECT_PERMISSIONS_OBSERVED"
+    },
+    "permission-result.json": {
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "4f2b0b16-3bc7-4856-a463-18ff4b7564aa",
+      "outcome": "COMPLETE",
+      "scopeSha256": "9c290a2ae77bf65894a0fd0c630ee251c84a2577fe182dc339b7e8471fd1ebbc"
+    },
+    "cache-result.json": {
+      "expiryValid": true,
+      "operationId": "4f2b0b16-3bc7-4856-a463-18ff4b7564aa",
+      "scopeSha256": "9c290a2ae77bf65894a0fd0c630ee251c84a2577fe182dc339b7e8471fd1ebbc",
+      "tokenMatched": true
+    },
+    "command-result-owner.json": {
+      "descriptorId": "owner",
+      "elapsedMilliseconds": 344,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "4f2b0b16-3bc7-4856-a463-18ff4b7564aa",
+      "scopeSha256": "9c290a2ae77bf65894a0fd0c630ee251c84a2577fe182dc339b7e8471fd1ebbc"
+    },
+    "command-result-project.json": {
+      "descriptorId": "project",
+      "elapsedMilliseconds": 510,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "4f2b0b16-3bc7-4856-a463-18ff4b7564aa",
+      "scopeSha256": "9c290a2ae77bf65894a0fd0c630ee251c84a2577fe182dc339b7e8471fd1ebbc"
+    },
+    "command-result-token.json": {
+      "descriptorId": "token",
+      "elapsedMilliseconds": 229,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "4f2b0b16-3bc7-4856-a463-18ff4b7564aa",
+      "scopeSha256": "9c290a2ae77bf65894a0fd0c630ee251c84a2577fe182dc339b7e8471fd1ebbc"
+    },
+    "closeout.json": {
+      "candidate": null,
+      "executionReady": false,
+      "operationId": "4f2b0b16-3bc7-4856-a463-18ff4b7564aa",
+      "processCleanupVerified": true,
+      "residuals": [],
+      "scopeSha256": "9c290a2ae77bf65894a0fd0c630ee251c84a2577fe182dc339b7e8471fd1ebbc"
+    }
+  },
+  "qualificationOnly": true,
+  "scopeDeviation": false
+}
