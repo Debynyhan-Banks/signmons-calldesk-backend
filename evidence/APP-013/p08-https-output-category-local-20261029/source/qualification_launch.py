@@ -329,7 +329,7 @@ class Adapter:
         job, tenant = value.get("job"), value.get("tenant")
         return {"jobExact": value["jobCount"] == 1 and isinstance(job, dict) and job.get("id") == model.JOB and job.get("tenantId") == model.TENANT,
                 "tenantActive": value["tenantCount"] == 1 and isinstance(tenant, dict) and tenant.get("id") == model.TENANT and tenant.get("status") == "ACTIVE",
-                "paymentGateExact": isinstance(job, dict) and isinstance(job.get("policySnapshot"), dict) and job["policySnapshot"].get("intakeAdmission", {}).get("humanReviewed") is True,
+                "paymentGateExact": isinstance(job, dict) and isinstance(job.get("policySnapshot"), dict) and isinstance(job["policySnapshot"].get("intakeAdmission"), dict) and job["policySnapshot"]["intakeAdmission"].get("humanReviewed") is True,
                 "calendarAbsent": value["calendarCount"] == 0 and isinstance(job, dict) and job.get("calendarEventId") is None,
                 "operatorExactDisabled": target == {"id": target["id"], "tenantId": model.TENANT, "email": TARGET_EMAIL, "fullName": TARGET_NAME, "role": "ADMIN", "status": "DISABLED"},
                 "dbRoleRetired": value["roleCount"] == 0, "sessionsAbsent": value["sessionCount"] == 0, "ownershipReceiptExact": ownership_exact}
@@ -339,12 +339,14 @@ class Adapter:
         envelope = self._https(firebase_https_contract(self.firebase_uid))
         need(envelope["status"] == 200, "FIREBASE_DENIED")
         users = envelope["body"].get("users"); need(isinstance(users, list) and len(users) == 1, "FIREBASE_OUTPUT")
-        user = users[0]
-        try: claims = json.loads(user.get("customAttributes", ""))
-        except (json.JSONDecodeError, TypeError): claims = None
+        user = users[0]; need(isinstance(user, dict), "FIREBASE_OUTPUT")
+        raw_claims = user.get("customAttributes")
+        need(isinstance(raw_claims, str), "FIREBASE_OUTPUT")
+        try: claims = strict_json(raw_claims)
+        except model.Stop: raise model.Stop("FIREBASE_OUTPUT") from None
         raw_valid_since = user.get("validSince")
         valid_since = int(raw_valid_since) if isinstance(raw_valid_since, str) and re.fullmatch(r"[0-9]{1,19}", raw_valid_since) and int(raw_valid_since) <= 9223372036854775807 else -1
-        return {"existsOne": True, "uidExact": user.get("localId") == self.firebase_uid, "disabled": user.get("disabled") is True, "identityExact": user.get("email") == TARGET_EMAIL and user.get("displayName") == TARGET_NAME, "claimsExact": claims == {"tenantId": model.TENANT, "role": "admin", "testOnly": True}, "tokensRevoked": valid_since >= REVOCATION_LOWER_BOUND_MS // 1000 and "tokensValidAfterTime" not in user}
+        return {"existsOne": True, "uidExact": user.get("localId") == self.firebase_uid, "disabled": user.get("disabled") is True, "identityExact": user.get("email") == TARGET_EMAIL and user.get("displayName") == TARGET_NAME, "claimsExact": isinstance(claims, dict) and set(claims) == {"tenantId", "role", "testOnly"} and claims.get("tenantId") == model.TENANT and claims.get("role") == "admin" and claims.get("testOnly") is True, "tokensRevoked": valid_since >= REVOCATION_LOWER_BOUND_MS // 1000 and "tokensValidAfterTime" not in user}
 
     def closeout(self, deadline):
         try:
@@ -817,11 +819,19 @@ class CurrentAdapter(Adapter):
         finally:self.io=original
         need(raw['roleCount']==1,'ROLE_NOT_READY')
         target=raw['operator'];need(isinstance(target,dict),'TARGET_OUTPUT')
-        self.target={k:target[k] for k in ('id','tenantId','email','fullName','role')}
+        self.target={k:target.get(k) for k in ('id','tenantId','email','fullName','role')}
         need(self.target==self.scope['target'],'TARGET_SCOPE')
         acl=current_module('acl');r=strict_json(self.io.sql(current_sql_contract()[2],self.binding['databasePassword'],deadline));self._gate()
+        need(isinstance(r,dict),'ROLE_OUTPUT_UNKNOWN')
         need(r.get('database')==self.scope['database']['database'] and r.get('user')==self.scope['database']['user'],'DATABASE_IDENTITY')
-        self.role_result=acl.classify_retired_role(r,acl.expected_retired_acl());v['dbRoleRetired']=True
+        try:
+            self.role_result=acl.classify_retired_role(r,acl.expected_retired_acl())
+        except Exception as error:
+            allowed={'ROLE_OUTPUT_UNKNOWN','ROLE_IDENTITY_UNKNOWN','ROLE_NOT_READY',
+                     'ROLE_ACL_UNKNOWN','ROLE_ACL_DRIFT','ROLE_EXPECTATION_DRIFT'}
+            code=str(error) if isinstance(error,acl.Stop) and str(error) in allowed else 'CURRENT_READ_UNCONFIRMED'
+            raise model.Stop(code) from None
+        v['dbRoleRetired']=True
         need(all(type(x) is bool for x in v.values()),'DATABASE_OUTPUT');return v
     def closeout(self,deadline):
         sessions=False;closed=False
@@ -885,7 +895,7 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
     times=model.authorize(plan,clock());root=capability.root if capability else Path('/private/tmp/p08-current-proof-'+plan['operationId'])
     root.mkdir(mode=0o700)  # A consumed operation cannot be retried.
     fd=os.open(root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-    adapter=None;failure=None;residuals=[];candidate=None;cleaning=False;handlers={};password=None if capability else 'SYNTHETIC_CURRENT_PROOF_ONLY'
+    adapter=None;failure=None;failure_stage=None;stage='preparation';residuals=[];candidate=None;cleaning=False;handlers={};password=None if capability else 'SYNTHETIC_CURRENT_PROOF_ONLY'
     def interrupted(*_):
         if not cleaning:raise model.Stop('INTERRUPTED')
     if threading.current_thread() is threading.main_thread():
@@ -901,12 +911,17 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
                 capability.prepare()
                 password=recovery_password(times['readEnd'],clock)
             adapter=CurrentAdapter(plan,native_scope,io,clock,password,PermissionDiagnostics(capability) if capability else None)
+            stage='cloud'
             need(model.classify_cloud(adapter.read_cloud(times['readEnd']))=='QUALIFIED','CLOUD_NOT_READY')
+            stage='access'
             need(adapter.read_access(times['readEnd']) is True,'ACCESS_NOT_READY')
+            stage='database'
             need(model.classify_database(adapter.read_database(times['readEnd']))=='QUALIFIED','DATABASE_NOT_READY')
+            stage='firebase'
             need(model.classify_firebase(adapter.read_firebase(times['readEnd']))=='QUALIFIED','FIREBASE_NOT_READY')
         except BaseException as error:
             failure=str(error) if isinstance(error,model.Stop) and re.fullmatch('[A-Z_]+',str(error)) else 'CURRENT_READ_UNCONFIRMED'
+            failure_stage=stage
         finally:
             cleaning=True
             try:need(adapter is not None and adapter.closeout(times['closeoutEnd']) is True,'CLOSEOUT_UNCONFIRMED')
@@ -929,22 +944,28 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
              all(not p.is_symlink() and stat.S_IMODE(p.stat().st_mode)==0o600 for p in root.iterdir()),'PRIVATE_INVENTORY')
         if capability is not None:inspect_current_root(root,CURRENT_MARKERS)
         if not failure and not residuals:
-            authority=current_module('authority');authority.verify_sources()
-            until=native_scope['plan']['window']['cleanupEnd']
-            need(clock()<model.timestamp(until)<=times['purgeEnd'],'QUALIFICATION_EXPIRY')
-            candidate={'status':'QUALIFIED_FOR_NATIVE_ENTRY','operationId':plan['prospectiveOperationId'],
-               'scopeSha256':model.digest(native_scope),'qualifiedUntil':until,
-               'runtimeEnvironmentSha256':adapter.binding['environmentSha256'],
-               'roleAclSha256':adapter.role_result['roleAclSha256'],
-               'checks':{k:True for k in ('owner','billing','effectiveAccess','services','database','firebase','job','retiredRuntime','privateInventory')}}
-            if capability is None:
-                envelope={'version':1,'execution':'PROOF_ONLY',**native_scope,'qualification':candidate,
-                    'sourceManifestSha256':authority.digest((authority.HERE/'source-manifest.json').read_bytes()),'sourceCommit':'0'*40}
-                envelope['decision']={'decision':'APPROVE_LOCAL_NATIVE_ENTRY_PROOF','scopeSha256':authority.digest(envelope)}
-                authority.Capability(envelope,Path('/private/tmp/p08-coordinator-'+plan['prospectiveOperationId']),clock=clock)
+            stage='finalization'
+            try:
+                authority=current_module('authority');authority.verify_sources()
+                until=native_scope['plan']['window']['cleanupEnd']
+                need(clock()<model.timestamp(until)<=times['purgeEnd'],'QUALIFICATION_EXPIRY')
+                candidate={'status':'QUALIFIED_FOR_NATIVE_ENTRY','operationId':plan['prospectiveOperationId'],
+                   'scopeSha256':model.digest(native_scope),'qualifiedUntil':until,
+                   'runtimeEnvironmentSha256':adapter.binding['environmentSha256'],
+                   'roleAclSha256':adapter.role_result['roleAclSha256'],
+                   'checks':{k:True for k in ('owner','billing','effectiveAccess','services','database','firebase','job','retiredRuntime','privateInventory')}}
+                if capability is None:
+                    envelope={'version':1,'execution':'PROOF_ONLY',**native_scope,'qualification':candidate,
+                        'sourceManifestSha256':authority.digest((authority.HERE/'source-manifest.json').read_bytes()),'sourceCommit':'0'*40}
+                    envelope['decision']={'decision':'APPROVE_LOCAL_NATIVE_ENTRY_PROOF','scopeSha256':authority.digest(envelope)}
+                    authority.Capability(envelope,Path('/private/tmp/p08-coordinator-'+plan['prospectiveOperationId']),clock=clock)
+            except BaseException as error:
+                candidate=None
+                failure=str(error) if isinstance(error,model.Stop) and re.fullmatch('[A-Z_]+',str(error)) else 'CURRENT_READ_UNCONFIRMED'
+                failure_stage=stage
         result={'status':('CURRENT_EVIDENCE_OBSERVED' if capability else 'CURRENT_EVIDENCE_LOCAL_VERIFIED') if candidate else 'CURRENT_EVIDENCE_UNQUALIFIED',
                 'execution':'EXTERNAL_READ_ONLY' if capability else 'PROOF_ONLY','liveObserved':bool(capability and capability.observed),'executionReady':False,'failure':failure,
-                'residuals':sorted(set(residuals)),'candidate':candidate}
+                'residuals':sorted(set(residuals)),'candidate':candidate,'failureStage':failure_stage}
         if capability is not None:
             result['transportReservations']=copy.deepcopy(capability.counts)
             result['reservationSemantics']='RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS'

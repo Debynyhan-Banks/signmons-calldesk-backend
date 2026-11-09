@@ -106,6 +106,7 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
     def test_actual_current_producer_acl_drift_refuses(self):
         self.command('GRANT UPDATE(status) ON "Job" TO p07_payment_runtime;')
         r=self.case.run_proof();self.assertIsNone(r['candidate']);self.assertFalse(self.native_sql.children)
+        self.assertEqual(r['failure'],'ROLE_ACL_DRIFT');self.assertEqual(r['failureStage'],'database')
         self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
     def test_actual_current_producer_wrong_job_refuses(self):
         self.command('UPDATE "Job" SET "policySnapshot"=\'{}\';')

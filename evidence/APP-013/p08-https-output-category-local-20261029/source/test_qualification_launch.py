@@ -331,13 +331,164 @@ class CurrentProofTests(unittest.TestCase):
     def run_proof(self):return launch.produce_native_qualification(self.p,self.scope,self.io,lambda:self.now)
     def test_current_positive_exact_counts_and_native_scope(self):
         result=self.run_proof();self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',result)
-        self.assertFalse(result['liveObserved'] or result['executionReady'])
+        self.assertFalse(result['liveObserved'] or result['executionReady']);self.assertIsNone(result['failureStage'])
         self.assertEqual(result['candidate']['scopeSha256'],model.digest(self.scope))
         self.assertEqual([sum(k==kind for k,d in self.io.calls) for kind in ('cli','https','sql')],[27,20,3])
         self.assertEqual([k for k,d in self.fresh.calls],['sql']);self.assertTrue(self.io.closed and self.fresh.closed)
         text=''.join(p.read_text() for p in self.root.glob('*.json'))
         for secret in ('private-password','SYNTHETIC_CURRENT_PROOF_ONLY',self.scope['target']['email']):self.assertNotIn(secret,text)
         with self.assertRaises(FileExistsError):self.run_proof()
+    def assert_boundary_refusal(self, result, failure, stage):
+        self.assertEqual(result['status'],'CURRENT_EVIDENCE_UNQUALIFIED',result)
+        self.assertEqual(result['failure'],failure,result)
+        self.assertEqual(result['failureStage'],stage,result)
+        self.assertIsNone(result['candidate']);self.assertFalse(result['executionReady'])
+        self.assertEqual(result['residuals'],[])
+        self.assertTrue(self.io.closed and self.fresh.closed)
+        self.assertEqual(json.loads((self.root/'result.json').read_text()),result)
+        self.assertEqual([d['id'] for k,d in self.fresh.calls],['closeout'])
+
+    def test_firebase_strict_claims_and_user_shapes_full_reducer(self):
+        cases=[('null_user',None,'FIREBASE_OUTPUT'),('array_user',[],'FIREBASE_OUTPUT'),
+               ('missing_claims',None,'FIREBASE_OUTPUT'),('object_claims',{},'FIREBASE_OUTPUT'),
+               ('invalid_claims','{','FIREBASE_OUTPUT'),('duplicate_claims','duplicate','FIREBASE_OUTPUT'),
+               ('numeric_boolean',1,'FIREBASE_NOT_READY'),('false_boolean',False,'FIREBASE_NOT_READY'),
+               ('string_boolean','true','FIREBASE_NOT_READY'),('null_boolean',None,'FIREBASE_NOT_READY'),
+               ('array_claims','[]','FIREBASE_NOT_READY'),('extra_claim','extra','FIREBASE_NOT_READY')]
+        for name,value,code in cases:
+            with self.subTest(name=name):
+                c=CurrentProofTests();c.setUp()
+                try:
+                    response=c.io.https(launch.firebase_https_contract(c.scope['target']['id']),'synthetic',c.now+60)
+                    c.io.calls.clear();user=response['body']['users'][0]
+                    if name in ('null_user','array_user'):response['body']['users']=[value]
+                    elif name=='missing_claims':del user['customAttributes']
+                    elif name=='duplicate_claims':user['customAttributes']='{"role":"owner",'+user['customAttributes'][1:]
+                    elif name in ('object_claims','invalid_claims','array_claims'):user['customAttributes']=value
+                    else:
+                        claims=json.loads(user['customAttributes'])
+                        if name=='extra_claim':claims['extra']=True
+                        else:claims['testOnly']=value
+                        user['customAttributes']=json.dumps(claims)
+                    c.io.override['firebase']=response
+                    c.assert_boundary_refusal(c.run_proof(),code,'firebase')
+                    self.assertEqual([sum(k==kind for k,d in c.io.calls) for kind in ('cli','https','sql')],[27,20,3])
+                finally:c.doCleanups()
+
+    def test_database_nested_and_role_refusals_full_reducer(self):
+        cases=[('null_intake','DATABASE_NOT_READY'),('array_intake','DATABASE_NOT_READY'),
+               ('null_policy','DATABASE_NOT_READY'),('missing_target','TARGET_SCOPE'),
+               ('role_null','ROLE_OUTPUT_UNKNOWN'),('role_missing','ROLE_OUTPUT_UNKNOWN'),
+               ('role_login','ROLE_NOT_READY'),('role_identity','ROLE_IDENTITY_UNKNOWN'),
+               ('role_acl_null','ROLE_ACL_UNKNOWN'),('role_acl_empty','ROLE_ACL_DRIFT')]
+        for name,code in cases:
+            with self.subTest(name=name):
+                c=CurrentProofTests();c.setUp()
+                try:
+                    if name=='null_intake':c.raw['job']['policySnapshot']['intakeAdmission']=None
+                    elif name=='array_intake':c.raw['job']['policySnapshot']['intakeAdmission']=[]
+                    elif name=='null_policy':c.raw['job']['policySnapshot']=None
+                    elif name=='missing_target':del c.raw['operator']['fullName']
+                    else:
+                        row=c.io.sql(launch.current_sql_contract()[2],'synthetic',c.now+60);c.io.calls.clear()
+                        if name=='role_null':row=b'null'
+                        elif name=='role_missing':del row['expired']
+                        elif name=='role_login':row['login']=True
+                        elif name=='role_identity':row['role']='foreign'
+                        elif name=='role_acl_null':row['acl']=None
+                        else:row['acl']=[]
+                        c.io.override['retired_role']=row
+                    c.assert_boundary_refusal(c.run_proof(),code,'database')
+                    self.assertNotIn('firebase',[d['id'] for k,d in c.io.calls])
+                finally:c.doCleanups()
+
+    def test_retired_role_translation_allowlist_and_secret_canary(self):
+        for code in ('ROLE_OUTPUT_UNKNOWN','ROLE_IDENTITY_UNKNOWN','ROLE_NOT_READY','ROLE_ACL_UNKNOWN',
+                     'ROLE_ACL_DRIFT','ROLE_EXPECTATION_DRIFT','PRIVATE_CANARY'):
+            with self.subTest(code=code):
+                c=CurrentProofTests();c.setUp()
+                try:
+                    original=launch.current_module
+                    with patch.object(launch,'current_module',side_effect=lambda name: c.acl if name=='acl' else original(name)), patch.object(c.acl,'classify_retired_role',side_effect=c.acl.Stop(code)):
+                        c.assert_boundary_refusal(c.run_proof(),code if code!='PRIVATE_CANARY' else 'CURRENT_READ_UNCONFIRMED','database')
+                    self.assertNotIn('PRIVATE_CANARY',''.join(p.read_text() for p in c.root.glob('*.json')))
+                finally:c.doCleanups()
+
+    def test_unexpected_errors_and_interruption_have_fixed_stage(self):
+        for stage in ('cloud','access','database','firebase'):
+            for error in (RuntimeError('PRIVATE_CANARY'),KeyboardInterrupt()):
+                with self.subTest(stage=stage,error=type(error).__name__):
+                    c=CurrentProofTests();c.setUp()
+                    try:
+                        with patch.object(launch.CurrentAdapter,'read_'+stage,side_effect=error):
+                            c.assert_boundary_refusal(c.run_proof(),'CURRENT_READ_UNCONFIRMED',stage)
+                        self.assertNotIn('PRIVATE_CANARY',''.join(p.read_text() for p in c.root.glob('*.json')))
+                        if stage!='firebase':self.assertNotIn('firebase',[d['id'] for k,d in c.io.calls])
+                    finally:c.doCleanups()
+
+    def test_cloud_nested_nulls_refuse_with_stage_and_cleanup(self):
+        for key,value in [('revision',{'spec':None}),('service',{'status':None}),('project',None),
+                          ('identity',{'email':None}),('project_policy',{'bindings':None})]:
+            with self.subTest(key=key):
+                c=CurrentProofTests();c.setUp()
+                try:
+                    c.io.override[key]=value;r=c.run_proof()
+                    self.assertIsNone(r['candidate']);self.assertIn(r['failureStage'],('cloud','access'))
+                    self.assertTrue(c.io.closed and c.fresh.closed);self.assertEqual(r['residuals'],[])
+                    self.assertNotIn('firebase',[d['id'] for k,d in c.io.calls])
+                finally:c.doCleanups()
+
+    def test_finalization_failure_clears_candidate_and_inventory_still_refuses(self):
+        authority=launch.current_module('authority')
+        original_module=launch.current_module
+        with patch.object(launch,'current_module',side_effect=lambda name: authority if name=='authority' else original_module(name)), patch.object(authority,'Capability',side_effect=RuntimeError('PRIVATE_CANARY')):
+            self.assert_boundary_refusal(self.run_proof(),'CURRENT_READ_UNCONFIRMED','finalization')
+        self.assertNotIn('PRIVATE_CANARY',(self.root/'result.json').read_text())
+        c=CurrentProofTests();c.setUp()
+        try:
+            original=c.io.close
+            def foreign(deadline):
+                (c.root/'unexpected').write_text('synthetic');return original(deadline)
+            c.io.close=foreign
+            with self.assertRaisesRegex(model.Stop,'PRIVATE_INVENTORY'):c.run_proof()
+            self.assertFalse((c.root/'result.json').exists());self.assertTrue(c.fresh.closed)
+        finally:c.doCleanups()
+
+    def test_firebase_actual_native_byte_boundary(self):
+        import io
+        for malformed in (False,True):
+            c=CurrentProofTests();c.setUp()
+            try:
+                response=c.io.https(launch.firebase_https_contract(c.scope['target']['id']),'synthetic',c.now+60)
+                if malformed:
+                    user=response['body']['users'][0]
+                    user['customAttributes']='{"role":"PRIVATE_CANARY",'+user['customAttributes'][1:]
+                stream=io.BytesIO(json.dumps(response['body']).encode());stream.status=200
+                original=c.io.https;native=launch.NativeIO(lambda:c.now,c.p['operationId']);c.io.calls.clear()
+                def https(d,token,deadline):
+                    if d['id']!='firebase':return original(d,token,deadline)
+                    c.io.calls.append(('https',d));return native.https(d,token,deadline)
+                c.io.https=https
+                with patch('urllib.request.build_opener') as opener:
+                    opener.return_value.open.return_value=stream;r=c.run_proof()
+                    self.assertEqual(opener.return_value.open.call_count,1)
+                    request=opener.return_value.open.call_args.args[0]
+                    self.assertEqual(request.get_method(),'POST')
+                    self.assertEqual(json.loads(request.data),{'localId':[c.scope['target']['id']]})
+                self.assertTrue(stream.closed)
+                if malformed:c.assert_boundary_refusal(r,'FIREBASE_OUTPUT','firebase')
+                else:self.assertIsNotNone(r['candidate']);self.assertIsNone(r['failureStage'])
+                self.assertNotIn('PRIVATE_CANARY',''.join(p.read_text() for p in c.root.glob('*.json')))
+            finally:c.doCleanups()
+
+    def test_preparation_failure_preserves_independent_cleanup_and_residual(self):
+        with patch.object(launch.CurrentAdapter,'__init__',side_effect=RuntimeError('PRIVATE_CANARY')):
+            r=self.run_proof()
+        self.assertEqual(r['failureStage'],'preparation');self.assertEqual(r['failure'],'CURRENT_READ_UNCONFIRMED')
+        self.assertIsNone(r['candidate']);self.assertEqual(r['residuals'],['CLOSEOUT_UNCONFIRMED'])
+        self.assertTrue(self.fresh.closed);self.assertEqual(self.io.calls,[])
+        self.assertNotIn('PRIVATE_CANARY',(self.root/'result.json').read_text())
+
     def key_http_case(self,status,body,expected):
         import io,urllib.error,shutil
         shutil.rmtree(self.root,ignore_errors=True);self.io.calls=[]
