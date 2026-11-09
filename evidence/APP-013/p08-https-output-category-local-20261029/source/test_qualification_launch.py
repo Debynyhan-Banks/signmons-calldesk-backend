@@ -1449,3 +1449,192 @@ class ServiceProjectionTests(unittest.TestCase):
 
 
 if __name__=="__main__":unittest.main()
+
+class ProjectDiagnosticTests(unittest.TestCase):
+    def setUp(self):
+        import uuid,hashlib,shutil
+        self.fixture=ExternalBindingTests();self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
+        f=self.fixture;self.now=f.case.now;self.number='123456789012'
+        pin=patch.object(launch,'PROJECT_NUMBER_SHA256',model.digest(self.number));pin.start();self.addCleanup(pin.stop)
+        iso=lambda n:dt.datetime.fromtimestamp(self.now+n,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        m=model.verify_local_manifest()
+        self.e={'version':1,'execution':'EXTERNAL_READ_ONLY','operationId':str(uuid.uuid4()),'project':model.PROJECT,'owner':model.OWNER,
+            'projectNumberSha256':model.digest(self.number),'sourceCommit':f.e['sourceCommit'],'manifestSha256':launch.source_manifest_sha256(),
+            'sdkFilesSha256':model.digest(m['sdkReview']['files']),'sdkException':'SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPORT',
+            'window':{k:iso(v) for k,v in {'start':-1,'cutoff':30,'readEnd':60,'closeoutEnd':90}.items()},
+            'limits':{'cli':2,'sql':0,'https':0,'cache':0}}
+        self.bind();self.root=Path('/private/tmp/p08-owner-project-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+    def bind(self):
+        f=self.fixture;self.e.pop('decision',None);path='APP013_P08_OWNER_PROJECT_DIAGNOSTIC_OPERATION_20261109.json'
+        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_OWNER_PROJECT_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
+        (f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic diagnostic approval')
+        self.e['decision']={'commit':f.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
+    def cap(self,mode='diagnose'):
+        return launch.ProjectDiagnosticCapability(self.e,lambda:self.now,mode,self.fixture.read_commit)
+    def io(self,override=None):
+        case=self
+        class IO:
+            proof=True
+            def __init__(self):self.calls=[];self.closed=False
+            def cli(self,d,deadline):
+                self.calls.append(d)
+                if override and d['id'] in override:
+                    v=override[d['id']]
+                    if isinstance(v,BaseException):raise v
+                    return v
+                return json.dumps([{'account':model.OWNER,'status':'ACTIVE'}] if d['id']=='owner' else
+                    {'projectId':model.PROJECT,'projectNumber':case.number,'lifecycleState':'ACTIVE'}).encode()
+            def close(self,deadline):self.closed=True;return True
+        return IO()
+    def test_positive_exact_two_commands_private_output_and_closeout(self):
+        io=self.io();r=launch.run_project_diagnostic(self.cap(),io)
+        self.assertEqual(r['status'],'OWNER_PROJECT_OBSERVED');self.assertIsNone(r['candidate']);self.assertFalse(r['executionReady'] or r['liveObserved'])
+        self.assertEqual(io.calls,[launch.cli_contract()[0],launch.cli_contract()[2]]);self.assertTrue(io.closed)
+        text=''.join(p.read_text() for p in self.root.iterdir());self.assertNotIn(self.number,text)
+        self.assertEqual(launch.closeout_project_diagnostic(self.cap('closeout'))['residuals'],[])
+        with self.assertRaises(model.Stop):launch.closeout_project_diagnostic(self.cap('closeout'))
+        with self.assertRaises(model.Stop):self.cap()
+    def test_shapes_and_secret_canaries_stop_before_next_command(self):
+        import shutil
+        cases=[('owner',b'{}'),('owner',b'null'),('owner',b'[]'),('owner',b'[{"account":"SECRET_CANARY","status":"ACTIVE"}]'),
+            ('owner',b'\xff'),('owner',b'{broken SECRET_CANARY'),('project',b'null'),('project',b'{}'),
+            ('project',b'{"projectId":"signmons","projectNumber":null,"lifecycleState":"ACTIVE"}'),
+            ('project',b'{"projectId":"signmons","projectNumber":"999999999999","lifecycleState":"ACTIVE"}'),
+            ('project',model.Stop('SECRET_CANARY')),('project',model.Stop('PROCESS_TIMEOUT'))]
+        for descriptor,value in cases:
+            with self.subTest(descriptor=descriptor,value=type(value).__name__):
+                shutil.rmtree(self.root,ignore_errors=True);io=self.io({descriptor:value});r=launch.run_project_diagnostic(self.cap(),io)
+                self.assertEqual(r['status'],'OWNER_PROJECT_UNQUALIFIED');self.assertTrue(io.closed);self.assertIsNone(r['candidate'])
+                self.assertEqual(len(io.calls),1 if descriptor=='owner' else 2)
+                self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+    def test_authority_pin_and_window_mutations_refuse_before_dispatch(self):
+        original=copy.deepcopy(self.e)
+        mutations=[lambda e:e.update(execution='PROOF_ONLY'),lambda e:e['limits'].update(sql=1),lambda e:e.update(owner='foreign'),
+            lambda e:e.update(projectNumberSha256='0'*64),lambda e:e.update(manifestSha256='0'*64),lambda e:e.update(sdkFilesSha256='0'*64),
+            lambda e:e.update(sourceCommit='0'*40),lambda e:e['decision'].update(commit='0'*40),lambda e:e['decision'].update(sha256='0'*64),
+            lambda e:e['decision'].update(path='wrong.json'),lambda e:e.update(extra=True),lambda e:e['window'].update(readEnd=e['window']['start'])]
+        for mutate in mutations:
+            self.e=copy.deepcopy(original);mutate(self.e)
+            with self.assertRaises(Exception):self.cap()
+            self.assertFalse(self.root.exists())
+        self.e=original;self.now+=31
+        with self.assertRaises(model.Stop):self.cap()
+        self.now-=100
+        with self.assertRaises(model.Stop):self.cap()
+    def test_config_change_and_clock_rollback_stop_project(self):
+        import shutil
+        for rollback in (True,False):
+            shutil.rmtree(self.root,ignore_errors=True);io=self.io();original=io.cli
+            def cli(d,deadline):
+                result=original(d,deadline)
+                if d['id']=='owner':
+                    if rollback:self.now-=2
+                    else:launch.CONFIG_ROOT.joinpath('configurations/config_default').write_text('[core]\nproject = foreign\n')
+                return result
+            io.cli=cli;r=launch.run_project_diagnostic(self.cap(),io)
+            self.assertEqual(r['status'],'OWNER_PROJECT_UNQUALIFIED');self.assertEqual(len(io.calls),1);self.assertTrue(io.closed)
+            self.now=self.fixture.case.now
+    def test_diagnostic_transport_denies_sql_https_and_token(self):
+        io=launch.ProjectDiagnosticIO(self.cap())
+        for invoke in [lambda:io.sql({},'x',0),lambda:io.https({},'x',0),lambda:io.cli(launch.cli_contract()[-1],self.now+10)]:
+            with self.assertRaises(model.Stop):invoke()
+        self.assertFalse(self.root.exists());self.assertTrue(io.close(self.now+90))
+    def test_write_failure_keeps_cleanup_and_sanitizes_error(self):
+        real=model.reserve;io=self.io()
+        def fail(path,value):
+            if path.name=='command-result-owner.json':raise OSError('SECRET_CANARY')
+            return real(path,value)
+        with patch.object(model,'reserve',side_effect=fail):r=launch.run_project_diagnostic(self.cap(),io)
+        self.assertEqual(r['failure'],'DIAGNOSTIC_WRITE_UNCONFIRMED');self.assertTrue(io.closed);self.assertEqual(len(io.calls),1)
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+    def test_owned_subprocess_bytes_use_real_transport_and_cap(self):
+        import os
+        actual=launch.NativeIO._owned_run;seen=[]
+        def owned(io,argv,env,deadline):
+            seen.append((argv,env,deadline))
+            value=[{'account':model.OWNER,'status':'ACTIVE'}] if len(seen)==1 else {'projectId':model.PROJECT,'projectNumber':self.number,'lifecycleState':'ACTIVE'}
+            return actual(io,[launch.sys.executable,'-c','import sys;sys.stdout.write(sys.argv[1])',json.dumps(value)],env,deadline)
+        with patch.object(launch.NativeIO,'_owned_run',owned):r=launch.run_project_diagnostic(self.cap())
+        self.assertEqual(r['status'],'OWNER_PROJECT_OBSERVED');self.assertEqual(len(seen),2)
+        self.assertEqual([s[0] for s in seen],[launch.cli_contract()[0]['argv'],launch.cli_contract()[2]['argv']])
+        self.assertTrue(all(s[1]==launch.sdk_environment(os.environ) for s in seen))
+        self.assertTrue(all(s[2]==self.now+30 for s in seen));self.assertTrue(r['processCleanupVerified'])
+    def test_actual_owned_timeout_and_oversize_are_bounded_and_cleaned(self):
+        import shutil,time
+        for code,expected in [('import time;time.sleep(5)','PROCESS_TIMEOUT'),('print("SECRET_CANARY"*10000)','PROCESS_OUTPUT_LIMIT')]:
+            shutil.rmtree(self.root,ignore_errors=True);cap=self.cap();cap.clock=time.time
+            actual=launch.NativeIO._owned_run
+            def owned(io,argv,env,deadline):return actual(io,[launch.sys.executable,'-c',code],env,io.clock()+2.3)
+            with patch.object(launch.NativeIO,'_owned_run',owned):r=launch.run_project_diagnostic(cap)
+            self.assertEqual(r['failure'],expected);self.assertEqual(r['cliReservations'],1);self.assertTrue(r['processCleanupVerified'])
+            self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+    def test_duplicate_concurrent_start_and_closeout_refuse(self):
+        import threading,concurrent.futures
+        a=self.cap();b=self.cap();started=threading.Event();release=threading.Event();io=self.io();original=io.cli
+        def cli(d,deadline):started.set();release.wait(5);return original(d,deadline)
+        io.cli=cli
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            pending=pool.submit(launch.run_project_diagnostic,a,io);self.assertTrue(started.wait(5))
+            try:
+                with self.assertRaises(FileExistsError):launch.run_project_diagnostic(b,self.io())
+                with self.assertRaises(BlockingIOError):launch.closeout_project_diagnostic(self.cap('closeout'))
+            finally:release.set()
+            self.assertEqual(pending.result()['status'],'OWNER_PROJECT_OBSERVED')
+    def test_hard_crash_retains_unknown_without_process_kill_or_dispatch(self):
+        # Independent reconciliation never invents lost process ownership.
+        cap=self.cap();self.root.mkdir(mode=0o700)
+        for name,value in [('entry.lock',{}),('envelope.json',self.e),('attempt.json',{'operationId':self.e['operationId'],'scopeSha256':cap.scope_hash})]:model.reserve(self.root/name,value)
+        with patch.object(launch.NativeIO,'cli',side_effect=AssertionError('no SDK')),patch.object(launch.os,'killpg',side_effect=AssertionError('no unsafe kill')):
+            r=launch.closeout_project_diagnostic(self.cap('closeout'))
+        self.assertEqual(r['residuals'],['PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(r['candidate'])
+
+    def test_actual_public_entry_sigkill_and_fresh_closeout(self):
+        self._public_interruption('SIGKILL')
+    def test_actual_public_entry_sigterm_reaps_owned_child(self):
+        self._public_interruption('SIGTERM')
+    def _public_interruption(self,kind):
+        f=self.fixture;path=f.repo/'diagnostic-input.json';model.reserve(path,self.e)
+        code="\n".join([
+            "import sys,os,json,signal;from pathlib import Path",
+            "sys.path.insert(0,sys.argv[1]);import qualification_launch as q",
+            "original=q.current_module;a=original('authority');read=a.committed",
+            f"a.committed=lambda repo,commit,path:read(Path({str(f.repo)!r}),commit,path)",
+            "q.current_module=lambda name:a if name=='authority' else original(name)",
+            f"q.CONFIG_ROOT=Path({str(f.repo/'synthetic-config')!r})",
+            f"q.PROJECT_NUMBER_SHA256=q.model.digest({self.number!r})",
+            "actual=q.NativeIO._owned_run",
+            "def controlled(self,argv,env,deadline):",
+            " if sys.argv[2]=='--closeout-owner-project':raise AssertionError('no work')",
+            (" os.kill(os.getpid(),signal.SIGKILL)" if kind=='SIGKILL' else
+             " return actual(self,[sys.executable,'-c','import os,signal,time;os.kill(os.getppid(),signal.SIGTERM);time.sleep(5)'],env,deadline)"),
+            "q.NativeIO._owned_run=controlled",
+            "raise SystemExit(q.project_diagnostic_main(sys.argv[2:]))"])
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',code,str(model.ROOT),'--diagnose-owner-project',str(path)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,-9 if kind=='SIGKILL' else 2,p.stderr.decode())
+        self.assertTrue(path.exists()) # public envelope is not deleted
+        self.assertEqual(len(list(self.root.glob('command-attempt-*.json'))),1)
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',code,str(model.ROOT),'--closeout-owner-project',str(self.root)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,2 if kind=='SIGKILL' else 0,p.stderr.decode())
+        result=json.loads((self.root/'closeout.json').read_text())
+        self.assertEqual(result['residuals'],['PROCESS_HISTORY_UNKNOWN'] if kind=='SIGKILL' else [])
+        self.assertIsNone(result['candidate'])
+    def test_stale_capability_read_deadline_and_closeout_deadline_refuse(self):
+        import shutil
+        cap=self.cap();self.now+=31
+        with self.assertRaises(model.Stop):launch.run_project_diagnostic(cap,self.io())
+        self.assertFalse(self.root.exists());self.now=self.fixture.case.now
+        io=self.io();original=io.cli
+        def late(d,deadline):self.now+=61;return original(d,deadline)
+        io.cli=late;r=launch.run_project_diagnostic(self.cap(),io)
+        self.assertEqual(r['failure'],'DIAGNOSTIC_DEADLINE');self.assertEqual(len(io.calls),1)
+        self.now+=100
+        # Local closeout after expiry cannot authorize a new read.
+        self.assertIsNone(launch.closeout_project_diagnostic(self.cap('closeout'))['candidate'])
+    def test_environment_override_and_false_approval_are_refused(self):
+        with patch.dict(os.environ,{'HTTPS_PROXY':'SECRET_CANARY'}):
+            io=self.io();r=launch.run_project_diagnostic(self.cap(),io)
+        self.assertEqual(r['failure'],'CREDENTIAL_OVERRIDE');self.assertEqual(io.calls,[])
+        f=self.fixture;path=self.e['decision']['path'];raw=(f.repo/path).read_bytes();d=json.loads(raw);d['externalReadAuthorized']=False
+        raw=json.dumps(d).encode();(f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','-qm','false decision')
+        self.e['decision'].update(commit=f.git('rev-parse','HEAD'),sha256=model.digest(raw))
+        with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_APPROVAL'):self.cap('closeout')

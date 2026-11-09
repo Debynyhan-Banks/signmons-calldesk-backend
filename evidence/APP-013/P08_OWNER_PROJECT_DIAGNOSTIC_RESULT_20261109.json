@@ -1,0 +1,38 @@
+{
+  "verifiedAt": "2026-11-09T15:42:29.158388+00:00",
+  "baselineSource": "710e7746a0ae7335d24579a3a5a48283eff46de9",
+  "approvedProposal": "6496882",
+  "sourceFilesSha256": {
+    "qualification_launch.py": "bc0d156aa046c17b16c14cf0d2ee0d3387e056e6e799c3c35b8b62251b51663a",
+    "test_qualification_launch.py": "775555092a4242f61b8955b0edf3ff56f3c310bd3c3578753ab81bd2a1b73f99",
+    "source-manifest.json": "fb060c952f84bdd1832bcfff0c828e5e5e4cb6710c214ec7e0d8ffe11b06735a"
+  },
+  "focusedDiagnosticTests": {
+    "passed": 14,
+    "durationSeconds": 9.688
+  },
+  "fullRuntimeLocalTests": {
+    "passed": 158,
+    "durationSeconds": 77.27
+  },
+  "governanceTests": {
+    "passed": 25
+  },
+  "totalPassed": 183,
+  "checks": {
+    "frozenBaseline": "PASS",
+    "crossRepositoryConsistency": "PASS",
+    "architecture": "PASS",
+    "whitespace": "PASS"
+  },
+  "ownedPostgresTLS": {
+    "serverReaped": true,
+    "scratchAbsent": true
+  },
+  "providerCalls": 0,
+  "externalOperationScheduled": false,
+  "liveAuthority": false,
+  "liveProviderState": "UNKNOWN",
+  "hardCrashProcessHistory": "UNKNOWN_UNLESS_NORMAL_VERIFIED_CLEANUP_RECEIPT",
+  "executionReady": false
+}

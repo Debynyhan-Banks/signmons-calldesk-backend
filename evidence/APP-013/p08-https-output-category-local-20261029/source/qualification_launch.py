@@ -436,7 +436,7 @@ class NativeIO:
     def cli(self, descriptor, deadline):
         need(not self.closed and self.clock() < deadline, "CLI_DEADLINE")
         argv = descriptor["argv"]; need(argv and argv[0] == GCLOUD, "CLI_EXECUTABLE")
-        env = sdk_environment(os.environ) if isinstance(self,(QualificationIO,BindingRecoveryIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
+        env = sdk_environment(os.environ) if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
         timeout = max(1, min(30, int(deadline - self.clock())))
         validate_cli_descriptor(descriptor)
         raw=self._owned_run(argv,env,min(deadline,self.clock()+30))
@@ -487,7 +487,7 @@ class NativeIO:
         need(descriptor in current_sql_contract(), "SQL_ALLOWLIST")
         sql = descriptor["sql"]
         need(sql is not None, "SQL_ALLOWLIST")
-        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
+        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
         env.update({"PGPASSWORD": password, "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/cert.pem", "PGCONNECT_TIMEOUT": "10", "PGAPPNAME": "signmons_p08_qualification_" + self.binding_operation_id, "PGOPTIONS": "-c statement_timeout=15000 -c lock_timeout=5000"})
         timeout = max(1, min(25, int(deadline - self.clock())))
         try:
@@ -1750,7 +1750,168 @@ def recovery_main(argv):
 
 
 
+PROJECT_DIAGNOSTIC_MARKERS={'envelope.json','attempt.json','entry.lock','result.json','closeout.json',
+    *[f'command-{kind}-{name}.json' for kind in ('attempt','result') for name in ('owner','project')]}
+PROJECT_DIAGNOSTIC_FAILURES=CLI_FAILURE_CODES|frozenset({'INTERRUPTED','OWNER_MISMATCH','PROJECT_MISMATCH',
+    'PROJECT_OUTPUT_INVALID','CONFIG_CHANGED','DIAGNOSTIC_DEADLINE','CLOCK_ROLLBACK',
+    'DIAGNOSTIC_WRITE_UNCONFIRMED','CREDENTIAL_OVERRIDE','HOME_OVERRIDE'})
+
+
+class ProjectDiagnosticCapability:
+    def __init__(self,envelope,clock=model.time.time,mode='diagnose',read_commit=None):
+        need(mode in ('diagnose','closeout'),'DIAGNOSTIC_MODE')
+        e=copy.deepcopy(envelope);manifest=model.verify_local_manifest();model.verify_locked_sources()
+        authority=current_module('authority');authority.verify_sources()
+        need(set(e)=={'version','execution','operationId','project','owner','projectNumberSha256',
+            'sourceCommit','manifestSha256','sdkFilesSha256','sdkException','window','limits','decision'},'DIAGNOSTIC_ENVELOPE')
+        need(type(e['version']) is int and e['version']==1 and e['execution']=='EXTERNAL_READ_ONLY','DIAGNOSTIC_EXECUTION')
+        model.exact_uuid(e['operationId'],'DIAGNOSTIC_OPERATION')
+        need(e['project']==model.PROJECT and e['owner']==model.OWNER and e['projectNumberSha256']==PROJECT_NUMBER_SHA256,'DIAGNOSTIC_PINS')
+        need(e['limits']=={'cli':2,'sql':0,'https':0,'cache':0} and all(type(v) is int for v in e['limits'].values()),'DIAGNOSTIC_LIMITS')
+        need(e['sdkException']=='SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPORT' and
+             e['sdkFilesSha256']==model.digest(manifest['sdkReview']['files']) and e['manifestSha256']==source_manifest_sha256(),'DIAGNOSTIC_SOURCE')
+        need(isinstance(e['sourceCommit'],str) and re.fullmatch('[a-f0-9]{40}',e['sourceCommit']),'DIAGNOSTIC_SOURCE')
+        need(set(e['window'])=={'start','cutoff','readEnd','closeoutEnd'},'DIAGNOSTIC_WINDOW')
+        times={k:model.timestamp(v) for k,v in e['window'].items()}
+        need(times['start']<times['cutoff']<times['readEnd']<times['closeoutEnd'] and
+             times['closeoutEnd']-times['start']<=600 and times['closeoutEnd']-times['readEnd']>=10,'DIAGNOSTIC_WINDOW')
+        d=e['decision'];need(set(d)=={'commit','path','sha256'} and re.fullmatch('[a-f0-9]{40}',d['commit']) and
+            re.fullmatch('[a-f0-9]{64}',d['sha256']) and re.fullmatch(r'APP013_P08_OWNER_PROJECT_DIAGNOSTIC_OPERATION_[0-9]{8}\.json',d['path']),'DIAGNOSTIC_DECISION')
+        get=read_commit or authority.committed;raw=get(authority.GOV,d['commit'],d['path'])
+        scope=model.digest({k:v for k,v in e.items() if k!='decision'})
+        need(model.digest(raw)==d['sha256'] and strict_json(raw)=={'owner':'Debynyhan Banks',
+             'decision':'APPROVE_EXACT_P08_OWNER_PROJECT_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':scope},'DIAGNOSTIC_APPROVAL')
+        verify_qualification_sources(e['sourceCommit'],manifest,get)
+        now=clock()
+        if mode=='diagnose':need(times['start']<=now<times['cutoff'],'DIAGNOSTIC_START_WINDOW')
+        self.e=e;self.clock=clock;self.mode=mode;self.times=times;self.last=now;self.manifest=manifest;self.scope_hash=scope
+        self.root=Path('/private/tmp/p08-owner-project-'+e['operationId']);self.config=None;self.count=0
+        if mode=='diagnose':need(not os.path.lexists(self.root),'DIAGNOSTIC_CONSUMED')
+    def prepare(self):
+        sdk_environment(os.environ)
+        self.config=current_module('acl').config_snapshot(CONFIG_ROOT,os.environ)
+    def inspect(self):
+        inspect_current_root(self.root,PROJECT_DIAGNOSTIC_MARKERS)
+        need(private_json(self.root/'envelope.json')==self.e and
+             private_json(self.root/'attempt.json')=={'operationId':self.e['operationId'],'scopeSha256':self.scope_hash},'DIAGNOSTIC_ROOT_BINDING')
+    def gate(self,d):
+        need(self.mode=='diagnose' and self.count<2 and d==cli_contract()[0 if self.count==0 else 2],'DIAGNOSTIC_COMMAND')
+        now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
+        need(self.times['start']<=now<self.times['readEnd'],'DIAGNOSTIC_DEADLINE')
+        sdk_environment(os.environ)
+        need(self.config is not None and current_module('acl').config_snapshot(CONFIG_ROOT,os.environ)==self.config,'CONFIG_CHANGED')
+        for path,h in self.manifest['sdkReview']['files'].items():need(model.digest(Path(path).read_bytes())==h,'SDK_REVIEW_DRIFT')
+        self.inspect()
+        try:model.reserve(self.root/f"command-attempt-{d['id']}.json",{'operationId':self.e['operationId'],
+                 'scopeSha256':self.scope_hash,'descriptorId':d['id'],'status':'RESERVED'})
+        except Exception:raise model.Stop('DIAGNOSTIC_WRITE_UNCONFIRMED') from None
+        self.count+=1
+        return self.times['readEnd']
+
+
+class ProjectDiagnosticIO(NativeIO):
+    def __init__(self,cap):
+        need(type(cap) is ProjectDiagnosticCapability and cap.mode=='diagnose','DIAGNOSTIC_PORT')
+        super().__init__(cap.clock,cap.e['operationId']);self.cap=cap
+    def cli(self,d,deadline):
+        need(d in (cli_contract()[0],cli_contract()[2]),'DIAGNOSTIC_COMMAND')
+        return super().cli(d,min(deadline,self.cap.gate(d)))
+    def sql(self,*args):raise model.Stop('DIAGNOSTIC_SQL_FORBIDDEN')
+    def https(self,*args):raise model.Stop('DIAGNOSTIC_HTTPS_FORBIDDEN')
+
+
+def project_diagnostic_failure(error):
+    return str(error) if isinstance(error,model.Stop) and str(error) in PROJECT_DIAGNOSTIC_FAILURES else 'DIAGNOSTIC_UNCONFIRMED'
+
+
+def run_project_diagnostic(cap,io=None):
+    import fcntl,signal,threading,time
+    need(type(cap) is ProjectDiagnosticCapability and cap.mode=='diagnose','DIAGNOSTIC_MODE')
+    need(io is None or (getattr(io,'proof',None) is True),'DIAGNOSTIC_PORT')
+    need(cap.times['start']<=cap.clock()<cap.times['cutoff'],'DIAGNOSTIC_START_WINDOW')
+    cap.root.mkdir(mode=0o700)
+    fd=os.open(cap.root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+    failure=None;cleaned=False;owner=None;project=None;handlers={};cleaning=False;value=None
+    def interrupted(*_):
+        if not cleaning:raise model.Stop('INTERRUPTED')
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        model.reserve(cap.root/'envelope.json',cap.e)
+        model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash})
+        if threading.current_thread() is threading.main_thread():
+            for sig in (signal.SIGINT,signal.SIGTERM):handlers[sig]=signal.signal(sig,interrupted)
+        try:
+            cap.prepare();io=io or ProjectDiagnosticIO(cap)
+            for d in (cli_contract()[0],cli_contract()[2]):
+                deadline=cap.gate(d) if getattr(io,'proof',False) else cap.times['readEnd']
+                started=time.monotonic();code=None;matched=False
+                try:
+                    value=strict_json(io.cli(d,deadline))
+                    now=cap.clock();need(now>=cap.last,'CLOCK_ROLLBACK');cap.last=now
+                    need(now<cap.times['readEnd'],'DIAGNOSTIC_DEADLINE')
+                    if d['id']=='owner':
+                        need(value==[{'account':model.OWNER,'status':'ACTIVE'}],'OWNER_MISMATCH');owner=True
+                    else:
+                        need(isinstance(value,dict) and set(value)=={'projectId','projectNumber','lifecycleState'} and
+                             isinstance(value.get('projectNumber'),str),'PROJECT_OUTPUT_INVALID')
+                        need(value['projectId']==model.PROJECT and value['lifecycleState']=='ACTIVE' and
+                             re.fullmatch('[0-9]{6,20}',value['projectNumber']) and model.digest(value['projectNumber'])==cap.e['projectNumberSha256'],'PROJECT_MISMATCH')
+                        project=True
+                    matched=True
+                except BaseException as error:
+                    code=project_diagnostic_failure(error);raise model.Stop(code) from None
+                finally:
+                    value=None
+                    try:model.reserve(cap.root/f"command-result-{d['id']}.json",{'operationId':cap.e['operationId'],
+                        'scopeSha256':cap.scope_hash,'descriptorId':d['id'],'matched':matched,
+                        'elapsedMilliseconds':max(0,min(3600000,int((time.monotonic()-started)*1000))),'failureCode':code})
+                    except Exception:raise model.Stop('DIAGNOSTIC_WRITE_UNCONFIRMED') from None
+        except BaseException as error:failure=project_diagnostic_failure(error)
+        finally:
+            cleaning=True;value=None
+            try:cleaned=io is not None and io.close(cap.times['closeoutEnd']) is True
+            except BaseException:cleaned=False
+        cap.inspect()
+        result={'status':'OWNER_PROJECT_OBSERVED' if owner and project and cleaned and not failure else 'OWNER_PROJECT_UNQUALIFIED',
+            'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'failure':failure,
+            'ownerMatched':owner,'projectMatched':project,'processCleanupVerified':cleaned,
+            'residuals':[] if cleaned else ['PROCESS_CLEANUP_UNCONFIRMED'],
+            'cliReservations':cap.count,'reservationSemantics':'RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS',
+            'liveObserved':not getattr(io,'proof',False) and cap.count>0,'executionReady':False,'candidate':None}
+        model.reserve(cap.root/'result.json',result);return result
+    finally:
+        for sig,handler in handlers.items():signal.signal(sig,handler)
+        fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def closeout_project_diagnostic(cap):
+    import fcntl
+    need(type(cap) is ProjectDiagnosticCapability and cap.mode=='closeout','DIAGNOSTIC_MODE');cap.inspect()
+    fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        need(not (cap.root/'closeout.json').exists(),'DIAGNOSTIC_CLOSEOUT_CONSUMED')
+        normal=private_json(cap.root/'result.json') if (cap.root/'result.json').exists() else None
+        verified=bool(normal and normal.get('operationId')==cap.e['operationId'] and normal.get('scopeSha256')==cap.scope_hash and normal.get('processCleanupVerified') is True)
+        result={'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'processCleanupVerified':verified,
+            'residuals':[] if verified else ['PROCESS_HISTORY_UNKNOWN'],'candidate':None,'executionReady':False}
+        model.reserve(cap.root/'closeout.json',result);return result
+    finally:fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def project_diagnostic_main(argv):
+    need(len(argv)==2 and argv[0] in ('--diagnose-owner-project','--closeout-owner-project'),'DIAGNOSTIC_ARGUMENTS')
+    path=Path(argv[1])
+    if argv[0]=='--diagnose-owner-project':
+        result=run_project_diagnostic(ProjectDiagnosticCapability(private_json(path)))
+        print(result['status']);return 0 if result['status']=='OWNER_PROJECT_OBSERVED' else 2
+    cap=ProjectDiagnosticCapability(private_json(path/'envelope.json'),mode='closeout')
+    need(path==cap.root,'DIAGNOSTIC_ROOT_BINDING');result=closeout_project_diagnostic(cap)
+    print('OWNER_PROJECT_CLOSED' if result['processCleanupVerified'] else 'OWNER_PROJECT_CLOSEOUT_UNCONFIRMED')
+    return 0 if result['processCleanupVerified'] else 2
+
+
 if __name__ == "__main__":
-    try:raise SystemExit(recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
+    try:raise SystemExit(project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
     except Exception:
         print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)
