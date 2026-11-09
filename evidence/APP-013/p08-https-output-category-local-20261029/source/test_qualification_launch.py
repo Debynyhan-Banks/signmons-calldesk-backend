@@ -338,6 +338,48 @@ class CurrentProofTests(unittest.TestCase):
         text=''.join(p.read_text() for p in self.root.glob('*.json'))
         for secret in ('private-password','SYNTHETIC_CURRENT_PROOF_ONLY',self.scope['target']['email']):self.assertNotIn(secret,text)
         with self.assertRaises(FileExistsError):self.run_proof()
+    def key_http_case(self,status,body,expected):
+        import io,urllib.error,shutil
+        shutil.rmtree(self.root,ignore_errors=True);self.io.calls=[]
+        original=self.io.https;native=launch.NativeIO(lambda:self.now,self.p['operationId'])
+        def https(d,token,deadline):
+            if d['id']!='key_absence':return original(d,token,deadline)
+            self.io.calls.append(('https',d))
+            return native.https(d,token,deadline)
+        self.io.https=https
+        payload=body if isinstance(body,bytes) else json.dumps(body).encode()
+        stream=io.BytesIO(payload)
+        def opened(request,timeout):
+            self.assertEqual(request.get_method(),'GET');self.assertIsNone(request.data)
+            self.assertTrue(request.full_url.endswith('/locations/global/keys/'+self.p['prospectiveKeyId']))
+            raise urllib.error.HTTPError(request.full_url,status,'synthetic',{},stream)
+        try:
+            with patch('urllib.request.build_opener') as opener:
+                opener.return_value.open.side_effect=opened
+                result=self.run_proof()
+                self.assertEqual(opener.return_value.open.call_count,1)
+            self.assertTrue(stream.closed)
+            self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED' if expected else 'CURRENT_EVIDENCE_UNQUALIFIED',result)
+            if not expected:
+                self.assertIsNone(result['candidate'])
+                self.assertEqual([d['id'] for k,d in self.io.calls if k=='https'][-1],'key_absence')
+            self.assertTrue(self.io.closed and self.fresh.closed)
+            self.assertNotIn('PRIVATE_ERROR_CANARY',''.join(p.read_text() for p in self.root.glob('*.json')))
+        finally:self.io.https=original
+    def test_key_absence_documented_http_error_shapes(self):
+        for fields in [{},{'message':'PRIVATE_ERROR_CANARY'},{'details':[]},
+                       {'message':'PRIVATE_ERROR_CANARY','details':[{'@type':'type.googleapis.com/google.rpc.ErrorInfo','metadata':{'private':'PRIVATE_ERROR_CANARY'}}]}]:
+            with self.subTest(fields=fields):self.key_http_case(404,{'error':{'code':404,'status':'NOT_FOUND',**fields}},True)
+    def test_key_absence_wrong_status_or_shape_stops(self):
+        good={'code':404,'status':'NOT_FOUND'}
+        cases=[(status,{'error':good}) for status in [200,401,403,429,500]]
+        cases += [(404,body) for body in [{},{'error':None},{'error':[]},{'error':good,'extra':True},
+            *({'error':{**good,**change}} for change in [{'code':'404'},{'code':404.0},{'code':True},{'status':'PERMISSION_DENIED'},
+                {'status':None},{'message':None},{'details':None},{'details':{}},{'details':['PRIVATE_ERROR_CANARY']},{'extra':True}]),
+            {'error':{'code':404}},{'error':{'status':'NOT_FOUND'}},
+            b'{"error":{"code":404,"code":404,"status":"NOT_FOUND"}}',b'not-json',b'x'*(launch.MAX_OUTPUT+1)]]
+        for status,body in cases:
+            with self.subTest(status=status,body_type=type(body).__name__):self.key_http_case(status,body,False)
     def test_each_permission_resource_missing_never_qualifies(self):
         for d in launch.current_https_contract('123456789012',self.p['prospectiveKeyId']):
             if not d['body'] or 'permissions' not in d['body']:continue

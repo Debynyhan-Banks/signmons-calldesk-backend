@@ -788,7 +788,15 @@ class CurrentAdapter(Adapter):
                 need(v['status']==200 and body.get('state')=='ENABLED' and body.get('name')==urlsplit(d['url']).path.removeprefix('/v1/'),'SERVICE_NOT_READY')
             elif d['body'] and 'permissions' in d['body']:
                 ps=body.get('permissions');need(v['status']==200 and set(body)=={'permissions'} and isinstance(ps,list) and all(isinstance(x,str) for x in ps) and len(ps)==len(set(ps)) and set(ps)==set(d['body']['permissions']),'OWNER_PERMISSION_NOT_READY')
-            else:need(v=={'status':404,'body':{'error':{'code':404,'status':'NOT_FOUND'}}},'KEY_ABSENCE_UNKNOWN')
+            else:
+                error=body.get('error')
+                need(d['id']=='key_absence' and type(v['status']) is int and v['status']==404 and
+                     set(body)=={'error'} and isinstance(error,dict) and
+                     {'code','status'}<=set(error)<={'code','status','message','details'} and
+                     type(error['code']) is int and error['code']==404 and error['status']=='NOT_FOUND' and
+                     ('message' not in error or isinstance(error['message'],str)) and
+                     ('details' not in error or isinstance(error['details'],list) and
+                      all(isinstance(item,dict) for item in error['details'])),'KEY_ABSENCE_UNKNOWN')
         member='serviceAccount:'+model.IDENTITY
         for name in ('project_policy','identity_policy'):
             bindings=self._policy_bindings(self.cli[name])
