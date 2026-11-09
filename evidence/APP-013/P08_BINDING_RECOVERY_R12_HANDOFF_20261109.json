@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-11-09T14:07:39.120152+00:00",
+  "operationId": "36949e08-5de6-4e7d-8c9c-eccc0ef441ec",
+  "sourceCommit": "759a130164ae86237b5ee8a5fe540e935cc5d4d9",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": null,
+    "liveObserved": true,
+    "purgeEnd": "2026-11-09T14:50:00Z",
+    "residuals": [],
+    "status": "HANDOFF_RETAINED"
+  },
+  "resourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "reservations": {
+    "cli": 2,
+    "sql": 3
+  },
+  "bindingFingerprintVerification": "PASS",
+  "privatePurge": "PENDING_ORIGINAL_2026-11-09T14:50:00Z",
+  "qualificationAuthorized": false
+}
