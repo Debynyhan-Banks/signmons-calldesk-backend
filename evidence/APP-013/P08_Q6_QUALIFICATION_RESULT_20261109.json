@@ -1,0 +1,62 @@
+{
+  "verifiedAt": "2026-11-09T17:14:21.626418+00:00",
+  "sourceCommit": "74eae7123565fa71419f76b2a4a194c3cd8101b8",
+  "approvalCommit": "b974470",
+  "operationId": "9105a995-cbc1-4737-84b7-c6bd884550b5",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "KEY_ABSENCE_UNKNOWN",
+    "liveObserved": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 9,
+      "sql": 2
+    }
+  },
+  "permissionDiagnostics": [
+    {
+      "cleanupScopeSha256": "b1f29c2120a4ac19f1009544b915a918b886ab15eedcc4b70a262b9e6022d2c3",
+      "descriptorId": "identity_permissions",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "9105a995-cbc1-4737-84b7-c6bd884550b5",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "b1f29c2120a4ac19f1009544b915a918b886ab15eedcc4b70a262b9e6022d2c3",
+      "descriptorId": "project_permissions",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "9105a995-cbc1-4737-84b7-c6bd884550b5",
+      "outcome": "COMPLETE"
+    }
+  ],
+  "independentCloseout": {
+    "operationId": "9105a995-cbc1-4737-84b7-c6bd884550b5"
+  },
+  "finalRecoveryCloseout": {
+    "completedAt": 1794244346.688438,
+    "onTime": true,
+    "operationId": "b61baf5a-c14c-40c0-9801-e37b0ee83a0a",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "resourceCloseout": {
+      "residuals": [],
+      "verified": true
+    },
+    "candidate": null
+  },
+  "privateSlotsAbsent": {
+    "recovered": true,
+    "qualification": true
+  },
+  "guard": "ABSENT",
+  "unresolved": "KEY_ABSENCE_UNKNOWN at ninth HTTPS descriptor by fixed source order; HTTP status/body not retained. No claim key exists, access denied, or parser root cause."
+}
