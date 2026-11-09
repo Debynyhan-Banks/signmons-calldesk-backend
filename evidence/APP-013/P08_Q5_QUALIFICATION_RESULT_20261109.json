@@ -1,0 +1,76 @@
+{
+  "verifiedAt": "2026-11-09T15:19:37.637059+00:00",
+  "sourceCommit": "710e7746a0ae7335d24579a3a5a48283eff46de9",
+  "approvalCommit": "ae8b453",
+  "operationId": "1506217a-894e-4a98-93e3-b80e5282eef6",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "PROCESS_TIMEOUT",
+    "liveObserved": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 0,
+      "cli": 3,
+      "https": 0,
+      "sql": 2
+    }
+  },
+  "cliDiagnostics": [
+    {
+      "cleanupScopeSha256": "6ff798e435cc12d162371db8cede5281ba0abe12ee3092c9dbbdf15037584813",
+      "descriptorId": "owner",
+      "elapsedMilliseconds": 361,
+      "failureCode": null,
+      "operationId": "1506217a-894e-4a98-93e3-b80e5282eef6",
+      "ordinal": 1,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "6ff798e435cc12d162371db8cede5281ba0abe12ee3092c9dbbdf15037584813",
+      "descriptorId": "config",
+      "elapsedMilliseconds": 213,
+      "failureCode": null,
+      "operationId": "1506217a-894e-4a98-93e3-b80e5282eef6",
+      "ordinal": 2,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "6ff798e435cc12d162371db8cede5281ba0abe12ee3092c9dbbdf15037584813",
+      "descriptorId": "project",
+      "elapsedMilliseconds": 28013,
+      "failureCode": "PROCESS_TIMEOUT",
+      "operationId": "1506217a-894e-4a98-93e3-b80e5282eef6",
+      "ordinal": 3,
+      "status": "FAILED"
+    }
+  ],
+  "permissionDiagnostics": [],
+  "independentCloseout": {
+    "operationId": "1506217a-894e-4a98-93e3-b80e5282eef6"
+  },
+  "finalRecoveryCloseout": {
+    "closeout": {
+      "completedAt": 1794237383.900704,
+      "onTime": true,
+      "operationId": "b9410013-c4c8-4bb0-a37b-d00b9ee2f041",
+      "rawFilesAbsent": true,
+      "residuals": [],
+      "status": "PRIVATE_PURGE_VERIFIED",
+      "resourceCloseout": {
+        "residuals": [],
+        "verified": true
+      },
+      "candidate": null
+    },
+    "privateSlotsAbsent": {
+      "recovered": true,
+      "qualification": true
+    },
+    "guard": "ABSENT"
+  },
+  "unresolved": "SDK project descriptor PROCESS_TIMEOUT at28013ms; underlying provider/network/SDK cause UNKNOWN. No HTTPS/cache inspection occurred; prior Q4 permission cause remains UNKNOWN."
+}
