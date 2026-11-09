@@ -1,0 +1,20 @@
+{
+  "reviewedAt": "2026-11-09T15:30:38.694048+00:00",
+  "sourceCommit": "710e7746a0ae7335d24579a3a5a48283eff46de9",
+  "q5EvidenceCommit": "3ef767f",
+  "descriptor": "project",
+  "reservedAtUTC": "2026-11-09T15:16:40.238Z",
+  "remainingReadSecondsAtReservation": 499.762,
+  "commandTotalLimitSeconds": 30,
+  "cleanupReserveSeconds": 2,
+  "expectedWorkLimitSeconds": 28,
+  "observedElapsedMilliseconds": 28013,
+  "focusedLocalTests": {
+    "passed": 2,
+    "durationSeconds": 1.416
+  },
+  "providerCalls": 0,
+  "rootCause": "UNKNOWN",
+  "codeDefectEstablished": false,
+  "runtimeChanged": false
+}
