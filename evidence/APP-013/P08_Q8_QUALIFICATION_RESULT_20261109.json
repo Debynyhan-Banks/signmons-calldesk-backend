@@ -1,0 +1,126 @@
+{
+  "verifiedAt": "2026-11-09T18:38:21.765247+00:00",
+  "sourceCommit": "99a4ef3aa340f5a4272787300dc3c499ea88a0aa",
+  "approvalCommit": "ae79bd3",
+  "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "CURRENT_READ_UNCONFIRMED",
+    "liveObserved": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 19,
+      "sql": 4
+    }
+  },
+  "permissionDiagnostics": [
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "identity_permissions",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "project_permissions",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "run_permissions",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "secret_permissions_0",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "secret_permissions_1",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "secret_permissions_2",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "secret_permissions_3",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "secret_permissions_4",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "secret_permissions_5",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    },
+    {
+      "cleanupScopeSha256": "3e368ade6b826183388545c5371ae9fd20f25f0ac84a9fdb0216c00e63735c9c",
+      "descriptorId": "secret_permissions_6",
+      "httpStatus": 200,
+      "missingPermissions": [],
+      "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77",
+      "outcome": "COMPLETE"
+    }
+  ],
+  "independentCloseout": {
+    "operationId": "19eb6efa-32f2-41af-b029-48cbca722b77"
+  },
+  "finalRecoveryCloseout": {
+    "completedAt": 1794249363.32804,
+    "onTime": true,
+    "operationId": "584e97b9-c9be-4e65-a2cc-2cce8f66f56f",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "resourceCloseout": {
+      "residuals": [],
+      "verified": true
+    },
+    "candidate": null
+  },
+  "privateSlotsAbsent": {
+    "recovered": true,
+    "qualification": true
+  },
+  "guard": "ABSENT",
+  "unresolved": "CURRENT_READ_UNCONFIRMED after27CLI/19HTTPS/4SQL reservations. All10permission results COMPLETE. Source order implicates database/retired-role stage;exact exception and live role state UNKNOWN. No retry;owner requested an end to inefficient repeated attempts."
+}
