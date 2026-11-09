@@ -1,0 +1,37 @@
+{
+  "verifiedAt": "2026-11-09T16:02:50.778954+00:00",
+  "baselineSource": "c21dfdee932185d9a60322f421522aecb562fe6b",
+  "approvedProposal": "58ddf03",
+  "sourceFilesSha256": {
+    "qualification_launch.py": "36a41fc6b974ada302430bb22fa5c9daafc48f7d6fed356f0c13bcf7e436e7bb",
+    "test_qualification_launch.py": "bfb0bafb3b213ec6211bf5115e2bb4765ba9b0b3fc9c607269c8c2b73e13753b",
+    "source-manifest.json": "9d7712e4b3fe24374e57272eb10596a4c6eda5a564f3a91fb8ca6436e3b6bd93"
+  },
+  "focusedNewTests": {
+    "passed": 12,
+    "durationSeconds": 9.647
+  },
+  "fullRuntimeLocalTests": {
+    "passed": 170,
+    "durationSeconds": 87.478
+  },
+  "governanceTests": {
+    "passed": 25
+  },
+  "totalPassed": 195,
+  "checks": {
+    "frozenBaseline": "PASS",
+    "crossRepositoryConsistency": "PASS",
+    "architecture": "PASS",
+    "whitespace": "PASS"
+  },
+  "ownedPostgresTLS": {
+    "serverReaped": true,
+    "scratchAbsent": true
+  },
+  "providerCalls": 0,
+  "externalOperationScheduled": false,
+  "liveAuthority": false,
+  "actualProjectPermissions": "UNKNOWN",
+  "executionReady": false
+}

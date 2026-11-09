@@ -436,7 +436,7 @@ class NativeIO:
     def cli(self, descriptor, deadline):
         need(not self.closed and self.clock() < deadline, "CLI_DEADLINE")
         argv = descriptor["argv"]; need(argv and argv[0] == GCLOUD, "CLI_EXECUTABLE")
-        env = sdk_environment(os.environ) if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
+        env = sdk_environment(os.environ) if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
         timeout = max(1, min(30, int(deadline - self.clock())))
         validate_cli_descriptor(descriptor)
         raw=self._owned_run(argv,env,min(deadline,self.clock()+30))
@@ -487,7 +487,7 @@ class NativeIO:
         need(descriptor in current_sql_contract(), "SQL_ALLOWLIST")
         sql = descriptor["sql"]
         need(sql is not None, "SQL_ALLOWLIST")
-        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
+        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
         env.update({"PGPASSWORD": password, "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/cert.pem", "PGCONNECT_TIMEOUT": "10", "PGAPPNAME": "signmons_p08_qualification_" + self.binding_operation_id, "PGOPTIONS": "-c statement_timeout=15000 -c lock_timeout=5000"})
         timeout = max(1, min(25, int(deadline - self.clock())))
         try:
@@ -667,6 +667,23 @@ def environment_digest(rows):
 PERMISSION_IDS=('project_permissions','identity_permissions',*[f'secret_permissions_{i}' for i in range(7)],'run_permissions')
 
 
+def permission_outcome(d,response=None):
+    status=None;outcome='RESPONSE_UNCONFIRMED';missing=None
+    if response is not None:
+        code=response.get('status');body=response.get('body')
+        status=code if type(code) is int and 100<=code<=599 else None
+        if status is not None and status!=200:outcome='HTTP_REFUSED'
+        elif status==200:
+            outcome='INVALID_RESPONSE'
+            ps=body.get('permissions') if isinstance(body,dict) else None
+            requested=d['body']['permissions']
+            if (isinstance(body,dict) and set(body)=={'permissions'} and isinstance(ps,list) and
+                all(isinstance(x,str) for x in ps) and len(ps)==len(set(ps)) and set(ps)<=set(requested)):
+                missing=[x for x in requested if x not in ps]
+                outcome='MISSING' if missing else 'COMPLETE'
+    return {'httpStatus':status,'outcome':outcome,'missingPermissions':missing}
+
+
 class PermissionDiagnostics:
     """Only source-pinned labels and permission names may enter durable receipts."""
     def __init__(self,cap):
@@ -686,20 +703,7 @@ class PermissionDiagnostics:
         except Exception:raise model.Stop('PERMISSION_DIAGNOSTIC_WRITE_UNCONFIRMED') from None
     def begin(self,d):self.write(d,'attempt',{'status':'RESERVED'})
     def finish(self,d,response=None):
-        status=None;outcome='RESPONSE_UNCONFIRMED';missing=None
-        if response is not None:
-            code=response.get('status');body=response.get('body')
-            status=code if type(code) is int and 100<=code<=599 else None
-            if status is not None and status!=200:outcome='HTTP_REFUSED'
-            elif status==200:
-                outcome='INVALID_RESPONSE'
-                ps=body.get('permissions') if isinstance(body,dict) else None
-                requested=d['body']['permissions']
-                if (isinstance(body,dict) and set(body)=={'permissions'} and isinstance(ps,list) and
-                    all(isinstance(x,str) for x in ps) and len(ps)==len(set(ps)) and set(ps)<=set(requested)):
-                    missing=[x for x in requested if x not in ps]
-                    outcome='MISSING' if missing else 'COMPLETE'
-        self.write(d,'result',{'httpStatus':status,'outcome':outcome,'missingPermissions':missing})
+        self.write(d,'result',permission_outcome(d,response))
 
 
 class CurrentAdapter(Adapter):
@@ -1754,10 +1758,18 @@ PROJECT_DIAGNOSTIC_MARKERS={'envelope.json','attempt.json','entry.lock','result.
     *[f'command-{kind}-{name}.json' for kind in ('attempt','result') for name in ('owner','project')]}
 PROJECT_DIAGNOSTIC_FAILURES=CLI_FAILURE_CODES|frozenset({'INTERRUPTED','OWNER_MISMATCH','PROJECT_MISMATCH',
     'PROJECT_OUTPUT_INVALID','CONFIG_CHANGED','DIAGNOSTIC_DEADLINE','CLOCK_ROLLBACK',
-    'DIAGNOSTIC_WRITE_UNCONFIRMED','CREDENTIAL_OVERRIDE','HOME_OVERRIDE'})
+    'DIAGNOSTIC_WRITE_UNCONFIRMED','CREDENTIAL_OVERRIDE','HOME_OVERRIDE',
+    'TOKEN_CACHE_MISMATCH','CACHE_UNCONFIRMED','CACHED_TOKEN_EXPIRED','TOKEN_OUTPUT','OWNER_PERMISSION_NOT_READY',
+    'HTTPS_OUTPUT_OVERSIZE','HTTPS_REDIRECT','HTTPS_REFUSED','HTTPS_DEADLINE','PERMISSION_RESPONSE_UNCONFIRMED'})
 
 
 class ProjectDiagnosticCapability:
+    limits={'cli':2,'sql':0,'https':0,'cache':0}
+    decision_pattern=r'APP013_P08_OWNER_PROJECT_DIAGNOSTIC_OPERATION_[0-9]{8}\.json'
+    decision_action='APPROVE_EXACT_P08_OWNER_PROJECT_DIAGNOSTIC'
+    root_prefix='/private/tmp/p08-owner-project-'
+    markers=PROJECT_DIAGNOSTIC_MARKERS
+    def commands(self):return (cli_contract()[0],cli_contract()[2])
     def __init__(self,envelope,clock=model.time.time,mode='diagnose',read_commit=None):
         need(mode in ('diagnose','closeout'),'DIAGNOSTIC_MODE')
         e=copy.deepcopy(envelope);manifest=model.verify_local_manifest();model.verify_locked_sources()
@@ -1767,7 +1779,7 @@ class ProjectDiagnosticCapability:
         need(type(e['version']) is int and e['version']==1 and e['execution']=='EXTERNAL_READ_ONLY','DIAGNOSTIC_EXECUTION')
         model.exact_uuid(e['operationId'],'DIAGNOSTIC_OPERATION')
         need(e['project']==model.PROJECT and e['owner']==model.OWNER and e['projectNumberSha256']==PROJECT_NUMBER_SHA256,'DIAGNOSTIC_PINS')
-        need(e['limits']=={'cli':2,'sql':0,'https':0,'cache':0} and all(type(v) is int for v in e['limits'].values()),'DIAGNOSTIC_LIMITS')
+        need(e['limits']==self.limits and all(type(v) is int for v in e['limits'].values()),'DIAGNOSTIC_LIMITS')
         need(e['sdkException']=='SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPORT' and
              e['sdkFilesSha256']==model.digest(manifest['sdkReview']['files']) and e['manifestSha256']==source_manifest_sha256(),'DIAGNOSTIC_SOURCE')
         need(isinstance(e['sourceCommit'],str) and re.fullmatch('[a-f0-9]{40}',e['sourceCommit']),'DIAGNOSTIC_SOURCE')
@@ -1776,37 +1788,41 @@ class ProjectDiagnosticCapability:
         need(times['start']<times['cutoff']<times['readEnd']<times['closeoutEnd'] and
              times['closeoutEnd']-times['start']<=600 and times['closeoutEnd']-times['readEnd']>=10,'DIAGNOSTIC_WINDOW')
         d=e['decision'];need(set(d)=={'commit','path','sha256'} and re.fullmatch('[a-f0-9]{40}',d['commit']) and
-            re.fullmatch('[a-f0-9]{64}',d['sha256']) and re.fullmatch(r'APP013_P08_OWNER_PROJECT_DIAGNOSTIC_OPERATION_[0-9]{8}\.json',d['path']),'DIAGNOSTIC_DECISION')
+            re.fullmatch('[a-f0-9]{64}',d['sha256']) and re.fullmatch(self.decision_pattern,d['path']),'DIAGNOSTIC_DECISION')
         get=read_commit or authority.committed;raw=get(authority.GOV,d['commit'],d['path'])
         scope=model.digest({k:v for k,v in e.items() if k!='decision'})
         need(model.digest(raw)==d['sha256'] and strict_json(raw)=={'owner':'Debynyhan Banks',
-             'decision':'APPROVE_EXACT_P08_OWNER_PROJECT_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':scope},'DIAGNOSTIC_APPROVAL')
+             'decision':self.decision_action,'externalReadAuthorized':True,'scopeSha256':scope},'DIAGNOSTIC_APPROVAL')
         verify_qualification_sources(e['sourceCommit'],manifest,get)
         now=clock()
         if mode=='diagnose':need(times['start']<=now<times['cutoff'],'DIAGNOSTIC_START_WINDOW')
         self.e=e;self.clock=clock;self.mode=mode;self.times=times;self.last=now;self.manifest=manifest;self.scope_hash=scope
-        self.root=Path('/private/tmp/p08-owner-project-'+e['operationId']);self.config=None;self.count=0
+        self.root=Path(self.root_prefix+e['operationId']);self.config=None;self.count=0
         if mode=='diagnose':need(not os.path.lexists(self.root),'DIAGNOSTIC_CONSUMED')
     def prepare(self):
         sdk_environment(os.environ)
         self.config=current_module('acl').config_snapshot(CONFIG_ROOT,os.environ)
     def inspect(self):
-        inspect_current_root(self.root,PROJECT_DIAGNOSTIC_MARKERS)
+        inspect_current_root(self.root,self.markers)
         need(private_json(self.root/'envelope.json')==self.e and
              private_json(self.root/'attempt.json')=={'operationId':self.e['operationId'],'scopeSha256':self.scope_hash},'DIAGNOSTIC_ROOT_BINDING')
     def gate(self,d):
-        need(self.mode=='diagnose' and self.count<2 and d==cli_contract()[0 if self.count==0 else 2],'DIAGNOSTIC_COMMAND')
+        need(self.mode=='diagnose' and self.count<len(self.commands()) and d==self.commands()[self.count],'DIAGNOSTIC_COMMAND')
+        self.boundary()
+        try:model.reserve(self.root/f"command-attempt-{d['id']}.json",{'operationId':self.e['operationId'],
+                 'scopeSha256':self.scope_hash,'descriptorId':d['id'],'status':'RESERVED'})
+        except Exception:raise model.Stop('DIAGNOSTIC_WRITE_UNCONFIRMED') from None
+        self.count+=1
+        return self.times['readEnd']
+    def boundary(self):
+        need(self.mode=='diagnose','DIAGNOSTIC_MODE')
         now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
         need(self.times['start']<=now<self.times['readEnd'],'DIAGNOSTIC_DEADLINE')
         sdk_environment(os.environ)
         need(self.config is not None and current_module('acl').config_snapshot(CONFIG_ROOT,os.environ)==self.config,'CONFIG_CHANGED')
         for path,h in self.manifest['sdkReview']['files'].items():need(model.digest(Path(path).read_bytes())==h,'SDK_REVIEW_DRIFT')
         self.inspect()
-        try:model.reserve(self.root/f"command-attempt-{d['id']}.json",{'operationId':self.e['operationId'],
-                 'scopeSha256':self.scope_hash,'descriptorId':d['id'],'status':'RESERVED'})
-        except Exception:raise model.Stop('DIAGNOSTIC_WRITE_UNCONFIRMED') from None
-        self.count+=1
-        return self.times['readEnd']
+
 
 
 class ProjectDiagnosticIO(NativeIO):
@@ -1820,18 +1836,67 @@ class ProjectDiagnosticIO(NativeIO):
     def https(self,*args):raise model.Stop('DIAGNOSTIC_HTTPS_FORBIDDEN')
 
 
+class ProjectPermissionCapability(ProjectDiagnosticCapability):
+    limits={'cli':3,'sql':0,'https':1,'cache':1}
+    decision_pattern=r'APP013_P08_PROJECT_PERMISSION_DIAGNOSTIC_OPERATION_[0-9]{8}\.json'
+    decision_action='APPROVE_EXACT_P08_PROJECT_PERMISSION_DIAGNOSTIC'
+    root_prefix='/private/tmp/p08-project-permissions-'
+    markers=PROJECT_DIAGNOSTIC_MARKERS|{'command-attempt-token.json','command-result-token.json',
+        'cache-attempt.json','cache-result.json','permission-attempt.json','permission-result.json'}
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs);self.cache_count=0;self.https_count=0;self.token_verified=False
+    def commands(self):return (*super().commands(),next(d for d in cli_contract() if d['id']=='token'))
+    def receipt(self,name,value):
+        try:
+            self.inspect()
+            model.reserve(self.root/name,{'operationId':self.e['operationId'],'scopeSha256':self.scope_hash,**value})
+        except Exception:raise model.Stop('DIAGNOSTIC_WRITE_UNCONFIRMED') from None
+    def extra(self,kind):
+        self.boundary()
+        need(self.count==3 and kind in ('cache','https'),'DIAGNOSTIC_COMMAND')
+        if kind=='cache':
+            need(self.cache_count==0 and self.https_count==0,'DIAGNOSTIC_COMMAND')
+            self.receipt('cache-attempt.json',{'status':'RESERVED'});self.cache_count=1
+        else:
+            need(self.cache_count==1 and self.token_verified and self.https_count==0,'DIAGNOSTIC_COMMAND')
+            self.receipt('permission-attempt.json',{'descriptorId':'project_permissions','status':'RESERVED'});self.https_count=1
+
+
+class ProjectPermissionIO(NativeIO):
+    def __init__(self,cap):
+        need(type(cap) is ProjectPermissionCapability and cap.mode=='diagnose','DIAGNOSTIC_PORT')
+        super().__init__(cap.clock,cap.e['operationId']);self.cap=cap
+    def cli(self,d,deadline):return super().cli(d,min(deadline,self.cap.gate(d)))
+    def sql(self,*args):raise model.Stop('DIAGNOSTIC_SQL_FORBIDDEN')
+    def cached_token(self,expiry):
+        self.cap.extra('cache');acl=current_module('acl')
+        try:
+            with acl.http_deadline(max(.01,min(15,self.cap.times['readEnd']-self.clock()))):
+                return acl.read_cached_token(CONFIG_ROOT,self.cap.times['closeoutEnd'])
+        except Exception as error:
+            code=str(error) if isinstance(error,acl.Stop) and str(error) in ('CACHED_TOKEN_EXPIRED','CONFIG_CHANGED') else 'CACHE_UNCONFIRMED'
+            raise model.Stop(code) from None
+    def https(self,d,token,deadline):
+        number=re.search(r'/projects/([0-9]{6,20}):',d.get('url',''))
+        need(number is not None and model.digest(number.group(1))==self.cap.e['projectNumberSha256'] and
+             d==next(x for x in current_https_contract(number.group(1),'signmons-p08-'+'0'*32) if x['id']=='project_permissions'),'HTTPS_DESCRIPTOR_SCOPE')
+        self.cap.extra('https');return super().https(d,token,min(deadline,self.cap.times['readEnd']))
+
+
 def project_diagnostic_failure(error):
     return str(error) if isinstance(error,model.Stop) and str(error) in PROJECT_DIAGNOSTIC_FAILURES else 'DIAGNOSTIC_UNCONFIRMED'
 
 
 def run_project_diagnostic(cap,io=None):
     import fcntl,signal,threading,time
-    need(type(cap) is ProjectDiagnosticCapability and cap.mode=='diagnose','DIAGNOSTIC_MODE')
+    need(type(cap) in (ProjectDiagnosticCapability,ProjectPermissionCapability) and cap.mode=='diagnose','DIAGNOSTIC_MODE')
     need(io is None or (getattr(io,'proof',None) is True),'DIAGNOSTIC_PORT')
     need(cap.times['start']<=cap.clock()<cap.times['cutoff'],'DIAGNOSTIC_START_WINDOW')
     cap.root.mkdir(mode=0o700)
     fd=os.open(cap.root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
     failure=None;cleaned=False;owner=None;project=None;handlers={};cleaning=False;value=None
+    permission_mode=type(cap) is ProjectPermissionCapability
+    number=None;token=None;permission=None
     def interrupted(*_):
         if not cleaning:raise model.Stop('INTERRUPTED')
     try:
@@ -1841,8 +1906,8 @@ def run_project_diagnostic(cap,io=None):
         if threading.current_thread() is threading.main_thread():
             for sig in (signal.SIGINT,signal.SIGTERM):handlers[sig]=signal.signal(sig,interrupted)
         try:
-            cap.prepare();io=io or ProjectDiagnosticIO(cap)
-            for d in (cli_contract()[0],cli_contract()[2]):
+            cap.prepare();io=io or (ProjectPermissionIO(cap) if permission_mode else ProjectDiagnosticIO(cap))
+            for d in cap.commands():
                 deadline=cap.gate(d) if getattr(io,'proof',False) else cap.times['readEnd']
                 started=time.monotonic();code=None;matched=False
                 try:
@@ -1851,12 +1916,16 @@ def run_project_diagnostic(cap,io=None):
                     need(now<cap.times['readEnd'],'DIAGNOSTIC_DEADLINE')
                     if d['id']=='owner':
                         need(value==[{'account':model.OWNER,'status':'ACTIVE'}],'OWNER_MISMATCH');owner=True
-                    else:
+                    elif d['id']=='project':
                         need(isinstance(value,dict) and set(value)=={'projectId','projectNumber','lifecycleState'} and
                              isinstance(value.get('projectNumber'),str),'PROJECT_OUTPUT_INVALID')
                         need(value['projectId']==model.PROJECT and value['lifecycleState']=='ACTIVE' and
                              re.fullmatch('[0-9]{6,20}',value['projectNumber']) and model.digest(value['projectNumber'])==cap.e['projectNumberSha256'],'PROJECT_MISMATCH')
                         project=True
+                        if permission_mode:number=value['projectNumber']
+                    else:
+                        need(permission_mode and isinstance(value,dict) and set(value)=={'accessToken'} and isinstance(value['accessToken'],str),'TOKEN_OUTPUT')
+                        current_module('acl').validate_token(value['accessToken']);token=value['accessToken']
                     matched=True
                 except BaseException as error:
                     code=project_diagnostic_failure(error);raise model.Stop(code) from None
@@ -1866,18 +1935,39 @@ def run_project_diagnostic(cap,io=None):
                         'scopeSha256':cap.scope_hash,'descriptorId':d['id'],'matched':matched,
                         'elapsedMilliseconds':max(0,min(3600000,int((time.monotonic()-started)*1000))),'failureCode':code})
                     except Exception:raise model.Stop('DIAGNOSTIC_WRITE_UNCONFIRMED') from None
+            if permission_mode:
+                if getattr(io,'proof',False):cap.extra('cache')
+                cached=io.cached_token(cap.times['closeoutEnd'])
+                try:need(cached==token,'TOKEN_CACHE_MISMATCH')
+                finally:cached=None
+                cap.boundary();cap.token_verified=True
+                cap.receipt('cache-result.json',{'tokenMatched':True,'expiryValid':True})
+                d=next(d for d in current_https_contract(number,'signmons-p08-'+'0'*32) if d['id']=='project_permissions')
+                if getattr(io,'proof',False):cap.extra('https')
+                response=None
+                try:
+                    raw=io.https(d,token,cap.times['readEnd'])
+                    cap.boundary()
+                    need(isinstance(raw,dict) and set(raw)=={'status','body'} and type(raw['status']) is int,'PERMISSION_RESPONSE_UNCONFIRMED')
+                    response={'status':raw['status'],'body':strict_json(raw['body'])}
+                finally:
+                    permission=permission_outcome(d,response)
+                    cap.receipt('permission-result.json',permission)
+                    raw=None;response=None
+                need(permission['outcome']=='COMPLETE','OWNER_PERMISSION_NOT_READY')
         except BaseException as error:failure=project_diagnostic_failure(error)
         finally:
-            cleaning=True;value=None
+            cleaning=True;value=None;number=None;token=None
             try:cleaned=io is not None and io.close(cap.times['closeoutEnd']) is True
             except BaseException:cleaned=False
         cap.inspect()
-        result={'status':'OWNER_PROJECT_OBSERVED' if owner and project and cleaned and not failure else 'OWNER_PROJECT_UNQUALIFIED',
+        result={'status':('PROJECT_PERMISSIONS_OBSERVED' if permission_mode else 'OWNER_PROJECT_OBSERVED') if owner and project and cleaned and not failure else ('PROJECT_PERMISSIONS_UNQUALIFIED' if permission_mode else 'OWNER_PROJECT_UNQUALIFIED'),
             'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'failure':failure,
             'ownerMatched':owner,'projectMatched':project,'processCleanupVerified':cleaned,
             'residuals':[] if cleaned else ['PROCESS_CLEANUP_UNCONFIRMED'],
             'cliReservations':cap.count,'reservationSemantics':'RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS',
             'liveObserved':not getattr(io,'proof',False) and cap.count>0,'executionReady':False,'candidate':None}
+        if permission_mode:result.update(permissionDiagnostic=permission,cacheReservations=cap.cache_count,httpsReservations=cap.https_count)
         model.reserve(cap.root/'result.json',result);return result
     finally:
         for sig,handler in handlers.items():signal.signal(sig,handler)
@@ -1886,7 +1976,7 @@ def run_project_diagnostic(cap,io=None):
 
 def closeout_project_diagnostic(cap):
     import fcntl
-    need(type(cap) is ProjectDiagnosticCapability and cap.mode=='closeout','DIAGNOSTIC_MODE');cap.inspect()
+    need(type(cap) in (ProjectDiagnosticCapability,ProjectPermissionCapability) and cap.mode=='closeout','DIAGNOSTIC_MODE');cap.inspect()
     fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW)
     try:
         fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -1911,7 +2001,19 @@ def project_diagnostic_main(argv):
     return 0 if result['processCleanupVerified'] else 2
 
 
+def project_permission_main(argv):
+    need(len(argv)==2 and argv[0] in ('--diagnose-project-permissions','--closeout-project-permissions'),'DIAGNOSTIC_ARGUMENTS')
+    path=Path(argv[1])
+    if argv[0]=='--diagnose-project-permissions':
+        result=run_project_diagnostic(ProjectPermissionCapability(private_json(path)))
+        print(result['status']);return 0 if result['status']=='PROJECT_PERMISSIONS_OBSERVED' else 2
+    cap=ProjectPermissionCapability(private_json(path/'envelope.json'),mode='closeout')
+    need(path==cap.root,'DIAGNOSTIC_ROOT_BINDING');result=closeout_project_diagnostic(cap)
+    print('PROJECT_PERMISSIONS_CLOSED' if result['processCleanupVerified'] else 'PROJECT_PERMISSIONS_CLOSEOUT_UNCONFIRMED')
+    return 0 if result['processCleanupVerified'] else 2
+
+
 if __name__ == "__main__":
-    try:raise SystemExit(project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
+    try:raise SystemExit(project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
     except Exception:
         print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)

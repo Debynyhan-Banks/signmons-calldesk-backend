@@ -1638,3 +1638,163 @@ class ProjectDiagnosticTests(unittest.TestCase):
         raw=json.dumps(d).encode();(f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','-qm','false decision')
         self.e['decision'].update(commit=f.git('rev-parse','HEAD'),sha256=model.digest(raw))
         with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_APPROVAL'):self.cap('closeout')
+
+class ProjectPermissionTests(unittest.TestCase):
+    def setUp(self):
+        import uuid,shutil
+        self.base=ProjectDiagnosticTests();self.base.setUp();self.addCleanup(self.base.doCleanups)
+        self.fixture=self.base.fixture;self.now=self.base.now;self.number=self.base.number
+        self.e=copy.deepcopy(self.base.e);self.e['operationId']=str(uuid.uuid4());self.e['limits']={'cli':3,'https':1,'cache':1,'sql':0};self.bind()
+        self.root=Path('/private/tmp/p08-project-permissions-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+    def bind(self):
+        f=self.fixture;self.e.pop('decision',None);name='APP013_P08_PROJECT_PERMISSION_DIAGNOSTIC_OPERATION_20261109.json'
+        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_PROJECT_PERMISSION_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
+        (f.repo/name).write_bytes(raw);f.git('add',name);f.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','permission approval')
+        self.e['decision']={'commit':f.git('rev-parse','HEAD'),'path':name,'sha256':model.digest(raw)}
+    def cap(self,mode='diagnose'):return launch.ProjectPermissionCapability(self.e,lambda:self.now,mode,self.fixture.read_commit)
+    def io(self,body=None,status=200,token='SYNTHETIC_BEARER_NEVER_PERSIST',cache=None):
+        io=self.base.io();original=io.cli;io.extra=[]
+        def cli(d,deadline):
+            if d['id']=='token':io.calls.append(d);return {'accessToken':token}
+            return original(d,deadline)
+        def cached(expiry):
+            io.extra.append('cache')
+            if isinstance(cache,Exception):raise cache
+            return token if cache is None else cache
+        def https(d,bearer,deadline):
+            io.extra.append('https');self.assertEqual(d['id'],'project_permissions');self.assertEqual(bearer,token)
+            return {'status':status,'body':{'permissions':list(launch.CURRENT_PROJECT_PERMISSIONS)} if body is None else body}
+        io.cli=cli;io.cached_token=cached;io.https=https;return io
+    def test_complete_and_subsets_use_exact_request_list_without_candidate(self):
+        import shutil
+        required=list(launch.CURRENT_PROJECT_PERMISSIONS)
+        for present in [required,required[:-1],[]]:
+            shutil.rmtree(self.root,ignore_errors=True);io=self.io({'permissions':present});r=launch.run_project_diagnostic(self.cap(),io)
+            self.assertEqual(r['status'],'PROJECT_PERMISSIONS_OBSERVED' if present==required else 'PROJECT_PERMISSIONS_UNQUALIFIED')
+            self.assertEqual(r['permissionDiagnostic']['missingPermissions'],[p for p in required if p not in present])
+            self.assertEqual(io.extra,['cache','https']);self.assertEqual([d['id'] for d in io.calls],['owner','project','token'])
+            self.assertEqual((r['cliReservations'],r['cacheReservations'],r['httpsReservations']),(3,1,1))
+            self.assertIsNone(r['candidate']);self.assertTrue(io.closed);self.assertFalse(r['executionReady'])
+            text=''.join(p.read_text() for p in self.root.iterdir());self.assertNotIn('SYNTHETIC_BEARER_NEVER_PERSIST',text);self.assertNotIn(self.number,text)
+            self.assertEqual(launch.closeout_project_diagnostic(self.cap('closeout'))['residuals'],[])
+    def test_invalid_responses_do_not_invent_missing_permissions(self):
+        import shutil
+        cases=[({},200),({'permissions':None},200),({'permissions':'SECRET_CANARY'},200),({'permissions':[3]},200),
+            ({'permissions':['SECRET_CANARY']},200),({'permissions':[launch.CURRENT_PROJECT_PERMISSIONS[0]]*2},200),
+            ({'permissions':[],'extra':'SECRET_CANARY'},200),({'error':'SECRET_CANARY'},403),(b'\xff',200),(b'{bad SECRET_CANARY',200)]
+        for body,status in cases:
+            shutil.rmtree(self.root,ignore_errors=True);io=self.io(body,status);r=launch.run_project_diagnostic(self.cap(),io)
+            self.assertEqual(r['status'],'PROJECT_PERMISSIONS_UNQUALIFIED');self.assertIsNone(r['permissionDiagnostic']['missingPermissions'])
+            self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()));self.assertTrue(io.closed)
+    def test_token_mismatch_or_cache_failure_prevents_https(self):
+        import shutil
+        for cache in ['OTHER_SYNTHETIC_TOKEN',model.Stop('CACHED_TOKEN_EXPIRED'),model.Stop('SECRET_CANARY')]:
+            shutil.rmtree(self.root,ignore_errors=True);io=self.io(cache=cache);r=launch.run_project_diagnostic(self.cap(),io)
+            self.assertEqual(r['status'],'PROJECT_PERMISSIONS_UNQUALIFIED');self.assertEqual(io.extra,['cache']);self.assertEqual(r['httpsReservations'],0)
+            self.assertIsNone(r['permissionDiagnostic']);self.assertTrue(io.closed)
+            self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+    def test_d1_approval_cannot_authorize_permission_entry_or_reverse(self):
+        with self.assertRaises(model.Stop):launch.ProjectPermissionCapability(self.base.e,lambda:self.now,read_commit=self.fixture.read_commit)
+        with self.assertRaises(model.Stop):launch.ProjectDiagnosticCapability(self.e,lambda:self.now,read_commit=self.fixture.read_commit)
+        saved=copy.deepcopy(self.e);self.e['limits']['https']=2
+        with self.assertRaises(model.Stop):self.cap()
+        self.e=saved;self.e['decision']['sha256']='0'*64
+        with self.assertRaises(model.Stop):self.cap()
+        self.assertFalse(self.root.exists())
+    def test_actual_subprocess_cache_sqlite_and_http_boundary(self):
+        self._actual_boundary()
+    def _actual_boundary(self,cache_change=None,response_bytes=None,http_status=200):
+        cache=CacheBindingTests();cache.setUp();self.addCleanup(cache.doCleanups)
+        if cache_change:cache_change(cache)
+        original_module=launch.current_module;acl=original_module('acl');actual=launch.NativeIO._owned_run;captured=[];cached_calls=[]
+        real_cache=acl.read_cached_token
+        def read(root,expiry):cached_calls.append((root,expiry));return real_cache(root,expiry)
+        acl.read_cached_token=read
+        def owned(io,argv,env,deadline):
+            if 'print-access-token' in argv:value='SYNTHETIC_BEARER_NEVER_PERSIST'
+            elif 'projects' in argv:value=json.dumps({'projectId':model.PROJECT,'projectNumber':self.number,'lifecycleState':'ACTIVE'})
+            else:value=json.dumps([{'account':model.OWNER,'status':'ACTIVE'}])
+            return actual(io,[launch.sys.executable,'-c','import sys;sys.stdout.write(sys.argv[1])',value],env,deadline)
+        class Response:
+            status=http_status;closed=False
+            def read(self,n):return (json.dumps({'permissions':list(launch.CURRENT_PROJECT_PERMISSIONS)}).encode() if response_bytes is None else response_bytes)[:n]
+            def close(self):self.closed=True
+        response=Response()
+        def opened(request,timeout):
+            captured.append(request)
+            self.assertEqual(request.get_method(),'POST');self.assertIn('/projects/'+self.number+':testIamPermissions',request.full_url)
+            self.assertEqual(json.loads(request.data),{'permissions':list(launch.CURRENT_PROJECT_PERMISSIONS)})
+            self.assertEqual(request.get_header('Authorization'),'Bearer SYNTHETIC_BEARER_NEVER_PERSIST')
+            return response
+        with patch.object(launch,'CONFIG_ROOT',cache.root),patch.object(launch,'current_module',side_effect=lambda n:acl if n=='acl' else original_module(n)),patch.object(launch.NativeIO,'_owned_run',owned),patch('urllib.request.build_opener') as opener:
+            opener.return_value.open.side_effect=opened
+            result=launch.run_project_diagnostic(self.cap())
+        self.assertEqual(len(cached_calls),1);self.assertEqual(cached_calls[0][1],model.timestamp(self.e['window']['closeoutEnd']))
+        self.assertTrue(result['processCleanupVerified']);self.assertNotIn('SYNTHETIC_BEARER_NEVER_PERSIST',''.join(p.read_text() for p in self.root.iterdir()))
+        if cache_change:self.assertEqual(captured,[]);self.assertEqual(result['httpsReservations'],0)
+        elif response_bytes is None:self.assertEqual(result['status'],'PROJECT_PERMISSIONS_OBSERVED');self.assertEqual(len(captured),1);self.assertTrue(response.closed)
+        else:self.assertEqual(result['status'],'PROJECT_PERMISSIONS_UNQUALIFIED');self.assertEqual(len(captured),1);self.assertTrue(response.closed)
+        return result
+    def test_actual_expired_cache_prevents_http(self):
+        def expire(cache):
+            import sqlite3
+            with sqlite3.connect(cache.db) as c:c.execute("UPDATE access_tokens SET token_expiry='2000-01-01 00:00:00'")
+            c.close()
+        r=self._actual_boundary(cache_change=expire);self.assertEqual(r['failure'],'CACHED_TOKEN_EXPIRED')
+    def test_actual_cache_journal_prevents_http(self):
+        r=self._actual_boundary(cache_change=lambda c:Path(str(c.db)+'-wal').write_bytes(b'fake'))
+        self.assertEqual(r['failure'],'CACHE_UNCONFIRMED')
+    def test_actual_oversize_response_no_retry_or_payload(self):
+        r=self._actual_boundary(response_bytes=b'SECRET_CANARY'+b'x'*launch.MAX_OUTPUT)
+        self.assertEqual(r['failure'],'HTTPS_OUTPUT_OVERSIZE');self.assertIsNone(r['permissionDiagnostic']['httpStatus'])
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+    def test_config_or_deadline_change_after_cache_prevents_http(self):
+        import shutil
+        for drift in ['clock','config']:
+            shutil.rmtree(self.root,ignore_errors=True);io=self.io();original=io.cached_token
+            def cached(expiry):
+                value=original(expiry)
+                if drift=='clock':self.now+=61
+                else:launch.CONFIG_ROOT.joinpath('configurations/config_default').write_text('[core]\nproject = foreign\n')
+                return value
+            io.cached_token=cached;r=launch.run_project_diagnostic(self.cap(),io)
+            self.assertEqual(r['httpsReservations'],0);self.assertTrue(io.closed);self.assertIsNone(r['candidate']);self.now=self.base.now
+    def test_write_failure_and_duplicate_cache_reservation_refuse(self):
+        io=self.io();original=model.reserve
+        def fail(path,value):
+            if path.name=='permission-result.json':raise OSError('SECRET_CANARY')
+            return original(path,value)
+        with patch.object(model,'reserve',side_effect=fail):r=launch.run_project_diagnostic(self.cap(),io)
+        self.assertEqual(r['failure'],'DIAGNOSTIC_WRITE_UNCONFIRMED');self.assertTrue(io.closed)
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+        # A consumed root cannot restart work or create another credential/HTTP reservation.
+        with self.assertRaises(model.Stop):self.cap()
+        cap=self.cap('closeout')
+        with self.assertRaises(model.Stop):cap.extra('cache')
+    def test_transport_rejects_sql_other_http_and_pre_token_http(self):
+        cap=self.cap();io=launch.ProjectPermissionIO(cap)
+        with self.assertRaises(model.Stop):io.sql({},'x',self.now+10)
+        for d in launch.current_https_contract(self.number,'signmons-p08-'+'0'*32):
+            with self.assertRaises(model.Stop):io.https(d,'SYNTHETIC_BEARER_NEVER_PERSIST',self.now+10)
+        self.assertFalse(self.root.exists())
+    def test_actual_public_crash_after_cache_reservation_then_fresh_closeout(self):
+        f=self.fixture;path=f.repo/'permission-input.json';model.reserve(path,self.e)
+        code='\n'.join([
+            'import sys,os,json,signal;from pathlib import Path',
+            'sys.path.insert(0,sys.argv[1]);import qualification_launch as q',
+            "original=q.current_module;a=original('authority');read=a.committed",
+            f'a.committed=lambda repo,commit,path:read(Path({str(f.repo)!r}),commit,path)',
+            "q.current_module=lambda name:a if name=='authority' else original(name)",
+            f'q.CONFIG_ROOT=Path({str(f.repo/"synthetic-config")!r})',f'q.PROJECT_NUMBER_SHA256=q.model.digest({self.number!r})',
+            'def owned(self,argv,env,deadline):',
+            " if 'print-access-token' in argv:return b'SYNTHETIC_BEARER_NEVER_PERSIST'",
+            f" return json.dumps({{'projectId':q.model.PROJECT,'projectNumber':{self.number!r},'lifecycleState':'ACTIVE'}} if 'projects' in argv else [{{'account':q.model.OWNER,'status':'ACTIVE'}}]).encode()",
+            'q.NativeIO._owned_run=owned',
+            'def crash(self,expiry):self.cap.extra("cache");os.kill(os.getpid(),signal.SIGKILL)',
+            'q.ProjectPermissionIO.cached_token=crash',
+            'raise SystemExit(q.project_permission_main(sys.argv[2:]))'])
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',code,str(model.ROOT),'--diagnose-project-permissions',str(path)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,-9,p.stderr.decode());self.assertTrue((self.root/'cache-attempt.json').exists());self.assertFalse((self.root/'permission-attempt.json').exists())
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',code,str(model.ROOT),'--closeout-project-permissions',str(self.root)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,2,p.stderr.decode());r=json.loads((self.root/'closeout.json').read_text())
+        self.assertEqual(r['residuals'],['PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(r['candidate']);self.assertFalse((self.root/'permission-result.json').exists())

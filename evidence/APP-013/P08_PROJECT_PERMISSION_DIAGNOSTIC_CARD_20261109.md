@@ -1,0 +1,25 @@
+# APP-013 / 3A / P08 — approved project-permission diagnostic
+
+Owner approved governance58ddf03 before coding. Exact proposed section/acceptance/source/finite checklist/tests/privacy/identity/retention/recovery/rollback contract and pre-code implementation card: governance APP013_P08_PROJECT_PERMISSION_DIAGNOSTIC_PROPOSAL_20261109.md. Baselinec21dfde, D1 evidence50d4dc8. This is local implementation only; no live permission request or exact external packet/window created.
+
+## Implemented behavior
+
+Distinct ProjectPermissionCapability/ProjectPermissionIO, --diagnose-project-permissions and --closeout-project-permissions in existing qualification_launch.py. Strict distinct committed decision filename/action, limits3CLI/1HTTPS/1cache/0SQL and /private/tmp/p08-project-permissions-<UUID> namespace. Fixed class attributes share validated source/SDK/environment/configuration/time/root/lock/recovery mechanics; original D1 retains its exact approval,2CLI/0HTTPS/0cache limits and namespace. Cross-authorization fails. Legacy pinned access_check.py unchanged.
+
+Owner and project match are required before exact token SDK command. Raw project number stays in runner memory only. NativeIO token parser and existing validation reject invalid outputs. Existing bounded read_cached_token runs once only after durable cache reservation and verifies SDK-token equality plus expiry beyond closeoutEnd using original two SELECTs, schema/owner/runtime/file/sidecar/restriction checks. SDK refresh/cache/internal retries remain explicitly separate live allowances; code does not claim SDK-managed cache absent/purged. Cache mismatch/error/config drift stops before HTTPS. No credential fallback or refresh wrapper.
+
+Exactly one current project_permissions POST with original15-permission body and fingerprinted project number; no identity/secret/Run/service/key/Firebase requests. Existing NativeIO exact URL/body/host/no-redirect/15second/64KiB controls reused. Pure permission_outcome extracted from existing full-qualification diagnostics without changing behavior. COMPLETE/MISSING/HTTP_REFUSED/INVALID_RESPONSE/RESPONSE_UNCONFIRMED, bounded status or null and source-requested-only missing names remain the only response details persisted. Invalid/foreign/duplicate/missing/null/non200 output never becomes proven missing permission.
+
+Exclusive before-dispatch command/cache/HTTP reservations; fixed0600 receipt inventory,0700 root, one operation lock. Result adds only safe permissionDiagnostic and cache/HTTPS reservation counts. No raw token/project number/cache row/response/body/header/provider message/error text/expiry timestamp/target UUID persists. Raw references cleared on exit; no secure-memory-erasure claim. No SQL/password prompt/native candidate/payment or policy mutation. Independent closeout is local-only, validates exact authority/root, cannot replay work or invent interrupted results; hard-crash ownership remains UNKNOWN.
+
+## Validation and observed development corrections
+
+12 new focused tests PASS in9.647s: complete/partial/empty safe results; malformed/foreign/duplicate/non200/invalidUTF8/JSON canaries; token mismatch/cache failure prevents HTTPS; distinct authority/limits; actual NativeIO owned subprocess stdout plus real synthetic SQLite cache and mocked HTTP request/response; actual expired cache and sidecar refusal; oversize/no retry; cache-to-HTTP clock/config drift; publication failure/consumed root; forbidden SQL/other HTTP; real public SIGKILL after cache reservation and fresh local-only closeout. Existing D1/full qualifier/cache/transport/signal/concurrency/restart suites retained for shared-path regressions.
+
+Initial42focused tests had one synthetic child-script name error before the intended crash; corrected script to use imported q.model and supplied synthetic project number. Closed the test-only SQLite mutation connection explicitly after a ResourceWarning. No production behavior loosened to satisfy tests. Final focused run clean; full-suite result saved separately before completion.
+
+Expected files changed only qualification_launch.py,test_qualification_launch.py,source-manifest.json and evidence/governance. SDK/locked dependency/request/permission/timeout pins unchanged. No browser/app change; same-job Sandbox acceptance gates remain downstream. Rollback only approved source/tests/manifest to c21dfde; preserve receipts and unrelated AGENTS.md.
+
+Remaining: final full local validation record, then only if requested a source-bound exact no-password live packet and separate owner/credential approval. Current permission gap and Q5 timeout cause remain UNKNOWN. Prior D1/Q5/R13 closeout remains complete.3A OPEN; accepted1A/1B/2A/2B4/8;R1newlyclosed0/27. No scope deviation beyond approved extension.
+
+Final validation complete:170runtime/local PASS in87.478s plus25governance PASS,total195. OwnedTLS server reaped/scratch absent,providerCalls0. All approved local checklist items complete. No external operation packet/window/authority created; live project permissions UNKNOWN.
