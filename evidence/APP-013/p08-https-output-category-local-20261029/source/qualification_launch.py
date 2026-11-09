@@ -1212,8 +1212,12 @@ class QualificationIO(NativeIO):
             cap.gate('cache')
             cached=None
             try:
-                with acl.http_deadline(max(.01,min(15,cap.times['readEnd']-cap.clock()))):
-                    cached=acl.read_cached_token(cap.config_root,cap.times['purgeEnd'])
+                try:
+                    with acl.http_deadline(max(.01,min(15,cap.times['readEnd']-cap.clock()))):
+                        cached=acl.read_cached_token(cap.config_root,cap.times['purgeEnd'])
+                except Exception as error:
+                    code=str(error) if isinstance(error,acl.Stop) and str(error) in ('CACHED_TOKEN_EXPIRED','CONFIG_CHANGED') else 'CACHE_UNCONFIRMED'
+                    raise model.Stop(code) from None
                 need(value=={'accessToken':cached},'TOKEN_CACHE_MISMATCH')
             finally:cached=None
         return value

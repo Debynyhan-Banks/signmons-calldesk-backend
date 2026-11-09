@@ -847,6 +847,52 @@ class CacheTransportTests(CacheBindingTests):
                 with self.assertRaisesRegex(model.Stop,'TOKEN_CACHE_MISMATCH'):io.cli(d,cap.times['readEnd'])
             self.assertEqual(cap.counts['https'],0);self.assertTrue(io.close(cap.times['closeoutEnd']))
 
+    def test_cache_failures_reach_full_result_without_private_text(self):
+        import shutil,sqlite3,datetime,types
+        proof=CurrentProofTests();proof.setUp();self.addCleanup(proof.doCleanups)
+        original=launch.current_module;acl=original('acl');real_read=acl.read_cached_token
+        cases=[('success',None),('expiry','CACHED_TOKEN_EXPIRED'),('sidecar','CACHE_UNCONFIRMED'),
+               ('mismatch','TOKEN_CACHE_MISMATCH'),('CONFIG_CHANGED','CONFIG_CHANGED'),
+               *[(c,'CACHE_UNCONFIRMED') for c in ['CACHE_BUSY','CACHE_SCHEMA_UNSUPPORTED','CACHED_TOKEN_MISSING','HTTP_TIMEOUT','unexpected']]]
+        for kind,expected in cases:
+            with self.subTest(kind=kind):
+                shutil.rmtree(proof.root,ignore_errors=True);proof.io.calls=[];proof.io.closed=False
+                Path(str(self.db)+'-wal').unlink(missing_ok=True)
+                expiry=proof.now+(100 if kind=='expiry' else 2000)
+                with sqlite3.connect(self.db) as connection:
+                    connection.execute('UPDATE access_tokens SET token_expiry=?',(datetime.datetime.fromtimestamp(expiry,datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),))
+                connection.close()
+                if kind=='sidecar':Path(str(self.db)+'-wal').write_bytes(b'fake')
+                cap=object.__new__(launch.QualificationCapability);cap.clock=lambda:proof.now
+                cap.plan=proof.p;cap.config_root=self.root;cap.config=None
+                cap.times={'readEnd':proof.now+50,'closeoutEnd':proof.now+100,'purgeEnd':proof.now+1000}
+                cap.counts={'cli':0,'cache':0};cap.gate=lambda k:cap.counts.__setitem__(k,cap.counts[k]+1)
+                cap.root=self.root;cap.e={'plan':{**proof.p,'window':cap.times},'nativeScope':{'database':{}},'sourceCommit':'0'*40,'manifestSha256':'0'*64}
+                transport=launch.QualificationIO(cap);old_cli=proof.io.cli;read_calls=[]
+                def read(root,end):
+                    read_calls.append(end)
+                    if kind=='unexpected':raise RuntimeError('PRIVATE_CACHE_CANARY')
+                    if kind not in ('success','expiry','sidecar','mismatch'):raise acl.Stop(kind)
+                    return real_read(root,end,env={})
+                def cli(d,deadline):
+                    if d['id']!='token':return old_cli(d,deadline)
+                    proof.io.calls.append(('cli',d));return transport.cli(d,deadline)
+                proof.io.cli=cli
+                # Use production transport/cache/error path; mock only SDK stdout and diagnostic persistence here.
+                try:
+                    with patch.object(acl,'read_cached_token',side_effect=read),patch.object(launch,'current_module',side_effect=lambda n:acl if n=='acl' else original(n)),patch.object(launch,'observed_qualification_cli',side_effect=lambda c,d,call:call()),patch.object(transport,'_owned_run',return_value=b'SYNTHETIC_MISMATCHED_BEARER' if kind=='mismatch' else b'SYNTHETIC_BEARER_NEVER_PERSIST'),patch.dict(launch.os.environ,{'HOME':'/Users/debynyhanbanks'},clear=True):
+                        result=proof.run_proof()
+                    self.assertEqual(result['failure'],expected,result)
+                    self.assertEqual(read_calls,[cap.times['purgeEnd']]);self.assertEqual(cap.counts,{'cli':1,'cache':1})
+                    if expected:
+                        self.assertIsNone(result['candidate']);self.assertFalse(any(k=='https' for k,d in proof.io.calls))
+                        self.assertEqual([d['id'] for k,d in proof.io.calls if k=='cli'][-1],'token')
+                    else:self.assertIsNotNone(result['candidate'])
+                    self.assertTrue(proof.io.closed and proof.fresh.closed)
+                    text=''.join(p.read_text() for p in proof.root.glob('*.json'))
+                    for secret in ['PRIVATE_CACHE_CANARY','SYNTHETIC_BEARER_NEVER_PERSIST']:self.assertNotIn(secret,text)
+                finally:proof.io.cli=old_cli
+
 # Do not duplicate the helper's three independent cases through subclass discovery.
 for _name in list(CacheBindingTests.__dict__):
     if _name.startswith('test_'):setattr(CacheTransportTests,_name,None)
