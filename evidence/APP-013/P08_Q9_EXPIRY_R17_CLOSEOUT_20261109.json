@@ -1,0 +1,22 @@
+{
+  "verifiedAt": "2026-11-09T23:12:09.993864+00:00",
+  "qualificationId": "2b76a506-0d7a-41d0-98af-3ae63f3b38b9",
+  "qualificationStatus": "EXPIRED_NO_EXECUTION",
+  "approvalArrivedAfterCutoff": true,
+  "qualificationRootAbsent": true,
+  "recoveredInputAbsent": true,
+  "qualificationInputAbsent": true,
+  "guardAbsent": true,
+  "purge": {
+    "completedAt": 1794257998.0633569,
+    "onTime": true,
+    "operationId": "8f26afaf-7107-471f-8316-7c55b3fd84a6",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "resourceCloseout": {
+    "residuals": [],
+    "verified": true
+  }
+}
