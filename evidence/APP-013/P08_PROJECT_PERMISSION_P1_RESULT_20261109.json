@@ -1,0 +1,77 @@
+{
+  "verifiedAt": "2026-11-09T16:16:14.428998+00:00",
+  "sourceCommit": "4f7c377bc6fe2e78cdb829471fc0b11ba0cef163",
+  "approvalCommit": "4dde500",
+  "result": {
+    "cacheReservations": 1,
+    "candidate": null,
+    "cliReservations": 3,
+    "executionReady": false,
+    "failure": "OWNER_PERMISSION_NOT_READY",
+    "httpsReservations": 1,
+    "liveObserved": true,
+    "operationId": "c5a6f1fa-d5d5-4eff-b71c-eafc178407b9",
+    "ownerMatched": true,
+    "permissionDiagnostic": {
+      "httpStatus": 400,
+      "missingPermissions": null,
+      "outcome": "HTTP_REFUSED"
+    },
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "scopeSha256": "fd1b0cac4626b03b07cd28c2fe235b0bd70e6550550477bee3dc13a22dff7661",
+    "status": "PROJECT_PERMISSIONS_UNQUALIFIED"
+  },
+  "commands": [
+    {
+      "descriptorId": "owner",
+      "elapsedMilliseconds": 352,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "c5a6f1fa-d5d5-4eff-b71c-eafc178407b9",
+      "scopeSha256": "fd1b0cac4626b03b07cd28c2fe235b0bd70e6550550477bee3dc13a22dff7661"
+    },
+    {
+      "descriptorId": "project",
+      "elapsedMilliseconds": 790,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "c5a6f1fa-d5d5-4eff-b71c-eafc178407b9",
+      "scopeSha256": "fd1b0cac4626b03b07cd28c2fe235b0bd70e6550550477bee3dc13a22dff7661"
+    },
+    {
+      "descriptorId": "token",
+      "elapsedMilliseconds": 239,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "c5a6f1fa-d5d5-4eff-b71c-eafc178407b9",
+      "scopeSha256": "fd1b0cac4626b03b07cd28c2fe235b0bd70e6550550477bee3dc13a22dff7661"
+    }
+  ],
+  "cache": {
+    "expiryValid": true,
+    "operationId": "c5a6f1fa-d5d5-4eff-b71c-eafc178407b9",
+    "scopeSha256": "fd1b0cac4626b03b07cd28c2fe235b0bd70e6550550477bee3dc13a22dff7661",
+    "tokenMatched": true
+  },
+  "permission": {
+    "httpStatus": 400,
+    "missingPermissions": null,
+    "operationId": "c5a6f1fa-d5d5-4eff-b71c-eafc178407b9",
+    "outcome": "HTTP_REFUSED",
+    "scopeSha256": "fd1b0cac4626b03b07cd28c2fe235b0bd70e6550550477bee3dc13a22dff7661"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "c5a6f1fa-d5d5-4eff-b71c-eafc178407b9",
+    "processCleanupVerified": true,
+    "residuals": [],
+    "scopeSha256": "fd1b0cac4626b03b07cd28c2fe235b0bd70e6550550477bee3dc13a22dff7661"
+  },
+  "rawResponsePersisted": false,
+  "missingPermissions": "UNKNOWN_HTTP_400",
+  "scopeLimitation": "HTTP400 response observed; exact provider error body not retained. No missing permission or IAM change established."
+}
