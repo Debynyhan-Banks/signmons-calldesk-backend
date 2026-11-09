@@ -575,7 +575,7 @@ def native(argv=None):
 CURRENT_PROJECT_PERMISSIONS = ('resourcemanager.projects.get','resourcemanager.projects.getIamPolicy',
  'resourcemanager.projects.setIamPolicy','firebaseauth.users.get','firebaseauth.users.update',
  'apikeys.keys.create','apikeys.keys.get','apikeys.keys.getKeyString','apikeys.keys.delete',
- 'apikeys.operations.get','serviceusage.services.get','serviceusage.services.enable',
+ 'serviceusage.services.get','serviceusage.services.enable',
  'serviceusage.services.use','serviceusage.operations.get','run.operations.get')
 CURRENT_IDENTITY_PERMISSIONS = ('iam.serviceAccounts.get','iam.serviceAccounts.getIamPolicy',
  'iam.serviceAccounts.setIamPolicy','iam.serviceAccounts.enable','iam.serviceAccounts.disable','iam.serviceAccounts.actAs')

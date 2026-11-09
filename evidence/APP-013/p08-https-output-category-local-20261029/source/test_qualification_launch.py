@@ -1723,7 +1723,14 @@ class ProjectPermissionTests(unittest.TestCase):
         def opened(request,timeout):
             captured.append(request)
             self.assertEqual(request.get_method(),'POST');self.assertIn('/projects/'+self.number+':testIamPermissions',request.full_url)
-            self.assertEqual(json.loads(request.data),{'permissions':list(launch.CURRENT_PROJECT_PERMISSIONS)})
+            # Independent documented IAM contract: API Keys operations.get uses
+            # serviceusage.operations.get, not an apikeys.operations permission.
+            self.assertEqual(json.loads(request.data),{'permissions':[
+                'resourcemanager.projects.get','resourcemanager.projects.getIamPolicy',
+                'resourcemanager.projects.setIamPolicy','firebaseauth.users.get','firebaseauth.users.update',
+                'apikeys.keys.create','apikeys.keys.get','apikeys.keys.getKeyString','apikeys.keys.delete',
+                'serviceusage.services.get','serviceusage.services.enable','serviceusage.services.use',
+                'serviceusage.operations.get','run.operations.get']})
             self.assertEqual(request.get_header('Authorization'),'Bearer SYNTHETIC_BEARER_NEVER_PERSIST')
             return response
         with patch.object(launch,'CONFIG_ROOT',cache.root),patch.object(launch,'current_module',side_effect=lambda n:acl if n=='acl' else original_module(n)),patch.object(launch.NativeIO,'_owned_run',owned),patch('urllib.request.build_opener') as opener:
