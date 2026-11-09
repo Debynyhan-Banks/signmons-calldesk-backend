@@ -1,0 +1,291 @@
+{
+  "verifiedAt": "2026-11-09T14:17:01.341641+00:00",
+  "sourceCommit": "759a130164ae86237b5ee8a5fe540e935cc5d4d9",
+  "approvalCommit": "3ce6b64",
+  "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "OWNER_PERMISSION_NOT_READY",
+    "liveObserved": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 7,
+      "sql": 2
+    }
+  },
+  "cliDiagnostics": [
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "owner",
+      "elapsedMilliseconds": 331,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 1,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "config",
+      "elapsedMilliseconds": 214,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 2,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "project",
+      "elapsedMilliseconds": 523,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 3,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "billing_project",
+      "elapsedMilliseconds": 472,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 4,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "billing_account",
+      "elapsedMilliseconds": 419,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 5,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "service",
+      "elapsedMilliseconds": 671,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 6,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "revision",
+      "elapsedMilliseconds": 571,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 7,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "identity",
+      "elapsedMilliseconds": 462,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 8,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_state_0",
+      "elapsedMilliseconds": 522,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 9,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_state_1",
+      "elapsedMilliseconds": 463,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 10,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_state_2",
+      "elapsedMilliseconds": 486,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 11,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_state_3",
+      "elapsedMilliseconds": 444,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 12,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_state_4",
+      "elapsedMilliseconds": 485,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 13,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_state_5",
+      "elapsedMilliseconds": 537,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 14,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_policy_0",
+      "elapsedMilliseconds": 700,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 15,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_policy_1",
+      "elapsedMilliseconds": 614,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 16,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_policy_2",
+      "elapsedMilliseconds": 582,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 17,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_policy_3",
+      "elapsedMilliseconds": 626,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 18,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_policy_4",
+      "elapsedMilliseconds": 667,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 19,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_policy_5",
+      "elapsedMilliseconds": 591,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 20,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "secret_policy_6",
+      "elapsedMilliseconds": 645,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 21,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "project_policy",
+      "elapsedMilliseconds": 540,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 22,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "identity_policy",
+      "elapsedMilliseconds": 487,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 23,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "lookup_role",
+      "elapsedMilliseconds": 542,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 24,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "signing_role",
+      "elapsedMilliseconds": 448,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 25,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "token",
+      "elapsedMilliseconds": 207,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 26,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "97d90430958983d346db48985182c66be4a9a21f164fc72df72f43556cd19d55",
+      "descriptorId": "stripe_state",
+      "elapsedMilliseconds": 519,
+      "failureCode": null,
+      "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996",
+      "ordinal": 27,
+      "status": "RETURNED"
+    }
+  ],
+  "independentCloseout": {
+    "operationId": "1383bfb5-f443-45e9-92b6-8bbf381a4996"
+  },
+  "finalRecoveryCloseout": {
+    "closeout": {
+      "completedAt": 1794233719.8478668,
+      "onTime": true,
+      "operationId": "36949e08-5de6-4e7d-8c9c-eccc0ef441ec",
+      "rawFilesAbsent": true,
+      "residuals": [],
+      "status": "PRIVATE_PURGE_VERIFIED",
+      "resourceCloseout": {
+        "residuals": [],
+        "verified": true
+      },
+      "candidate": null
+    },
+    "privateSlotsAbsent": {
+      "recovered": true,
+      "qualification": true
+    },
+    "guard": "ABSENT"
+  },
+  "inference": "Seven HTTPS reservations and fixed sequential descriptors identify project_permissions as the failed predicate after six successful service checks. Exact response status, body and permission differences were not retained and remain UNKNOWN."
+}
