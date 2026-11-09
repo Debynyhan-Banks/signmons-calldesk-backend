@@ -1,0 +1,55 @@
+{
+  "verifiedAt": "2026-11-09T15:50:58.313479+00:00",
+  "sourceCommit": "c21dfdee932185d9a60322f421522aecb562fe6b",
+  "approvalCommit": "b2d9a0d",
+  "result": {
+    "candidate": null,
+    "cliReservations": 2,
+    "executionReady": false,
+    "failure": null,
+    "liveObserved": true,
+    "operationId": "aa005972-1b7f-4c19-933d-4cc63ad601a7",
+    "ownerMatched": true,
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "scopeSha256": "79fd24626d75609e9b2decac9e233ca5d34acc9904c3d8565c900168cf8d1305",
+    "status": "OWNER_PROJECT_OBSERVED"
+  },
+  "commands": [
+    {
+      "descriptorId": "owner",
+      "elapsedMilliseconds": 395,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "aa005972-1b7f-4c19-933d-4cc63ad601a7",
+      "scopeSha256": "79fd24626d75609e9b2decac9e233ca5d34acc9904c3d8565c900168cf8d1305"
+    },
+    {
+      "descriptorId": "project",
+      "elapsedMilliseconds": 611,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "aa005972-1b7f-4c19-933d-4cc63ad601a7",
+      "scopeSha256": "79fd24626d75609e9b2decac9e233ca5d34acc9904c3d8565c900168cf8d1305"
+    }
+  ],
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "aa005972-1b7f-4c19-933d-4cc63ad601a7",
+    "processCleanupVerified": true,
+    "residuals": [],
+    "scopeSha256": "79fd24626d75609e9b2decac9e233ca5d34acc9904c3d8565c900168cf8d1305"
+  },
+  "limitsObserved": {
+    "cliReservations": 2,
+    "sql": 0,
+    "directHttps": 0,
+    "explicitCache": 0,
+    "tokenPrint": 0
+  },
+  "rawResponsePersisted": false,
+  "scopeLimitation": "Only current owner/project responsiveness observed; Q5 timeout cause and Q4 effective permission cause remain UNKNOWN. No full qualification candidate."
+}
