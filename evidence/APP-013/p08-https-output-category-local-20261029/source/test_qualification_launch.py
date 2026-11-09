@@ -639,6 +639,97 @@ class ExternalBindingTests(unittest.TestCase):
         self.assertFalse((self.root/'independent-closeout.json').exists())
 
 
+    def test_permission_diagnostic_shapes_privacy_and_cleanup(self):
+        import shutil
+        requested=list(launch.CURRENT_PROJECT_PERMISSIONS)
+        cases=[({'permissions':requested},200,'COMPLETE',[]),
+               ({'permissions':requested[:-1]},200,'MISSING',[requested[-1]]),
+               ({'permissions':[]},200,'MISSING',requested),
+               ({},200,'INVALID_RESPONSE',None),({'permissions':None},200,'INVALID_RESPONSE',None),
+               ({'permissions':'SECRET_CANARY'},200,'INVALID_RESPONSE',None),
+               ({'permissions':[1]},200,'INVALID_RESPONSE',None),
+               ({'permissions':[requested[0],requested[0]]},200,'INVALID_RESPONSE',None),
+               ({'permissions':['SECRET_CANARY']},200,'INVALID_RESPONSE',None),
+               ({'permissions':requested,'SECRET_CANARY':'SECRET_CANARY'},200,'INVALID_RESPONSE',None),
+               ({'error':{'message':'SECRET_CANARY'}},403,'HTTP_REFUSED',None),
+               (b'not json SECRET_CANARY',200,'RESPONSE_UNCONFIRMED',None),
+               (b'\xff',200,'RESPONSE_UNCONFIRMED',None)]
+        for body,status,outcome,missing in cases:
+            with self.subTest(outcome=outcome,body=type(body).__name__):
+                shutil.rmtree(self.root,ignore_errors=True);t=self.case;t.io.closed=False;t.io.calls=[]
+                t.io.override={'project_permissions':{'status':status,'body':body}}
+                with patch.object(launch,'hidden_password',return_value='SECRET_CANARY'):
+                    result=launch._produce_current(t.p,t.scope,t.io,lambda:t.now,capability=self.cap())
+                record=json.loads((self.root/'permission-result-project_permissions.json').read_text())
+                self.assertEqual(record['outcome'],outcome);self.assertEqual(record['missingPermissions'],missing)
+                if outcome!='COMPLETE':self.assertIsNone(result['candidate'])
+                self.assertEqual(result['residuals'],[]);self.assertTrue(t.io.closed and t.fresh.closed)
+                text=''.join(p.read_text() for p in self.root.iterdir())
+                self.assertNotIn('SECRET_CANARY',text);self.assertNotIn(t.scope['target']['id'],text)
+                self.assertEqual(sum(d['id']=='project_permissions' for k,d in t.io.calls if k=='https'),1)
+
+    def test_permission_raw_transport_response_reaches_durable_diagnostic(self):
+        t=self.case;original=t.io.https;native=launch.NativeIO(lambda:t.now,t.p['operationId'])
+        captured=[]
+        class Response:
+            status=200;closed=False
+            def read(self,n):return json.dumps({'permissions':list(launch.CURRENT_PROJECT_PERMISSIONS[:-1])}).encode()[:n]
+            def close(self):self.closed=True
+        response=Response()
+        def opened(request,timeout):
+            captured.append(request)
+            self.assertEqual(request.get_method(),'POST')
+            self.assertEqual(json.loads(request.data),{'permissions':list(launch.CURRENT_PROJECT_PERMISSIONS)})
+            return response
+        def https(d,token,deadline):
+            return native.https(d,token,deadline) if d['id']=='project_permissions' else original(d,token,deadline)
+        with patch.object(t.io,'https',side_effect=https),patch('urllib.request.build_opener') as opener,patch.object(launch,'hidden_password',return_value='SECRET_CANARY'):
+            opener.return_value.open.side_effect=opened
+            result=launch._produce_current(t.p,t.scope,t.io,lambda:t.now,capability=self.cap())
+        record=json.loads((self.root/'permission-result-project_permissions.json').read_text())
+        self.assertEqual(record['missingPermissions'],[launch.CURRENT_PROJECT_PERMISSIONS[-1]])
+        self.assertEqual(record['httpStatus'],200);self.assertEqual(record['outcome'],'MISSING')
+        self.assertEqual(len(captured),1);self.assertTrue(response.closed)
+        self.assertEqual(result['failure'],'OWNER_PERMISSION_NOT_READY');self.assertEqual(result['residuals'],[])
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+
+    def test_permission_diagnostic_write_failure_closes_without_candidate(self):
+        real=model.reserve;t=self.case
+        def fail(path,value):
+            if path.name=='permission-result-project_permissions.json':raise OSError('SECRET_CANARY')
+            return real(path,value)
+        with patch.object(model,'reserve',side_effect=fail),patch.object(launch,'hidden_password',return_value='SECRET_CANARY'):
+            result=launch._produce_current(t.p,t.scope,t.io,lambda:t.now,capability=self.cap())
+        self.assertEqual(result['failure'],'PERMISSION_DIAGNOSTIC_WRITE_UNCONFIRMED')
+        self.assertIsNone(result['candidate']);self.assertEqual(result['residuals'],[])
+        self.assertTrue((self.root/'permission-attempt-project_permissions.json').exists())
+        self.assertFalse((self.root/'permission-result-project_permissions.json').exists())
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+
+    def test_permission_diagnostic_duplicate_concurrency_refuses_before_dispatch(self):
+        import concurrent.futures
+        cap=self.cap();self.root.mkdir(mode=0o700)
+        sink=launch.PermissionDiagnostics(cap)
+        d=next(d for d in launch.current_https_contract('123456789012',self.case.p['prospectiveKeyId']) if d['id']=='project_permissions')
+        def begin():
+            try:sink.begin(d);return True
+            except model.Stop:return False
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            self.assertEqual(sorted(pool.map(lambda _:begin(),range(2))),[False,True])
+        self.assertFalse((self.root/'permission-result-project_permissions.json').exists())
+
+    def test_permission_diagnostic_transport_failure_is_unknown_and_closes(self):
+        t=self.case;original=t.io.https
+        def fail(d,token,deadline):
+            if d['id']=='project_permissions':raise model.Stop('HTTPS_OUTPUT_OVERSIZE')
+            return original(d,token,deadline)
+        with patch.object(t.io,'https',side_effect=fail),patch.object(launch,'hidden_password',return_value='SECRET_CANARY'):
+            result=launch._produce_current(t.p,t.scope,t.io,lambda:t.now,capability=self.cap())
+        record=json.loads((self.root/'permission-result-project_permissions.json').read_text())
+        self.assertEqual(record['outcome'],'RESPONSE_UNCONFIRMED');self.assertIsNone(record['httpStatus']);self.assertIsNone(record['missingPermissions'])
+        self.assertEqual(result['failure'],'HTTPS_OUTPUT_OVERSIZE');self.assertIsNone(result['candidate']);self.assertEqual(result['residuals'],[])
+
+
 class CacheBindingTests(unittest.TestCase):
     def setUp(self):
         import tempfile,importlib.util,sys,time
@@ -1114,6 +1205,28 @@ class QualificationRestartTests(unittest.TestCase):
         with patch.object(launch,'recovery_password',side_effect=AssertionError('replay prompt')):
             with self.assertRaisesRegex(model.Stop,'INDEPENDENT_CLOSEOUT_CONSUMED'):
                 launch.recover_current_external(launch.QualificationCleanupCapability(self.root,lambda:self.case.now,self.read_commit))
+    def test_interrupted_permission_receipt_allows_fresh_cleanup_without_work_replay(self):
+        self.seed()
+        code="""import sys,os,signal,json,types
+from pathlib import Path
+sys.path.insert(0,sys.argv[1]);import qualification_launch as q
+root=Path(sys.argv[2]);record=q.private_json(root/'cleanup-envelope.json');scope=record['scope']
+sink=object.__new__(q.PermissionDiagnostics);sink.root=root
+sink.common={'operationId':scope['operationId'],'cleanupScopeSha256':q.model.digest(scope)}
+d=next(d for d in q.current_https_contract('123456789012','signmons-p08-'+'0'*32) if d['id']=='project_permissions')
+sink.begin(d);os.kill(os.getpid(),signal.SIGKILL)
+"""
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',code,str(model.ROOT),str(self.root)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,-9,p.stderr.decode())
+        self.assertTrue((self.root/'permission-attempt-project_permissions.json').exists())
+        self.assertFalse((self.root/'permission-result-project_permissions.json').exists())
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',restart_child_code(self.repo),str(model.ROOT),'--closeout-current',str(self.root)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,2,p.stderr.decode())
+        result=json.loads((self.root/'recovery-result.json').read_text())
+        self.assertEqual(result['residuals'],['OWNED_PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(result['candidate'])
+        self.assertEqual(len(list(self.root.glob('read-sql-*.json'))),1)
+        self.assertFalse((self.root/'permission-result-project_permissions.json').exists())
+
     def test_cleanup_capability_cannot_dispatch_work(self):
         cap=self.seed()
         with self.assertRaises(model.Stop):launch.QualificationIO(cap)

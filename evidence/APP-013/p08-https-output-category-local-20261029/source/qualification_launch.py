@@ -664,8 +664,47 @@ def environment_digest(rows):
     need(seen==set(required)|set(pins)|{'CUSTOMER_PAYMENT_RETURN_URL'},'ENVIRONMENT_SHAPE')
     return model.digest(rows)
 
+PERMISSION_IDS=('project_permissions','identity_permissions',*[f'secret_permissions_{i}' for i in range(7)],'run_permissions')
+
+
+class PermissionDiagnostics:
+    """Only source-pinned labels and permission names may enter durable receipts."""
+    def __init__(self,cap):
+        self.root=cap.root
+        self.common={'operationId':cap.plan['operationId'],
+                     'cleanupScopeSha256':model.digest(qualification_cleanup_scope(cap.e))}
+    def write(self,d,phase,value):
+        try:
+            need(d in current_https_contract('123456789012','signmons-p08-'+'0'*32) or
+                 (d['id'] in ('project_permissions','identity_permissions') and
+                  d in current_https_contract(re.search(r'projects/([0-9]{6,20}):',d['url']).group(1)
+                    if d['id']=='project_permissions' else '123456789012','signmons-p08-'+'0'*32)),
+                 'PERMISSION_DESCRIPTOR')
+            need(d['id'] in PERMISSION_IDS and phase in ('attempt','result'),'PERMISSION_DESCRIPTOR')
+            inspect_current_root(self.root,CURRENT_MARKERS)
+            model.reserve(self.root/f"permission-{phase}-{d['id']}.json",{**self.common,'descriptorId':d['id'],**value})
+        except Exception:raise model.Stop('PERMISSION_DIAGNOSTIC_WRITE_UNCONFIRMED') from None
+    def begin(self,d):self.write(d,'attempt',{'status':'RESERVED'})
+    def finish(self,d,response=None):
+        status=None;outcome='RESPONSE_UNCONFIRMED';missing=None
+        if response is not None:
+            code=response.get('status');body=response.get('body')
+            status=code if type(code) is int and 100<=code<=599 else None
+            if status is not None and status!=200:outcome='HTTP_REFUSED'
+            elif status==200:
+                outcome='INVALID_RESPONSE'
+                ps=body.get('permissions') if isinstance(body,dict) else None
+                requested=d['body']['permissions']
+                if (isinstance(body,dict) and set(body)=={'permissions'} and isinstance(ps,list) and
+                    all(isinstance(x,str) for x in ps) and len(ps)==len(set(ps)) and set(ps)<=set(requested)):
+                    missing=[x for x in requested if x not in ps]
+                    outcome='MISSING' if missing else 'COMPLETE'
+        self.write(d,'result',{'httpStatus':status,'outcome':outcome,'missingPermissions':missing})
+
+
 class CurrentAdapter(Adapter):
-    def __init__(self,plan,scope,io,clock,password="SYNTHETIC_CURRENT_PROOF_ONLY"):
+    def __init__(self,plan,scope,io,clock,password="SYNTHETIC_CURRENT_PROOF_ONLY",diagnostics=None):
+        self.diagnostics=diagnostics
         self.plan=copy.deepcopy(plan);self.scope=copy.deepcopy(scope);self.io=io;self.clock=clock
         self.times=model.authorize(plan,clock());self.cli={};self.http={};self.closed=False
         self.token=None;self.project_number=None;self.billing_account=None;self.firebase_uid=None
@@ -733,7 +772,14 @@ class CurrentAdapter(Adapter):
     def read_access(self,deadline):
         self._prime_cli();descriptors=current_https_contract(self.project_number,self.plan['prospectiveKeyId'])
         for d in descriptors:
-            v=self._https(d);body=v['body']
+            diagnostic=self.diagnostics if d['id'] in PERMISSION_IDS else None
+            if diagnostic:diagnostic.begin(d)
+            try:v=self._https(d)
+            except BaseException:
+                if diagnostic:diagnostic.finish(d)
+                raise
+            if diagnostic:diagnostic.finish(d,v)
+            body=v['body']
             if d['id'].startswith('service_'):
                 need(v['status']==200 and body.get('state')=='ENABLED' and body.get('name')==urlsplit(d['url']).path.removeprefix('/v1/'),'SERVICE_NOT_READY')
             elif d['body'] and 'permissions' in d['body']:
@@ -842,7 +888,7 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
             if capability is not None:
                 capability.prepare()
                 password=recovery_password(times['readEnd'],clock)
-            adapter=CurrentAdapter(plan,native_scope,io,clock,password)
+            adapter=CurrentAdapter(plan,native_scope,io,clock,password,PermissionDiagnostics(capability) if capability else None)
             need(model.classify_cloud(adapter.read_cloud(times['readEnd']))=='QUALIFIED','CLOUD_NOT_READY')
             need(adapter.read_access(times['readEnd']) is True,'ACCESS_NOT_READY')
             need(model.classify_database(adapter.read_database(times['readEnd']))=='QUALIFIED','DATABASE_NOT_READY')
@@ -898,6 +944,7 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
 
 
 CURRENT_MARKERS={'entry.lock','attempt.json','cleanup-envelope.json','independent-closeout.json',
+    *[f'permission-{phase}-{name}.json' for phase in ('attempt','result') for name in PERMISSION_IDS],
     'result.json','recovery-result.json',*[f'read-sql-{i}.json' for i in range(1,5)],
     *[f'cli-{kind}-{i:02d}.json' for kind in ('attempt','result') for i in range(1,28)]}
 

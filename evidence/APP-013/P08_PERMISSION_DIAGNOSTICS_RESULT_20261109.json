@@ -1,0 +1,31 @@
+{
+  "verifiedAt": "2026-11-09T14:26:01.982121+00:00",
+  "baselineSource": "759a130164ae86237b5ee8a5fe540e935cc5d4d9",
+  "approvedProposal": "b2f0c62",
+  "filesSha256": {
+    "qualification_launch.py": "7928b116e34125618a99aa8662be3a1bf290186a34bad2bc52092dd45595aedf",
+    "test_qualification_launch.py": "ad420d75d35049cbdc8c4cb329d9695d8623e36e7b1d8af8c2826e064df4a292",
+    "source-manifest.json": "0f26d57b37efdf1f1641b7af9b6a045cbba990e4b82cf729386ea3cd0aac7455"
+  },
+  "runtimeLocalTests": {
+    "count": 144,
+    "passed": 144,
+    "durationSeconds": 67.239
+  },
+  "governanceTests": {
+    "count": 25,
+    "passed": 25
+  },
+  "totalPassed": 169,
+  "architecture": "PASS",
+  "frozenBaseline": "PASS",
+  "completeConsistency": "PASS",
+  "whitespace": "PASS",
+  "ownedPostgresTLS": {
+    "serverReaped": true,
+    "scratchAbsent": true
+  },
+  "providerCalls": 0,
+  "livePermissionCause": "UNKNOWN",
+  "executionReady": false
+}
