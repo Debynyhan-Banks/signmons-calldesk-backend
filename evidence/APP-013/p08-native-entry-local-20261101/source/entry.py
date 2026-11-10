@@ -185,7 +185,7 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
                 result = {'status':'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT',
                           'operationId':cap.plan['operationId'], 'liveAuthorization':cap.external,
                           'authProofReady':False, 'paymentReadyForAcceptance':False,
-                          'paymentObserved':controller.j.get('payment', {}).get('outcome') == 'APPLICATION_SETTLED',
+                          'paymentObserved':({} if controller.j.get('payment') is None else controller.j['payment']).get('outcome') == 'APPLICATION_SETTLED',
                           'residuals':sorted(set(residuals)), 'privateInputsAbsent':False}
                 reserve(cap.root / 'work-result.json', result)
                 return result
@@ -200,7 +200,8 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
                   'residuals': sorted(set(residuals)), 'privateInputsAbsent': private_absent,
                   'childResultSha256': result.get('childResultSha256')}
         if cap.e['version'] == 2:
-            payment = controller.j.get('payment', {})
+            payment = controller.j.get('payment')
+            if payment is None:payment = {}
             result['paymentObserved'] = payment.get('outcome') == 'APPLICATION_SETTLED'
             result['paymentReadyForAcceptance'] = False
             if payment.get('enableIntent') and payment.get('endpointDisabled') is not True:

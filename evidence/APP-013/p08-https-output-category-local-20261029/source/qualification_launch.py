@@ -1465,6 +1465,7 @@ def recovery_password(deadline,clock=model.time.time):
 RECOVERY_MARKERS={'entry.lock','purge.lock','guard-envelope.json','attempt.json','guard-ready.json',
     'owned-files.json','owned-files.next','handoff-published.json','purge-now.json','purge-result.json',
     'resource-closeout.json','recovery-result.json','recovered-inputs.json','guard-sync.json','guard-ack.json',
+    'guard-native-sync.json','guard-native-ack.json',
     'read-cli-owner.json','read-cli-project.json','read-sql-qualification.json',
     'read-sql-closeout-main.json','read-sql-closeout-independent.json'}
 
@@ -1682,11 +1683,16 @@ def binding_purge_guard(cap):
             now=cap.clock()
             if now<last or now>=cap.times['purgeEnd']-2 or time.monotonic()>=hard or (cap.root/'purge-now.json').exists():break
             last=now
-            if (cap.root/'guard-sync.json').exists() and not (cap.root/'guard-ack.json').exists():
-                request=private_json(cap.root/'guard-sync.json')
-                need(set(request)=={'scopeSha256','nonce'} and request['scopeSha256']==cap.hash and re.fullmatch('[0-9a-f]{32}',request['nonce']),'PURGE_GUARD_SYNC')
-                model.reserve(cap.root/'guard-ack.json',{**request,'expiresAt':min(now+3,cap.times['purgeEnd']-2)})
-            if (cap.root/'handoff-published.json').exists() and not any(os.path.lexists(recovery_slot(cap,s)) for s in ('recovered','qualification')):break
+            pairs=[('guard-sync.json','guard-ack.json')]
+            if cap.e['version']==2:pairs.append(('guard-native-sync.json','guard-native-ack.json'))
+            for request_name,ack_name in pairs:
+                if (cap.root/request_name).exists() and not (cap.root/ack_name).exists():
+                    request=private_json(cap.root/request_name)
+                    need(set(request)=={'scopeSha256','nonce'} and request['scopeSha256']==cap.hash and re.fullmatch('[0-9a-f]{32}',request['nonce']),'PURGE_GUARD_SYNC')
+                    model.reserve(cap.root/ack_name,{**request,'expiresAt':min(now+3,cap.times['purgeEnd']-2)})
+            # V2 custody spans input consumption and the later native approval wait.
+            # Only explicit closeout, interruption or the original deadline ends it.
+            if cap.e['version']==1 and (cap.root/'handoff-published.json').exists() and not any(os.path.lexists(recovery_slot(cap,s)) for s in ('recovered','qualification')):break
             time.sleep(min(.05,max(.001,hard-time.monotonic())))
         # A short held writer lock does not defeat expiry; no writes begin at/after expiry.
         until=time.monotonic()+2
@@ -1823,14 +1829,16 @@ def read_recovered_bindings(cap):
         return value  # Trusted in-memory packet construction only; no CLI prints these values.
 
 
-def synchronize_recovery_guard(cap):
+def synchronize_recovery_guard(cap,stage="qualification"):
     import time,uuid
+    need(stage in ('qualification','native') and (stage!='native' or cap.e['version']==2),'RECOVERY_SYNC_STAGE')
+    request_name,ack_name=('guard-native-sync.json','guard-native-ack.json') if stage=='native' else ('guard-sync.json','guard-ack.json')
     request={'scopeSha256':cap.hash,'nonce':uuid.uuid4().hex}
-    model.reserve(cap.root/'guard-sync.json',request);until=time.monotonic()+2;last=cap.clock()
+    model.reserve(cap.root/request_name,request);until=time.monotonic()+2;last=cap.clock()
     while time.monotonic()<until:
         now=cap.clock();need(now>=last and now<cap.times['purgeEnd']-2,'RECOVERY_RETENTION_EXPIRED');last=now
-        if (cap.root/'guard-ack.json').exists():
-            ack=private_json(cap.root/'guard-ack.json')
+        if (cap.root/ack_name).exists():
+            ack=private_json(cap.root/ack_name)
             need(set(ack)=={'scopeSha256','nonce','expiresAt'} and all(ack[k]==v for k,v in request.items()) and
                  now<ack['expiresAt']<=cap.times['purgeEnd']-2,'PURGE_GUARD_SYNC')
             return ack['expiresAt']
@@ -1880,7 +1888,7 @@ def handoff_qualified_bindings(cap, envelope):
          receipt.get('candidate')==envelope['qualification'] and receipt.get('failure') is None and
          receipt.get('residuals')==[] and receipt.get('status')==('CURRENT_EVIDENCE_OBSERVED' if cap.external else 'CURRENT_EVIDENCE_LOCAL_VERIFIED') and
          receipt.get('liveObserved') is cap.external,'RECOVERY_NATIVE_QUALIFICATION')
-    lease=synchronize_recovery_guard(cap)
+    lease=synchronize_recovery_guard(cap,stage="native")
     with recovery_lock(cap):
         need(cap.clock()<lease and not (cap.root/'purge-result.json').exists(),'RECOVERY_RETENTION_EXPIRED')
         cap.native_root.mkdir(mode=0o700)

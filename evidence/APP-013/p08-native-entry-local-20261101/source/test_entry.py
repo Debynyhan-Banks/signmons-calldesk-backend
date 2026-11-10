@@ -426,6 +426,24 @@ class ConnectedEntryTests(EntryTests):
             setattr(io,name,wrapped)
         return io
 
+    def test_preflight_transport_failure_before_payment_journal_preserves_closeout(self):
+        factory=self.factory
+        def failed_factory(cap):
+            io=factory(cap);child=io.child
+            def fail(argv,**kwargs):
+                if argv[2]=='--payment-preflight':raise RuntimeError('SYNTHETIC_PREFLIGHT_FAILURE')
+                return child(argv,**kwargs)
+            io.child=fail;return io
+        result=entry.run_entry(self.path,io_factory=failed_factory)
+        self.assertEqual(result['status'],'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+        self.assertFalse(result['paymentObserved']);self.assertTrue(self.path.exists())
+        journal=read(self.root/'journal.json')
+        self.assertIsNone(journal['payment']);self.assertFalse(journal['authAttempted'])
+        self.assertFalse(any(self.f.runtime_state.values()))
+        closed=self.run_entry('closeout')
+        self.assertEqual(closed['status'],'ENTRY_CLOSED',closed)
+        self.assertFalse(closed['paymentObserved']);self.assertTrue(closed['privateInputsAbsent'])
+
     def test_preflight_refusal_never_activates_runtime(self):
         self.scenario='foreign_endpoint'
         self.run_entry()

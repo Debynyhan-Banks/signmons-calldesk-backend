@@ -1,0 +1,50 @@
+{
+  "section": "APP-013/3A/P08",
+  "status": "LOCAL_CONNECTED_GUARD_LIFECYCLE_VERIFIED",
+  "verifiedAt": "2026-11-10T18:44:45.020552+00:00",
+  "files": {
+    "p08-https-output-category-local-20261029/source/qualification_launch.py": "cafa86a57f6470d1951a2ddbfb593c991c39abda8d48ade210d8c6fc296d2d0f",
+    "p08-https-output-category-local-20261029/source/source-manifest.json": "2d6e3a5618b65a4762ac478a2c97c49b662200ebfab779a863e55c76f4c41fe0",
+    "p08-https-output-category-local-20261029/source/test_qualification_launch.py": "ec0aefd2c39692b74173a28a1b2f9f5fa71165ccc11d73f0c61a04e2fdc11d04",
+    "p08-https-output-category-local-20261029/source/test_qualification_launch_postgres.py": "d0b3ba98761a3393070045eedf19563147aae9d4154290b21c842983ac312046",
+    "p08-native-entry-local-20261101/source/entry.py": "1d30353aac8b88928a73b30da61e19226916e2b398cc537b96e828f952f36305",
+    "p08-native-entry-local-20261101/source/source-manifest.json": "2998fccd1c51874512eb0b95272ee5d29fa3c640444ed07916248df638ed6754",
+    "p08-native-entry-local-20261101/source/test-manifest.json": "34743695cd1e80507cd14c335038d72d585661abb1ea1047a9936f70835a02f6",
+    "p08-native-entry-local-20261101/source/test_entry.py": "05b41aeae1f6421a28e002a10f3aa47ab0ce5ea62db693ae6c0ee5223359fedc"
+  },
+  "changes": [
+    "separate one-use qualification/native guard acknowledgement pairs",
+    "version2 guard persists through consumed qualification input and delayed native approval until explicit closeout or original deadline",
+    "null payment observation no longer crashes early-preflight failure reporting"
+  ],
+  "proofBoundary": "Actual recovery guard subprocess, actual two handoff functions, actual qualification entry and input deletion, real owned TLS SQL, delayed synthetic committed native approval, actual Python/Node child validation/native entry/independent closeout, guard purge/exit. Synthetic provider transport/resource pins and temporary committed source repository injected at parent/child fixture boundaries; no real provider observations or acceptance claimed.",
+  "tests": {
+    "qualificationRecovery": 226,
+    "composedQualification": 17,
+    "nativeEntryTlsBrowser": 39,
+    "packetLauncher": 18,
+    "nodeTransportPayment": 17,
+    "focusedGuardTlsAndConnected": 13,
+    "governance": 25
+  },
+  "checks": [
+    "lint PASS",
+    "architecture PASS",
+    "backend governance gate PASS",
+    "frozen baseline PASS",
+    "docs consistency PASS",
+    "both whitespace checks PASS"
+  ],
+  "cleanup": {
+    "tlsServerReaped": true,
+    "tlsScratchAbsent": true,
+    "guardExitVerified": true,
+    "ownedPrivateInputsAbsent": true
+  },
+  "providerCalls": 0,
+  "liveAuthorization": false,
+  "r22Consumed": true,
+  "newAttendanceRequested": false,
+  "scopeDeviation": false,
+  "limitations": "Live Stripe payment/authentic delivery and owner acceptance remain outstanding. Restricted test attempts failed on process/listener permissions and were rerun with owned-local-fixture permissions; passing counts refer to completed final runs."
+}

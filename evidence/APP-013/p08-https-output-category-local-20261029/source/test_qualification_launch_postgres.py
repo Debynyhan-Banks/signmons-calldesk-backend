@@ -548,7 +548,16 @@ class PaymentBindingRecoveryTLS(CurrentEvidenceTLS):
                    'paymentDigest':hashlib.sha256(json.dumps(approved,separators=(',',':')).encode()).hexdigest()}
         literal=lambda v:"'"+json.dumps(v).replace("'","''")+"'::jsonb"
         self.command('UPDATE "TenantOrganization" SET "chargesEnabled"=true,"stripeConnectAccountId"=\'acct_synthetic\',settings='+literal({'organizationPaymentPolicyV1':policy})+'; UPDATE "Job" SET "policySnapshot"='+literal({'intakeAdmission':admission})+',"updatedAt"=\'2026-01-01 00:00:00\';')
+        external=current_tests.ExternalBindingTests();external.setUp();self.addCleanup(external.doCleanups)
+        authority=external.authority
+        nm=json.loads((authority.HERE/'source-manifest.json').read_text())
+        paths=[authority.HERE/'source-manifest.json',*[authority.HERE/n for n in nm['files']],*[authority.APP/n for n in nm['lockedSources']]]
+        for path in paths:
+            dest=external.repo/path.relative_to(authority.BACKEND);dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes(path.read_bytes())
+        external.git('add','.');external.git('commit','-qm','synthetic complete native sources')
+        source_commit=external.git('rev-parse','HEAD')
         r=current_tests.BindingRecoveryTests();r.setUp();self.addCleanup(r.doCleanups)
+        r.e['sourceCommit']=source_commit
         r.e.update(version=2,nativeOperationId=current.scope['plan']['operationId'],qualificationId=current.p['operationId'],
                    paymentAccountSha256=hashlib.sha256(b'acct_synthetic').hexdigest())
         target={**current.scope['target'],'status':'DISABLED'};target={k:target[k] for k in ('id','tenantId','email','fullName','role','status')}
@@ -576,19 +585,56 @@ class PaymentBindingRecoveryTLS(CurrentEvidenceTLS):
         binding=values['paymentBinding'];self.assertEqual(set(binding),launch.PAYMENT_BINDING_FIELDS)
         self.assertEqual(binding['amountTotalCents'],12500);self.assertEqual(binding['jobUpdatedAt'],'2026-01-01T00:00:00.000Z')
         self.assertNotIn('stripeConnectAccountId',json.dumps(values));self.assertNotIn('organizationPaymentPolicyV1',json.dumps(values))
+        current.scope['database']=copy.deepcopy(cap.e['database'])
         current.scope['limits']['cli']=192
         current.scope['payment']={**binding,'endpointId':'we_synthetic','endpointSha256':hashlib.sha256(b'we_synthetic').hexdigest(),
             'apiVersion':'2026-03-25.dahlia','url':'https://app013-p07-atomic---signmons-calldesk-staging-p572d6wipq-ul.a.run.app/webhooks/stripe',
             'requestId':str(uuid.uuid4()),'qualificationId':current.p['operationId'],
             'workEnd':datetime.datetime.fromtimestamp(time.time()+90,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
         current.p['nativeScopeSha256']=model.digest(current.scope)
-        # The proof-only qualifier validates native filesystem shape without creating an attempt.
-        native.root.mkdir(mode=0o700)
-        qualified=current.run_proof();native.root.rmdir();self.assertEqual(qualified['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',qualified)
-        native.e.update(version=2,**copy.deepcopy(current.scope),qualification=qualified['candidate'])
-        native.e.pop('decision',None);native.e['decision']={'decision':'APPROVE_LOCAL_NATIVE_ENTRY_PROOF','scopeSha256':model.digest(native.e)}
-        envelope=copy.deepcopy(native.e)
-        launch.handoff_qualified_bindings(handoff,envelope)
+        # Execute both real transfer functions and actual qualification entry under
+        # one real guard. Only provider transport/resource pins and committed-source
+        # repository are synthetic; no transfer, synchronization, purge or guard mock.
+        external.e.update(plan=current.p,nativeScope=current.scope,sourceCommit=source_commit)
+        external.bind_decision();handoff.external=True
+        original_module=launch.current_module
+        real_payment=authority.validate_payment
+        def synthetic_payment(e,times):return real_payment({**e,'execution':'PROOF_ONLY'},times)
+        authority.committed=external.read_commit
+        real_capability=authority.Capability
+        def bound_native(envelope,root,*args,**kwargs):
+            if len(args)>=3:args=(*args[:2],external.read_commit,*args[3:])
+            else:kwargs['read_commit']=external.read_commit
+            return real_capability(envelope,root,*args,**kwargs)
+        def modules(name):return authority if name=='authority' else original_module(name)
+        class LocalQualificationIO:
+            def __new__(cls,cap,cleanup_only=False):
+                # TLS SQL is real; all cloud observations are fixture-only.
+                cap.observed=True
+                return current.io
+        external_root=Path('/private/tmp/p08-current-external-'+current.p['operationId'])
+        self.addCleanup(lambda:shutil.rmtree(external_root,ignore_errors=True))
+        with patch.object(launch,'current_module',side_effect=modules),patch.object(authority,'validate_payment',side_effect=synthetic_payment),patch.object(authority,'Capability',side_effect=bound_native),patch.object(launch,'QualificationIO',LocalQualificationIO),patch.object(launch,'recovery_password',return_value='SYNTHETIC_TLS'):
+            launch.handoff_recovered_bindings(handoff,external.e)
+            self.assertTrue((handoff.input_root/'envelope.json').exists())
+            self.assertEqual(launch.current_main(['--qualify-current',str(handoff.input_root/'envelope.json')]),0,launch.private_json(external_root/'result.json'))
+            self.assertFalse((handoff.input_root/'envelope.json').exists())
+            qualified=launch.private_json(external_root/'result.json')
+            self.assertEqual(qualified['status'],'CURRENT_EVIDENCE_OBSERVED',qualified)
+            # Wait beyond the first acknowledgement lease with no native input/decision.
+            time.sleep(3.2)
+            self.assertIsNone(guard.poll());self.assertFalse((cap.root/'purge-result.json').exists())
+            native.e.update(version=2,execution='EXTERNAL',sourceCommit=source_commit,**copy.deepcopy(current.scope),qualification=qualified['candidate'])
+            native.e.pop('decision',None)
+            decision={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_CONNECTED_PAYMENT','externalActionAuthorized':True,
+                      'operationId':native.e['plan']['operationId'],'scopeSha256':model.digest(native.e),'sourceManifestSha256':native.e['sourceManifestSha256']}
+            decision_path='APP013_P08_NATIVE_OPERATION_20261110.json';decision_raw=json.dumps(decision).encode()
+            (external.repo/decision_path).write_bytes(decision_raw);external.git('add',decision_path);external.git('commit','-qm','synthetic delayed native approval')
+            native.e['decision']={'commit':external.git('rev-parse','HEAD'),'path':decision_path,'sha256':model.digest(decision_raw)}
+            envelope=copy.deepcopy(native.e)
+            launch.handoff_qualified_bindings(handoff,envelope)
+            self.assertTrue((cap.root/'guard-sync.json').exists());self.assertTrue((cap.root/'guard-native-sync.json').exists())
+            self.assertIsNone(guard.poll())
         self.assertEqual(native.e['payment']|binding,native.e['payment'])
         # Both synthetic cloud transports must describe the same qualified runtime metadata.
         cloud=native.f.cloud
@@ -597,8 +643,33 @@ class PaymentBindingRecoveryTLS(CurrentEvidenceTLS):
             if args[:3]==['run','revisions','describe']:value['spec']['containers'][0]['env']=copy.deepcopy(current.environment)
             return value
         native.f.cloud=same_cloud
-        work=native.run_entry();self.assertTrue(work['paymentObserved'],(work,launch.private_json(native.root/'journal.json')))
-        closed=native.run_entry('closeout');self.assertEqual(closed['status'],'ENTRY_CLOSED',closed)
+        # The child validates the same synthetic committed repository as the parent.
+        # Inject repository/pin routing at the fixture process boundary only; the
+        # actual Python validator and actual Node/Python bridge still execute.
+        child_python=("import sys,runpy;sys.path.insert(0,"+repr(str(authority.HERE))+");import authority as a;"
+            "real=a.committed;repo="+repr(str(external.repo))+";read=lambda _repo,commit,path:real(repo,commit,path);"
+            "payment=a.validate_payment;a.validate_payment=lambda e,t:payment({**e,'execution':'PROOF_ONLY'},t);"
+            "original=a.Capability;"
+            "a.Capability=lambda e,r,mode='run',clock=__import__('time').time,read_commit=None,continuing=False:original(e,r,mode,clock,read,continuing);"
+            "sys.argv=['entry.py',*sys.argv[1:]];runpy.run_module('entry',run_name='__main__')")
+        preload=external.repo/'fixture-authority-preload.mjs'
+        preload.write_text("import cp from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';"
+            "const real=cp.execFileSync;cp.execFileSync=function(file,args,options){"
+            "if(args?.includes('--check-child')){args=['-B','-c',"+json.dumps(child_python)+",...args.slice(args.indexOf('--check-child'))];}"
+            "return real(file,args,options);};syncBuiltinESMExports();")
+        original_factory=native.factory
+        def local_external_io(cap):
+            io=original_factory(cap);io.proof=False;child=io.child
+            def run_child(argv,**kwargs):
+                kwargs['env']={**kwargs['env'],'NODE_OPTIONS':'--import='+str(preload)}
+                return child(argv,**kwargs)
+            io.child=run_child
+            return io
+        with patch.object(tls_fixture.entry,'Capability',side_effect=bound_native),patch.object(authority,'validate_payment',side_effect=synthetic_payment):
+            work=tls_fixture.entry.run_entry(native.path,'run',local_external_io,read_commit=external.read_commit)
+            self.assertTrue(work['paymentObserved'],(work,launch.private_json(native.root/'journal.json')))
+            closed=tls_fixture.entry.run_entry(native.path,'closeout',local_external_io,read_commit=external.read_commit)
+            self.assertEqual(closed['status'],'ENTRY_CLOSED',closed)
         self.assertTrue(closed['privateInputsAbsent']);self.assertFalse(native.path.exists())
         model.reserve(cap.root/'purge-now.json',{});guard.wait(timeout=5)
         self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])

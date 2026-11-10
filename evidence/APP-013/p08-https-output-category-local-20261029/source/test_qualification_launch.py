@@ -1,3 +1,4 @@
+import time
 import contextlib,copy,datetime as dt,hashlib,io,json,os,socket,subprocess,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -2735,3 +2736,58 @@ class PaymentRecoveryBindingTests(BindingRecoveryTests):
 
 for _name in BindingRecoveryTests.__dict__:
     if _name.startswith('test_'):setattr(PaymentRecoveryBindingTests,_name,None)
+
+class ConnectedGuardLifecycleTests(BindingRecoveryTests):
+    def connected(self,expiry=False):
+        import uuid,shutil
+        self.e.update(version=2,nativeOperationId=str(uuid.uuid4()),paymentAccountSha256=hashlib.sha256(b'acct_synthetic').hexdigest())
+        if expiry:
+            iso=lambda n:dt.datetime.fromtimestamp(time.time()+n,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+            self.e['window']={k:iso(v) for k,v in {'start':-600,'cutoff':-500,'readEnd':-400,'closeoutEnd':-3,'purgeEnd':5}.items()}
+        self.seal(self.e);cap=launch.BindingRecoveryCapability(self.e,mode='handoff');self.cap=cap
+        self.addCleanup(lambda:shutil.rmtree(cap.native_root,ignore_errors=True))
+        launch.initialize_recovery(cap);guard=launch.start_binding_guard(cap)
+        return cap,guard
+    def test_two_distinct_leases_survive_empty_slots_and_refuse_replay(self):
+        cap,guard=self.connected();model.reserve(cap.root/'handoff-published.json',{'scopeSha256':cap.hash})
+        first=launch.synchronize_recovery_guard(cap)
+        time.sleep(3.2)
+        self.assertIsNone(guard.poll());self.assertFalse((cap.root/'purge-result.json').exists())
+        second=launch.synchronize_recovery_guard(cap,stage='native');self.assertGreater(second,first)
+        for stage in ('qualification','native'):
+            with self.assertRaises(FileExistsError):launch.synchronize_recovery_guard(cap,stage=stage)
+        model.reserve(cap.root/'purge-now.json',{});guard.wait(timeout=5)
+        self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
+    def test_foreign_nonce_ack_refuses_native_transfer(self):
+        cap,guard=self.connected()
+        model.reserve(cap.root/'guard-native-ack.json',{'scopeSha256':cap.hash,'nonce':'0'*32,'expiresAt':time.time()+2})
+        with self.assertRaisesRegex(model.Stop,'PURGE_GUARD_SYNC'):launch.synchronize_recovery_guard(cap,stage='native')
+        self.assertFalse(cap.native_root.exists())
+    def test_expiry_purges_native_payloads_without_explicit_closeout(self):
+        cap,guard=self.connected(expiry=True);cap.native_root.mkdir(mode=0o700)
+        with launch.recovery_lock(cap):launch.record_private_file(cap,'native',{'synthetic':'private'})
+        model.reserve(cap.native_root/'payment-bootstrap.json',{'synthetic':'private'})
+        guard.wait(timeout=7)
+        self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
+        self.assertFalse((cap.native_root/'envelope.json').exists());self.assertFalse((cap.native_root/'payment-bootstrap.json').exists())
+        with self.assertRaises(model.Stop):launch.synchronize_recovery_guard(cap,stage='native')
+    def test_concurrent_same_stage_only_one_reservation(self):
+        from concurrent.futures import ThreadPoolExecutor
+        cap,guard=self.connected()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures=[pool.submit(launch.synchronize_recovery_guard,cap,'native') for _ in range(2)]
+            outcomes=[]
+            for f in futures:
+                try:f.result();outcomes.append('ack')
+                except FileExistsError:outcomes.append('duplicate')
+        self.assertEqual(sorted(outcomes),['ack','duplicate'])
+    def test_guard_interruption_purges_and_late_sync_cannot_transfer(self):
+        import signal
+        cap,guard=self.connected();cap.native_root.mkdir(mode=0o700)
+        with launch.recovery_lock(cap):launch.record_private_file(cap,'native',{'synthetic':'private'})
+        guard.send_signal(signal.SIGTERM);guard.wait(timeout=5)
+        self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
+        with self.assertRaisesRegex(model.Stop,'PURGE_GUARD_UNCONFIRMED'):launch.synchronize_recovery_guard(cap,stage='native')
+
+for _name in BindingRecoveryTests.__dict__:
+    if _name.startswith('test_'):setattr(ConnectedGuardLifecycleTests,_name,None)
