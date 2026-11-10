@@ -16,7 +16,55 @@ def binding(p):
 
 UID="11111111-2222-4333-8444-555555555555"
 def database_raw():
-    return {"jobCount":1,"job":{"id":model.JOB,"tenantId":model.TENANT,"policySnapshot":{"intakeAdmission":{"humanReviewed":True}},"calendarEventId":None},"tenantCount":1,"tenant":{"id":model.TENANT,"status":"ACTIVE"},"operatorCount":1,"operator":{"id":UID,"tenantId":model.TENANT,"email":launch.TARGET_EMAIL,"fullName":launch.TARGET_NAME,"role":"ADMIN","status":"DISABLED"},"calendarCount":0,"roleCount":0,"sessionCount":0}
+    return {"jobCount":1,"job":{"id":model.JOB,"tenantId":model.TENANT,"policySnapshot":{"intakeAdmission":{"version":1,"humanReviewed":True}},"calendarEventId":None},"tenantCount":1,"tenant":{"id":model.TENANT,"status":"ACTIVE"},"operatorCount":1,"operator":{"id":UID,"tenantId":model.TENANT,"email":launch.TARGET_EMAIL,"fullName":launch.TARGET_NAME,"role":"ADMIN","status":"DISABLED"},"calendarCount":0,"roleCount":0,"sessionCount":0}
+
+
+def controlled_raw():
+    raw=database_raw()
+    draft={'currency':'usd','serviceFeeRequired':False,'serviceFeeCents':None,'depositRequired':True,
+           'depositPolicy':{'kind':'fixed','amountCents':9900},'emergencyFeePolicy':{'kind':'none'},
+           'paymentGateMode':'fail_closed','webhookValidationRequired':True}
+    approved={'draft':draft,'actorId':'synthetic-owner','approvedAt':'2026-01-01T00:00:00.000Z'}
+    raw['tenant']['paymentPolicy']={'version':1,'draft':copy.deepcopy(draft),'approved':approved}
+    raw['job']['policySnapshot']['intakeAdmission']={'version':2,'actorId':'signmons-intake-admission-v1',
+        'paymentApprovedAt':approved['approvedAt'],'paymentDigest':hashlib.sha256(json.dumps(approved,separators=(',',':')).encode()).hexdigest()}
+    return raw
+
+
+class AdmissionContractTests(unittest.TestCase):
+    def check(self,raw):return launch.payment_admission_exact(raw['job'],raw['tenant'],1800000000)
+    def test_supported_admission_and_jsonb_field_order(self):
+        self.assertTrue(self.check(database_raw()))
+        raw=controlled_raw();self.assertTrue(self.check(raw))
+        self.assertTrue(self.check(json.loads(json.dumps(raw,sort_keys=True))))
+        self.assertNotIn('humanReviewed',raw['job']['policySnapshot']['intakeAdmission'])
+        raw['tenant']['paymentPolicy']['approved']['draft']['depositPolicy']['amountCents']=9900.0
+        self.assertTrue(self.check(raw))
+    def test_missing_stale_foreign_malformed_and_forged_admission(self):
+        cases=[('version',True),('version',1),('version',3),('actorId','foreign'),('paymentApprovedAt','2026-01-02T00:00:00.000Z'),
+               ('paymentDigest','0'*64),('paymentDigest',None),('humanReviewed',True)]
+        for key,value in cases:
+            with self.subTest(key=key,value=value):
+                raw=controlled_raw();raw['job']['policySnapshot']['intakeAdmission'][key]=value;self.assertFalse(self.check(raw))
+        for value in (None,[],{},True):
+            raw=controlled_raw();raw['tenant']['paymentPolicy']=value;self.assertFalse(self.check(raw))
+        for key,value in [('approvedAt','2099-01-01T00:00:00.000Z'),('actorId',''),('draft',None)]:
+            raw=controlled_raw();raw['tenant']['paymentPolicy']['approved'][key]=value;self.assertFalse(self.check(raw))
+        for key,value in [('currency','eur'),('depositRequired',1),('serviceFeeCents',False),('webhookValidationRequired',1),('extra','private-canary')]:
+            raw=controlled_raw();raw['tenant']['paymentPolicy']['approved']['draft'][key]=value;self.assertFalse(self.check(raw))
+        raw=database_raw();del raw['job']['policySnapshot']['intakeAdmission']['version'];self.assertFalse(self.check(raw))
+    def test_digest_matches_actual_application_profile_normalization(self):
+        # Compile the existing TS validator in memory; no alternate policy implementation in this oracle.
+        repo=Path(__file__).resolve().parents[4]
+        script="""const fs=require('fs'),ts=require('typescript'),crypto=require('crypto');
+require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,f);
+const {profile}=require('./src/tenants/organization-payment-policy.ts');
+const p=profile(JSON.parse(fs.readFileSync(0,'utf8')));
+process.stdout.write(crypto.createHash('sha256').update(JSON.stringify(p.approved)).digest('hex'));"""
+        raw=controlled_raw();policy=raw['tenant']['paymentPolicy'];policy['approved']['actorId']='synthetic-é-owner'
+        output=subprocess.run(['node','-e',script],cwd=repo,input=json.dumps(policy,sort_keys=True),text=True,capture_output=True,check=True).stdout
+        raw['job']['policySnapshot']['intakeAdmission']['paymentDigest']=output
+        self.assertTrue(self.check(raw))
 
 
 class FakeIO:
@@ -342,6 +390,20 @@ class CurrentProofTests(unittest.TestCase):
                 if temp:case.assert_boundary_refusal(result,'ROLE_NOT_READY','database')
                 else:self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',result)
             finally:case.doCleanups()
+
+    def test_controlled_admission_through_current_boundary(self):
+        raw=controlled_raw();self.raw['job']=raw['job'];self.raw['tenant']=raw['tenant']
+        result=self.run_proof();self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',result)
+        self.assertEqual(result['databaseFailedChecks'],[])
+
+    def test_failed_predicates_are_named_without_raw_data_and_cleanup_runs(self):
+        self.raw['job']['policySnapshot']={'private-canary':'never-persist'}
+        self.raw['tenant']['status']='INACTIVE';self.raw['calendarCount']=1
+        result=self.run_proof();self.assert_boundary_refusal(result,'DATABASE_NOT_READY','database')
+        self.assertEqual(result['databaseFailedChecks'],['calendarAbsent','paymentGateExact','tenantActive'])
+        saved=(self.root/'result.json').read_text()
+        for private in ('private-canary','never-persist',self.scope['target']['email']):self.assertNotIn(private,saved)
+        self.assertFalse(any(d['id']=='firebase' for k,d in self.io.calls if k=='https'))
 
     def test_current_positive_exact_counts_and_native_scope(self):
         result=self.run_proof();self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',result)

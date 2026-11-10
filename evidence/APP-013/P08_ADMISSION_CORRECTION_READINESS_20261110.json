@@ -1,0 +1,48 @@
+{
+  "section": "APP-013/3A/P08",
+  "baseSource": "fe645b620f3369b960b1ab552d6561ecc790fa3d",
+  "observedAt": "2026-11-10T13:48:42.276206+00:00",
+  "scope": "LOCAL_ADMISSION_CORRECTION_ONLY",
+  "sourceHashes": {
+    "src/jobs/job-payment-policy.service.ts": "4bfe4448b7e1cbf15d7f9fc8822be4e806d55f8e837b18cf19ca860bdfe2e16c",
+    "src/tenants/organization-payment-policy.ts": "5dd72b46d924be57b507268931bb6de1d470574daa4c8afff7e34a4878126a11",
+    "src/tenants/organization-profile.ts": "6e016e28ad36c888647dc06e65461b453ad5ec1aa8c0b7ab555b97f777c8249e",
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py": "b0fce34c199aa8a0aefdd208fbdee0fb13f042db2fb6c9e9ed5fa4ec88aa379a",
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json": "ab35a1748e52197b0c9d09f8d6107b2d145dfa2d3f222693b2eea5053a999d81"
+  },
+  "liveCalls": 0,
+  "executionReady": false,
+  "currentLiveState": "UNKNOWN",
+  "q11ExactFailedPredicate": "UNKNOWN",
+  "verification": "PASS_LOCAL_ONLY",
+  "owner": "implementer",
+  "unchangedLimits": {
+    "cli": 27,
+    "https": 20,
+    "sql": 4,
+    "cache": 1
+  },
+  "readiness": {
+    "outputContract": "Same bounded SQL JSON boundary; selected tenant payment policy only; no extra read; same repeatable-read snapshot. Strict malformed/null/type policy refusal. Canonical digest compared with application validator in test.",
+    "identityAndPermissions": "Existing exact job/tenant/operator/ownership/full-role checks preserved. Current external identity, effective permissions and Firebase UNKNOWN.",
+    "lifecycle": "Existing source/runtime/config pins, actual clock, no-retry reservation, locks, interruption, independent closeout and private purge unchanged; regression suite covers lifecycle.",
+    "retention": "Only fixed failed database predicate names added to public result. No raw policy, digest or identity retention.",
+    "externalOwner": "Owner and credential custodian must separately authorize any future exact source-bound operation. No operation scheduled."
+  },
+  "verifiedAt": "2026-11-10T13:51:01.124664+00:00",
+  "results": {
+    "currentSuite": {
+      "passed": 255,
+      "seconds": 135.675
+    },
+    "governanceTests": 25,
+    "ownedTLSCleanup": "VERIFIED",
+    "serverReaped": true,
+    "scratchAbsent": true,
+    "providerCalls": 0,
+    "baseline": "PASS",
+    "consistency": "PASS",
+    "architecture": "PASS",
+    "whitespace": "PASS"
+  }
+}

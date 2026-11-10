@@ -7,7 +7,7 @@ from unittest.mock import patch
 import composed_qualification as model
 import qualification_launch as launch
 from test_composed_qualification import NOW, plan
-from test_qualification_launch import FakeIO, UID, binding, database_raw
+from test_qualification_launch import FakeIO, UID, binding, database_raw, controlled_raw
 
 ROOT = Path(__file__).resolve().parent
 FIXTURE = ROOT.parent.parent / "p08-access-resolution-local-20261028/source/reuse/auth/reuse/test_postgres_contract.py"
@@ -18,13 +18,13 @@ fixture = importlib.util.module_from_spec(spec); spec.loader.exec_module(fixture
 class QualificationLaunchPostgreSQL(fixture.PostgreSQLContract):
     def setUp(self):
         self.command('''DROP TABLE IF EXISTS "CalendarOperation","User","Job","TenantOrganization" CASCADE; DROP ROLE IF EXISTS p07_payment_runtime;
-CREATE TABLE "TenantOrganization"(id uuid,status text);
+CREATE TABLE "TenantOrganization"(id uuid,status text,settings jsonb);
 CREATE TABLE "User"(id uuid,"tenantId" uuid,email text,"fullName" text,role text,status text);
 CREATE TABLE "Job"(id uuid,"tenantId" uuid,"policySnapshot" jsonb,"calendarEventId" text);
 CREATE TABLE "CalendarOperation"("jobId" uuid,"tenantId" uuid);
-INSERT INTO "TenantOrganization" VALUES ('%s','ACTIVE');
+INSERT INTO "TenantOrganization"(id,status) VALUES ('%s','ACTIVE');
 INSERT INTO "User" VALUES ('%s','%s','%s','%s','ADMIN','DISABLED');
-INSERT INTO "Job" VALUES ('%s','%s','{"intakeAdmission":{"humanReviewed":true}}',NULL);''' % (model.TENANT, UID, model.TENANT, launch.TARGET_EMAIL, launch.TARGET_NAME, model.JOB, model.TENANT))
+INSERT INTO "Job" VALUES ('%s','%s','{"intakeAdmission":{"version":1,"humanReviewed":true}}',NULL);''' % (model.TENANT, UID, model.TENANT, launch.TARGET_EMAIL, launch.TARGET_NAME, model.JOB, model.TENANT))
 
     def raw(self):
         return json.loads(self.command(launch.QUALIFICATION_SQL))
@@ -50,6 +50,15 @@ INSERT INTO "Job" VALUES ('%s','%s','{"intakeAdmission":{"humanReviewed":true}}'
                         adapter, _ = self.adapter(); value = adapter.read_database(adapter.times["readEnd"]); qualified = all(value.values())
                     except (model.Stop, AssertionError): qualified = False
                 self.assertFalse(qualified)
+
+    def test_controlled_policy_through_actual_jsonb_sql_projection(self):
+        raw=controlled_raw()
+        policy=json.dumps({'organizationPaymentPolicyV1':raw['tenant']['paymentPolicy']}).replace("'","''")
+        job=json.dumps(raw['job']['policySnapshot']).replace("'","''")
+        self.command(f"UPDATE \"TenantOrganization\" SET settings='{policy}'::jsonb; UPDATE \"Job\" SET \"policySnapshot\"='{job}'::jsonb;")
+        adapter,_=self.adapter();self.assertTrue(adapter.read_database(adapter.times['readEnd'])['paymentGateExact'])
+        self.command("UPDATE \"TenantOrganization\" SET settings=jsonb_set(settings,'{organizationPaymentPolicyV1,approved,actorId}','\"changed-owner\"');")
+        adapter,_=self.adapter();self.assertFalse(adapter.read_database(adapter.times['readEnd'])['paymentGateExact'])
 
     def test_query_is_read_only_and_leaves_no_session(self):
         before = self.command('SELECT count(*) FROM "User";'); self.raw(); after = self.command('SELECT count(*) FROM "User";')
@@ -78,7 +87,7 @@ class CurrentEvidenceTLS(tls_fixture.LifecyclePostgres):
         self.command(f'''INSERT INTO "Customer"(id,"tenantId",phone,"fullName","updatedAt") VALUES('{customer}','{tenant}','synthetic','Fictional',now());
 INSERT INTO "PropertyAddress"(id,"tenantId","customerId","customerTenantId","formattedAddress","addressComponents","updatedAt") VALUES('{address}','{tenant}','{customer}','{tenant}','Fictional','{{}}',now());
 INSERT INTO "ServiceCategory"(id,"tenantId",name,"updatedAt") VALUES('{service}','{tenant}','Fictional',now());
-INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddressId","propertyAddressTenantId","serviceCategoryId","serviceCategoryTenantId",status,urgency,"pricingSnapshot","policySnapshot","updatedAt") VALUES('{model.JOB}','{tenant}','{customer}','{tenant}','{address}','{tenant}','{service}','{tenant}','CREATED','STANDARD','{{}}','{{"intakeAdmission":{{"humanReviewed":true}}}}',now());''')
+INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddressId","propertyAddressTenantId","serviceCategoryId","serviceCategoryTenantId",status,urgency,"pricingSnapshot","policySnapshot","updatedAt") VALUES('{model.JOB}','{tenant}','{customer}','{tenant}','{address}','{tenant}','{service}','{tenant}','CREATED','STANDARD','{{}}','{{"intakeAdmission":{{"version":1,"humanReviewed":true}}}}',now());''')
         t.scope['database']={'host':'127.0.0.1','port':int(self.port),'database':'neondb','user':'neondb_owner'}
         t.p['nativeScopeSha256']=model.digest(t.scope)
         case=self

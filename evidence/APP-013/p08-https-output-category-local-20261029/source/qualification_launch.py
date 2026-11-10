@@ -100,10 +100,59 @@ def firebase_https_contract(firebase_uid):
     return {"id": "firebase", "method": "POST", "url": f"https://identitytoolkit.googleapis.com/v1/projects/{model.PROJECT}/accounts:lookup", "body": {"localId": [firebase_uid]}}
 
 
+def payment_admission_exact(job, tenant, now):
+    """Read-only counterpart of JobPaymentPolicyService's admission contract.
+
+    Canonical field order matches organization-payment-policy.profile/draft,
+    not PostgreSQL JSONB storage order. Never retain raw policy or digest.
+    """
+    def exact(v, keys):
+        return isinstance(v, dict) and set(v) == set(keys.split())
+    def money(v):
+        return type(v) in (int,float) and 0 < v <= 100000000 and int(v) == v
+    def draft(v):
+        if not exact(v, 'currency serviceFeeRequired serviceFeeCents depositRequired depositPolicy emergencyFeePolicy paymentGateMode webhookValidationRequired'):
+            raise ValueError()
+        if v['currency'] != 'usd' or type(v['serviceFeeRequired']) is not bool or type(v['depositRequired']) is not bool or v['paymentGateMode'] != 'fail_closed' or v['webhookValidationRequired'] is not True or v['emergencyFeePolicy'] != {'kind':'none'}:
+            raise ValueError()
+        if not (money(v['serviceFeeCents']) if v['serviceFeeRequired'] else v['serviceFeeCents'] is None):
+            raise ValueError()
+        d = v['depositPolicy']
+        if v['depositRequired']:
+            if not exact(d, 'kind amountCents') or d['kind'] != 'fixed' or not money(d['amountCents']):raise ValueError()
+            deposit = {'kind':'fixed', 'amountCents':int(d['amountCents'])}
+        else:
+            if d != {'kind':'none'}:raise ValueError()
+            deposit = {'kind':'none'}
+        return {'currency':'usd','serviceFeeRequired':v['serviceFeeRequired'],'serviceFeeCents':int(v['serviceFeeCents']) if v['serviceFeeRequired'] else None,
+                'depositRequired':v['depositRequired'],'depositPolicy':deposit,'emergencyFeePolicy':{'kind':'none'},
+                'paymentGateMode':'fail_closed','webhookValidationRequired':True}
+    try:
+        a = job['policySnapshot']['intakeAdmission']
+        if not isinstance(a,dict) or type(a.get('version')) not in (int,float):return False
+        if a['version'] == 1:return a.get('humanReviewed') is True
+        if a['version'] != 2 or a.get('actorId') != 'signmons-intake-admission-v1' or a.get('humanReviewed') is True:return False
+        p = tenant['paymentPolicy']
+        if not exact(p, 'version draft approved') or type(p['version']) not in (int,float) or p['version'] != 1:return False
+        draft(p['draft'])
+        approved = p['approved']
+        if not exact(approved, 'draft actorId approvedAt') or not isinstance(approved['actorId'],str) or not approved['actorId'].strip():return False
+        stamp = approved['approvedAt']
+        import datetime
+        if not isinstance(stamp,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z',stamp):return False
+        instant = datetime.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+        if instant.timestamp() > now:return False
+        canonical = {'draft':draft(approved['draft']),'actorId':approved['actorId'],'approvedAt':stamp}
+        digest = hashlib.sha256(json.dumps(canonical,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+        return a.get('paymentApprovedAt') == stamp and a.get('paymentDigest') == digest
+    except (KeyError, TypeError, ValueError, UnicodeError, OverflowError):
+        return False
+
+
 QUALIFICATION_SQL = f"""BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s';
 WITH j AS (SELECT id,\"tenantId\",\"policySnapshot\",\"calendarEventId\" FROM \"Job\" WHERE id='{model.JOB}'::uuid AND \"tenantId\"='{model.TENANT}'::uuid),
-t AS (SELECT id,status FROM \"TenantOrganization\" WHERE id='{model.TENANT}'::uuid),
+t AS (SELECT id,status,settings->'organizationPaymentPolicyV1' AS \"paymentPolicy\" FROM \"TenantOrganization\" WHERE id='{model.TENANT}'::uuid),
 u AS (SELECT id,\"tenantId\",email,\"fullName\",role,status FROM \"User\" WHERE \"tenantId\"='{model.TENANT}'::uuid AND email='{TARGET_EMAIL}')
 SELECT json_build_object(
  'jobCount',(SELECT count(*) FROM j),'job',(SELECT row_to_json(j) FROM j),
@@ -329,7 +378,7 @@ class Adapter:
         job, tenant = value.get("job"), value.get("tenant")
         return {"jobExact": value["jobCount"] == 1 and isinstance(job, dict) and job.get("id") == model.JOB and job.get("tenantId") == model.TENANT,
                 "tenantActive": value["tenantCount"] == 1 and isinstance(tenant, dict) and tenant.get("id") == model.TENANT and tenant.get("status") == "ACTIVE",
-                "paymentGateExact": isinstance(job, dict) and isinstance(job.get("policySnapshot"), dict) and isinstance(job["policySnapshot"].get("intakeAdmission"), dict) and job["policySnapshot"]["intakeAdmission"].get("humanReviewed") is True,
+                "paymentGateExact": payment_admission_exact(job, tenant, self.clock()),
                 "calendarAbsent": value["calendarCount"] == 0 and isinstance(job, dict) and job.get("calendarEventId") is None,
                 "operatorExactDisabled": target == {"id": target["id"], "tenantId": model.TENANT, "email": TARGET_EMAIL, "fullName": TARGET_NAME, "role": "ADMIN", "status": "DISABLED"},
                 "dbRoleRetired": value["roleCount"] == 0, "sessionsAbsent": value["sessionCount"] == 0, "ownershipReceiptExact": ownership_exact}
@@ -896,7 +945,7 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
     times=model.authorize(plan,clock());root=capability.root if capability else Path('/private/tmp/p08-current-proof-'+plan['operationId'])
     root.mkdir(mode=0o700)  # A consumed operation cannot be retried.
     fd=os.open(root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-    adapter=None;failure=None;failure_stage=None;stage='preparation';residuals=[];candidate=None;cleaning=False;handlers={};password=None if capability else 'SYNTHETIC_CURRENT_PROOF_ONLY'
+    database_failed=[];adapter=None;failure=None;failure_stage=None;stage='preparation';residuals=[];candidate=None;cleaning=False;handlers={};password=None if capability else 'SYNTHETIC_CURRENT_PROOF_ONLY'
     def interrupted(*_):
         if not cleaning:raise model.Stop('INTERRUPTED')
     if threading.current_thread() is threading.main_thread():
@@ -917,7 +966,10 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
             stage='access'
             need(adapter.read_access(times['readEnd']) is True,'ACCESS_NOT_READY')
             stage='database'
-            need(model.classify_database(adapter.read_database(times['readEnd']))=='QUALIFIED','DATABASE_NOT_READY')
+            database_value=adapter.read_database(times['readEnd'])
+            database_status=model.classify_database(database_value)
+            database_failed=sorted(k for k in model.DATABASE_KEYS if database_value[k] is False)
+            need(database_status=='QUALIFIED','DATABASE_NOT_READY')
             stage='firebase'
             need(model.classify_firebase(adapter.read_firebase(times['readEnd']))=='QUALIFIED','FIREBASE_NOT_READY')
         except BaseException as error:
@@ -966,7 +1018,7 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
                 failure_stage=stage
         result={'status':('CURRENT_EVIDENCE_OBSERVED' if capability else 'CURRENT_EVIDENCE_LOCAL_VERIFIED') if candidate else 'CURRENT_EVIDENCE_UNQUALIFIED',
                 'execution':'EXTERNAL_READ_ONLY' if capability else 'PROOF_ONLY','liveObserved':bool(capability and capability.observed),'executionReady':False,'failure':failure,
-                'residuals':sorted(set(residuals)),'candidate':candidate,'failureStage':failure_stage}
+                'residuals':sorted(set(residuals)),'candidate':candidate,'failureStage':failure_stage,'databaseFailedChecks':database_failed}
         if capability is not None:
             result['transportReservations']=copy.deepcopy(capability.counts)
             result['reservationSemantics']='RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS'
