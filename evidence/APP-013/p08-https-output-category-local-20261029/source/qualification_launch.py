@@ -937,7 +937,7 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
     import fcntl,signal,threading
     need((capability is not None and type(capability) is QualificationCapability) or getattr(io,'proof',None) is True,'CURRENT_PROOF_ONLY')
     model.verify_local_manifest();model.verify_locked_sources()
-    need(set(native_scope)=={'plan','target','database','resources','limits'},'CURRENT_SCOPE')
+    need(set(native_scope) in ({'plan','target','database','resources','limits'}, {'plan','target','database','resources','limits','payment'}),'CURRENT_SCOPE')
     need(plan.get('producerDecision')=='APPROVE_LOCAL_CURRENT_EVIDENCE_PROOF' and
          plan.get('producerManifestSha256')==source_manifest_sha256() and
          plan.get('nativeScopeSha256')==model.digest(native_scope),'CURRENT_DECISION_BINDING')
@@ -1008,7 +1008,7 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
                    'roleAclSha256':adapter.role_result['roleAclSha256'],
                    'checks':{k:True for k in ('owner','billing','effectiveAccess','services','database','firebase','job','retiredRuntime','privateInventory')}}
                 if capability is None:
-                    envelope={'version':1,'execution':'PROOF_ONLY',**native_scope,'qualification':candidate,
+                    envelope={'version':2 if 'payment' in native_scope else 1,'execution':'PROOF_ONLY',**native_scope,'qualification':candidate,
                         'sourceManifestSha256':authority.digest((authority.HERE/'source-manifest.json').read_bytes()),'sourceCommit':'0'*40}
                     envelope['decision']={'decision':'APPROVE_LOCAL_NATIVE_ENTRY_PROOF','scopeSha256':authority.digest(envelope)}
                     authority.Capability(envelope,Path('/private/tmp/p08-coordinator-'+plan['prospectiveOperationId']),clock=clock)
@@ -1149,13 +1149,17 @@ class QualificationCapability:
         need(set(p['window'])=={'start','cutoff','readEnd','closeoutEnd','purgeEnd'},'QUALIFIER_WINDOW')
         self.times=model.authorize(p,clock(),mode)
         need(p['operationId']!=p['prospectiveOperationId'],'QUALIFIER_DISTINCT_OPERATION')
-        need(set(scope)=={'plan','target','database','resources','limits'} and p['prospectiveOperationId']==scope['plan']['operationId'],'QUALIFIER_SCOPE')
+        need(set(scope) in ({'plan','target','database','resources','limits'}, {'plan','target','database','resources','limits','payment'}) and p['prospectiveOperationId']==scope['plan']['operationId'],'QUALIFIER_SCOPE')
         # Pure existing coordinator validators verify the prospective scope, not an execution approval.
         c=authority.load('p08-live-binder-local-20261029/source/coordinator.py','qualifier_scope_validator')
         modules=c.sources();np=scope['plan']
         c.authorize(np,{'decision':'APPROVE_LOCAL_SINGLE_COORDINATOR','externalActionAuthorized':False,
             'operationId':np['operationId'],'planSha256':model.digest(np)},modules,
             model.timestamp(np['window']['start']))
+        if 'payment' in scope:
+            need(scope['payment'].get('qualificationId')==p['operationId'],'QUALIFIER_PAYMENT_OPERATION')
+            authority.validate_payment({'payment':scope['payment'],'execution':'EXTERNAL'},
+                {k:model.timestamp(v) for k,v in np['window'].items()})
         restore=modules['restore'];operator=_operator_module()
         need(scope['resources']=={'candidate':restore.CANDIDATE,'image':restore.IMAGE,'normalRevision':restore.NORMAL,
             'identity':restore.IDENTITY,'secretVersions':{s:'1' for s in restore.SECRETS}},'QUALIFIER_RESOURCE_PINS')
@@ -1437,10 +1441,13 @@ class BindingRecoveryCapability:
     def __init__(self,envelope,clock=model.time.time,mode='recover',read_commit=None):
         manifest=model.verify_local_manifest();model.verify_locked_sources()
         authority=current_module('authority');authority.verify_sources();e=copy.deepcopy(envelope)
-        need(set(e)=={'version','execution','operationId','qualificationId','project','owner','database',
+        need(set(e)==({'nativeOperationId'} if e.get('version')==2 else set()) | {'version','execution','operationId','qualificationId','project','owner','database',
             'projectNumberSha256','targetSha256','window','limits','sdkException','sdkFilesSha256',
             'manifestSha256','sourceCommit','decision'},'RECOVERY_ENVELOPE')
-        need(e['version']==1 and e['execution'] in ('PROOF_ONLY','EXTERNAL_READ_ONLY') and mode in ('recover','closeout','guard','handoff'),'RECOVERY_MODE')
+        need(e['version'] in (1,2) and e['execution'] in ('PROOF_ONLY','EXTERNAL_READ_ONLY') and mode in ('recover','closeout','guard','handoff'),'RECOVERY_MODE')
+        if e['version']==2:
+            model.exact_uuid(e['nativeOperationId'],'RECOVERY_NATIVE_OPERATION')
+            need(e['nativeOperationId'] not in (e['operationId'],e['qualificationId']),'RECOVERY_NATIVE_OPERATION')
         for k in ('operationId','qualificationId'):model.exact_uuid(e[k],'RECOVERY_OPERATION')
         need(e['operationId']!=e['qualificationId'],'RECOVERY_OPERATION')
         operator=_operator_module()
@@ -1468,6 +1475,8 @@ class BindingRecoveryCapability:
         self.e=e;self.clock=clock;self.times=times;self.mode=mode;self.last=clock();self.manifest=manifest
         self.root=Path('/private/tmp/p08-binding-recovery-'+e['operationId'])
         self.input_root=Path('/private/tmp/p08-current-input-'+e['qualificationId'])
+        self.native_root=Path('/private/tmp/p08-coordinator-'+e['nativeOperationId']) if e['version']==2 else None
+        if mode=='recover' and self.native_root is not None:need(not os.path.lexists(self.native_root),'RECOVERY_NATIVE_CONSUMED')
         self.hash=model.digest(e);self.config=None;self.observed=False
         if mode=='recover':
             need(not os.path.lexists(self.root) and not os.path.lexists(self.input_root) and
@@ -1542,7 +1551,8 @@ def save_owned_registry(cap,value):
 
 
 def recovery_slot(cap,slot):
-    need(slot in ('recovered','qualification'),'RECOVERY_PRIVATE_SLOT')
+    need(slot in (('recovered','qualification','native') if cap.e['version']==2 else ('recovered','qualification')),'RECOVERY_PRIVATE_SLOT')
+    if slot=='native':return cap.native_root/'envelope.json'
     return cap.root/'recovered-inputs.json' if slot=='recovered' else cap.input_root/'envelope.json'
 
 
@@ -1583,13 +1593,19 @@ def purge_recovery_files(cap):
     residuals=[]
     with recovery_lock(cap):
         registry=private_json(cap.root/'owned-files.json')
-        need(set(registry)<= {'recovered','qualification'},'RECOVERY_OWNERSHIP_RECORD')
+        slots=('recovered','qualification','native') if cap.e['version']==2 else ('recovered','qualification')
+        need(set(registry)<=set(slots),'RECOVERY_OWNERSHIP_RECORD')
         for slot,record in registry.items():
             try:
                 path=matched_private_file(cap,slot,record)
-                if path is not None:path.unlink()
+                if slot=='native':
+                    st=cap.native_root.lstat()
+                    need(not cap.native_root.is_symlink() and [st.st_dev,st.st_ino]==record['directory'],'RECOVERY_DIRECTORY_REPLACED')
+                    inventory=current_module('authority').load('p08-native-entry-local-20261101/source/private_inventory.py','recovery_native_inventory')
+                    need(inventory.purge(cap.native_root,cap.e['nativeOperationId']),'RECOVERY_NATIVE_PURGE')
+                elif path is not None:path.unlink()
             except Exception:residuals.append(slot.upper()+'_FILE_UNCONFIRMED')
-        for slot in ('recovered','qualification'):
+        for slot in slots:
             if os.path.lexists(recovery_slot(cap,slot)):residuals.append(slot.upper()+'_FILE_REMAINS')
         on_time=cap.clock()<=cap.times['purgeEnd']
         result={'operationId':cap.e['operationId'],'status':'PRIVATE_PURGE_UNCONFIRMED' if residuals else ('PRIVATE_PURGE_VERIFIED' if on_time else 'PRIVATE_PURGE_LATE'),
@@ -1784,6 +1800,38 @@ def handoff_recovered_bindings(cap,envelope):
         path=matched_private_file(cap,'recovered',record);need(path is not None,'RECOVERY_INPUT_ABSENT');path.unlink()
     values=None
     return {'status':'QUALIFICATION_INPUT_TRANSFERRED','executionReady':False}
+
+
+def handoff_qualified_bindings(cap, envelope):
+    """Same recovery guard owns native private inputs through final purge; no provider I/O."""
+    need(cap.e['version']==2 and cap.mode=='handoff','RECOVERY_NATIVE_AUTHORITY')
+    authority=current_module('authority')
+    need(envelope.get('version')==2 and envelope.get('sourceCommit')==cap.e['sourceCommit'] and envelope.get('execution')==('EXTERNAL' if cap.external else 'PROOF_ONLY') and
+         envelope['plan']['operationId']==cap.e['nativeOperationId'] and envelope['payment']['qualificationId']==cap.e['qualificationId'] and
+         model.timestamp(envelope['plan']['window']['purgeEnd'])<=cap.times['purgeEnd'],'RECOVERY_NATIVE_SCOPE')
+    t=envelope['target']
+    row={'id':t['id'],'tenantId':t['tenantId'],'email':t['email'],'fullName':t['fullName'],'role':t['role'],'status':'DISABLED'}
+    need(hashlib.sha256(json.dumps(row,separators=(',',':')).encode()).hexdigest()==cap.e['targetSha256'] and
+         model.digest(str(envelope['plan']['projectNumber']))==cap.e['projectNumberSha256'],'RECOVERY_NATIVE_IDENTITY')
+    result_root=Path('/private/tmp/p08-current-external-'+cap.e['qualificationId'])
+    inspect_current_root(result_root,CURRENT_MARKERS)
+    receipt=private_json(result_root/'result.json');attempt=private_json(result_root/'attempt.json')
+    scope={k:envelope[k] for k in ('plan','target','database','resources','limits','payment')}
+    need(attempt.get('operationId')==cap.e['qualificationId'] and attempt.get('scopeSha256')==model.digest(scope) and
+         receipt.get('candidate')==envelope['qualification'] and receipt.get('failure') is None and
+         receipt.get('residuals')==[] and receipt.get('status')==('CURRENT_EVIDENCE_OBSERVED' if cap.external else 'CURRENT_EVIDENCE_LOCAL_VERIFIED') and
+         receipt.get('liveObserved') is cap.external,'RECOVERY_NATIVE_QUALIFICATION')
+    lease=synchronize_recovery_guard(cap)
+    with recovery_lock(cap):
+        need(cap.clock()<lease and not (cap.root/'purge-result.json').exists(),'RECOVERY_RETENTION_EXPIRED')
+        cap.native_root.mkdir(mode=0o700)
+        try:
+            authority.Capability(envelope,cap.native_root,clock=cap.clock)
+            record_private_file(cap,'native',envelope)
+        except BaseException:
+            if not any(cap.native_root.iterdir()):cap.native_root.rmdir()
+            raise
+    return {'status':'NATIVE_INPUT_TRANSFERRED','executionReady':False}
 
 
 def closeout_binding_recovery(cap):

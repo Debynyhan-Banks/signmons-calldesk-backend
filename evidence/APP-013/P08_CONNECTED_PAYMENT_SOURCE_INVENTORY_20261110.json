@@ -1,0 +1,25 @@
+{
+  "section": "APP-013/3A/P08",
+  "purpose": "Pre-code connected payment source inventory",
+  "recordedAt": "2026-11-10T14:51:15.398367+00:00",
+  "sourceCommit": "7d844ec8693dee7d0723bfb100d173bdbbb2aa91",
+  "files": {
+    "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/authority_bridge.mjs": "904749fe2ae7692632f8ad55d93f25a769be379d313044b466caa0faa5c7c9d9",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs": "f5179bcffc844e0c6b6bc2c7be33b69760efd4bc0f1c73213b8eff5045f812c4",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/transports.mjs": "d1dab20ada57215d55ed74aa2e43eaa764006e4de0b7a508f304685232ea6ec4",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py": "73c648a6f7a1358da29fc1961a37e8a3493d400393528deb52b25912bbc9ab8c",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py": "f5f401e2ee4cd43bc67fcc428787d61439dadd35f0a534e3868a4b6fa9a28f0d",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/private_inventory.py": "7996957c8cab7374b683f4db5d46c6536d8ba4023d8395edd1ed163a3bc03b78",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py": "213012477705dfa3477eb2f7dc80938d881d76df4d11ee1ceda3128a768c92b3",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json": "7e818a3faea4f6362be1d8a31fb39b7513671871a495b2663c772531d6fc2ac4",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-clients.mjs": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs": "2bc5d0c5f214fcf4c4c2ade475ad46ac895179935f9a8bedb510096071b933cb",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py": "d768ff2436a9e459c6f67a66d7ff9cf8d300fe6aac45ed380bb0cfe157152fb2",
+    "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
+    "src/tenants/organization-payment-policy.ts": "5dd72b46d924be57b507268931bb6de1d470574daa4c8afff7e34a4878126a11",
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py": "b0fce34c199aa8a0aefdd208fbdee0fb13f042db2fb6c9e9ed5fa4ec88aa379a"
+  },
+  "externalActionAuthorized": false,
+  "implementationComplete": false
+}

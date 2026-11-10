@@ -1,0 +1,192 @@
+// Owned payment phase for native entry. No ambient credentials or provider clients.
+import {readFileSync,writeFileSync,renameSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {hash,need,gate} from './authority_bridge.mjs';
+const require=createRequire(new URL('../../../../package.json',import.meta.url));
+export const EVENTS=Object.freeze(['charge.refunded','checkout.session.async_payment_failed',
+  'checkout.session.async_payment_succeeded','checkout.session.completed','checkout.session.expired',
+  'payment_intent.payment_failed']);
+export const PAYMENT_SQL=`SELECT json_build_object(
+ 'actor',(SELECT row_to_json(a) FROM (SELECT id,"tenantId",role::text,status::text FROM "User" WHERE id=$1::uuid) a),
+ 'tenant',(SELECT row_to_json(t) FROM (SELECT id,status::text,"chargesEnabled","stripeConnectAccountId",settings FROM "TenantOrganization" WHERE id=$2::uuid) t),
+ 'job',(SELECT row_to_json(j) FROM (SELECT id,"tenantId",status::text,"deletedAt",to_char("updatedAt",'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt","calendarEventId","serviceWindowStart","serviceWindowEnd","policySnapshot","pricingSnapshot" FROM "Job" WHERE id=$3::uuid AND "tenantId"=$2::uuid) j),
+ 'payments',(SELECT count(*)::int FROM "Payment" WHERE "jobId"=$3::uuid),
+ 'calendar',(SELECT count(*)::int FROM "CalendarOperation" WHERE "jobId"=$3::uuid)) AS value`;
+
+export function paymentContext(v,e,now=Date.now()) {
+  const {profile}=require('./dist/tenants/organization-payment-policy.js');
+  const p=e.payment, j=v?.job,t=v?.tenant,a=v?.actor;
+  need(a?.id===e.target.id && a.tenantId===e.plan.tenantId && a.role==='ADMIN' && a.status==='ACTIVE','PAYMENT_ACTOR');
+  need(j?.id===e.plan.jobId && j.tenantId===e.plan.tenantId && j.status==='CREATED' && j.deletedAt===null,'PAYMENT_JOB');
+  need(v.payments===0 && v.calendar===0 && j.calendarEventId===null && j.serviceWindowStart===null && j.serviceWindowEnd===null,'PAYMENT_ACTIVITY');
+  need(t?.id===e.plan.tenantId && t.status==='ACTIVE' && t.chargesEnabled===true &&
+    typeof t.stripeConnectAccountId==='string' && /^acct_[A-Za-z0-9]+$/.test(t.stripeConnectAccountId) &&
+    hash(t.stripeConnectAccountId)===p.connectedAccountSha256,'PAYMENT_ACCOUNT');
+  let approved;try{approved=profile(t.settings?.organizationPaymentPolicyV1)?.approved;}catch{need(false,'PAYMENT_POLICY');}
+  need(approved && Date.parse(approved.approvedAt)<=now,'PAYMENT_POLICY');
+  // Application canonical profile property order, not sorted-key envelope serialization.
+  const digest=hash(JSON.stringify(approved)),ad=j.policySnapshot?.intakeAdmission;
+  need(ad?.version===2 && ad.actorId==='signmons-intake-admission-v1' && ad.humanReviewed!==true &&
+    ad.paymentApprovedAt===approved.approvedAt && ad.paymentDigest===digest,'PAYMENT_ADMISSION');
+  need(j.pricingSnapshot && Object.keys(j.pricingSnapshot).length===0 &&
+    !['paymentPolicyBinding','depositRequired','serviceFeeRequired','paymentGateMode','paymentGateException']
+      .some(k=>k in j.policySnapshot),'PAYMENT_EXISTING_TERMS');
+  const d=approved.draft,amount=(d.serviceFeeRequired?d.serviceFeeCents:0)+(d.depositRequired?d.depositPolicy.amountCents:0);
+  need(Number.isSafeInteger(amount)&&amount>0 && amount===p.amountTotalCents && p.currency==='usd' &&
+    approved.approvedAt===p.approvedAt && digest===p.policyDigest &&
+    new Date(j.updatedAt).toISOString()===p.jobUpdatedAt,'PAYMENT_SCOPE_DRIFT');
+  return {status:'QUALIFIED_DATABASE',actorId:a.id,actorRole:'admin',tenantId:t.id,jobId:j.id,
+    jobUpdatedAt:p.jobUpdatedAt,approvedAt:p.approvedAt,policyDigest:digest,amountTotalCents:amount,
+    currency:'usd',connectedAccountSha256:p.connectedAccountSha256};
+}
+
+export function endpoint(value,p,status) {
+  need(value && value.object==='webhook_endpoint' && value.id===p.endpointId &&
+    hash(value.id)===p.endpointSha256 && value.livemode===false && value.url===p.url &&
+    value.api_version===p.apiVersion && Array.isArray(value.enabled_events) &&
+    JSON.stringify([...value.enabled_events].sort())===JSON.stringify(EVENTS) &&
+    ['enabled','disabled'].includes(value.status) && (!status||value.status===status),'PAYMENT_ENDPOINT_DRIFT');
+  return value;
+}
+
+// Single extension to the existing coordinator journal; writes never replace parent state.
+export class PaymentJournal {
+  constructor(cap,path){this.cap=cap;this.path=path;this.state=null;}
+  read(){gate(this.cap,true);return JSON.parse(readFileSync(this.path,'utf8'));}
+  load(){const j=this.read();need(j.operationId===this.cap.e.plan.operationId && j.payment?.operationId===j.operationId &&
+    j.payment.scopeSha256===hash(this.cap.e.payment),'PAYMENT_JOURNAL_BINDING');this.state=j.payment;return this.state;}
+  save(change){const j=this.read();need(j.operationId===this.cap.e.plan.operationId &&
+    (this.state===null?j.payment===undefined:hash(j.payment)===hash(this.state)),'PAYMENT_JOURNAL_DRIFT');
+    const next={operationId:j.operationId,scopeSha256:hash(this.cap.e.payment),...this.state,...change,revision:(this.state?.revision??0)+1};
+    writeFileSync(this.path+'.payment-next',JSON.stringify({...j,payment:next}),{mode:0o600,flag:'wx'});
+    renameSync(this.path+'.payment-next',this.path);this.state=next;return next;
+  }
+}
+
+export async function readPaymentContext(db,e) {
+  await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  try {const r=await db.query(PAYMENT_SQL,[e.target.id,e.plan.tenantId,e.plan.jobId]);
+    need(r.rows?.length===1,'PAYMENT_SQL_OUTPUT');const q=paymentContext(r.rows[0].value,e);
+    await db.query('COMMIT');return q;
+  }catch(error){try{await db.query('ROLLBACK');}catch{}throw error;}
+}
+
+export async function closePayment(cap,journal,ports) {
+  const state=journal.state??journal.load();
+  if(!state.enableIntent)return true;
+  try {
+    // Independent closeout reads before mutation. No activation or new payment is possible here.
+    if(cap.mode==='--run')await ports.endpoint('POST',true,true);
+    else {const current=endpoint(await ports.endpoint('GET',null,true),cap.e.payment);
+      if(current.status==='disabled'){journal.save({phase:'CLOSED',endpointDisabled:true,residuals:[]});return true;}
+      await ports.endpoint('POST',true,true);}
+    endpoint(await ports.endpoint('GET',null,true),cap.e.payment,'disabled');
+    journal.save({phase:'CLOSED',endpointDisabled:true,residuals:[]});return true;
+  }catch {journal.save({phase:'CLOSEOUT_UNKNOWN',endpointDisabled:false,residuals:['PAYMENT_ENDPOINT_UNCONFIRMED']});return false;}
+}
+
+export async function runPayment(cap,{db,ports,journal,token,present}) {
+  need(cap.e.version===2 && cap.mode==='--run','PAYMENT_AUTHORITY');gate(cap);
+  const p=cap.e.payment,deadline=Date.parse(p.workEnd);
+  need(deadline>Date.now() && deadline<=Date.parse(cap.e.plan.window.workEnd)-60000,'PAYMENT_WORK_DEADLINE');
+  journal.load();need(journal.state.phase==='QUALIFIED' && journal.state.enableIntent===false,'PAYMENT_PREFLIGHT_REQUIRED');
+  journal.save({phase:'START',endpointDisabled:false,bridgeClosed:false});
+  let bridge,finish;
+  try {
+    const q=await readPaymentContext(db,cap.e);
+    endpoint(await ports.endpoint('GET',null,false),p,'disabled');
+    journal.save({phase:'ENABLE_INTENT',enableIntent:true});
+    endpoint(await ports.endpoint('POST',false,false),p,'enabled');
+    endpoint(await ports.endpoint('GET',null,false),p,'enabled');
+    const {createOperatorBridge}=await import('./operator_bridge.mjs');
+    const closed=new Promise(resolve=>{finish=resolve;});
+    bridge=await createOperatorBridge({qualification:q,token,transport:ports.application,deadline,expectedAccount:p.connectedAccountSha256,onClose:()=>finish()});
+    journal.save({phase:'ATTENDED'});
+    await present(bridge.bootstrapUrl);
+    await closed;
+    // Application canonical state, not redirect, is the only payment observation.
+    const base=cap.e.runtimeOrigin+'/jobs/'+cap.e.plan.jobId;
+    if(Date.now()<deadline){
+      const responses=await Promise.all([ports.application(base+'/payment-request',{method:'GET',headers:{Authorization:'Bearer '+token}}),
+        ports.application(cap.e.runtimeOrigin+'/jobs/dispatch-board/'+cap.e.plan.jobId,{method:'GET',headers:{Authorization:'Bearer '+token}})]);
+      const [payment,detail]=await Promise.all(responses.map(async r=>{need(r.ok,'PAYMENT_FINAL_READ');return JSON.parse(await r.text());}));
+      need(payment.amountTotalCents===p.amountTotalCents && payment.currency===p.currency && detail.jobId===cap.e.plan.jobId,'PAYMENT_FINAL_SCOPE');
+      journal.save({outcome:payment.status==='SUCCEEDED'&&detail.paymentGate?.state==='UNLOCKED'?'APPLICATION_SETTLED':'NOT_OBSERVED'});
+    }
+  }catch(error) {journal.save({phase:'STOPPED',outcome:'NOT_OBSERVED',failureCode:/^PAYMENT_[A-Z_]{1,48}$/.test(error?.code??'')?error.code:'PAYMENT_ADAPTER_UNKNOWN'});}
+  finally {
+    if(bridge){try{await bridge.stop();journal.save({bridgeClosed:true});}catch{journal.save({residuals:['PAYMENT_BRIDGE_UNCONFIRMED']});}}
+    else journal.save({bridgeClosed:true});
+    token='';
+    const closed=await closePayment(cap,journal,ports);
+    ports.clear();
+    need(closed && journal.state.bridgeClosed,'PAYMENT_CONTAINMENT_UNCONFIRMED');
+  }
+  return journal.state;
+}
+
+export function createPaymentPorts(cap,credentials,journal,injected={}) {
+  need(cap.e.version===2 && (cap.external || typeof injected.fetcher==='function'),'PAYMENT_TRANSPORT_AUTHORITY');
+  const p=cap.e.payment,send=injected.fetcher??fetch;
+  let key='',secretAttempted=false,cleared=false;
+  const counts={reads:0,creates:0,binds:0,recovers:0};
+  async function bounded(url,options,cleanup){
+    gate(cap,cleanup,true);need(!cleared,'PAYMENT_PORT_CLOSED');
+    const until=cleanup?Date.parse(cap.e.plan.window.cleanupEnd):Date.parse(p.workEnd);
+    need(Date.now()<until,'PAYMENT_DEADLINE');
+    const signal=AbortSignal.timeout(Math.max(1,Math.min(5000,until-Date.now())));
+    const response=await send(url,{...options,redirect:'error',signal});
+    let text;
+    if(response.body?.getReader){const reader=response.body.getReader(),chunks=[];let size=0;
+      try {while(true){gate(cap,cleanup);need(!signal.aborted,'PAYMENT_IO_TIMEOUT');
+        const r=await reader.read();if(r.done)break;size+=r.value.byteLength;need(size<=65536,'PAYMENT_OUTPUT_LIMIT');chunks.push(Buffer.from(r.value));}
+        text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
+      }finally{await reader.cancel().catch(()=>{});}
+    }else{text=await response.text();need(Buffer.byteLength(text)<=65536,'PAYMENT_OUTPUT_LIMIT');}
+    gate(cap,cleanup);need(Date.now()<until && !signal.aborted,'PAYMENT_IO_TIMEOUT');
+    return {ok:response.ok,status:response.status,text:async()=>text};
+  }
+  async function stripeKey(cleanup){
+    if(key)return key;
+    need(!secretAttempted,'PAYMENT_SECRET_NO_RETRY');secretAttempted=true;
+    need(journal.state.secretReads<cap.e.limits.child,'PAYMENT_SECRET_BUDGET');journal.save({secretReads:journal.state.secretReads+1});
+    const name='projects/'+cap.e.plan.projectNumber+'/secrets/signmons-staging-stripe-secret-key/versions/1';
+    const r=await bounded('https://secretmanager.googleapis.com/v1/'+name+':access',{
+      method:'GET',headers:{Authorization:'Bearer '+credentials.accessToken}},cleanup);
+    need(r.ok,'PAYMENT_SECRET_REFUSED');const v=JSON.parse(await r.text());
+    need(v.name===name && typeof v.payload?.data==='string' && /^[A-Za-z0-9+/]+={0,2}$/.test(v.payload.data),'PAYMENT_SECRET_SHAPE');
+    const bytes=Buffer.from(v.payload.data,'base64');
+    try {const value=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+      need(/^sk_test_[A-Za-z0-9]{16,256}$/.test(value),'PAYMENT_TEST_KEY_REQUIRED');key=value;
+    }finally{bytes.fill(0);}
+    return key;
+  }
+  return {
+    async endpoint(method,disabled,cleanup){
+      need((method==='GET'&&disabled===null)||(method==='POST'&&typeof disabled==='boolean'),'PAYMENT_ENDPOINT_METHOD');
+      need(cleanup?method==='GET'||disabled===true:(cap.mode==='--run'||(cap.mode==='--payment-preflight'&&method==='GET')),'PAYMENT_CLEANUP_ONLY');
+      gate(cap,cleanup);need(journal.state.endpointCalls<14,'PAYMENT_ENDPOINT_BUDGET');
+      if(method==='POST'&&!disabled)need(journal.state.enableIntent===true && journal.state.phase==='ENABLE_INTENT' && journal.state.endpointCalls===2,'PAYMENT_ENABLE_NO_RETRY');
+      const secret=await stripeKey(cleanup);
+      journal.save({endpointCalls:journal.state.endpointCalls+1});
+      const r=await bounded('https://api.stripe.com/v1/webhook_endpoints/'+p.endpointId,{
+        method,headers:{Authorization:'Bearer '+secret,'Content-Type':'application/x-www-form-urlencoded','Stripe-Version':p.apiVersion},
+        ...(method==='POST'?{body:'disabled='+String(disabled)}:{})},cleanup);
+      need(r.ok,'PAYMENT_ENDPOINT_REFUSED');return endpoint(JSON.parse(await r.text()),p);
+    },
+    async application(url,options){
+      gate(cap);need(cap.mode==='--run','PAYMENT_CLEANUP_ONLY');
+      const base=cap.e.runtimeOrigin+'/jobs/'+cap.e.plan.jobId;
+      const routes=new Map([['GET '+base+'/payment-request','reads'],['GET '+base+'/payment-events','reads'],
+        ['GET '+cap.e.runtimeOrigin+'/jobs/dispatch-board/'+cap.e.plan.jobId,'reads'],
+        ['POST '+cap.e.runtimeOrigin+'/job-payment-policy/apply','binds'],['POST '+base+'/payment-requests','creates'],
+        ['POST '+base+'/payment-request/recover','recovers']]);
+      const kind=routes.get(options.method+' '+url);need(kind,'PAYMENT_ROUTE');
+      need(++counts[kind]<=({reads:30,creates:2,binds:1,recovers:1})[kind],'PAYMENT_ROUTE_BUDGET');
+      const headers={...options.headers};need(typeof headers.Authorization==='string'&&headers.Authorization.startsWith('Bearer '),'PAYMENT_TOKEN');
+      if(kind==='creates')headers['Idempotency-Key']=p.requestId;
+      return bounded(url,{...options,headers},false);
+    },
+    clear(){key='';cleared=true;},counts:()=>({...counts})
+  };
+}

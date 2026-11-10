@@ -13,7 +13,7 @@ APP = HERE.parent.parent
 BACKEND = APP.parent.parent
 GOV = Path('/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery')
 FILES = {'authority.py', 'entry.py', 'native_io.py', 'handoff.py', 'private_inventory.py',
-         'authority_bridge.mjs', 'transports.mjs', 'native_child.mjs'}
+         'authority_bridge.mjs', 'transports.mjs', 'native_child.mjs', 'connected_payment.mjs', 'operator_bridge.mjs'}
 
 
 def digest(value):
@@ -60,11 +60,11 @@ def committed(repo, commit, path):
 class Capability:
     def __init__(self, envelope, root, mode='run', clock=time.time, read_commit=committed, continuing=False):
         manifest = verify_sources()
-        need(set(envelope) == {'version', 'execution', 'plan', 'target', 'database', 'resources',
+        need(set(envelope) == ({'payment'} if envelope.get('version') == 2 else set()) | {'version', 'execution', 'plan', 'target', 'database', 'resources',
                               'qualification', 'limits', 'sourceManifestSha256', 'sourceCommit', 'decision'},
              'ENVELOPE_SHAPE')
         e = json.loads(json.dumps(envelope))
-        need(e['version'] == 1 and e['execution'] in ('EXTERNAL', 'PROOF_ONLY') and
+        need(e['version'] in (1, 2) and e['execution'] in ('EXTERNAL', 'PROOF_ONLY') and
              mode in ('run', 'closeout', 'readback'), 'ENTRY_MODE')
         need(e['sourceManifestSha256'] == digest((HERE / 'source-manifest.json').read_bytes()),
              'MANIFEST_BINDING')
@@ -98,6 +98,9 @@ class Capability:
              'CALL_BUDGET')
         q = e['qualification']
         scope = {k: e[k] for k in ('plan', 'target', 'database', 'resources', 'limits')}
+        if e['version'] == 2:
+            validate_payment(e, times)
+            scope['payment'] = e['payment']
         need(set(q) == {'status', 'operationId', 'scopeSha256', 'qualifiedUntil',
                         'runtimeEnvironmentSha256', 'roleAclSha256', 'checks'} and
              q['status'] == 'QUALIFIED_FOR_NATIVE_ENTRY' and q['operationId'] == p['operationId'] and
@@ -107,6 +110,8 @@ class Capability:
              all(v is True for v in q['checks'].values()) and
              all(re.fullmatch('[a-f0-9]{64}', q[k] or '') for k in ('runtimeEnvironmentSha256', 'roleAclSha256')),
              'QUALIFICATION_BINDING')
+        if e['version'] == 2 and e['execution'] == 'EXTERNAL':
+            verify_payment_qualification(e)
         scope_hash = digest({k: v for k, v in e.items() if k != 'decision'})
         if e['execution'] == 'PROOF_ONLY':
             need(e['decision'] == {'decision': 'APPROVE_LOCAL_NATIVE_ENTRY_PROOF', 'scopeSha256': scope_hash},
@@ -118,7 +123,7 @@ class Capability:
             raw = read_commit(GOV, d['commit'], d['path'])
             need(digest(raw) == d['sha256'], 'DECISION_DIGEST')
             need(json.loads(raw) == {'owner': 'Debynyhan Banks',
-                 'decision': 'APPROVE_EXACT_P08_NATIVE_ENTRY', 'externalActionAuthorized': True,
+                 'decision': ('APPROVE_EXACT_P08_CONNECTED_PAYMENT' if e['version'] == 2 else 'APPROVE_EXACT_P08_NATIVE_ENTRY'), 'externalActionAuthorized': True,
                  'operationId': p['operationId'], 'scopeSha256': scope_hash,
                  'sourceManifestSha256': e['sourceManifestSha256']}, 'EXACT_OWNER_APPROVAL')
             rel = str(HERE.relative_to(BACKEND))
@@ -127,6 +132,9 @@ class Capability:
             for name, expected in manifest['files'].items():
                 need(digest(read_commit(BACKEND, e['sourceCommit'], rel + '/' + name)) == expected,
                      'COMMITTED_SOURCE_DRIFT')
+            if e['version'] == 2:
+                for name, expected in manifest['lockedSources'].items():
+                    need(digest(read_commit(BACKEND, e['sourceCommit'], 'evidence/APP-013/' + name)) == expected, 'COMMITTED_PAYMENT_DEPENDENCY_DRIFT')
         self.e, self.plan, self.root, self.mode, self.clock = e, p, inspect(root, p['operationId']), mode, clock
         self.external = e['execution'] == 'EXTERNAL'
         self.times, self.last, self.coordinator = times, clock(), None
@@ -150,3 +158,46 @@ class Capability:
         budget[kind] += 1
         self.coordinator.save()
         return deadline
+
+
+def validate_payment(e, times):
+    p = e['payment']
+    need(isinstance(p, dict) and set(p) == {'endpointId','endpointSha256','apiVersion','url',
+        'connectedAccountSha256','amountTotalCents','currency','approvedAt','policyDigest','jobUpdatedAt',
+        'requestId','workEnd','qualificationId'}, 'PAYMENT_SCOPE_SHAPE')
+    plan = json.loads((APP / 'p08-local-preparation-20261022/plan.json').read_text())
+    need(re.fullmatch(r'we_[A-Za-z0-9]{1,128}', p['endpointId']) and
+         digest(p['endpointId'].encode()) == p['endpointSha256'] and
+         p['apiVersion'] == '2026-03-25.dahlia' and p['url'] == plan['origin'] + '/webhooks/stripe' and
+         re.fullmatch('[0-9a-f]{64}', p['connectedAccountSha256']) and
+         p['currency'] == 'usd' and type(p['amountTotalCents']) is int and 0 < p['amountTotalCents'] <= 200000000 and
+         re.fullmatch('[0-9a-f]{64}', p['policyDigest']) and
+         str(__import__('uuid').UUID(p['requestId'])) == p['requestId'] and
+         str(__import__('uuid').UUID(p['qualificationId'])) == p['qualificationId'], 'PAYMENT_SCOPE')
+    need(all(isinstance(p[k],str) and re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?Z',p[k]) for k in ('workEnd','approvedAt','jobUpdatedAt')), 'PAYMENT_TIMESTAMP')
+    stamp = lambda v: __import__('datetime').datetime.fromisoformat(v.replace('Z','+00:00')).timestamp()
+    need(times['start'] < stamp(p['workEnd']) <= times['workEnd'] - 60 and
+         stamp(p['approvedAt']) <= times['start'] and stamp(p['jobUpdatedAt']) <= times['start'], 'PAYMENT_TIMING')
+    if e['execution'] == 'EXTERNAL':
+        need(p['connectedAccountSha256'] == plan['connectedAccountSha256'] and p['endpointSha256'] == 'dbaae6448069a186dc4b9e2fc6182707dda7b61218376e9e97cd21b20b4bfeae', 'PAYMENT_ENDPOINT_PIN')
+    for name, expected in plan['compiledHashes'].items():
+        need(digest((BACKEND / name).read_bytes()) == expected, 'PAYMENT_BUILD_DRIFT')
+
+
+def verify_payment_qualification(e):
+    from private_inventory import read
+    import os, stat
+    try:
+        root=Path('/private/tmp/p08-current-external-'+e['payment']['qualificationId'])
+        st=root.lstat()
+        need(root.resolve()==root and stat.S_ISDIR(st.st_mode) and stat.S_IMODE(st.st_mode)==0o700 and st.st_uid==os.getuid(), 'PAYMENT_QUALIFICATION_RECEIPT')
+        result=read(root/'result.json');attempt=read(root/'attempt.json');cleanup=read(root/'cleanup-envelope.json')['scope']
+        manifest=APP/'p08-https-output-category-local-20261029/source/source-manifest.json'
+        need(attempt['operationId']==e['payment']['qualificationId'] and attempt['scopeSha256']==e['qualification']['scopeSha256'] and
+             attempt['cleanupScopeSha256']==digest(cleanup) and cleanup['sourceCommit']==e['sourceCommit'] and
+             cleanup['manifestSha256']==digest(manifest.read_bytes()) and cleanup['nativeScopeSha256']==e['qualification']['scopeSha256'] and
+             result['status']=='CURRENT_EVIDENCE_OBSERVED' and result['execution']=='EXTERNAL_READ_ONLY' and
+             result['liveObserved'] is True and result['failure'] is None and result['residuals']==[] and
+             result['candidate']==e['qualification'], 'PAYMENT_QUALIFICATION_RECEIPT')
+    except BaseException:
+        raise Stop('PAYMENT_QUALIFICATION_RECEIPT') from None

@@ -23,6 +23,11 @@ class RuntimeAdapter(restore.NativeAdapter):
         self.cap = cap
         self.acl = load_acl()
 
+    def preflight(self, p, q, deadline):
+        if self.cap.e['version'] == 2:
+            self.payment_preflight()
+        return super().preflight(p, q, deadline)
+
     def role(self, deadline):
         def unique(pairs):
             result = {}
@@ -161,6 +166,7 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
         runtime = RuntimeAdapter(cap, io, clock=clock)
         runtime.q = cap.e['qualification']
         handoff = Handoff(cap, io)
+        runtime.payment_preflight = handoff.preflight_payment
         runtime.close_authentication = lambda plan, deadline: handoff.closeout_only()
         ports = Ports(cap, io, handoff, runtime)
         controller = Coordinator(cap, io, runtime, ports)
@@ -173,6 +179,16 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
         private_absent = False
         try:
             need(clock() < cap.times['purgeEnd'], 'PURGE_DEADLINE')
+            if cap.e['version'] == 2 and mode == 'run':
+                # Version2 retains the owned envelope for mandatory independent closeout.
+                # It is never returned as a fully closed operation here.
+                result = {'status':'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT',
+                          'operationId':cap.plan['operationId'], 'liveAuthorization':cap.external,
+                          'authProofReady':False, 'paymentReadyForAcceptance':False,
+                          'paymentObserved':controller.j.get('payment', {}).get('outcome') == 'APPLICATION_SETTLED',
+                          'residuals':sorted(set(residuals)), 'privateInputsAbsent':False}
+                reserve(cap.root / 'work-result.json', result)
+                return result
             private_absent = purge(cap.root, cap.plan['operationId'])
             need(private_absent and clock() < cap.times['purgeEnd'], 'PURGE_UNCONFIRMED')
         except Exception:
@@ -183,6 +199,14 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
                   'authenticationObserved': controller.j.get('authProofAccepted') is True,
                   'residuals': sorted(set(residuals)), 'privateInputsAbsent': private_absent,
                   'childResultSha256': result.get('childResultSha256')}
+        if cap.e['version'] == 2:
+            payment = controller.j.get('payment', {})
+            result['paymentObserved'] = payment.get('outcome') == 'APPLICATION_SETTLED'
+            result['paymentReadyForAcceptance'] = False
+            if payment.get('enableIntent') and payment.get('endpointDisabled') is not True:
+                result['residuals'] = sorted(set(result['residuals'] + ['PAYMENT_ENDPOINT_UNCONFIRMED']))
+                result['status'] = 'ENTRY_CONTAINMENT_UNCONFIRMED'
+                result['authProofReady'] = False
         reserve(cap.root / 'result.json', result)
         return result
     finally:
@@ -195,7 +219,9 @@ def main(argv):
     if len(argv) == 3 and argv[0] == '--check-child':
         path, mode = Path(argv[1]), argv[2]
         need(path.name == 'envelope.json', 'ENVELOPE_PATH')
-        cap = Capability(read(path), path.parent, mode, continuing=True)
+        e = read(path)
+        if mode == 'payment-preflight':need(e['version'] == 2, 'PAYMENT_PREFLIGHT_VERSION')
+        cap = Capability(e, path.parent, 'run' if mode == 'payment-preflight' else mode, continuing=True)
         print(json.dumps({'envelopeSha256': cap.envelope_hash, 'operationId': cap.plan['operationId'],
                           'external': cap.external, 'mode': mode}))
         return 0

@@ -386,4 +386,130 @@ class EntryTests(unittest.TestCase):
             self.assertEqual(io.token,'')
 
 
+class ConnectedEntryTests(EntryTests):
+    def setUp(self):
+        super().setUp()
+        import uuid
+        p=self.e['plan']; stamp='2026-01-01T00:00:00.000Z'
+        draft={'currency':'usd','serviceFeeRequired':False,'serviceFeeCents':None,'depositRequired':True,
+               'depositPolicy':{'kind':'fixed','amountCents':12500},'emergencyFeePolicy':{'kind':'none'},
+               'paymentGateMode':'fail_closed','webhookValidationRequired':True}
+        approved={'draft':draft,'actorId':self.e['target']['id'],'approvedAt':stamp}
+        self.e['version']=2
+        self.e['limits']['cli']=192
+        self.e['payment']={'qualificationId':str(uuid.uuid4()),'endpointId':'we_synthetic','endpointSha256':a.digest(b'we_synthetic'),
+            'apiVersion':'2026-03-25.dahlia','url':'https://app013-p07-atomic---signmons-calldesk-staging-p572d6wipq-ul.a.run.app/webhooks/stripe',
+            'connectedAccountSha256':a.digest(b'acct_synthetic'),'amountTotalCents':12500,'currency':'usd',
+            'approvedAt':stamp,'policyDigest':a.digest(json.dumps(approved,separators=(',',':')).encode()),
+            'jobUpdatedAt':stamp,'requestId':str(uuid.uuid4()),
+            'workEnd':datetime.datetime.fromtimestamp(time.time()+90,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+        self.e['qualification']['scopeSha256']=a.digest({k:self.e[k] for k in ('plan','target','database','resources','limits','payment')})
+        self.seal()
+
+    def factory(self,cap):
+        io=super().factory(cap)
+        # Reuse the actual credential acquisition sequence, with only command I/O synthetic.
+        owner=object.__new__(entry.NativeIO)
+        owner.cap,owner.cleanup,owner.token=cap,cap.mode!='run',''
+        owner.restore=SimpleNamespace(local_environment_gate=lambda:None)
+        def command(argv,kind,*args,**kwargs):
+            cap.spend(kind,owner.cleanup)
+            if argv[1:3]==['auth','list']:return cap.plan['ownerPrincipal']
+            if argv[1:3]==['auth','print-access-token']:return 'SYNTHETIC_OWNER_OAUTH_TOKEN'
+            return '(unset)'
+        owner._run=command
+        for name in ('credentials','cli','cloud','https'):
+            original=getattr(io,name)
+            def wrapped(*args,_original=original,**kwargs):
+                owner.ensure_owner()
+                return _original(*args,**kwargs)
+            setattr(io,name,wrapped)
+        return io
+
+    def test_preflight_refusal_never_activates_runtime(self):
+        self.scenario='foreign_endpoint'
+        self.run_entry()
+        j=read(self.root/'journal.json')
+        self.assertFalse(j['authAttempted'])
+        self.assertFalse(j['payment']['enableIntent'])
+        self.assertEqual(j['nativeEntry']['calls']['child'],1)
+        self.assertFalse(any(self.f.runtime_state.values()))
+        self.assertEqual(self.run_entry('closeout')['status'],'ENTRY_CLOSED')
+
+    def test_late_child_return_preserves_payment_intent_for_cleanup(self):
+        factory=self.factory
+        def late_factory(cap):
+            io=factory(cap);child=io.child
+            def late(argv,**kwargs):
+                result=child(argv,**kwargs)
+                if argv[2]=='--run':cap.clock=lambda:cap.times['workEnd']+1
+                return result
+            io.child=late
+            return io
+        r=entry.run_entry(self.path,io_factory=late_factory)
+        self.assertEqual(r['status'],'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+        j=read(self.root/'journal.json')
+        self.assertTrue(j['payment']['enableIntent'])
+        self.assertEqual(j['payment']['outcome'],'APPLICATION_SETTLED')
+        self.assertGreaterEqual(j['payment']['endpointCalls'],6)
+        closed=self.run_entry('closeout')
+        self.assertEqual(closed['status'],'ENTRY_CONTAINMENT_UNCONFIRMED')
+        self.assertEqual(closed['residuals'],['AUTH_OUTCOME_UNKNOWN'])
+        self.assertTrue(closed['privateInputsAbsent'])
+        self.assertTrue(read(self.root/'journal.json')['payment']['endpointDisabled'])
+        self.assertFalse(any(self.f.runtime_state.values()))
+
+    def test_payment_parent_retains_then_independently_purges(self):
+        r=self.run_entry()
+        self.assertEqual(r['status'],'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT',r)
+        self.assertTrue(r['paymentObserved'],read(self.root/'journal.json'))
+        self.assertTrue(self.path.exists())
+        self.assertFalse(any(self.f.runtime_state.values()))
+        r=self.run_entry('closeout')
+        self.assertEqual(r['status'],'ENTRY_CLOSED',r)
+        self.assertEqual(r['residuals'],[])
+        self.assertTrue(r['privateInputsAbsent'])
+        self.assertFalse(self.path.exists())
+        self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],9)
+        self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':5,'cli':181,'https':16,'sql':10})
+
+    def test_full_parent_failed_readbacks_have_finite_cleanup_budget(self):
+        self.scenario='disable_readback_failed'
+        r=self.run_entry()
+        self.assertEqual(r['status'],'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+        r=self.run_entry('closeout')
+        self.assertEqual(r['status'],'ENTRY_CONTAINMENT_UNCONFIRMED')
+        self.assertIn('PAYMENT_ENDPOINT_UNCONFIRMED',r['residuals'])
+        self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],14)
+        self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':6,'cli':181,'https':16,'sql':10})
+        self.assertTrue(r['privateInputsAbsent'])
+        self.assertFalse(any(self.f.runtime_state.values()))
+
+    def test_payment_requires_matching_current_qualification_receipt(self):
+        import shutil
+        root=Path('/private/tmp/p08-current-external-'+self.e['payment']['qualificationId'])
+        root.mkdir(mode=0o700);self.addCleanup(lambda:shutil.rmtree(root))
+        scope={'sourceCommit':self.e['sourceCommit'],
+            'manifestSha256':a.digest((a.APP/'p08-https-output-category-local-20261029/source/source-manifest.json').read_bytes()),
+            'nativeScopeSha256':self.e['qualification']['scopeSha256']}
+        reserve(root/'cleanup-envelope.json',{'scope':scope})
+        reserve(root/'attempt.json',{'operationId':self.e['payment']['qualificationId'],
+            'scopeSha256':self.e['qualification']['scopeSha256'],'cleanupScopeSha256':a.digest(scope)})
+        result={'status':'CURRENT_EVIDENCE_OBSERVED','execution':'EXTERNAL_READ_ONLY','liveObserved':True,
+                'failure':None,'residuals':[],'candidate':copy.deepcopy(self.e['qualification'])}
+        reserve(root/'result.json',result);a.verify_payment_qualification(self.e)
+        for field,value in [('liveObserved',False),('status','CURRENT_EVIDENCE_LOCAL_VERIFIED'),('residuals',['UNKNOWN']),('candidate',None)]:
+            (root/'result.json').unlink();reserve(root/'result.json',{**result,field:value})
+            with self.assertRaisesRegex(Stop,'PAYMENT_QUALIFICATION_RECEIPT'):a.verify_payment_qualification(self.e)
+
+    def test_payment_external_foreign_endpoint_refuses_before_io(self):
+        self.e['execution']='EXTERNAL';self.seal()
+        with self.assertRaisesRegex(Stop,'PAYMENT_ENDPOINT_PIN'):
+            self.run_entry()
+        self.assertEqual(self.calls,0)
+
+for _name in EntryTests.__dict__:
+    if _name.startswith('test_'):
+        setattr(ConnectedEntryTests,_name,None)
+
 if __name__=='__main__':unittest.main()

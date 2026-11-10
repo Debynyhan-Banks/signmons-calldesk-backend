@@ -1,0 +1,117 @@
+{
+  "section": "APP-013/3A/P08",
+  "status": "LOCAL_CONNECTED_PAYMENT_VERIFIED_LIVE_NOT_AUTHORIZED",
+  "recordedAt": "2026-11-10T15:49:23.317183+00:00",
+  "baseSourceCommit": "7d844ec8693dee7d0723bfb100d173bdbbb2aa91",
+  "runtimeManifestSha256": "0e10715ad6e18fe06b711262bbd4a948bae39f30d128812830150b3be6bc7a5b",
+  "testManifestSha256": "03401294980baabde99525c6e3e55575d51881b25adc9f1cb3623e849f3287e9",
+  "checks": [
+    {
+      "command": "python3.14 -B -m unittest test_entry test_native_postgres",
+      "cwd": "evidence/APP-013/p08-native-entry-local-20261101/source",
+      "passed": 38,
+      "finalTree": true
+    },
+    {
+      "command": "python3.14 -B -m unittest test_composed_qualification test_qualification_launch",
+      "passed": 235,
+      "note": "Earlier this implementation turn; final native consumer separately rerun in two custody cases."
+    },
+    {
+      "command": "python3.14 -B -m unittest test_qualification_launch.ConnectedCustodyTests",
+      "passed": 2,
+      "finalTree": true
+    },
+    {
+      "command": "node --test test_connected_payment.mjs test_transports.mjs",
+      "passed": 16,
+      "finalTree": true
+    },
+    {
+      "command": "PLAYWRIGHT_MODULE=<installed runtime module> node --test evidence/APP-013/p08-local-preparation-20261022/operator-bridge.test.mjs",
+      "passed": 14
+    },
+    {
+      "command": "npm test -- --runInBand src/payments src/jobs/job-payment-policy.service.spec.ts",
+      "passed": 76,
+      "suites": 5
+    },
+    {
+      "command": "node scripts/verify-p07-payment-runtime-role.mjs",
+      "passedChecks": 22,
+      "negativeSqlCases": 49,
+      "interruption": "INTERRUPTION_CONTAINED",
+      "providerCalls": 0,
+      "cleanupVerified": true
+    },
+    {
+      "command": "npm run build",
+      "status": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "status": "PASS"
+    },
+    {
+      "command": "npm run arch:check",
+      "status": "PASS"
+    },
+    {
+      "command": "node scripts/frozen-baseline-check.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "SIGNMONS_BACKEND_REPO=<focused backend> node scripts/docs-consistency-check.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "node --test scripts/frozen-baseline-check.test.mjs scripts/execution-placement.test.mjs scripts/intelligence-alignment-check.test.mjs",
+      "passed": 25
+    },
+    {
+      "command": "SIGNMONS_GOVERNANCE_REPO=<focused governance> node scripts/check-governance-baseline.mjs",
+      "status": "PASS"
+    },
+    {
+      "command": "git diff --check (both repositories)",
+      "status": "PASS"
+    }
+  ],
+  "browser": {
+    "widths": [
+      1440,
+      390
+    ],
+    "actualLocalTlsPostgres": true,
+    "actualPaymentServices": true,
+    "syntheticSignedEvents": true,
+    "rendersInspected": true,
+    "providerCalls": 0
+  },
+  "measuredParentReservations": {
+    "normal": {
+      "cli": 181,
+      "https": 16,
+      "sql": 10,
+      "child": 5,
+      "endpoint": 9,
+      "secretReads": 5
+    },
+    "failedDisableReadbacks": {
+      "cli": 181,
+      "https": 16,
+      "sql": 10,
+      "child": 6,
+      "endpoint": 14,
+      "secretReads": 6
+    }
+  },
+  "measurementBoundary": "Real NativeIO.ensure_owner sequence with synthetic command IO; actual parent/child boundary. Parent counters exclude child transport reservations. No claim of provider-internal totals.",
+  "lateChildReturn": "Payment intent and endpoint cleanup preserved; AUTH_OUTCOME_UNKNOWN retained; private purge verified.",
+  "providerMutationsThisImplementation": 0,
+  "livePaymentDemonstrated": false,
+  "ownerAccepted": false,
+  "acceptedWalkthrough": "1A/1B/2A/2B 4/8",
+  "newlyClosedR1": "0/27",
+  "scopeDeviation": false
+}

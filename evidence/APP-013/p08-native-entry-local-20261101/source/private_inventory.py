@@ -16,10 +16,10 @@ def need(ok, code):
 
 
 NAMES = frozenset({'envelope.json', 'attempt.json', 'journal.json', 'journal-next.json',
-                   'journal.json.auth-next', 'owned-receipt.json', 'closeout.json',
-                   'independent-closeout.json', 'entry.lock', 'result.json',
+                   'journal.json.auth-next', 'journal.json.payment-next', 'payment-bootstrap.json', 'owned-receipt.json', 'closeout.json',
+                   'independent-closeout.json', 'entry.lock', 'result.json', 'work-result.json',
                    *(f'child-{n}.json' for n in range(1, 9))})
-PRIVATE = frozenset({'envelope.json', 'owned-receipt.json'})
+PRIVATE = frozenset({'envelope.json', 'owned-receipt.json', 'payment-bootstrap.json'})
 
 
 def inspect(root, operation):
@@ -58,7 +58,7 @@ def reserve(path, value):
 def purge(root, operation):
     root = inspect(root, operation)
     # Never delete an uncommitted intent; it needs reconciliation, not optimistic cleanup.
-    need(not any((root / n).exists() for n in ('journal-next.json', 'journal.json.auth-next')),
+    need(not any((root / n).exists() for n in ('journal-next.json', 'journal.json.auth-next', 'journal.json.payment-next')),
          'UNCOMMITTED_INTENT')
     for name in PRIVATE:
         p = root / name

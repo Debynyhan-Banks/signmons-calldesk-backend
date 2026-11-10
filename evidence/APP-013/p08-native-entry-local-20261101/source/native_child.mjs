@@ -23,15 +23,46 @@ export async function runChild(mode, request, injected = {}) {
     initial.nativeEntry.calls.child===request.childCall,'CHILD_RESERVATION');
   writeFileSync(request.envelopePath.replace(/envelope\.json$/,`child-${request.childCall}.json`),
     JSON.stringify({operationId:p.operationId,mode}),{mode:0o600,flag:'wx'});
+  if(mode==='--payment-preflight'){
+    need(e.version===2,'PAYMENT_PREFLIGHT_VERSION');
+    const payment=await import('./connected_payment.mjs');
+    const journal=new payment.PaymentJournal(outer,journalPath);
+    journal.save({phase:'PREFLIGHT',enableIntent:false,endpointDisabled:false,bridgeClosed:true,
+      outcome:'NOT_OBSERVED',failureCode:null,endpointCalls:0,secretReads:0,residuals:[]});
+    const ports=payment.createPaymentPorts(outer,request.credentials,journal,injected);
+    try {payment.endpoint(await ports.endpoint('GET',null,false),e.payment,'disabled');
+      journal.save({phase:'QUALIFIED',endpointDisabled:true});
+      return {status:'PAYMENT_PREFLIGHT_QUALIFIED',qualified:true};
+    }finally{ports.clear();request.credentials.password='';request.credentials.accessToken='';}
+  }
   const approval={decision:'APPROVE_LOCAL_SINGLE_COORDINATOR',externalActionAuthorized:false,
     operationId:p.operationId,planSha256:planHash(p)};
   const now=()=>Math.floor(Date.now()/1000)*1000; // provider revocation timestamps have second precision
   const cap=authorize(p,approval,{target:e.target,receipt:request.receipt,runtime,journalPath,now,
     mode:mode==='--run'?'run':'closeout'});
   const credentials=request.credentials,secret={password:credentials.password};
-  let clients, closeAttempted=false;
+  let clients, paymentPorts, paymentJournal, closeAttempted=false;
   try {
     const ports=createPorts(outer,credentials,injected);
+    let paymentDb;
+    if(e.version===2){
+      const originalFactory=ports.dbFactory;
+      ports.dbFactory=async(...args)=>{paymentDb=await originalFactory(...args);return paymentDb;};
+      const payment=await import('./connected_payment.mjs');
+      paymentJournal=new payment.PaymentJournal(outer,journalPath);
+      paymentPorts=payment.createPaymentPorts(outer,credentials,paymentJournal,injected);
+      if(mode!=='--run'){
+        const j=JSON.parse(readFileSync(journalPath));
+        if(j.payment){paymentJournal.load();
+          if(mode==='--readback'){
+            payment.endpoint(await paymentPorts.endpoint('GET',null,true),e.payment,'disabled');
+          }else {
+            // Endpoint failure must not prevent identity/session cleanup. Parent verifies both results.
+            try {await payment.closePayment(outer,paymentJournal,paymentPorts);}catch {}
+          }
+        }
+      }
+    }
     const binding={operationId:p.operationId,planSha256:planHash(p),project:p.project,
       tenantId:p.tenantId,jobId:p.jobId,targetId:e.target.id,database:e.database};
     clients=await boundClients(cap,{binding,secret,...ports,now});
@@ -50,11 +81,24 @@ export async function runChild(mode, request, injected = {}) {
       return {status:'P08_COORDINATOR_AUTH_CLEANUP_VERIFIED',authenticated:journal.authClient.authenticated,
         residuals:[],sessionClosed:true,liveAuthorization:false,authProofReady:false};
     }
+    if(e.version===2 && mode==='--run'){
+      const originalAuthenticate=clients.authenticate.bind(clients);
+      clients.authenticate=async token=>{
+        await originalAuthenticate(token);
+        const {runPayment}=await import('./connected_payment.mjs');
+        const present=injected.present ?? (async bootstrapUrl=>{
+          need(outer.external,'PAYMENT_PROOF_PRESENTER_REQUIRED');
+          writeFileSync(request.envelopePath.replace(/envelope\.json$/,'payment-bootstrap.json'),
+            JSON.stringify({operationId:p.operationId,bootstrapUrl}),{mode:0o600,flag:'wx'});
+        });
+        return runPayment(outer,{db:paymentDb,ports:paymentPorts,journal:paymentJournal,token,present});
+      };
+    }
     const sequence=new CoordinatorAuthSequence(cap,clients);
     return mode==='--run'?await sequence.run():await sequence.closeout(true);
   } finally {
     if(clients&&!closeAttempted){try{await clients.close();}catch{}}
-    clients?.clear(); secret.password=''; credentials.password='';credentials.accessToken='';close(cap);
+    paymentPorts?.clear();clients?.clear(); secret.password=''; credentials.password='';credentials.accessToken='';close(cap);
   }
 }
 

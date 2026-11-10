@@ -10,7 +10,7 @@ export const hash = x => createHash('sha256').update(typeof x === 'string' || Bu
   ? x : JSON.stringify(canonical(x))).digest('hex');
 
 export function authorizeChild(path, mode) {
-  need(['--run','--closeout','--readback'].includes(mode), 'CHILD_MODE');
+  need(['--run','--closeout','--readback','--payment-preflight'].includes(mode), 'CHILD_MODE');
   const raw = readFileSync(path); need(raw.length <= 65536, 'ENVELOPE_BOUNDS');
   const e = JSON.parse(raw);
   // Same validator and immutable decision/source checks as parent, before any native port.
@@ -31,7 +31,7 @@ export function gate(cap, cleanup = false, spend = false) {
   const now = Date.now(); need(now >= cap.last, 'CLOCK_ROLLBACK'); cap.last = now;
   need(now >= Date.parse(cap.e.plan.window.start) &&
     now < Date.parse(cap.e.plan.window[cleanup ? 'cleanupEnd' : 'workEnd']), 'OUTER_DEADLINE');
-  need(cleanup || cap.mode === '--run', 'CLOSEOUT_ONLY');
+  need(cleanup || ['--run','--payment-preflight'].includes(cap.mode), 'CLOSEOUT_ONLY');
   if (spend) {need(cap.requests < cap.e.limits.childRequests, 'CHILD_CALL_LIMIT'); cap.requests++;}
   return cap;
 }

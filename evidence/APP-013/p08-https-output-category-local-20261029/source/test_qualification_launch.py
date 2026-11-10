@@ -2632,3 +2632,55 @@ class TempCorrectionTests(unittest.TestCase):
         for limits in ({'sql':3,'cli':0,'https':0,'cache':0},{'sqlConnections':3,'sqlStatements':13,'privilegeStatements':2,'cli':0,'https':0,'cache':0}):
             self.e['limits']=limits
             with self.assertRaises(model.Stop):self.cap()
+
+
+class ConnectedCustodyTests(BindingRecoveryTests):
+    def test_qualified_native_transfer_same_guard_and_independent_purge(self):
+        import sys,shutil
+        native=launch.current_module('authority')
+        sys.path.insert(0,str(native.HERE))
+        from test_entry import ConnectedEntryTests
+        t=ConnectedEntryTests();t.setUp();self.addCleanup(t.doCleanups)
+        envelope=copy.deepcopy(t.e);shutil.rmtree(t.root)
+        self.e['version']=2;self.e['nativeOperationId']=envelope['plan']['operationId'];self.e['qualificationId']=envelope['payment']['qualificationId']
+        target=envelope['target'];row={'id':target['id'],'tenantId':target['tenantId'],'email':target['email'],
+            'fullName':target['fullName'],'role':target['role'],'status':'DISABLED'}
+        self.e['targetSha256']=hashlib.sha256(json.dumps(row,separators=(',',':')).encode()).hexdigest()
+        self.e['projectNumberSha256']=model.digest(str(envelope['plan']['projectNumber']))
+        self.e['window']['purgeEnd']=dt.datetime.fromtimestamp(self.now+1100,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        self.seal(self.e);cap=launch.BindingRecoveryCapability(self.e,mode='handoff');self.cap=cap
+        launch.initialize_recovery(cap);guard=launch.start_binding_guard(cap)
+        result_root=Path('/private/tmp/p08-current-external-'+self.e['qualificationId']);result_root.mkdir(mode=0o700)
+        self.addCleanup(lambda:shutil.rmtree(result_root,ignore_errors=True))
+        model.reserve(result_root/'attempt.json',{'operationId':self.e['qualificationId'],'scopeSha256':envelope['qualification']['scopeSha256']})
+        model.reserve(result_root/'result.json',{'status':'CURRENT_EVIDENCE_LOCAL_VERIFIED','candidate':envelope['qualification'],
+            'failure':None,'residuals':[],'liveObserved':False})
+        result=launch.handoff_qualified_bindings(cap,envelope)
+        self.assertEqual(result['status'],'NATIVE_INPUT_TRANSFERRED')
+        self.assertTrue(t.path.exists())
+        with self.assertRaises(FileExistsError):launch.handoff_qualified_bindings(cap,envelope)
+        self.assertEqual(t.run_entry()['status'],'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+        self.assertTrue(t.path.exists())
+        self.assertEqual(t.run_entry('closeout')['status'],'ENTRY_CLOSED')
+        self.assertFalse(t.path.exists())
+        model.reserve(cap.root/'purge-now.json',{});guard.wait(timeout=5)
+        self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
+
+    def test_guard_purges_owned_native_private_files_without_launch(self):
+        import uuid,shutil
+        self.e['version']=2;self.e['nativeOperationId']=str(uuid.uuid4());self.seal(self.e)
+        cap=launch.BindingRecoveryCapability(self.e,mode='handoff');self.cap=cap
+        self.addCleanup(lambda:shutil.rmtree(cap.native_root,ignore_errors=True))
+        launch.initialize_recovery(cap);guard=launch.start_binding_guard(cap)
+        cap.native_root.mkdir(mode=0o700)
+        with launch.recovery_lock(cap):launch.record_private_file(cap,'native',{'synthetic':'private'})
+        model.reserve(cap.native_root/'owned-receipt.json',{'synthetic':'private'})
+        model.reserve(cap.native_root/'payment-bootstrap.json',{'synthetic':'private'})
+        model.reserve(cap.root/'purge-now.json',{});guard.wait(timeout=5)
+        self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
+        for name in ('envelope.json','owned-receipt.json','payment-bootstrap.json'):
+            self.assertFalse((cap.native_root/name).exists())
+
+for _name in BindingRecoveryTests.__dict__:
+    if _name.startswith('test_'):
+        setattr(ConnectedCustodyTests,_name,None)

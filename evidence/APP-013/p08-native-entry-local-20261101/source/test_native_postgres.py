@@ -154,3 +154,23 @@ for _name in dir(NativePostgres):
         setattr(LifecyclePostgres,_name,None)
 
 if __name__=='__main__':unittest.main()
+
+class ConnectedPaymentPostgres(prior.BoundPostgreSQL):
+    def test_connected_payment_desktop(self):
+        self.connected(1440)
+
+    def test_connected_payment_mobile(self):
+        self.connected(390)
+
+    def connected(self, width):
+        r = subprocess.run([prior.historical.fixture.c.NODE, str(ROOT/'connected_payment_browser.mjs')],
+            input=json.dumps({'host':'127.0.0.1','port':int(self.port),'cert':str(self.cert),'width':width,
+                              'screenshot':f'/private/tmp/p08-connected-payment-{width}.png'}).encode(),
+            capture_output=True,timeout=60,env=self.env,cwd=ROOT)
+        self.assertEqual(r.returncode,0,r.stderr.decode())
+        self.assertEqual(json.loads(r.stdout)['status'],'CONNECTED_TLS_BROWSER_PASS')
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'p08-%'"),'0')
+
+for _name in prior.BoundPostgreSQL.__dict__:
+    if _name.startswith('test_'):
+        setattr(ConnectedPaymentPostgres, _name, None)
