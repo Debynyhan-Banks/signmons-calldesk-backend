@@ -66,8 +66,8 @@ def execute(spec,ports_factory=None,clock=time.time,base=Path('/private/tmp')):
     key=ports.io.legacy.private_input('Correct Sandbox secret API key (hidden): ')
     endpoint=ports.io.legacy.private_input('Existing Sandbox webhook endpoint ID (hidden): ')
    if spec['mode']=='qualify':
-    value=ports.preflight(spec['plan'],ports.gate())
     ports.check_key(key,endpoint,ports.gate())
+    value=ports.preflight(spec['plan'],ports.gate())
     result={'status':'CR_K1_QUALIFIED_FOR_EXACT_MUTATION_REVIEW','qualification':value,'qualificationSha256':c.digest(value),'providerMutations':0,'operationId':spec['plan']['operationId'],'calls':ports.calls,'privateInputsPersisted':False}
    else:
     result=c.Correction(spec['plan'],ports,root,clock).run(key,endpoint)
@@ -83,7 +83,27 @@ def execute(spec,ports_factory=None,clock=time.time,base=Path('/private/tmp')):
   key='';endpoint='';ports.clear()
   for s,handler in previous.items():signal.signal(s,handler)
 
+def inspect_endpoint_local():
+ # No external capability, credential discovery, fetch, SQL, or provider port exists in this path.
+ manifest=json.loads((c.HERE/'source-manifest.json').read_text())
+ for path,h in manifest['files'].items():
+  file=c.BACKEND/path;c.need(not file.is_symlink() and c.digest(file.read_bytes())==h,'LOCAL_SOURCE_DRIFT')
+ legacy=c.load('p08-restoration-local-20261028/source/legacy/controller.py','local_endpoint_getpass')
+ deadline=time.time()+120;value=''
+ try:
+  with legacy.phase_guard(deadline):value=legacy.private_input('Paste only the endpoint ID beginning we_ (hidden; no key or SQL password): ')
+  result=subprocess.run(['/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node',str(c.HERE/'key_check.mjs'),'--inspect-endpoint-local'],
+   input=json.dumps({'endpointId':value}).encode(),capture_output=True,timeout=min(5,max(.01,deadline-time.time())),
+   env={'PATH':'/usr/bin:/bin','LANG':'C'})
+  c.need(result.returncode==0 and len(result.stdout)<=2048,'LOCAL_INPUT_CHECK_FAILED')
+  answer=json.loads(result.stdout)
+  c.need(set(answer)=={'status','isString','inputLength','formatValid','exactMatch','trimmedMatch','surroundingWhitespace','looksLikeUrl','controlOrNonAscii','providerCalls'} and
+   answer['status']=='LOCAL_ENDPOINT_INPUT_INSPECTED' and answer['providerCalls']==0,'LOCAL_INPUT_CHECK_RESULT')
+  print(json.dumps(answer),flush=True);return answer
+ finally:value=''
+
 def main():
+ if sys.argv[1:]==['--inspect-endpoint-local']:return inspect_endpoint_local()
  c.need(len(sys.argv)==2,'SPEC_REQUIRED');spec=c.read(Path(sys.argv[1]))
  decision=json.loads(committed(GOV,spec['decisionCommit'],DECISION));verify(spec,decision,time.time())
  execute(spec)

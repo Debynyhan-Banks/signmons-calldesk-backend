@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {checkKey} from './key_check.mjs';
+import {checkKey,endpointInputStatus} from './key_check.mjs';
 import {hash} from '../p08-native-entry-local-20261101/source/authority_bridge.mjs';
 import {EVENTS,stripeSecretName} from '../p08-native-entry-local-20261101/source/connected_payment.mjs';
 import {readFileSync} from 'node:fs';
@@ -31,4 +31,22 @@ test('actual payment secret resource follows corrected numeric pin and rejects o
  assert.equal(stripeSecretName(e),'projects/123456/secrets/signmons-staging-stripe-secret-key/versions/7');
  delete e.resources.secretVersions['signmons-staging-stripe-secret-key'];assert.throws(()=>stripeSecretName(e));
  e.resources.candidate='signmons-calldesk-staging-app013p07atomic1';assert.match(stripeSecretName(e),/versions\/1$/);
+});
+
+test('shared endpoint predicate diagnoses input without normalizing acceptance',()=>{
+ const pin=hash('we_fixture');
+ assert.equal(endpointInputStatus('we_fixture',pin).exactMatch,true);
+ for(const value of [' we_fixture','we_fixture ','\twe_fixture\n']){
+  const v=endpointInputStatus(value,pin);assert.equal(v.exactMatch,false);assert.equal(v.trimmedMatch,true);assert.equal(v.surroundingWhitespace,true);
+ }
+ assert.equal(endpointInputStatus('https://stripe.invalid/we_fixture',pin).looksLikeUrl,true);
+ assert.equal(endpointInputStatus('we_foreign',pin).formatValid,true);assert.equal(endpointInputStatus('we_foreign',pin).exactMatch,false);
+ assert.equal(endpointInputStatus('we_fixture\u200b',pin).controlOrNonAscii,true);
+ assert.equal(endpointInputStatus(null,pin).isString,false);
+});
+test('actual local CLI has no provider request and emits no supplied input',async()=>{
+ const {execFileSync}=await import('node:child_process');
+ const value='https://fixture.invalid/PRIVATE_SENTINEL';
+ const raw=execFileSync(process.execPath,[(await import('node:url')).fileURLToPath(new URL('./key_check.mjs',import.meta.url)),'--inspect-endpoint-local'],{input:JSON.stringify({endpointId:value}),encoding:'utf8',timeout:5000});
+ const v=JSON.parse(raw);assert.equal(v.providerCalls,0);assert.equal(v.looksLikeUrl,true);assert.equal(v.exactMatch,false);assert.doesNotMatch(raw,/PRIVATE_SENTINEL|fixture.invalid/);
 });

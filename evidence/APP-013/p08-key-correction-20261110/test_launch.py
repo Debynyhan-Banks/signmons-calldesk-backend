@@ -27,4 +27,19 @@ class AuthorityTests(unittest.TestCase):
   d=self.approval(self.spec);d['externalMutationAuthorized']=True
   with self.assertRaisesRegex(c.Stop,'EXACT_OWNER_APPROVAL'):launch.verify(self.spec,d,self.now,self.read_commit)
   with self.assertRaisesRegex(c.Stop,'OUTSIDE_WINDOW'):launch.verify(self.spec,self.approval(self.spec),self.now+100,self.read_commit)
+class QualificationOrderTests(unittest.TestCase):
+ def test_endpoint_refusal_precedes_cloud_sql_and_always_clears(self):
+  import contextlib,tempfile,types
+  calls=[]
+  class Ports:
+   def __init__(self,*args):
+    self.stage='SANDBOX_KEY';self.io=types.SimpleNamespace(legacy=types.SimpleNamespace(phase_guard=lambda *_:contextlib.nullcontext(),private_input=lambda _: 'SYNTHETIC_ONLY'))
+   def gate(self):return time.time()+60
+   def check_key(self,*args):calls.append('key');raise c.Stop('KEY_ENDPOINT_PIN')
+   def preflight(self,*args):calls.append('cloud_sql');raise AssertionError('must not execute')
+   def clear(self):calls.append('clear')
+  with tempfile.TemporaryDirectory() as folder:
+   spec={'mode':'qualify','plan':{'operationId':str(uuid.uuid4()),'window':{'cutoff':time.time()+60}},'qualification':None,'limits':launch.QUALIFICATION_LIMITS}
+   with self.assertRaisesRegex(c.Stop,'KEY_ENDPOINT_PIN'):launch.execute(spec,Ports,base=__import__('pathlib').Path(folder).resolve())
+  self.assertEqual(calls,['key','clear'])
 if __name__=='__main__':unittest.main()

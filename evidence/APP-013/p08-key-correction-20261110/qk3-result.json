@@ -1,0 +1,25 @@
+{
+  "recordedAt": "2026-11-10T23:19:45.202605+00:00",
+  "sourceCommit": "77e3b696ac79c070aeeb0c0ff2d8bf4c91684dc5",
+  "approvalCommit": "c9292a41d3cd76e30206145f3745653e447c5fac",
+  "failure": {
+    "code": "KEY_ENDPOINT_PIN",
+    "operationId": "0a4ebb50-9eff-48a6-b9ca-5ac51238146d",
+    "privateInputsPersisted": false,
+    "stage": "SANDBOX_KEY",
+    "status": "CR_K1_STOPPED"
+  },
+  "launcherPid": 20413,
+  "launcherExited": true,
+  "directChildrenAbsent": true,
+  "rawInputsAbsent": true,
+  "ownedLauncherAndSpecAbsent": true,
+  "stripeRequests": 0,
+  "providerMutations": 0,
+  "keyValidated": false,
+  "exactInputMismatchCause": "UNKNOWN",
+  "operationConsumed": true,
+  "selectedChromeEndpointMatchesPin": true,
+  "section3A": "OPEN",
+  "acceptedMilestones": "4/8"
+}
