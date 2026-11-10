@@ -1,0 +1,30 @@
+{
+  "section": "APP-013/3A/P08",
+  "recordedAt": "2026-11-10T17:21:29.030762+00:00",
+  "qualificationStatus": "CURRENT_EVIDENCE_OBSERVED",
+  "qualificationFailure": null,
+  "qualificationResiduals": [],
+  "nativeStarted": false,
+  "nativeRootAbsent": true,
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "privatePurge": {
+    "completedAt": 1794331107.6945548,
+    "onTime": true,
+    "operationId": "92dda9fa-1203-40bc-839c-6c0e74ea27c9",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "guardExitVerified": true,
+  "failure": "Native approval wait used git show check=True before decision file existed; CalledProcessError triggered finally purge.",
+  "failedLauncherSha256": "3a94462fde377083e8aaee78eeccd801a9ce67b6f6af388dace1faf4e7222bf7",
+  "correctedLauncherSha256": "2dd4485b9275a0405d10b828637aafccbafa3e7ae6499e8ddf65e09807cfe209",
+  "correction": "Exact committed tree existence check; absent/stale/malformed decisions wait without dispatch; errors, rollback and deadline fail closed.",
+  "verification": "14 packet tests PASS including six real temporary Git approval-wait tests; architecture and backend governance gate PASS",
+  "runtimeSourceCommit": "dbfeeac709c3dfb3f477eb5030bbb5b497253fad",
+  "replayAuthorized": false,
+  "scopeDeviation": false
+}

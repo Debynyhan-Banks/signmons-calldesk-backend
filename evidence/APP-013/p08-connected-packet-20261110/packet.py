@@ -40,6 +40,28 @@ def native_envelope(qualification_envelope,candidate):
 
 PYTHON='/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14'
 
+def wait_committed_decision(repo,path,expected,start,cutoff,clock=None,sleep=None):
+    """Wait for an exact committed decision; absence is not an execution error."""
+    import subprocess,time,re
+    clock=clock or time.time;sleep=sleep or time.sleep
+    q.need(re.fullmatch(r'APP013_P08_(CURRENT_QUALIFICATION|NATIVE_OPERATION)_[0-9]{8}\.json',path) is not None,'APPROVAL_PATH')
+    q.need(start<cutoff,'APPROVAL_WINDOW')
+    last=clock()
+    while True:
+        now=clock();q.need(now>=last,'CLOCK_ROLLBACK');last=now
+        q.need(now<cutoff,'EXACT_APPROVAL_DEADLINE')
+        commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo,text=True).strip()
+        present=subprocess.check_output(['git','ls-tree','--name-only',commit,'--',path],cwd=repo,text=True).splitlines()
+        if present==[path]:
+            raw=subprocess.check_output(['git','show',commit+':'+path],cwd=repo)
+            try:value=q.strict_json(raw)
+            except (ValueError,q.model.Stop):value=None
+            checked=clock();q.need(checked>=last,'CLOCK_ROLLBACK');last=checked
+            q.need(checked<cutoff,'EXACT_APPROVAL_DEADLINE')
+            if value==expected and checked>=start:
+                return {'commit':commit,'path':path,'sha256':hashlib.sha256(raw).hexdigest()}
+        sleep(min(1,max(0,cutoff-last)))
+
 def run_native_and_close(root, invoke=None):
     import subprocess
     invoke=invoke or subprocess.run
