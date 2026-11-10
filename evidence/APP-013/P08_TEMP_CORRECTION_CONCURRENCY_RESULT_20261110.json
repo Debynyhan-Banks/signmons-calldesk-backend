@@ -1,0 +1,20 @@
+{
+  "isolation": "SERIALIZABLE",
+  "cooperativeAdvisoryLock": true,
+  "preCommitTargetTemp": false,
+  "concurrentMembershipCommit": true,
+  "correctionCommit": true,
+  "freshTargetTemp": "t",
+  "providerCalls": 0,
+  "ordinaryOwnerRollbackPreservesAcl": true,
+  "ordinaryOwnerPositiveTargetDenied": true,
+  "fourSelectedRetainTemp": true,
+  "verifiedAt": "2026-11-10T12:23:57.339337+00:00",
+  "baseCommit": "a959fe671da0fd2a69ca111b2e572a3bcce9ce3d",
+  "approvedProposal": "b04abb4",
+  "probeSha256": "da12617c5debb5c31cd16d5def18e586215e33b0da3f36284db94405e615eede",
+  "serverReaped": true,
+  "scratchAbsent": true,
+  "liveMutation": false,
+  "implementationComplete": false
+}
