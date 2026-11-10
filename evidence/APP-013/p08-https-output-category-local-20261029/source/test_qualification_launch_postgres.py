@@ -535,3 +535,74 @@ for _name in dir(tls_fixture.LifecyclePostgres):
     if _name.startswith('test_') and _name not in CurrentEvidenceTLS.__dict__:setattr(CurrentEvidenceTLS,_name,None)
 
 if __name__ == "__main__": unittest.main()
+
+class PaymentBindingRecoveryTLS(CurrentEvidenceTLS):
+    def test_actual_recovery_projection_to_qualification_and_native_cleanup(self):
+        import uuid,hashlib,shutil,datetime
+        case=self;current=self.case;native=current.native
+        # Seed business data, not the derived output; all six binding fields must come from SQL/profile.
+        raw=controlled_raw();draft=raw['tenant']['paymentPolicy']['draft'];draft['depositPolicy']['amountCents']=12500
+        approved={'draft':draft,'actorId':current.scope['target']['id'],'approvedAt':'2026-01-01T00:00:00.000Z'}
+        policy={'version':1,'draft':draft,'approved':approved}
+        admission={'version':2,'actorId':'signmons-intake-admission-v1','paymentApprovedAt':approved['approvedAt'],
+                   'paymentDigest':hashlib.sha256(json.dumps(approved,separators=(',',':')).encode()).hexdigest()}
+        literal=lambda v:"'"+json.dumps(v).replace("'","''")+"'::jsonb"
+        self.command('UPDATE "TenantOrganization" SET "chargesEnabled"=true,"stripeConnectAccountId"=\'acct_synthetic\',settings='+literal({'organizationPaymentPolicyV1':policy})+'; UPDATE "Job" SET "policySnapshot"='+literal({'intakeAdmission':admission})+',"updatedAt"=\'2026-01-01 00:00:00\';')
+        r=current_tests.BindingRecoveryTests();r.setUp();self.addCleanup(r.doCleanups)
+        r.e.update(version=2,nativeOperationId=current.scope['plan']['operationId'],qualificationId=current.p['operationId'],
+                   paymentAccountSha256=hashlib.sha256(b'acct_synthetic').hexdigest())
+        target={**current.scope['target'],'status':'DISABLED'};target={k:target[k] for k in ('id','tenantId','email','fullName','role','status')}
+        r.e['targetSha256']=hashlib.sha256(json.dumps(target,separators=(',',':')).encode()).hexdigest()
+        r.e['projectNumberSha256']=model.digest(str(current.scope['plan']['projectNumber']))
+        r.e['window']['purgeEnd']=datetime.datetime.fromtimestamp(time.time()+1100,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        shutil.rmtree(native.root);self.addCleanup(lambda:native.root.mkdir(exist_ok=True))
+        r.seal(r.e);cap=launch.BindingRecoveryCapability(r.e);r.cap=cap
+        class LocalRecovery(launch.BindingRecoveryIO):
+            proof=True
+            def __init__(obj,cap,independent=False):
+                launch.NativeIO.__init__(obj,time.time,cap.e['operationId']);obj.cap=cap;obj.independent_read=independent
+            def cli(obj,d,deadline):
+                cap.gate('cli',d['id'])
+                return [{'account':model.OWNER,'status':'ACTIVE'}] if d['id']=='owner' else {'projectId':model.PROJECT,'projectNumber':str(current.scope['plan']['projectNumber']),'lifecycleState':'ACTIVE'}
+            def _owned_run(obj,argv,env,deadline):
+                case.assertIn(argv[-1],[d['sql'] for d in launch.recovery_sql_contract(2)])
+                case.assertEqual(env['PGSSLMODE'],'verify-full')
+                argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',case.port]
+                return super()._owned_run(argv,{**env,'PGSSLROOTCERT':str(case.cert)},deadline)
+            def independent(obj):return LocalRecovery(cap,True)
+        result,guard=launch.run_binding_recovery(cap,LocalRecovery(cap));self.assertEqual(result['status'],'HANDOFF_RETAINED',result)
+        self.assertEqual(len(list(cap.root.glob('read-cli-*.json'))),2);self.assertEqual(len(list(cap.root.glob('read-sql-*.json'))),3)
+        handoff=launch.BindingRecoveryCapability(r.e,mode='handoff');values=launch.read_recovered_bindings(handoff)
+        binding=values['paymentBinding'];self.assertEqual(set(binding),launch.PAYMENT_BINDING_FIELDS)
+        self.assertEqual(binding['amountTotalCents'],12500);self.assertEqual(binding['jobUpdatedAt'],'2026-01-01T00:00:00.000Z')
+        self.assertNotIn('stripeConnectAccountId',json.dumps(values));self.assertNotIn('organizationPaymentPolicyV1',json.dumps(values))
+        current.scope['limits']['cli']=192
+        current.scope['payment']={**binding,'endpointId':'we_synthetic','endpointSha256':hashlib.sha256(b'we_synthetic').hexdigest(),
+            'apiVersion':'2026-03-25.dahlia','url':'https://app013-p07-atomic---signmons-calldesk-staging-p572d6wipq-ul.a.run.app/webhooks/stripe',
+            'requestId':str(uuid.uuid4()),'qualificationId':current.p['operationId'],
+            'workEnd':datetime.datetime.fromtimestamp(time.time()+90,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+        current.p['nativeScopeSha256']=model.digest(current.scope)
+        # The proof-only qualifier validates native filesystem shape without creating an attempt.
+        native.root.mkdir(mode=0o700)
+        qualified=current.run_proof();native.root.rmdir();self.assertEqual(qualified['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',qualified)
+        native.e.update(version=2,**copy.deepcopy(current.scope),qualification=qualified['candidate'])
+        native.e.pop('decision',None);native.e['decision']={'decision':'APPROVE_LOCAL_NATIVE_ENTRY_PROOF','scopeSha256':model.digest(native.e)}
+        envelope=copy.deepcopy(native.e)
+        launch.handoff_qualified_bindings(handoff,envelope)
+        self.assertEqual(native.e['payment']|binding,native.e['payment'])
+        # Both synthetic cloud transports must describe the same qualified runtime metadata.
+        cloud=native.f.cloud
+        def same_cloud(args,deadline):
+            value=cloud(args,deadline)
+            if args[:3]==['run','revisions','describe']:value['spec']['containers'][0]['env']=copy.deepcopy(current.environment)
+            return value
+        native.f.cloud=same_cloud
+        work=native.run_entry();self.assertTrue(work['paymentObserved'],(work,launch.private_json(native.root/'journal.json')))
+        closed=native.run_entry('closeout');self.assertEqual(closed['status'],'ENTRY_CLOSED',closed)
+        self.assertTrue(closed['privateInputsAbsent']);self.assertFalse(native.path.exists())
+        model.reserve(cap.root/'purge-now.json',{});guard.wait(timeout=5)
+        self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+
+for _name in dir(CurrentEvidenceTLS):
+    if _name.startswith('test_') and _name not in PaymentBindingRecoveryTLS.__dict__:setattr(PaymentBindingRecoveryTLS,_name,None)

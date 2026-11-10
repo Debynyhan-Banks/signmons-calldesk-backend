@@ -1,0 +1,86 @@
+{
+  "section": "APP-013/3A/P08",
+  "status": "PAYMENT_BINDING_PRODUCER_LOCALLY_VERIFIED",
+  "recordedAt": "2026-11-10T16:14:38.907219+00:00",
+  "ownerApproval": "proceed in response to exact recovery binding read/retention change proposal44d6a98",
+  "baseBackend": "b0af512",
+  "manifests": {
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json": "49dc5b14f3b5c41b8c8a917c982c908b6401a75a6af8d8695a3fd30f81ddd24a",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json": "67e9ad9ecd25ef73d069790465f50f41d2f9aa51ede1599bcd2a023ed6cbebbd",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json": "80698e1e82580e5adad359e021b8422236e906cb2a1db24bdf1797dd5d39eaac"
+  },
+  "checks": [
+    {
+      "command": "python3.14 -B -m unittest test_composed_qualification test_qualification_launch",
+      "passed": 238,
+      "seconds": 123.01
+    },
+    {
+      "command": "python3.14 -B -m unittest test_entry test_native_postgres",
+      "passed": 38
+    },
+    {
+      "command": "node --test test_connected_payment.mjs test_transports.mjs",
+      "passed": 17
+    },
+    {
+      "command": "python3.14 -B -m unittest test_qualification_launch_postgres.QualificationLaunchPostgreSQL test_qualification_launch_postgres.PaymentBindingRecoveryTLS",
+      "passed": 5
+    },
+    {
+      "command": "npm run lint",
+      "status": "PASS"
+    },
+    {
+      "command": "npm run arch:check",
+      "status": "PASS"
+    },
+    {
+      "command": "governance frozen-baseline and docs-consistency checks; backend check-governance-baseline",
+      "status": "PASS"
+    },
+    {
+      "command": "governance frozen-baseline, execution-placement, intelligence-alignment tests",
+      "passed": 25
+    },
+    {
+      "command": "git diff --check in both worktrees",
+      "status": "PASS"
+    }
+  ],
+  "producerConsumerProof": {
+    "recoverySql": "Actual version2 read-only projection via existing BindingRecoveryIO.sql over owned local TLS PostgreSQL",
+    "derivation": "Actual source-pinned application profile; six fields obtained from query output, not injected afterward",
+    "qualification": "Actual full local qualification producer with synthetic providers and actual local database",
+    "handoff": "Existing guard and handoff_qualified_bindings consume actual local qualification receipt",
+    "payment": "Actual native Python/Node consumer with synthetic payment transports; separate desktop/mobile tests use real SQL/application payment services",
+    "cleanup": "Independent closeout, private-input purge, guard exit, session absence, server reaped and scratch absent verified"
+  },
+  "recoveryReservations": {
+    "cli": 2,
+    "sql": 3,
+    "localDerivationProcesses": 1,
+    "semantics": "Local boundary reservations; not provider-internal request totals"
+  },
+  "retainedFields": [
+    "projectNumber",
+    "targetId",
+    "paymentBinding.amountTotalCents",
+    "paymentBinding.currency",
+    "paymentBinding.approvedAt",
+    "paymentBinding.policyDigest",
+    "paymentBinding.jobUpdatedAt",
+    "paymentBinding.connectedAccountSha256"
+  ],
+  "rawPolicyOrAccountRetained": false,
+  "version1QueryChanged": false,
+  "privateRetentionExtended": false,
+  "providerCalls": 0,
+  "livePaymentDemonstrated": false,
+  "externalExecutionAuthorized": false,
+  "build": "Application source/compiled dependencies unchanged; loaded policy/profile hashes verified in actual derivation. No new build claimed.",
+  "initialRegressionFailure": "Unintended edit to older independent qualification result path was reverted; final full suite passes.",
+  "acceptedWalkthrough": "1A/1B/2A/2B 4/8",
+  "R1NewlyClosed": "0/27",
+  "scope": "Owner-approved correction only; no further deviation."
+}

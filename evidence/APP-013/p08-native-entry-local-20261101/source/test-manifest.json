@@ -6,11 +6,11 @@
     "fixture_envelope.py": "3495b9fa9a5822029c26ad10854c044477232067b75f0b51fb12066c0e541742",
     "fixture_ports.mjs": "997f1ec95806ee98434b091dc9714274d1dae61c2d64bf83690aa1b68efbb2c6",
     "postgres_driver.mjs": "c176dd4491b048f19ff19a2cf1e8d0ce619633e2da6db4a83153d40e98dea199",
-    "test_connected_payment.mjs": "375080c73d51f591af938662ac8237e086be938dfd430e5eda3c31b3ae0614ef",
+    "test_connected_payment.mjs": "f9a35ffb3a6e91dee446d5860ab3bdc2510efcfa127f70dd92fc9422cbb03fc8",
     "test_entry.py": "1ddc3a57c1121e47ff5c2804b00aa0651e00a12f05a2221a502ab655fc5bbc5a",
     "test_native_postgres.py": "25c78bf761ecdf5ba4fce79d9426a85fb30c8bedf6143ebff68c314ef82da395",
     "test_transports.mjs": "6fa6b6c5e5f93ad1ba23731d386c2b9625bcaf34fefe039c930de080a1ccd5a8"
   },
-  "runtimeManifestSha256": "0e10715ad6e18fe06b711262bbd4a948bae39f30d128812830150b3be6bc7a5b",
+  "runtimeManifestSha256": "67e9ad9ecd25ef73d069790465f50f41d2f9aa51ede1599bcd2a023ed6cbebbd",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }

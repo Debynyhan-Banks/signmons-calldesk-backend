@@ -1,6 +1,7 @@
 // Owned payment phase for native entry. No ambient credentials or provider clients.
-import {readFileSync,writeFileSync,renameSync} from 'node:fs';
+import {readFileSync,writeFileSync,renameSync,readSync} from 'node:fs';
 import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
 import {hash,need,gate} from './authority_bridge.mjs';
 const require=createRequire(new URL('../../../../package.json',import.meta.url));
 export const EVENTS=Object.freeze(['charge.refunded','checkout.session.async_payment_failed',
@@ -13,10 +14,10 @@ export const PAYMENT_SQL=`SELECT json_build_object(
  'payments',(SELECT count(*)::int FROM "Payment" WHERE "jobId"=$3::uuid),
  'calendar',(SELECT count(*)::int FROM "CalendarOperation" WHERE "jobId"=$3::uuid)) AS value`;
 
-export function paymentContext(v,e,now=Date.now()) {
+function contextBinding(v,e,now,actorStatus) {
   const {profile}=require('./dist/tenants/organization-payment-policy.js');
   const p=e.payment, j=v?.job,t=v?.tenant,a=v?.actor;
-  need(a?.id===e.target.id && a.tenantId===e.plan.tenantId && a.role==='ADMIN' && a.status==='ACTIVE','PAYMENT_ACTOR');
+  need(a?.id===e.target.id && a.tenantId===e.plan.tenantId && a.role==='ADMIN' && a.status===actorStatus,'PAYMENT_ACTOR');
   need(j?.id===e.plan.jobId && j.tenantId===e.plan.tenantId && j.status==='CREATED' && j.deletedAt===null,'PAYMENT_JOB');
   need(v.payments===0 && v.calendar===0 && j.calendarEventId===null && j.serviceWindowStart===null && j.serviceWindowEnd===null,'PAYMENT_ACTIVITY');
   need(t?.id===e.plan.tenantId && t.status==='ACTIVE' && t.chargesEnabled===true &&
@@ -32,12 +33,24 @@ export function paymentContext(v,e,now=Date.now()) {
     !['paymentPolicyBinding','depositRequired','serviceFeeRequired','paymentGateMode','paymentGateException']
       .some(k=>k in j.policySnapshot),'PAYMENT_EXISTING_TERMS');
   const d=approved.draft,amount=(d.serviceFeeRequired?d.serviceFeeCents:0)+(d.depositRequired?d.depositPolicy.amountCents:0);
-  need(Number.isSafeInteger(amount)&&amount>0 && amount===p.amountTotalCents && p.currency==='usd' &&
-    approved.approvedAt===p.approvedAt && digest===p.policyDigest &&
-    new Date(j.updatedAt).toISOString()===p.jobUpdatedAt,'PAYMENT_SCOPE_DRIFT');
-  return {status:'QUALIFIED_DATABASE',actorId:a.id,actorRole:'admin',tenantId:t.id,jobId:j.id,
-    jobUpdatedAt:p.jobUpdatedAt,approvedAt:p.approvedAt,policyDigest:digest,amountTotalCents:amount,
-    currency:'usd',connectedAccountSha256:p.connectedAccountSha256};
+  need(Number.isSafeInteger(amount)&&amount>0 && amount<=200000000,'PAYMENT_AMOUNT');
+  need(typeof j.updatedAt==='string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(j.updatedAt) &&
+    Number.isFinite(Date.parse(j.updatedAt)) && Date.parse(j.updatedAt)<=now,'PAYMENT_JOB_VERSION');
+  return {amountTotalCents:amount,currency:'usd',approvedAt:approved.approvedAt,policyDigest:digest,
+    jobUpdatedAt:j.updatedAt,connectedAccountSha256:p.connectedAccountSha256};
+}
+
+export function recoveryPaymentBinding(v,scope,now=Date.now()) {
+  need(scope && Object.keys(scope).sort().join(',')==='connectedAccountSha256,jobId,targetId,tenantId' &&
+    /^[a-f0-9]{64}$/.test(scope.connectedAccountSha256) && Number.isFinite(now),'PAYMENT_RECOVERY_SCOPE');
+  return contextBinding(v,{target:{id:scope.targetId},plan:{tenantId:scope.tenantId,jobId:scope.jobId},
+    payment:{connectedAccountSha256:scope.connectedAccountSha256}},now,'DISABLED');
+}
+
+export function paymentContext(v,e,now=Date.now()) {
+  const binding=contextBinding(v,e,now,'ACTIVE');
+  need(Object.entries(binding).every(([k,value])=>e.payment[k]===value),'PAYMENT_SCOPE_DRIFT');
+  return {status:'QUALIFIED_DATABASE',actorId:v.actor.id,actorRole:'admin',tenantId:v.tenant.id,jobId:v.job.id,...binding};
 }
 
 export function endpoint(value,p,status) {
@@ -189,4 +202,19 @@ export function createPaymentPorts(cap,credentials,journal,injected={}) {
     },
     clear(){key='';cleared=true;},counts:()=>({...counts})
   };
+}
+
+
+// Local derivation only: raw SQL enters through bounded stdin, never argv or a file.
+if(process.argv[1]===fileURLToPath(import.meta.url)){
+  const bytes=Buffer.alloc(65537);let used=0;
+  try {
+    need(process.argv.length===3 && process.argv[2]==='--derive-recovery','PAYMENT_DERIVATION_MODE');
+    while(used<bytes.length){const n=readSync(0,bytes,used,bytes.length-used,null);if(!n)break;used+=n;}
+    need(used>0 && used<=65536,'PAYMENT_DERIVATION_BOUNDS');
+    const input=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes.subarray(0,used)));
+    need(Object.keys(input).sort().join(',')==='now,scope,value','PAYMENT_DERIVATION_INPUT');
+    process.stdout.write(JSON.stringify(recoveryPaymentBinding(input.value,input.scope,input.now))+'\n');
+  }catch {process.stdout.write('{"status":"PAYMENT_BINDING_UNQUALIFIED"}\n');process.exitCode=2;}
+  finally{bytes.fill(0);}
 }

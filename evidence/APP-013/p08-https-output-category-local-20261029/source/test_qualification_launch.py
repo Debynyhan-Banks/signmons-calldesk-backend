@@ -2642,7 +2642,7 @@ class ConnectedCustodyTests(BindingRecoveryTests):
         from test_entry import ConnectedEntryTests
         t=ConnectedEntryTests();t.setUp();self.addCleanup(t.doCleanups)
         envelope=copy.deepcopy(t.e);shutil.rmtree(t.root)
-        self.e['version']=2;self.e['nativeOperationId']=envelope['plan']['operationId'];self.e['qualificationId']=envelope['payment']['qualificationId']
+        self.e['version']=2;self.e['paymentAccountSha256']=hashlib.sha256(b'acct_synthetic').hexdigest();self.e['nativeOperationId']=envelope['plan']['operationId'];self.e['qualificationId']=envelope['payment']['qualificationId']
         target=envelope['target'];row={'id':target['id'],'tenantId':target['tenantId'],'email':target['email'],
             'fullName':target['fullName'],'role':target['role'],'status':'DISABLED'}
         self.e['targetSha256']=hashlib.sha256(json.dumps(row,separators=(',',':')).encode()).hexdigest()
@@ -2650,7 +2650,7 @@ class ConnectedCustodyTests(BindingRecoveryTests):
         self.e['window']['purgeEnd']=dt.datetime.fromtimestamp(self.now+1100,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         self.seal(self.e);cap=launch.BindingRecoveryCapability(self.e,mode='handoff');self.cap=cap
         launch.initialize_recovery(cap);guard=launch.start_binding_guard(cap)
-        result_root=Path('/private/tmp/p08-current-external-'+self.e['qualificationId']);result_root.mkdir(mode=0o700)
+        result_root=Path('/private/tmp/p08-current-proof-'+self.e['qualificationId']);result_root.mkdir(mode=0o700)
         self.addCleanup(lambda:shutil.rmtree(result_root,ignore_errors=True))
         model.reserve(result_root/'attempt.json',{'operationId':self.e['qualificationId'],'scopeSha256':envelope['qualification']['scopeSha256']})
         model.reserve(result_root/'result.json',{'status':'CURRENT_EVIDENCE_LOCAL_VERIFIED','candidate':envelope['qualification'],
@@ -2668,7 +2668,7 @@ class ConnectedCustodyTests(BindingRecoveryTests):
 
     def test_guard_purges_owned_native_private_files_without_launch(self):
         import uuid,shutil
-        self.e['version']=2;self.e['nativeOperationId']=str(uuid.uuid4());self.seal(self.e)
+        self.e['version']=2;self.e['paymentAccountSha256']=hashlib.sha256(b'acct_synthetic').hexdigest();self.e['nativeOperationId']=str(uuid.uuid4());self.seal(self.e)
         cap=launch.BindingRecoveryCapability(self.e,mode='handoff');self.cap=cap
         self.addCleanup(lambda:shutil.rmtree(cap.native_root,ignore_errors=True))
         launch.initialize_recovery(cap);guard=launch.start_binding_guard(cap)
@@ -2684,3 +2684,54 @@ class ConnectedCustodyTests(BindingRecoveryTests):
 for _name in BindingRecoveryTests.__dict__:
     if _name.startswith('test_'):
         setattr(ConnectedCustodyTests,_name,None)
+
+class PaymentRecoveryBindingTests(BindingRecoveryTests):
+    def setUp(self):
+        super().setUp()
+        import uuid
+        self.e.update(version=2,nativeOperationId=str(uuid.uuid4()),paymentAccountSha256=hashlib.sha256(b'acct_synthetic').hexdigest())
+        self.seal(self.e);self.cap=launch.BindingRecoveryCapability(self.e);self.io.cap=self.cap
+        raw=controlled_raw();tenant=raw['tenant'];policy=tenant.pop('paymentPolicy')
+        tenant.update(chargesEnabled=True,stripeConnectAccountId='acct_synthetic',settings={'organizationPaymentPolicyV1':policy})
+        raw['job'].update(status='CREATED',deletedAt=None,updatedAt='2026-01-01T00:00:00.000Z',serviceWindowStart=None,serviceWindowEnd=None,pricingSnapshot={})
+        raw['paymentCount']=0;self.raw=raw
+
+    def test_version2_retains_only_derived_binding_and_refuses_changed_handoff(self):
+        result,guard=self.run_recovery();self.assertEqual(result['status'],'HANDOFF_RETAINED',result)
+        self.assertFalse(result['liveObserved'])
+        cap=launch.BindingRecoveryCapability(self.e,mode='handoff');value=launch.read_recovered_bindings(cap)
+        self.assertEqual(set(value),{'projectNumber','targetId','paymentBinding'})
+        self.assertEqual(set(value['paymentBinding']),launch.PAYMENT_BINDING_FIELDS)
+        self.assertEqual(value['paymentBinding']['amountTotalCents'],9900)
+        self.assertNotIn('acct_synthetic',json.dumps(value));self.assertNotIn('approved',value['paymentBinding'])
+        cap.external=True
+        bad={**value['paymentBinding'],'amountTotalCents':9901}
+        with self.assertRaisesRegex(model.Stop,'RECOVERY_PAYMENT_SCOPE_DRIFT'):
+            launch.handoff_recovered_bindings(cap,{'nativeScope':{'payment':bad}})
+        self.assertTrue((cap.root/'recovered-inputs.json').exists())
+        model.reserve(cap.root/'purge-now.json',{});guard.wait(timeout=5)
+        self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
+
+    def test_missing_extra_null_foreign_and_unusable_recovery_output_refuses(self):
+        owner=[{'account':model.OWNER,'status':'ACTIVE'}]
+        project={'projectId':model.PROJECT,'projectNumber':'123456789012','lifecycleState':'ACTIVE'}
+        mutate=[lambda r:r.pop('paymentCount'),lambda r:r.update(extra=True),lambda r:r.update(paymentCount=True),
+                lambda r:r['job'].update(updatedAt=None),lambda r:r['job'].update(updatedAt='2099-01-01T00:00:00.000Z'),
+                lambda r:r['tenant'].update(chargesEnabled=False),lambda r:r['tenant'].update(stripeConnectAccountId='acct_foreign'),
+                lambda r:r['operator'].update(status='ACTIVE'),lambda r:r.update(paymentCount=1),
+                lambda r:r['job']['policySnapshot']['intakeAdmission'].update(paymentDigest='0'*64)]
+        for change in mutate:
+            raw=copy.deepcopy(self.raw);change(raw)
+            with self.subTest(rawKeys=list(raw)),self.assertRaises(model.Stop):launch.recovery_values(self.cap,owner,project,raw)
+        self.assertFalse(self.root.exists())
+
+    def test_version1_projection_unchanged_and_v2_is_read_only(self):
+        self.assertEqual(launch.recovery_sql_contract(1),launch.sql_contract())
+        query=launch.recovery_sql_contract(2)[0]
+        self.assertTrue(query['readOnly']);self.assertIn('REPEATABLE READ READ ONLY',query['sql'])
+        self.assertIn('to_char("updatedAt"',query['sql']);self.assertIn('"stripeConnectAccountId"',query['sql'])
+        self.assertIn('"Payment"',query['sql']);self.assertEqual(launch.recovery_sql_contract(2)[1],launch.sql_contract()[1])
+        self.assertNotIn('"updatedAt"',launch.QUALIFICATION_SQL)
+
+for _name in BindingRecoveryTests.__dict__:
+    if _name.startswith('test_'):setattr(PaymentRecoveryBindingTests,_name,None)

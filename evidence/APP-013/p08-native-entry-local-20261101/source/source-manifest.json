@@ -2,7 +2,7 @@
   "files": {
     "authority.py": "bde166ed16af1ee3e2188e27725415734c2f53ea908b4a14f044952f81f6c7fe",
     "authority_bridge.mjs": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c",
-    "connected_payment.mjs": "1bb48079c8b4d1b8593ef38f632fb33f98fdc567ed3652eb49d3b5091446ff31",
+    "connected_payment.mjs": "d01431004d2f638a24837abd6c142ffaffdae2ebe58dc486ab8869ba4e91b220",
     "entry.py": "21bf71b0061dd7bb46c0f742d193f13aaa142142879bf0defb46b37e0045a151",
     "handoff.py": "9e57a04de735a773da764704c306346f09e4431f3e5518f08f0980e3bfdf420d",
     "native_child.mjs": "fd1199b1c31060753bc497d6870a56dde7c3e470339889f035b856e3f16a467a",
@@ -14,8 +14,8 @@
   "lockedSources": {
     "p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "p08-coordinator-auth-local-20261031/source/authority.mjs": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
-    "p08-https-output-category-local-20261029/source/qualification_launch.py": "cba7abe5199c77032ffc9b2d125816b80dc08e51cba3d362a614305e220f5e4d",
-    "p08-https-output-category-local-20261029/source/source-manifest.json": "044522c0323c2372ab4078e6201c8c9fba0a24b582f6a560f59df83e6ceacd4c",
+    "p08-https-output-category-local-20261029/source/qualification_launch.py": "a36804c3ee95232af78d78e6ff6c700994dd4ed39deb0cc86e8e62edc314be7c",
+    "p08-https-output-category-local-20261029/source/source-manifest.json": "49dc5b14f3b5c41b8c8a917c982c908b6401a75a6af8d8695a3fd30f81ddd24a",
     "p08-live-binder-local-20261029/source/coordinator.py": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
     "p08-local-preparation-20261022/operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
     "p08-local-preparation-20261022/plan.json": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",

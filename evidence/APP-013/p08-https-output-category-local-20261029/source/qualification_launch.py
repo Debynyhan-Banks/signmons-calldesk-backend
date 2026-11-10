@@ -172,6 +172,53 @@ def sql_contract():
     )
 
 
+
+def recovery_sql_contract(version):
+    if version == 1:return sql_contract()
+    need(version == 2,'RECOVERY_VERSION')
+    sql=QUALIFICATION_SQL.replace('id,"tenantId","policySnapshot","calendarEventId" FROM "Job"',
+        'id,"tenantId",status,"deletedAt",to_char("updatedAt",\'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"\') AS "updatedAt","calendarEventId","serviceWindowStart","serviceWindowEnd","policySnapshot","pricingSnapshot" FROM "Job"')
+    sql=sql.replace('id,status,settings->\'organizationPaymentPolicyV1\' AS "paymentPolicy"',
+        'id,status,"chargesEnabled","stripeConnectAccountId",json_build_object(\'organizationPaymentPolicyV1\',settings->\'organizationPaymentPolicyV1\') AS settings')
+    sql=sql.replace(" 'roleCount',",f" 'paymentCount',(SELECT count(*) FROM \"Payment\" WHERE \"jobId\"='{model.JOB}'::uuid AND \"tenantId\"='{model.TENANT}'::uuid),\n 'roleCount',")
+    return ({'id':'qualification','sql':sql,'readOnly':True},sql_contract()[1])
+
+PAYMENT_BINDING_FIELDS={'amountTotalCents','currency','approvedAt','policyDigest','jobUpdatedAt','connectedAccountSha256'}
+
+def validate_recovered_payment(value,cap):
+    need(isinstance(value,dict) and set(value)==PAYMENT_BINDING_FIELDS and
+         type(value['amountTotalCents']) is int and 0<value['amountTotalCents']<=200000000 and
+         value['currency']=='usd' and value['connectedAccountSha256']==cap.e['paymentAccountSha256'] and
+         isinstance(value['policyDigest'],str) and re.fullmatch('[a-f0-9]{64}',value['policyDigest']),'RECOVERY_PAYMENT_BINDING')
+    for key in ('approvedAt','jobUpdatedAt'):
+        need(isinstance(value[key],str) and re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z',value[key]) and
+             __import__('datetime').datetime.fromisoformat(value[key].replace('Z','+00:00')).timestamp()<=cap.clock(),'RECOVERY_PAYMENT_TIMESTAMP')
+    return value
+
+def derive_recovery_payment(cap,raw):
+    authority=current_module('authority');authority.verify_sources()
+    plan=json.loads((authority.APP/'p08-local-preparation-20261022/plan.json').read_text())
+    for name,expected in plan['compiledHashes'].items():
+        need(model.digest((authority.BACKEND/name).read_bytes())==expected,'RECOVERY_PAYMENT_BUILD_DRIFT')
+    need(raw['jobCount']==1 and raw['tenantCount']==1 and raw['paymentCount']==0 and raw['calendarCount']==0,
+         'RECOVERY_PAYMENT_ACTIVITY')
+    value={'actor':{k:raw['operator'][k] for k in ('id','tenantId','role','status')},
+           'tenant':raw['tenant'],'job':raw['job'],'payments':raw['paymentCount'],'calendar':raw['calendarCount']}
+    scope={'targetId':raw['operator']['id'],'tenantId':model.TENANT,'jobId':model.JOB,
+           'connectedAccountSha256':cap.e['paymentAccountSha256']}
+    payload=json.dumps({'value':value,'scope':scope,'now':cap.clock()*1000},separators=(',',':')).encode()
+    need(len(payload)<=65536 and cap.clock()<cap.times['readEnd'],'RECOVERY_PAYMENT_INPUT')
+    try:
+        result=subprocess.run(['/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node',
+            str(authority.HERE/'connected_payment.mjs'),'--derive-recovery'],input=payload,capture_output=True,
+            timeout=max(.01,min(5,cap.times['readEnd']-cap.clock())),env={'PATH':'/usr/bin:/bin','LANG':'C'})
+        need(result.returncode==0 and result.stderr==b'' and 0<len(result.stdout)<=4096 and cap.clock()<cap.times['readEnd'],
+             'RECOVERY_PAYMENT_UNQUALIFIED')
+        return validate_recovered_payment(strict_json(result.stdout.decode('utf-8','strict')),cap)
+    except (subprocess.SubprocessError,UnicodeError,OSError):raise model.Stop('RECOVERY_PAYMENT_UNQUALIFIED') from None
+    finally:payload=None;value=None
+
+
 def validate_binding(binding, plan, now, mode="qualify"):
     need(binding.get("mode") == "P08_READ_ONLY_QUALIFICATION_LAUNCH", "LAUNCH_MODE")
     need(binding.get("localPreparationSha256") == LOCAL_PREPARATION_SHA256, "LOCAL_PREPARATION_BINDING")
@@ -535,7 +582,7 @@ class NativeIO:
     def sql(self, descriptor, password, deadline):
         need(not self.closed and self.clock() < deadline and isinstance(password, str) and password, "SQL_DEADLINE")
         operator = _operator_module()
-        need(descriptor in ((self.cap.query,sql_contract()[1]) if isinstance(self,RoleDiagnosticIO) else current_sql_contract()), "SQL_ALLOWLIST")
+        need(descriptor in ((self.cap.query,sql_contract()[1]) if isinstance(self,RoleDiagnosticIO) else recovery_sql_contract(self.cap.e['version']) if isinstance(self,BindingRecoveryIO) else current_sql_contract()), "SQL_ALLOWLIST")
         sql = descriptor["sql"]
         need(sql is not None, "SQL_ALLOWLIST")
         env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO,RoleDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
@@ -1441,12 +1488,16 @@ class BindingRecoveryCapability:
     def __init__(self,envelope,clock=model.time.time,mode='recover',read_commit=None):
         manifest=model.verify_local_manifest();model.verify_locked_sources()
         authority=current_module('authority');authority.verify_sources();e=copy.deepcopy(envelope)
-        need(set(e)==({'nativeOperationId'} if e.get('version')==2 else set()) | {'version','execution','operationId','qualificationId','project','owner','database',
+        need(set(e)==({'nativeOperationId','paymentAccountSha256'} if e.get('version')==2 else set()) | {'version','execution','operationId','qualificationId','project','owner','database',
             'projectNumberSha256','targetSha256','window','limits','sdkException','sdkFilesSha256',
             'manifestSha256','sourceCommit','decision'},'RECOVERY_ENVELOPE')
         need(e['version'] in (1,2) and e['execution'] in ('PROOF_ONLY','EXTERNAL_READ_ONLY') and mode in ('recover','closeout','guard','handoff'),'RECOVERY_MODE')
         if e['version']==2:
             model.exact_uuid(e['nativeOperationId'],'RECOVERY_NATIVE_OPERATION')
+            need(isinstance(e['paymentAccountSha256'],str) and re.fullmatch('[a-f0-9]{64}',e['paymentAccountSha256']),'RECOVERY_PAYMENT_ACCOUNT')
+            if e['execution']=='EXTERNAL_READ_ONLY':
+                plan=json.loads((authority.APP/'p08-local-preparation-20261022/plan.json').read_text())
+                need(e['paymentAccountSha256']==plan['connectedAccountSha256'],'RECOVERY_PAYMENT_ACCOUNT')
             need(e['nativeOperationId'] not in (e['operationId'],e['qualificationId']),'RECOVERY_NATIVE_OPERATION')
         for k in ('operationId','qualificationId'):model.exact_uuid(e[k],'RECOVERY_OPERATION')
         need(e['operationId']!=e['qualificationId'],'RECOVERY_OPERATION')
@@ -1516,7 +1567,7 @@ class BindingRecoveryIO(NativeIO):
         if d['id']=='project':self.cap.observed=True
         return value
     def sql(self,d,password,deadline):
-        need(d in sql_contract() and (not self.independent_read or d==sql_contract()[1]),'RECOVERY_SQL_SCOPE')
+        need(d in recovery_sql_contract(self.cap.e['version']) and (not self.independent_read or d==sql_contract()[1]),'RECOVERY_SQL_SCOPE')
         cleanup=d==sql_contract()[1]
         label=('closeout-independent' if self.independent_read else 'closeout-main') if cleanup else 'qualification'
         end=self.cap.gate('sql',label,cleanup);result=super().sql(d,password,min(deadline,end))
@@ -1677,6 +1728,7 @@ def recovery_values(cap,owner,project,raw):
     need(owner==[{'account':model.OWNER,'status':'ACTIVE'}],'RECOVERY_OWNER')
     validate_recovery_project(cap,project)
     fields={'jobCount','job','tenantCount','tenant','operatorCount','operator','calendarCount','roleCount','sessionCount'}
+    if cap.e['version']==2:fields.add('paymentCount')
     need(isinstance(raw,dict) and set(raw)==fields and all(type(raw[k]) is int and raw[k]>=0 for k in
          ('jobCount','tenantCount','operatorCount','calendarCount','roleCount','sessionCount')) and raw['operatorCount']==1,'RECOVERY_SQL_OUTPUT')
     row=raw['operator'];need(isinstance(row,dict) and set(row)=={'id','tenantId','email','fullName','role','status'},'RECOVERY_TARGET')
@@ -1685,7 +1737,11 @@ def recovery_values(cap,owner,project,raw):
     need(row['tenantId']==model.TENANT and row['email']==TARGET_EMAIL and row['fullName']==TARGET_NAME and
          row['role']=='ADMIN' and row['status']=='DISABLED' and
          hashlib.sha256(json.dumps(ordered,separators=(',',':')).encode()).hexdigest()==cap.e['targetSha256'],'RECOVERY_TARGET')
-    return {'projectNumber':project['projectNumber'],'targetId':row['id']}
+    values={'projectNumber':project['projectNumber'],'targetId':row['id']}
+    if cap.e['version']==2:
+        need(type(raw['paymentCount']) is int and raw['paymentCount']>=0,'RECOVERY_SQL_OUTPUT')
+        values['paymentBinding']=derive_recovery_payment(cap,raw)
+    return values
 
 
 def run_binding_recovery(cap,io):
@@ -1709,7 +1765,7 @@ def run_binding_recovery(cap,io):
             if cap.external:
                 password=recovery_password(cap.times['readEnd'],cap.clock)
             else:password='SYNTHETIC_RECOVERY_ONLY'
-            raw=strict_json(io.sql(sql_contract()[0],password,cap.times['readEnd']))
+            raw=strict_json(io.sql(recovery_sql_contract(cap.e['version'])[0],password,cap.times['readEnd']))
             values=recovery_values(cap,owner,project,raw);raw=None
         except BaseException as error:
             failure=str(error) if isinstance(error,model.Stop) and re.fullmatch('[A-Z_]+',str(error)) else 'RECOVERY_READ_UNCONFIRMED'
@@ -1744,7 +1800,7 @@ def run_binding_recovery(cap,io):
                 try:guard.wait(timeout=5)
                 except subprocess.TimeoutExpired:residuals.append('PURGE_GUARD_UNCONFIRMED')
             need(purge_recovery_files(cap)['rawFilesAbsent'],'PRIVATE_PURGE_UNCONFIRMED')
-        result={'status':status,'execution':cap.e['execution'],'liveObserved':cap.observed,'executionReady':False,
+        result={'status':status,'execution':cap.e['execution'],'liveObserved':cap.external and cap.observed,'executionReady':False,
             'failure':failure,'residuals':residuals,'purgeEnd':cap.e['window']['purgeEnd'],'candidate':None}
         model.reserve(cap.root/'recovery-result.json',result);return result,guard
     finally:
@@ -1759,7 +1815,8 @@ def read_recovered_bindings(cap):
         need(private_json(cap.root/'resource-closeout.json')['verified'] is True,'RECOVERY_CLOSEOUT_UNCONFIRMED')
         record=private_json(cap.root/'owned-files.json').get('recovered');need(record is not None,'RECOVERY_INPUT_ABSENT')
         path=matched_private_file(cap,'recovered',record);need(path is not None,'RECOVERY_INPUT_ABSENT')
-        value=private_json(path);need(set(value)=={'projectNumber','targetId'},'RECOVERY_INPUT_SHAPE')
+        value=private_json(path);need(set(value)==({'projectNumber','targetId','paymentBinding'} if cap.e['version']==2 else {'projectNumber','targetId'}),'RECOVERY_INPUT_SHAPE')
+        if cap.e['version']==2:validate_recovered_payment(value['paymentBinding'],cap)
         row={'id':value['targetId'],'tenantId':model.TENANT,'email':TARGET_EMAIL,'fullName':TARGET_NAME,'role':'ADMIN','status':'DISABLED'}
         need(model.digest(value['projectNumber'])==cap.e['projectNumberSha256'] and
              hashlib.sha256(json.dumps(row,separators=(',',':')).encode()).hexdigest()==cap.e['targetSha256'],'RECOVERY_INPUT_BINDING')
@@ -1784,6 +1841,8 @@ def synchronize_recovery_guard(cap):
 def handoff_recovered_bindings(cap,envelope):
     need(cap.external and cap.mode=='handoff','RECOVERY_HANDOFF_AUTHORITY')
     values=read_recovered_bindings(cap)
+    if cap.e['version']==2:
+        need(isinstance(envelope.get('nativeScope',{}).get('payment'),dict) and all(envelope['nativeScope']['payment'].get(k)==v for k,v in values['paymentBinding'].items()),'RECOVERY_PAYMENT_SCOPE_DRIFT')
     qualified=QualificationCapability(envelope,clock=cap.clock)
     need(set(qualified.scope['plan'])=={'mode','externalActionAuthorized','automaticRetryAllowed','allowanceUsd','project',
          'projectNumber','projectNumberSha256','tenantId','jobId','ownerPrincipal','runtimeIdentity','serviceRetention','operationId','keyId','window'} and
@@ -1813,7 +1872,7 @@ def handoff_qualified_bindings(cap, envelope):
     row={'id':t['id'],'tenantId':t['tenantId'],'email':t['email'],'fullName':t['fullName'],'role':t['role'],'status':'DISABLED'}
     need(hashlib.sha256(json.dumps(row,separators=(',',':')).encode()).hexdigest()==cap.e['targetSha256'] and
          model.digest(str(envelope['plan']['projectNumber']))==cap.e['projectNumberSha256'],'RECOVERY_NATIVE_IDENTITY')
-    result_root=Path('/private/tmp/p08-current-external-'+cap.e['qualificationId'])
+    result_root=Path(('/private/tmp/p08-current-external-' if cap.external else '/private/tmp/p08-current-proof-')+cap.e['qualificationId'])
     inspect_current_root(result_root,CURRENT_MARKERS)
     receipt=private_json(result_root/'result.json');attempt=private_json(result_root/'attempt.json')
     scope={k:envelope[k] for k in ('plan','target','database','resources','limits','payment')}

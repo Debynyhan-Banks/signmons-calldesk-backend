@@ -89,7 +89,7 @@ def verify_local_manifest():
     for name, expected in value["files"].items():
         target = ROOT / name
         need(target.is_file() and not target.is_symlink() and hashlib.sha256(target.read_bytes()).hexdigest() == expected, "LOCAL_SOURCE_DRIFT")
-    expected_dependencies={'p08-narrow-access-check-local-20261101/source/access_check.py','p08-native-entry-local-20261101/source/authority.py','p08-same-day-renewal-filename-local-20261028/source/launch_binding.py','p08-restoration-local-20261028/source/auth/reuse/controller.py'}
+    expected_dependencies={'p08-native-entry-local-20261101/source/connected_payment.mjs','p08-native-entry-local-20261101/source/authority_bridge.mjs','p08-narrow-access-check-local-20261101/source/access_check.py','p08-native-entry-local-20261101/source/authority.py','p08-same-day-renewal-filename-local-20261028/source/launch_binding.py','p08-restoration-local-20261028/source/auth/reuse/controller.py'}
     need(set(value.get('producerDependencies',{}))==expected_dependencies,'PRODUCER_SOURCE_SET')
     for relative,expected in value['producerDependencies'].items():
         path=ROOT.parent.parent/relative

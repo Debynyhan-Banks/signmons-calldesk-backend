@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {hash,authorizeChild} from './authority_bridge.mjs';
 import {runChild} from './native_child.mjs';
-import {EVENTS,paymentContext,endpoint} from './connected_payment.mjs';
+import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint} from './connected_payment.mjs';
 import {fixture,portsFor,runConnected} from './fixture_connected.mjs';
 for(const scenario of ['normal','unpaid','lost_create','lost_enable','foreign_endpoint','disable_failed'])test('actual native child payment and cleanup: '+scenario,async t=>{
  const f=fixture(t),ports=portsFor(f,scenario);
@@ -49,4 +49,17 @@ test('fresh cleanup child recovers failed disable without reauthentication or ne
  const after=JSON.parse(readFileSync(path));assert.equal(after.payment.endpointDisabled,true);
  assert.equal(after.payment.outcome,'APPLICATION_SETTLED');assert.ok(after.payment.endpointCalls<=9);
  assert.equal(ports.inspect().calls.slice(callsBefore).filter(x=>x.url.includes('signInWithCustomToken')).length,0);
+});
+
+
+test('recovery uses actual policy profile and keeps disabled/active phases distinct',t=>{
+ const f=fixture(t),v=structuredClone(f.raw);v.actor.status='DISABLED';
+ const scope={targetId:f.e.target.id,tenantId:f.e.plan.tenantId,jobId:f.e.plan.jobId,connectedAccountSha256:f.e.payment.connectedAccountSha256};
+ const value=recoveryPaymentBinding(v,scope);
+ assert.deepEqual(value,Object.fromEntries(Object.keys(value).map(k=>[k,f.e.payment[k]])));
+ assert.throws(()=>paymentContext(v,f.e));
+ for(const mutate of [x=>x.actor.status='ACTIVE',x=>x.job.updatedAt=null,x=>x.job.updatedAt='2026-01-01T00:00:00',
+   x=>x.job.updatedAt='2099-01-01T00:00:00.000Z',x=>x.tenant.chargesEnabled=false,x=>x.tenant.stripeConnectAccountId='acct_foreign',
+   x=>x.job.policySnapshot.intakeAdmission.paymentDigest='0'.repeat(64),x=>x.payments=1,x=>x.calendar=1,x=>x.tenant.settings=null]){
+   const changed=structuredClone(v);mutate(changed);assert.throws(()=>recoveryPaymentBinding(changed,scope));}
 });
