@@ -2425,3 +2425,148 @@ class TempImpactTests(RoleDiagnosticTests):
         self.raw['serverVersion']=190000;self.raw['databaseOwner']='PRIVATE_EXCEPTION_CANARY'
         r=self.run_case();self.assertEqual(r['status'],'DATABASE_ROLE_UNCONFIRMED')
         self.assertIsNone(r['observation']['inventory']);self.assertEqual(r['residuals'],[])
+
+class TempCorrectionTests(unittest.TestCase):
+    provenance=False;temp_impact=False
+    cap=RoleDiagnosticTests.cap
+    def bind(self):
+        self.e.pop('decision',None);self.e.update(version=4,execution='EXTERNAL_BOUNDED_MUTATION',limits={'sqlConnections':3,'sqlStatements':12,'privilegeStatements':2,'cli':0,'https':0,'cache':0})
+        self.e['queryHashes']={d['id']:model.digest(d) for d in (launch.correction_snapshot_contract(),launch.sql_contract()[1],launch.correction_protocol_contract())}
+        path='APP013_P08_DATABASE_ROLE_TEMP_CORRECTION_OPERATION_20261110.json'
+        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_DATABASE_ROLE_TEMP_CORRECTION','externalMutationAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
+        f=self.fixture;(f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic correction authority')
+        self.e['decision']={'commit':f.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
+    def setUp(self):
+        import shutil
+        RoleDiagnosticTests.setUp(self)
+        self.root=Path('/private/tmp/p08-temp-correction-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+        acl=launch.current_module('acl');rows=copy.deepcopy(acl.expected_retired_acl())
+        for row in rows:
+            if row['object']=='$DATABASE':row['object']='neondb'
+        role=dict(role='p07_payment_runtime',database='neondb',user='neondb_owner',count=1,login=False,limit=0,
+                  expiryFinite=True,expired=True,unsafe=False,memberships=1,membershipEdges=[dict(acl.ADMIN_MEMBERSHIP)],
+                  serverVersion=launch.TEMP_CORRECTION_BASELINE['serverVersion'],owned=0,sessions=0,schemaCreate=False,databaseTemp=True,acl=rows)
+        self.before={'impact':copy.deepcopy(launch.TEMP_CORRECTION_BASELINE),'role':role,'databaseAcl':[
+            {'grantee':None if r['public'] else r['grantee'],'grantor':r['grantor'],'privilege':'TEMPORARY','grantable':r['grantable']} for r in launch.TEMP_CORRECTION_BASELINE['tempGrants']]}
+        self.before['databaseAcl'].append({'grantee':None,'grantor':'neondb_owner','privilege':'CONNECT','grantable':False})
+        self.state=launch.correction_validate(self.before);self.after=copy.deepcopy(self.before)
+        self.after['role']['databaseTemp']=False
+        self.after['databaseAcl']=[json.loads(s) for s in self.state['afterAcl']]
+        self.after['impact']['tempGrants']=[r for r in self.after['impact']['tempGrants'] if not r['public']]+[
+            {'public':False,'grantee':n,'grantor':'neondb_owner','grantable':False} for n in launch.TEMP_PRESERVE]
+        for row in self.after['impact']['roles']:
+            row['temp']=row['nonPublicTemp']=row['name'] in launch.TEMP_RETAIN
+            if row['name'] in launch.TEMP_PRESERVE:row['sources']=[row['name']]
+        self.fail=None;self.fresh=self.after;self.calls=[]
+    def io(self,cap,independent=False):
+        case=self
+        class IO(launch.CorrectionIO):
+            proof=True
+            def transaction(obj,password):
+                cap.gate('role');case.calls.append('mutation');model.reserve(cap.root/'correction-state.json',case.state)
+                if case.fail:raise model.Stop(case.fail)
+                return {'commitAcknowledged':True}
+            def _owned_run(obj,argv,env,deadline):
+                case.assertEqual(env['PGSSLMODE'],'verify-full');case.assertNotIn('CLOUDSDK_CONFIG',env)
+                case.calls.append('independent' if obj.cleanup_only else 'normal')
+                value=case.fresh if obj.cleanup_only else {'sessionsAbsent':True}
+                if isinstance(value,BaseException):raise value
+                return json.dumps(value).encode()
+            def independent(obj):return case.io(cap,True)
+        return IO(cap,independent)
+    def run_case(self):
+        cap=self.cap()
+        with patch.object(launch,'hidden_password',return_value='CORRECTION_SECRET_CANARY'):
+            r=launch.run_temp_correction(cap,self.io(cap))
+        self.assertNotIn('CORRECTION_SECRET_CANARY',''.join(p.read_text() for p in self.root.glob('*.json')))
+        self.assertIsNone(r['candidate']);self.assertFalse(r['executionReady']);return r
+    def test_success_and_receipt_only_closeout_and_no_replay(self):
+        r=self.run_case();self.assertEqual(r['status'],'TEMP_CORRECTION_VERIFIED');self.assertEqual(self.calls,['mutation','normal','independent'])
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('no credential')):
+            c=launch.closeout_temp_correction(self.cap('closeout'));self.assertTrue(c['verified']);self.assertTrue(c['correctionVerified'])
+            with self.assertRaises(model.Stop):launch.closeout_temp_correction(self.cap('closeout'))
+        with self.assertRaises(model.Stop):self.cap()
+    def test_uncertain_commit_even_matching_poststate_never_verifies(self):
+        self.fail='PROCESS_REFUSED';r=self.run_case();self.assertFalse(r['verified']);self.assertEqual(r['independent']['state'],'POSTSTATE')
+    def test_rollback_prestate_no_replay(self):
+        self.fail='PROCESS_REFUSED';self.fresh=self.before;r=self.run_case();self.assertEqual(r['independent']['state'],'PRESTATE');self.assertFalse(r['verified'])
+    def test_concurrent_membership_or_acl_drift_stops(self):
+        self.fresh=copy.deepcopy(self.after);self.fresh['role']['memberships']=2
+        r=self.run_case();self.assertEqual(r['independent']['state'],'DRIFT');self.assertFalse(r['verified'])
+    def test_missing_fresh_read_stops(self):
+        self.fresh=model.Stop('PROCESS_TIMEOUT');r=self.run_case();self.assertFalse(r['verified']);self.assertFalse(r['independent']['cleanup'])
+    def test_strict_schema_identity_role_acl_and_effect_fail_closed(self):
+        cases=[]
+        for key in self.before:
+            v=copy.deepcopy(self.before);v[key]=None;cases.append(v)
+        for key,value in [('databaseTemp',False),('login',True),('sessions',1),('limit',6),('membershipEdges',[]),('unsafe',True),('acl',[])]:
+            v=copy.deepcopy(self.before);v['role'][key]=value;cases.append(v)
+        for key,value in [('serverVersion',170000),('database','other'),('inventoryRoleCount',26)]:
+            v=copy.deepcopy(self.before);v['impact'][key]=value;cases.append(v)
+        for v in cases:
+            with self.subTest(v=v):
+                with self.assertRaises(Exception):launch.correction_validate(v)
+        v=copy.deepcopy(self.after);v['databaseAcl'].append({'grantee':'p07_payment_runtime','grantor':'neondb_owner','privilege':'CONNECT','grantable':False})
+        with self.assertRaises(model.Stop):launch.correction_validate(v,True,self.state['afterAcl'])
+    def test_diagnostic_authority_and_commands_cannot_mutate(self):
+        cap=self.cap()
+        with self.assertRaises(model.Stop):launch.run_role_diagnostic(cap)
+        with self.assertRaises(model.Stop):launch.closeout_role_diagnostic(cap)
+        with patch.object(launch,'RoleDiagnosticCapability',return_value=cap),patch.object(launch,'private_json',return_value=self.e):
+            with self.assertRaises(model.Stop):launch.role_diagnostic_main(['--diagnose-temp-impact',str(self.fixture.repo/'missing')])
+        self.e['execution']='EXTERNAL_READ_ONLY'
+        with self.assertRaises(model.Stop):self.cap()
+    def test_protocol_source_and_cutoff_pins(self):
+        self.e['queryHashes']['temp_correction_protocol']='0'*64
+        with self.assertRaises(model.Stop):self.cap()
+        self.bind();self.now=model.timestamp(self.e['window']['cutoff'])
+        with self.assertRaises(model.Stop):self.cap()
+    def test_independent_unused_slot_only_after_interruption(self):
+        cap=self.cap();self.root.mkdir(mode=0o700);(self.root/'entry.lock').touch(mode=0o600)
+        model.reserve(self.root/'envelope.json',self.e);model.reserve(self.root/'attempt.json',{'operationId':self.e['operationId'],'scopeSha256':cap.scope_hash})
+        model.reserve(self.root/'correction-state.json',self.state);cap.gate('role')
+        close=self.cap('closeout')
+        with patch.object(launch,'hidden_password',return_value='SYNTHETIC'):
+            r=launch.closeout_temp_correction(close,self.io(close,True))
+        self.assertFalse(r['verified']);self.assertFalse(r['correctionVerified']);self.assertEqual(r['independent']['state'],'POSTSTATE');self.assertEqual(self.calls,['independent'])
+    def test_transport_overflow_early_exit_and_interruption_cleanup(self):
+        import shutil,signal
+        for scenario in ('overflow','exit','signal'):
+            with self.subTest(scenario=scenario):
+                shutil.rmtree(self.root,ignore_errors=True);cap=self.cap();base=self.io(cap);case=self
+                class ProcessIO(type(base)):
+                    transaction=launch.CorrectionIO.transaction
+                    def _open_transaction(obj,argv,env):
+                        if scenario=='signal':
+                            os.kill(os.getpid(),signal.SIGTERM)
+                            raise AssertionError('signal was not raised')
+                        code="import sys;sys.stdout.buffer.write(b'x'*"+str(launch.MAX_OUTPUT+1)+");sys.stdout.flush()" if scenario=='overflow' else 'pass'
+                        p=subprocess.Popen([launch.sys.executable,'-I','-B','-c',code],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,start_new_session=True)
+                        obj.children.add(p);return p
+                io=ProcessIO(cap)
+                with patch.object(launch,'hidden_password',return_value='SYNTHETIC'):
+                    r=launch.run_temp_correction(cap,io)
+                self.assertFalse(r['verified']);self.assertFalse(io.children);self.assertTrue(io.closed)
+                self.assertEqual(r['connectionReservations'],3)
+    def test_active_lock_and_consumed_reservation_prevent_concurrent_closeout(self):
+        import fcntl
+        cap=self.cap();self.root.mkdir(mode=0o700);fd=os.open(self.root/'entry.lock',os.O_CREAT|os.O_WRONLY,0o600)
+        try:
+            model.reserve(self.root/'envelope.json',self.e);model.reserve(self.root/'attempt.json',{'operationId':self.e['operationId'],'scopeSha256':cap.scope_hash})
+            fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with self.assertRaises(BlockingIOError):launch.closeout_temp_correction(self.cap('closeout'))
+            cap.gate('role')
+            with self.assertRaises(Exception):cap.gate('role')
+        finally:fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+    def test_fresh_deadline_and_altered_runtime_environment_refuse(self):
+        cap=self.cap()
+        with patch.dict(os.environ,{'PGHOST':'foreign'}):
+            with self.assertRaises(model.Stop):cap.prepare()
+        with patch.object(launch,'source_manifest_sha256',return_value='0'*64):
+            with self.assertRaises(model.Stop):cap.prepare()
+        self.now=model.timestamp(self.e['window']['closeoutEnd'])
+        with self.assertRaises(model.Stop):cap.gate('independent')
+    def test_mutation_statement_allowance_cannot_use_diagnostic_limits(self):
+        for limits in ({'sql':3,'cli':0,'https':0,'cache':0},{'sqlConnections':3,'sqlStatements':13,'privilegeStatements':2,'cli':0,'https':0,'cache':0}):
+            self.e['limits']=limits
+            with self.assertRaises(model.Stop):self.cap()

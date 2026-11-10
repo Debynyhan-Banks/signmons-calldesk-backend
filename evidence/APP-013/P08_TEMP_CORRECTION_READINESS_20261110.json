@@ -1,0 +1,70 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "approvedPolicy": "b04abb4",
+  "approvedConcurrencyClarification": "0f5142f",
+  "baseCommit": "3feaed5e7033052bef44698c9a71d645d8781b32",
+  "verifiedAt": "2026-11-10T12:38:37.089064+00:00",
+  "changedFiles": {
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py": {
+      "beforeSha256": "55ab98bd0b06de0347ebf44091acb6d171894e5f32917fd1efe7675bff4b73c7",
+      "afterSha256": "dce3587c8005070d3753889d5b7870e97f67cd214d1017908bd85da16b941f0a"
+    },
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/test_qualification_launch.py": {
+      "beforeSha256": "907519430db9741c227962773b93438c71d43d70deca3b662aa4cf8745f35604",
+      "afterSha256": "8d94aa491021c85713d152206e5e63dca290c1f86a6feb3e2e3ace55e88c675b"
+    },
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/test_qualification_launch_postgres.py": {
+      "beforeSha256": "d7c073c5e8bd669acfccf548ed7965c09ebab8fb060481827a9c67b934871811",
+      "afterSha256": "385c9a6bb1c09ad8a19fc8a39a506898a0b7c5e8c2e770d503fe85f12081a5bb"
+    },
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json": {
+      "beforeSha256": "b1a7fe1b6bd5d680c22473d7c5370e522649522f952fbf4428e00461f1cadc75",
+      "afterSha256": "2af12b08f0b2183d6a77246e2036c2a0644a1ffbfdc22ad72a8918f4542372d4"
+    }
+  },
+  "queryHashes": {
+    "temp_correction_snapshot": "6314bcdec00ac0d32eab6a9c76560459b4cecfa8543102ee16dfa184f5f0f6a6",
+    "closeout": "4c412c23a971f42bae3eb69210c98f6473476822ab0b16271f02de5ada8e76da",
+    "temp_correction_protocol": "d980e2aa8881b067c58267c0269d487e168080087b3162636029fd46fb492926"
+  },
+  "manifestSha256": "2af12b08f0b2183d6a77246e2036c2a0644a1ffbfdc22ad72a8918f4542372d4",
+  "limits": {
+    "sqlConnections": 3,
+    "sqlStatements": 12,
+    "privilegeStatements": 2,
+    "cli": 0,
+    "https": 0,
+    "cache": 0
+  },
+  "tests": {
+    "currentRuntime": 249,
+    "governance": 25,
+    "result": "PASS"
+  },
+  "providerCalls": 0,
+  "cleanup": {
+    "serverReaped": true,
+    "scratchAbsent": true
+  },
+  "checklistCompleted": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "externalMutationAuthorized": false,
+  "executionReady": false,
+  "candidate": null,
+  "unverified": [
+    "current provider state after TI1",
+    "live credentials and exact execution window",
+    "owner-maintained quiet interval at execution"
+  ],
+  "responsibleOwners": {
+    "sourceAndReadiness": "implementer",
+    "maintenanceAndExactLiveMutation": "DB owner",
+    "hiddenPassword": "credential custodian"
+  }
+}

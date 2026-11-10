@@ -2267,6 +2267,85 @@ def temp_impact_observation(raw):
     except Exception:return unknown
 
 
+TEMP_CORRECTION_BASELINE = {'aclDefault': False, 'database': 'neondb', 'databaseOwner': 'neondb_owner', 'inventoryRoleCount': 25, 'role': 'p07_payment_runtime', 'roleCount': 1, 'roles': [{'connect': True, 'login': True, 'name': 'cloud_admin', 'nonPublicTemp': True, 'sessions': 0, 'sources': ['neon_superuser', 'neondb_owner'], 'superuser': True, 'temp': True}, {'connect': True, 'login': True, 'name': 'neon_service', 'nonPublicTemp': True, 'sessions': 0, 'sources': ['neon_superuser'], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'neon_superuser', 'nonPublicTemp': True, 'sessions': 0, 'sources': ['neon_superuser'], 'superuser': False, 'temp': True}, {'connect': True, 'login': True, 'name': 'neondb_owner', 'nonPublicTemp': True, 'sessions': 0, 'sources': ['neon_superuser', 'neondb_owner'], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'p06_intake_runtime', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'p06_migration_owner', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'p06_migration_runner', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'p07_payment_runtime', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_checkpoint', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_create_subscription', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_database_owner', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_execute_server_program', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_maintain', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_monitor', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_read_all_data', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_read_all_settings', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_read_all_stats', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_read_server_files', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_signal_autovacuum_worker', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_signal_backend', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_stat_scan_tables', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_use_reserved_connections', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_write_all_data', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'pg_write_server_files', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}, {'connect': True, 'login': False, 'name': 'token_roles', 'nonPublicTemp': False, 'sessions': 0, 'sources': [], 'superuser': False, 'temp': True}], 'serverVersion': 180006, 'tempGrants': [{'grantable': False, 'grantee': None, 'grantor': 'neondb_owner', 'public': True}, {'grantable': False, 'grantee': 'neon_superuser', 'grantor': 'neondb_owner', 'public': False}, {'grantable': False, 'grantee': 'neondb_owner', 'grantor': 'neondb_owner', 'public': False}], 'user': 'neondb_owner'}
+
+# Owner-approved selective TEMP correction. All writes stay in one owned connection.
+TEMP_PRESERVE=('p06_intake_runtime','p06_migration_owner','p06_migration_runner','token_roles')
+TEMP_RETAIN=('cloud_admin','neon_service','neon_superuser','neondb_owner',*TEMP_PRESERVE)
+TEMP_DELTA='GRANT TEMPORARY ON DATABASE neondb TO '+','.join(TEMP_PRESERVE)+'; REVOKE TEMPORARY ON DATABASE neondb FROM PUBLIC RESTRICT;'
+TEMP_BEGIN="BEGIN ISOLATION LEVEL READ COMMITTED; SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s'; SET LOCAL idle_in_transaction_session_timeout='20s';"
+TEMP_LOCK="DO $$ BEGIN IF NOT pg_try_advisory_xact_lock(13408) THEN RAISE EXCEPTION 'CORRECTION_BUSY'; END IF; END $$;"
+
+
+def correction_snapshot_contract():
+    def select_body(sql):
+        need('WITH ' in sql and sql.endswith('ROLLBACK;'),'CORRECTION_QUERY_SHAPE')
+        return 'WITH '+sql.split('WITH ',1)[1].removesuffix('ROLLBACK;').strip().removesuffix(';')
+    impact=select_body(temp_impact_contract()['sql']);role=select_body(current_module('acl').retired_role_query())
+    acl="""SELECT COALESCE(json_agg(json_build_object('grantee',CASE WHEN a.grantee=0 THEN NULL ELSE pg_get_userbyid(a.grantee) END,
+ 'grantor',pg_get_userbyid(a.grantor),'privilege',a.privilege_type,'grantable',a.is_grantable)
+ ORDER BY a.grantee,a.grantor,a.privilege_type),'[]'::json) FROM pg_database d
+ CROSS JOIN LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a WHERE d.datname=current_database()"""
+    return {'id':'temp_correction_snapshot','readOnly':True,'sql':"SELECT json_build_object('impact',("+impact+")::json,'role',("+role+")::json,'databaseAcl',("+acl+"))::text;"}
+
+
+def correction_protocol_contract():
+    return {'id':'temp_correction_protocol','begin':TEMP_BEGIN,'lock':TEMP_LOCK,'delta':TEMP_DELTA,
+            'commit':'COMMIT;','precommitRollback':'DISCONNECT_UNCOMMITTED_SESSION','snapshot':correction_snapshot_contract(),
+            'baseline':TEMP_CORRECTION_BASELINE,'preserve':list(TEMP_PRESERVE)}
+
+
+def correction_acl(rows):
+    need(type(rows) is list and len(rows)<=256,'CORRECTION_ACL')
+    keys=[]
+    for row in rows:
+        need(type(row) is dict and set(row)=={'grantee','grantor','privilege','grantable'} and
+             (row['grantee'] is None or isinstance(row['grantee'],str)) and isinstance(row['grantor'],str) and
+             row['privilege'] in ('CREATE','CONNECT','TEMPORARY') and type(row['grantable']) is bool,'CORRECTION_ACL')
+        keys.append(json.dumps(row,sort_keys=True,separators=(',',':')))
+    need(len(keys)==len(set(keys)),'CORRECTION_ACL_DUPLICATE')
+    return sorted(keys)
+
+
+def correction_validate(raw,post=False,expected_acl=None):
+    v=strict_json(raw);need(type(v) is dict and set(v)=={'impact','role','databaseAcl'},'CORRECTION_OUTPUT')
+    observed=temp_impact_observation(v['impact']);need(observed['complete'],'CORRECTION_IMPACT_UNKNOWN')
+    impact=v['impact'];base=TEMP_CORRECTION_BASELINE
+    need({k:val for k,val in impact.items() if k not in ('roles','tempGrants')}==
+         {k:val for k,val in base.items() if k not in ('roles','tempGrants')},'CORRECTION_IDENTITY_DRIFT')
+    need(len(impact['roles'])==len(base['roles']),'CORRECTION_ROLE_DRIFT')
+    by_name={r['name']:r for r in base['roles']}
+    for row in impact['roles']:
+        need(row['name'] in by_name and row['sessions']==0,'CORRECTION_SESSIONS_OR_ROLES')
+        old=by_name[row['name']]
+        need({k:val for k,val in row.items() if k not in ('temp','nonPublicTemp','sources','sessions')}==
+             {k:val for k,val in old.items() if k not in ('temp','nonPublicTemp','sources','sessions')},'CORRECTION_ROLE_DRIFT')
+        if post:need(row['temp']==(row['name'] in TEMP_RETAIN),'CORRECTION_EFFECT_DRIFT')
+        else:need(row==old,'CORRECTION_PRESTATE_DRIFT')
+    grants=copy.deepcopy(base['tempGrants'])
+    if post:
+        grants=[g for g in grants if not g['public']]+[{'public':False,'grantee':n,'grantor':'neondb_owner','grantable':False} for n in TEMP_PRESERVE]
+    need(sorted(map(lambda x:json.dumps(x,sort_keys=True),impact['tempGrants']))==sorted(map(lambda x:json.dumps(x,sort_keys=True),grants)),'CORRECTION_TEMP_ACL_DRIFT')
+    acl=current_module('acl');rv=copy.deepcopy(v['role'])
+    need(type(rv) is dict and rv.get('serverVersion')==impact['serverVersion'],'CORRECTION_VERSION_DRIFT')
+    need(rv.get('database')=='neondb' and rv.get('user')=='neondb_owner' and rv.get('databaseTemp') is (not post),'CORRECTION_ROLE_TEMP')
+    need(rv.get('membershipEdges')==[acl.ADMIN_MEMBERSHIP] and rv.get('memberships')==1,'CORRECTION_MEMBERSHIP_DRIFT')
+    rv['databaseTemp']=False # Only the explicitly approved pre-existing TEMP failure is excepted before correction.
+    acl.classify_retired_role(rv,acl.expected_retired_acl())
+    rows=v['databaseAcl'];actual=correction_acl(rows)
+    names=set(by_name)
+    need(all((r['grantee'] is None or r['grantee'] in names) and r['grantor'] in names for r in rows),'CORRECTION_ACL_IDENTITY')
+    temp=[{'public':r['grantee'] is None,'grantee':r['grantee'],'grantor':r['grantor'],'grantable':r['grantable']} for r in rows if r['privilege']=='TEMPORARY']
+    need(sorted(json.dumps(r,sort_keys=True) for r in temp)==sorted(json.dumps(r,sort_keys=True) for r in impact['tempGrants']),'CORRECTION_ACL_INCONSISTENT')
+    if expected_acl is not None:need(actual==expected_acl,'CORRECTION_DATABASE_ACL_DRIFT')
+    if not post:
+        need(not any(r['privilege']=='TEMPORARY' and r['grantee'] in TEMP_PRESERVE for r in rows),'CORRECTION_PREEXISTING_GRANT')
+        target=[r for r in rows if not (r['grantee'] is None and r['privilege']=='TEMPORARY')]
+        target += [{'grantee':n,'grantor':'neondb_owner','privilege':'TEMPORARY','grantable':False} for n in TEMP_PRESERVE]
+        return {'beforeAcl':actual,'afterAcl':correction_acl(target)}
+    return {'verified':True}
+
+
 def role_runtime_files():
     return (_operator_module().PSQL,ROLE_DIAGNOSTIC_PYTHON,ROLE_DIAGNOSTIC_CA)
 
@@ -2278,17 +2357,19 @@ class RoleDiagnosticCapability:
         a=current_module('authority');a.verify_sources();get=read_commit or a.committed
         need(set(e)=={'version','execution','operationId','database','role','sourceCommit','manifestSha256',
             'runtimeFiles','queryHashes','window','limits','decision'},'ROLE_ENVELOPE')
-        need(type(e['version']) is int and e['version'] in (1,2,3) and e['execution']=='EXTERNAL_READ_ONLY','ROLE_EXECUTION')
+        need(type(e['version']) is int and e['version'] in (1,2,3,4) and e['execution']==('EXTERNAL_BOUNDED_MUTATION' if e['version']==4 else 'EXTERNAL_READ_ONLY'),'ROLE_EXECUTION')
+        self.correction=e['version']==4
         self.provenance=e['version']==2
         self.temp_impact=e['version']==3
-        self.kind='TEMP_IMPACT' if self.temp_impact else 'PROVENANCE' if self.provenance else 'DIAGNOSTIC'
-        self.query=temp_impact_contract() if self.temp_impact else role_provenance_contract() if self.provenance else current_sql_contract()[2]
+        self.kind='TEMP_CORRECTION' if self.correction else 'TEMP_IMPACT' if self.temp_impact else 'PROVENANCE' if self.provenance else 'DIAGNOSTIC'
+        self.query=correction_snapshot_contract() if self.correction else temp_impact_contract() if self.temp_impact else role_provenance_contract() if self.provenance else current_sql_contract()[2]
         model.exact_uuid(e['operationId'],'ROLE_OPERATION')
         need(e['database']=={'host':_operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'} and
              e['role']=='p07_payment_runtime','ROLE_RESOURCE_PINS')
-        need(e['limits']=={'sql':3,'cli':0,'https':0,'cache':0} and all(type(v) is int for v in e['limits'].values()),'ROLE_LIMITS')
+        limits={'sqlConnections':3,'sqlStatements':12,'privilegeStatements':2,'cli':0,'https':0,'cache':0} if self.correction else {'sql':3,'cli':0,'https':0,'cache':0}
+        need(e['limits']==limits and all(type(v) is int for v in e['limits'].values()),'ROLE_LIMITS')
         need(e['manifestSha256']==source_manifest_sha256() and re.fullmatch('[a-f0-9]{40}',e['sourceCommit']),'ROLE_SOURCE_DRIFT')
-        descriptors=(self.query,sql_contract()[1])
+        descriptors=(self.query,sql_contract()[1],correction_protocol_contract()) if self.correction else (self.query,sql_contract()[1])
         need(e['queryHashes']=={d['id']:model.digest(d) for d in descriptors},'ROLE_QUERY_PINS')
         need(set(e['runtimeFiles'])==set(role_runtime_files()) and all(isinstance(v,str) and re.fullmatch('[a-f0-9]{64}',v) for v in e['runtimeFiles'].values()),'ROLE_RUNTIME_PINS')
         for path in role_runtime_files()[:2]:need(e['runtimeFiles'][path]==m['sdkReview']['files'][path],'ROLE_RUNTIME_PINS')
@@ -2300,12 +2381,12 @@ class RoleDiagnosticCapability:
             re.fullmatch('[a-f0-9]{64}',d['sha256']) and re.fullmatch(r'APP013_P08_DATABASE_ROLE_'+self.kind+r'_OPERATION_[0-9]{8}\.json',d['path']),'ROLE_DECISION')
         raw=get(a.GOV,d['commit'],d['path']);scope=model.digest({k:v for k,v in e.items() if k!='decision'})
         need(model.digest(raw)==d['sha256'] and strict_json(raw)=={'owner':'Debynyhan Banks',
-            'decision':'APPROVE_EXACT_P08_DATABASE_ROLE_'+self.kind,'externalReadAuthorized':True,'scopeSha256':scope},'ROLE_APPROVAL')
+            'decision':'APPROVE_EXACT_P08_DATABASE_ROLE_'+self.kind,('externalMutationAuthorized' if self.correction else 'externalReadAuthorized'):True,'scopeSha256':scope},'ROLE_APPROVAL')
         # Same committed-source checks, only SQL runtime files; no SDK/config/cache reads.
         sql_manifest=copy.deepcopy(m);sql_manifest['sdkReview']['files']={p:e['runtimeFiles'][p] for p in role_runtime_files()[:2]}
         verify_qualification_sources(e['sourceCommit'],sql_manifest,get)
         self.e=e;self.clock=clock;self.mode=mode;self.times=times;self.last=clock();self.scope_hash=scope
-        self.root=Path(('/private/tmp/p08-temp-impact-' if self.temp_impact else '/private/tmp/p08-role-provenance-' if self.provenance else '/private/tmp/p08-database-role-')+e['operationId']);self.manifest=m
+        self.root=Path(('/private/tmp/p08-temp-correction-' if self.correction else '/private/tmp/p08-temp-impact-' if self.temp_impact else '/private/tmp/p08-role-provenance-' if self.provenance else '/private/tmp/p08-database-role-')+e['operationId']);self.manifest=m
         if mode=='diagnose':
             need(times['start']<=self.last<times['cutoff'],'DIAGNOSTIC_START_WINDOW')
             need(not os.path.lexists(self.root),'DIAGNOSTIC_CONSUMED')
@@ -2316,7 +2397,7 @@ class RoleDiagnosticCapability:
         sdk_environment(os.environ)  # Environment validation only, no SDK/config access.
         for path,h in self.e['runtimeFiles'].items():need(model.digest(Path(path).read_bytes())==h,'ROLE_RUNTIME_DRIFT')
     def inspect(self):
-        inspect_current_root(self.root,ROLE_DIAGNOSTIC_MARKERS)
+        inspect_current_root(self.root,ROLE_DIAGNOSTIC_MARKERS|({'correction-state.json'} if self.correction else set()))
         need(private_json(self.root/'envelope.json')==self.e and private_json(self.root/'attempt.json')=={
             'operationId':self.e['operationId'],'scopeSha256':self.scope_hash},'ROLE_ROOT_BINDING')
         for slot in ROLE_DIAGNOSTIC_SLOTS:
@@ -2345,6 +2426,157 @@ class RoleDiagnosticIO(NativeIO):
     def independent(self):return RoleDiagnosticIO(self.cap,True)
 
 
+class CorrectionIO(RoleDiagnosticIO):
+    def _open_transaction(self,argv,env):
+        p=subprocess.Popen(argv,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
+                           env=env,start_new_session=True);self.children.add(p);return p
+    def transaction(self,password):
+        import selectors,time
+        cap=self.cap;deadline=cap.gate('role');need(cap.correction and not self.cleanup_only,'CORRECTION_MODE')
+        env={k:v for k,v in sdk_environment(os.environ).items() if not k.startswith('CLOUDSDK_')}
+        env.update(PGPASSWORD=password,PGSSLMODE='verify-full',PGSSLROOTCERT=ROLE_DIAGNOSTIC_CA,
+                   PGCONNECT_TIMEOUT='10',PGAPPNAME='signmons_p08_qualification_'+self.binding_operation_id)
+        argv=[_operator_module().PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',cap.e['database']['host'],
+              '-U','neondb_owner','-d','neondb']
+        try:p=self._open_transaction(argv,env)
+        finally:env['PGPASSWORD']=''
+        selector=selectors.DefaultSelector()
+        last=self.clock();hard=time.monotonic()+max(0,deadline-last-2);index=0
+        def exchange(sql,output=False):
+            nonlocal last,index
+            cap.prepare();now=self.clock();need(last<=now<deadline-2,'CORRECTION_DEADLINE');last=now
+            index+=1;marker='P08_CORRECTION_FRAME_'+str(index)
+            data=(sql+'\n\\echo '+marker+'\n').encode();need(len(data)<=MAX_OUTPUT,'CORRECTION_INPUT_LIMIT')
+            # Statements are pinned constants; never interpolate provider output into SQL.
+            p.stdin.write(data);p.stdin.flush();buf=b''
+            while True:
+                now=self.clock();need(last<=now<deadline-2 and time.monotonic()<hard,'CORRECTION_DEADLINE');last=now
+                if selector.select(.05):
+                    chunk=os.read(p.stdout.fileno(),8192);need(bool(chunk),'CORRECTION_PROCESS_REFUSED');buf+=chunk
+                    need(len(buf)<=MAX_OUTPUT,'CORRECTION_OUTPUT_LIMIT')
+                    suffix=(marker+'\n').encode()
+                    if buf.endswith(suffix):
+                        value=buf[:-len(suffix)].strip()
+                        if output:return strict_json(value)
+                        need(not value,'CORRECTION_UNEXPECTED_OUTPUT');return None
+                elif p.poll() is not None:raise model.Stop('CORRECTION_PROCESS_REFUSED')
+        try:
+            os.set_blocking(p.stdout.fileno(),False);selector.register(p.stdout,selectors.EVENT_READ)
+            exchange(TEMP_BEGIN);exchange(TEMP_LOCK)
+            before=exchange(cap.query['sql'],True);state=correction_validate(before)
+            model.reserve(cap.root/'correction-state.json',state);before=None
+            exchange(TEMP_DELTA)
+            after=exchange(cap.query['sql'],True);correction_validate(after,True,state['afterAcl']);after=None
+            cap.prepare();need(self.clock()<deadline-2,'CORRECTION_DEADLINE')
+            exchange('COMMIT;');return {'commitAcknowledged':True}
+        finally:
+            # Disconnect aborts an uncommitted transaction. Never issue a write after uncertain COMMIT.
+            selector.close()
+            try:
+                if p.stdin:p.stdin.close()
+            except (OSError,BrokenPipeError):pass
+            if not self._finish(p,cap.times['closeoutEnd']):raise model.Stop('CORRECTION_PROCESS_CLEANUP_UNCONFIRMED')
+    def sql(self,d,password,deadline):
+        slot='independent' if self.cleanup_only else 'normal'
+        need(d==(self.cap.query if self.cleanup_only else sql_contract()[1]),'CORRECTION_READ_SCOPE')
+        return NativeIO.sql(self,d,password,min(deadline,self.cap.gate(slot)))
+    def independent(self):return CorrectionIO(self.cap,True)
+
+
+def correction_fresh(cap,io,password):
+    value=None;out={'state':'UNKNOWN','cleanup':False}
+    try:
+        raw=io.sql(cap.query,password,cap.times['closeoutEnd'])
+        need(cap.last<=cap.clock()<cap.times['closeoutEnd'],'CORRECTION_READBACK_DEADLINE')
+        state=private_json(cap.root/'correction-state.json') if (cap.root/'correction-state.json').exists() else None
+        if state:
+            need(set(state)=={'beforeAcl','afterAcl'} and all(type(state[k]) is list for k in state),'CORRECTION_STATE')
+            try:correction_validate(raw,True,state['afterAcl']);value='POSTSTATE'
+            except Exception:
+                try:correction_validate(raw,False,state['beforeAcl']);value='PRESTATE'
+                except Exception:value='DRIFT'
+        else:
+            try:correction_validate(raw);value='PRESTATE'
+            except Exception:value='DRIFT'
+        # Inventory session counts exclude this one read; require no other sessions, regardless of state classification.
+        o=temp_impact_observation(raw['impact'])
+        out={'state':value,'cleanup':o['complete'] and all(r['sessions']==0 for r in raw['impact']['roles'])}
+    except BaseException:pass
+    finally:
+        try:out['cleanup']=io.close(cap.times['closeoutEnd']) is True and out['cleanup']
+        except BaseException:out['cleanup']=False
+    return out
+
+
+def run_temp_correction(cap,io=None):
+    import fcntl,signal,threading
+    need(type(cap) is RoleDiagnosticCapability and cap.correction and cap.mode=='diagnose','CORRECTION_MODE')
+    need(io is None or (isinstance(io,CorrectionIO) and io.cap is cap and getattr(io,'proof',False)),'CORRECTION_PORT')
+    need(cap.times['start']<=cap.clock()<cap.times['cutoff'],'DIAGNOSTIC_START_WINDOW')
+    cap.root.mkdir(mode=0o700);fd=os.open(cap.root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+    password=None;failure=None;ack=False;normal=False;fresh={'state':'UNKNOWN','cleanup':False};handlers={};cleaning=False
+    io=io or CorrectionIO(cap)
+    def interrupt(*args):
+        if not cleaning:raise model.Stop('INTERRUPTED')
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        model.reserve(cap.root/'envelope.json',cap.e);model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash})
+        if threading.current_thread() is threading.main_thread():
+            for sig in (signal.SIGTERM,signal.SIGINT):handlers[sig]=signal.signal(sig,interrupt)
+        try:
+            cap.prepare();password=recovery_password(cap.times['readEnd'],cap.clock)
+            ack=io.transaction(password)=={'commitAcknowledged':True}
+        except BaseException as error:failure=role_diagnostic_failure(error)
+        finally:
+            cleaning=True;normal=role_cleanup(io,password,cap.times['closeoutEnd'])
+            try:fresh=correction_fresh(cap,io.independent(),password)
+            except BaseException:pass
+            password=None
+        cap.inspect();verified=ack and failure is None and normal and fresh=={'state':'POSTSTATE','cleanup':True}
+        result={'status':'TEMP_CORRECTION_VERIFIED' if verified else 'CORRECTION_UNCONFIRMED',
+            'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'commitAcknowledged':ack,'failure':failure,
+            'normalCleanup':normal,'independent':fresh,'verified':verified,
+            'connectionReservations':sum((cap.root/f'sql-{s}.json').exists() for s in ROLE_DIAGNOSTIC_SLOTS),
+            'liveObserved':not getattr(io,'proof',False),'candidate':None,'executionReady':False}
+        model.reserve(cap.root/'result.json',result);return result
+    finally:
+        password=None
+        for sig,handler in handlers.items():signal.signal(sig,handler)
+        fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def closeout_temp_correction(cap,io=None):
+    import fcntl
+    need(cap.correction and cap.mode=='closeout','CORRECTION_MODE');cap.inspect()
+    need(io is None or (isinstance(io,CorrectionIO) and io.cleanup_only and io.cap is cap and getattr(io,'proof',False)),'CORRECTION_PORT')
+    fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW);password=None
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB);need(not (cap.root/'closeout.json').exists(),'ROLE_CLOSEOUT_CONSUMED')
+        prior=private_json(cap.root/'result.json') if (cap.root/'result.json').exists() else None
+        cleanup=bool(prior and prior.get('normalCleanup') is True and prior.get('independent',{}).get('cleanup') is True)
+        fresh=prior.get('independent') if prior else {'state':'UNKNOWN','cleanup':False}
+        if not cleanup and not (cap.root/'sql-independent.json').exists() and cap.clock()<cap.times['closeoutEnd']:
+            try:
+                password=recovery_password(cap.times['closeoutEnd'],cap.clock)
+                fresh=correction_fresh(cap,io or CorrectionIO(cap,True),password)
+            except BaseException:pass
+        result={'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'verified':cleanup,
+                'correctionVerified':bool(cleanup and prior and prior.get('verified') is True),'independent':fresh,
+                'residuals':[] if cleanup else ['PROCESS_HISTORY_UNKNOWN'],'candidate':None,'executionReady':False}
+        model.reserve(cap.root/'closeout.json',result);return result
+    finally:password=None;fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def temp_correction_main(argv):
+    need(len(argv)==2 and argv[0] in ('--correct-temp','--closeout-temp-correction'),'CORRECTION_ARGUMENTS')
+    path=Path(argv[1]);close=argv[0]=='--closeout-temp-correction'
+    cap=RoleDiagnosticCapability(private_json(path/'envelope.json' if close else path),mode='closeout' if close else 'diagnose')
+    need(cap.correction and (not close or path==cap.root),'CORRECTION_SCOPE')
+    result=closeout_temp_correction(cap) if close else run_temp_correction(cap)
+    print(('TEMP_CORRECTION_CLOSED' if result['verified'] else 'CORRECTION_CLOSEOUT_UNCONFIRMED') if close else result['status'])
+    return 0 if result['verified'] else 2
+
+
 def role_cleanup(io,password,deadline):
     sessions=False;closed=False
     try:
@@ -2359,7 +2591,7 @@ def role_cleanup(io,password,deadline):
 
 def run_role_diagnostic(cap,io=None):
     import fcntl,signal,threading
-    need(type(cap) is RoleDiagnosticCapability and cap.mode=='diagnose','ROLE_MODE')
+    need(type(cap) is RoleDiagnosticCapability and not cap.correction and cap.mode=='diagnose','ROLE_MODE')
     need(io is None or (isinstance(io,RoleDiagnosticIO) and io.cap is cap and getattr(io,'proof',False)),'ROLE_PORT')
     need(cap.times['start']<=cap.clock()<cap.times['cutoff'],'DIAGNOSTIC_START_WINDOW')
     cap.root.mkdir(mode=0o700);fd=os.open(cap.root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
@@ -2404,7 +2636,7 @@ def run_role_diagnostic(cap,io=None):
 
 def closeout_role_diagnostic(cap,io=None):
     import fcntl
-    need(type(cap) is RoleDiagnosticCapability and cap.mode=='closeout','ROLE_MODE');cap.inspect()
+    need(type(cap) is RoleDiagnosticCapability and not cap.correction and cap.mode=='closeout','ROLE_MODE');cap.inspect()
     need(io is None or (isinstance(io,RoleDiagnosticIO) and io.cap is cap and io.cleanup_only and getattr(io,'proof',False)),'ROLE_PORT')
     fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW);password=None;residuals=[];transport=None
     try:
@@ -2440,6 +2672,6 @@ def role_diagnostic_main(argv):
 
 
 if __name__ == "__main__":
-    try:raise SystemExit(role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance','--diagnose-temp-impact','--closeout-temp-impact') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
+    try:raise SystemExit(temp_correction_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--correct-temp','--closeout-temp-correction') else role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance','--diagnose-temp-impact','--closeout-temp-impact') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
     except Exception:
         print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)

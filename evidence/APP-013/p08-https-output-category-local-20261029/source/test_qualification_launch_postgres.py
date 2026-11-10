@@ -272,9 +272,9 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
                 self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
                 self.command('REVOKE TEMP ON DATABASE neondb FROM PUBLIC; REVOKE CREATE ON SCHEMA public FROM PUBLIC;')
 
-    def test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(self,provenance=False,temp_impact=False):
-        command='temp-impact' if temp_impact else 'role-provenance' if provenance else 'database-role'
-        helper=(current_tests.TempImpactTests if temp_impact else current_tests.RoleProvenanceTests if provenance else current_tests.RoleDiagnosticTests)();helper.setUp();self.addCleanup(helper.doCleanups)
+    def test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(self,provenance=False,temp_impact=False,correction=False):
+        command='temp-correction' if correction else 'temp-impact' if temp_impact else 'role-provenance' if provenance else 'database-role'
+        helper=(current_tests.TempCorrectionTests if correction else current_tests.TempImpactTests if temp_impact else current_tests.RoleProvenanceTests if provenance else current_tests.RoleDiagnosticTests)();helper.setUp();self.addCleanup(helper.doCleanups)
         path=helper.fixture.repo/'role-envelope.json';path.write_text(json.dumps(helper.e));path.chmod(0o600)
         prefix='\n'.join([
             'import sys,os,signal,json;from pathlib import Path',
@@ -284,17 +284,19 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
             'q.current_module=lambda name:a if name=="authority" else original(name)',
             'q.recovery_password=lambda *args:"SYNTHETIC_CHILD"',
         ])
-        crash=prefix+'\nq.RoleDiagnosticIO._owned_run=lambda *args:os.kill(os.getpid(),signal.SIGKILL)\nraise SystemExit(q.role_diagnostic_main(sys.argv[2:]))'
-        p=subprocess.run([launch.sys.executable,'-I','-B','-c',crash,str(model.ROOT),'--diagnose-'+command,str(path)],capture_output=True,timeout=15)
+        entry='temp_correction_main' if correction else 'role_diagnostic_main'
+        port='CorrectionIO._open_transaction' if correction else 'RoleDiagnosticIO._owned_run'
+        crash=prefix+'\nq.'+port+'=lambda *args:os.kill(os.getpid(),signal.SIGKILL)\nraise SystemExit(q.'+entry+'(sys.argv[2:]))'
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',crash,str(model.ROOT),'--correct-temp' if correction else '--diagnose-'+command,str(path)],capture_output=True,timeout=15)
         self.assertEqual(p.returncode,-9,p.stderr.decode());self.assertTrue((helper.root/'sql-role.json').exists());self.assertFalse((helper.root/'result.json').exists())
         cleanup=prefix+'\n'+ '\n'.join([
             'owned=q.NativeIO._owned_run',
             'def local(obj,argv,env,deadline):',
-            '    assert argv[-1]==q.sql_contract()[1]["sql"]',
+            '    assert argv[-1]=='+('q.correction_snapshot_contract()["sql"]' if correction else 'q.sql_contract()[1]["sql"]'),
             f'    argv=list(argv);argv[argv.index("-h")+1]="127.0.0.1";argv[1:1]=["-p",{self.port!r}]',
             f'    return owned(obj,argv,dict(env,PGSSLROOTCERT={str(self.cert)!r}),deadline)',
-            'q.RoleDiagnosticIO._owned_run=local',
-            'raise SystemExit(q.role_diagnostic_main(sys.argv[2:]))'])
+            'q.'+('CorrectionIO' if correction else 'RoleDiagnosticIO')+'._owned_run=local',
+            'raise SystemExit(q.'+entry+'(sys.argv[2:]))'])
         p=subprocess.run([launch.sys.executable,'-I','-B','-c',cleanup,str(model.ROOT),'--closeout-'+command,str(helper.root)],capture_output=True,timeout=20)
         self.assertEqual(p.returncode,2,p.stderr.decode());r=json.loads((helper.root/'closeout.json').read_text())
         self.assertEqual(r['residuals'],['PROCESS_HISTORY_UNKNOWN']);self.assertFalse(r['verified'])
@@ -445,6 +447,80 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
         self.test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(temp_impact=True)
 
 
+
+    def test_temp_correction_actual_tls_transaction_and_uncertain_commit(self):
+        import shutil
+        self.command('CREATE ROLE correction_admin LOGIN SUPERUSER;')
+        def admin(sql,user='cloud_admin'):
+            p=subprocess.run([launch._operator_module().PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',str(self.socket),'-p',self.port,'-U',user,'-d','neondb','-c',sql],env=self.env,capture_output=True,timeout=20)
+            self.assertEqual(p.returncode,0,p.stderr.decode());return p.stdout.decode().strip()
+        renamed=False;created=False;roles=False
+        try:
+            admin('DROP OWNED BY p07_payment_runtime; DROP ROLE p07_payment_runtime; ALTER ROLE neondb_owner RENAME TO cloud_admin;','correction_admin');renamed=True
+            admin('CREATE ROLE neondb_owner LOGIN CREATEROLE; ALTER DATABASE neondb OWNER TO neondb_owner; GRANT CONNECT,TEMP ON DATABASE neondb TO neondb_owner; DROP ROLE correction_admin;');created=True
+            fixture_sql=(model.ROOT.parents[3]/'scripts/fixtures/p07-payment-runtime-role-review.sql').read_text();create,grants=fixture_sql.split(';',1)
+            admin(create+';','neondb_owner');admin(grants+' GRANT CONNECT ON DATABASE neondb TO p07_payment_runtime;')
+            admin('CREATE ROLE neon_superuser; CREATE ROLE neon_service LOGIN; GRANT neon_superuser TO neon_service; CREATE ROLE p06_intake_runtime; CREATE ROLE p06_migration_owner; CREATE ROLE p06_migration_runner; CREATE ROLE token_roles; GRANT TEMP ON DATABASE neondb TO PUBLIC,neon_superuser;');roles=True
+            baseline=json.loads(self.command(launch.temp_impact_contract()['sql']))
+            original_open=launch.CorrectionIO._open_transaction;original_run=launch.NativeIO._owned_run;case=self
+            scenario={'name':'positive'}
+            def rewrite(argv,env):
+                case.assertEqual(env['PGSSLMODE'],'verify-full');argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',case.port]
+                return argv,{**env,'PGSSLROOTCERT':str(case.cert)}
+            def opened(obj,argv,env):
+                argv,env=rewrite(argv,env);p=original_open(obj,argv,env)
+                stdin=p.stdin
+                class Input:
+                    def write(_,data):
+                        if data.startswith(b'COMMIT;'):
+                            if scenario['name']=='lost_commit':data=b'COMMIT;\n\\quit\n'
+                            if scenario['name']=='concurrent':admin('GRANT p06_intake_runtime TO p07_payment_runtime WITH INHERIT TRUE;')
+                        return stdin.write(data)
+                    def flush(_):return stdin.flush()
+                    def close(_):return stdin.close()
+                p.stdin=Input();return p
+            def read(obj,argv,env,deadline):
+                argv,env=rewrite(argv,env);return original_run(obj,argv,env,time.time()+20)
+            with patch.object(launch,'TEMP_CORRECTION_BASELINE',baseline):
+                helper=current_tests.TempCorrectionTests();helper.setUp();self.addCleanup(helper.doCleanups)
+                def run():
+                    shutil.rmtree(helper.root,ignore_errors=True)
+                    with patch.object(launch.CorrectionIO,'proof',True,create=True),patch.object(launch.CorrectionIO,'_open_transaction',opened),patch.object(launch.CorrectionIO,'_owned_run',read),patch.object(launch,'recovery_password',return_value='SYNTHETIC_TLS'):
+                        cap=helper.cap();result=launch.run_temp_correction(cap)
+                        close=launch.closeout_temp_correction(helper.cap('closeout'))
+                    self.assertTrue(close['verified'],close);self.assertEqual(result['connectionReservations'],3,result)
+                    self.assertFalse(result['executionReady']);self.assertIsNone(result['candidate'])
+                    self.assertEqual(admin("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_%'"),'0')
+                    return result
+                before=admin("SELECT json_agg(x::text ORDER BY x::text) FROM pg_database d CROSS JOIN LATERAL unnest(d.datacl) x WHERE datname='neondb'")
+                original_validate=launch.correction_validate
+                def reject_post(raw,post=False,expected_acl=None):
+                    if post:raise model.Stop('SYNTHETIC_POST_FAILURE')
+                    return original_validate(raw,post,expected_acl)
+                with patch.object(launch,'correction_validate',side_effect=reject_post):
+                    r=run();self.assertFalse(r['verified']);self.assertEqual(r['independent']['state'],'PRESTATE')
+                self.assertEqual(admin("SELECT json_agg(x::text ORDER BY x::text) FROM pg_database d CROSS JOIN LATERAL unnest(d.datacl) x WHERE datname='neondb'"),before)
+                r=run();self.assertTrue(r['verified'],r);self.assertEqual(r['independent']['state'],'POSTSTATE')
+                def reset():admin('SET ROLE neondb_owner; GRANT TEMP ON DATABASE neondb TO PUBLIC; REVOKE TEMP ON DATABASE neondb FROM p06_intake_runtime,p06_migration_owner,p06_migration_runner,token_roles; RESET ROLE;')
+                reset();scenario['name']='lost_commit';r=run();self.assertFalse(r['verified']);self.assertFalse(r['commitAcknowledged']);self.assertEqual(r['independent']['state'],'POSTSTATE')
+                reset();scenario['name']='concurrent';r=run();self.assertFalse(r['verified']);self.assertTrue(r['commitAcknowledged']);self.assertEqual(r['independent']['state'],'DRIFT')
+                admin('REVOKE p06_intake_runtime FROM p07_payment_runtime;');reset()
+                # Drift detected before any write leaves the original PUBLIC ACL intact.
+                admin('GRANT p06_intake_runtime TO p07_payment_runtime WITH INHERIT TRUE;')
+                scenario['name']='positive';r=run();self.assertFalse(r['verified']);self.assertFalse(r['commitAcknowledged'])
+                self.assertEqual(admin("SELECT json_agg(x::text ORDER BY x::text) FROM pg_database d CROSS JOIN LATERAL unnest(d.datacl) x WHERE datname='neondb'"),before)
+        finally:
+            if renamed:
+                admin('DROP OWNED BY p07_payment_runtime; DROP ROLE p07_payment_runtime;')
+                if roles:admin('DROP OWNED BY neon_service,neon_superuser,p06_intake_runtime,p06_migration_owner,p06_migration_runner,token_roles; DROP ROLE neon_service,neon_superuser,p06_intake_runtime,p06_migration_owner,p06_migration_runner,token_roles;')
+                if created:admin('ALTER DATABASE neondb OWNER TO cloud_admin; DROP OWNED BY neondb_owner; DROP ROLE neondb_owner;')
+                admin('CREATE ROLE correction_admin LOGIN SUPERUSER;')
+                admin('ALTER ROLE cloud_admin RENAME TO neondb_owner;','correction_admin')
+            self.command('DROP ROLE correction_admin; REVOKE TEMP ON DATABASE neondb FROM PUBLIC;')
+
+
+    def test_temp_correction_public_crash_fresh_cleanup_no_replay(self):
+        self.test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(correction=True)
 
 for _name in dir(tls_fixture.LifecyclePostgres):
     if _name.startswith('test_') and _name not in CurrentEvidenceTLS.__dict__:setattr(CurrentEvidenceTLS,_name,None)
