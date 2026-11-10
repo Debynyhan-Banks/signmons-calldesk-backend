@@ -69,7 +69,8 @@ class Capability:
         need(e['sourceManifestSha256'] == digest((HERE / 'source-manifest.json').read_bytes()),
              'MANIFEST_BINDING')
         c = load('p08-live-binder-local-20261029/source/coordinator.py', 'entry_old_coordinator')
-        modules = c.sources(); restore = modules['restore']
+        modules = c.sources(); binding = load('p08-key-correction-20261110/binding.py', 'entry_candidate_binding')
+        restore = binding.apply_restore(modules['restore'])
         p = e['plan']
         local_approval = {'decision': 'APPROVE_LOCAL_SINGLE_COORDINATOR', 'externalActionAuthorized': False,
                           'operationId': p['operationId'], 'planSha256': digest(p)}
@@ -89,9 +90,7 @@ class Capability:
         need(set(db) == {'host', 'port', 'database', 'user'} and
              all(isinstance(db[k], str) and db[k] and len(db[k]) <= 255 for k in ('host', 'database', 'user')) and
              type(db['port']) is int and 1 <= db['port'] <= 65535, 'DATABASE_SCOPE')
-        need(e['resources'] == {'candidate': restore.CANDIDATE, 'image': restore.IMAGE,
-             'normalRevision': restore.NORMAL, 'identity': restore.IDENTITY,
-             'secretVersions': {s: '1' for s in restore.SECRETS}}, 'RESOURCE_PINS')
+        need(e['resources'] == binding.resource_pins(restore), 'RESOURCE_PINS')
         limits = e['limits']
         need(set(limits) == {'cli', 'https', 'sql', 'child', 'childRequests'} and
              all(type(v) is int and 1 <= v <= 512 for v in limits.values()) and limits['child'] <= 8,

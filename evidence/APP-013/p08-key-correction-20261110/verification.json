@@ -1,0 +1,33 @@
+{
+  "status": "LOCAL_VERIFIED_QUALIFICATION_ONLY",
+  "observedAt": "2026-11-10T21:32:53.960030+00:00",
+  "baseSourceCommit": "1f5449662707245b56fedfc16e3c5820e26b5d3e",
+  "sourceManifestSha256": "e20d676169fc92fa09282d87f1a6588dc1452d66cc0aefb9c6bed706e048e7eb",
+  "tests": {
+    "crk1Python": 24,
+    "qualificationComposedAndRecoveryTLS": 249,
+    "nativePythonAndTLS": 39,
+    "connectedPacket": 18,
+    "diagnosticPython": 10,
+    "nodeTransportPaymentDiagnosticAndCRK1": 52,
+    "governance": 25
+  },
+  "checks": [
+    "backend-governance-baseline",
+    "frozen-baseline",
+    "docs-consistency",
+    "lint",
+    "architecture",
+    "both-git-diff-checks"
+  ],
+  "liveProviderCalls": 0,
+  "secretVersionsCreated": 0,
+  "candidatesDeployed": 0,
+  "activeBinding": "LEGACY",
+  "externalAuthority": false,
+  "liveKeyAccountPermissions": "UNKNOWN",
+  "acceptedMilestones": "4/8",
+  "section3A": "OPEN",
+  "R1newlyclosed": "0/27",
+  "scope": "APPROVED_CR_K1_ONLY"
+}

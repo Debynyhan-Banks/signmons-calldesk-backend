@@ -151,7 +151,7 @@ export function createPaymentPorts(cap,credentials,journal,injected={}) {
     if(key)return key;
     need(!secretAttempted,'PAYMENT_SECRET_NO_RETRY');secretAttempted=true;
     need(journal.state.secretReads<cap.e.limits.child,'PAYMENT_SECRET_BUDGET');journal.save({secretReads:journal.state.secretReads+1});
-    const name='projects/'+cap.e.plan.projectNumber+'/secrets/signmons-staging-stripe-secret-key/versions/1';
+    const name=stripeSecretName(cap.e);
     const r=await bounded('https://secretmanager.googleapis.com/v1/'+name+':access',{
       method:'GET',headers:{Authorization:'Bearer '+credentials.accessToken}},cleanup);
     key=await decodeStripeTestSecret(r,name);
@@ -225,4 +225,11 @@ export async function decodeStripeTestSecret(r,name){
     try {const value=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
       need(/^sk_test_[A-Za-z0-9]{16,256}$/.test(value),'PAYMENT_TEST_KEY_REQUIRED');return value;
     }finally{bytes.fill(0);}
+}
+
+export function stripeSecretName(e){
+ const pinned=e.resources.secretVersions['signmons-staging-stripe-secret-key'];
+ const version=pinned??(e.resources.candidate==='signmons-calldesk-staging-app013p07atomic1'?'1':null);
+ need(typeof version==='string'&&/^[1-9][0-9]{0,8}$/.test(version),'PAYMENT_SECRET_VERSION_PIN');
+ return 'projects/'+e.plan.projectNumber+'/secrets/signmons-staging-stripe-secret-key/versions/'+version;
 }

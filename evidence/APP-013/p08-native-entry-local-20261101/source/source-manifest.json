@@ -1,9 +1,9 @@
 {
   "files": {
-    "authority.py": "bde166ed16af1ee3e2188e27725415734c2f53ea908b4a14f044952f81f6c7fe",
+    "authority.py": "31f27e95a3601d310b19b6c04c51410c11955ab135d2ef3f8adf8393b30013de",
     "authority_bridge.mjs": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c",
-    "connected_payment.mjs": "aa80beef0d992b86006070d25e5ccad826d20b0286b46ae633a4160424da7cc2",
-    "entry.py": "640652a454a17ad490eb61ac62a026fd27f32ba301561ea850f29d6756716edd",
+    "connected_payment.mjs": "18a9b0fb7bcb4fedd7f0d530de3f2b8e6b08b9a9ad5bc395a12b29b8dcd8085e",
+    "entry.py": "db4dfadfc07424c39f279944271f8f11bb334440db1bdb7fef12835b02713d7e",
     "handoff.py": "9e57a04de735a773da764704c306346f09e4431f3e5518f08f0980e3bfdf420d",
     "native_child.mjs": "899dfb4c0d72c85577dafdea059033a0bd3b4247dda8f4bd0640344a7e11e4c9",
     "native_io.py": "213012477705dfa3477eb2f7dc80938d881d76df4d11ee1ceda3128a768c92b3",
@@ -14,8 +14,10 @@
   "lockedSources": {
     "p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "p08-coordinator-auth-local-20261031/source/authority.mjs": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
-    "p08-https-output-category-local-20261029/source/qualification_launch.py": "9de317f27c45f6945f26379bce2112e0b8a93dad3b260b7ef30b30b67c6b0a41",
-    "p08-https-output-category-local-20261029/source/source-manifest.json": "ec3267810b0797f04c3720da5c609fd6a01219116b44a0eb2c328ba0b549ab44",
+    "p08-https-output-category-local-20261029/source/qualification_launch.py": "e558fb1a4f7288ffab4100b10c4e2decb332934666ba7e0776f02a4a9ebda3c8",
+    "p08-https-output-category-local-20261029/source/source-manifest.json": "cf4d99a55c81e5066b3cff78c8bf375ec24881099ed4b956ff757e36571b962e",
+    "p08-key-correction-20261110/binding.py": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb",
+    "p08-key-correction-20261110/candidate.json": "b1207a40b9f595c9b4bfd73e4a61622d067aa812e5018ec2f72f481df178f5bf",
     "p08-live-binder-local-20261029/source/coordinator.py": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
     "p08-local-preparation-20261022/operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
     "p08-local-preparation-20261022/plan.json": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",

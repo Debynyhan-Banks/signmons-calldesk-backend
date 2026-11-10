@@ -1,7 +1,7 @@
 {
   "files": {
-    "composed_qualification.py": "a0ef87d36a603e4111b2a37d93e72c58b7a5141b822f1ceb91dd470fdd3c728b",
-    "qualification_launch.py": "9de317f27c45f6945f26379bce2112e0b8a93dad3b260b7ef30b30b67c6b0a41",
+    "composed_qualification.py": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a",
+    "qualification_launch.py": "e558fb1a4f7288ffab4100b10c4e2decb332934666ba7e0776f02a4a9ebda3c8",
     "test_composed_qualification.py": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518",
     "test_qualification_launch.py": "66d35dc410fdb412563e36d2c6563e7460078de5b4c6e7ac8c007dd395e3fbb0",
     "test_qualification_launch_postgres.py": "d0b3ba98761a3393070045eedf19563147aae9d4154290b21c842983ac312046"
@@ -15,10 +15,12 @@
   },
   "ownershipSha256": "65409264d701edf8201878f6d058dfbbc3302412e683b36913a81b4578e6b668",
   "producerDependencies": {
+    "p08-key-correction-20261110/binding.py": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb",
+    "p08-key-correction-20261110/candidate.json": "b1207a40b9f595c9b4bfd73e4a61622d067aa812e5018ec2f72f481df178f5bf",
     "p08-narrow-access-check-local-20261101/source/access_check.py": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9",
-    "p08-native-entry-local-20261101/source/authority.py": "bde166ed16af1ee3e2188e27725415734c2f53ea908b4a14f044952f81f6c7fe",
+    "p08-native-entry-local-20261101/source/authority.py": "31f27e95a3601d310b19b6c04c51410c11955ab135d2ef3f8adf8393b30013de",
     "p08-native-entry-local-20261101/source/authority_bridge.mjs": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c",
-    "p08-native-entry-local-20261101/source/connected_payment.mjs": "aa80beef0d992b86006070d25e5ccad826d20b0286b46ae633a4160424da7cc2",
+    "p08-native-entry-local-20261101/source/connected_payment.mjs": "18a9b0fb7bcb4fedd7f0d530de3f2b8e6b08b9a9ad5bc395a12b29b8dcd8085e",
     "p08-restoration-local-20261028/source/auth/reuse/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",
     "p08-same-day-renewal-filename-local-20261028/source/launch_binding.py": "baa0fea1ac8011c2c167634375647e636db49deaa624d9d3760a6eab03297296"
   },

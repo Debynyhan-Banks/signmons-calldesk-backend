@@ -28,7 +28,11 @@ GCLOUD = "/opt/homebrew/bin/gcloud"
 PSQL = "/opt/homebrew/bin/psql"
 REGION = "us-east5"
 SERVICE = "signmons-calldesk-staging"
-REVISION = "signmons-calldesk-staging-app013p07atomic1"
+_binding_spec = importlib.util.spec_from_file_location("candidate_binding", model.ROOT.parent.parent / "p08-key-correction-20261110/binding.py")
+candidate_binding = importlib.util.module_from_spec(_binding_spec)
+_binding_spec.loader.exec_module(candidate_binding)
+CANDIDATE_CONFIG = candidate_binding.current()
+REVISION = CANDIDATE_CONFIG["candidate"]
 SECRETS = tuple(f"signmons-staging-p07-{name}" for name in (
     "payment-database-url", "stripe-webhook-secret", "disabled-openai-key",
     "admin-token", "conversation-key", "technician-link-key",
@@ -702,7 +706,7 @@ def current_module(name):
     finally:sys.path[:]=old
 
 def current_cli_contract(account='<discovered-account>'):
-    return (*cli_contract(account),{'id':'stripe_state','argv':(GCLOUD,'secrets','versions','describe','1',
+    return (*cli_contract(account),{'id':'stripe_state','argv':(GCLOUD,'secrets','versions','describe',CANDIDATE_CONFIG['stripeVersion'],
             '--secret','signmons-staging-stripe-secret-key','--project',model.PROJECT,'--format=json(name,state)')})
 
 def current_https_contract(number,key):
@@ -713,7 +717,7 @@ def current_https_contract(number,key):
     for i,service in enumerate(CURRENT_SERVICES[6:],6):
         rows.append({'id':f'service_{i}','method':'GET','url':f'https://serviceusage.googleapis.com/v1/projects/{number}/services/{service}','body':None})
     for i,secret in enumerate(POLICY_SECRETS):
-        permissions=list(SECRET_PERMISSIONS)+(['secretmanager.versions.enable','secretmanager.versions.disable'] if secret in SECRETS else [])
+        permissions=list(SECRET_PERMISSIONS)+(['secretmanager.versions.enable','secretmanager.versions.disable'] if secret in SECRETS or CANDIDATE_CONFIG["state"]=="CORRECTED" else [])
         rows.append({'id':f'secret_permissions_{i}','method':'POST',
           'url':f'https://secretmanager.googleapis.com/v1/projects/signmons/secrets/{secret}:testIamPermissions','body':{'permissions':permissions}})
     rows.append({'id':'run_permissions','method':'POST','url':f'https://run.googleapis.com/v2/projects/signmons/locations/{REGION}/services/{SERVICE}:testIamPermissions',
@@ -754,7 +758,7 @@ def environment_digest(rows):
         need(isinstance(row,dict) and isinstance(row.get('name'),str) and row['name'] not in seen,'ENVIRONMENT_SHAPE')
         name=row['name'];seen.add(name)
         if name in required:need(row=={'name':name,'value':required[name]},'ENVIRONMENT_LITERAL')
-        elif name in pins:need(row=={'name':name,'valueFrom':{'secretKeyRef':{'name':pins[name],'key':'1'}}},'ENVIRONMENT_SECRET')
+        elif name in pins:need(row=={'name':name,'valueFrom':{'secretKeyRef':{'name':pins[name],'key':candidate_binding.version(pins[name],CANDIDATE_CONFIG)}}},'ENVIRONMENT_SECRET')
         else:
             need(name=='CUSTOMER_PAYMENT_RETURN_URL' and set(row)=={'name','value'} and isinstance(row['value'],str),'ENVIRONMENT_SHAPE')
             from urllib.parse import urlsplit
@@ -864,7 +868,7 @@ class CurrentAdapter(Adapter):
     def read_cloud(self,deadline):
         v=super().read_cloud(deadline)
         need(self.cli['revision'].get('metadata',{}).get('name')==REVISION and self.cli['service'].get('metadata',{}).get('name')==SERVICE,'RUNTIME_RESOURCE_DRIFT')
-        need(self.cli['stripe_state']=={'name':'projects/'+self.project_number+'/secrets/signmons-staging-stripe-secret-key/versions/1','state':'ENABLED'},'STRIPE_VERSION_STATE')
+        need(self.cli['stripe_state']=={'name':'projects/'+self.project_number+'/secrets/signmons-staging-stripe-secret-key/versions/'+CANDIDATE_CONFIG['stripeVersion'],'state':'DISABLED' if CANDIDATE_CONFIG['state']=='CORRECTED' else 'ENABLED'},'STRIPE_VERSION_STATE')
         member='serviceAccount:'+model.IDENTITY
         for i,secret in enumerate(SECRETS):
             need(self.cli[f'secret_state_{i}']=={'name':f'projects/{self.project_number}/secrets/{secret}/versions/1','state':'DISABLED'},'RETIRED_VERSION_STATE')
@@ -1208,8 +1212,7 @@ class QualificationCapability:
             authority.validate_payment({'payment':scope['payment'],'execution':'EXTERNAL'},
                 {k:model.timestamp(v) for k,v in np['window'].items()})
         restore=modules['restore'];operator=_operator_module()
-        need(scope['resources']=={'candidate':restore.CANDIDATE,'image':restore.IMAGE,'normalRevision':restore.NORMAL,
-            'identity':restore.IDENTITY,'secretVersions':{s:'1' for s in restore.SECRETS}},'QUALIFIER_RESOURCE_PINS')
+        need(scope['resources']==candidate_binding.resource_pins(restore,CANDIDATE_CONFIG),'QUALIFIER_RESOURCE_PINS')
         need(scope['database']=={'host':operator.DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'},'QUALIFIER_DATABASE_PINS')
         target=scope['target'];model.exact_uuid(target.get('id'),'QUALIFIER_TARGET')
         need(set(target)=={'id','tenantId','email','fullName','role'} and target['tenantId']==model.TENANT and

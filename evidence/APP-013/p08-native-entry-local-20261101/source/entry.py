@@ -14,6 +14,7 @@ from handoff import Handoff
 
 readbacks = load('p08-native-closeout-local-20261031/source/adapter.py', 'entry_readback_contract')
 c, bridge, restore = readbacks.load_sources()
+load("p08-key-correction-20261110/binding.py", "runtime_candidate_binding").apply_restore(restore)
 
 
 class RuntimeAdapter(restore.NativeAdapter):
@@ -24,7 +25,7 @@ class RuntimeAdapter(restore.NativeAdapter):
         self.acl = load_acl()
 
     def preflight(self, p, q, deadline):
-        if self.cap.e['version'] == 2:
+        if self.cap.e['version'] == 2 and 'signmons-staging-stripe-secret-key' not in self.cap.e['resources']['secretVersions']:
             try:self.payment_preflight()
             except Exception:raise c.Stop('PAYMENT_PREFLIGHT_STOP') from None
         return super().preflight(p, q, deadline)
@@ -69,7 +70,14 @@ class RuntimeAdapter(restore.NativeAdapter):
 
     def readback(self, kind, name, enabled, p, deadline):
         if kind != 'role':
-            return super().readback(kind, name, enabled, p, deadline)
+            observed = super().readback(kind, name, enabled, p, deadline)
+            if (observed and enabled and kind == 'version' and name == 'signmons-staging-stripe-secret-key'
+                    and self.cap.e['version'] == 2):
+                # Corrected versions retire disabled. The source-bound lifecycle puts
+                # this journaled enable/readback first, before all runtime activation.
+                try:self.payment_preflight()
+                except Exception:raise c.Stop('PAYMENT_PREFLIGHT_STOP') from None
+            return observed
         # The original role branch requires a blanket zero count. Preserve the
         # real count and use the shared, strictly validated administrative policy.
         v = self.role(deadline)
@@ -126,6 +134,7 @@ class Coordinator(c.Coordinator):
         super().__init__(cap.plan, cap.local_approval, cap.e['qualification'], runtime, ports,
                          cap.root, cap.clock, closeout=cap.mode != 'run')
         self.cap, self.io = cap, io
+        self.modules["restore"] = cap.modules["restore"]
         self.j['nativeEntry'] = {'envelopeSha256': cap.envelope_hash,
             'calls': {k: 0 for k in ('cli','https','sql','child')}}
         cap.coordinator = self
