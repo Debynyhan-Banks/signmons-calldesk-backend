@@ -1,0 +1,88 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "recordedAt": "2026-11-10T11:22:22.437705+00:00",
+  "sourceCommit": "4012c9227919cdcde6a28276c7720430dc92e023",
+  "approvalCommit": "5049f36",
+  "result": {
+    "candidate": null,
+    "executionReady": false,
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "observation": {
+      "complete": true,
+      "failure": null,
+      "provenance": {
+        "aclDefault": false,
+        "database": "neondb",
+        "databaseOwner": "neondb_owner",
+        "effectiveTemp": true,
+        "impact": "DB_OWNER_REVIEW_REQUIRED",
+        "memberships": [
+          {
+            "admin": true,
+            "direction": "INCOMING",
+            "grantor": "cloud_admin",
+            "inherit": false,
+            "member": "neondb_owner",
+            "role": "p07_payment_runtime",
+            "set": false
+          }
+        ],
+        "role": "p07_payment_runtime",
+        "roleCount": 1,
+        "serverVersion": 180006,
+        "superuser": false,
+        "tempGrants": [
+          {
+            "grantable": false,
+            "grantee": null,
+            "grantor": "neondb_owner",
+            "public": true,
+            "usable": true
+          },
+          {
+            "grantable": false,
+            "grantee": "neon_superuser",
+            "grantor": "neondb_owner",
+            "public": false,
+            "usable": false
+          },
+          {
+            "grantable": false,
+            "grantee": "neondb_owner",
+            "grantor": "neondb_owner",
+            "public": false,
+            "usable": false
+          }
+        ],
+        "tempSources": [
+          {
+            "kind": "PUBLIC",
+            "role": null
+          }
+        ],
+        "user": "neondb_owner"
+      }
+    },
+    "operationId": "c64ef2c8-b137-4472-9ab9-b76ead3cbd16",
+    "residuals": [],
+    "scopeSha256": "07af14294dc8cdad1a070d3adf41852ca49cc4404fcf19261874af113222588e",
+    "sqlReservations": 3,
+    "status": "DATABASE_ROLE_PROVENANCE_DIAGNOSED"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "c64ef2c8-b137-4472-9ab9-b76ead3cbd16",
+    "residuals": [],
+    "scopeSha256": "07af14294dc8cdad1a070d3adf41852ca49cc4404fcf19261874af113222588e",
+    "verified": true
+  },
+  "publicCloseoutAdditionalSql": 0,
+  "unknowns": [
+    "Provider-managed membership requirements",
+    "Impact of PUBLIC TEMP changes on other roles and applications",
+    "Approved correction or prerequisite contract decision"
+  ]
+}
