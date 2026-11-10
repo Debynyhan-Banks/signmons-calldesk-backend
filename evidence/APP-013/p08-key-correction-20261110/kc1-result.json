@@ -1,0 +1,85 @@
+{
+  "operationId": "392807bd-8c43-4a01-b82d-3292f19fd222",
+  "sourceCommit": "a7ae8b3e82b302343d4c17c97721accdb806a3ae",
+  "runApprovalCommit": "1aacbd2dfff1814a76f1346f6de9d28f04299305",
+  "closeoutApprovalCommit": "dd7019049604a3fb410b077341a92923d93fbe8c",
+  "run": {
+    "adopted": false,
+    "candidate": "signmons-calldesk-staging-p07key392807bd8c43",
+    "candidateReadyObserved": false,
+    "failure": "CORRECTION_STOPPED",
+    "operationId": "392807bd-8c43-4a01-b82d-3292f19fd222",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [
+      "secretBinding:signmons-staging-p07-payment-database-url"
+    ],
+    "retainedResources": [],
+    "status": "CORRECTION_CONTAINMENT_UNCONFIRMED",
+    "stripeVersion": "2"
+  },
+  "closeout": {
+    "adopted": false,
+    "candidate": "signmons-calldesk-staging-p07key392807bd8c43",
+    "candidateReadyObserved": false,
+    "failure": "CORRECTION_STOPPED",
+    "operationId": "392807bd-8c43-4a01-b82d-3292f19fd222",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [
+      "DISABLED_SECRET_VERSION"
+    ],
+    "status": "CORRECTION_CLOSED",
+    "stripeVersion": "2"
+  },
+  "journal": {
+    "candidate": "signmons-calldesk-staging-p07key392807bd8c43",
+    "failure": "CORRECTION_STOPPED",
+    "intents": [
+      [
+        "createVersion",
+        "signmons-staging-stripe-secret-key"
+      ],
+      [
+        "identity",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-payment-database-url"
+      ]
+    ],
+    "operationId": "392807bd-8c43-4a01-b82d-3292f19fd222",
+    "planSha256": "47232bfc481353795efa791a461b2f0ed837dc622fc5cfebbeca01cf41c99006",
+    "readiness": null,
+    "version": "2"
+  },
+  "processAbsent": true,
+  "privateInputsPersisted": false,
+  "ownedLaunchersAndSpecsRemoved": true
+}
