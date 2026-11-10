@@ -1,0 +1,15 @@
+{
+  "code": "PAYMENT_TEST_KEY_REQUIRED",
+  "operationId": "97de78e4-32ba-4827-b3c2-26bff127d7c6",
+  "privateInputsPersisted": false,
+  "stage": "SANDBOX_KEY",
+  "status": "CR_K1_STOPPED",
+  "sourceCommit": "a7ae8b3e82b302343d4c17c97721accdb806a3ae",
+  "approvalCommit": "05ee41a942d4f3bf558648c7c1eaf85eb0f993fd",
+  "processAbsent": true,
+  "ownedLauncherAndSpecRemoved": true,
+  "providerCalls": 0,
+  "providerMutations": 0,
+  "endpointInputMatched": true,
+  "callCountBasis": "Source order: endpoint matched, decoder refused before first Stripe GET and before cloud/SQL preflight."
+}
