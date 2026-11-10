@@ -1,0 +1,31 @@
+{
+  "recordedAt": "2026-11-10T23:26:48.336612+00:00",
+  "sourceCommit": "a7ae8b3e82b302343d4c17c97721accdb806a3ae",
+  "attendedProbe": "ENDED_WITHOUT_DIAGNOSTIC",
+  "attendedProbeElapsedSeconds": 124.33,
+  "attendedProbeExactStopCause": "UNKNOWN_NOT_RETAINED",
+  "syntheticOwnedPtyProbe": {
+    "status": "LOCAL_ENDPOINT_INPUT_INSPECTED",
+    "inputLength": 10,
+    "formatValid": true,
+    "exactMatch": false,
+    "trimmedMatch": false,
+    "surroundingWhitespace": false,
+    "looksLikeUrl": false,
+    "controlOrNonAscii": false,
+    "providerCalls": 0
+  },
+  "syntheticPtyExitCode": 0,
+  "processesAbsent": true,
+  "launcherRemoved": true,
+  "rawInputPersisted": false,
+  "providerCalls": 0,
+  "computerUseTerminalAccess": "BLOCKED_BY_TOOL",
+  "tests": {
+    "python": 25,
+    "node": 18
+  },
+  "qualificationOrder": "keyCheckBeforeCloudAndSql",
+  "endpointPinChanged": false,
+  "next": "OWNER_READY_FOR_LOCAL_ENDPOINT_ONLY_INPUT; no full qualification prepared"
+}

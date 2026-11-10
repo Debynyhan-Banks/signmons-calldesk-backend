@@ -32,3 +32,7 @@ Cleanup first retires the role, then removes only the owned candidate tag, remov
 | Final customer acceptance | Existing same-job Checkout, authentic event and application gate unchanged | Still outstanding after correction/adoption; owner and implementer |
 
 Local verification does not prove external access or deployment success. The next eligible operation is **qualification-only**. An exact correction mutation packet must follow successful current qualification, enumerate both run/independent-closeout windows and approved allowance, and recheck commands/source/resource pins before launch. No attended credential window is imposed by this document.
+
+## Input-boundary update after QK3
+
+Backenda7ae8b3: QK3 repeated KEY_ENDPOINT_PIN and is consumed/closed. Current Chrome endpoint matches the approved hash; old raw inputs cannot be reconstructed. Shared endpoint predicate/local no-network CLI now diagnoses input shape without storing its value. Future qualification runs the existing key check before cloud/SQL preflight.25Python+18Node focused tests and an actual owned-PTY synthetic hidden-input→Python→Node check pass; prior392 tests are historical, not rerun on this change. Attended endpoint-only probe ended without diagnostic; processes/launcher closed, providerCalls0. Await owner readiness for a local endpoint-only prompt, not another full qualification. No new external packet is prepared. See qk3-result.json and local-input-check-20261110.json.3A OPEN, accepted4/8; approved CR-K1 scope only.
