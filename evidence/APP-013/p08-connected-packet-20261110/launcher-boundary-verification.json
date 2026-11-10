@@ -1,0 +1,25 @@
+{
+  "section": "APP-013/3A/P08",
+  "verifiedAt": "2026-11-10T17:25:03.868874+00:00",
+  "status": "LOCAL_LAUNCHER_BOUNDARY_VERIFIED",
+  "files": {
+    "packet.py": "8e570937553411973f206577337d063c773e9b586aeedfcbd71babca9701ca58",
+    "connected_launcher.py": "2d084ff7f76ff7c58dd7809b39f12bf4f35dc4a773ee6fc4713aabac49ba8d5f",
+    "test_launcher.py": "794b64cc9d0baa597216ecd002c8d769d97e3457d8b5dade7bb769df36cf3dee",
+    "test_approval_wait.py": "9b44a34a7259c341b382e5c7717b37780e891b1b4e37892defbac8ab275ffd56"
+  },
+  "tests": 18,
+  "boundary": "Actual versioned launcher and real temporary Git reads/commits; synthetic scope, injected clock, mocked provider/qualification capability and dispatch. Existing packet tests separately verify connected cleanup. No live acceptance claimed.",
+  "cases": [
+    "both approvals initially absent then committed",
+    "qualification deadline purges without dispatch",
+    "native deadline reaches cleanup",
+    "native interruption reaches cleanup",
+    "uncommitted or mismatched authority cannot dispatch"
+  ],
+  "runtimeSource": "dbfeeac709c3dfb3f477eb5030bbb5b497253fad",
+  "providerCalls": 0,
+  "privateInputsRecovered": false,
+  "liveAuthority": false,
+  "scopeDeviation": false
+}
