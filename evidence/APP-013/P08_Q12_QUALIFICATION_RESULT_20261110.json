@@ -1,0 +1,61 @@
+{
+  "verifiedAt": "2026-11-10T14:26:51.346655+00:00",
+  "sourceCommit": "6f2dc20e7bd4f2dc46716b6d032dffe2b0d014ee",
+  "approvalCommit": "cf694c7",
+  "operationId": "5f5f3cf4-1e3e-4d8b-a1e9-9dd19838596e",
+  "result": {
+    "candidate": {
+      "checks": {
+        "billing": true,
+        "database": true,
+        "effectiveAccess": true,
+        "firebase": true,
+        "job": true,
+        "owner": true,
+        "privateInventory": true,
+        "retiredRuntime": true,
+        "services": true
+      },
+      "operationId": "403d081c-ce6c-4de2-9a4d-3955752f423b",
+      "qualifiedUntil": "2026-11-10T14:52:00Z",
+      "roleAclSha256": "649d517af81c235f8045894d73207b7d892b3607ee165418151af6b9975c1560",
+      "runtimeEnvironmentSha256": "b3b3e19722bbd8f5ceadb94323e86612e4b26b8bc896b1d0223e74e683f67cc8",
+      "scopeSha256": "da453f38e761860c120ac10b79443f0c6834d4d860cb2515d5fa52c7c73ee7e5",
+      "status": "QUALIFIED_FOR_NATIVE_ENTRY"
+    },
+    "databaseFailedChecks": [],
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "status": "CURRENT_EVIDENCE_OBSERVED",
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 20,
+      "sql": 4
+    }
+  },
+  "independentCloseoutMarkerPresent": true,
+  "recoveryCloseout": {
+    "completedAt": 1794320711.525409,
+    "onTime": true,
+    "operationId": "40b6c75b-bbec-4483-aa02-83d7e46d4a88",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "resourceCloseout": {
+      "residuals": [],
+      "verified": true
+    },
+    "candidate": null
+  },
+  "recoveredInputAbsent": true,
+  "qualificationInputAbsent": true,
+  "guardAbsent": true,
+  "noAutomaticRetry": true,
+  "nativeExecutionAuthorized": false
+}
