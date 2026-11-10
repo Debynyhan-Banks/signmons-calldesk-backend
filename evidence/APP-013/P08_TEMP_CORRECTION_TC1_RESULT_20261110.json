@@ -1,0 +1,77 @@
+{
+  "recordedAt": "2026-11-10T13:03:06.542880+00:00",
+  "sourceCommit": "d3d35f74526930e0e2ce9d5475d903444279afe1",
+  "approvalCommit": "2a3fa485502b58b2288eef7e8950d7d52e143c76",
+  "result": {
+    "candidate": null,
+    "commitAcknowledged": true,
+    "connectionReservations": 3,
+    "executionReady": false,
+    "failure": null,
+    "independent": {
+      "cleanup": true,
+      "state": "POSTSTATE"
+    },
+    "liveObserved": true,
+    "normalCleanup": true,
+    "operationId": "4a768a38-27f1-469d-9132-8e71fff7eef8",
+    "scopeSha256": "3330273473e3df3912fc37e2b179f5283912727c9fcb696c369124f7697d6b6f",
+    "status": "TEMP_CORRECTION_VERIFIED",
+    "verified": true
+  },
+  "closeout": {
+    "candidate": null,
+    "correctionVerified": true,
+    "executionReady": false,
+    "independent": {
+      "cleanup": true,
+      "state": "POSTSTATE"
+    },
+    "operationId": "4a768a38-27f1-469d-9132-8e71fff7eef8",
+    "residuals": [],
+    "scopeSha256": "3330273473e3df3912fc37e2b179f5283912727c9fcb696c369124f7697d6b6f",
+    "verified": true
+  },
+  "validatedAclCheckpoint": {
+    "afterAcl": [
+      "{\"grantable\":false,\"grantee\":\"neon_superuser\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"neon_superuser\",\"grantor\":\"neondb_owner\",\"privilege\":\"CREATE\"}",
+      "{\"grantable\":false,\"grantee\":\"neon_superuser\",\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}",
+      "{\"grantable\":false,\"grantee\":\"neondb_owner\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"neondb_owner\",\"grantor\":\"neondb_owner\",\"privilege\":\"CREATE\"}",
+      "{\"grantable\":false,\"grantee\":\"neondb_owner\",\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}",
+      "{\"grantable\":false,\"grantee\":\"p06_intake_runtime\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"p06_intake_runtime\",\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}",
+      "{\"grantable\":false,\"grantee\":\"p06_migration_owner\",\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}",
+      "{\"grantable\":false,\"grantee\":\"p06_migration_runner\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"p06_migration_runner\",\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}",
+      "{\"grantable\":false,\"grantee\":\"p07_payment_runtime\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"token_roles\",\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}",
+      "{\"grantable\":false,\"grantee\":null,\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}"
+    ],
+    "beforeAcl": [
+      "{\"grantable\":false,\"grantee\":\"neon_superuser\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"neon_superuser\",\"grantor\":\"neondb_owner\",\"privilege\":\"CREATE\"}",
+      "{\"grantable\":false,\"grantee\":\"neon_superuser\",\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}",
+      "{\"grantable\":false,\"grantee\":\"neondb_owner\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"neondb_owner\",\"grantor\":\"neondb_owner\",\"privilege\":\"CREATE\"}",
+      "{\"grantable\":false,\"grantee\":\"neondb_owner\",\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}",
+      "{\"grantable\":false,\"grantee\":\"p06_intake_runtime\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"p06_migration_runner\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":\"p07_payment_runtime\",\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":null,\"grantor\":\"neondb_owner\",\"privilege\":\"CONNECT\"}",
+      "{\"grantable\":false,\"grantee\":null,\"grantor\":\"neondb_owner\",\"privilege\":\"TEMPORARY\"}"
+    ]
+  },
+  "limits": {
+    "cache": 0,
+    "cli": 0,
+    "https": 0,
+    "privilegeStatements": 2,
+    "sqlConnections": 3,
+    "sqlStatements": 12
+  },
+  "publicCloseoutAdditionalSql": 0,
+  "publicCloseoutCredentialReads": 0,
+  "scopeDeviation": false
+}
