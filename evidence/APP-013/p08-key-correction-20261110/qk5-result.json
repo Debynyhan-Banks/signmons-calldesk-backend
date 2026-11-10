@@ -1,0 +1,22 @@
+{
+  "calls": {
+    "child": 1,
+    "cli": 27,
+    "https": 12,
+    "sql": 2
+  },
+  "operationId": "ed308ba4-ce5a-4b72-a927-ea2538b2f4b4",
+  "privateInputsPersisted": false,
+  "providerMutations": 0,
+  "qualification": {
+    "returnUrl": "https://signmons-calldesk.web.app/payment/status",
+    "roleAclSha256": "649d517af81c235f8045894d73207b7d892b3607ee165418151af6b9975c1560",
+    "runtimeEnvironmentSha256": "b3b3e19722bbd8f5ceadb94323e86612e4b26b8bc896b1d0223e74e683f67cc8"
+  },
+  "qualificationSha256": "dec7be0ea34afbd2930214cc24a5e82f07dc316f14670a72fd47937a63601b01",
+  "status": "CR_K1_QUALIFIED_FOR_EXACT_MUTATION_REVIEW",
+  "sourceCommit": "a7ae8b3e82b302343d4c17c97721accdb806a3ae",
+  "approvalCommit": "eb39c4811ea2b3ab29e9f51fef05049311421e5b",
+  "processAbsent": true,
+  "ownedLauncherAndSpecRemoved": true
+}
