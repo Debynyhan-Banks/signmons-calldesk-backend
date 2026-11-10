@@ -99,7 +99,8 @@ class RetainedScopeTests(PacketTests):
                  patch.object(q,'closeout_binding_recovery',return_value={'rawFilesAbsent':True,'resourceCloseout':{'verified':True}}) as purge,\
                  patch.object(packet,'run_native_and_close',return_value={'workExit':2,'closeoutExit':0}) as run:
                 if declined:
-                    with self.assertRaisesRegex(RuntimeError,'DECLINED'):packet.execute_connected(cap,e,approve)
+                    with self.assertRaisesRegex(RuntimeError,'DECLINED') as stopped:packet.execute_connected(cap,e,approve)
+                    self.assertEqual(stopped.exception.connected_stage,'NATIVE_APPROVAL')
                     run.assert_not_called();transfer.assert_not_called()
                 else:
                     result=packet.execute_connected(cap,e,approve);self.assertTrue(result['privateInputsAbsent']);self.assertFalse(result['paymentReadyForAcceptance'])

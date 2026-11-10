@@ -86,25 +86,39 @@ def execute_connected(cap,envelope,approve_native):
     """
     q.need(cap.external and cap.mode=='handoff','PACKET_EXTERNAL_HANDOFF_REQUIRED')
     qualification_root=Path('/private/tmp/p08-current-external-'+cap.e['qualificationId'])
+    stage='RECOVERY_HANDOFF'
     try:
         q.handoff_recovered_bindings(cap,envelope)
+        stage='CURRENT_QUALIFICATION'
         q.current_main(['--qualify-current',str(cap.input_root/'envelope.json')])
+        stage='QUALIFICATION_RECEIPT'
         result=q.private_json(qualification_root/'result.json')
         q.need(result.get('status')=='CURRENT_EVIDENCE_OBSERVED' and result.get('liveObserved') is True and
                result.get('failure') is None and result.get('residuals')==[],'PACKET_QUALIFICATION_UNCONFIRMED')
         native=native_envelope(envelope,result['candidate'])
+        stage='NATIVE_APPROVAL'
         native['decision']=approve_native(copy.deepcopy(native))
+        stage='NATIVE_HANDOFF'
         q.handoff_qualified_bindings(cap,native)
+        stage='NATIVE_RUN_AND_CLOSEOUT'
         exits=run_native_and_close(cap.native_root)
+        stage='NATIVE_RECEIPT'
         native_result=q.private_json(cap.native_root/'result.json')
+    except BaseException as error:
+        error.connected_stage=stage
+        raise
     finally:
         # Qualification's normal path already owns both SQL closeouts. Only an
         # unconsumed independent cleanup receipt permits fresh crash recovery.
         if (qualification_root/'cleanup-envelope.json').exists() and not (qualification_root/'independent-closeout.json').exists():
             try:q.current_main(['--closeout-current',str(qualification_root)])
             except BaseException:pass  # Guard purge still runs; owned receipts retain unknown containment.
-        cleanup=q.BindingRecoveryCapability(q.private_json(cap.root/'guard-envelope.json'),mode='closeout')
-        purged=q.closeout_binding_recovery(cleanup)
+        try:
+            cleanup=q.BindingRecoveryCapability(q.private_json(cap.root/'guard-envelope.json'),mode='closeout')
+            purged=q.closeout_binding_recovery(cleanup)
+        except BaseException as error:
+            error.connected_stage='RECOVERY_CLOSEOUT'
+            raise
     q.need(purged.get('rawFilesAbsent') is True and purged.get('resourceCloseout',{}).get('verified') is True,'PACKET_PURGE_UNCONFIRMED')
     return {'native':native_result,'commandExits':exits,'privateInputsAbsent':True,'paymentReadyForAcceptance':False}
 

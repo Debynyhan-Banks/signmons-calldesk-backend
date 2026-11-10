@@ -14,8 +14,8 @@
   "lockedSources": {
     "p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "p08-coordinator-auth-local-20261031/source/authority.mjs": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
-    "p08-https-output-category-local-20261029/source/qualification_launch.py": "cafa86a57f6470d1951a2ddbfb593c991c39abda8d48ade210d8c6fc296d2d0f",
-    "p08-https-output-category-local-20261029/source/source-manifest.json": "2d6e3a5618b65a4762ac478a2c97c49b662200ebfab779a863e55c76f4c41fe0",
+    "p08-https-output-category-local-20261029/source/qualification_launch.py": "9de317f27c45f6945f26379bce2112e0b8a93dad3b260b7ef30b30b67c6b0a41",
+    "p08-https-output-category-local-20261029/source/source-manifest.json": "f887d6c1946c6bd667d683805b1044eb00b394cde38e09849d8fef7650dcb628",
     "p08-live-binder-local-20261029/source/coordinator.py": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
     "p08-local-preparation-20261022/operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851",
     "p08-local-preparation-20261022/plan.json": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",

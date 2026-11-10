@@ -1678,18 +1678,23 @@ def binding_purge_guard(cap):
         stop=True
     old={s:signal.signal(s,interrupted) for s in (signal.SIGINT,signal.SIGTERM)}
     try:
-        model.reserve(cap.root/'guard-ready.json',{'scopeSha256':cap.hash,'pid':os.getpid()})
+        ready=False
         while not stop:
             now=cap.clock()
             if now<last or now>=cap.times['purgeEnd']-2 or time.monotonic()>=hard or (cap.root/'purge-now.json').exists():break
             last=now
             pairs=[('guard-sync.json','guard-ack.json')]
             if cap.e['version']==2:pairs.append(('guard-native-sync.json','guard-native-ack.json'))
-            for request_name,ack_name in pairs:
-                if (cap.root/request_name).exists() and not (cap.root/ack_name).exists():
-                    request=private_json(cap.root/request_name)
-                    need(set(request)=={'scopeSha256','nonce'} and request['scopeSha256']==cap.hash and re.fullmatch('[0-9a-f]{32}',request['nonce']),'PURGE_GUARD_SYNC')
-                    model.reserve(cap.root/ack_name,{**request,'expiresAt':min(now+3,cap.times['purgeEnd']-2)})
+            try:
+                with recovery_lock(cap):
+                    if not ready:
+                        model.reserve(cap.root/'guard-ready.json',{'scopeSha256':cap.hash,'pid':os.getpid()});ready=True
+                    for request_name,ack_name in pairs:
+                        if (cap.root/request_name).exists() and not (cap.root/ack_name).exists():
+                            request=private_json(cap.root/request_name)
+                            need(set(request)=={'scopeSha256','nonce'} and request['scopeSha256']==cap.hash and re.fullmatch('[0-9a-f]{32}',request['nonce']),'PURGE_GUARD_SYNC')
+                            model.reserve(cap.root/ack_name,{**request,'expiresAt':min(now+3,cap.times['purgeEnd']-2)})
+            except BlockingIOError:pass  # Owned writer still publishing; deadline remains absolute.
             # V2 custody spans input consumption and the later native approval wait.
             # Only explicit closeout, interruption or the original deadline ends it.
             if cap.e['version']==1 and (cap.root/'handoff-published.json').exists() and not any(os.path.lexists(recovery_slot(cap,s)) for s in ('recovered','qualification')):break
@@ -1715,9 +1720,12 @@ def start_binding_guard(cap):
         start_new_session=True,env={'PATH':'/usr/bin:/bin','HOME':'/Users/debynyhanbanks','PYTHONDONTWRITEBYTECODE':'1'})
     until=time.monotonic()+5
     while time.monotonic()<until and process.poll() is None:
-        if (cap.root/'guard-ready.json').exists():
-            ready=private_json(cap.root/'guard-ready.json')
-            need(ready=={'scopeSha256':cap.hash,'pid':process.pid},'PURGE_GUARD_BINDING');return process
+        try:
+            with recovery_lock(cap):
+                if (cap.root/'guard-ready.json').exists():
+                    ready=private_json(cap.root/'guard-ready.json')
+                    need(ready=={'scopeSha256':cap.hash,'pid':process.pid},'PURGE_GUARD_BINDING');return process
+        except BlockingIOError:pass
         time.sleep(.01)
     if process.poll() is None:process.terminate();process.wait(timeout=3)
     raise model.Stop('PURGE_GUARD_NOT_READY')
@@ -1834,14 +1842,20 @@ def synchronize_recovery_guard(cap,stage="qualification"):
     need(stage in ('qualification','native') and (stage!='native' or cap.e['version']==2),'RECOVERY_SYNC_STAGE')
     request_name,ack_name=('guard-native-sync.json','guard-native-ack.json') if stage=='native' else ('guard-sync.json','guard-ack.json')
     request={'scopeSha256':cap.hash,'nonce':uuid.uuid4().hex}
-    model.reserve(cap.root/request_name,request);until=time.monotonic()+2;last=cap.clock()
+    until=time.monotonic()+2;last=cap.clock();published=False
     while time.monotonic()<until:
         now=cap.clock();need(now>=last and now<cap.times['purgeEnd']-2,'RECOVERY_RETENTION_EXPIRED');last=now
-        if (cap.root/ack_name).exists():
-            ack=private_json(cap.root/ack_name)
-            need(set(ack)=={'scopeSha256','nonce','expiresAt'} and all(ack[k]==v for k,v in request.items()) and
-                 now<ack['expiresAt']<=cap.times['purgeEnd']-2,'PURGE_GUARD_SYNC')
-            return ack['expiresAt']
+        try:
+            with recovery_lock(cap):
+                need(cap.clock()<cap.times['purgeEnd']-2 and not (cap.root/'purge-result.json').exists(),'RECOVERY_RETENTION_EXPIRED')
+                if not published:
+                    model.reserve(cap.root/request_name,request);published=True
+                if (cap.root/ack_name).exists():
+                    ack=private_json(cap.root/ack_name)
+                    need(set(ack)=={'scopeSha256','nonce','expiresAt'} and all(ack[k]==v for k,v in request.items()) and
+                         cap.clock()<ack['expiresAt']<=cap.times['purgeEnd']-2,'PURGE_GUARD_SYNC')
+                    return ack['expiresAt']
+        except BlockingIOError:pass
         time.sleep(.01)
     raise model.Stop('PURGE_GUARD_UNCONFIRMED')
 

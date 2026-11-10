@@ -14,7 +14,7 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass):
     def wait_decision(path,expected,start,cutoff):
         return p.wait_committed_decision(governance,path,expected,start,cutoff)
 
-    cap=None;dispatched=False
+    cap=None;dispatched=False;stage='PACKET_PREPARATION'
     try:
         endpoint=read_hidden('Existing Sandbox endpoint ID (hidden, starts we_): ').strip()
         cap,e=p.construct(spec,endpoint);endpoint=None
@@ -25,6 +25,7 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass):
             return raw if commit=='0'*40 else a.committed(repo,commit,path)
         qc=q.QualificationCapability(test,clock=lambda:q.model.timestamp(spec['window']['start'])+1,read_commit=read);qc.prepare()
         publish('qualification',decision,{'operationId':spec['qualificationId'],'nativeScopeSha256':e['plan']['nativeScopeSha256'],'window':spec['window'],'limits':e['sdkReview']['limits'],'sourceCommit':spec['sourceCommit'],'endpointHashMatched':True,'localCapabilityPreflight':'PASS_PROPOSED_CLOCK_ONLY','providerCalls':0})
+        stage='QUALIFICATION_APPROVAL'
         e['decision']=wait_decision('APP013_P08_CURRENT_QUALIFICATION_20261110.json',decision,q.model.timestamp(spec['window']['start']),q.model.timestamp(spec['window']['cutoff']))
         def approve_native(native):
             d={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_CONNECTED_PAYMENT','externalActionAuthorized':True,'operationId':spec['prospectiveOperationId'],'scopeSha256':q.model.digest(native),'sourceManifestSha256':native['sourceManifestSha256']}
@@ -35,6 +36,9 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass):
         publish('result',{},result)
         return 0
     except BaseException as error:
+        stages={'PACKET_PREPARATION','QUALIFICATION_APPROVAL','RECOVERY_HANDOFF','CURRENT_QUALIFICATION','QUALIFICATION_RECEIPT','NATIVE_APPROVAL','NATIVE_HANDOFF','NATIVE_RUN_AND_CLOSEOUT','NATIVE_RECEIPT','RECOVERY_CLOSEOUT'}
+        failure_stage=getattr(error,'connected_stage',stage)
+        print('CONNECTED_STAGE_'+(failure_stage if failure_stage in stages else 'UNKNOWN'),flush=True)
         print('CONNECTED_STOP_'+(str(error) if isinstance(error,q.model.Stop) else type(error).__name__),flush=True)
         return 2
     finally:

@@ -43,6 +43,7 @@ class LauncherBoundaryTests(unittest.TestCase):
             with patch.object(packet,'construct',return_value=(cap,envelope)),patch.object(packet,'wait_committed_decision',side_effect=wait),patch.object(packet,'execute_connected',side_effect=execute),patch.object(packet.q,'QualificationCapability',return_value=SimpleNamespace(prepare=lambda:None)),patch.object(packet.q,'qualification_cleanup_scope',return_value={'synthetic':True}),patch.object(packet.q,'private_json',return_value={}),patch.object(packet.q,'BindingRecoveryCapability',return_value=cap),patch.object(packet.q,'closeout_binding_recovery',side_effect=cleanup),contextlib.redirect_stdout(output):
                 code=launcher.main(spec,governance=repo,review=review,read_hidden=lambda _: 'we_synthetic')
             self.assertNotIn('PRIVATE_SENTINEL',output.getvalue())
+            if expire=='qualification':self.assertIn('CONNECTED_STAGE_QUALIFICATION_APPROVAL',output.getvalue())
             return code,sequence
     def test_actual_wrapper_waits_for_both_initially_absent_committed_decisions(self):
         code,seq=self.run_case();self.assertEqual(code,0)

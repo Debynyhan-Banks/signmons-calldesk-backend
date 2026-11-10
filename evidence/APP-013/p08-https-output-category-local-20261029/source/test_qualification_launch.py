@@ -2787,7 +2787,102 @@ class ConnectedGuardLifecycleTests(BindingRecoveryTests):
         with launch.recovery_lock(cap):launch.record_private_file(cap,'native',{'synthetic':'private'})
         guard.send_signal(signal.SIGTERM);guard.wait(timeout=5)
         self.assertTrue(launch.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])
-        with self.assertRaisesRegex(model.Stop,'PURGE_GUARD_UNCONFIRMED'):launch.synchronize_recovery_guard(cap,stage='native')
+        with self.assertRaisesRegex(model.Stop,'RECOVERY_RETENTION_EXPIRED'):launch.synchronize_recovery_guard(cap,stage='native')
 
 for _name in BindingRecoveryTests.__dict__:
     if _name.startswith('test_'):setattr(ConnectedGuardLifecycleTests,_name,None)
+
+class ConnectedPublicationTests(ConnectedGuardLifecycleTests):
+    def wait_flag(self,path):
+        until=time.monotonic()+4
+        while not path.exists() and time.monotonic()<until:time.sleep(.01)
+        self.assertTrue(path.exists(),'fixture publisher did not reach forced partial write')
+    def delayed_guard(self,marker,control):
+        original=subprocess.Popen
+        prefix="""import os,json,time
+original_reserve=q.model.reserve
+def delayed_reserve(path,value):
+    if path.name!=MARKER:return original_reserve(path,value)
+    fd=os.open(path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+    try:
+        Path(CONTROL,'paused').touch()
+        end=time.monotonic()+5
+        while not Path(CONTROL,'release').exists() and time.monotonic()<end:time.sleep(.01)
+        os.write(fd,json.dumps(value,sort_keys=True).encode())
+    finally:os.close(fd)
+q.model.reserve=delayed_reserve
+""".replace('MARKER',repr(marker)).replace('CONTROL',repr(str(control)))
+        def spawn(argv,**kwargs):
+            argv=list(argv)
+            if len(argv)>4 and '--binding-input-purge-guard' in argv[4]:
+                argv[4]=argv[4].replace("raise SystemExit(q.recovery_main", "from pathlib import Path;exec("+repr(prefix)+");raise SystemExit(q.recovery_main")
+            return original(argv,**kwargs)
+        return patch.object(subprocess,'Popen',side_effect=spawn)
+    def test_guard_startup_waits_for_existing_lock_holder(self):
+        from concurrent.futures import ThreadPoolExecutor
+        original=launch.start_binding_guard
+        def start(cap):
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                with launch.recovery_lock(cap):
+                    future=pool.submit(original,cap)
+                    time.sleep(.3)
+                    self.assertFalse(future.done())
+                    self.assertFalse((cap.root/'guard-ready.json').exists())
+                return future.result(timeout=5)
+        with patch.object(launch,'start_binding_guard',side_effect=start):
+            cap,guard=self.connected();self.assertIsNone(guard.poll())
+    def test_ready_reader_waits_until_locked_publication_finishes(self):
+        import tempfile
+        from concurrent.futures import ThreadPoolExecutor
+        with tempfile.TemporaryDirectory(prefix='p08-publication-control-',dir='/private/tmp') as d:
+            c=Path(d)
+            with self.delayed_guard('guard-ready.json',c),ThreadPoolExecutor(max_workers=1) as pool:
+                future=pool.submit(self.connected)
+                try:
+                    self.wait_flag(c/'paused');time.sleep(.15);self.assertFalse(future.done())
+                finally:(c/'release').touch()
+                cap,guard=future.result(timeout=5);self.assertIsNone(guard.poll())
+    def test_both_ack_readers_wait_for_partial_publication(self):
+        import tempfile
+        from concurrent.futures import ThreadPoolExecutor
+        for stage,marker in [('qualification','guard-ack.json'),('native','guard-native-ack.json')]:
+            with self.subTest(stage=stage),tempfile.TemporaryDirectory(prefix='p08-publication-control-',dir='/private/tmp') as d:
+                # Each case owns a fresh actual guard/root, using existing cleanup.
+                helper=ConnectedGuardLifecycleTests();helper.setUp();self.addCleanup(helper.doCleanups)
+                c=Path(d)
+                with self.delayed_guard(marker,c):cap,guard=helper.connected()
+                with ThreadPoolExecutor(max_workers=1) as pool:
+                    future=pool.submit(launch.synchronize_recovery_guard,cap,stage)
+                    try:
+                        self.wait_flag(c/'paused');time.sleep(.15)
+                        self.assertEqual((cap.root/marker).stat().st_size,0)
+                        self.assertFalse(future.done());self.assertIsNone(guard.poll())
+                    finally:(c/'release').touch()
+                    self.assertGreater(future.result(timeout=5),time.time())
+    def test_guard_waits_for_locked_partial_request_publication(self):
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        cap,guard=self.connected();paused=threading.Event();release=threading.Event();original=model.reserve
+        def delayed(path,value):
+            if path.name!='guard-native-sync.json':return original(path,value)
+            fd=os.open(path,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+            try:
+                paused.set();release.wait(3);os.write(fd,json.dumps(value).encode())
+            finally:os.close(fd)
+        with patch.object(model,'reserve',side_effect=delayed),ThreadPoolExecutor(max_workers=1) as pool:
+            future=pool.submit(launch.synchronize_recovery_guard,cap,'native')
+            try:
+                self.assertTrue(paused.wait(3));time.sleep(.15);self.assertIsNone(guard.poll())
+                self.assertFalse((cap.root/'guard-native-ack.json').exists());self.assertFalse(future.done())
+            finally:release.set()
+            self.assertGreater(future.result(timeout=5),time.time())
+    def test_fully_published_malformed_ack_still_refuses(self):
+        cap,guard=self.connected()
+        with launch.recovery_lock(cap):
+            fd=os.open(cap.root/'guard-native-ack.json',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+            try:os.write(fd,b'{invalid')
+            finally:os.close(fd)
+        with self.assertRaisesRegex(model.Stop,'CURRENT_OUTPUT'):launch.synchronize_recovery_guard(cap,'native')
+
+for _name in dir(ConnectedGuardLifecycleTests):
+    if _name.startswith('test_') and _name not in ConnectedPublicationTests.__dict__:setattr(ConnectedPublicationTests,_name,None)
