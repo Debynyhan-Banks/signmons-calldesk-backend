@@ -1,0 +1,17 @@
+# APP-013 / 3A / P08 TEMP impact extension — local evidence
+
+Owner approved proposal dfacd87 with "i approve" before implementation. Base ec7d91303cfc5fc05e5d1014128d11a178e99789; verified 2026-11-10T11:52:58.252764+00:00. Approved extension only; no scope deviation beyond that extension.
+
+All five card items complete. Existing qualification_launch.py now offers distinct version3 --diagnose-temp-impact / --closeout-temp-impact capability, committed decision/query/source/resource pins and separate operation root. Three SQL reservations only: catalog read, normal cleanup, fresh independent cleanup. No CLI/HTTPS/cache/Google allowance. No membership or noTEMP policy change.
+
+READ ONLY REPEATABLE READ query inventories at most256 roles,64 TEMP ACL rows and64 usable non-PUBLIC grant sources per role, with overflow sentinels. Records validated role flags, effective CONNECT/TEMP, database owner/version/default ACL and aggregate sessions excluding diagnostic session. Projection yields LOSE_TEMP, RETAINS_TEMP or NO_TEMP. Invalid/incomplete/unsupported/unexplained data is UNKNOWN and discarded. No automatic grant list; candidate null and executionReady false. Group/NOLOGIN/CONNECT-false roles remain included; zero sessions does not prove lack of need. Roles are branch-wide; ACL/session scope is current database only. No customer tables, query text, PIDs or client addresses retained.
+
+Validation: 234 complete current-suite tests PASS, plus25 governance tests PASS. New15 unit tests and3 PostgreSQL/TLS tests included. Actual PostgreSQL covers PUBLIC/direct/multihop/inherit-false,superuser,NOLOGIN,CONNECT false,non-superuser owner ordinary TEMP revoked,default-null ACL,missing target,role/ACL overflow and session visibility. Distinct authority,old-command refusal,source pins,deadline/concurrency/interruptions/transport bounds and fresh-process hard-crash cleanup covered. All owned servers reaped,scratch absent,providerCalls0. Browser N/A:catalog-only diagnostic. Baseline/consistency,architecture and whitespace checks PASS. Previous access/native test counts are historical,not rerun here.
+
+Initial focused test failed because PostgreSQL forbids demoting the bootstrap administrator. Corrected only the disposable fixture using a temporary bootstrap rename and ordinary database owner,restoring roles/ownership in finally. Corrected focused test and full suite pass. No runtime behavior weakened to accommodate fixture.
+
+Session counts use generally visible database/user identity fields,not restricted activity details; see [PostgreSQL statistics](https://www.postgresql.org/docs/18/monitoring-stats.html). Counts are observations,not a concurrency lock or workload inventory.
+
+Machine-readable readiness records exact source/manifest old/new hashes,query hashes,timestamp and owners. Local tests prove code behavior only. Current provider inventory,credentials,effective access,consumers and concurrency remain UNKNOWN. Before any live launch,prepare separate exact source-bound read-only packet and verify command/runtime/config pins,timing and required owner/custodian approval. No live packet or window authorized by this implementation approval. Next observable result is bounded live affected-role inventory plus cleanup;DB owner then decides preserved access before any separately approved correction. No full qualification replay,permission mutation,deployment or credential change.
+
+3A OPEN;accepted1A/1B/2A/2B4/8;R1 newly closed0/27. Unrelated AGENTS.md preserved. No scope deviation beyond approved TEMP-impact extension.

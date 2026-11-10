@@ -1,0 +1,60 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "approvedProposal": "dfacd87",
+  "baseCommit": "ec7d91303cfc5fc05e5d1014128d11a178e99789",
+  "verifiedAt": "2026-11-10T11:52:58.252764+00:00",
+  "changedFiles": {
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py": {
+      "beforeSha256": "41934883bcb02a6e415ae920febacf6b5042322b38c12f8a3a3840c2b0f0dc74",
+      "afterSha256": "55ab98bd0b06de0347ebf44091acb6d171894e5f32917fd1efe7675bff4b73c7"
+    },
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/test_qualification_launch.py": {
+      "beforeSha256": "2ee8118d9a8fb1920f1c119f19d6ef3cf3ba040cb55037141745a14a38e8f7fc",
+      "afterSha256": "907519430db9741c227962773b93438c71d43d70deca3b662aa4cf8745f35604"
+    },
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/test_qualification_launch_postgres.py": {
+      "beforeSha256": "c7096b40429e92fde384bfd0b70e7017469dccaadb8540e8f8d9b4dd8b4a0921",
+      "afterSha256": "d7c073c5e8bd669acfccf548ed7965c09ebab8fb060481827a9c67b934871811"
+    },
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json": {
+      "beforeSha256": "f4aea2546828012f9ea599707bea962bb26543d399233fef95adff261e1785fa",
+      "afterSha256": "b1a7fe1b6bd5d680c22473d7c5370e522649522f952fbf4428e00461f1cadc75"
+    }
+  },
+  "queryHashes": {
+    "temp_impact": "8ea18c5692206261e655d3a9ab30df8f9b56a94fef3f4f2b07e83e72bdd96a4e",
+    "closeout": "4c412c23a971f42bae3eb69210c98f6473476822ab0b16271f02de5ada8e76da"
+  },
+  "currentSuite": {
+    "tests": 234,
+    "result": "PASS",
+    "command": "/opt/homebrew/bin/python3.14 -B -m unittest test_composed_qualification test_qualification_launch test_qualification_launch_postgres"
+  },
+  "governanceTests": 25,
+  "providerCalls": 0,
+  "cleanup": {
+    "serverReaped": true,
+    "scratchAbsent": true
+  },
+  "localChecklistCompleted": [
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "externalReadAuthorized": false,
+  "executionReady": false,
+  "candidate": null,
+  "unknown": [
+    "current live role inventory and TEMP impact",
+    "current credentials and effective access",
+    "intended TEMP consumers",
+    "live concurrent activity"
+  ],
+  "responsibleOwners": {
+    "implementation": "implementer",
+    "live authority": "owner and credential custodian",
+    "preserved TEMP policy": "database owner"
+  }
+}

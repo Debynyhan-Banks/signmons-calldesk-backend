@@ -2061,23 +2061,24 @@ class ProjectPermissionTests(unittest.TestCase):
 
 class RoleDiagnosticTests(unittest.TestCase):
     provenance=False
+    temp_impact=False
     def setUp(self):
         import uuid,shutil
         self.fixture=ExternalBindingTests();self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
         f=self.fixture;self.now=f.case.now
         iso=lambda n:dt.datetime.fromtimestamp(self.now+n,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-        self.e={'version':2 if self.provenance else 1,'execution':'EXTERNAL_READ_ONLY','operationId':str(uuid.uuid4()),
+        self.e={'version':3 if self.temp_impact else 2 if self.provenance else 1,'execution':'EXTERNAL_READ_ONLY','operationId':str(uuid.uuid4()),
             'database':{'host':launch._operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'},
             'role':'p07_payment_runtime','sourceCommit':f.e['sourceCommit'],'manifestSha256':launch.source_manifest_sha256(),
             'runtimeFiles':{p:model.digest(Path(p).read_bytes()) for p in launch.role_runtime_files()},
-            'queryHashes':{d['id']:model.digest(d) for d in (launch.role_provenance_contract() if self.provenance else launch.current_sql_contract()[2],launch.sql_contract()[1])},
+            'queryHashes':{d['id']:model.digest(d) for d in (launch.temp_impact_contract() if self.temp_impact else launch.role_provenance_contract() if self.provenance else launch.current_sql_contract()[2],launch.sql_contract()[1])},
             'window':{k:iso(v) for k,v in dict(start=-1,cutoff=30,readEnd=60,closeoutEnd=180).items()},
             'limits':{'sql':3,'cli':0,'https':0,'cache':0}}
-        self.bind();self.root=Path(('/private/tmp/p08-role-provenance-' if self.provenance else '/private/tmp/p08-database-role-')+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+        self.bind();self.root=Path(('/private/tmp/p08-temp-impact-' if self.temp_impact else '/private/tmp/p08-role-provenance-' if self.provenance else '/private/tmp/p08-database-role-')+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
         self.raw=f.case.io.sql(launch.current_sql_contract()[2],'SYNTHETIC',self.now+60)
         self.calls=[];self.clients=[];self.override={}
     def bind(self):
-        f=self.fixture;self.e.pop('decision',None);kind='PROVENANCE' if self.provenance else 'DIAGNOSTIC';path='APP013_P08_DATABASE_ROLE_'+kind+'_OPERATION_20261109.json'
+        f=self.fixture;self.e.pop('decision',None);kind='TEMP_IMPACT' if self.temp_impact else 'PROVENANCE' if self.provenance else 'DIAGNOSTIC';path='APP013_P08_DATABASE_ROLE_'+kind+'_OPERATION_20261109.json'
         raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_DATABASE_ROLE_'+kind,'externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
         (f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic role approval')
         self.e['decision']={'commit':f.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
@@ -2326,3 +2327,101 @@ class RoleProvenanceTests(RoleDiagnosticTests):
         self.raw['serverVersion']=150000;self.raw['databaseOwner']='PRIVATE_EXCEPTION_CANARY'
         r=self.run_case();self.assertEqual(r['status'],'DATABASE_ROLE_UNCONFIRMED')
         self.assertEqual(r['residuals'],[]);self.assertIsNone(r['observation']['provenance'])
+
+class TempImpactTests(RoleDiagnosticTests):
+    temp_impact=True
+    test_every_condition_mixed_null_wrong_type_and_identity=None
+    test_role_failure_retains_all_checks_and_cleanup=None
+
+    def setUp(self):
+        super().setUp()
+        self.raw={'database':'neondb','user':'neondb_owner','role':'p07_payment_runtime','roleCount':1,
+            'serverVersion':180006,'databaseOwner':'neondb_owner','aclDefault':False,'inventoryRoleCount':3,
+            'tempGrants':[{'public':True,'grantee':None,'grantor':'neondb_owner','grantable':False},
+                {'public':False,'grantee':'neondb_owner','grantor':'neondb_owner','grantable':False},
+                {'public':False,'grantee':'group','grantor':'neondb_owner','grantable':False}],
+            'roles':[{'name':'p07_payment_runtime','login':False,'superuser':False,'connect':True,'temp':True,'nonPublicTemp':False,'sources':[],'sessions':0},
+                {'name':'neondb_owner','login':True,'superuser':False,'connect':True,'temp':True,'nonPublicTemp':True,'sources':['neondb_owner'],'sessions':1},
+                {'name':'group','login':False,'superuser':False,'connect':False,'temp':True,'nonPublicTemp':True,'sources':['group'],'sessions':0}]}
+
+    def test_positive_three_sql_no_google_and_public_closeout_no_replay(self):
+        with patch.object(launch.NativeIO,'cli',side_effect=AssertionError('SDK forbidden')),patch.object(launch.NativeIO,'https',side_effect=AssertionError('HTTPS forbidden')):
+            r=self.run_case()
+        self.assertEqual(r['status'],'TEMP_IMPACT_DIAGNOSED');self.assertEqual(self.calls,['role','normal','independent'])
+        v=r['observation']['inventory'];self.assertTrue(r['observation']['complete'])
+        self.assertEqual(v['affectedRoles'],['p07_payment_runtime'])
+        self.assertEqual(v['impact'],'DB_OWNER_REVIEW_REQUIRED')
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('no prompt')):
+            self.assertTrue(launch.closeout_role_diagnostic(self.cap('closeout'))['verified'])
+        with self.assertRaises(model.Stop):self.cap()
+
+    def test_projection_matrix_and_no_automatic_access_decision(self):
+        for version in (160001,170001,180006):
+            raw=copy.deepcopy(self.raw);raw['serverVersion']=version
+            self.assertTrue(launch.temp_impact_observation(raw)['complete'])
+        for scenario in ('no_public','inherited','superuser','nologin_no_connect','default'):
+            raw=copy.deepcopy(self.raw);target=raw['roles'][0]
+            if scenario=='no_public':raw['tempGrants'].pop(0);target['temp']=False
+            elif scenario=='inherited':target.update(sources=['group'],nonPublicTemp=True)
+            elif scenario=='superuser':target.update(superuser=True,nonPublicTemp=True)
+            elif scenario=='nologin_no_connect':target.update(login=False,connect=False)
+            else:raw['aclDefault']=True
+            r=launch.temp_impact_observation(raw);self.assertTrue(r['complete'],scenario)
+            self.assertEqual(r['inventory']['affectedRoles'],['p07_payment_runtime'] if scenario in ('nologin_no_connect','default') else [])
+            self.assertNotIn('grantsToApply',r['inventory'])
+
+    def test_all_missing_null_duplicate_type_identity_and_limit_refusals(self):
+        cases=[]
+        for key in self.raw:
+            for action in ('delete','null'):
+                v=copy.deepcopy(self.raw)
+                if action=='delete':del v[key]
+                else:v[key]=None
+                cases.append(v)
+        for listkey in ('roles','tempGrants'):
+            for key in self.raw[listkey][0]:
+                for action in ('delete','bad_type'):
+                    v=copy.deepcopy(self.raw)
+                    if action=='delete':del v[listkey][0][key]
+                    else:v[listkey][0][key]={}
+                    cases.append(v)
+        for key,value in [('user','foreign'),('database','foreign'),('role','foreign'),('roleCount',0),('roleCount',True),
+            ('inventoryRoleCount',2),('inventoryRoleCount',True),('serverVersion',150000),('serverVersion',190000),('serverVersion',True)]:
+            cases.append({**self.raw,key:value})
+        for mutate in (
+            lambda v:v['roles'].append(copy.deepcopy(v['roles'][0])),
+            lambda v:v['tempGrants'].append(copy.deepcopy(v['tempGrants'][0])),
+            lambda v:v['roles'][0].update(temp=False),
+            lambda v:v['roles'][0].update(nonPublicTemp=True),
+            lambda v:v['roles'][0].update(sessions=-1),
+            lambda v:v['roles'][0].update(sessions=True),
+            lambda v:v['roles'][0].update(sources=['foreign']),
+            lambda v:v['roles'][1].update(sources=[]),
+            lambda v:v['roles'][1].update(sources=['neondb_owner']*2),
+            lambda v:v['roles'][1].update(sources=['group']*65),
+            lambda v:v.update(roles=v['roles']*257,inventoryRoleCount=771),
+            lambda v:v.update(tempGrants=v['tempGrants']*65)):
+            v=copy.deepcopy(self.raw);mutate(v);cases.append(v)
+        for name in ('','x'*64,'PRIVATE_EXCEPTION_CANARY\n','x\x00','x\u202e'):
+            v=copy.deepcopy(self.raw);v['roles'][0]['name']=name;cases.append(v)
+        for v in cases:
+            r=launch.temp_impact_observation(v)
+            self.assertFalse(r['complete'],v);self.assertIsNone(r['inventory']);self.assertEqual(r['failure'],'TEMP_IMPACT_UNKNOWN')
+
+    def test_exact_scope_rejects_previous_modes_queries_and_commands(self):
+        saved=copy.deepcopy(self.e)
+        for version in (1,2):
+            self.e=copy.deepcopy(saved);self.e['version']=version;self.bind()
+            with self.assertRaises(model.Stop):self.cap()
+        self.e=saved;self.bind();cap=self.cap()
+        for d in (launch.role_provenance_contract(),launch.current_sql_contract()[2]):
+            with self.assertRaises(model.Stop):self.io(cap).sql(d,'x',self.now+10)
+        for command in ('--diagnose-database-role','--diagnose-role-provenance'):
+            with patch.object(launch,'private_json',return_value=self.e),patch.object(launch,'RoleDiagnosticCapability',return_value=cap),self.assertRaisesRegex(model.Stop,'ROLE_COMMAND_SCOPE'):
+                launch.role_diagnostic_main([command,'synthetic'])
+        self.assertFalse(self.root.exists())
+
+    def test_incomplete_native_output_discards_metadata_and_cleans(self):
+        self.raw['serverVersion']=190000;self.raw['databaseOwner']='PRIVATE_EXCEPTION_CANARY'
+        r=self.run_case();self.assertEqual(r['status'],'DATABASE_ROLE_UNCONFIRMED')
+        self.assertIsNone(r['observation']['inventory']);self.assertEqual(r['residuals'],[])

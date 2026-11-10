@@ -272,9 +272,9 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
                 self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
                 self.command('REVOKE TEMP ON DATABASE neondb FROM PUBLIC; REVOKE CREATE ON SCHEMA public FROM PUBLIC;')
 
-    def test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(self,provenance=False):
-        command='role-provenance' if provenance else 'database-role'
-        helper=(current_tests.RoleProvenanceTests if provenance else current_tests.RoleDiagnosticTests)();helper.setUp();self.addCleanup(helper.doCleanups)
+    def test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(self,provenance=False,temp_impact=False):
+        command='temp-impact' if temp_impact else 'role-provenance' if provenance else 'database-role'
+        helper=(current_tests.TempImpactTests if temp_impact else current_tests.RoleProvenanceTests if provenance else current_tests.RoleDiagnosticTests)();helper.setUp();self.addCleanup(helper.doCleanups)
         path=helper.fixture.repo/'role-envelope.json';path.write_text(json.dumps(helper.e));path.chmod(0o600)
         prefix='\n'.join([
             'import sys,os,signal,json;from pathlib import Path',
@@ -358,6 +358,91 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
 
     def test_role_provenance_public_hard_crash_and_fresh_tls_cleanup(self):
         self.test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(provenance=True)
+
+
+    def test_temp_impact_actual_tls_grant_sources_and_session_visibility(self):
+        import shutil,signal
+        helper=current_tests.TempImpactTests();helper.setUp();self.addCleanup(helper.doCleanups)
+        original=launch.NativeIO._owned_run;case=self
+        def owned(obj,argv,env,deadline):
+            case.assertIn(argv[-1],[launch.temp_impact_contract()['sql'],launch.sql_contract()[1]['sql']])
+            case.assertEqual(env['PGSSLMODE'],'verify-full')
+            argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',case.port]
+            return original(obj,argv,{**env,'PGSSLROOTCERT':str(case.cert)},time.time()+20)
+        def observe(complete=True):
+            shutil.rmtree(helper.root,ignore_errors=True)
+            with patch.object(launch.RoleDiagnosticIO,'_owned_run',owned),patch.object(launch,'recovery_password',return_value='SYNTHETIC_TLS'):
+                result=launch.run_role_diagnostic(helper.cap())
+            self.assertEqual(result['residuals'],[],result);self.assertEqual(result['sqlReservations'],3)
+            self.assertEqual(result['observation']['complete'],complete,result)
+            self.assertIsNone(result['candidate']);self.assertFalse(result['executionReady'])
+            if not complete:return result
+            self.assertEqual(result['status'],'TEMP_IMPACT_DIAGNOSED',result)
+            v=result['observation']['inventory'];return v,{row['name']:row for row in v['roles']}
+        def admin(sql):
+            p=subprocess.run([launch._operator_module().PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1',
+                '-h',str(self.socket),'-p',self.port,'-U','temp_admin','-d','neondb','-c',sql],env=self.env,capture_output=True,timeout=20)
+            self.assertEqual(p.returncode,0,p.stderr.decode())
+        self.command('CREATE ROLE temp_admin LOGIN SUPERUSER; CREATE ROLE temp_direct; CREATE ROLE temp_parent; CREATE ROLE temp_middle; CREATE ROLE temp_leaf; CREATE ROLE temp_blocked; CREATE ROLE temp_session LOGIN; GRANT CONNECT ON DATABASE neondb TO temp_session;')
+        child=None; renamed=False
+        try:
+            v,rows=observe();self.assertEqual(rows['p07_payment_runtime']['effect'],'NO_TEMP')
+            self.command('GRANT TEMP ON DATABASE neondb TO PUBLIC,temp_direct,temp_parent; GRANT temp_parent TO temp_middle WITH INHERIT TRUE; GRANT temp_middle TO temp_leaf WITH INHERIT TRUE; GRANT temp_parent TO temp_blocked WITH INHERIT FALSE;')
+            v,rows=observe()
+            self.assertEqual(rows['p07_payment_runtime']['effect'],'LOSE_TEMP')
+            self.assertEqual(rows['temp_direct']['effect'],'RETAINS_TEMP')
+            self.assertEqual(rows['temp_leaf']['sources'],['temp_parent'])
+            self.assertEqual(rows['temp_leaf']['effect'],'RETAINS_TEMP')
+            self.assertEqual(rows['temp_blocked']['effect'],'LOSE_TEMP')
+            self.assertFalse(rows['temp_blocked']['connect']);self.assertFalse(rows['temp_blocked']['login'])
+            self.assertEqual(rows['temp_admin']['effect'],'RETAINS_TEMP')
+            # General session identity/database fields remain visible to a non-superuser.
+            argv=[launch._operator_module().PSQL,'-X','-q','-A','-t','-h',str(self.socket),'-p',self.port,'-U','temp_session','-d','neondb','-c','SELECT pg_sleep(30)']
+            child=subprocess.Popen(argv,env=self.env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            for _ in range(100):
+                if self.command("SELECT count(*) FROM pg_stat_activity WHERE usename='temp_session'")=='1':break
+                time.sleep(.02)
+            else:self.fail('fixture session absent')
+            admin('ALTER ROLE neondb_owner RENAME TO temp_bootstrap;');renamed=True
+            admin('CREATE ROLE neondb_owner LOGIN; ALTER DATABASE neondb OWNER TO neondb_owner; GRANT CONNECT,TEMP ON DATABASE neondb TO neondb_owner;')
+            v,rows=observe();self.assertEqual(rows['temp_session']['sessions'],1)
+            self.assertFalse(rows['neondb_owner']['superuser']);self.assertEqual(rows['neondb_owner']['effect'],'RETAINS_TEMP')
+            admin('REVOKE TEMP ON DATABASE neondb FROM PUBLIC,neondb_owner;')
+            v,rows=observe();self.assertEqual(rows['neondb_owner']['effect'],'NO_TEMP')
+            self.assertEqual(rows['p07_payment_runtime']['effect'],'NO_TEMP')
+            if renamed:
+                admin('ALTER DATABASE neondb OWNER TO temp_bootstrap; DROP OWNED BY neondb_owner; DROP ROLE neondb_owner; ALTER ROLE temp_bootstrap RENAME TO neondb_owner;');renamed=False
+            saved=self.command("SELECT datacl::text FROM pg_database WHERE datname='neondb'")
+            try:
+                self.command("UPDATE pg_database SET datacl=NULL WHERE datname='neondb'")
+                v,rows=observe();self.assertTrue(v['aclDefault']);self.assertEqual(rows['p07_payment_runtime']['effect'],'LOSE_TEMP')
+            finally:self.command("UPDATE pg_database SET datacl='"+saved.replace("'","''")+"'::aclitem[] WHERE datname='neondb'")
+            self.command('DROP OWNED BY p07_payment_runtime; DROP ROLE p07_payment_runtime;')
+            self.assertIsNone(observe(False)['observation']['inventory'])
+        finally:
+            if child is not None:
+                if child.poll() is None:child.send_signal(signal.SIGTERM)
+                child.wait(timeout=5)
+            if renamed:
+                admin('ALTER DATABASE neondb OWNER TO temp_bootstrap; DROP OWNED BY neondb_owner; DROP ROLE neondb_owner; ALTER ROLE temp_bootstrap RENAME TO neondb_owner;');renamed=False
+            self.command('DROP OWNED BY temp_admin,temp_direct,temp_parent,temp_middle,temp_leaf,temp_blocked,temp_session; DROP ROLE temp_admin,temp_direct,temp_parent,temp_middle,temp_leaf,temp_blocked,temp_session; REVOKE TEMP ON DATABASE neondb FROM PUBLIC;')
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_%'"),'0')
+
+    def test_temp_impact_actual_role_and_acl_overflow(self):
+        self.command("DO $$ BEGIN FOR i IN 1..257 LOOP EXECUTE format('CREATE ROLE temp_bound_%s',i); END LOOP; END $$;")
+        try:
+            raw=json.loads(self.command(launch.temp_impact_contract()['sql']))
+            self.assertEqual(len(raw['roles']),257);self.assertGreater(raw['inventoryRoleCount'],256)
+            self.assertFalse(launch.temp_impact_observation(raw)['complete'])
+            self.command("DO $$ BEGIN FOR i IN 66..257 LOOP EXECUTE format('DROP ROLE temp_bound_%s',i); END LOOP; FOR i IN 1..65 LOOP EXECUTE format('GRANT TEMP ON DATABASE neondb TO temp_bound_%s',i); END LOOP; END $$;")
+            raw=json.loads(self.command(launch.temp_impact_contract()['sql']))
+            self.assertEqual(len(raw['tempGrants']),65);self.assertLess(raw['inventoryRoleCount'],256)
+            self.assertFalse(launch.temp_impact_observation(raw)['complete'])
+        finally:
+            self.command("DO $$ BEGIN FOR i IN 1..257 LOOP IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='temp_bound_'||i) THEN EXECUTE format('DROP OWNED BY temp_bound_%s',i); EXECUTE format('DROP ROLE temp_bound_%s',i); END IF; END LOOP; END $$;")
+
+    def test_temp_impact_public_hard_crash_and_fresh_tls_cleanup(self):
+        self.test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(temp_impact=True)
 
 
 
