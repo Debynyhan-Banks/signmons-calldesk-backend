@@ -1,0 +1,27 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "operationId": "86a092fe-40d8-46ab-829c-a38f75a1a687",
+  "scopeSha256": "dcb01b7064bbcdd0148bb5bd0e31449c6d73756114e14cbb46e18654f3bfd9bd",
+  "sourceCommit": "4012c9227919cdcde6a28276c7720430dc92e023",
+  "approvalCommit": "ae0c80f4616817dccf5d07738537e5c6169a6649",
+  "window": {
+    "start": "2026-11-10T01:25:00Z",
+    "cutoff": "2026-11-10T01:35:00Z",
+    "readEnd": "2026-11-10T01:40:00Z",
+    "closeoutEnd": "2026-11-10T01:45:00Z"
+  },
+  "inspectedAt": "2026-11-10T10:00:10Z",
+  "operationRoot": "/private/tmp/p08-role-provenance-86a092fe-40d8-46ab-829c-a38f75a1a687",
+  "operationRootAbsent": true,
+  "attemptMarkerPresent": false,
+  "sqlReservationsPresent": 0,
+  "resultMarkerPresent": false,
+  "closeoutMarkerPresent": false,
+  "exactLauncherAttemptObserved": false,
+  "exactLauncherCredentialPromptObserved": false,
+  "operationOutcome": "EXPIRED_UNEXECUTED",
+  "automaticRetryAllowed": false,
+  "candidate": null,
+  "executionReady": false,
+  "liveDatabaseFacts": "UNKNOWN"
+}
