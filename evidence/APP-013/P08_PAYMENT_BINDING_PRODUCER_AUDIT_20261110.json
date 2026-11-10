@@ -1,0 +1,22 @@
+{
+  "section": "APP-013/3A/P08",
+  "status": "PAYMENT_BINDING_PRODUCER_GAP",
+  "recordedAt": "2026-11-10T15:56:25.332887+00:00",
+  "backendSource": "7f7b7b7eea370cb9b7deb5f11505f14b7f2955d0",
+  "files": {
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py": "cba7abe5199c77032ffc9b2d125816b80dc08e51cba3d362a614305e220f5e4d",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py": "bde166ed16af1ee3e2188e27725415734c2f53ea908b4a14f044952f81f6c7fe",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py": "1ddc3a57c1121e47ff5c2804b00aa0651e00a12f05a2221a502ab655fc5bbc5a"
+  },
+  "findings": [
+    "Recovery SQL lacks Job.updatedAt and connected-account/charges fields.",
+    "recovery_values and read_recovered_bindings retain/accept exactly projectNumber,targetId.",
+    "Version2 payment scope requires current amountTotalCents,currency,approvedAt,policyDigest,jobUpdatedAt,connectedAccountSha256 before qualification.",
+    "ConnectedEntryTests supplies these fields synthetically; transfer test verifies consumption, not production from actual recovery output."
+  ],
+  "conclusion": "Existing local payment execution proof stands, but full live packet cannot be assembled using the current recovery output alone.",
+  "runtimeChanged": false,
+  "providerCalls": 0,
+  "privateInputsRecovered": false,
+  "decision": "Propose explicit expansion of version2 recovery read/retention contract before implementation; preserve version1."
+}
