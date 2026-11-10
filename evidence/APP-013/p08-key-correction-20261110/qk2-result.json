@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-11-10T23:03:49.259050+00:00",
+  "sourceCommit": "77e3b696ac79c070aeeb0c0ff2d8bf4c91684dc5",
+  "approvalCommit": "5bd356137d55dd9eb5df559ec67e865d39c5d989",
+  "failure": {
+    "code": "KEY_ENDPOINT_PIN",
+    "operationId": "4420952b-5eb9-41b9-b2c3-9432c4c9a8f9",
+    "privateInputsPersisted": false,
+    "stage": "SANDBOX_KEY",
+    "status": "CR_K1_STOPPED"
+  },
+  "ownerReportedInputPrefix": "we_",
+  "exactInputMismatchCause": "UNKNOWN",
+  "sourceOrderingInference": "preflight returned before key endpoint pin refusal; detailed qualification values not retained",
+  "stripeRequests": 0,
+  "providerMutations": 0,
+  "keyValidated": false,
+  "launcherExited": true,
+  "directChildrenAbsent": true,
+  "rawInputsAbsent": true,
+  "ownedLauncherAndSpecAbsent": true,
+  "receiptInventory": [
+    "attempt.json",
+    "qualify-failure.json"
+  ],
+  "operationConsumed": true,
+  "section3A": "OPEN",
+  "acceptedMilestones": "4/8",
+  "scope": "APPROVED_CR_K1_ONLY"
+}
