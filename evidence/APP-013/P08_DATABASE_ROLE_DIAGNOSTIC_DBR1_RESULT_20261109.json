@@ -1,0 +1,47 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "sourceSha": "50144cb8306e20798e7d0eff86ecfce1eb8e5385",
+  "approvalCommit": "9a8e223d8ee64194c5b0732c059a5f59d86cedee",
+  "result": {
+    "candidate": null,
+    "executionReady": false,
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "observation": {
+      "checks": {
+        "aclExact": "PASS",
+        "connectionLimitZero": "PASS",
+        "expiryFinite": "PASS",
+        "expiryPast": "PASS",
+        "loginDisabled": "PASS",
+        "noDatabaseTemp": "FAIL",
+        "noMemberships": "FAIL",
+        "noOwnedObjects": "PASS",
+        "noSchemaCreate": "PASS",
+        "noSessions": "PASS",
+        "noUnsafeAttributes": "PASS",
+        "roleExistsExactlyOne": "PASS"
+      },
+      "failure": "ROLE_NOT_READY"
+    },
+    "operationId": "327d284a-2bda-455b-9e53-a6676454625a",
+    "residuals": [],
+    "scopeSha256": "3ca7c8614de33ec4efc0ebe28cbcb9b97b184bc8eceaea29ff80d9c25b1895d5",
+    "sqlReservations": 3,
+    "status": "DATABASE_ROLE_DIAGNOSED"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "327d284a-2bda-455b-9e53-a6676454625a",
+    "residuals": [],
+    "scopeSha256": "3ca7c8614de33ec4efc0ebe28cbcb9b97b184bc8eceaea29ff80d9c25b1895d5",
+    "verified": true
+  },
+  "unknowns": [
+    "Membership identities and directions",
+    "Effective TEMP privilege source and correction impact"
+  ],
+  "additionalSqlDuringPublicCloseout": 0
+}
