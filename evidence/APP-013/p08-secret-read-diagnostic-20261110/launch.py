@@ -50,7 +50,7 @@ def execute(spec,decision,invoke=command,clock=time.time,root_base=Path('/privat
    need(run([gc,'config','get-value',key]).decode().strip() in ('','(unset)'),'OWNER_OVERRIDE')
   result['stage']='PROJECT_LOOKUP'
   number=run([gc,'projects','describe','signmons','--format=value(projectNumber)']).decode().strip()
-  need(re.fullmatch('[0-9]{6,20}',number) and hashlib.sha256(number.encode()).hexdigest()==spec['projectNumberSha256'],'PROJECT_PIN')
+  need(re.fullmatch('[0-9]{6,20}',number) and digest(number)==spec['projectNumberSha256'],'PROJECT_PIN')
   result['stage']='TOKEN_ACQUISITION'
   token=run([gc,'auth','print-access-token','--account=debynyhan@signmons.com']).strip()
   need(20<=len(token)<=4096 and not any(chr(v).isspace() for v in token),'TOKEN_SHAPE')
@@ -59,8 +59,9 @@ def execute(spec,decision,invoke=command,clock=time.time,root_base=Path('/privat
   v=json.loads(raw);need(set(v)=={'code','httpStatus','providerReason','requests'} and v['code'] in CODES and type(v['requests']) is int and 0<=v['requests']<=1 and (v['httpStatus'] is None or type(v['httpStatus']) is int and 100<=v['httpStatus']<=599),'RESULT_SHAPE')
   need(v['providerReason'] in {None,'UNCLASSIFIED','SERVICE_DISABLED','BILLING_DISABLED','ACCESS_TOKEN_SCOPE_INSUFFICIENT','ACCESS_TOKEN_EXPIRED','IAM_PERMISSION_DENIED','USER_PROJECT_DENIED','CONSUMER_INVALID','SECURITY_POLICY_VIOLATED','RATE_LIMIT_EXCEEDED'},'RESULT_REASON')
   need(clock()<deadline,'DEADLINE');result.update(status='DIAGNOSTIC_OBSERVED',**v)
- except BaseException:
-  pass # No exception text, response body or credential can enter retained output.
+ except BaseException as error:
+  safe={'OWNER_MISMATCH','OWNER_OVERRIDE','PROJECT_PIN','TOKEN_SHAPE','COMMAND_UNCONFIRMED','SDK_BUDGET','DEADLINE','RESULT_SHAPE','RESULT_REASON'}
+  result['code']=str(error) if isinstance(error,RuntimeError) and str(error) in safe else 'LOCAL_PREREQUISITE'
  finally:
   token=b'';number='';result['sdkCommands']=calls
   result['rawFilesAbsent']={p.name for p in root.iterdir()}=={'attempt.json'}

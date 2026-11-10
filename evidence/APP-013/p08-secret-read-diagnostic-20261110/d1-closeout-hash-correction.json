@@ -1,0 +1,32 @@
+{
+  "section": "APP-013/3A/P08",
+  "recordedAt": "2026-11-10T20:51:47.726595+00:00",
+  "d1Result": {
+    "code": "LOCAL_PREREQUISITE",
+    "httpStatus": null,
+    "operationId": "71eeaa06-2470-4d25-a1f4-7a3d682503af",
+    "providerReason": null,
+    "rawFilesAbsent": true,
+    "requests": 0,
+    "sdkCommands": 5,
+    "stage": "PROJECT_LOOKUP",
+    "status": "DIAGNOSTIC_UNCONFIRMED"
+  },
+  "d1Consumed": true,
+  "processesAbsent": true,
+  "receiptInventory": [
+    "attempt.json",
+    "result.json"
+  ],
+  "diagnosis": "Diagnostic used raw-byte SHA256 for project number while the established recovery pin uses canonical JSON-string SHA256. Corrected to the existing digest contract. Exact underlying D1 exception was not retained; the compatibility defect is locally demonstrated. No Secret Manager request was issued.",
+  "correctionFiles": {
+    "launch.py": "1d09c6c837ee9449a509258387a4e8a6c3887d091fd18f2b20f8875f57b70f00",
+    "test_launch.py": "d02ad79c00e72e1deb2d4cbce2a661d709be2d6e27e3dee3caa888d4d8ca4a81"
+  },
+  "tests": {
+    "diagnosticPython": 10
+  },
+  "limitations": "R24 secret stage remains UNKNOWN. D1 approval cannot authorize a rerun or corrected-source read.",
+  "providerReadsThisCorrection": 0,
+  "scopeDeviation": false
+}

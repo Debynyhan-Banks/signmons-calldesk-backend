@@ -14,7 +14,7 @@ class DiagnosticTests(unittest.TestCase):
   raise AssertionError('No credential read allowed after wrong project')
  def test_project_mismatch_stops_before_token_or_http(self):
   r=m.execute(self.s,self.d,invoke=self.invoke,clock=lambda:2,root_base=self.base)
-  self.assertEqual(r['sdkCommands'],5);self.assertEqual(r['stage'],'PROJECT_LOOKUP');self.assertEqual(r['requests'],0)
+  self.assertEqual(r['sdkCommands'],5);self.assertEqual(r['stage'],'PROJECT_LOOKUP');self.assertEqual(r['requests'],0);self.assertEqual(r['code'],'PROJECT_PIN')
   self.assertEqual(sorted(p.name for p in next(self.base.iterdir()).iterdir()),['attempt.json','result.json'])
  def test_one_attempt_refuses_replay(self):
   m.execute(self.s,self.d,invoke=self.invoke,clock=lambda:2,root_base=self.base)
@@ -46,7 +46,7 @@ class DiagnosticTests(unittest.TestCase):
   class Pin:
    def hexdigest(self):return self.s['projectNumberSha256']
   pin=Pin();pin.s=self.s
-  def sha(data=b''):return pin if data==b'123456789012' else real(data)
+  def sha(data=b''):return pin if data==b'"123456789012"' else real(data)
   def invoke(argv,deadline,data):
    if argv[0]==m.NODE:
     self.calls.append(argv);v=json.loads(data);self.assertEqual(v['token'],'PRIVATE_SENTINEL_TOKEN_123456');self.assertEqual(v['projectNumber'],'123456789012')
@@ -65,3 +65,10 @@ class DiagnosticTests(unittest.TestCase):
     try:f.result();outcomes.append('attempt')
     except FileExistsError:outcomes.append('refused')
   self.assertEqual(sorted(outcomes),['attempt','refused']);self.assertEqual(len(self.calls),5)
+
+ def test_project_pin_matches_existing_recovery_digest_not_raw_bytes(self):
+  sys.path.insert(0,str(m.BACKEND/'evidence/APP-013/p08-https-output-category-local-20261029/source'))
+  import composed_qualification as existing
+  for value in ['123456789012','987654321098']:
+   self.assertEqual(m.digest(value),existing.digest(value))
+   self.assertNotEqual(m.digest(value),hashlib.sha256(value.encode()).hexdigest())
