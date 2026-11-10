@@ -1,0 +1,20 @@
+{
+  "recordedAt": "2026-11-10T23:13:29.296338+00:00",
+  "source": "Existing Chrome tab inventory URL/title, no navigation or Stripe API call",
+  "sandboxTitle": "Signmons LLC sandbox",
+  "endpointLabelUserReported": "Signmons P07 same-job sandbox",
+  "approvedEndpointSha256": "dbaae6448069a186dc4b9e2fc6182707dda7b61218376e9e97cd21b20b4bfeae",
+  "observedEndpointSha256": "dbaae6448069a186dc4b9e2fc6182707dda7b61218376e9e97cd21b20b4bfeae",
+  "approvedEndpointMatches": true,
+  "sha256KnownVectorSelfTestPassed": true,
+  "endpointDetailsDomRead": false,
+  "tabReadToolError": "Cannot read properties of undefined (reading timeoutMs)",
+  "providerMutation": false,
+  "stripeApiCalls": 0,
+  "rawIdentifiersWrittenToRepository": false,
+  "keyValidated": false,
+  "liveEndpointState": "UNKNOWN",
+  "qk2RawInputMismatchCause": "UNKNOWN",
+  "qk2Consumed": true,
+  "sourcePinChanged": false
+}
