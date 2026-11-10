@@ -1,0 +1,31 @@
+{
+  "section": "APP-013/3A/P08",
+  "status": "LOCAL_PACKET_PREPARATION_ONLY",
+  "verifiedAt": "2026-11-10T16:30:04.728691+00:00",
+  "runtimeSourceCommit": "dbfeeac709c3dfb3f477eb5030bbb5b497253fad",
+  "files": {
+    "packet.py": "d2680ce3bd3240b1076cd88a1a70b0935ee96585f296bd42dd5e57ef4e40ebbc",
+    "test_packet.py": "79e7630e8a451be5c971729d2c0239810cadd1973126f3f1b2536a4432eb4c72"
+  },
+  "historicalBuilderSha256": "8cce6cd35d8d8e9b904f597286f5bda909cc6a28a943aff40987e1794c000ca2",
+  "packetTests": 8,
+  "testCommand": "python3.14 -B -m unittest discover -s evidence/APP-013/p08-connected-packet-20261110 -p test_packet.py",
+  "testBoundary": "Synthetic inputs and sequencing mocks plus actual existing NativeCapability schema in PROOF_ONLY; no live source evidence fabricated. Existing core TLS producer/consumer proof reused from dbfeeac.",
+  "externalReads": 0,
+  "credentialReads": 0,
+  "privateEnvelopeWritten": false,
+  "liveExecutionAuthorized": false,
+  "attendance": "November10 noon\u20131pm Eastern confirmed; not action approval",
+  "readinessRecord": "APP013_P08_BINDING_RECOVERY_R21_READINESS_20261110.json",
+  "limits": "Existing staged ceilings preserved; source/config checked only with proposed clock/authority in memory",
+  "scopeDeviation": false,
+  "finalChecks": {
+    "packetTests": "8 passed",
+    "architecture": "npm run arch:check passed",
+    "backendGovernanceGate": "passed",
+    "frozenBaseline": "passed",
+    "docsConsistency": "passed",
+    "governanceTests": "25 passed",
+    "whitespace": "both repositories passed"
+  }
+}
