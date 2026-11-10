@@ -1,0 +1,373 @@
+{
+  "recordedAt": "2026-11-10T12:12:57.234100+00:00",
+  "sourceCommit": "79c596251698e85fad31e3e79f118ad0697f436f",
+  "approvalCommit": "29da259",
+  "result": {
+    "candidate": null,
+    "executionReady": false,
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "observation": {
+      "complete": true,
+      "failure": null,
+      "inventory": {
+        "aclDefault": false,
+        "affectedRoles": [
+          "p06_intake_runtime",
+          "p06_migration_owner",
+          "p06_migration_runner",
+          "p07_payment_runtime",
+          "pg_checkpoint",
+          "pg_create_subscription",
+          "pg_database_owner",
+          "pg_execute_server_program",
+          "pg_maintain",
+          "pg_monitor",
+          "pg_read_all_data",
+          "pg_read_all_settings",
+          "pg_read_all_stats",
+          "pg_read_server_files",
+          "pg_signal_autovacuum_worker",
+          "pg_signal_backend",
+          "pg_stat_scan_tables",
+          "pg_use_reserved_connections",
+          "pg_write_all_data",
+          "pg_write_server_files",
+          "token_roles"
+        ],
+        "database": "neondb",
+        "databaseOwner": "neondb_owner",
+        "impact": "DB_OWNER_REVIEW_REQUIRED",
+        "inventoryRoleCount": 25,
+        "role": "p07_payment_runtime",
+        "roleCount": 1,
+        "roles": [
+          {
+            "connect": true,
+            "effect": "RETAINS_TEMP",
+            "login": true,
+            "name": "cloud_admin",
+            "nonPublicTemp": true,
+            "sessions": 0,
+            "sources": [
+              "neon_superuser",
+              "neondb_owner"
+            ],
+            "superuser": true,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "RETAINS_TEMP",
+            "login": true,
+            "name": "neon_service",
+            "nonPublicTemp": true,
+            "sessions": 0,
+            "sources": [
+              "neon_superuser"
+            ],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "RETAINS_TEMP",
+            "login": false,
+            "name": "neon_superuser",
+            "nonPublicTemp": true,
+            "sessions": 0,
+            "sources": [
+              "neon_superuser"
+            ],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "RETAINS_TEMP",
+            "login": true,
+            "name": "neondb_owner",
+            "nonPublicTemp": true,
+            "sessions": 0,
+            "sources": [
+              "neon_superuser",
+              "neondb_owner"
+            ],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "p06_intake_runtime",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "p06_migration_owner",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "p06_migration_runner",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "p07_payment_runtime",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_checkpoint",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_create_subscription",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_database_owner",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_execute_server_program",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_maintain",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_monitor",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_read_all_data",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_read_all_settings",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_read_all_stats",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_read_server_files",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_signal_autovacuum_worker",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_signal_backend",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_stat_scan_tables",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_use_reserved_connections",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_write_all_data",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "pg_write_server_files",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          },
+          {
+            "connect": true,
+            "effect": "LOSE_TEMP",
+            "login": false,
+            "name": "token_roles",
+            "nonPublicTemp": false,
+            "sessions": 0,
+            "sources": [],
+            "superuser": false,
+            "temp": true
+          }
+        ],
+        "serverVersion": 180006,
+        "sessionScope": "CURRENT_DATABASE_EXCLUDING_DIAGNOSTIC_SESSION",
+        "tempGrants": [
+          {
+            "grantable": false,
+            "grantee": null,
+            "grantor": "neondb_owner",
+            "public": true
+          },
+          {
+            "grantable": false,
+            "grantee": "neon_superuser",
+            "grantor": "neondb_owner",
+            "public": false
+          },
+          {
+            "grantable": false,
+            "grantee": "neondb_owner",
+            "grantor": "neondb_owner",
+            "public": false
+          }
+        ],
+        "user": "neondb_owner"
+      }
+    },
+    "operationId": "4b7d86a5-769c-4cd4-b7c9-e1b04b8a0f9b",
+    "residuals": [],
+    "scopeSha256": "09c958f3cec856ecd316c8fef68a7fef46e468d30a6b998cee58d2747b5bc3b1",
+    "sqlReservations": 3,
+    "status": "TEMP_IMPACT_DIAGNOSED"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "4b7d86a5-769c-4cd4-b7c9-e1b04b8a0f9b",
+    "residuals": [],
+    "scopeSha256": "09c958f3cec856ecd316c8fef68a7fef46e468d30a6b998cee58d2747b5bc3b1",
+    "verified": true
+  },
+  "publicCloseoutAdditionalSql": 0,
+  "permissionMutations": 0
+}
