@@ -1,0 +1,43 @@
+{
+  "verifiedAt": "2026-11-10T13:38:17.039440+00:00",
+  "sourceCommit": "c57972b4ac02d353d9ec37a78d196078bc06bba6",
+  "approvalCommit": "b4472cb",
+  "operationId": "d5362106-2ff4-41cf-8eba-a1c2055f7bff",
+  "result": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "DATABASE_NOT_READY",
+    "failureStage": "database",
+    "liveObserved": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 19,
+      "sql": 4
+    }
+  },
+  "independentCloseoutMarkerPresent": true,
+  "recoveryCloseout": {
+    "completedAt": 1794317753.390547,
+    "onTime": true,
+    "operationId": "ee08b92e-3dd1-4e39-82d2-1fb07d0a775b",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "resourceCloseout": {
+      "residuals": [],
+      "verified": true
+    },
+    "candidate": null
+  },
+  "recoveredInputAbsent": true,
+  "qualificationInputAbsent": true,
+  "guardAbsent": true,
+  "roleClassifierPassed": true,
+  "specificFailedDatabasePredicate": "UNKNOWN",
+  "noAutomaticRetry": true
+}
