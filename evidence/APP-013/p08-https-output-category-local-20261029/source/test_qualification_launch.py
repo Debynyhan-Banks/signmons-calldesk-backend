@@ -2044,3 +2044,189 @@ class ProjectPermissionTests(unittest.TestCase):
         p=subprocess.run([launch.sys.executable,'-I','-B','-c',code,str(model.ROOT),'--closeout-project-permissions',str(self.root)],capture_output=True,timeout=15)
         self.assertEqual(p.returncode,2,p.stderr.decode());r=json.loads((self.root/'closeout.json').read_text())
         self.assertEqual(r['residuals'],['PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(r['candidate']);self.assertFalse((self.root/'permission-result.json').exists())
+
+class RoleDiagnosticTests(unittest.TestCase):
+    def setUp(self):
+        import uuid,shutil
+        self.fixture=ExternalBindingTests();self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
+        f=self.fixture;self.now=f.case.now
+        iso=lambda n:dt.datetime.fromtimestamp(self.now+n,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        self.e={'version':1,'execution':'EXTERNAL_READ_ONLY','operationId':str(uuid.uuid4()),
+            'database':{'host':launch._operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'},
+            'role':'p07_payment_runtime','sourceCommit':f.e['sourceCommit'],'manifestSha256':launch.source_manifest_sha256(),
+            'runtimeFiles':{p:model.digest(Path(p).read_bytes()) for p in launch.role_runtime_files()},
+            'queryHashes':{d['id']:model.digest(d) for d in (launch.current_sql_contract()[2],launch.sql_contract()[1])},
+            'window':{k:iso(v) for k,v in dict(start=-1,cutoff=30,readEnd=60,closeoutEnd=180).items()},
+            'limits':{'sql':3,'cli':0,'https':0,'cache':0}}
+        self.bind();self.root=Path('/private/tmp/p08-database-role-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+        self.raw=f.case.io.sql(launch.current_sql_contract()[2],'SYNTHETIC',self.now+60)
+        self.calls=[];self.clients=[];self.override={}
+    def bind(self):
+        f=self.fixture;self.e.pop('decision',None);path='APP013_P08_DATABASE_ROLE_DIAGNOSTIC_OPERATION_20261109.json'
+        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_DATABASE_ROLE_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
+        (f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic role approval')
+        self.e['decision']={'commit':f.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
+    def cap(self,mode='diagnose'):
+        return launch.RoleDiagnosticCapability(self.e,lambda:self.now,mode,self.fixture.read_commit)
+    def io(self,cap,independent=False):
+        case=self
+        class IO(launch.RoleDiagnosticIO):
+            proof=True
+            def _owned_run(obj,argv,env,deadline):
+                slot='independent' if obj.cleanup_only else 'role' if argv[-1]==launch.current_sql_contract()[2]['sql'] else 'normal'
+                case.calls.append(slot)
+                case.assertEqual(argv[0],launch._operator_module().PSQL)
+                case.assertEqual(env['PGSSLMODE'],'verify-full');case.assertEqual(env['PGSSLROOTCERT'],launch.ROLE_DIAGNOSTIC_CA)
+                case.assertFalse(any(k.startswith('CLOUDSDK_') for k in env))
+                value=case.override.get(slot,case.raw if slot=='role' else {'sessionsAbsent':True})
+                if isinstance(value,BaseException):raise value
+                if callable(value):return value()
+                return value if isinstance(value,bytes) else json.dumps(value).encode()
+            def independent(obj):return case.io(cap,True)
+        obj=IO(cap,independent);self.clients.append(obj);return obj
+    def run_case(self):
+        cap=self.cap()
+        with patch.object(launch,'hidden_password',return_value='PRIVATE_PASSWORD_CANARY'):
+            r=launch.run_role_diagnostic(cap,self.io(cap))
+        self.assertIsNone(r['candidate']);self.assertFalse(r['executionReady'] or r['liveObserved'])
+        self.assertTrue(all(c.closed for c in self.clients));self.assertLessEqual(len(self.calls),3)
+        text=''.join(p.read_text() for p in self.root.glob('*.json'))
+        self.assertNotIn('PRIVATE_PASSWORD_CANARY',text);self.assertNotIn('PRIVATE_EXCEPTION_CANARY',text)
+        return r
+    def test_positive_three_sql_no_google_and_public_closeout_no_replay(self):
+        with patch.object(launch,'config_snapshot',create=True,side_effect=AssertionError('config forbidden')),patch.object(launch.NativeIO,'cli',side_effect=AssertionError('SDK forbidden')),patch.object(launch.NativeIO,'https',side_effect=AssertionError('HTTPS forbidden')):
+            r=self.run_case()
+        self.assertEqual(r['status'],'DATABASE_ROLE_DIAGNOSED');self.assertEqual(self.calls,['role','normal','independent'])
+        self.assertEqual(set(r['observation']['checks'].values()),{'PASS'});self.assertIsNone(r['observation']['failure'])
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('no prompt')):
+            self.assertTrue(launch.closeout_role_diagnostic(self.cap('closeout'))['verified'])
+            with self.assertRaises(model.Stop):launch.closeout_role_diagnostic(self.cap('closeout'))
+        with self.assertRaises(model.Stop):self.cap()
+    def test_every_condition_mixed_null_wrong_type_and_identity(self):
+        rows=[('count',0,'roleExistsExactlyOne'),('login',True,'loginDisabled'),('limit',1,'connectionLimitZero'),
+              ('expiryFinite',False,'expiryFinite'),('expired',False,'expiryPast'),('unsafe',True,'noUnsafeAttributes'),
+              ('memberships',1,'noMemberships'),('owned',1,'noOwnedObjects'),('sessions',1,'noSessions'),
+              ('schemaCreate',True,'noSchemaCreate'),('databaseTemp',True,'noDatabaseTemp'),('acl',[],'aclExact')]
+        for field,value,name in rows:
+            with self.subTest(field=field):
+                raw={**self.raw,field:value};r=launch.role_diagnostic_observation(raw)
+                self.assertEqual(r['checks'][name],'FAIL');self.assertIsNotNone(r['failure'])
+                if field!='count':
+                    for bad in (None,'PRIVATE_EXCEPTION_CANARY'):
+                        r=launch.role_diagnostic_observation({**self.raw,field:bad});self.assertEqual(r['checks'][name],'UNKNOWN')
+                    raw=copy.deepcopy(self.raw);del raw[field];self.assertEqual(launch.role_diagnostic_observation(raw)['checks'][name],'UNKNOWN')
+        r=launch.role_diagnostic_observation({**self.raw,'login':True,'databaseTemp':True,'sessions':None})
+        self.assertEqual([r['checks'][k] for k in ('loginDisabled','noDatabaseTemp','noSessions')],['FAIL','FAIL','UNKNOWN'])
+        for field in ('database','user','role'):
+            r=launch.role_diagnostic_observation({**self.raw,field:'foreign'})
+            self.assertEqual(r['failure'],'ROLE_IDENTITY_UNKNOWN');self.assertEqual(set(r['checks'].values()),{'UNKNOWN'})
+        self.assertEqual(launch.role_diagnostic_observation({**self.raw,'limit':False})['checks']['connectionLimitZero'],'UNKNOWN')
+        for kind in ('missing','extra','grant_option','malformed'):
+            rows=copy.deepcopy(self.raw['acl'])
+            if kind=='missing':rows.pop()
+            elif kind=='extra':rows.append({'kind':'relation','object':'public.foreign','column':'','privilege_type':'SELECT','is_grantable':False})
+            elif kind=='grant_option':rows[0]['is_grantable']=True
+            else:rows[0]['is_grantable']=1
+            r=launch.role_diagnostic_observation({**self.raw,'acl':rows})
+            self.assertEqual(r['checks']['aclExact'],'UNKNOWN' if kind=='malformed' else 'FAIL')
+    def test_role_failure_retains_all_checks_and_cleanup(self):
+        self.raw.update(databaseTemp=True,login=True)
+        r=self.run_case();self.assertEqual(r['observation']['failure'],'ROLE_NOT_READY')
+        self.assertEqual(r['observation']['checks']['noDatabaseTemp'],'FAIL');self.assertEqual(r['observation']['checks']['loginDisabled'],'FAIL')
+        self.assertEqual(r['residuals'],[])
+    def test_duplicate_bytes_rejected_by_actual_native_sql_boundary(self):
+        self.override['role']=b'{"role":"private","role":"p07_payment_runtime"}'
+        r=self.run_case();self.assertEqual(r['failure'],'DUPLICATE_FIELD');self.assertIsNone(r['observation'])
+        self.assertEqual(self.calls,['role','normal','independent'])
+    def test_transport_unexpected_timeout_oversize_and_cleanup_failures(self):
+        import shutil
+        for error in (RuntimeError('PRIVATE_EXCEPTION_CANARY'),model.Stop('PROCESS_TIMEOUT'),model.Stop('OUTPUT_OVERSIZE')):
+            shutil.rmtree(self.root,ignore_errors=True);self.calls=[];self.clients=[];self.override={'role':error}
+            r=self.run_case();self.assertEqual(r['failureStage'],'database');self.assertIsNone(r['observation']);self.assertEqual(r['residuals'],[])
+        shutil.rmtree(self.root);self.override={'normal':{'sessionsAbsent':False}};self.calls=[];self.clients=[]
+        r=self.run_case();self.assertIn('NORMAL_CLOSEOUT_UNCONFIRMED',r['residuals'])
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('no repeat')):
+            r=launch.closeout_role_diagnostic(self.cap('closeout'));self.assertFalse(r['verified'])
+    def test_pins_authority_window_and_runtime_refuse_before_prompt(self):
+        original=copy.deepcopy(self.e)
+        for change in (lambda e:e['database'].update(user='foreign'),lambda e:e['limits'].update(sql=4),
+                       lambda e:e['queryHashes'].update(retired_role='0'*64),lambda e:e.update(manifestSha256='0'*64),
+                       lambda e:e['runtimeFiles'].update({launch.ROLE_DIAGNOSTIC_CA:'0'*64})):
+            self.e=copy.deepcopy(original);change(self.e);self.bind()
+            with self.assertRaises(Exception):self.cap()
+        self.e=original;self.e['decision']['sha256']='0'*64
+        with self.assertRaises(Exception):self.cap()
+        self.e=copy.deepcopy(original);self.bind();self.now+=31
+        with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_START_WINDOW'):self.cap()
+    def test_public_closeout_only_unused_independent_and_history_unknown(self):
+        cap=self.cap();cap.root.mkdir(mode=0o700);(cap.root/'entry.lock').touch(mode=0o600)
+        model.reserve(cap.root/'envelope.json',cap.e);model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash})
+        cap.gate('role')
+        cleanup=self.cap('closeout')
+        with patch.object(launch,'hidden_password',return_value='PRIVATE_PASSWORD_CANARY'):
+            r=launch.closeout_role_diagnostic(cleanup,self.io(cleanup,True))
+        self.assertEqual(self.calls,['independent']);self.assertEqual(r['residuals'],['PROCESS_HISTORY_UNKNOWN']);self.assertFalse(r['verified'])
+        with self.assertRaises(Exception):cleanup.gate('role')
+    def test_reservations_concurrency_and_environment(self):
+        import fcntl
+        cap=self.cap();cap.root.mkdir(mode=0o700);(cap.root/'entry.lock').touch(mode=0o600)
+        model.reserve(cap.root/'envelope.json',cap.e);model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash})
+        cap.gate('role')
+        with self.assertRaises(FileExistsError):cap.gate('role')
+        fd=os.open(cap.root/'entry.lock',os.O_WRONLY);fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        try:
+            with self.assertRaises(BlockingIOError):launch.closeout_role_diagnostic(self.cap('closeout'))
+        finally:os.close(fd)
+        with patch.dict(os.environ,{'PGHOST':'foreign'}),self.assertRaisesRegex(model.Stop,'CREDENTIAL_OVERRIDE'):cap.prepare()
+        with self.assertRaises(model.Stop):self.io(cap).cli({},self.now+10)
+        with self.assertRaises(model.Stop):self.io(cap).https({},'secret',self.now+10)
+    def test_result_write_failure_keeps_cleanup_and_no_replay(self):
+        cap=self.cap();original=model.reserve
+        def reserve(path,value):
+            if path.name=='result.json':raise OSError('PRIVATE_EXCEPTION_CANARY')
+            return original(path,value)
+        with patch.object(launch,'hidden_password',return_value='synthetic'),patch.object(model,'reserve',side_effect=reserve),self.assertRaises(OSError):
+            launch.run_role_diagnostic(cap,self.io(cap))
+        self.assertEqual(self.calls,['role','normal','independent']);self.assertTrue(all(c.closed for c in self.clients))
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('no repeat')):
+            self.assertFalse(launch.closeout_role_diagnostic(self.cap('closeout'))['verified'])
+    def test_sigterm_runs_cleanup(self):
+        import signal
+        self.override['role']=lambda:os.kill(os.getpid(),signal.SIGTERM)
+        r=self.run_case();self.assertEqual(r['failure'],'INTERRUPTED');self.assertEqual(self.calls,['role','normal','independent'])
+    def test_actual_owned_timeout_and_oversize_close_children(self):
+        import shutil,time
+        for code,expected in [('import time;time.sleep(5)','PROCESS_TIMEOUT'),('print("PRIVATE_EXCEPTION_CANARY"*10000)','PROCESS_OUTPUT_LIMIT')]:
+            shutil.rmtree(self.root,ignore_errors=True);cap=self.cap();cap.clock=time.time
+            actual=launch.NativeIO._owned_run;calls=[];clients=[]
+            def owned(obj,argv,env,deadline):
+                clients.append(obj);calls.append(argv[-1])
+                script=code if argv[-1]==launch.current_sql_contract()[2]['sql'] else 'print(\'{"sessionsAbsent":true}\')'
+                return actual(obj,[launch.sys.executable,'-c',script],env,obj.clock()+2.4)
+            with patch.object(launch.RoleDiagnosticIO,'_owned_run',owned),patch.object(launch,'recovery_password',return_value='synthetic'):
+                r=launch.run_role_diagnostic(cap)
+            self.assertEqual(r['failure'],expected);self.assertEqual(len(calls),3);self.assertEqual(r['residuals'],[])
+            self.assertTrue(all(c.closed and not c.children for c in clients))
+            self.assertNotIn('PRIVATE_EXCEPTION_CANARY',''.join(p.read_text() for p in self.root.glob('*.json')))
+    def test_changed_clock_source_and_foreign_inventory_block_dispatch(self):
+        cap=self.cap();cap.root.mkdir(mode=0o700);(cap.root/'entry.lock').touch(mode=0o600)
+        model.reserve(cap.root/'envelope.json',cap.e);model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash})
+        self.now-=5
+        with self.assertRaisesRegex(model.Stop,'CLOCK_ROLLBACK'):cap.gate('role')
+        self.now+=5
+        with patch.object(launch,'source_manifest_sha256',return_value='0'*64),self.assertRaisesRegex(model.Stop,'ROLE_SOURCE_DRIFT'):cap.gate('role')
+        (cap.root/'foreign').write_text('synthetic')
+        with self.assertRaises(model.Stop):cap.gate('role')
+        self.assertFalse((cap.root/'sql-role.json').exists())
+    def test_concurrent_live_method_refuses_second_entry_and_closeout(self):
+        import threading,concurrent.futures
+        a=self.cap();b=self.cap();ready=threading.Event();release=threading.Event()
+        def hold():ready.set();release.wait(5);return json.dumps(self.raw).encode()
+        self.override['role']=hold
+        with patch.object(launch,'recovery_password',return_value='synthetic'),concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            work=pool.submit(launch.run_role_diagnostic,a,self.io(a));self.assertTrue(ready.wait(5))
+            try:
+                with self.assertRaises(FileExistsError):launch.run_role_diagnostic(b,self.io(b))
+                with self.assertRaises(BlockingIOError):launch.closeout_role_diagnostic(self.cap('closeout'))
+            finally:release.set()
+            self.assertEqual(work.result()['residuals'],[])

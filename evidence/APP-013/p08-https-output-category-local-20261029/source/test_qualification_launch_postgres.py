@@ -191,6 +191,62 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
         self.assertEqual(len(list(helper.root.glob('read-sql-*.json'))),1)
         self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
 
+    def test_role_diagnostic_actual_tls_public_and_acl_conditions(self):
+        import shutil
+        helper=current_tests.RoleDiagnosticTests();helper.setUp();self.addCleanup(helper.doCleanups)
+        original=launch.NativeIO._owned_run;case=self
+        def owned(obj,argv,env,deadline):
+            case.assertIn(argv[-1],[launch.current_sql_contract()[2]['sql'],launch.sql_contract()[1]['sql']])
+            case.assertEqual(env['PGSSLMODE'],'verify-full')
+            argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',case.port]
+            return original(obj,argv,{**env,'PGSSLROOTCERT':str(case.cert)},time.time()+20)
+        cases=[(None,None),('GRANT TEMP ON DATABASE neondb TO PUBLIC','noDatabaseTemp'),
+               ('GRANT CREATE ON SCHEMA public TO PUBLIC','noSchemaCreate'),
+               ('GRANT UPDATE(status) ON "Job" TO p07_payment_runtime','aclExact')]
+        for statement,failed in cases:
+            with self.subTest(statement=statement):
+                if statement:self.command(statement)
+                shutil.rmtree(helper.root,ignore_errors=True)
+                cap=helper.cap()
+                with patch.object(launch.RoleDiagnosticIO,'_owned_run',owned),patch.object(launch,'recovery_password',return_value='SYNTHETIC_TLS'):
+                    r=launch.run_role_diagnostic(cap)
+                self.assertEqual(r['residuals'],[],r);self.assertEqual(r['sqlReservations'],3)
+                if failed:self.assertEqual(r['observation']['checks'][failed],'FAIL')
+                else:self.assertEqual(set(r['observation']['checks'].values()),{'PASS'})
+                if failed in ('noDatabaseTemp','noSchemaCreate'):self.assertEqual(r['observation']['checks']['aclExact'],'PASS')
+                self.assertIsNone(r['candidate']);self.assertFalse(r['executionReady'])
+                self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+                self.command('REVOKE TEMP ON DATABASE neondb FROM PUBLIC; REVOKE CREATE ON SCHEMA public FROM PUBLIC;')
+
+    def test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(self):
+        helper=current_tests.RoleDiagnosticTests();helper.setUp();self.addCleanup(helper.doCleanups)
+        path=helper.fixture.repo/'role-envelope.json';path.write_text(json.dumps(helper.e));path.chmod(0o600)
+        prefix='\n'.join([
+            'import sys,os,signal,json;from pathlib import Path',
+            'sys.path.insert(0,sys.argv[1]);import qualification_launch as q',
+            'original=q.current_module;a=original("authority");read=a.committed',
+            f'a.committed=lambda repo,commit,path:read(Path({str(helper.fixture.repo)!r}),commit,path)',
+            'q.current_module=lambda name:a if name=="authority" else original(name)',
+            'q.recovery_password=lambda *args:"SYNTHETIC_CHILD"',
+        ])
+        crash=prefix+'\nq.RoleDiagnosticIO._owned_run=lambda *args:os.kill(os.getpid(),signal.SIGKILL)\nraise SystemExit(q.role_diagnostic_main(sys.argv[2:]))'
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',crash,str(model.ROOT),'--diagnose-database-role',str(path)],capture_output=True,timeout=15)
+        self.assertEqual(p.returncode,-9,p.stderr.decode());self.assertTrue((helper.root/'sql-role.json').exists());self.assertFalse((helper.root/'result.json').exists())
+        cleanup=prefix+'\n'+ '\n'.join([
+            'owned=q.NativeIO._owned_run',
+            'def local(obj,argv,env,deadline):',
+            '    assert argv[-1]==q.sql_contract()[1]["sql"]',
+            f'    argv=list(argv);argv[argv.index("-h")+1]="127.0.0.1";argv[1:1]=["-p",{self.port!r}]',
+            f'    return owned(obj,argv,dict(env,PGSSLROOTCERT={str(self.cert)!r}),deadline)',
+            'q.RoleDiagnosticIO._owned_run=local',
+            'raise SystemExit(q.role_diagnostic_main(sys.argv[2:]))'])
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',cleanup,str(model.ROOT),'--closeout-database-role',str(helper.root)],capture_output=True,timeout=20)
+        self.assertEqual(p.returncode,2,p.stderr.decode());r=json.loads((helper.root/'closeout.json').read_text())
+        self.assertEqual(r['residuals'],['PROCESS_HISTORY_UNKNOWN']);self.assertFalse(r['verified'])
+        self.assertEqual(sorted(p.name for p in helper.root.glob('sql-*.json')),['sql-independent.json','sql-role.json'])
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+
+
 
 for _name in dir(tls_fixture.LifecyclePostgres):
     if _name.startswith('test_') and _name not in CurrentEvidenceTLS.__dict__:setattr(CurrentEvidenceTLS,_name,None)

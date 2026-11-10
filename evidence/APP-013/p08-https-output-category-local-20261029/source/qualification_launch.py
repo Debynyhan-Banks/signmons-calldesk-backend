@@ -438,7 +438,7 @@ class NativeIO:
     def cli(self, descriptor, deadline):
         need(not self.closed and self.clock() < deadline, "CLI_DEADLINE")
         argv = descriptor["argv"]; need(argv and argv[0] == GCLOUD, "CLI_EXECUTABLE")
-        env = sdk_environment(os.environ) if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
+        env = sdk_environment(os.environ) if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO,RoleDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL" and k not in CREDENTIAL_OVERRIDE_KEYS}
         timeout = max(1, min(30, int(deadline - self.clock())))
         validate_cli_descriptor(descriptor)
         raw=self._owned_run(argv,env,min(deadline,self.clock()+30))
@@ -489,7 +489,7 @@ class NativeIO:
         need(descriptor in current_sql_contract(), "SQL_ALLOWLIST")
         sql = descriptor["sql"]
         need(sql is not None, "SQL_ALLOWLIST")
-        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
+        env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO,RoleDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
         env.update({"PGPASSWORD": password, "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/cert.pem", "PGCONNECT_TIMEOUT": "10", "PGAPPNAME": "signmons_p08_qualification_" + self.binding_operation_id, "PGOPTIONS": "-c statement_timeout=15000 -c lock_timeout=5000"})
         timeout = max(1, min(25, int(deadline - self.clock())))
         try:
@@ -498,6 +498,7 @@ class NativeIO:
         finally:env['PGPASSWORD']=''
         try:raw=raw.decode('utf-8','strict').strip()
         except UnicodeError:raise model.Stop('DATABASE_OUTPUT') from None
+        if isinstance(self,RoleDiagnosticIO):return strict_json(raw)
         if descriptor["id"] == "closeout":
             value = bounded_json(raw, "CLOSEOUT_OUTPUT"); return value
         return bounded_json(raw, "DATABASE_OUTPUT")
@@ -2046,7 +2047,224 @@ def project_permission_main(argv):
     return 0 if result['processCleanupVerified'] else 2
 
 
+# SQL-only diagnostic: separate authority, no current-qualification candidate.
+ROLE_DIAGNOSTIC_SLOTS=('role','normal','independent')
+ROLE_DIAGNOSTIC_MARKERS={'envelope.json','entry.lock','attempt.json','result.json','closeout.json',
+    *{f'sql-{s}.json' for s in ROLE_DIAGNOSTIC_SLOTS}}
+ROLE_DIAGNOSTIC_PYTHON='/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14'
+ROLE_DIAGNOSTIC_CA='/etc/ssl/cert.pem'
+ROLE_FAILURES=frozenset({'ROLE_OUTPUT_UNKNOWN','ROLE_IDENTITY_UNKNOWN','ROLE_NOT_READY','ROLE_ACL_UNKNOWN',
+    'ROLE_ACL_DRIFT','ROLE_EXPECTATION_DRIFT','INTERRUPTED','RECOVERY_PASSWORD_TIMEOUT','HIDDEN_INPUT_REQUIRED',
+    'PASSWORD_SHAPE','SQL_DEADLINE','DATABASE_OUTPUT','CURRENT_OUTPUT','DUPLICATE_FIELD','OUTPUT_OVERSIZE',
+    'PROCESS_TIMEOUT','PROCESS_FAILED','PROCESS_UNCONFIRMED','PROCESS_OUTPUT_LIMIT','PROCESS_REFUSED',
+    'PROCESS_DEADLINE','PROCESS_CLEANUP_UNCONFIRMED','CLOCK_ROLLBACK','DIAGNOSTIC_DEADLINE',
+    'DIAGNOSTIC_START_WINDOW','CREDENTIAL_OVERRIDE','HOME_OVERRIDE','ROLE_RUNTIME_DRIFT','ROLE_SOURCE_DRIFT'})
+
+
+def role_diagnostic_failure(error):
+    return str(error) if isinstance(error,model.Stop) and str(error) in ROLE_FAILURES else 'ROLE_READ_UNCONFIRMED'
+
+
+def role_diagnostic_observation(raw):
+    """Explain the existing classifier; never grant qualification from this vector."""
+    checks={k:'UNKNOWN' for k in ('roleExistsExactlyOne','loginDisabled','connectionLimitZero','expiryFinite',
+        'expiryPast','noUnsafeAttributes','noMemberships','noOwnedObjects','noSessions','noSchemaCreate','noDatabaseTemp','aclExact')}
+    acl=current_module('acl')
+    try:v=strict_json(raw)
+    except Exception:return {'checks':checks,'failure':'ROLE_OUTPUT_UNKNOWN'}
+    if not isinstance(v,dict):return {'checks':checks,'failure':'ROLE_OUTPUT_UNKNOWN'}
+    if v.get('role')!='p07_payment_runtime' or v.get('database')!='neondb' or v.get('user')!='neondb_owner':
+        return {'checks':checks,'failure':'ROLE_IDENTITY_UNKNOWN'}
+    n=v.get('count')
+    if type(n) is int and n>=0:checks['roleExistsExactlyOne']='PASS' if n==1 else 'FAIL'
+    if n==1 and type(n) is int:
+        for field,name,expected,kind in (
+            ('login','loginDisabled',False,bool),('limit','connectionLimitZero',0,int),
+            ('expiryFinite','expiryFinite',True,bool),('expired','expiryPast',True,bool),
+            ('unsafe','noUnsafeAttributes',False,bool),('memberships','noMemberships',0,int),
+            ('owned','noOwnedObjects',0,int),('sessions','noSessions',0,int),
+            ('schemaCreate','noSchemaCreate',False,bool),('databaseTemp','noDatabaseTemp',False,bool)):
+            value=v.get(field)
+            if type(value) is kind and (kind is not int or value>=0):checks[name]='PASS' if value==expected else 'FAIL'
+        try:
+            acl.classify_role_acl(v.get('acl'),'neondb',acl.expected_retired_acl());checks['aclExact']='PASS'
+        except acl.Stop as error:
+            if str(error)=='ROLE_ACL_DRIFT':checks['aclExact']='FAIL'
+        except Exception:pass
+    failure=None
+    try:acl.classify_retired_role(v,acl.expected_retired_acl())
+    except Exception as error:
+        failure=str(error) if isinstance(error,acl.Stop) and str(error) in ROLE_FAILURES else 'ROLE_READ_UNCONFIRMED'
+    return {'checks':checks,'failure':failure}
+
+
+def role_runtime_files():
+    return (_operator_module().PSQL,ROLE_DIAGNOSTIC_PYTHON,ROLE_DIAGNOSTIC_CA)
+
+
+class RoleDiagnosticCapability:
+    def __init__(self,envelope,clock=model.time.time,mode='diagnose',read_commit=None):
+        need(mode in ('diagnose','closeout'),'DIAGNOSTIC_MODE')
+        e=copy.deepcopy(envelope);m=model.verify_local_manifest();model.verify_locked_sources()
+        a=current_module('authority');a.verify_sources();get=read_commit or a.committed
+        need(set(e)=={'version','execution','operationId','database','role','sourceCommit','manifestSha256',
+            'runtimeFiles','queryHashes','window','limits','decision'},'ROLE_ENVELOPE')
+        need(type(e['version']) is int and e['version']==1 and e['execution']=='EXTERNAL_READ_ONLY','ROLE_EXECUTION')
+        model.exact_uuid(e['operationId'],'ROLE_OPERATION')
+        need(e['database']=={'host':_operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'} and
+             e['role']=='p07_payment_runtime','ROLE_RESOURCE_PINS')
+        need(e['limits']=={'sql':3,'cli':0,'https':0,'cache':0} and all(type(v) is int for v in e['limits'].values()),'ROLE_LIMITS')
+        need(e['manifestSha256']==source_manifest_sha256() and re.fullmatch('[a-f0-9]{40}',e['sourceCommit']),'ROLE_SOURCE_DRIFT')
+        descriptors=(current_sql_contract()[2],sql_contract()[1])
+        need(e['queryHashes']=={d['id']:model.digest(d) for d in descriptors},'ROLE_QUERY_PINS')
+        need(set(e['runtimeFiles'])==set(role_runtime_files()) and all(isinstance(v,str) and re.fullmatch('[a-f0-9]{64}',v) for v in e['runtimeFiles'].values()),'ROLE_RUNTIME_PINS')
+        for path in role_runtime_files()[:2]:need(e['runtimeFiles'][path]==m['sdkReview']['files'][path],'ROLE_RUNTIME_PINS')
+        need(set(e['window'])=={'start','cutoff','readEnd','closeoutEnd'},'ROLE_WINDOW')
+        times={k:model.timestamp(v) for k,v in e['window'].items()}
+        need(times['start']<times['cutoff']<times['readEnd']<times['closeoutEnd'] and
+             times['closeoutEnd']-times['start']<=1800 and times['closeoutEnd']-times['readEnd']>=60,'ROLE_WINDOW')
+        d=e['decision'];need(set(d)=={'commit','path','sha256'} and re.fullmatch('[a-f0-9]{40}',d['commit']) and
+            re.fullmatch('[a-f0-9]{64}',d['sha256']) and re.fullmatch(r'APP013_P08_DATABASE_ROLE_DIAGNOSTIC_OPERATION_[0-9]{8}\.json',d['path']),'ROLE_DECISION')
+        raw=get(a.GOV,d['commit'],d['path']);scope=model.digest({k:v for k,v in e.items() if k!='decision'})
+        need(model.digest(raw)==d['sha256'] and strict_json(raw)=={'owner':'Debynyhan Banks',
+            'decision':'APPROVE_EXACT_P08_DATABASE_ROLE_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':scope},'ROLE_APPROVAL')
+        # Same committed-source checks, only SQL runtime files; no SDK/config/cache reads.
+        sql_manifest=copy.deepcopy(m);sql_manifest['sdkReview']['files']={p:e['runtimeFiles'][p] for p in role_runtime_files()[:2]}
+        verify_qualification_sources(e['sourceCommit'],sql_manifest,get)
+        self.e=e;self.clock=clock;self.mode=mode;self.times=times;self.last=clock();self.scope_hash=scope
+        self.root=Path('/private/tmp/p08-database-role-'+e['operationId']);self.manifest=m
+        if mode=='diagnose':
+            need(times['start']<=self.last<times['cutoff'],'DIAGNOSTIC_START_WINDOW')
+            need(not os.path.lexists(self.root),'DIAGNOSTIC_CONSUMED')
+        self.prepare()
+    def prepare(self):
+        model.verify_local_manifest();model.verify_locked_sources()
+        need(source_manifest_sha256()==self.e['manifestSha256'],'ROLE_SOURCE_DRIFT')
+        sdk_environment(os.environ)  # Environment validation only, no SDK/config access.
+        for path,h in self.e['runtimeFiles'].items():need(model.digest(Path(path).read_bytes())==h,'ROLE_RUNTIME_DRIFT')
+    def inspect(self):
+        inspect_current_root(self.root,ROLE_DIAGNOSTIC_MARKERS)
+        need(private_json(self.root/'envelope.json')==self.e and private_json(self.root/'attempt.json')=={
+            'operationId':self.e['operationId'],'scopeSha256':self.scope_hash},'ROLE_ROOT_BINDING')
+        for slot in ROLE_DIAGNOSTIC_SLOTS:
+            path=self.root/f'sql-{slot}.json'
+            if path.exists():need(private_json(path)=={'operationId':self.e['operationId'],'scopeSha256':self.scope_hash,'slot':slot},'ROLE_RESERVATION')
+    def gate(self,slot):
+        need(slot in ROLE_DIAGNOSTIC_SLOTS and (self.mode=='diagnose' or slot=='independent'),'ROLE_READ_SCOPE')
+        now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
+        need(self.times['start']<=now<self.times['readEnd' if slot=='role' else 'closeoutEnd'],'DIAGNOSTIC_DEADLINE')
+        self.prepare();self.inspect()
+        need(not (self.root/'closeout.json').exists(),'ROLE_CLOSEOUT_CONSUMED')
+        model.reserve(self.root/f'sql-{slot}.json',{'operationId':self.e['operationId'],'scopeSha256':self.scope_hash,'slot':slot})
+        return self.times['readEnd' if slot=='role' else 'closeoutEnd']
+
+
+class RoleDiagnosticIO(NativeIO):
+    def __init__(self,cap,independent=False):
+        need(type(cap) is RoleDiagnosticCapability and (cap.mode=='diagnose' or independent),'ROLE_PORT')
+        super().__init__(cap.clock,cap.e['operationId']);self.cap=cap;self.cleanup_only=independent
+    def cli(self,*args):raise model.Stop('ROLE_CLI_FORBIDDEN')
+    def https(self,*args):raise model.Stop('ROLE_HTTPS_FORBIDDEN')
+    def sql(self,d,password,deadline):
+        slot='independent' if self.cleanup_only else 'role' if d==current_sql_contract()[2] else 'normal'
+        need(d==(current_sql_contract()[2] if slot=='role' else sql_contract()[1]),'ROLE_READ_SCOPE')
+        return super().sql(d,password,min(deadline,self.cap.gate(slot)))
+    def independent(self):return RoleDiagnosticIO(self.cap,True)
+
+
+def role_cleanup(io,password,deadline):
+    sessions=False;closed=False
+    try:
+        need(password is not None,'PASSWORD_SHAPE')
+        sessions=strict_json(io.sql(sql_contract()[1],password,deadline))=={'sessionsAbsent':True}
+    except BaseException:pass
+    finally:
+        try:closed=io.close(deadline) is True
+        except BaseException:pass
+    return sessions and closed
+
+
+def run_role_diagnostic(cap,io=None):
+    import fcntl,signal,threading
+    need(type(cap) is RoleDiagnosticCapability and cap.mode=='diagnose','ROLE_MODE')
+    need(io is None or (isinstance(io,RoleDiagnosticIO) and io.cap is cap and getattr(io,'proof',False)),'ROLE_PORT')
+    need(cap.times['start']<=cap.clock()<cap.times['cutoff'],'DIAGNOSTIC_START_WINDOW')
+    cap.root.mkdir(mode=0o700);fd=os.open(cap.root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
+    password=None;observation=None;failure=None;stage='preparation';failure_stage=None;residuals=[];handlers={};cleaning=False
+    io=io or RoleDiagnosticIO(cap)
+    def interrupted(*_):
+        if not cleaning:raise model.Stop('INTERRUPTED')
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        model.reserve(cap.root/'envelope.json',cap.e)
+        model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash})
+        if threading.current_thread() is threading.main_thread():
+            for sig in (signal.SIGINT,signal.SIGTERM):handlers[sig]=signal.signal(sig,interrupted)
+        try:
+            cap.prepare();password=recovery_password(cap.times['readEnd'],cap.clock);stage='database'
+            raw=io.sql(current_sql_contract()[2],password,cap.times['readEnd'])
+            try:
+                need(cap.last<=cap.clock()<cap.times['readEnd'],'DIAGNOSTIC_DEADLINE')
+                observation=role_diagnostic_observation(raw)
+            finally:raw=None
+        except BaseException as error:failure=role_diagnostic_failure(error);failure_stage=stage
+        finally:
+            cleaning=True
+            if not role_cleanup(io,password,cap.times['closeoutEnd']):residuals.append('NORMAL_CLOSEOUT_UNCONFIRMED')
+            fresh=None
+            try:
+                fresh=io.independent();need(fresh is not io,'ROLE_PORT')
+                if not role_cleanup(fresh,password,cap.times['closeoutEnd']):residuals.append('INDEPENDENT_CLOSEOUT_UNCONFIRMED')
+            except BaseException:residuals.append('INDEPENDENT_CLOSEOUT_UNCONFIRMED')
+            password=None
+        cap.inspect()
+        result={'status':'DATABASE_ROLE_DIAGNOSED' if observation is not None and observation['failure'] in (None,'ROLE_NOT_READY','ROLE_ACL_DRIFT') and not residuals and failure is None else 'DATABASE_ROLE_UNCONFIRMED',
+            'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'observation':observation,'failure':failure,
+            'failureStage':failure_stage,'residuals':residuals,'sqlReservations':sum((cap.root/f'sql-{s}.json').exists() for s in ROLE_DIAGNOSTIC_SLOTS),
+            'liveObserved':not getattr(io,'proof',False) and (cap.root/'sql-role.json').exists(),'executionReady':False,'candidate':None}
+        model.reserve(cap.root/'result.json',result);return result
+    finally:
+        password=None
+        for sig,handler in handlers.items():signal.signal(sig,handler)
+        fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def closeout_role_diagnostic(cap,io=None):
+    import fcntl
+    need(type(cap) is RoleDiagnosticCapability and cap.mode=='closeout','ROLE_MODE');cap.inspect()
+    need(io is None or (isinstance(io,RoleDiagnosticIO) and io.cap is cap and io.cleanup_only and getattr(io,'proof',False)),'ROLE_PORT')
+    fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW);password=None;residuals=[];transport=None
+    try:
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        need(not (cap.root/'closeout.json').exists(),'ROLE_CLOSEOUT_CONSUMED')
+        prior=private_json(cap.root/'result.json') if (cap.root/'result.json').exists() else None
+        verified=bool(prior and prior.get('operationId')==cap.e['operationId'] and prior.get('scopeSha256')==cap.scope_hash and prior.get('residuals')==[] and all((cap.root/f'sql-{s}.json').exists() for s in ROLE_DIAGNOSTIC_SLOTS))
+        if not verified:
+            residuals.append('PROCESS_HISTORY_UNKNOWN')
+            if not (cap.root/'sql-independent.json').exists() and cap.clock()<cap.times['closeoutEnd']:
+                try:
+                    password=recovery_password(cap.times['closeoutEnd'],cap.clock);transport=io or RoleDiagnosticIO(cap,True)
+                    if not role_cleanup(transport,password,cap.times['closeoutEnd']):residuals.append('INDEPENDENT_CLOSEOUT_UNCONFIRMED')
+                except BaseException:residuals.append('INDEPENDENT_CLOSEOUT_UNCONFIRMED')
+            else:residuals.append('INDEPENDENT_CLOSEOUT_UNCONFIRMED')
+        result={'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'verified':verified,'residuals':residuals,
+            'candidate':None,'executionReady':False}
+        model.reserve(cap.root/'closeout.json',result);return result
+    finally:password=None;fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
+
+
+def role_diagnostic_main(argv):
+    need(len(argv)==2 and argv[0] in ('--diagnose-database-role','--closeout-database-role'),'ROLE_ARGUMENTS')
+    path=Path(argv[1])
+    if argv[0]=='--diagnose-database-role':
+        result=run_role_diagnostic(RoleDiagnosticCapability(private_json(path)))
+        print(result['status']);return 0 if result['status']=='DATABASE_ROLE_DIAGNOSED' else 2
+    cap=RoleDiagnosticCapability(private_json(path/'envelope.json'),mode='closeout');need(path==cap.root,'ROLE_ROOT_BINDING')
+    result=closeout_role_diagnostic(cap);print('DATABASE_ROLE_CLOSED' if result['verified'] else 'DATABASE_ROLE_CLOSEOUT_UNCONFIRMED')
+    return 0 if result['verified'] else 2
+
+
 if __name__ == "__main__":
-    try:raise SystemExit(project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
+    try:raise SystemExit(role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
     except Exception:
         print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)
