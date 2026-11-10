@@ -1,0 +1,30 @@
+{
+  "section": "APP-013/3A/P08",
+  "recordedAt": "2026-11-10T20:54:14.357926+00:00",
+  "sourceCommit": "8a2591412502992017d4e631f6de1f4ecd30d6c3",
+  "approvalCommit": "b68bccd",
+  "result": {
+    "code": "PAYMENT_TEST_KEY_REQUIRED",
+    "httpStatus": 200,
+    "operationId": "46fcad8b-877d-4549-9eda-7d53bd800802",
+    "providerReason": null,
+    "rawFilesAbsent": true,
+    "requests": 1,
+    "sdkCommands": 6,
+    "stage": "SECRET_READ",
+    "status": "DIAGNOSTIC_OBSERVED"
+  },
+  "processesAbsent": true,
+  "receiptInventory": [
+    "attempt.json",
+    "result.json"
+  ],
+  "consumed": true,
+  "finding": "Current pinned Secret Manager version1 returned HTTP200, passed resource/payload shape and UTF8 decoding, then failed the existing exact sk_test_ plus16..256 alphanumeric suffix validator. A non-test/restricted key, surrounding whitespace or another invalid value remains indistinguishable; no raw value was retained. Do not assert which variant or that the key itself is usable.",
+  "changes": {
+    "providerMutations": 0,
+    "stripeCalls": 0,
+    "sql": 0
+  },
+  "scopeDeviation": false
+}
