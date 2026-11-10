@@ -99,6 +99,60 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
             fresh=LocalNative(time.time,t.p['operationId']);self.addCleanup(lambda:fresh.close(time.time()+5));return fresh
         t.io.independent=independent
         self.addCleanup(lambda:self.native_sql.close(time.time()+5))
+    def test_managed_creator_membership_real_sql_current_and_native(self):
+        # Reproduce the provider pattern using this OWNED cluster's bootstrap OID.
+        # Rename bootstrap only inside the fixture, restore all names in finally.
+        self.command('CREATE ROLE admin_fixture LOGIN SUPERUSER;')
+        def admin(sql,user='admin_fixture'):
+            argv=[launch._operator_module().PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1',
+                  '-h',str(self.socket),'-p',self.port,'-U',user,'-d','neondb','-c',sql]
+            p=subprocess.run(argv,env=self.env,capture_output=True,timeout=20)
+            self.assertEqual(p.returncode,0,p.stderr.decode());return p.stdout.decode().strip()
+        renamed=False;created=False
+        try:
+            admin('DROP OWNED BY p07_payment_runtime; DROP ROLE p07_payment_runtime; ALTER ROLE neondb_owner RENAME TO cloud_admin;');renamed=True
+            admin('CREATE ROLE neondb_owner LOGIN CREATEROLE; GRANT CONNECT ON DATABASE neondb TO neondb_owner; GRANT USAGE ON SCHEMA public TO neondb_owner; GRANT SELECT ON ALL TABLES IN SCHEMA public TO neondb_owner;');created=True
+            fixture_sql=(model.ROOT.parents[3]/'scripts/fixtures/p07-payment-runtime-role-review.sql').read_text()
+            create,grants=fixture_sql.split(';',1)
+            admin(create+';','neondb_owner') # genuinely non-superuser CREATE ROLE
+            admin(grants+'\nGRANT CONNECT ON DATABASE neondb TO p07_payment_runtime;')
+            acl=launch.current_module('acl')
+            raw=json.loads(self.command(acl.retired_role_query()))
+            self.assertEqual(raw['membershipEdges'],[acl.ADMIN_MEMBERSHIP]);self.assertEqual(raw['memberships'],1)
+            self.assertEqual(acl.classify_memberships(raw),'EXACT_ADMIN_EDGE')
+            self.assertEqual(acl.classify_retired_role(raw,acl.expected_retired_acl())['status'],'ROLE_CONTRACT_LOCAL_VERIFIED')
+            result=self.case.run_proof();self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',result)
+            # Same actual catalog at native active,retired,and fresh-independent readback.
+            t=tls_fixture.test_entry.EntryTests();t.setUp();self.addCleanup(t.doCleanups)
+            cap,io=self.local_io(t.f.p);runtime=tls_fixture.entry.RuntimeAdapter(cap,io)
+            runtime.q={'roleAclSha256':acl.classify_role_acl(raw['acl'],'neondb',acl.expected_retired_acl())[0]['roleAclSha256']}
+            deadline=time.time()+20
+            self.assertEqual(runtime.role(deadline)['memberships'],1)
+            self.assertTrue(runtime.readback('role','p07_payment_runtime',False,t.f.p,deadline))
+            admin("ALTER ROLE p07_payment_runtime LOGIN CONNECTION LIMIT 6 VALID UNTIL '"+t.f.p['window']['workEnd']+"';")
+            self.assertTrue(runtime.readback('role','p07_payment_runtime',True,t.f.p,deadline))
+            admin("ALTER ROLE p07_payment_runtime NOLOGIN CONNECTION LIMIT 0 VALID UNTIL '1970-01-01';")
+            freshcap,freshio=self.local_io(t.f.p);fresh=tls_fixture.entry.RuntimeAdapter(freshcap,freshio);fresh.q=runtime.q
+            self.assertTrue(fresh.readback('role','p07_payment_runtime',False,t.f.p,time.time()+20))
+            admin('GRANT TEMP ON DATABASE neondb TO PUBLIC;')
+            bad=json.loads(self.command(acl.retired_role_query()))
+            with self.assertRaisesRegex(acl.Stop,'ROLE_NOT_READY'):acl.classify_retired_role(bad,acl.expected_retired_acl())
+            with self.assertRaisesRegex(tls_fixture.entry.Stop,'ROLE_NOT_READY'):runtime.role(time.time()+20)
+            admin('REVOKE TEMP ON DATABASE neondb FROM PUBLIC;')
+            # A changed option and extra edge must fail through actual serialization.
+            admin('GRANT p07_payment_runtime TO neondb_owner WITH INHERIT TRUE GRANTED BY cloud_admin;')
+            with self.assertRaises(acl.Stop):acl.classify_retired_role(json.loads(self.command(acl.retired_role_query())),acl.expected_retired_acl())
+            admin('GRANT p07_payment_runtime TO neondb_owner WITH INHERIT FALSE GRANTED BY cloud_admin; GRANT p07_payment_runtime TO admin_fixture;')
+            bad=json.loads(self.command(acl.retired_role_query()));self.assertEqual(bad['memberships'],2)
+            with self.assertRaises(acl.Stop):acl.classify_retired_role(bad,acl.expected_retired_acl())
+        finally:
+            if renamed:
+                admin('DROP OWNED BY p07_payment_runtime; DROP ROLE IF EXISTS p07_payment_runtime;')
+                if created:admin('DROP OWNED BY neondb_owner; DROP ROLE neondb_owner;')
+                admin('ALTER ROLE cloud_admin RENAME TO neondb_owner; REVOKE TEMP ON DATABASE neondb FROM PUBLIC;')
+            self.command('DROP ROLE admin_fixture;')
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_%'"),'0')
+
     def test_actual_current_producer_sql_tls_positive_and_cleanup(self):
         r=self.case.run_proof();self.assertEqual(r['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',r)
         self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')

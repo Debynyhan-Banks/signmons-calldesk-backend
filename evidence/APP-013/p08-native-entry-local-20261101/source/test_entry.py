@@ -78,7 +78,7 @@ class EntryTests(unittest.TestCase):
                     test.role_reads+=1
                     v=json.loads(f.sql(q,d))
                     v.update(role=test.acl.RETIRED_ROLE,database=cap.e['database']['database'],
-                             user=cap.e['database']['user'],expiryFinite=True,schemaCreate=False,databaseTemp=False,
+                             user=cap.e['database']['user'],serverVersion=160000,membershipEdges=[],expiryFinite=True,schemaCreate=False,databaseTemp=False,
                              acl=test.acl.expected_retired_acl())
                     for row in v['acl']:
                         if row['kind']=='database':row['object']=v['database']
@@ -280,6 +280,35 @@ class EntryTests(unittest.TestCase):
         self.assertEqual(r['status'],'ENTRY_CONTAINMENT_UNCONFIRMED',r)
         self.assertTrue(r['residuals']);self.assertFalse(r['authProofReady'])
         self.assertGreater(self.role_reads,before)
+
+    def test_exact_admin_membership_active_retired_and_independent_readback(self):
+        self.e['database'].update(database='neondb',user='neondb_owner')
+        self.e['qualification']['scopeSha256']=a.digest({k:self.e[k] for k in ('plan','target','database','resources','limits')})
+        rows=self.acl.expected_retired_acl()
+        for row in rows:
+            if row['kind']=='database':row['object']='neondb'
+        self.e['qualification']['roleAclSha256']=self.acl.classify_role_acl(rows,'neondb',self.acl.expected_retired_acl())[0]['roleAclSha256']
+        self.seal()
+        cap=a.Capability(self.e,self.root);io=self.factory(cap)
+        cap.coordinator=SimpleNamespace(abort=False,j={'nativeEntry':{'calls':dict.fromkeys(('cli','https','sql','child'),0)}},save=lambda:None)
+        runtime=entry.RuntimeAdapter(cap,io);runtime.q=self.e['qualification'];deadline=time.time()+30
+        def exact(v,c):v.update(memberships=1,membershipEdges=[dict(self.acl.ADMIN_MEMBERSHIP)],database='neondb',user='neondb_owner')
+        # Fixture resources already pin the same database/admin names.
+        self.role_mutator=exact
+        self.assertEqual(runtime.role(deadline)['memberships'],1)
+        self.assertTrue(runtime.readback('role',ta.restore.ROLE,False,self.f.p,deadline))
+        self.f.runtime_state[('role',ta.restore.ROLE)]=True
+        self.assertTrue(runtime.readback('role',ta.restore.ROLE,True,self.f.p,deadline))
+        self.f.runtime_state[('role',ta.restore.ROLE)]=False
+        fresh=entry.RuntimeAdapter(cap,self.factory(cap));fresh.q=self.e['qualification']
+        self.assertTrue(fresh.readback('role',ta.restore.ROLE,False,self.f.p,deadline))
+        for key,value in [('inherit',True),('set',True),('admin',False),('grantor','foreign'),('member','foreign')]:
+            def drift(v,c,k=key,x=value):exact(v,c);v['membershipEdges'][0][k]=x
+            self.role_mutator=drift
+            with self.subTest(key=key),self.assertRaises(Stop):runtime.role(deadline)
+        def temp(v,c):exact(v,c);v['databaseTemp']=True
+        self.role_mutator=temp
+        with self.assertRaises(Stop):runtime.role(deadline)
 
     def test_lifecycle_strict_output_and_phase_predicates(self):
         cap=a.Capability(self.e,self.root);io=self.factory(cap)

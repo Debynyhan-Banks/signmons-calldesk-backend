@@ -1,0 +1,98 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "approvedDecision": "f0ae9aa",
+  "baseCommit": "7f57a41beb31ff3060019f0d5566289a25bbe118",
+  "verifiedAt": "2026-11-10T11:37:08.368096+00:00",
+  "changedFiles": {
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json": {
+      "beforeSha256": "7c4096250885132742d124f28a45b094d8ceaa3369eed9216bfe791242d8d149",
+      "afterSha256": "f4aea2546828012f9ea599707bea962bb26543d399233fef95adff261e1785fa"
+    },
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/test_qualification_launch.py": {
+      "beforeSha256": "75ff3f234015a06bee1435e312ddeb278bc6c72a10ad1cc4a238e36d8c8c22ef",
+      "afterSha256": "2ee8118d9a8fb1920f1c119f19d6ef3cf3ba040cb55037141745a14a38e8f7fc"
+    },
+    "evidence/APP-013/p08-https-output-category-local-20261029/source/test_qualification_launch_postgres.py": {
+      "beforeSha256": "f452bc9da1c56d7ecb29e0b14ba5929e0fb95eafe6d82ee123acbf6c8c32a74f",
+      "afterSha256": "c7096b40429e92fde384bfd0b70e7017469dccaadb8540e8f8d9b4dd8b4a0921"
+    },
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py": {
+      "beforeSha256": "c8305243c9fd84cb027a0af5d1406f39da36b2ff249b52cd8a6159c032b0d195",
+      "afterSha256": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9"
+    },
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/source-manifest.json": {
+      "beforeSha256": "30446f0d171ce00ef28052dea27660faa3c8e11f5e8df335a649df6a54c37253",
+      "afterSha256": "63c273247ebc593b635595bb4cd0986551d3929aea83ae24d96082ec4696719e"
+    },
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/test-manifest.json": {
+      "beforeSha256": "a5e722e7e19081bc3c8b29e5d476f72aa3d7197f5fe82cf0ff9218fb79c3a2fc",
+      "afterSha256": "a6b1794d7e3310563037907b9dfc57220282d1a58472f9f8c923c1ea6c68cd9b"
+    },
+    "evidence/APP-013/p08-narrow-access-check-local-20261101/source/test_access_check.py": {
+      "beforeSha256": "ff295f9a3ede451c43e8bf276d9d083dc229c28e02f81f0b8701a6a4ae3664d1",
+      "afterSha256": "dbfa08780c61e4924fb92924146c542193a8db99e88a4e6022a194057097a669"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py": {
+      "beforeSha256": "c11a65bb991055205594333a17c82f61e6bb1902f0d93d8c331c02f94e504388",
+      "afterSha256": "f5f401e2ee4cd43bc67fcc428787d61439dadd35f0a534e3868a4b6fa9a28f0d"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json": {
+      "beforeSha256": "0faaa16509f574db174cdbb4b1c3ffb0c722e856ae10384facd2d5fe44ceb799",
+      "afterSha256": "7e818a3faea4f6362be1d8a31fb39b7513671871a495b2663c772531d6fc2ac4"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json": {
+      "beforeSha256": "5b491bcffffef467f07f3b629aef3258adcc34a62e4d937613e52b677b049cdd",
+      "afterSha256": "e3f1658f15a79c87d07a8952279aa0b14545a6fa2405d7b51edc5dee849c4337"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py": {
+      "beforeSha256": "f9d0727a662dacee20dfe1ecbe00a6fde624db6b505522e5926e7b22de716d9a",
+      "afterSha256": "08c20e146fa79c1ebb029caeeaf1819f99433299b9cca5f66860cd7ce5b6878c"
+    }
+  },
+  "externalReadAuthorized": false,
+  "liveMutation": false,
+  "candidate": null,
+  "executionReady": false,
+  "unchangedRequirements": [
+    "no database TEMP",
+    "no schema CREATE",
+    "exact ACL",
+    "role attributes",
+    "ownership",
+    "sessions",
+    "retirement",
+    "timing and cleanup"
+  ],
+  "remainingUnknowns": [
+    "shared PUBLIC TEMP consumer impact",
+    "approved TEMP correction",
+    "current full qualification"
+  ],
+  "tests": {
+    "access": {
+      "passed": 122,
+      "seconds": 9.623
+    },
+    "native": {
+      "passed": 30,
+      "seconds": 10.377
+    },
+    "transports": {
+      "passed": 6,
+      "milliseconds": 926.107708
+    },
+    "current": {
+      "passed": 216,
+      "seconds": 110.498
+    },
+    "governance": {
+      "passed": 25
+    },
+    "totalPassed": 399,
+    "providerCalls": 0,
+    "ownedServersReaped": true,
+    "scratchAbsent": true
+  },
+  "localReadiness": "PASS",
+  "checklistCompleted": 5
+}

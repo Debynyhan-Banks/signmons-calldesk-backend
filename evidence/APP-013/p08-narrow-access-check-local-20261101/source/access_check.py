@@ -834,6 +834,27 @@ def expected_retired_acl():
     for (table,privilege),columns in grants.items():add('column','public.'+table,privilege,columns.split())
     return sorted(rows,key=lambda row:(row['kind'],row['object'],row['column'],row['privilege_type'],row['is_grantable']))
 
+ADMIN_MEMBERSHIP = {'member':'neondb_owner','role':'p07_payment_runtime','grantor':'cloud_admin',
+                    'admin':True,'inherit':False,'set':False}
+
+
+def classify_memberships(v):
+    """Owner-approved exact administrative edge; never infer from count alone."""
+    need(type(v.get('serverVersion')) is int and 160000<=v['serverVersion']<190000,'ROLE_OUTPUT_UNKNOWN')
+    n=v.get('memberships');edges=v.get('membershipEdges')
+    need(type(n) is int and n>=0 and type(edges) is list and len(edges)<=2,'ROLE_OUTPUT_UNKNOWN')
+    for edge in edges:
+        need(type(edge) is dict and set(edge)==set(ADMIN_MEMBERSHIP) and
+             all(type(edge[k]) is bool for k in ('admin','inherit','set')) and
+             all(isinstance(edge[k],str) and 0<len(edge[k].encode('utf-8'))<=63 for k in ('member','role','grantor')),
+             'ROLE_OUTPUT_UNKNOWN')
+    need(n==len(edges) and n<=1,'ROLE_NOT_READY')
+    if n:
+        need(v.get('role')==RETIRED_ROLE and v.get('database')=='neondb' and v.get('user')=='neondb_owner' and
+             edges==[ADMIN_MEMBERSHIP],'ROLE_NOT_READY')
+    return 'EXACT_ADMIN_EDGE' if n else 'NO_EDGES'
+
+
 def retired_role_query():
     return """BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s';
@@ -849,7 +870,14 @@ SELECT json_build_object('role','p07_payment_runtime','database',current_databas
  'count',(SELECT count(*) FROM r),'login',(SELECT rolcanlogin FROM r),'limit',(SELECT rolconnlimit FROM r),
  'expiryFinite',(SELECT isfinite(rolvaliduntil) FROM r),'expired',(SELECT rolvaliduntil<now() FROM r),
  'unsafe',(SELECT rolinherit OR rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls FROM r),
+ 'serverVersion',current_setting('server_version_num')::int,
  'memberships',(SELECT count(*) FROM pg_auth_members WHERE member=(SELECT oid FROM r) OR roleid=(SELECT oid FROM r)),
+ 'membershipEdges',COALESCE((SELECT json_agg(json_build_object(
+ 'member',(SELECT rolname FROM pg_roles WHERE oid=m.member),'role',(SELECT rolname FROM pg_roles WHERE oid=m.roleid),
+ 'grantor',(SELECT rolname FROM pg_roles WHERE oid=m.grantor),'admin',m.admin_option,
+ 'inherit',to_jsonb(m)->'inherit_option','set',to_jsonb(m)->'set_option') ORDER BY m.member,m.roleid,m.grantor)
+ FROM (SELECT * FROM pg_auth_members WHERE member=(SELECT oid FROM r) OR roleid=(SELECT oid FROM r)
+ ORDER BY member,roleid,grantor LIMIT 2) m),'[]'::json),
  'owned',(SELECT count(*) FROM pg_shdepend WHERE refclassid='pg_authid'::regclass AND refobjid=(SELECT oid FROM r) AND deptype='o'),
  'sessions',(SELECT count(*) FROM pg_stat_activity WHERE usename='p07_payment_runtime'),
  'schemaCreate',has_schema_privilege((SELECT oid FROM r),'public','CREATE'),
@@ -861,7 +889,7 @@ def classify_retired_role(observation,expected_acl):
     # An expectation cannot be chosen from the observation being judged.
     need(expected_acl==expected_retired_acl(),'ROLE_EXPECTATION_DRIFT')
     fields={'role','database','user','count','login','limit','expiryFinite','expired','unsafe',
-            'memberships','owned','sessions','schemaCreate','databaseTemp','acl'}
+            'memberships','membershipEdges','serverVersion','owned','sessions','schemaCreate','databaseTemp','acl'}
     need(isinstance(observation,dict) and set(observation)==fields,'ROLE_OUTPUT_UNKNOWN')
     v=observation
     need(v['role']==RETIRED_ROLE and all(isinstance(v[k],str) and 0<len(v[k])<=128 for k in ('database','user')),'ROLE_IDENTITY_UNKNOWN')
@@ -869,8 +897,9 @@ def classify_retired_role(observation,expected_acl):
     need(v['count']==1,'ROLE_NOT_READY')
     need(all(type(v[k]) is bool for k in ('login','expiryFinite','expired','unsafe','schemaCreate','databaseTemp')) and
          all(type(v[k]) is int and v[k]>=0 for k in ('limit','memberships','owned','sessions')),'ROLE_OUTPUT_UNKNOWN')
+    classify_memberships(v)
     need(v['login'] is False and v['limit']==0 and v['expiryFinite'] and v['expired'] and not v['unsafe'] and
-         v['memberships']==v['owned']==v['sessions']==0 and not v['schemaCreate'] and not v['databaseTemp'],'ROLE_NOT_READY')
+         v['owned']==v['sessions']==0 and not v['schemaCreate'] and not v['databaseTemp'],'ROLE_NOT_READY')
     result,legacy=classify_role_acl(v['acl'],v['database'],expected_acl)
     return {'status':'ROLE_CONTRACT_LOCAL_VERIFIED',**result,'liveObserved':False,'executionReady':False}
 

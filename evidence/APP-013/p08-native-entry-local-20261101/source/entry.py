@@ -36,7 +36,7 @@ class RuntimeAdapter(restore.NativeAdapter):
             need(isinstance(raw, str) and len(raw.encode('utf-8')) <= 65536, 'ROLE_OUTPUT_UNKNOWN')
             v = json.loads(raw, object_pairs_hook=unique)
             fields = {'role','database','user','count','login','limit','expires','expiryFinite','expired',
-                      'unsafe','memberships','owned','sessions','schemaCreate','databaseTemp','acl'}
+                      'unsafe','memberships','membershipEdges','serverVersion','owned','sessions','schemaCreate','databaseTemp','acl'}
             need(isinstance(v, dict) and set(v) == fields, 'ROLE_OUTPUT_UNKNOWN')
             need(v['role'] == self.acl.RETIRED_ROLE and
                  v['database'] == self.cap.e['database']['database'] and
@@ -44,20 +44,37 @@ class RuntimeAdapter(restore.NativeAdapter):
             need(all(type(v[k]) is int and v[k] >= 0 for k in ('count','limit','memberships','owned','sessions')) and
                  all(type(v[k]) is bool for k in ('login','expiryFinite','expired','unsafe','schemaCreate','databaseTemp')),
                  'ROLE_OUTPUT_UNKNOWN')
+            self.acl.classify_memberships(v)
             need(v['count'] == 1 and v['expiryFinite'] and not v['unsafe'] and
-                 v['memberships'] == v['owned'] == 0 and not v['schemaCreate'] and not v['databaseTemp'],
+                 v['owned'] == 0 and not v['schemaCreate'] and not v['databaseTemp'],
                  'ROLE_NOT_READY')
             need(isinstance(v['expires'], str) and 0 < len(v['expires']) <= 64, 'ROLE_OUTPUT_UNKNOWN')
             expiry = datetime.datetime.fromisoformat(v['expires'])
             need(expiry.tzinfo is not None, 'ROLE_OUTPUT_UNKNOWN')
             _, legacy = self.acl.classify_role_acl(v['acl'], v['database'], self.acl.expected_retired_acl())
             need(self.clock() < deadline, 'ROLE_DEADLINE')
-            return {**{k:v[k] for k in ('count','login','limit','expires','expired','unsafe','memberships','owned','sessions')},
+            return {**{k:v[k] for k in ('count','login','limit','expires','expired','unsafe','memberships','membershipEdges','serverVersion','owned','sessions')},
                     'acl':legacy}
         except BaseException as error:
             if isinstance(error, Stop): raise
             if isinstance(error, self.acl.Stop): raise Stop(str(error)) from None
             raise Stop('ROLE_READ_UNCONFIRMED') from None
+
+
+    def readback(self, kind, name, enabled, p, deadline):
+        if kind != 'role':
+            return super().readback(kind, name, enabled, p, deadline)
+        # The original role branch requires a blanket zero count. Preserve the
+        # real count and use the shared, strictly validated administrative policy.
+        v = self.role(deadline)
+        safe = (v['count'] == 1 and v['unsafe'] is False and v['owned'] == 0 and
+                digest(v['acl']) == self.q['roleAclSha256'])
+        if not safe:
+            return False
+        if enabled:
+            return (v['login'] is True and v['limit'] == 6 and
+                    datetime.datetime.fromisoformat(v['expires']).timestamp() == restore.timestamp(p['window']['workEnd']))
+        return v['login'] is False and v['limit'] == 0 and v['expired'] is True and v['sessions'] == 0
 
 
 class Ports(bridge.Ports):

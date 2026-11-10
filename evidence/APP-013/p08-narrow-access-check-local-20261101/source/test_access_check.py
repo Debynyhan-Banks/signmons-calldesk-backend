@@ -1236,7 +1236,7 @@ class RetiredRoleTests(unittest.TestCase):
         for row in rows:
             if row['kind']=='database':row['object']=self.expected['database']
         self.value=dict(role=a.RETIRED_ROLE,database=self.expected['database'],user=self.expected['user'],count=1,
-                        login=False,limit=0,expiryFinite=True,expired=True,unsafe=False,memberships=0,owned=0,
+                        login=False,limit=0,expiryFinite=True,expired=True,unsafe=False,memberships=0,membershipEdges=[],serverVersion=160000,owned=0,
                         sessions=0,schemaCreate=False,databaseTemp=False,acl=rows)
         for method in ('connect','connect_ex'):
             p=patch.object(socket.socket,method,side_effect=AssertionError('NETWORK_FORBIDDEN'));p.start();self.addCleanup(p.stop)
@@ -1347,3 +1347,51 @@ class RetiredRoleTests(unittest.TestCase):
         self.assertTrue(io.closed)
 
 if __name__=='__main__':unittest.main()
+
+class AdminMembershipTests(RetiredRoleTests):
+    def setUp(self):
+        super().setUp()
+        self.value.update(database='neondb',user='neondb_owner',memberships=1,
+                          membershipEdges=[dict(a.ADMIN_MEMBERSHIP)])
+        for row in self.value['acl']:
+            if row['kind']=='database':row['object']='neondb'
+
+    def test_exact_admin_tuple_and_versions(self):
+        for version in (160000,170000,180006):
+            self.value['serverVersion']=version
+            self.assertEqual(a.classify_memberships(self.value),'EXACT_ADMIN_EDGE')
+            self.assertEqual(self.classify()['status'],'ROLE_CONTRACT_LOCAL_VERIFIED')
+        self.assertEqual(self.value['memberships'],1)
+
+    def test_every_edge_drift_and_missing_field_refuses(self):
+        good=copy.deepcopy(self.value)
+        for key in a.ADMIN_MEMBERSHIP:
+            for action in ('missing','null','change'):
+                self.value=copy.deepcopy(good);edge=self.value['membershipEdges'][0]
+                if action=='missing':del edge[key]
+                elif action=='null':edge[key]=None
+                else:edge[key]=not edge[key] if type(edge[key]) is bool else 'foreign'
+                with self.subTest(key=key,action=action),self.assertRaises(a.Stop):self.classify()
+        for change in (
+            {'memberships':0},{'memberships':2},{'memberships':True},{'membershipEdges':[]},
+            {'membershipEdges':[dict(a.ADMIN_MEMBERSHIP)]*2},{'membershipEdges':[dict(a.ADMIN_MEMBERSHIP)]*3},
+            {'serverVersion':True},{'serverVersion':150000},{'serverVersion':190000},
+            {'user':'foreign'},{'database':'foreign'}):
+            self.value={**good,**change}
+            with self.subTest(change=change),self.assertRaises(a.Stop):self.classify()
+        self.value=copy.deepcopy(good);edge=self.value['membershipEdges'][0]
+        edge['member'],edge['role']=edge['role'],edge['member']
+        with self.assertRaises(a.Stop):self.classify()
+
+    def test_admin_exception_does_not_waive_other_predicates(self):
+        good=copy.deepcopy(self.value)
+        for key,value in [('databaseTemp',True),('schemaCreate',True),('login',True),('limit',6),('expired',False),
+                          ('expiryFinite',False),('unsafe',True),('owned',1),('sessions',1)]:
+            self.value={**good,key:value}
+            with self.subTest(key=key),self.assertRaises(a.Stop):self.classify()
+        self.value=copy.deepcopy(good);self.value['acl'].pop()
+        with self.assertRaises(a.Stop):self.classify()
+
+# Reuse only the fixture; inherited tests assert the original zero-edge fixture.
+for _name in RetiredRoleTests.__dict__:
+    if _name.startswith('test_'):setattr(AdminMembershipTests,_name,None)

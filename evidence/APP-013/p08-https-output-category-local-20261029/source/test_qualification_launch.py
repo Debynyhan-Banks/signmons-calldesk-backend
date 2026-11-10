@@ -318,7 +318,7 @@ class CurrentProofTests(unittest.TestCase):
                 for row in rows:
                     if row['kind']=='database':row['object']=case.scope['database']['database']
                 return dict(role='p07_payment_runtime',database=case.scope['database']['database'],user=case.scope['database']['user'],
-                    count=1,login=False,limit=0,expiryFinite=True,expired=True,unsafe=False,memberships=0,owned=0,sessions=0,
+                    count=1,login=False,limit=0,expiryFinite=True,expired=True,unsafe=False,memberships=0,membershipEdges=[],serverVersion=160000,owned=0,sessions=0,
                     schemaCreate=False,databaseTemp=False,acl=rows)
             def close(obj,deadline):obj.closed=True;return obj.override.get('close_result',True)
             def independent(obj):
@@ -329,6 +329,20 @@ class CurrentProofTests(unittest.TestCase):
                            ('TARGET_NAME',self.scope['target']['fullName'])]:
             patcher=patch.object(launch,name,value);patcher.start();self.addCleanup(patcher.stop)
     def run_proof(self):return launch.produce_native_qualification(self.p,self.scope,self.io,lambda:self.now)
+    def test_exact_admin_membership_current_qualifier_and_temp_refusal(self):
+        for temp in (False,True):
+            case=CurrentProofTests();case.setUp()
+            try:
+                case.scope['database'].update(database='neondb',user='neondb_owner')
+                case.p['nativeScopeSha256']=model.digest(case.scope)
+                raw=case.io.sql(launch.current_sql_contract()[2],'SYNTHETIC',case.now+60)
+                raw.update(memberships=1,membershipEdges=[dict(case.acl.ADMIN_MEMBERSHIP)],databaseTemp=temp)
+                case.io.override['retired_role']=raw
+                result=case.run_proof()
+                if temp:case.assert_boundary_refusal(result,'ROLE_NOT_READY','database')
+                else:self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',result)
+            finally:case.doCleanups()
+
     def test_current_positive_exact_counts_and_native_scope(self):
         result=self.run_proof();self.assertEqual(result['status'],'CURRENT_EVIDENCE_LOCAL_VERIFIED',result)
         self.assertFalse(result['liveObserved'] or result['executionReady']);self.assertIsNone(result['failureStage'])
