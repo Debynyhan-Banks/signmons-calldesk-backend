@@ -1,0 +1,44 @@
+{
+  "section": "APP-013/3A/P08",
+  "status": "SECRET_READ_DIAGNOSTIC_PREPARATION_VERIFIED",
+  "verifiedAt": "2026-11-10T20:47:28.712958+00:00",
+  "baseSource": "e5334b8",
+  "files": {
+    "p08-secret-read-diagnostic-20261110/launch.py": "575067c301c7d32420a0d2b24c4cfa701b582ae06886f1807880d246b4cfa783",
+    "p08-secret-read-diagnostic-20261110/test_launch.py": "3366621001bcb823f44e7d04f25b0805bc142613a8ce5580f4a90a771adfb1db",
+    "p08-secret-read-diagnostic-20261110/read.mjs": "c06efa6d793a31026bf49b03068da1f7e9f19c7f6a53af78c4b1677400618382",
+    "p08-secret-read-diagnostic-20261110/test_read.mjs": "e30a0b77f8b7f653482f68677ee4043ba5f0080bbb7518299fe43f1ba59fcd8b",
+    "p08-native-entry-local-20261101/source/connected_payment.mjs": "aa80beef0d992b86006070d25e5ccad826d20b0286b46ae633a4160424da7cc2"
+  },
+  "tests": {
+    "diagnosticPython": 9,
+    "nodeDiagnosticAndNativeTransportPayment": 36,
+    "nativePythonTlsBrowser": 39,
+    "connectedPacket": 18,
+    "composedQualification": 17
+  },
+  "checks": [
+    "lint PASS",
+    "architecture PASS",
+    "source locks PASS",
+    "backend governance PASS",
+    "whitespace PASS"
+  ],
+  "proofBoundary": "Shared boundedPaymentResponse and decodeStripeTestSecret used by both real native payment transport and diagnostic. Actual runChild fixtures and streaming Response exercise same functions. Diagnostic CLI/approval/read tests use fictional credentials and injected SDK results; timeout fixture process is actually terminated and reaped. No external diagnostic has executed.",
+  "limits": {
+    "sdkCommands": 6,
+    "secretManagerRequests": 1,
+    "sql": 0,
+    "stripeRequests": 0,
+    "maximumSeconds": 60
+  },
+  "unknowns": [
+    "actual secret access result",
+    "actual transport outcome",
+    "actual key validity"
+  ],
+  "providerCalls": 0,
+  "externalReadAuthorized": false,
+  "rawPrivateInputsUsed": false,
+  "scopeDeviation": false
+}

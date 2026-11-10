@@ -144,20 +144,8 @@ export function createPaymentPorts(cap,credentials,journal,injected={}) {
   let key='',secretAttempted=false,cleared=false;
   const counts={reads:0,creates:0,binds:0,recovers:0};
   async function bounded(url,options,cleanup){
-    gate(cap,cleanup,true);need(!cleared,'PAYMENT_PORT_CLOSED');
     const until=cleanup?Date.parse(cap.e.plan.window.cleanupEnd):Date.parse(p.workEnd);
-    need(Date.now()<until,'PAYMENT_DEADLINE');
-    const signal=AbortSignal.timeout(Math.max(1,Math.min(5000,until-Date.now())));
-    const response=await send(url,{...options,redirect:'error',signal});
-    let text;
-    if(response.body?.getReader){const reader=response.body.getReader(),chunks=[];let size=0;
-      try {while(true){gate(cap,cleanup);need(!signal.aborted,'PAYMENT_IO_TIMEOUT');
-        const r=await reader.read();if(r.done)break;size+=r.value.byteLength;need(size<=65536,'PAYMENT_OUTPUT_LIMIT');chunks.push(Buffer.from(r.value));}
-        text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
-      }finally{await reader.cancel().catch(()=>{});}
-    }else{text=await response.text();need(Buffer.byteLength(text)<=65536,'PAYMENT_OUTPUT_LIMIT');}
-    gate(cap,cleanup);need(Date.now()<until && !signal.aborted,'PAYMENT_IO_TIMEOUT');
-    return {ok:response.ok,status:response.status,text:async()=>text};
+    return boundedPaymentResponse(send,url,options,spend=>{gate(cap,cleanup,spend);need(!cleared,'PAYMENT_PORT_CLOSED');},until);
   }
   async function stripeKey(cleanup){
     if(key)return key;
@@ -166,12 +154,7 @@ export function createPaymentPorts(cap,credentials,journal,injected={}) {
     const name='projects/'+cap.e.plan.projectNumber+'/secrets/signmons-staging-stripe-secret-key/versions/1';
     const r=await bounded('https://secretmanager.googleapis.com/v1/'+name+':access',{
       method:'GET',headers:{Authorization:'Bearer '+credentials.accessToken}},cleanup);
-    need(r.ok,'PAYMENT_SECRET_REFUSED');const v=JSON.parse(await r.text());
-    need(v.name===name && typeof v.payload?.data==='string' && /^[A-Za-z0-9+/]+={0,2}$/.test(v.payload.data),'PAYMENT_SECRET_SHAPE');
-    const bytes=Buffer.from(v.payload.data,'base64');
-    try {const value=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
-      need(/^sk_test_[A-Za-z0-9]{16,256}$/.test(value),'PAYMENT_TEST_KEY_REQUIRED');key=value;
-    }finally{bytes.fill(0);}
+    key=await decodeStripeTestSecret(r,name);
     return key;
   }
   return {
@@ -217,4 +200,29 @@ if(process.argv[1]===fileURLToPath(import.meta.url)){
     process.stdout.write(JSON.stringify(recoveryPaymentBinding(input.value,input.scope,input.now))+'\n');
   }catch {process.stdout.write('{"status":"PAYMENT_BINDING_UNQUALIFIED"}\n');process.exitCode=2;}
   finally{bytes.fill(0);}
+}
+
+export async function boundedPaymentResponse(send,url,options,guard,until){
+    guard(true);
+    need(Date.now()<until,'PAYMENT_DEADLINE');
+    const signal=AbortSignal.timeout(Math.max(1,Math.min(5000,until-Date.now())));
+    const response=await send(url,{...options,redirect:'error',signal});
+    let text;
+    if(response.body?.getReader){const reader=response.body.getReader(),chunks=[];let size=0;
+      try {while(true){guard(false);need(!signal.aborted,'PAYMENT_IO_TIMEOUT');
+        const r=await reader.read();if(r.done)break;size+=r.value.byteLength;need(size<=65536,'PAYMENT_OUTPUT_LIMIT');chunks.push(Buffer.from(r.value));}
+        text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
+      }finally{await reader.cancel().catch(()=>{});}
+    }else{text=await response.text();need(Buffer.byteLength(text)<=65536,'PAYMENT_OUTPUT_LIMIT');}
+    guard(false);need(Date.now()<until && !signal.aborted,'PAYMENT_IO_TIMEOUT');
+    return {ok:response.ok,status:response.status,text:async()=>text};
+  }
+
+export async function decodeStripeTestSecret(r,name){
+  need(r.ok,'PAYMENT_SECRET_REFUSED');const v=JSON.parse(await r.text());
+    need(v.name===name && typeof v.payload?.data==='string' && /^[A-Za-z0-9+/]+={0,2}$/.test(v.payload.data),'PAYMENT_SECRET_SHAPE');
+    const bytes=Buffer.from(v.payload.data,'base64');
+    try {const value=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+      need(/^sk_test_[A-Za-z0-9]{16,256}$/.test(value),'PAYMENT_TEST_KEY_REQUIRED');return value;
+    }finally{bytes.fill(0);}
 }
