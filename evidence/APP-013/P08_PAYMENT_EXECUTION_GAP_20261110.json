@@ -1,0 +1,17 @@
+{
+  "inspectedAt": "2026-11-10T14:30:57.963664+00:00",
+  "baseCommit": "e77f281",
+  "files": {
+    "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py": "f5f401e2ee4cd43bc67fcc428787d61439dadd35f0a534e3868a4b6fa9a28f0d",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+    "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/sequence.mjs": "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c",
+    "evidence/APP-013/p08-local-preparation-20261022/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",
+    "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851"
+  },
+  "providerCalls": 0,
+  "runtimeChanges": 0,
+  "executionReady": false,
+  "finding": "AUTHENTICATION_ENTRY_CLOSES_WITHOUT_PAYMENT; PAYMENT_RUN_EXPLICITLY_REFUSES",
+  "q12": "SUCCESSFUL_TIME_AND_SCOPE_BOUND_OBSERVATION; NOT_PAYMENT_CONTEXT_OR_EXECUTION_AUTHORITY"
+}
