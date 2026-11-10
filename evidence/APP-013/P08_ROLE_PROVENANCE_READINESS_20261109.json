@@ -1,0 +1,37 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "approvedProposal": "3df4f79",
+  "baseSource": "fe9581b",
+  "verifiedAt": "2026-11-10T00:34:49.790296+00:00",
+  "sourceManifestSha256": "7c4096250885132742d124f28a45b094d8ceaa3369eed9216bfe791242d8d149",
+  "files": {
+    "qualification_launch.py": "41934883bcb02a6e415ae920febacf6b5042322b38c12f8a3a3840c2b0f0dc74",
+    "test_qualification_launch.py": "75ff3f234015a06bee1435e312ddeb278bc6c72a10ad1cc4a238e36d8c8c22ef",
+    "test_qualification_launch_postgres.py": "f452bc9da1c56d7ecb29e0b14ba5929e0fb95eafe6d82ee123acbf6c8c32a74f"
+  },
+  "queryHashes": {
+    "role_provenance": "65a97eaae4f1b346b36620e73a16ef2ed309c28b85560ebe746fc572b11af342",
+    "closeout": "4c412c23a971f42bae3eb69210c98f6473476822ab0b16271f02de5ada8e76da"
+  },
+  "authority": "LOCAL_IMPLEMENTATION_ONLY",
+  "externalReadAuthorized": false,
+  "candidate": null,
+  "executionReady": false,
+  "liveUnknowns": [
+    "server version",
+    "current membership and TEMP grants",
+    "current credential usability",
+    "provider role-management semantics",
+    "shared grant correction impact"
+  ],
+  "localResult": "PASS",
+  "tests": {
+    "runtime": 214,
+    "runtimeSeconds": 107.879,
+    "governance": 25,
+    "failures": 0,
+    "providerCalls": 0,
+    "serverReaped": true,
+    "scratchAbsent": true
+  }
+}

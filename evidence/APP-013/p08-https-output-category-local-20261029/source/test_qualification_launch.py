@@ -2046,24 +2046,25 @@ class ProjectPermissionTests(unittest.TestCase):
         self.assertEqual(r['residuals'],['PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(r['candidate']);self.assertFalse((self.root/'permission-result.json').exists())
 
 class RoleDiagnosticTests(unittest.TestCase):
+    provenance=False
     def setUp(self):
         import uuid,shutil
         self.fixture=ExternalBindingTests();self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
         f=self.fixture;self.now=f.case.now
         iso=lambda n:dt.datetime.fromtimestamp(self.now+n,dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-        self.e={'version':1,'execution':'EXTERNAL_READ_ONLY','operationId':str(uuid.uuid4()),
+        self.e={'version':2 if self.provenance else 1,'execution':'EXTERNAL_READ_ONLY','operationId':str(uuid.uuid4()),
             'database':{'host':launch._operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'},
             'role':'p07_payment_runtime','sourceCommit':f.e['sourceCommit'],'manifestSha256':launch.source_manifest_sha256(),
             'runtimeFiles':{p:model.digest(Path(p).read_bytes()) for p in launch.role_runtime_files()},
-            'queryHashes':{d['id']:model.digest(d) for d in (launch.current_sql_contract()[2],launch.sql_contract()[1])},
+            'queryHashes':{d['id']:model.digest(d) for d in (launch.role_provenance_contract() if self.provenance else launch.current_sql_contract()[2],launch.sql_contract()[1])},
             'window':{k:iso(v) for k,v in dict(start=-1,cutoff=30,readEnd=60,closeoutEnd=180).items()},
             'limits':{'sql':3,'cli':0,'https':0,'cache':0}}
-        self.bind();self.root=Path('/private/tmp/p08-database-role-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+        self.bind();self.root=Path(('/private/tmp/p08-role-provenance-' if self.provenance else '/private/tmp/p08-database-role-')+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
         self.raw=f.case.io.sql(launch.current_sql_contract()[2],'SYNTHETIC',self.now+60)
         self.calls=[];self.clients=[];self.override={}
     def bind(self):
-        f=self.fixture;self.e.pop('decision',None);path='APP013_P08_DATABASE_ROLE_DIAGNOSTIC_OPERATION_20261109.json'
-        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_DATABASE_ROLE_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
+        f=self.fixture;self.e.pop('decision',None);kind='PROVENANCE' if self.provenance else 'DIAGNOSTIC';path='APP013_P08_DATABASE_ROLE_'+kind+'_OPERATION_20261109.json'
+        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_DATABASE_ROLE_'+kind,'externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
         (f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic role approval')
         self.e['decision']={'commit':f.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
     def cap(self,mode='diagnose'):
@@ -2073,7 +2074,7 @@ class RoleDiagnosticTests(unittest.TestCase):
         class IO(launch.RoleDiagnosticIO):
             proof=True
             def _owned_run(obj,argv,env,deadline):
-                slot='independent' if obj.cleanup_only else 'role' if argv[-1]==launch.current_sql_contract()[2]['sql'] else 'normal'
+                slot='independent' if obj.cleanup_only else 'role' if argv[-1]==cap.query['sql'] else 'normal'
                 case.calls.append(slot)
                 case.assertEqual(argv[0],launch._operator_module().PSQL)
                 case.assertEqual(env['PGSSLMODE'],'verify-full');case.assertEqual(env['PGSSLROOTCERT'],launch.ROLE_DIAGNOSTIC_CA)
@@ -2201,7 +2202,7 @@ class RoleDiagnosticTests(unittest.TestCase):
             actual=launch.NativeIO._owned_run;calls=[];clients=[]
             def owned(obj,argv,env,deadline):
                 clients.append(obj);calls.append(argv[-1])
-                script=code if argv[-1]==launch.current_sql_contract()[2]['sql'] else 'print(\'{"sessionsAbsent":true}\')'
+                script=code if argv[-1]==cap.query['sql'] else 'print(\'{"sessionsAbsent":true}\')'
                 return actual(obj,[launch.sys.executable,'-c',script],env,obj.clock()+2.4)
             with patch.object(launch.RoleDiagnosticIO,'_owned_run',owned),patch.object(launch,'recovery_password',return_value='synthetic'):
                 r=launch.run_role_diagnostic(cap)
@@ -2230,3 +2231,84 @@ class RoleDiagnosticTests(unittest.TestCase):
                 with self.assertRaises(BlockingIOError):launch.closeout_role_diagnostic(self.cap('closeout'))
             finally:release.set()
             self.assertEqual(work.result()['residuals'],[])
+
+class RoleProvenanceTests(RoleDiagnosticTests):
+    provenance=True
+    test_every_condition_mixed_null_wrong_type_and_identity=None
+    test_role_failure_retains_all_checks_and_cleanup=None
+
+    def setUp(self):
+        super().setUp()
+        self.raw={'role':'p07_payment_runtime','database':'neondb','user':'neondb_owner',
+            'serverVersion':160001,'roleCount':1,'superuser':False,'databaseOwner':'neondb_owner',
+            'aclDefault':False,'effectiveTemp':True,'memberships':[
+                {'member':'consumer','role':'p07_payment_runtime','grantor':'neondb_owner','admin':False,'inherit':False,'set':True},
+                {'member':'p07_payment_runtime','role':'ancestor','grantor':'neondb_owner','admin':False,'inherit':True,'set':False}],
+            'tempGrants':[{'public':False,'grantee':'ancestor','grantor':'neondb_owner','grantable':False,'usable':True}]}
+
+    def test_positive_three_sql_no_google_and_public_closeout_no_replay(self):
+        with patch.object(launch.NativeIO,'cli',side_effect=AssertionError('SDK forbidden')),patch.object(launch.NativeIO,'https',side_effect=AssertionError('HTTPS forbidden')):
+            r=self.run_case()
+        self.assertEqual(r['status'],'DATABASE_ROLE_PROVENANCE_DIAGNOSED');self.assertEqual(self.calls,['role','normal','independent'])
+        v=r['observation']['provenance'];self.assertTrue(r['observation']['complete'])
+        self.assertEqual([e['direction'] for e in v['memberships']],['INCOMING','OUTGOING'])
+        self.assertEqual(v['tempSources'],[{'kind':'INHERITED','role':'ancestor'}])
+        with patch.object(launch,'hidden_password',side_effect=AssertionError('no prompt')):
+            self.assertTrue(launch.closeout_role_diagnostic(self.cap('closeout'))['verified'])
+            with self.assertRaises(model.Stop):launch.closeout_role_diagnostic(self.cap('closeout'))
+        with self.assertRaises(model.Stop):self.cap()
+
+    def test_provenance_null_missing_types_cycles_bounds_and_unexplained(self):
+        bad=[]
+        for field in self.raw:
+            v=copy.deepcopy(self.raw);v.pop(field);bad.append(v)
+            v=copy.deepcopy(self.raw);v[field]=None;bad.append(v)
+        for field,value in [('serverVersion',True),('serverVersion',150009),('serverVersion',190001),('roleCount',True),
+            ('roleCount',0),('effectiveTemp',False),('superuser',1),('user','foreign'),('database','foreign'),('role','foreign')]:
+            bad.append({**self.raw,field:value})
+        for rowtype in ('memberships','tempGrants'):
+            for field in self.raw[rowtype][0]:
+                v=copy.deepcopy(self.raw);v[rowtype][0].pop(field);bad.append(v)
+                if field!='grantee':
+                    v=copy.deepcopy(self.raw);v[rowtype][0][field]=None;bad.append(v)
+            v=copy.deepcopy(self.raw);v[rowtype]*=65;bad.append(v)
+        for name in ('','x'*64,'PRIVATE_EXCEPTION_CANARY\n','\x00'):
+            v=copy.deepcopy(self.raw);v['memberships'][0]['member']=name;bad.append(v)
+        v=copy.deepcopy(self.raw);v['memberships'][0]['member']='ancestor';bad.append(v) # cycle
+        v=copy.deepcopy(self.raw);v['memberships'][1]['inherit']=False;bad.append(v) # unexplained USAGE
+        v=copy.deepcopy(self.raw);v['memberships'][0]['role']='unrelated';bad.append(v)
+        v=copy.deepcopy(self.raw);v['memberships'].append(v['memberships'][0]);bad.append(v)
+        for v in bad:
+            r=launch.role_provenance_observation(v)
+            self.assertFalse(r['complete'],v);self.assertIsNone(r['provenance']);self.assertEqual(r['failure'],'ROLE_PROVENANCE_UNKNOWN')
+
+    def test_public_direct_absent_superuser_and_noninherited(self):
+        for version in (160000,170000,180000):
+            self.assertTrue(launch.role_provenance_observation({**self.raw,'serverVersion':version})['complete'])
+        for kind in ('PUBLIC','DIRECT','NONE','SUPERUSER','BLOCKED'):
+            v=copy.deepcopy(self.raw);v['memberships']=[];g=v['tempGrants'][0]
+            if kind=='PUBLIC':g.update(public=True,grantee=None)
+            elif kind=='DIRECT':g['grantee']=v['role']
+            elif kind=='SUPERUSER':v['superuser']=True;v['tempGrants']=[]
+            elif kind=='NONE':v['tempGrants']=[];v['effectiveTemp']=False
+            else:g['usable']=False;v['effectiveTemp']=False
+            r=launch.role_provenance_observation(v);self.assertTrue(r['complete'],r)
+            self.assertEqual([s['kind'] for s in r['provenance']['tempSources']],[] if kind in ('NONE','BLOCKED') else [kind])
+
+    def test_old_authority_and_command_cannot_run_provenance(self):
+        good=copy.deepcopy(self.e)
+        self.e['version']=1;self.bind()
+        with self.assertRaisesRegex(model.Stop,'ROLE_QUERY_PINS'):self.cap()
+        self.e=copy.deepcopy(good);self.e['queryHashes']={d['id']:model.digest(d) for d in (launch.current_sql_contract()[2],launch.sql_contract()[1])};self.bind()
+        with self.assertRaisesRegex(model.Stop,'ROLE_QUERY_PINS'):self.cap()
+        self.e=good;self.bind();cap=self.cap()
+        with patch.object(launch,'private_json',return_value=self.e),patch.object(launch,'RoleDiagnosticCapability',return_value=cap):
+            with self.assertRaisesRegex(model.Stop,'ROLE_COMMAND_SCOPE'):launch.role_diagnostic_main(['--diagnose-database-role','synthetic'])
+        with self.assertRaises(model.Stop):self.io(cap).sql(launch.current_sql_contract()[2],'x',self.now+10)
+        with self.assertRaises(model.Stop):launch.NativeIO(lambda:self.now,'synthetic').sql(launch.role_provenance_contract(),'x',self.now+10)
+        self.assertFalse(self.root.exists())
+
+    def test_native_bytes_incomplete_output_still_cleans_and_discards_metadata(self):
+        self.raw['serverVersion']=150000;self.raw['databaseOwner']='PRIVATE_EXCEPTION_CANARY'
+        r=self.run_case();self.assertEqual(r['status'],'DATABASE_ROLE_UNCONFIRMED')
+        self.assertEqual(r['residuals'],[]);self.assertIsNone(r['observation']['provenance'])

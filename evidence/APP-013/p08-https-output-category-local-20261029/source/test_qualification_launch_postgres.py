@@ -218,8 +218,9 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
                 self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
                 self.command('REVOKE TEMP ON DATABASE neondb FROM PUBLIC; REVOKE CREATE ON SCHEMA public FROM PUBLIC;')
 
-    def test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(self):
-        helper=current_tests.RoleDiagnosticTests();helper.setUp();self.addCleanup(helper.doCleanups)
+    def test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(self,provenance=False):
+        command='role-provenance' if provenance else 'database-role'
+        helper=(current_tests.RoleProvenanceTests if provenance else current_tests.RoleDiagnosticTests)();helper.setUp();self.addCleanup(helper.doCleanups)
         path=helper.fixture.repo/'role-envelope.json';path.write_text(json.dumps(helper.e));path.chmod(0o600)
         prefix='\n'.join([
             'import sys,os,signal,json;from pathlib import Path',
@@ -230,7 +231,7 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
             'q.recovery_password=lambda *args:"SYNTHETIC_CHILD"',
         ])
         crash=prefix+'\nq.RoleDiagnosticIO._owned_run=lambda *args:os.kill(os.getpid(),signal.SIGKILL)\nraise SystemExit(q.role_diagnostic_main(sys.argv[2:]))'
-        p=subprocess.run([launch.sys.executable,'-I','-B','-c',crash,str(model.ROOT),'--diagnose-database-role',str(path)],capture_output=True,timeout=15)
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',crash,str(model.ROOT),'--diagnose-'+command,str(path)],capture_output=True,timeout=15)
         self.assertEqual(p.returncode,-9,p.stderr.decode());self.assertTrue((helper.root/'sql-role.json').exists());self.assertFalse((helper.root/'result.json').exists())
         cleanup=prefix+'\n'+ '\n'.join([
             'owned=q.NativeIO._owned_run',
@@ -240,11 +241,69 @@ INSERT INTO "Job"(id,"tenantId","customerId","customerTenantId","propertyAddress
             f'    return owned(obj,argv,dict(env,PGSSLROOTCERT={str(self.cert)!r}),deadline)',
             'q.RoleDiagnosticIO._owned_run=local',
             'raise SystemExit(q.role_diagnostic_main(sys.argv[2:]))'])
-        p=subprocess.run([launch.sys.executable,'-I','-B','-c',cleanup,str(model.ROOT),'--closeout-database-role',str(helper.root)],capture_output=True,timeout=20)
+        p=subprocess.run([launch.sys.executable,'-I','-B','-c',cleanup,str(model.ROOT),'--closeout-'+command,str(helper.root)],capture_output=True,timeout=20)
         self.assertEqual(p.returncode,2,p.stderr.decode());r=json.loads((helper.root/'closeout.json').read_text())
         self.assertEqual(r['residuals'],['PROCESS_HISTORY_UNKNOWN']);self.assertFalse(r['verified'])
         self.assertEqual(sorted(p.name for p in helper.root.glob('sql-*.json')),['sql-independent.json','sql-role.json'])
         self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+
+    def test_role_provenance_actual_tls_sources_directions_and_defaults(self):
+        import shutil
+        helper=current_tests.RoleProvenanceTests();helper.setUp();self.addCleanup(helper.doCleanups)
+        original=launch.NativeIO._owned_run;case=self
+        def owned(obj,argv,env,deadline):
+            case.assertIn(argv[-1],[launch.role_provenance_contract()['sql'],launch.sql_contract()[1]['sql']])
+            case.assertEqual(env['PGSSLMODE'],'verify-full')
+            argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',case.port]
+            return original(obj,argv,{**env,'PGSSLROOTCERT':str(case.cert)},time.time()+20)
+        def observe():
+            shutil.rmtree(helper.root,ignore_errors=True)
+            with patch.object(launch.RoleDiagnosticIO,'_owned_run',owned),patch.object(launch,'recovery_password',return_value='SYNTHETIC_TLS'):
+                r=launch.run_role_diagnostic(helper.cap())
+            self.assertEqual(r['residuals'],[],r);self.assertEqual(r['sqlReservations'],3)
+            self.assertEqual(r['status'],'DATABASE_ROLE_PROVENANCE_DIAGNOSED',r)
+            self.assertIsNone(r['candidate']);self.assertFalse(r['executionReady'])
+            self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+            return r['observation']['provenance']
+        self.command('CREATE ROLE provenance_parent; CREATE ROLE provenance_consumer; CREATE ROLE provenance_grandparent;')
+        try:
+            v=observe();self.assertFalse(v['effectiveTemp']);self.assertEqual(v['tempSources'],[])
+            self.command('GRANT p07_payment_runtime TO provenance_consumer; GRANT provenance_parent TO p07_payment_runtime WITH INHERIT FALSE; GRANT TEMP ON DATABASE neondb TO provenance_parent;')
+            v=observe();self.assertFalse(v['effectiveTemp']);self.assertEqual({e['direction'] for e in v['memberships']},{'INCOMING','OUTGOING'})
+            self.command('GRANT provenance_parent TO p07_payment_runtime WITH INHERIT TRUE;')
+            v=observe();self.assertEqual(v['tempSources'],[{'kind':'INHERITED','role':'provenance_parent'}])
+            self.command('REVOKE TEMP ON DATABASE neondb FROM provenance_parent; GRANT provenance_grandparent TO provenance_parent WITH INHERIT TRUE; GRANT TEMP ON DATABASE neondb TO provenance_grandparent;')
+            v=observe();self.assertEqual(v['tempSources'],[{'kind':'INHERITED','role':'provenance_grandparent'}]);self.assertIn('ANCESTOR',[e['direction'] for e in v['memberships']])
+            self.command('REVOKE TEMP ON DATABASE neondb FROM provenance_grandparent; GRANT TEMP ON DATABASE neondb TO p07_payment_runtime;')
+            v=observe();self.assertEqual(v['tempSources'],[{'kind':'DIRECT','role':'p07_payment_runtime'}])
+            self.command('REVOKE TEMP ON DATABASE neondb FROM p07_payment_runtime; GRANT TEMP ON DATABASE neondb TO PUBLIC;')
+            v=observe();self.assertEqual(v['tempSources'],[{'kind':'PUBLIC','role':None}]);self.assertFalse(v['aclDefault'])
+            # Owned disposable cluster only: exercise actual null catalog/default-ACL semantics.
+            saved=self.command("SELECT datacl::text FROM pg_database WHERE datname='neondb'")
+            try:
+                self.command("UPDATE pg_database SET datacl=NULL WHERE datname='neondb';")
+                v=observe();self.assertTrue(v['aclDefault']);self.assertEqual(v['tempSources'],[{'kind':'PUBLIC','role':None}])
+            finally:
+                self.command("UPDATE pg_database SET datacl='"+saved.replace("'","''")+"'::aclitem[] WHERE datname='neondb';")
+        finally:
+            self.command('DROP OWNED BY provenance_parent,provenance_consumer,provenance_grandparent; DROP ROLE provenance_consumer,provenance_parent,provenance_grandparent; REVOKE ALL ON DATABASE neondb FROM PUBLIC;')
+
+    def test_role_provenance_actual_catalog_overflow_is_unknown(self):
+        # 65 incoming edges exceed the approved bound, without a truncated success.
+        self.command("DO $$ BEGIN FOR i IN 1..65 LOOP EXECUTE format('CREATE ROLE provenance_bound_%s',i); EXECUTE format('GRANT p07_payment_runtime TO provenance_bound_%s',i); END LOOP; END $$;")
+        try:
+            raw=json.loads(self.command(launch.role_provenance_contract()['sql']))
+            self.assertEqual(len(raw['memberships']),65)
+            self.assertFalse(launch.role_provenance_observation(raw)['complete'])
+            self.command("DO $$ BEGIN FOR i IN 1..65 LOOP EXECUTE format('REVOKE p07_payment_runtime FROM provenance_bound_%s',i); EXECUTE format('GRANT TEMP ON DATABASE neondb TO provenance_bound_%s',i); END LOOP; END $$;")
+            raw=json.loads(self.command(launch.role_provenance_contract()['sql']))
+            self.assertEqual(raw['memberships'],[]);self.assertEqual(len(raw['tempGrants']),65)
+            self.assertFalse(launch.role_provenance_observation(raw)['complete'])
+        finally:
+            self.command("DO $$ BEGIN FOR i IN 1..65 LOOP EXECUTE format('DROP OWNED BY provenance_bound_%s',i); EXECUTE format('DROP ROLE provenance_bound_%s',i); END LOOP; END $$;")
+
+    def test_role_provenance_public_hard_crash_and_fresh_tls_cleanup(self):
+        self.test_role_diagnostic_public_hard_crash_and_fresh_tls_cleanup(provenance=True)
 
 
 

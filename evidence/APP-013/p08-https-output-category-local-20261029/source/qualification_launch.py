@@ -486,7 +486,7 @@ class NativeIO:
     def sql(self, descriptor, password, deadline):
         need(not self.closed and self.clock() < deadline and isinstance(password, str) and password, "SQL_DEADLINE")
         operator = _operator_module()
-        need(descriptor in current_sql_contract(), "SQL_ALLOWLIST")
+        need(descriptor in ((self.cap.query,sql_contract()[1]) if isinstance(self,RoleDiagnosticIO) else current_sql_contract()), "SQL_ALLOWLIST")
         sql = descriptor["sql"]
         need(sql is not None, "SQL_ALLOWLIST")
         env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO,RoleDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
@@ -2098,6 +2098,99 @@ def role_diagnostic_observation(raw):
     return {'checks':checks,'failure':failure}
 
 
+def role_provenance_contract():
+    # PG16 options are read via JSON so unsupported servers fail closed at parsing.
+    return {'id':'role_provenance','readOnly':True,'sql':"""BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
+SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s';
+WITH r AS (SELECT oid,rolsuper FROM pg_roles WHERE rolname='p07_payment_runtime'),
+d AS (SELECT * FROM pg_database WHERE datname=current_database()),
+edges AS MATERIALIZED (
+ SELECT m.member,m.roleid,m.grantor,m.admin_option,to_jsonb(m)->'inherit_option' AS inherit_option,
+ to_jsonb(m)->'set_option' AS set_option FROM pg_auth_members m
+ WHERE m.roleid=(SELECT oid FROM r) OR pg_has_role((SELECT oid FROM r),m.member,'MEMBER')
+ ORDER BY m.member,m.roleid,m.grantor LIMIT 65
+), grants AS MATERIALIZED (
+ SELECT a.* FROM d CROSS JOIN LATERAL aclexplode(COALESCE(d.datacl,acldefault('d',d.datdba))) a
+ WHERE a.privilege_type='TEMPORARY' ORDER BY a.grantee,a.grantor LIMIT 65
+)
+SELECT json_build_object('role','p07_payment_runtime','database',current_database(),'user',current_user,
+ 'serverVersion',current_setting('server_version_num')::int,'roleCount',(SELECT count(*) FROM r),
+ 'superuser',(SELECT rolsuper FROM r),'databaseOwner',(SELECT rolname FROM pg_roles WHERE oid=(SELECT datdba FROM d)),
+ 'aclDefault',(SELECT datacl IS NULL FROM d),
+ 'effectiveTemp',has_database_privilege((SELECT oid FROM r),(SELECT oid FROM d),'TEMP'),
+ 'memberships',COALESCE((SELECT json_agg(json_build_object(
+ 'member',(SELECT rolname FROM pg_roles WHERE oid=e.member),'role',(SELECT rolname FROM pg_roles WHERE oid=e.roleid),
+ 'grantor',(SELECT rolname FROM pg_roles WHERE oid=e.grantor),'admin',e.admin_option,'inherit',e.inherit_option,'set',e.set_option)
+ ORDER BY e.member,e.roleid,e.grantor) FROM edges e),'[]'::json),
+ 'tempGrants',COALESCE((SELECT json_agg(json_build_object(
+ 'public',g.grantee=0,'grantee',CASE WHEN g.grantee=0 THEN NULL ELSE (SELECT rolname FROM pg_roles WHERE oid=g.grantee) END,
+ 'grantor',(SELECT rolname FROM pg_roles WHERE oid=g.grantor),'grantable',g.is_grantable,
+ 'usable',CASE WHEN g.grantee=0 THEN true ELSE pg_has_role((SELECT oid FROM r),g.grantee,'USAGE') END)
+ ORDER BY g.grantee,g.grantor) FROM grants g),'[]'::json))::text;
+ROLLBACK;"""}
+
+
+def role_provenance_observation(raw):
+    unknown={'complete':False,'failure':'ROLE_PROVENANCE_UNKNOWN','provenance':None}
+    try:
+        v=strict_json(raw)
+        need(isinstance(v,dict) and set(v)=={'role','database','user','serverVersion','roleCount','superuser',
+             'databaseOwner','aclDefault','effectiveTemp','memberships','tempGrants'},'PROVENANCE_SHAPE')
+        need((v['role'],v['database'],v['user'])==('p07_payment_runtime','neondb','neondb_owner'),'PROVENANCE_IDENTITY')
+        need(type(v['serverVersion']) is int and 160000<=v['serverVersion']<190000,'PROVENANCE_VERSION')
+        need(type(v['roleCount']) is int and v['roleCount']==1,'PROVENANCE_ROLE')
+        def name(x):
+            return isinstance(x,str) and 0<len(x.encode('utf-8'))<=63 and all(ord(c)>=32 and ord(c)!=127 for c in x)
+        need(name(v['databaseOwner']),'PROVENANCE_NAME')
+        need(all(type(v[k]) is bool for k in ('superuser','aclDefault','effectiveTemp')),'PROVENANCE_BOOL')
+        edges=v['memberships'];grants=v['tempGrants'];target=v['role']
+        need(type(edges) is list and len(edges)<=64 and type(grants) is list and len(grants)<=64,'PROVENANCE_LIMIT')
+        seen=set();graph={}
+        for e in edges:
+            need(type(e) is dict and set(e)=={'member','role','grantor','admin','inherit','set'},'PROVENANCE_EDGE')
+            need(all(name(e[k]) for k in ('member','role','grantor')) and all(type(e[k]) is bool for k in ('admin','inherit','set')),'PROVENANCE_EDGE')
+            key=(e['member'],e['role'],e['grantor']);need(key not in seen,'PROVENANCE_DUPLICATE');seen.add(key)
+            graph.setdefault(e['member'],[]).append(e)
+        # Reject cycles, including malformed catalog output; traversal bounded by 64 edges.
+        visiting=set();done=set()
+        def visit(n):
+            need(n not in visiting,'PROVENANCE_CYCLE')
+            if n in done:return
+            visiting.add(n)
+            for e in graph.get(n,[]):visit(e['role'])
+            visiting.remove(n);done.add(n)
+        for n in graph:visit(n)
+        def reachable(inherit_only):
+            found={target};pending=[target]
+            while pending:
+                for e in graph.get(pending.pop(),[]):
+                    if (not inherit_only or e['inherit']) and e['role'] not in found:
+                        found.add(e['role']);pending.append(e['role'])
+            return found
+        members=reachable(False);inherited=reachable(True)
+        need(all(e['role']==target or e['member'] in members for e in edges),'PROVENANCE_UNRELATED')
+        sources=[];seen=set()
+        if v['superuser']:sources.append({'kind':'SUPERUSER','role':target})
+        for g in grants:
+            need(type(g) is dict and set(g)=={'public','grantee','grantor','grantable','usable'},'PROVENANCE_GRANT')
+            need(all(type(g[k]) is bool for k in ('public','grantable','usable')) and name(g['grantor']),'PROVENANCE_GRANT')
+            need(g['grantee'] is None if g['public'] else name(g['grantee']),'PROVENANCE_GRANT')
+            key=(g['public'],g['grantee'],g['grantor']);need(key not in seen,'PROVENANCE_DUPLICATE');seen.add(key)
+            expected=g['public'] or v['superuser'] or g['grantee'] in inherited
+            need(g['usable']==expected,'PROVENANCE_UNEXPLAINED')
+            if g['public']:sources.append({'kind':'PUBLIC','role':None})
+            elif g['grantee']==target:sources.append({'kind':'DIRECT','role':target})
+            elif g['usable'] and not v['superuser']:sources.append({'kind':'INHERITED','role':g['grantee']})
+        need(v['effectiveTemp']==bool(sources),'PROVENANCE_UNEXPLAINED')
+        # Only validated allowlisted administrative metadata may enter receipts.
+        output=copy.deepcopy(v)
+        output['memberships']=[dict(e,direction='OUTGOING' if e['member']==target else 'INCOMING' if e['role']==target else 'ANCESTOR') for e in edges]
+        output['tempSources']=sources
+        output['impact']='DB_OWNER_REVIEW_REQUIRED'
+        return {'complete':True,'failure':None,'provenance':output}
+    except Exception:return unknown
+
+
 def role_runtime_files():
     return (_operator_module().PSQL,ROLE_DIAGNOSTIC_PYTHON,ROLE_DIAGNOSTIC_CA)
 
@@ -2109,13 +2202,15 @@ class RoleDiagnosticCapability:
         a=current_module('authority');a.verify_sources();get=read_commit or a.committed
         need(set(e)=={'version','execution','operationId','database','role','sourceCommit','manifestSha256',
             'runtimeFiles','queryHashes','window','limits','decision'},'ROLE_ENVELOPE')
-        need(type(e['version']) is int and e['version']==1 and e['execution']=='EXTERNAL_READ_ONLY','ROLE_EXECUTION')
+        need(type(e['version']) is int and e['version'] in (1,2) and e['execution']=='EXTERNAL_READ_ONLY','ROLE_EXECUTION')
+        self.provenance=e['version']==2
+        self.query=role_provenance_contract() if self.provenance else current_sql_contract()[2]
         model.exact_uuid(e['operationId'],'ROLE_OPERATION')
         need(e['database']=={'host':_operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'} and
              e['role']=='p07_payment_runtime','ROLE_RESOURCE_PINS')
         need(e['limits']=={'sql':3,'cli':0,'https':0,'cache':0} and all(type(v) is int for v in e['limits'].values()),'ROLE_LIMITS')
         need(e['manifestSha256']==source_manifest_sha256() and re.fullmatch('[a-f0-9]{40}',e['sourceCommit']),'ROLE_SOURCE_DRIFT')
-        descriptors=(current_sql_contract()[2],sql_contract()[1])
+        descriptors=(self.query,sql_contract()[1])
         need(e['queryHashes']=={d['id']:model.digest(d) for d in descriptors},'ROLE_QUERY_PINS')
         need(set(e['runtimeFiles'])==set(role_runtime_files()) and all(isinstance(v,str) and re.fullmatch('[a-f0-9]{64}',v) for v in e['runtimeFiles'].values()),'ROLE_RUNTIME_PINS')
         for path in role_runtime_files()[:2]:need(e['runtimeFiles'][path]==m['sdkReview']['files'][path],'ROLE_RUNTIME_PINS')
@@ -2124,15 +2219,15 @@ class RoleDiagnosticCapability:
         need(times['start']<times['cutoff']<times['readEnd']<times['closeoutEnd'] and
              times['closeoutEnd']-times['start']<=1800 and times['closeoutEnd']-times['readEnd']>=60,'ROLE_WINDOW')
         d=e['decision'];need(set(d)=={'commit','path','sha256'} and re.fullmatch('[a-f0-9]{40}',d['commit']) and
-            re.fullmatch('[a-f0-9]{64}',d['sha256']) and re.fullmatch(r'APP013_P08_DATABASE_ROLE_DIAGNOSTIC_OPERATION_[0-9]{8}\.json',d['path']),'ROLE_DECISION')
+            re.fullmatch('[a-f0-9]{64}',d['sha256']) and re.fullmatch(r'APP013_P08_DATABASE_ROLE_'+('PROVENANCE' if self.provenance else 'DIAGNOSTIC')+r'_OPERATION_[0-9]{8}\.json',d['path']),'ROLE_DECISION')
         raw=get(a.GOV,d['commit'],d['path']);scope=model.digest({k:v for k,v in e.items() if k!='decision'})
         need(model.digest(raw)==d['sha256'] and strict_json(raw)=={'owner':'Debynyhan Banks',
-            'decision':'APPROVE_EXACT_P08_DATABASE_ROLE_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':scope},'ROLE_APPROVAL')
+            'decision':'APPROVE_EXACT_P08_DATABASE_ROLE_'+('PROVENANCE' if self.provenance else 'DIAGNOSTIC'),'externalReadAuthorized':True,'scopeSha256':scope},'ROLE_APPROVAL')
         # Same committed-source checks, only SQL runtime files; no SDK/config/cache reads.
         sql_manifest=copy.deepcopy(m);sql_manifest['sdkReview']['files']={p:e['runtimeFiles'][p] for p in role_runtime_files()[:2]}
         verify_qualification_sources(e['sourceCommit'],sql_manifest,get)
         self.e=e;self.clock=clock;self.mode=mode;self.times=times;self.last=clock();self.scope_hash=scope
-        self.root=Path('/private/tmp/p08-database-role-'+e['operationId']);self.manifest=m
+        self.root=Path(('/private/tmp/p08-role-provenance-' if self.provenance else '/private/tmp/p08-database-role-')+e['operationId']);self.manifest=m
         if mode=='diagnose':
             need(times['start']<=self.last<times['cutoff'],'DIAGNOSTIC_START_WINDOW')
             need(not os.path.lexists(self.root),'DIAGNOSTIC_CONSUMED')
@@ -2166,8 +2261,8 @@ class RoleDiagnosticIO(NativeIO):
     def cli(self,*args):raise model.Stop('ROLE_CLI_FORBIDDEN')
     def https(self,*args):raise model.Stop('ROLE_HTTPS_FORBIDDEN')
     def sql(self,d,password,deadline):
-        slot='independent' if self.cleanup_only else 'role' if d==current_sql_contract()[2] else 'normal'
-        need(d==(current_sql_contract()[2] if slot=='role' else sql_contract()[1]),'ROLE_READ_SCOPE')
+        slot='independent' if self.cleanup_only else 'role' if d==self.cap.query else 'normal'
+        need(d==(self.cap.query if slot=='role' else sql_contract()[1]),'ROLE_READ_SCOPE')
         return super().sql(d,password,min(deadline,self.cap.gate(slot)))
     def independent(self):return RoleDiagnosticIO(self.cap,True)
 
@@ -2202,10 +2297,10 @@ def run_role_diagnostic(cap,io=None):
             for sig in (signal.SIGINT,signal.SIGTERM):handlers[sig]=signal.signal(sig,interrupted)
         try:
             cap.prepare();password=recovery_password(cap.times['readEnd'],cap.clock);stage='database'
-            raw=io.sql(current_sql_contract()[2],password,cap.times['readEnd'])
+            raw=io.sql(cap.query,password,cap.times['readEnd'])
             try:
                 need(cap.last<=cap.clock()<cap.times['readEnd'],'DIAGNOSTIC_DEADLINE')
-                observation=role_diagnostic_observation(raw)
+                observation=(role_provenance_observation if cap.provenance else role_diagnostic_observation)(raw)
             finally:raw=None
         except BaseException as error:failure=role_diagnostic_failure(error);failure_stage=stage
         finally:
@@ -2218,7 +2313,7 @@ def run_role_diagnostic(cap,io=None):
             except BaseException:residuals.append('INDEPENDENT_CLOSEOUT_UNCONFIRMED')
             password=None
         cap.inspect()
-        result={'status':'DATABASE_ROLE_DIAGNOSED' if observation is not None and observation['failure'] in (None,'ROLE_NOT_READY','ROLE_ACL_DRIFT') and not residuals and failure is None else 'DATABASE_ROLE_UNCONFIRMED',
+        result={'status':('DATABASE_ROLE_PROVENANCE_DIAGNOSED' if cap.provenance else 'DATABASE_ROLE_DIAGNOSED') if observation is not None and observation['failure'] in (None,'ROLE_NOT_READY','ROLE_ACL_DRIFT') and not residuals and failure is None else 'DATABASE_ROLE_UNCONFIRMED',
             'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'observation':observation,'failure':failure,
             'failureStage':failure_stage,'residuals':residuals,'sqlReservations':sum((cap.root/f'sql-{s}.json').exists() for s in ROLE_DIAGNOSTIC_SLOTS),
             'liveObserved':not getattr(io,'proof',False) and (cap.root/'sql-role.json').exists(),'executionReady':False,'candidate':None}
@@ -2254,17 +2349,19 @@ def closeout_role_diagnostic(cap,io=None):
 
 
 def role_diagnostic_main(argv):
-    need(len(argv)==2 and argv[0] in ('--diagnose-database-role','--closeout-database-role'),'ROLE_ARGUMENTS')
+    need(len(argv)==2 and argv[0] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance'),'ROLE_ARGUMENTS')
     path=Path(argv[1])
-    if argv[0]=='--diagnose-database-role':
-        result=run_role_diagnostic(RoleDiagnosticCapability(private_json(path)))
-        print(result['status']);return 0 if result['status']=='DATABASE_ROLE_DIAGNOSED' else 2
-    cap=RoleDiagnosticCapability(private_json(path/'envelope.json'),mode='closeout');need(path==cap.root,'ROLE_ROOT_BINDING')
+    provenance=argv[0].endswith('role-provenance')
+    if argv[0].startswith('--diagnose-'):
+        cap=RoleDiagnosticCapability(private_json(path));need(cap.provenance==provenance,'ROLE_COMMAND_SCOPE')
+        result=run_role_diagnostic(cap)
+        print(result['status']);return 0 if result['status'] in ('DATABASE_ROLE_DIAGNOSED','DATABASE_ROLE_PROVENANCE_DIAGNOSED') else 2
+    cap=RoleDiagnosticCapability(private_json(path/'envelope.json'),mode='closeout');need(path==cap.root and cap.provenance==provenance,'ROLE_ROOT_BINDING')
     result=closeout_role_diagnostic(cap);print('DATABASE_ROLE_CLOSED' if result['verified'] else 'DATABASE_ROLE_CLOSEOUT_UNCONFIRMED')
     return 0 if result['verified'] else 2
 
 
 if __name__ == "__main__":
-    try:raise SystemExit(role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
+    try:raise SystemExit(role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
     except Exception:
         print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)
