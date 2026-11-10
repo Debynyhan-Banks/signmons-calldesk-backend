@@ -33,6 +33,15 @@ export async function runChild(mode, request, injected = {}) {
     try {payment.endpoint(await ports.endpoint('GET',null,false),e.payment,'disabled');
       journal.save({phase:'QUALIFIED',endpointDisabled:true});
       return {status:'PAYMENT_PREFLIGHT_QUALIFIED',qualified:true};
+    }catch(error){
+      // Persist only fixed codes, never provider bodies, credential values or exception text.
+      const allowed=new Set(['PAYMENT_SECRET_REFUSED','PAYMENT_SECRET_SHAPE','PAYMENT_TEST_KEY_REQUIRED',
+        'PAYMENT_SECRET_NO_RETRY','PAYMENT_SECRET_BUDGET','PAYMENT_ENDPOINT_REFUSED','PAYMENT_ENDPOINT_DRIFT',
+        'PAYMENT_OUTPUT_LIMIT','PAYMENT_IO_TIMEOUT','PAYMENT_DEADLINE','PAYMENT_PORT_CLOSED',
+        'OUTER_DEADLINE','CLOCK_ROLLBACK','CHILD_CALL_LIMIT']);
+      const code=allowed.has(error?.code)?error.code:'PAYMENT_PREFLIGHT_UNCLASSIFIED';
+      journal.save({phase:'STOPPED',failureCode:code.startsWith('PAYMENT_')?code:'PAYMENT_PREFLIGHT_BOUNDARY'});
+      throw error;
     }finally{ports.clear();request.credentials.password='';request.credentials.accessToken='';}
   }
   const approval={decision:'APPROVE_LOCAL_SINGLE_COORDINATOR',externalActionAuthorized:false,

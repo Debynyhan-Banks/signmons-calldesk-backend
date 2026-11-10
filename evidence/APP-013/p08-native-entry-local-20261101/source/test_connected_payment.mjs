@@ -63,3 +63,37 @@ test('recovery uses actual policy profile and keeps disabled/active phases disti
    x=>x.job.policySnapshot.intakeAdmission.paymentDigest='0'.repeat(64),x=>x.payments=1,x=>x.calendar=1,x=>x.tenant.settings=null]){
    const changed=structuredClone(v);mutate(changed);assert.throws(()=>recoveryPaymentBinding(changed,scope));}
 });
+
+for (const scenario of ['denied','missing_payload','malformed_json','live_key','newline_key','transport','foreign_code','streamed_success']) {
+ test('actual payment preflight preserves safe failure evidence: '+scenario,async t=>{
+  const f=fixture(t),base=portsFor(f);let secretCalls=0,stripeCalls=0;
+  const injected={...base,fetcher:async(url,options)=>{
+   if(url.startsWith('https://api.stripe.com/'))stripeCalls++;
+   if(!url.startsWith('https://secretmanager.googleapis.com/'))return base.fetcher(url,options);
+   secretCalls++;
+   if(scenario==='transport')throw new TypeError('PRIVATE_SENTINEL transport body');
+   if(scenario==='foreign_code')throw Object.assign(Error('PRIVATE_SENTINEL'),{code:'PAYMENT_PRIVATE_SENTINEL'});
+   if(scenario==='denied')return new Response('PRIVATE_SENTINEL denied',{status:403});
+   if(scenario==='malformed_json')return new Response('{PRIVATE_SENTINEL');
+   const name='projects/'+f.e.plan.projectNumber+'/secrets/signmons-staging-stripe-secret-key/versions/1';
+   if(scenario==='missing_payload')return new Response(JSON.stringify({name,payload:null}));
+   const key=scenario==='live_key'?'sk_live_PRIVATE_SENTINEL_123456':
+     scenario==='newline_key'?'sk_test_12345678901234567890\n':'sk_test_12345678901234567890';
+   return new Response(JSON.stringify({name,payload:{data:Buffer.from(key).toString('base64')}}));
+  }};
+  const jp=f.r.envelopePath.replace('envelope.json','journal.json');
+  const initial=JSON.parse(readFileSync(jp));initial.authAttempted=false;writeFileSync(jp,JSON.stringify(initial));
+  const request=structuredClone(f.r);
+  if(scenario==='streamed_success')assert.deepEqual(await runChild('--payment-preflight',request,injected),{status:'PAYMENT_PREFLIGHT_QUALIFIED',qualified:true});
+  else await assert.rejects(()=>runChild('--payment-preflight',request,injected));
+  const j=JSON.parse(readFileSync(f.r.envelopePath.replace('envelope.json','journal.json')));
+  assert.equal(secretCalls,1);assert.equal(stripeCalls,scenario==='streamed_success'?1:0);
+  assert.equal(j.authAttempted,false);assert.equal(j.payment.enableIntent,false);
+  const expected={denied:'PAYMENT_SECRET_REFUSED',missing_payload:'PAYMENT_SECRET_SHAPE',
+   live_key:'PAYMENT_TEST_KEY_REQUIRED',newline_key:'PAYMENT_TEST_KEY_REQUIRED'};
+  assert.equal(j.payment.failureCode,scenario==='streamed_success'?null:expected[scenario]??'PAYMENT_PREFLIGHT_UNCLASSIFIED');
+  assert.equal(j.payment.phase,scenario==='streamed_success'?'QUALIFIED':'STOPPED');
+  assert.equal(request.credentials.password,'');assert.equal(request.credentials.accessToken,'');
+  assert.doesNotMatch(JSON.stringify(j),/PRIVATE_SENTINEL|sk_test_|sk_live_|Bearer /);
+ });
+}

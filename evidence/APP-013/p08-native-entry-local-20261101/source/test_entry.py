@@ -439,6 +439,7 @@ class ConnectedEntryTests(EntryTests):
         self.assertFalse(result['paymentObserved']);self.assertTrue(self.path.exists())
         journal=read(self.root/'journal.json')
         self.assertIsNone(journal['payment']);self.assertFalse(journal['authAttempted'])
+        self.assertEqual(journal['failure'],'PAYMENT_PREFLIGHT_STOP')
         self.assertFalse(any(self.f.runtime_state.values()))
         closed=self.run_entry('closeout')
         self.assertEqual(closed['status'],'ENTRY_CLOSED',closed)

@@ -25,7 +25,8 @@ class RuntimeAdapter(restore.NativeAdapter):
 
     def preflight(self, p, q, deadline):
         if self.cap.e['version'] == 2:
-            self.payment_preflight()
+            try:self.payment_preflight()
+            except Exception:raise c.Stop('PAYMENT_PREFLIGHT_STOP') from None
         return super().preflight(p, q, deadline)
 
     def role(self, deadline):
