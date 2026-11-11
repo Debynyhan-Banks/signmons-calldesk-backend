@@ -50,14 +50,31 @@ class NativeIO:
         try:
             r = subprocess.run(argv, input=input_bytes, capture_output=True, env=env,
                                timeout=max(.01, min(8, deadline - self.cap.clock())))
-        except (subprocess.TimeoutExpired, OSError):
-            raise __import__('private_inventory').Stop('NATIVE_COMMAND_UNCONFIRMED') from None
+        except subprocess.TimeoutExpired:
+            raise __import__('private_inventory').Stop('DATABASE_PROCESS_TIMEOUT' if kind == 'sql' else 'NATIVE_COMMAND_UNCONFIRMED') from None
+        except OSError:
+            raise __import__('private_inventory').Stop('DATABASE_PROCESS_UNAVAILABLE' if kind == 'sql' else 'NATIVE_COMMAND_UNCONFIRMED') from None
         finally:
             if 'PGPASSWORD' in env: env['PGPASSWORD'] = ''
-        self.cap.gate(self.cleanup)
-        need(r.returncode == 0 and len(r.stdout) <= 65536, 'NATIVE_COMMAND_REFUSED')
-        try: return r.stdout.decode('utf-8', 'strict').strip()
-        except UnicodeError: raise __import__('private_inventory').Stop('NATIVE_OUTPUT_ENCODING') from None
+        try:
+            self.cap.gate(self.cleanup)
+            if kind == 'sql':
+                if r.returncode != 0:
+                    # Reuse the reviewed classifier; never expose raw PostgreSQL text.
+                    if len(r.stderr) > 65536: code = 'DATABASE_ERROR_OUTPUT_LIMIT'
+                    elif b'canceling statement due to statement timeout' in r.stderr.lower(): code = 'DATABASE_STATEMENT_TIMEOUT'
+                    else: code = self.legacy.classify_database_error(r.stderr)
+                    allowed = {'DATABASE_TLS_CONFIGURATION', 'DATABASE_AUTHENTICATION',
+                               'DATABASE_CONNECTION', 'DATABASE_SCHEMA_OR_QUERY',
+                               'DATABASE_ERROR_OUTPUT_LIMIT', 'DATABASE_STATEMENT_TIMEOUT'}
+                    raise __import__('private_inventory').Stop(code if code in allowed else 'DATABASE_COMMAND_FAILED')
+                need(len(r.stdout) <= 65536, 'DATABASE_OUTPUT_LIMIT')
+            else: need(r.returncode == 0 and len(r.stdout) <= 65536, 'NATIVE_COMMAND_REFUSED')
+            try: return r.stdout.decode('utf-8', 'strict').strip()
+            except UnicodeError:
+                raise __import__('private_inventory').Stop('DATABASE_OUTPUT_ENCODING' if kind == 'sql' else 'NATIVE_OUTPUT_ENCODING') from None
+        finally:
+            if kind == 'sql': r.stdout = b''; r.stderr = b''
 
     def ensure_owner(self):
         if self.token: return

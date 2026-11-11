@@ -1,0 +1,15 @@
+{
+  "status": "LOCAL_SQL_CLASSIFICATION_IMPLEMENTED_FULL_NATIVE_SUITE_NOT_GREEN",
+  "correctionPythonPassed": 51,
+  "nodePassed": 19,
+  "nativeEntryTests": 30,
+  "nativeEntryPassed": 28,
+  "nativeEntryFailures": [
+    "test_late_child_return_preserves_payment_intent_for_cleanup",
+    "test_payment_parent_retains_then_independently_purges"
+  ],
+  "baselineComparison": "Both failures also reproduced with HEAD native_io._run restored in memory; no attribution to SQL wrapper change established",
+  "providerCalls": 0,
+  "historicalKr6Cause": "UNKNOWN; original stderr not retained",
+  "behavior": "Existing immutable database classifier reused for SQL-only failure; fixed timeout/process/output categories; raw output and password environment cleared; non-SQL behavior unchanged"
+}

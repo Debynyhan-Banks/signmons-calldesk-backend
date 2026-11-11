@@ -364,9 +364,9 @@ class EntryTests(unittest.TestCase):
             self.assertEqual(kw['env']['PGAPPNAME'],'p08-runtime-'+self.f.p['operationId'])
             self.assertNotIn('DATABASE_URL',kw['env'])
             self.assertNotIn('SYNTHETIC_PASSWORD',' '.join(args[0]))
-        for response,code in [(subprocess.CompletedProcess([],0,b'x'*65537,b''),'NATIVE_COMMAND_REFUSED'),
-                              (subprocess.CompletedProcess([],0,b'\xff',b''),'NATIVE_OUTPUT_ENCODING'),
-                              (subprocess.CompletedProcess([],1,b'',b'SYNTHETIC_PASSWORD'),'NATIVE_COMMAND_REFUSED')]:
+        for response,code in [(subprocess.CompletedProcess([],0,b'x'*65537,b''),'DATABASE_OUTPUT_LIMIT'),
+                              (subprocess.CompletedProcess([],0,b'\xff',b''),'DATABASE_OUTPUT_ENCODING'),
+                              (subprocess.CompletedProcess([],1,b'',b'SYNTHETIC_PASSWORD'),'DATABASE_COMMAND_FAILED')]:
             with patch('native_io.subprocess.run',return_value=response):
                 with self.assertRaisesRegex(Stop,code):io.sql(query,0)
         with patch('native_io.subprocess.run') as run:
@@ -375,6 +375,29 @@ class EntryTests(unittest.TestCase):
             with self.assertRaisesRegex(Stop,'SQL_ALLOWLIST'):io.sql(old[0],0)
             run.assert_not_called()
         io.clear();self.assertEqual((io.token,io.password),('',''))
+
+    def test_sql_failure_categories_use_existing_classifier_and_clear_output(self):
+        cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';io.password='SYNTHETIC_PASSWORD'
+        query=next(q for q in io.allowed_sql if 'aclexplode' in q)
+        cases=[(b'password authentication failed','DATABASE_AUTHENTICATION'),
+               (b'certificate verify failed','DATABASE_TLS_CONFIGURATION'),
+               (b'connection refused','DATABASE_CONNECTION'),
+               (b'permission denied for relation private_table','DATABASE_SCHEMA_OR_QUERY'),
+               (b'canceling statement due to statement timeout','DATABASE_STATEMENT_TIMEOUT'),
+               (b'unknown failure','DATABASE_COMMAND_FAILED'),
+               (b'x'*65537,'DATABASE_ERROR_OUTPUT_LIMIT')]
+        for stderr,code in cases:
+            cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';io.password='SYNTHETIC_PASSWORD'
+            response=subprocess.CompletedProcess([],2,b'PRIVATE_SENTINEL',stderr+b' PRIVATE_SENTINEL')
+            with patch('native_io.subprocess.run',return_value=response) as run:
+                with self.assertRaisesRegex(Stop,'^'+code+'$'):io.sql(query,0)
+                run.assert_called_once();self.assertEqual(response.stdout,b'');self.assertEqual(response.stderr,b'')
+                self.assertEqual(run.call_args.kwargs['env']['PGPASSWORD'],'')
+        for error,code in [(subprocess.TimeoutExpired('PRIVATE_SENTINEL',8),'DATABASE_PROCESS_TIMEOUT'),(OSError('PRIVATE_SENTINEL'),'DATABASE_PROCESS_UNAVAILABLE')]:
+            cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';io.password='SYNTHETIC_PASSWORD'
+            with patch('native_io.subprocess.run',side_effect=error) as run:
+                with self.assertRaisesRegex(Stop,'^'+code+'$'):io.sql(query,0)
+                run.assert_called_once();self.assertEqual(run.call_args.kwargs['env']['PGPASSWORD'],'')
 
     def test_actual_native_owner_boundary_refuses_drift_before_token_or_password(self):
         cap,io=self.native_fixture()

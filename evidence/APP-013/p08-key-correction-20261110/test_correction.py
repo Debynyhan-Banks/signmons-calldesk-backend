@@ -129,6 +129,11 @@ class FailureReportingTests(unittest.TestCase):
   ports=SimpleNamespace(stage='PRIVATE_SENTINEL',calls={'cli':'PRIVATE_SENTINEL','https':True,'sql':-1,'child':999999,'secret':'PRIVATE_SENTINEL'})
   for error in (RuntimeError('PRIVATE_SENTINEL'),c.Stop('PRIVATE_SENTINEL'),ValueError('KEY_ENDPOINT_PIN PRIVATE_SENTINEL')):
    value=c.safe_failure(error,ports);self.assertEqual(value['code'],'CORRECTION_STOPPED');self.assertEqual(value['stage'],'LOCAL');self.assertNotIn('PRIVATE_SENTINEL',json.dumps(value));self.assertTrue(all(v is None for v in value['calls'].values()))
+ def test_database_categories_survive_shared_exception_boundary(self):
+  import ports as native
+  from types import SimpleNamespace
+  for code in ['DATABASE_AUTHENTICATION','DATABASE_CONNECTION','DATABASE_TLS_CONFIGURATION','DATABASE_SCHEMA_OR_QUERY','DATABASE_STATEMENT_TIMEOUT','DATABASE_PROCESS_TIMEOUT','DATABASE_PROCESS_UNAVAILABLE','DATABASE_OUTPUT_LIMIT','DATABASE_OUTPUT_ENCODING','DATABASE_ERROR_OUTPUT_LIMIT','DATABASE_COMMAND_FAILED']:
+   self.assertEqual(c.safe_failure(native.entry.Stop(code),SimpleNamespace(stage='DATABASE_ROLE',calls={}))['code'],code)
  def test_safe_exception_categories(self):
   from types import SimpleNamespace
   ports=SimpleNamespace(stage='PROJECT',calls={})
