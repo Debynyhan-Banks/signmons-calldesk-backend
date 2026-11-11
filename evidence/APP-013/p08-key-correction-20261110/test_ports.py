@@ -114,6 +114,12 @@ class NativeSeamTests(unittest.TestCase):
   stripe=[a for a in self.commands if '--secret='+binding.STRIPE in a]
   self.assertTrue(stripe);self.assertTrue(all('2' in a for a in stripe))
   self.assertFalse(any(':addVersion' in url for _,url,_ in self.requests))
+ def test_actual_child_refusal_transfers_safe_shape_before_cloud_sql(self):
+  with self.assertRaisesRegex(c.Stop,'KEY_ENDPOINT_PIN'):
+   self.port.check_key('PRIVATE_KEY_SENTINEL','https://fixture.invalid/PRIVATE_ID_SENTINEL',self.port.gate())
+  v=c.safe_failure(c.Stop('KEY_ENDPOINT_PIN'),self.port)
+  self.assertTrue(v['endpointInput']['looksLikeUrl']);self.assertEqual(v['endpointInput']['providerCalls'],0)
+  self.assertNotIn('PRIVATE_',json.dumps(v));self.assertEqual(self.commands,[]);self.assertEqual(self.requests,[])
  def test_work_budget_reserves_cleanup(self):
   self.port.calls['cli']=90
   with self.assertRaisesRegex(c.Stop,'CALL_LIMIT'):self.port.spend('cli')

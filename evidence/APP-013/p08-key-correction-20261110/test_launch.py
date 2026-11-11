@@ -54,4 +54,44 @@ class QualificationOrderTests(unittest.TestCase):
    spec={'mode':'qualify','plan':{'operationId':str(uuid.uuid4()),'window':{'cutoff':time.time()+60}},'qualification':None,'limits':launch.QUALIFICATION_LIMITS}
    with self.assertRaisesRegex(c.Stop,'KEY_ENDPOINT_PIN'):launch.execute(spec,Ports,base=__import__('pathlib').Path(folder).resolve())
   self.assertEqual(calls,['key','clear'])
+class CombinedInputPtyTests(unittest.TestCase):
+ def test_real_timed_getpass_three_prompts_preserve_values_in_actual_launcher(self):
+  import os,pty,select,tempfile,signal,types
+  from pathlib import Path
+  from test_correction import Ports as FixturePorts
+  with tempfile.TemporaryDirectory() as folder:
+   now=time.time();plan={'operationId':str(uuid.uuid4()),'projectNumberSha256':'37d4aa0f46ca5b8f0b81b1148bda235a0f4a9a424b6b4638ec993d889563be54','window':{'start':now-1,'cutoff':now+10,'workEnd':now+20,'cleanupEnd':now+620},'qualificationSha256':'0'*64,'sourceManifestSha256':'1'*64}
+   pid,fd=pty.fork()
+   if pid==0:
+    try:
+     legacy=c.load('p08-restoration-local-20261028/source/legacy/controller.py','synthetic_combined_getpass')
+     class Ports(FixturePorts):
+      def __init__(self,*_):super().__init__();self.io=types.SimpleNamespace(legacy=legacy)
+      def check_key(self,key,endpoint,deadline):
+       assert key=='sk_test_SYNTHETIC_ONLY' and endpoint=='we_SYNTHETIC_ONLY';self.captured=(key,endpoint)
+      def preflight(self,*_):
+       with legacy.phase_guard(now+10):password=legacy.private_input('3/3 SYNTHETIC SQL PASSWORD (hidden): ')
+       assert password=='sql_SYNTHETIC_ONLY' and self.captured==('sk_test_SYNTHETIC_ONLY','we_SYNTHETIC_ONLY')
+     result=launch.execute({'mode':'run','plan':plan,'qualification':{},'limits':launch.LIMITS},Ports,base=Path(folder).resolve())
+     assert result['candidateReadyObserved'] and not result['residuals'];os._exit(0)
+    except BaseException:os._exit(3)
+   transcript=b'';steps=[(b'1/2 Sandbox SECRET',b'sk_test_SYNTHETIC_ONLY\n'),(b'2/2 DESTINATION',b'we_SYNTHETIC_ONLY\n'),(b'3/3 SYNTHETIC SQL',b'sql_SYNTHETIC_ONLY\n')];sent=0;status=None;done=0;deadline=time.monotonic()+12
+   try:
+    while time.monotonic()<deadline:
+     if select.select([fd],[],[],.05)[0]:
+      try:chunk=os.read(fd,8192)
+      except OSError:break
+      transcript+=chunk
+      if sent<len(steps) and steps[sent][0] in transcript:os.write(fd,steps[sent][1]);sent+=1
+     done,status=os.waitpid(pid,os.WNOHANG)
+     if done:break
+    else:os.kill(pid,signal.SIGKILL)
+    if status is None or not done:_,status=os.waitpid(pid,0)
+    self.assertEqual(os.waitstatus_to_exitcode(status),0);self.assertEqual(sent,3)
+    for _,value in steps:self.assertNotIn(value.strip(),transcript)
+   finally:
+    os.close(fd)
+    try:os.kill(pid,signal.SIGKILL);os.waitpid(pid,0)
+    except ProcessLookupError:pass
+
 if __name__=='__main__':unittest.main()

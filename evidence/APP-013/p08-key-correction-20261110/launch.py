@@ -59,15 +59,15 @@ def execute(spec,ports_factory=None,clock=time.time,base=Path('/private/tmp')):
   if spec['mode']=='closeout':
    ports.cleanup=True;ports.io.cleanup=True
    with ports.io.legacy.phase_guard(spec['plan']['window']['cleanupEnd'],cleanup=True):
-    ports.key=ports.io.legacy.private_input('Correct Sandbox secret API key for cleanup readback (hidden): ')
-    ports.endpoint=ports.io.legacy.private_input('Existing Sandbox webhook endpoint ID (hidden): ')
+    ports.key=ports.io.legacy.private_input('1/2 Sandbox SECRET API KEY starting sk_test_ for cleanup (hidden): ')
+    ports.endpoint=ports.io.legacy.private_input('2/2 DESTINATION ID starting we_ only, not a URL or key (hidden): ')
    result=c.Correction(spec['plan'],ports,root,clock).closeout()
   else:
    if spec['mode']=='qualify':c.reserve(root/'attempt.json',{'operationId':spec['plan']['operationId'],'mode':'qualify','scopeSha256':c.digest(spec)})
    # No timed input starts until owner/source gates and a unique root are established.
    with ports.io.legacy.phase_guard(spec['plan']['window']['cutoff']):
-    key=ports.io.legacy.private_input('Correct Sandbox secret API key (hidden): ')
-    endpoint=ports.io.legacy.private_input('Existing Sandbox webhook endpoint ID (hidden): ')
+    key=ports.io.legacy.private_input('1/2 Sandbox SECRET API KEY starting sk_test_ (hidden): ')
+    endpoint=ports.io.legacy.private_input('2/2 DESTINATION ID starting we_ only, not a URL or key (hidden): ')
    if spec['mode']=='qualify':
     ports.check_key(key,endpoint,ports.gate())
     value=ports.preflight(spec['plan'],ports.gate())

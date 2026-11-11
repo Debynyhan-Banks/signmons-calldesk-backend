@@ -120,7 +120,7 @@ class FailureReportingTests(unittest.TestCase):
    with self.subTest(error=type(error)),tempfile.TemporaryDirectory() as root:
     ports=Ports();ports.stage='DATABASE_ROLE';ports.calls={'cli':12,'https':3,'sql':1,'child':0}
     def fail(*_):raise error
-    ports.preflight=fail
+    ports.preflight=fail;ports.check_key=lambda *_:None
     d=c.Correction(self.p,ports,Path(root).resolve(),lambda:100);r=d.run('PRIVATE_SENTINEL','PRIVATE_SENTINEL')
     self.assertEqual(r['failure'],error.args[0]);self.assertEqual(r['failureEvidence']['stage'],'DATABASE_ROLE');self.assertEqual(r['failureEvidence']['calls']['cli'],12)
     self.assertEqual(d.closeout()['failureEvidence'],r['failureEvidence']);self.assertEqual(ports.created,0)
@@ -141,6 +141,22 @@ class FailureReportingTests(unittest.TestCase):
   ports=Ports('retire:role');r=self.driver(ports).run('x','y')
   self.assertIsNone(r['failureEvidence']);self.assertEqual(r['cleanupDiagnostics'][0]['stage'],'CLEANUP_ROLE')
   ports.fail=None;closed=self.driver(ports).closeout();self.assertEqual(closed['cleanupDiagnostics'],[]);self.assertEqual(closed['residuals'],[])
+
+class InputOrderTests(unittest.TestCase):
+ setUp=CorrectionTests.setUp
+ driver=CorrectionTests.driver
+ def test_run_endpoint_refusal_precedes_preflight_and_mutation(self):
+  ports=Ports()
+  def refuse(*_):ports.stage='SANDBOX_KEY';raise c.Stop('KEY_ENDPOINT_PIN')
+  ports.check_key=refuse;r=self.driver(ports).run('x','y')
+  self.assertEqual(ports.calls,[]);self.assertEqual(ports.created,0);self.assertEqual(r['failure'],'KEY_ENDPOINT_PIN')
+ def test_input_diagnostic_strict_shape_and_redaction(self):
+  from types import SimpleNamespace
+  v={'status':'LOCAL_ENDPOINT_INPUT_INSPECTED','isString':True,'inputLength':27,'formatValid':True,'exactMatch':False,'trimmedMatch':False,'surroundingWhitespace':False,'looksLikeUrl':False,'controlOrNonAscii':False,'providerCalls':0}
+  p=SimpleNamespace(stage='SANDBOX_KEY',endpoint_diagnostic=v,calls={})
+  self.assertEqual(c.safe_failure(c.Stop('KEY_ENDPOINT_PIN'),p)['endpointInput'],v)
+  for change in ({'raw':'PRIVATE_SENTINEL'},{'inputLength':'PRIVATE_SENTINEL'},{'exactMatch':True},{'providerCalls':1}):
+   p.endpoint_diagnostic={**v,**change};self.assertNotIn('endpointInput',c.safe_failure(c.Stop('KEY_ENDPOINT_PIN'),p))
 
 class BindingTests(unittest.TestCase):
  def cfg(self):

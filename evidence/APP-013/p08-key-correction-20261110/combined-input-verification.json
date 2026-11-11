@@ -1,0 +1,16 @@
+{
+  "status": "LOCAL_COMBINED_INPUT_FLOW_VERIFIED",
+  "baselineSource": "f103a8bfd0e54d77891afd92983a0ad20e0f27dd",
+  "pythonTests": 50,
+  "nodeTests": 19,
+  "realTimedGetpassPtyThreePromptTest": true,
+  "syntheticInputPreserved": true,
+  "providerCalls": 0,
+  "historicalMismatchCause": "UNKNOWN_NOT_REPRODUCED",
+  "changes": [
+    "numbered sk_test_ and we_ prompts",
+    "run key and endpoint check before cloud/SQL",
+    "strict safe shared endpoint shape on refusal, no normalization or raw inputs",
+    "same existing key child and call limits"
+  ]
+}

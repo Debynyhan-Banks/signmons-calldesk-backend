@@ -50,3 +50,10 @@ test('actual local CLI has no provider request and emits no supplied input',asyn
  const raw=execFileSync(process.execPath,[(await import('node:url')).fileURLToPath(new URL('./key_check.mjs',import.meta.url)),'--inspect-endpoint-local'],{input:JSON.stringify({endpointId:value}),encoding:'utf8',timeout:5000});
  const v=JSON.parse(raw);assert.equal(v.providerCalls,0);assert.equal(v.looksLikeUrl,true);assert.equal(v.exactMatch,false);assert.doesNotMatch(raw,/PRIVATE_SENTINEL|fixture.invalid/);
 });
+test('actual refusal CLI returns only input-shape flags with no fetch or raw value',async()=>{
+ const {spawnSync}=await import('node:child_process');const {fileURLToPath}=await import('node:url');
+ for(const value of ['https://fixture.invalid/PRIVATE_SENTINEL','we_PRIVATE_SENTINEL',' we_PRIVATE_SENTINEL ']){
+  const r=spawnSync(process.execPath,[fileURLToPath(new URL('./key_check.mjs',import.meta.url))],{input:JSON.stringify({key:'PRIVATE_SECRET_SENTINEL',endpointId:value,deadline:Date.now()+50000}),encoding:'utf8',timeout:5000});
+  assert.equal(r.status,2);const v=JSON.parse(r.stdout);assert.equal(v.code,'KEY_ENDPOINT_PIN');assert.equal(v.endpointInput.providerCalls,0);assert.equal(v.endpointInput.exactMatch,false);assert.doesNotMatch(r.stdout,/PRIVATE_SENTINEL|PRIVATE_SECRET_SENTINEL/);
+ }
+});

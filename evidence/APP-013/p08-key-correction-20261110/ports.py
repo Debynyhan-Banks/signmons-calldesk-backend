@@ -110,7 +110,7 @@ class NativePorts:
   if self.expected is not None:c.need(self.observed==self.expected,'QUALIFICATION_DRIFT')
   self.gate();return self.observed
  def check_key(self,key,endpoint,deadline):
-  self.stage='SANDBOX_KEY'
+  self.stage='SANDBOX_KEY';self.endpoint_diagnostic=None
   value={'key':key,'endpointId':endpoint,'deadline':int(min(deadline,self.clock()+55)*1000)}
   # Child timeout must cover all three sequential bounded requests.
   import subprocess,signal,os
@@ -120,7 +120,11 @@ class NativePorts:
    c.need(len(out)<=4096,'KEY_CHECK_RESULT');v=json.loads(out)
    if p.returncode!=0:
     safe={'KEY_CHECK_DEADLINE','KEY_ENDPOINT_PIN','KEY_CHECK_HTTP','KEY_ACCOUNT_LIST','KEY_ACCOUNT_MISMATCH','KEY_MODE_MISMATCH','PAYMENT_TEST_KEY_REQUIRED','PAYMENT_ENDPOINT_DRIFT','PAYMENT_OUTPUT_LIMIT','PAYMENT_IO_TIMEOUT','PAYMENT_DEADLINE','KEY_TRANSPORT_OR_OUTPUT_UNKNOWN'}
-    c.need(isinstance(v,dict) and set(v)=={'status','code'} and v['status']=='SANDBOX_KEY_REFUSED' and v['code'] in safe,'KEY_CHECK_RESULT')
+    c.need(isinstance(v,dict) and v.get('status')=='SANDBOX_KEY_REFUSED' and v.get('code') in safe,'KEY_CHECK_RESULT')
+    if v['code']=='KEY_ENDPOINT_PIN':
+     c.need(set(v)=={'status','code','endpointInput'} and c.valid_endpoint_diagnostic(v['endpointInput']),'KEY_CHECK_RESULT')
+     self.endpoint_diagnostic=v['endpointInput']
+    else:c.need(set(v)=={'status','code'},'KEY_CHECK_RESULT')
     raise c.Stop(v['code'])
    c.need(v=={'status':'SANDBOX_KEY_VALIDATED','requests':3,'accountMatched':True,'testMode':True,'endpointDisabled':True},'KEY_CHECK_RESULT')
   finally:

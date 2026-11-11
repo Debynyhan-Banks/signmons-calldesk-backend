@@ -27,7 +27,18 @@ def safe_failure(error,ports):
  elif isinstance(error,json.JSONDecodeError):category='JSON_DECODE'
  elif isinstance(error,OSError):category='LOCAL_IO'
  stage=getattr(ports,'stage',None)
- return {'code':code,'category':category,'stage':stage if type(stage) is str and stage in SAFE_STAGES else 'LOCAL','calls':safe_calls(ports)}
+ result={'code':code,'category':category,'stage':stage if type(stage) is str and stage in SAFE_STAGES else 'LOCAL','calls':safe_calls(ports)}
+ if code=='KEY_ENDPOINT_PIN':
+  diagnostic=getattr(ports,'endpoint_diagnostic',None)
+  if valid_endpoint_diagnostic(diagnostic):result['endpointInput']=dict(diagnostic)
+ return result
+
+def valid_endpoint_diagnostic(v):
+ fields={'isString','formatValid','exactMatch','trimmedMatch','surroundingWhitespace','looksLikeUrl','controlOrNonAscii'}
+ return (type(v) is dict and set(v)==fields|{'status','inputLength','providerCalls'} and
+  all(type(v[k]) is bool for k in fields) and v['exactMatch'] is False and
+  type(v['inputLength']) is int and 0<=v['inputLength']<=8192 and
+  v['status']=='LOCAL_ENDPOINT_INPUT_INSPECTED' and type(v['providerCalls']) is int and v['providerCalls']==0)
 
 def lifecycle_stage(kind,cleanup=False):
  return ('CLEANUP_' if cleanup else 'ACTIVATE_')+{'role':'ROLE','tag':'TAG','secretBinding':'BINDING','version':'VERSION','identity':'IDENTITY'}[kind]
@@ -119,8 +130,8 @@ class Correction:
     'version':None,'candidate':candidate(self.p['operationId']),'readiness':None,'failure':None}
    self.save()
    try:
-    self.ports.preflight(self.p,self.gate())
     self.ports.check_key(key,endpoint,self.gate())
+    self.ports.preflight(self.p,self.gate())
     if 'reuse' in self.p:
      self.ports.stage='REUSE_VERSION';self.ports.reuse_version_check(self.gate())
      self.j['version']='2';self.save()

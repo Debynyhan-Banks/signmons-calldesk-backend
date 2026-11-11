@@ -16,7 +16,8 @@ export async function checkKey(input,send=fetch,pins={account:ACCOUNT,endpoint:E
  let key='',calls=0,last=now();
  try{
   need(Number.isFinite(input.deadline)&&input.deadline>last&&input.deadline-last<=60000,'KEY_CHECK_DEADLINE');
-  need(endpointInputStatus(input.endpointId,pins.endpoint).exactMatch,'KEY_ENDPOINT_PIN');
+  const inputStatus=endpointInputStatus(input.endpointId,pins.endpoint);
+  if(!inputStatus.exactMatch){const error=new Error('KEY_ENDPOINT_PIN');error.code='KEY_ENDPOINT_PIN';error.endpointInput=inputStatus;throw error;}
   const scope=JSON.parse(readFileSync(new URL('../p08-local-preparation-20261022/plan.json',import.meta.url)));
   const p={endpointId:input.endpointId,endpointSha256:pins.endpoint,apiVersion:'2026-03-25.dahlia',url:scope.origin+'/webhooks/stripe'};
   key=await decodeStripeTestSecret({ok:true,text:async()=>JSON.stringify({name:'hidden-owner-input',payload:{data:Buffer.from(input.key).toString('base64')}})},'hidden-owner-input');
@@ -34,5 +35,5 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  try{const raw=readFileSync(0);need(raw.length<=8192,'KEY_INPUT_LIMIT');const input=JSON.parse(raw.toString('utf8'));raw.fill(0);need(process.argv.length===2||(process.argv.length===3&&process.argv[2]==='--inspect-endpoint-local'),'KEY_INPUT_MODE');
   const result=process.argv[2]==='--inspect-endpoint-local'?endpointInputStatus(input.endpointId):await checkKey(input);
   input.endpointId='';input.key='';process.stdout.write(JSON.stringify(result)+'\n');}
- catch(error){const safe=new Set(['KEY_CHECK_DEADLINE','KEY_ENDPOINT_PIN','KEY_CHECK_HTTP','KEY_ACCOUNT_LIST','KEY_ACCOUNT_MISMATCH','KEY_MODE_MISMATCH','PAYMENT_TEST_KEY_REQUIRED','PAYMENT_ENDPOINT_DRIFT','PAYMENT_OUTPUT_LIMIT','PAYMENT_IO_TIMEOUT','PAYMENT_DEADLINE']);process.stdout.write(JSON.stringify({status:'SANDBOX_KEY_REFUSED',code:safe.has(error?.code)?error.code:'KEY_TRANSPORT_OR_OUTPUT_UNKNOWN'})+'\n');process.exitCode=2;}
+ catch(error){const safe=new Set(['KEY_CHECK_DEADLINE','KEY_ENDPOINT_PIN','KEY_CHECK_HTTP','KEY_ACCOUNT_LIST','KEY_ACCOUNT_MISMATCH','KEY_MODE_MISMATCH','PAYMENT_TEST_KEY_REQUIRED','PAYMENT_ENDPOINT_DRIFT','PAYMENT_OUTPUT_LIMIT','PAYMENT_IO_TIMEOUT','PAYMENT_DEADLINE']);process.stdout.write(JSON.stringify({status:'SANDBOX_KEY_REFUSED',code:safe.has(error?.code)?error.code:'KEY_TRANSPORT_OR_OUTPUT_UNKNOWN',...(error?.code==='KEY_ENDPOINT_PIN'&&error.endpointInput?{endpointInput:error.endpointInput}:{})})+'\n');process.exitCode=2;}
 }
