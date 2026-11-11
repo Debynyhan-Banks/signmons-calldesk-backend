@@ -27,6 +27,18 @@ class AuthorityTests(unittest.TestCase):
   d=self.approval(self.spec);d['externalMutationAuthorized']=True
   with self.assertRaisesRegex(c.Stop,'EXACT_OWNER_APPROVAL'):launch.verify(self.spec,d,self.now,self.read_commit)
   with self.assertRaisesRegex(c.Stop,'OUTSIDE_WINDOW'):launch.verify(self.spec,self.approval(self.spec),self.now+100,self.read_commit)
+ def test_reuse_is_bound_to_committed_receipt_and_exact_scope(self):
+  s=copy.deepcopy(self.spec);s['mode']='run';s['limits']=launch.LIMITS;s['plan']['reuse']=dict(c.REUSE)
+  s['qualification']={'runtimeEnvironmentSha256':'2'*64,'roleAclSha256':'3'*64,'returnUrl':'https://fixture.invalid'};s['plan']['qualificationSha256']=c.digest(s['qualification'])
+  self.assertEqual(launch.verify(s,self.approval(s),self.now,self.read_commit),s)
+  def foreign(repo,sha,path):return b'foreign' if path==c.REUSE_RECEIPT else self.read_commit(repo,sha,path)
+  with self.assertRaisesRegex(c.Stop,'REUSE_COMMITTED_RECEIPT'):launch.verify(s,self.approval(s),self.now,foreign)
+  d=self.approval(s);s['mode']='closeout'
+  with self.assertRaisesRegex(c.Stop,'EXACT_OWNER_APPROVAL'):launch.verify(s,d,self.now,self.read_commit)
+  self.assertEqual(launch.verify(s,self.approval(s),self.now,self.read_commit),s)
+ def test_reuse_qualification_mode_refused(self):
+  self.spec['plan']['reuse']=dict(c.REUSE)
+  with self.assertRaisesRegex(c.Stop,'REUSE_MODE'):launch.verify(self.spec,self.approval(self.spec),self.now,self.read_commit)
 class QualificationOrderTests(unittest.TestCase):
  def test_endpoint_refusal_precedes_cloud_sql_and_always_clears(self):
   import contextlib,tempfile,types

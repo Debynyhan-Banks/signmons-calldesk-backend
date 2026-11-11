@@ -92,7 +92,7 @@ class NativePorts:
   self.permissions('https://iam.googleapis.com/v1/projects/-/serviceAccounts/'+entry.restore.IDENTITY,['iam.serviceAccounts.get','iam.serviceAccounts.actAs','iam.serviceAccounts.enable','iam.serviceAccounts.disable'])
   for secret in entry.restore.POLICIES:
    permissions=['secretmanager.secrets.getIamPolicy','secretmanager.secrets.setIamPolicy','secretmanager.versions.get','secretmanager.versions.enable','secretmanager.versions.disable']
-   if secret==binding.STRIPE:permissions+=['secretmanager.versions.add']
+   if secret==binding.STRIPE and 'reuse' not in plan:permissions+=['secretmanager.versions.add']
    self.permissions('https://secretmanager.googleapis.com/v1/projects/signmons/secrets/'+secret,permissions)
   self.stage='CANDIDATE';revision=r.cloud(['run','revisions','describe',binding.LEGACY,'--project=signmons','--region=us-east5','--format=json'],deadline)
   spec=revision.get('spec',{});containers=spec.get('containers');c.need(isinstance(containers,list) and len(containers)==1 and spec.get('serviceAccountName')==entry.restore.IDENTITY and containers[0].get('image')==entry.restore.IMAGE,'EXISTING_CANDIDATE_SOURCE')
@@ -128,7 +128,13 @@ class NativePorts:
    if p.poll() is None:
     os.killpg(p.pid,signal.SIGKILL);p.communicate()
   self.gate(self.cleanup);self.key=key;self.endpoint=endpoint;return v
+ def reuse_version_check(self,deadline):
+  c.need(self.p.get('reuse')==c.REUSE,'REUSE_PROVENANCE')
+  name='projects/'+self.project_number+'/secrets/'+binding.STRIPE+'/versions/2'
+  value=self.http('GET','https://secretmanager.googleapis.com/v1/'+name+'?fields=name,state')
+  c.need(value=={'name':name,'state':'DISABLED'},'REUSE_VERSION_NOT_DISABLED')
  def add_version(self,key,deadline):
+  c.need('reuse' not in self.p,'REUSE_CREATE_FORBIDDEN')
   c.need(self.expected is not None,'QUALIFICATION_MUTATION_REFUSED')
   # urllib issues one request and does not retry a non-idempotent addVersion.
   return self.http('POST','https://secretmanager.googleapis.com/v1/projects/'+self.project_number+'/secrets/'+binding.STRIPE+':addVersion',{'payload':{'data':base64.b64encode(key.encode()).decode()}})

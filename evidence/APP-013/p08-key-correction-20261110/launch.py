@@ -14,6 +14,9 @@ def committed(repo,sha,path):
 def verify(spec,decision,now,read_commit=committed):
  c.need(set(spec)=={'mode','sourceCommit','sourceManifestSha256','plan','qualification','limits','costAllowanceUsd','decisionCommit'},'SPEC_SHAPE')
  c.validate_plan(spec['plan'])
+ if 'reuse' in spec['plan']:
+  c.need(spec['mode'] in ('run','closeout'),'REUSE_MODE')
+  c.need(read_commit(c.BACKEND,c.REUSE['receiptCommit'],c.REUSE_RECEIPT)==(c.BACKEND/c.REUSE_RECEIPT).read_bytes(),'REUSE_COMMITTED_RECEIPT')
  c.need(spec['mode'] in ('qualify','run','closeout') and spec['limits']==(QUALIFICATION_LIMITS if spec['mode']=='qualify' else LIMITS),'MODE_OR_LIMITS')
  c.need(type(spec['costAllowanceUsd']) in (float,int) and spec['costAllowanceUsd']>=0,'ALLOWANCE')
  c.need(spec['mode']!='qualify' or spec['costAllowanceUsd']==0,'QUALIFICATION_ALLOWANCE')

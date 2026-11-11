@@ -49,8 +49,23 @@ def atomic(path,value):
  try:os.fsync(fd)
  finally:os.close(fd)
 
+REUSE_RECEIPT='evidence/APP-013/p08-key-correction-20261110/kc1-result.json'
+REUSE={'secret':binding.STRIPE,'version':'2','operationId':'392807bd-8c43-4a01-b82d-3292f19fd222',
+ 'receiptCommit':'ff18dbee2a4c7d94338b549f9d16d725a03b58ca',
+ 'receiptSha256':'9a2066e1c99ec6e50262a3ad0f05a489ac275ebf49b63e8044189e96160464d2'}
+def validate_reuse(plan):
+ if 'reuse' not in plan:return
+ need(plan['reuse']==REUSE and plan['operationId']!=REUSE['operationId'],'REUSE_PROVENANCE')
+ path=BACKEND/REUSE_RECEIPT
+ need(path.is_file() and not path.is_symlink() and digest(path.read_bytes())==REUSE['receiptSha256'],'REUSE_RECEIPT')
+ r=json.loads(path.read_bytes());closed=r['closeout'];j=r['journal']
+ need(r['operationId']==REUSE['operationId'] and closed['status']=='CORRECTION_CLOSED' and closed['residuals']==[] and
+  closed['stripeVersion']=='2' and closed['retainedResources']==['DISABLED_SECRET_VERSION'] and not closed['adopted'] and
+  not closed['candidateReadyObserved'] and j['version']=='2' and not any(x[0]=='deploy' for x in j['intents']),'REUSE_RECEIPT_STATE')
+
 def validate_plan(plan):
- need(set(plan)=={'operationId','projectNumberSha256','window','qualificationSha256','sourceManifestSha256'},'CORRECTION_PLAN')
+ need(set(plan) in ({'operationId','projectNumberSha256','window','qualificationSha256','sourceManifestSha256'}, {'operationId','projectNumberSha256','window','qualificationSha256','sourceManifestSha256','reuse'}),'CORRECTION_PLAN')
+ validate_reuse(plan)
  candidate(plan['operationId']);need(plan['projectNumberSha256']=='37d4aa0f46ca5b8f0b81b1148bda235a0f4a9a424b6b4638ec993d889563be54','PROJECT_NUMBER_PIN')
  need(all(re.fullmatch('[a-f0-9]{64}',plan[k] or '') for k in ('qualificationSha256','sourceManifestSha256')),'PLAN_DIGEST')
  w=plan['window'];need(set(w)=={'start','cutoff','workEnd','cleanupEnd'} and all(type(v) in (int,float) for v in w.values()) and
@@ -86,11 +101,19 @@ class Correction:
    try:
     self.ports.preflight(self.p,self.gate())
     self.ports.check_key(key,endpoint,self.gate())
-    self.intent('createVersion',binding.STRIPE)
-    result=self.ports.add_version(key,self.gate())
-    # The returned owned numeric version is journaled before any following call.
-    self.j['version']=returned_version(result,self.ports.project_number);self.save()
-    key='';self.ports.configure(self.j['version'],self.j['candidate'])
+    if 'reuse' in self.p:
+     self.ports.reuse_version_check(self.gate())
+     self.j['version']='2';self.save()
+     self.ports.configure('2',self.j['candidate'])
+     self.intent('version',binding.STRIPE)
+     self.ports.change('version',binding.STRIPE,True,self.gate())
+    else:
+     self.intent('createVersion',binding.STRIPE)
+     result=self.ports.add_version(key,self.gate())
+     # The returned owned numeric version is journaled before any following call.
+     self.j['version']=returned_version(result,self.ports.project_number);self.save()
+     self.ports.configure(self.j['version'],self.j['candidate'])
+    key=''
     self.ports.version_readback(self.j['version'],self.gate())
     for kind,name in self.ports.activation():
      self.intent(kind,name);self.ports.change(kind,name,True,self.gate())
@@ -115,7 +138,7 @@ class Correction:
    # Cleanup only known owned transitions. The created version starts enabled.
    owned=[x for x in intents if x[0] not in ('createVersion','deploy')]
    if ['deploy',self.j['candidate']] in intents:owned.append(['tag','app013-p07-atomic'])
-   owned.append(['version',binding.STRIPE])
+   if ['version',binding.STRIPE] not in owned:owned.append(['version',binding.STRIPE])
    # Role first, then route, bindings, versions, identity.
    order={'role':0,'tag':1,'secretBinding':2,'version':3,'identity':4}
    for kind,name in sorted(owned,key=lambda x:order[x[0]]):
@@ -142,7 +165,8 @@ class Correction:
    need(read(self.root/'attempt.json')=={'operationId':self.p['operationId'],'planSha256':digest(self.p)},'ATTEMPT_BINDING')
    self.j=read(self.root/'journal.json');need(self.j['planSha256']==digest(self.p) and self.j['operationId']==self.p['operationId'] and self.j['candidate']==candidate(self.p['operationId']),'JOURNAL_BINDING')
    # Reconstruct only exact finite operations; arbitrary journal command vectors are impossible.
-   allowed=set(self.ports.activation())|{('createVersion',binding.STRIPE),('deploy',self.j['candidate'])}
+   allowed=set(self.ports.activation())|{('deploy',self.j['candidate'])}|({('version',binding.STRIPE)} if 'reuse' in self.p else {('createVersion',binding.STRIPE)})
+   if 'reuse' in self.p:need(self.j['version'] in (None,'2'),'REUSE_VERSION_DRIFT')
    need(isinstance(self.j['intents'],list) and len(self.j['intents'])==len({tuple(x) for x in self.j['intents']}) and all(tuple(x) in allowed for x in self.j['intents']),'JOURNAL_SCOPE')
    if self.j['version'] is not None:need(isinstance(self.j['version'],str) and re.fullmatch('[1-9][0-9]{0,8}',self.j['version']) and int(self.j['version'])>1,'OWNED_VERSION_PIN')
    return self.cleanup()

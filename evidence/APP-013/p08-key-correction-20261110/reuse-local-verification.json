@@ -1,0 +1,23 @@
+{
+  "status": "CR_K1_R2_LOCALLY_IMPLEMENTED_NO_EXTERNAL_AUTHORITY",
+  "baselineSource": "5528e09",
+  "approvedProposal": "bc5e733",
+  "pythonTests": 41,
+  "nodeTests": 18,
+  "reuseVersion": "2",
+  "originOperation": "392807bd-8c43-4a01-b82d-3292f19fd222",
+  "providerCalls": 0,
+  "candidateBinding": "LEGACY",
+  "liveState": "UNKNOWN beyond KC1 independent closeout",
+  "checks": [
+    "committed receipt provenance",
+    "no addVersion in reuse success/failures",
+    "disabled exact version required",
+    "actual numeric lifecycle activation and retirement",
+    "duplicate and concurrent attempt refusal",
+    "interruption cleanup",
+    "independent cleanup recovery",
+    "malformed binding serialization refusal",
+    "exact run/closeout approval separation"
+  ]
+}

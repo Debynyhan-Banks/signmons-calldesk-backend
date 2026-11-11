@@ -86,6 +86,34 @@ class NativeSeamTests(unittest.TestCase):
    with self.assertRaisesRegex(c.Stop,'QUALIFICATION_MUTATION_REFUSED'):
     self.port.change('secretBinding',ports.entry.restore.SECRETS[0],True,self.port.gate())
    dispatch.assert_not_called()
+ def test_reuse_ports_refuse_create_before_network(self):
+  self.port.p['reuse']=dict(c.REUSE)
+  with self.assertRaisesRegex(c.Stop,'REUSE_CREATE_FORBIDDEN'):self.port.add_version('synthetic',self.port.gate())
+  self.assertEqual(self.requests,[]);self.assertEqual(self.commands,[])
+ def test_reuse_requires_exact_disabled_numeric_version(self):
+  self.port.p['reuse']=dict(c.REUSE);self.port.project_number='123456789012'
+  name='projects/123456789012/secrets/'+binding.STRIPE+'/versions/2'
+  with patch.object(self.port,'http',return_value={'name':name,'state':'DISABLED'}) as http:
+   self.port.reuse_version_check(self.port.gate());self.assertIn('/versions/2?',http.call_args.args[1])
+  for value in ({'name':name,'state':'ENABLED'},{'name':name,'state':'DESTROYED'},{'name':name.replace('/2','/3'),'state':'DISABLED'},None,{}):
+   with patch.object(self.port,'http',return_value=value):
+    with self.assertRaisesRegex(c.Stop,'REUSE_VERSION_NOT_DISABLED'):self.port.reuse_version_check(self.port.gate())
+ def test_reuse_preflight_does_not_request_create_permission(self):
+  self.port.p['reuse']=dict(c.REUSE);self.port.preflight(self.plan,self.port.gate())
+  self.assertFalse(any('secretmanager.versions.add' in (body or {}).get('permissions',[]) for _,_,body in self.requests))
+ def test_actual_reuse_lifecycle_pins_two_and_retires_every_resource(self):
+  self.port.p['reuse']=dict(c.REUSE);self.port.expected=self.port.preflight(self.plan,self.port.gate())
+  name='projects/123456789012/secrets/'+binding.STRIPE+'/versions/2'
+  with patch.object(self.port,'http',return_value={'name':name,'state':'DISABLED'}):self.port.reuse_version_check(self.port.gate())
+  self.port.configure('2',c.candidate(self.plan['operationId']))
+  for k,n in [('version',binding.STRIPE)]+self.port.activation():
+   self.port.change(k,n,True,self.port.gate());self.assertTrue(self.port.readback(k,n,True,self.port.gate()))
+  for k,n in reversed(self.port.activation()+[('version',binding.STRIPE)]):
+   self.port.change(k,n,False,self.port.gate(True));self.assertTrue(self.port.readback(k,n,False,self.port.gate(True)))
+  self.assertFalse(any(self.state.values()));self.assertFalse(self.login)
+  stripe=[a for a in self.commands if '--secret='+binding.STRIPE in a]
+  self.assertTrue(stripe);self.assertTrue(all('2' in a for a in stripe))
+  self.assertFalse(any(':addVersion' in url for _,url,_ in self.requests))
  def test_work_budget_reserves_cleanup(self):
   self.port.calls['cli']=90
   with self.assertRaisesRegex(c.Stop,'CALL_LIMIT'):self.port.spend('cli')

@@ -12,6 +12,7 @@ class Ports:
  def check_key(self,k,e,d):self.hit('key')
  def add_version(self,k,d):self.created+=1;self.states[('version',binding.STRIPE)]=True;self.hit('create');return {'name':'projects/123456/secrets/'+binding.STRIPE+'/versions/7','state':'ENABLED'}
  def configure(self,v,r):self.version=v
+ def reuse_version_check(self,d):self.hit('reuse_check')
  def version_readback(self,v,d):self.hit('version_readback')
  def activation(self):return [('identity','identity'),('version','startup'),('secretBinding','binding'),('role','role')]
  def change(self,k,n,on,d):
@@ -69,6 +70,46 @@ class CorrectionTests(unittest.TestCase):
  def test_unowned_journal_refused(self):
   ports=Ports();self.driver(ports).run('x','y');j=c.read(self.root/'journal.json');j['intents'].append(['version','foreign']);c.atomic(self.root/'journal.json',j)
   with self.assertRaisesRegex(c.Stop,'JOURNAL_SCOPE'):self.driver(ports).closeout()
+
+class ReuseTests(unittest.TestCase):
+ setUp=CorrectionTests.setUp
+ driver=CorrectionTests.driver
+ def reuse(self):self.p['reuse']=dict(c.REUSE)
+ def test_reuse_success_and_independent_closeout_never_create(self):
+  self.reuse();ports=Ports();r=self.driver(ports).run('x','y')
+  self.assertEqual(r['stripeVersion'],'2');self.assertTrue(r['candidateReadyObserved']);self.assertEqual(r['residuals'],[])
+  self.assertEqual(ports.created,0);self.assertEqual(ports.deployed,1)
+  self.assertNotIn(['createVersion',binding.STRIPE],c.read(self.root/'journal.json')['intents'])
+  self.assertEqual(self.driver(ports).closeout()['residuals'],[]);self.assertEqual(ports.created,0);self.assertEqual(ports.deployed,1)
+  with self.assertRaises(FileExistsError):self.driver(ports).closeout()
+  with self.assertRaises(FileExistsError):self.driver(ports).run('x','y')
+ def test_reuse_failures_retire_without_creation(self):
+  self.reuse()
+  for stage in ['preflight','key','reuse_check','activate:version','version_readback','activate:identity','activate:secretBinding','activate:role','deploy','readiness']:
+   with self.subTest(stage=stage),tempfile.TemporaryDirectory() as root:
+    ports=Ports(stage);r=c.Correction(self.p,ports,Path(root).resolve(),lambda:100).run('x','y')
+    self.assertEqual(ports.created,0);self.assertEqual(r['residuals'],[]);self.assertFalse(any(ports.states.values()))
+ def test_reuse_partial_cleanup_then_independent_recovery(self):
+  self.reuse();ports=Ports('retire:version');r=self.driver(ports).run('x','y');self.assertTrue(r['residuals'])
+  ports.fail=None;self.assertEqual(self.driver(ports).closeout()['residuals'],[]);self.assertEqual(ports.created,0)
+ def test_reuse_wrong_provenance_and_original_operation_refused(self):
+  self.reuse()
+  for k in c.REUSE:
+   bad=copy.deepcopy(self.p);bad['reuse'][k]='foreign'
+   with self.assertRaises(c.Stop):c.Correction(bad,Ports(),self.root,lambda:100)
+  self.p['operationId']=c.REUSE['operationId']
+  with self.assertRaisesRegex(c.Stop,'REUSE_PROVENANCE'):self.driver(Ports())
+ def test_reuse_journal_cannot_add_creation_or_foreign_version(self):
+  self.reuse();ports=Ports();self.driver(ports).run('x','y');j=c.read(self.root/'journal.json');j['intents'].append(['createVersion',binding.STRIPE]);c.atomic(self.root/'journal.json',j)
+  with self.assertRaisesRegex(c.Stop,'JOURNAL_SCOPE'):self.driver(ports).closeout()
+ def test_reuse_interruption_after_enable_cleans(self):
+  self.reuse();ports=Ports();original=ports.change
+  def interrupted(k,n,on,d):
+   original(k,n,on,d)
+   if on and n==binding.STRIPE:raise KeyboardInterrupt()
+  ports.change=interrupted;r=self.driver(ports).run('x','y');self.assertEqual(r['residuals'],[]);self.assertFalse(any(ports.states.values()));self.assertEqual(ports.created,0)
+ def test_reuse_concurrent_and_late_entry_refused(self):
+  self.reuse();CorrectionTests.test_concurrent_attempt_refused(self);CorrectionTests.test_clock_rollback_and_cutoff(self)
 
 class BindingTests(unittest.TestCase):
  def cfg(self):
