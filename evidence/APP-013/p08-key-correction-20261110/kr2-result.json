@@ -1,0 +1,46 @@
+{
+  "operationId": "5cdba516-cbbf-4219-8112-c60d498fc30d",
+  "sourceCommit": "1648cf82084d0299ecf88348144bf18cc20866b2",
+  "runApprovalCommit": "a39d89abaf41ad9b4968be2ba875a7071dcf6a37",
+  "closeoutApprovalCommit": "9ad630461eda364e2ac16f987f79c843cb9f4e33",
+  "run": {
+    "adopted": false,
+    "candidate": "signmons-calldesk-staging-p07key5cdba516cbbf",
+    "candidateReadyObserved": false,
+    "failure": "KEY_ENDPOINT_PIN",
+    "operationId": "5cdba516-cbbf-4219-8112-c60d498fc30d",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_AWAITING_INDEPENDENT_CLOSEOUT",
+    "stripeVersion": null
+  },
+  "closeout": {
+    "adopted": false,
+    "candidate": "signmons-calldesk-staging-p07key5cdba516cbbf",
+    "candidateReadyObserved": false,
+    "failure": "KEY_ENDPOINT_PIN",
+    "operationId": "5cdba516-cbbf-4219-8112-c60d498fc30d",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_CLOSED",
+    "stripeVersion": null
+  },
+  "journal": {
+    "candidate": "signmons-calldesk-staging-p07key5cdba516cbbf",
+    "failure": "KEY_ENDPOINT_PIN",
+    "intents": [],
+    "operationId": "5cdba516-cbbf-4219-8112-c60d498fc30d",
+    "planSha256": "d8cf58d7b793adf169d1bd12aa784f6fa2eed7bce9f3ac11866f8ed75329b543",
+    "readiness": null,
+    "version": null
+  },
+  "processAbsent": true,
+  "providerMutations": 0,
+  "stripeRequests": 0,
+  "privateInputsPersisted": false,
+  "ownedLaunchersAndSpecsRemoved": true
+}
