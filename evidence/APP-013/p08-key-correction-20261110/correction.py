@@ -12,6 +12,26 @@ BACKEND=APP.parent.parent
 class Stop(Exception):pass
 def need(ok,code):
  if not ok:raise Stop(code)
+SAFE_CODES=frozenset("""CURRENT_OUTPUT NATIVE_COMMAND_UNCONFIRMED NATIVE_COMMAND_REFUSED NATIVE_OUTPUT_ENCODING OWNER_DRIFT OWNER_OVERRIDE TOKEN_SHAPE PASSWORD_SHAPE SQL_ALLOWLIST CLI_VECTOR ROLE_READ_UNCONFIRMED ROLE_OUTPUT_UNKNOWN ROLE_NOT_READY ROLE_IDENTITY_UNKNOWN ROLE_DEADLINE RESOURCE_NOT_RETIRED QUALIFICATION_DRIFT PROJECT_PIN BILLING_NOT_READY EFFECTIVE_PERMISSION_MISSING SERVICE_NOT_READY EXISTING_CANDIDATE_SOURCE REVISION_INVENTORY_UNKNOWN CANDIDATE_ALREADY_EXISTS RUNTIME_PROJECT_GRANT_PRESENT RUNTIME_SIGNING_GRANT_PRESENT KEY_ENDPOINT_PIN KEY_CHECK_DEADLINE KEY_CHECK_HTTP KEY_ACCOUNT_LIST KEY_ACCOUNT_MISMATCH KEY_MODE_MISMATCH PAYMENT_TEST_KEY_REQUIRED PAYMENT_ENDPOINT_DRIFT PAYMENT_OUTPUT_LIMIT PAYMENT_IO_TIMEOUT PAYMENT_DEADLINE KEY_TRANSPORT_OR_OUTPUT_UNKNOWN KEY_CHECK_RESULT BINDING_OUTPUT_INVALID PROVIDER_RESPONSE_UNCONFIRMED PROVIDER_RESPONSE_REFUSED REUSE_VERSION_NOT_DISABLED REUSE_PROVENANCE REUSE_CREATE_FORBIDDEN VERSION_READBACK VERSION_OUTPUT VERSION_IDENTITY_OR_STATE ACTIVATION_UNCONFIRMED DEPLOYMENT_UNCONFIRMED FOREIGN_TAG_REFUSED CLEANUP_READBACK FINAL_READBACK DEADLINE CLOCK_ROLLBACK CALL_LIMIT MUTATION_ALREADY_ATTEMPTED QUALIFICATION_MUTATION_REFUSED""".split())
+SAFE_STAGES=frozenset("""LOCAL OWNER PROJECT BILLING IAM SERVICES PERMISSIONS CANDIDATE DATABASE_ROLE RETIRED_RESOURCES CANDIDATE_ABSENCE SANDBOX_KEY REUSE_VERSION CREATE_VERSION CONFIGURE VERSION_READBACK ACTIVATE_IDENTITY ACTIVATE_VERSION ACTIVATE_BINDING ACTIVATE_ROLE DEPLOY DEPLOYMENT_READBACK CLEANUP_ROLE CLEANUP_TAG CLEANUP_BINDING CLEANUP_VERSION CLEANUP_IDENTITY FINAL_READBACK""".split())
+def safe_calls(ports):
+ calls=getattr(ports,'calls',None)
+ if not isinstance(calls,dict):return None
+ return {k:(calls.get(k) if type(calls.get(k)) is int and 0<=calls[k]<=10000 else None) for k in ('cli','https','sql','child')}
+def safe_failure(error,ports):
+ # Never stringify arbitrary exceptions or copy transport output into receipts.
+ args=getattr(error,'args',());code=args[0] if len(args)==1 and type(args[0]) is str and args[0] in SAFE_CODES else 'CORRECTION_STOPPED'
+ category='VALIDATION_STOP' if code!='CORRECTION_STOPPED' else 'UNKNOWN_EXCEPTION'
+ if isinstance(error,KeyboardInterrupt):category='INTERRUPTED'
+ elif isinstance(error,TimeoutError):category='TIMEOUT'
+ elif isinstance(error,json.JSONDecodeError):category='JSON_DECODE'
+ elif isinstance(error,OSError):category='LOCAL_IO'
+ stage=getattr(ports,'stage',None)
+ return {'code':code,'category':category,'stage':stage if type(stage) is str and stage in SAFE_STAGES else 'LOCAL','calls':safe_calls(ports)}
+
+def lifecycle_stage(kind,cleanup=False):
+ return ('CLEANUP_' if cleanup else 'ACTIVATE_')+{'role':'ROLE','tag':'TAG','secretBinding':'BINDING','version':'VERSION','identity':'IDENTITY'}[kind]
+
 def digest(v):return hashlib.sha256(v if isinstance(v,bytes) else json.dumps(v,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 def load(relative,name):
  spec=importlib.util.spec_from_file_location(name,APP/relative);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
@@ -102,27 +122,28 @@ class Correction:
     self.ports.preflight(self.p,self.gate())
     self.ports.check_key(key,endpoint,self.gate())
     if 'reuse' in self.p:
-     self.ports.reuse_version_check(self.gate())
+     self.ports.stage='REUSE_VERSION';self.ports.reuse_version_check(self.gate())
      self.j['version']='2';self.save()
      self.ports.configure('2',self.j['candidate'])
      self.intent('version',binding.STRIPE)
-     self.ports.change('version',binding.STRIPE,True,self.gate())
+     self.ports.stage='ACTIVATE_VERSION';self.ports.change('version',binding.STRIPE,True,self.gate())
     else:
-     self.intent('createVersion',binding.STRIPE)
+     self.ports.stage='CREATE_VERSION';self.intent('createVersion',binding.STRIPE)
      result=self.ports.add_version(key,self.gate())
      # The returned owned numeric version is journaled before any following call.
      self.j['version']=returned_version(result,self.ports.project_number);self.save()
      self.ports.configure(self.j['version'],self.j['candidate'])
     key=''
-    self.ports.version_readback(self.j['version'],self.gate())
+    self.ports.stage='VERSION_READBACK';self.ports.version_readback(self.j['version'],self.gate())
     for kind,name in self.ports.activation():
-     self.intent(kind,name);self.ports.change(kind,name,True,self.gate())
+     self.ports.stage=lifecycle_stage(kind);self.intent(kind,name);self.ports.change(kind,name,True,self.gate())
      need(self.ports.readback(kind,name,True,self.gate()),'ACTIVATION_UNCONFIRMED')
-    self.intent('deploy',self.j['candidate']);self.ports.deploy(self.gate())
-    self.j['readiness']=self.ports.deployment_readback(self.gate());self.save()
+    self.ports.stage='DEPLOY';self.intent('deploy',self.j['candidate']);self.ports.deploy(self.gate())
+    self.ports.stage='DEPLOYMENT_READBACK';self.j['readiness']=self.ports.deployment_readback(self.gate());self.save()
    except BaseException as error:
     # No provider output or arbitrary exception message is persisted.
-    self.j['failure']=str(error) if isinstance(error,Stop) else 'CORRECTION_STOPPED'
+    self.j['failureEvidence']=safe_failure(error,self.ports)
+    self.j['failure']=self.j['failureEvidence']['code']
     try:self.save()
     except BaseException:self.j['journalFailure']=True
    finally:
@@ -130,6 +151,7 @@ class Correction:
    return self.cleanup()
   finally:self.ports.clear();self.release()
  def cleanup(self):
+  diagnostics=[]
   residuals=['JOURNAL_UNCONFIRMED'] if self.j.get('journalFailure') else [];intents=self.j['intents'];version=self.j['version']
   if ['createVersion',binding.STRIPE] in intents and version is None:
    residuals.append('CREATED_VERSION_OWNERSHIP_UNKNOWN')
@@ -143,18 +165,19 @@ class Correction:
    order={'role':0,'tag':1,'secretBinding':2,'version':3,'identity':4}
    for kind,name in sorted(owned,key=lambda x:order[x[0]]):
     try:
-     deadline=self.gate(True)
+     self.ports.stage=lifecycle_stage(kind,True);deadline=self.gate(True)
      if not self.ports.readback(kind,name,False,deadline):
       self.ports.change(kind,name,False,deadline)
      need(self.ports.readback(kind,name,False,self.gate(True)),'CLEANUP_READBACK')
-    except BaseException:residuals.append(kind+':'+name)
-   try:need(self.ports.final_readback(self.gate(True)) is True,'FINAL_READBACK')
-   except BaseException:residuals.append('FINAL_READBACK_UNKNOWN')
+    except BaseException as error:residuals.append(kind+':'+name);diagnostics.append(safe_failure(error,self.ports))
+   try:
+    self.ports.stage='FINAL_READBACK';need(self.ports.final_readback(self.gate(True)) is True,'FINAL_READBACK')
+   except BaseException as error:residuals.append('FINAL_READBACK_UNKNOWN');diagnostics.append(safe_failure(error,self.ports))
   self.ports.clear()
   result={'operationId':self.p['operationId'],'status':'CORRECTION_CONTAINMENT_UNCONFIRMED' if residuals else 'CORRECTION_CLOSED',
    'residuals':sorted(set(residuals)),'candidate':self.j['candidate'],'stripeVersion':version,
    'candidateReadyObserved':self.j['readiness'] is not None,'readiness':self.j['readiness'],
-   'failure':self.j['failure'],'privateInputsPersisted':False,'adopted':False,
+   'failure':self.j['failure'],'failureEvidence':self.j.get('failureEvidence'),'cleanupDiagnostics':diagnostics,'calls':safe_calls(self.ports),'privateInputsPersisted':False,'adopted':False,
    'retainedResources':([] if version is None else ['DISABLED_SECRET_VERSION'])+(['REVISION_METADATA'] if ['deploy',self.j['candidate']] in intents else [])}
   if residuals:result['retainedResources']=[] # Unknown containment must not be represented as disabled.
   return result

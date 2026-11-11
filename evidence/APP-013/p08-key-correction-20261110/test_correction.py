@@ -111,6 +111,37 @@ class ReuseTests(unittest.TestCase):
  def test_reuse_concurrent_and_late_entry_refused(self):
   self.reuse();CorrectionTests.test_concurrent_attempt_refused(self);CorrectionTests.test_clock_rollback_and_cutoff(self)
 
+class FailureReportingTests(unittest.TestCase):
+ setUp=CorrectionTests.setUp
+ driver=CorrectionTests.driver
+ def test_actual_shared_validator_error_survives_driver_and_closeout(self):
+  import ports as native
+  for error in (native.entry.Stop('NATIVE_COMMAND_REFUSED'),native.q.model.Stop('CURRENT_OUTPUT'),native.entry.restore.Stop('ROLE_NOT_READY')):
+   with self.subTest(error=type(error)),tempfile.TemporaryDirectory() as root:
+    ports=Ports();ports.stage='DATABASE_ROLE';ports.calls={'cli':12,'https':3,'sql':1,'child':0}
+    def fail(*_):raise error
+    ports.preflight=fail
+    d=c.Correction(self.p,ports,Path(root).resolve(),lambda:100);r=d.run('PRIVATE_SENTINEL','PRIVATE_SENTINEL')
+    self.assertEqual(r['failure'],error.args[0]);self.assertEqual(r['failureEvidence']['stage'],'DATABASE_ROLE');self.assertEqual(r['failureEvidence']['calls']['cli'],12)
+    self.assertEqual(d.closeout()['failureEvidence'],r['failureEvidence']);self.assertEqual(ports.created,0)
+ def test_arbitrary_exception_stage_and_counts_never_leak(self):
+  from types import SimpleNamespace
+  ports=SimpleNamespace(stage='PRIVATE_SENTINEL',calls={'cli':'PRIVATE_SENTINEL','https':True,'sql':-1,'child':999999,'secret':'PRIVATE_SENTINEL'})
+  for error in (RuntimeError('PRIVATE_SENTINEL'),c.Stop('PRIVATE_SENTINEL'),ValueError('KEY_ENDPOINT_PIN PRIVATE_SENTINEL')):
+   value=c.safe_failure(error,ports);self.assertEqual(value['code'],'CORRECTION_STOPPED');self.assertEqual(value['stage'],'LOCAL');self.assertNotIn('PRIVATE_SENTINEL',json.dumps(value));self.assertTrue(all(v is None for v in value['calls'].values()))
+ def test_safe_exception_categories(self):
+  from types import SimpleNamespace
+  ports=SimpleNamespace(stage='PROJECT',calls={})
+  for error,category in [(KeyboardInterrupt('PRIVATE_SENTINEL'),'INTERRUPTED'),(TimeoutError('PRIVATE_SENTINEL'),'TIMEOUT'),(OSError('PRIVATE_SENTINEL'),'LOCAL_IO'),(json.JSONDecodeError('PRIVATE_SENTINEL','PRIVATE_SENTINEL',0),'JSON_DECODE')]:
+   value=c.safe_failure(error,ports);self.assertEqual(value['category'],category);self.assertNotIn('PRIVATE_SENTINEL',json.dumps(value))
+ def test_mutation_failure_stage_is_not_overwritten_by_cleanup(self):
+  ports=Ports('activate:secretBinding');r=self.driver(ports).run('x','y')
+  self.assertEqual(r['failureEvidence']['stage'],'ACTIVATE_BINDING');self.assertEqual(r['residuals'],[])
+ def test_cleanup_failure_is_separate_and_recoverable(self):
+  ports=Ports('retire:role');r=self.driver(ports).run('x','y')
+  self.assertIsNone(r['failureEvidence']);self.assertEqual(r['cleanupDiagnostics'][0]['stage'],'CLEANUP_ROLE')
+  ports.fail=None;closed=self.driver(ports).closeout();self.assertEqual(closed['cleanupDiagnostics'],[]);self.assertEqual(closed['residuals'],[])
+
 class BindingTests(unittest.TestCase):
  def cfg(self):
   op=str(uuid.uuid4());return {'state':'CORRECTED','candidate':c.candidate(op),'stripeVersion':'7','correctionOperationId':op,'correctionReceiptSha256':'a'*64}

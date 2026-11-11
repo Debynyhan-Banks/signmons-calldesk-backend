@@ -80,7 +80,7 @@ def execute(spec,ports_factory=None,clock=time.time,base=Path('/private/tmp')):
  except BaseException as error:
   # Immutable failure evidence; never expose arbitrary exception/provider text.
   path=root/(spec['mode']+'-failure.json')
-  if not path.exists():c.reserve(path,{'status':'CR_K1_STOPPED','operationId':spec['plan']['operationId'],'stage':getattr(ports,'stage','LOCAL'),'code':str(error) if isinstance(error,c.Stop) else 'LOCAL_OR_PROVIDER_OUTPUT_UNKNOWN','privateInputsPersisted':False})
+  if not path.exists():c.reserve(path,{'status':'CR_K1_STOPPED','operationId':spec['plan']['operationId'],**c.safe_failure(error,ports),'privateInputsPersisted':False})
   raise
  finally:
   key='';endpoint='';ports.clear()

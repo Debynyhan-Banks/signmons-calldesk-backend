@@ -1,0 +1,16 @@
+{
+  "status": "LOCAL_SAFE_FAILURE_REPORTING_VERIFIED",
+  "baselineSource": "1648cf82084d0299ecf88348144bf18cc20866b2",
+  "pythonTests": 46,
+  "nodeTests": 18,
+  "providerCalls": 0,
+  "historicalKr3Cause": "UNKNOWN_UNRECOVERABLE_FROM_RETAINED_RECEIPT",
+  "checks": [
+    "actual native/shared validation exception codes retained by fixed allowlist",
+    "failure-time stage and bounded counter snapshot",
+    "separate cleanup diagnostics",
+    "unknown exception text/stage/counter redaction",
+    "independent closeout preserves original failure evidence",
+    "create and version2 reuse regressions"
+  ]
+}
