@@ -1,0 +1,18 @@
+{
+  "result": {
+    "status": "LOCAL_ENDPOINT_INPUT_INSPECTED",
+    "isString": true,
+    "inputLength": 27,
+    "formatValid": true,
+    "exactMatch": true,
+    "trimmedMatch": true,
+    "surroundingWhitespace": false,
+    "looksLikeUrl": false,
+    "controlOrNonAscii": false,
+    "providerCalls": 0
+  },
+  "processAbsent": true,
+  "launcherRemoved": true,
+  "rawInputPersisted": false,
+  "sourceCommit": "1648cf82084d0299ecf88348144bf18cc20866b2"
+}
