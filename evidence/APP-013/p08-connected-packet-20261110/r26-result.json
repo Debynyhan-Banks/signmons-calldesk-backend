@@ -1,0 +1,24 @@
+{
+  "status": "R26_QUALIFICATION_APPROVAL_EXPIRED_UNSTARTED",
+  "observedAt": "2026-11-11T21:53:39.374552+00:00",
+  "recoveryOperationId": "200fb94b-f1e6-4e92-b0c6-f8f63cb75170",
+  "sourceCommit": "ffa187e17e8ec237a682218a4e4c2e80d5a1f98a",
+  "recoveryApproval": "39f04c8",
+  "qualificationApproved": false,
+  "qualificationStarted": false,
+  "nativeStarted": false,
+  "guardAndConnectedProcessesAbsent": true,
+  "ownedLauncherAbsent": true,
+  "purge": {
+    "completedAt": 1794433920.327789,
+    "onTime": true,
+    "operationId": "200fb94b-f1e6-4e92-b0c6-f8f63cb75170",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  }
+}
