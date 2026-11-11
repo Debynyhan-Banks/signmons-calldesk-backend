@@ -1,0 +1,73 @@
+{
+  "operationId": "893e83f7-b7b5-4516-95eb-8aa34fc301af",
+  "sourceCommit": "388ff8b5c5ff2e5270c3d3cc4148eef89f028f70",
+  "runApprovalCommit": "02b4a84968353771172da8ab72df555ed16d26d0",
+  "closeoutApprovalCommit": "5fd1bb7fc43965096189711ad7316db93d8ffe7a",
+  "run": {
+    "adopted": false,
+    "calls": {
+      "child": 1,
+      "cli": 11,
+      "https": 12,
+      "sql": 1
+    },
+    "candidate": "signmons-calldesk-staging-p07key893e83f7b7b5",
+    "candidateReadyObserved": false,
+    "cleanupDiagnostics": [],
+    "failure": "NATIVE_COMMAND_REFUSED",
+    "failureEvidence": {
+      "calls": {
+        "child": 1,
+        "cli": 11,
+        "https": 12,
+        "sql": 1
+      },
+      "category": "VALIDATION_STOP",
+      "code": "NATIVE_COMMAND_REFUSED",
+      "stage": "DATABASE_ROLE"
+    },
+    "operationId": "893e83f7-b7b5-4516-95eb-8aa34fc301af",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_AWAITING_INDEPENDENT_CLOSEOUT",
+    "stripeVersion": null
+  },
+  "closeout": {
+    "adopted": false,
+    "calls": {
+      "child": 0,
+      "cli": 0,
+      "https": 0,
+      "sql": 0
+    },
+    "candidate": "signmons-calldesk-staging-p07key893e83f7b7b5",
+    "candidateReadyObserved": false,
+    "cleanupDiagnostics": [],
+    "failure": "NATIVE_COMMAND_REFUSED",
+    "failureEvidence": {
+      "calls": {
+        "child": 1,
+        "cli": 11,
+        "https": 12,
+        "sql": 1
+      },
+      "category": "VALIDATION_STOP",
+      "code": "NATIVE_COMMAND_REFUSED",
+      "stage": "DATABASE_ROLE"
+    },
+    "operationId": "893e83f7-b7b5-4516-95eb-8aa34fc301af",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_CLOSED",
+    "stripeVersion": null
+  },
+  "processAbsent": true,
+  "providerMutations": 0,
+  "privateInputsPersisted": false,
+  "databaseFailureCause": "UNKNOWN: nonzero command exit or oversized stdout; stderr not retained",
+  "ownedLaunchersAndSpecsRemoved": true
+}
