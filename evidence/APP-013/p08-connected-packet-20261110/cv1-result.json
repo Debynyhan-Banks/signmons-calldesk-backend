@@ -1,0 +1,35 @@
+{
+  "section": "APP-013/3A/P08/CV1",
+  "status": "CV1_CONSUMED_CLOSED",
+  "sourceCommit": "d7c03fc763813db40acabe2ca42e55ced07d8bb0",
+  "approvalCommit": "cd8a46136a413c99358b824d3dae104d408ad5c0",
+  "scopeSha256": "88aa42d123e76919dfeb0c9d4ba4c182d652cf9de109986ad1f868fe6d75b3f3",
+  "attempt": {
+    "approvalCommit": "cd8a46136a413c99358b824d3dae104d408ad5c0",
+    "cacheReadReserved": true,
+    "operationId": "6009ce26-865f-4fcd-a998-3eef281cdcc0",
+    "scopeSha256": "88aa42d123e76919dfeb0c9d4ba4c182d652cf9de109986ad1f868fe6d75b3f3",
+    "startedAt": 1794440993.8466802
+  },
+  "result": {
+    "cacheFunctionCompleted": true,
+    "cacheReadInvocations": 1,
+    "completedAt": 1794440993.8498921,
+    "onTime": true,
+    "operationId": "6009ce26-865f-4fcd-a998-3eef281cdcc0",
+    "providerCalls": 0,
+    "rawTokenOrExpiryRetained": false,
+    "recoveryStarted": false,
+    "sdkInvocations": 0,
+    "status": "CACHED_TOKEN_EXPIRED"
+  },
+  "meaning": "Cached expiry did not exceed 2026-11-12T00:45:00Z; not proof the token was already expired. Actual expiry and token not retained.",
+  "isolatedProcessExit": 0,
+  "helperFinallyCompleted": true,
+  "ownedOperatorScriptAbsent": true,
+  "recoveryStarted": false,
+  "replayAllowed": false,
+  "nextOwnerDecision": "Fresh correct-owner credential renewal/sign-in remedy requires separately reviewed authority before another recovery.",
+  "observedAt": "2026-11-11T23:50:19.024833+00:00",
+  "ownedProcessIndependentlyAbsent": true
+}
