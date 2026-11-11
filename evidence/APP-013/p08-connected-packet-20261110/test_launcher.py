@@ -6,7 +6,7 @@ import connected_launcher as launcher
 import packet
 
 class LauncherBoundaryTests(unittest.TestCase):
-    def run_case(self,expire=None,interrupt=False,attended=False,decline=None):
+    def run_case(self,expire=None,interrupt=False,attended=False,decline=None,diagnostic=False):
         with tempfile.TemporaryDirectory(prefix='p08-launch-boundary-',dir='/private/tmp') as tmp:
             root=Path(tmp);repo=root/'gov';repo.mkdir();review=root/'review'
             def git(*args):return subprocess.check_output(['git',*args],cwd=repo,stderr=subprocess.PIPE)
@@ -14,11 +14,16 @@ class LauncherBoundaryTests(unittest.TestCase):
             now=[10];sequence=[];original=packet.wait_committed_decision
             window={'start':'1970-01-01T00:00:10Z','cutoff':'1970-01-01T00:00:15Z'}
             spec={'recoveryId':'synthetic','qualificationId':'qual','prospectiveOperationId':'native','window':window,'prospectiveWindow':window,'paymentWorkEnd':'synthetic','prospectiveLimits':{},'sourceCommit':'synthetic'}
+            if diagnostic:spec['nativePurpose']='NATIVE_PREFLIGHT_ONLY'
             envelope={'nativeScope':{'private':'PRIVATE_SENTINEL'},'plan':{'nativeScopeSha256':'a'*64},'sdkReview':{'limits':{}}}
             cap=SimpleNamespace(root=root/'guard')
             def wait(gov,path,expected,start,cutoff):
                 stage='native' if 'NATIVE' in path else 'qualification'
                 sequence.append(stage+'-wait')
+                if diagnostic and stage=='native':
+                    self.assertEqual(expected['decision'],'APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ')
+                    self.assertTrue(expected['externalReadAuthorized'])
+                    self.assertNotIn('externalActionAuthorized',expected)
                 self.assertFalse((repo/path).exists())
                 def advance(_):
                     now[0]+=1
@@ -34,7 +39,8 @@ class LauncherBoundaryTests(unittest.TestCase):
                 sequence.append(stage+'-confirmation')
                 self.assertFalse(any('dispatch' in item for item in sequence) if stage=='qualification' else 'native-dispatch' in sequence)
                 if decline==stage:raise packet.q.model.Stop('ATTENDED_CONFIRMATION_REFUSED')
-            def execute(c,e,approve):
+            def execute(c,e,approve,**kwargs):
+                self.assertEqual(kwargs, {'native_purpose':'NATIVE_PREFLIGHT_ONLY'} if diagnostic else {})
                 sequence.append('qualification-dispatch')
                 self.assertEqual(e['nativeScope']['private'],'PRIVATE_SENTINEL')
                 try:
@@ -73,3 +79,13 @@ class LauncherBoundaryTests(unittest.TestCase):
         self.assertEqual(seq,['qualification-confirmation','prequalification-purge'])
         code,seq=self.run_case(attended=True,decline='native');self.assertEqual(code,2)
         self.assertEqual(seq,['qualification-confirmation','qualification-wait','qualification-dispatch','native-confirmation','connected-cleanup'])
+
+    def test_diagnostic_launcher_requires_separate_read_authority(self):
+        code,seq=self.run_case(diagnostic=True)
+        self.assertEqual(code,0)
+        self.assertEqual(seq,['qualification-wait','qualification-dispatch','native-wait','native-dispatch','connected-cleanup'])
+
+    def test_diagnostic_rejects_payment_terminal_delegation_before_hidden_input(self):
+        with self.assertRaisesRegex(Exception,'PREFLIGHT_REQUIRES_SEPARATE_CHAT_DECISIONS'):
+            launcher.main({'recoveryId':'synthetic','nativePurpose':'NATIVE_PREFLIGHT_ONLY'},
+                          session_consent={},read_hidden=lambda _:self.fail('credential prompt'))

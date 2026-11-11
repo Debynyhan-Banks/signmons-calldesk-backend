@@ -1,0 +1,60 @@
+{
+  "section": "APP-013/3A/P08/NQ1",
+  "status": "LOCAL_IMPLEMENTATION_VERIFIED_QUALIFICATION_ONLY",
+  "baseSource": "22a6dc0",
+  "observedAt": "2026-11-11T23:40:30.764831+00:00",
+  "ownerDecision": "Owner approved NQ1 local implementation and tests in chat before edits",
+  "fileSha256": {
+    "authority.py": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3",
+    "entry.py": "7cca52bd4f084a6e5de422b6bfdeec666603962879ca7ed3d816432ddb1f5203",
+    "native_io.py": "d9f97da0e4e1739da5e14231bb8d7672f18dcb06e65c977e5f6ba06b82104396",
+    "source-manifest.json": "d90e2c1f81dcc16014baddc87c4ceb061c904ba2c14f7db06e25f74e35661483",
+    "test_entry.py": "73de4f75183b96d0de6ce8d3e6fbfabf803ebc5255388a966d955367d6c7ab7b",
+    "test_native_postgres.py": "a8d358ecac9c1d5a45b628d6f7fcb32bde0bf885b2402cc98c4e69fed956ad65",
+    "test-manifest.json": "dc12e5dcae09509e326d9986029362af0ab5b901e4a41a5b3dd4fa9ab0d5f3f2"
+  },
+  "effectiveLimits": {
+    "cli": 40,
+    "https": 1,
+    "sql": 3,
+    "child": 0
+  },
+  "nativeReadInventory": "Actual runtime/access preflight vectors tested against exact firewall; candidate/numeric secret versions derived from current source-bound resource pins; fixed GET service usage only; lifecycle role transaction and owned session readback only",
+  "decision": "APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ",
+  "requiredFlag": "externalReadAuthorized",
+  "commands": [
+    "entry.py --preflight <guard-owned-envelope>",
+    "entry.py --close-preflight <same-envelope>"
+  ],
+  "sdkBehavior": "Inherited ensure_owner performs auth list, three override checks and print-access-token once per process. SDK may refresh credentials and maintain cache or retry. Future live approval must explicitly cover these effects; no credential renewal authority inherited. At most two such command sets across work and independent cleanup; 40 CLI bound includes them.",
+  "sqlBehavior": "Exact existing lifecycle read transaction; psql -X -q -A -t ON_ERROR_STOP=1, verify-full TLS, owned application_name, bounded owned process; SQL passed by -c to reuse owned runner. Actual disposable TLS PostgreSQL test passed and server/scratch absence verified. No database mutation allowed.",
+  "cleanup": "Existing guard custody and one-use markers retained; no resource retirement. Fresh independent session readback plus local process closure and private purge. Outstanding process-history marker survives parent death as unconfirmed; no guessed PID termination or false absence.",
+  "tests": {
+    "native": 41,
+    "connectedPacket": 43,
+    "correction": 52,
+    "focusedQualificationAndComposed": 57,
+    "actualTlsPostgres": 1,
+    "governance": 25
+  },
+  "checks": [
+    "frozen baseline",
+    "cross repository consistency",
+    "architecture",
+    "whitespace",
+    "current native and qualification source gates"
+  ],
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "liveExecutionAuthorized": false,
+  "readinessUnknowns": [
+    "fresh private bindings and original operation windows",
+    "current credential horizon and exact SDK retry/cache exception",
+    "current identity/effective access and resource state",
+    "R30 original failure"
+  ],
+  "nextResult": "Separate fresh recovery/current-qualification and native-preflight-only packet after exact readiness and authority; no attendance scheduled",
+  "acceptedMilestones": "1A/1B/2A/2B 4/8",
+  "section3A": "OPEN",
+  "scopeDeviation": "Owner-approved NQ1 only; existing disposable TLS test reused for exact serializer verification"
+}

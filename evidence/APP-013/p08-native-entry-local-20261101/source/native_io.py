@@ -160,3 +160,97 @@ class NativeIO:
 
     def clear(self):
         self.token = ''; self.password = ''
+
+
+class PreflightIO(NativeIO):
+    """Read-only transport firewall; no activation or resource-retirement cleanup."""
+    def __init__(self, cap):
+        need(cap.e.get('purpose') == 'NATIVE_PREFLIGHT_ONLY', 'PREFLIGHT_PURPOSE')
+        super().__init__(cap)
+        self.cleanup = cap.mode == 'close-preflight'
+        import sys
+        source = str(APP/'p08-https-output-category-local-20261029/source')
+        sys.path.insert(0,source)
+        try:self.q = load('p08-https-output-category-local-20261029/source/qualification_launch.py', 'preflight_process_owner')
+        finally:sys.path.remove(source)
+        self.processes = self.q.NativeIO(cap.clock, cap.plan['operationId'])
+        self.read_sql = load_acl().lifecycle_role_query()
+        self.close_sql = ("BEGIN TRANSACTION READ ONLY; SELECT json_build_object('sessionsAbsent',"
+            "NOT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name='p08-runtime-" +
+            cap.plan['operationId'] + "' AND pid<>pg_backend_pid()))::text; ROLLBACK;")
+        self.allowed_sql = {self.read_sql, self.close_sql}
+        r = cap.e['resources']; project = '--project=' + cap.plan['project']
+        vectors = [
+            ['auth','list','--filter=status:ACTIVE','--format=value(account)'],
+            *[['config','get-value',k] for k in ('auth/impersonate_service_account','auth/credential_file_override','auth/access_token_file')],
+            ['auth','print-access-token','--account='+cap.plan['ownerPrincipal']],
+            ['run','revisions','describe',r['candidate'],project,'--region=us-east5','--format=json(spec.serviceAccountName,spec.containers[].image,spec.containers[].env,status.conditions)'],
+            ['iam','service-accounts','describe',r['identity'],project,'--format=json(email,disabled)'],
+            ['run','services','describe','signmons-calldesk-staging',project,'--region=us-east5','--format=json(status.traffic)'],
+            ['projects','describe',cap.plan['project'],'--format=json(projectId,projectNumber,lifecycleState)'],
+            ['projects','get-iam-policy',cap.plan['project'],'--format=json'],
+            ['iam','service-accounts','get-iam-policy',r['identity'],project,'--format=json'],
+        ]
+        vectors += [['secrets','versions','describe',v,'--secret='+n,project,'--format=json(state)'] for n,v in r['secretVersions'].items()]
+        vectors += [['secrets','get-iam-policy',n,project,'--format=json'] for n in self.restore.POLICIES]
+        roles = cap.modules['bridge'].packet.module('roles').ROLES
+        vectors += [['iam','roles','describe',role['id'],project,'--format=json(name,title,description,includedPermissions,stage,deleted,etag)'] for role in roles]
+        self.read_vectors = frozenset(tuple(v) for v in vectors)
+        self.credential_vectors = frozenset(tuple(v) for v in vectors[:5])
+        self.service_url = 'https://serviceusage.googleapis.com/v1/projects/' + cap.plan['projectNumber'] + '/services/apikeys.googleapis.com'
+
+    def _run(self, argv, kind, input_bytes=None, extra=None):
+        # Validate before credentials, reservation or process creation, including direct calls.
+        if kind == 'cli':
+            need(argv[0] == '/opt/homebrew/bin/gcloud' and tuple(argv[1:]) in
+                 (self.credential_vectors if self.cleanup else self.read_vectors) and
+                 input_bytes is None and extra is None, 'PREFLIGHT_CLI_DENIED')
+        elif kind == 'sql':
+            db = self.cap.e['database']
+            expected = [self.legacy.PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1',
+                        '-h',db['host'],'-p',str(db['port']),'-U',db['user'],'-d',db['database']]
+            need(argv == expected and input_bytes in {self.close_sql.encode()} |
+                 (set() if self.cleanup else {self.read_sql.encode()}), 'PREFLIGHT_SQL_DENIED')
+            need(extra is not None and set(extra) == {'PGPASSWORD','PGSSLMODE','PGSSLROOTCERT','PGCONNECT_TIMEOUT','PGAPPNAME','PGOPTIONS'} and
+                 extra['PGSSLMODE']=='verify-full' and extra['PGSSLROOTCERT']=='/etc/ssl/cert.pem' and
+                 extra['PGCONNECT_TIMEOUT']=='5' and extra['PGAPPNAME']=='p08-runtime-'+self.cap.plan['operationId'] and
+                 extra['PGOPTIONS']=='-c statement_timeout=5000 -c lock_timeout=2000', 'PREFLIGHT_SQL_ENV')
+            argv = [*argv,'-c',input_bytes.decode()]
+        else:
+            need(False, 'PREFLIGHT_TRANSPORT_DENIED')
+        deadline = self.cap.spend(kind, self.cleanup)
+        env = self.env(); env.update(extra or {})
+        journal = self.cap.coordinator
+        journal.j['preflightProcessPending'] = True; journal.save()
+        try:
+            raw = self.processes._owned_run(argv, env, min(deadline, self.cap.clock()+10))
+            self.cap.gate(self.cleanup)
+            return raw.decode('utf-8','strict').strip()
+        except Exception:
+            raise __import__('private_inventory').Stop('PREFLIGHT_PROCESS_UNCONFIRMED') from None
+        finally:
+            env.pop('PGPASSWORD', None)
+            if not self.processes.children:
+                journal.j['preflightProcessPending'] = False; journal.save()
+
+    def cli(self, vector):
+        need(tuple(vector) in (self.credential_vectors if self.cleanup else self.read_vectors), 'PREFLIGHT_CLI_DENIED')
+        return super().cli(vector)
+
+    def sql(self, query, deadline):
+        need(query == self.close_sql or (not self.cleanup and query == self.read_sql), 'PREFLIGHT_SQL_DENIED')
+        return super().sql(query, deadline)
+
+    def https(self, descriptor):
+        need(not self.cleanup and isinstance(descriptor,dict) and set(descriptor)=={'method','url','body','timeoutSeconds','redirect'} and
+             descriptor['method']=='GET' and descriptor['url']==self.service_url and descriptor['body'] is None and
+             descriptor['redirect']=='error' and type(descriptor['timeoutSeconds']) in (int,float) and
+             0 < descriptor['timeoutSeconds'] <= 10, 'PREFLIGHT_HTTPS_DENIED')
+        return super().https(descriptor)
+
+    def child(self, *args, **kwargs):
+        need(False, 'PREFLIGHT_CHILD_DENIED')
+
+    def close_processes(self, deadline):
+        results = [self.processes._finish(p,deadline) for p in list(self.processes.children)]
+        return all(results) and not self.processes.children and self.cap.clock()<deadline

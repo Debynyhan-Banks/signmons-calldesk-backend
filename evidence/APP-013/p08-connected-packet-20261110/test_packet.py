@@ -28,6 +28,18 @@ class PacketTests(unittest.TestCase):
         Capability(native,self.t.root)
         self.assertEqual({k:scope['payment'][k] for k in q.PAYMENT_BINDING_FIELDS},self.values['paymentBinding'])
         self.assertEqual(before,{p.name:p.read_bytes() for p in self.t.root.iterdir()})
+    def test_preflight_purpose_binds_distinct_authority_and_rejects_payment_mode(self):
+        spec={**self.spec,'nativePurpose':'NATIVE_PREFLIGHT_ONLY'}
+        e=packet.construct_values(spec,self.values,'we_synthetic',self.cap)
+        candidate={**self.t.e['qualification'],'scopeSha256':digest(e['nativeScope'])}
+        native=packet.native_envelope(e,candidate,'NATIVE_PREFLIGHT_ONLY')
+        native['execution']='PROOF_ONLY'
+        native['decision']={'decision':'APPROVE_LOCAL_PREFLIGHT_PROOF','scopeSha256':digest(native)}
+        self.assertEqual(Capability(native,self.t.root).mode,'preflight')
+        with self.assertRaisesRegex(Exception,'ENTRY_PURPOSE_MODE'):Capability(native,self.t.root,'run')
+        with self.assertRaisesRegex(Exception,'PACKET_NATIVE_PURPOSE'):
+            packet.construct_values({**spec,'nativePurpose':'OTHER'},self.values,'we_synthetic',self.cap)
+
     def test_foreign_operation_manifest_account_and_limits_refuse(self):
         for key,value in [('qualificationId',str(uuid.uuid4())),('prospectiveOperationId',str(uuid.uuid4())),('sourceCommit','f'*40),('manifestSha256','f'*64),('prospectiveLimits',{'cli':1})]:
             spec={**self.spec,key:value}
@@ -59,6 +71,17 @@ class CommandLifetimeTests(unittest.TestCase):
                     with self.assertRaises(KeyboardInterrupt):packet.run_native_and_close(root,invoke)
                 else:self.assertEqual(packet.run_native_and_close(root,invoke),{'workExit':2,'closeoutExit':2})
                 self.assertEqual(calls,['--run','--closeout'])
+    def test_preflight_dispatch_never_uses_activation_or_resource_closeout(self):
+        import tempfile
+        with tempfile.TemporaryDirectory(dir='/private/tmp') as d:
+            root=Path(d);(root/'attempt.json').write_text('{}');calls=[]
+            def invoke(argv,**kw):
+                calls.append(argv[-2])
+                if argv[-2]=='--preflight':raise KeyboardInterrupt()
+                return SimpleNamespace(returncode=0)
+            with self.assertRaises(KeyboardInterrupt):packet.run_native_and_close(root,invoke,preflight_only=True)
+            self.assertEqual(calls,['--preflight','--close-preflight'])
+
     def test_no_replay_for_unstarted_or_consumed_cleanup(self):
         import tempfile
         for consumed in (False,True):
@@ -109,3 +132,36 @@ class RetainedScopeTests(PacketTests):
 
 for name in PacketTests.__dict__:
     if name.startswith('test_'):setattr(RetainedScopeTests,name,None)
+
+class DiagnosticCustodyTests(unittest.TestCase):
+    def test_actual_qualified_transfer_diagnostic_closeout_and_guard_purge(self):
+        import shutil
+        import test_qualification_launch as recovery_fixture
+        t=native_fixture.ConnectedEntryTests();t.setUp();self.addCleanup(t.doCleanups)
+        t.preflight_setup();envelope=copy.deepcopy(t.e);shutil.rmtree(t.root)
+        f=recovery_fixture.BindingRecoveryTests();f.setUp();self.addCleanup(f.doCleanups)
+        f.e.update(version=2,paymentAccountSha256=hashlib.sha256(b'acct_synthetic').hexdigest(),
+                   nativeOperationId=envelope['plan']['operationId'],qualificationId=envelope['payment']['qualificationId'])
+        target=envelope['target'];row={**target,'status':'DISABLED'}
+        f.e['targetSha256']=hashlib.sha256(json.dumps(row,separators=(',',':')).encode()).hexdigest()
+        f.e['projectNumberSha256']=q.model.digest(str(envelope['plan']['projectNumber']))
+        f.e['window']['purgeEnd']=datetime.datetime.fromtimestamp(f.now+1100,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        f.seal(f.e);cap=q.BindingRecoveryCapability(f.e,mode='handoff');f.cap=cap
+        q.initialize_recovery(cap);guard=q.start_binding_guard(cap)
+        try:
+            rr=Path('/private/tmp/p08-current-proof-'+f.e['qualificationId']);rr.mkdir(mode=0o700)
+            self.addCleanup(lambda:shutil.rmtree(rr,ignore_errors=True))
+            q.model.reserve(rr/'attempt.json',{'operationId':f.e['qualificationId'],'scopeSha256':envelope['qualification']['scopeSha256']})
+            q.model.reserve(rr/'result.json',{'status':'CURRENT_EVIDENCE_LOCAL_VERIFIED','candidate':envelope['qualification'],
+                'failure':None,'residuals':[],'liveObserved':False})
+            self.assertEqual(q.handoff_qualified_bindings(cap,envelope)['status'],'NATIVE_INPUT_TRANSFERRED')
+            with self.assertRaises(FileExistsError):q.handoff_qualified_bindings(cap,envelope)
+            result=native_fixture.entry.run_preflight_entry(t.path,'preflight',t.preflight_factory)
+            self.assertTrue(result['preflightPassed'],result)
+            result=native_fixture.entry.run_preflight_entry(t.path,'close-preflight',t.preflight_factory)
+            self.assertEqual(result['status'],'NATIVE_PREFLIGHT_CLOSED')
+            self.assertTrue(result['privateInputsAbsent'])
+        finally:
+            if not (cap.root/'purge-now.json').exists():q.model.reserve(cap.root/'purge-now.json',{})
+            guard.wait(timeout=5)
+        self.assertTrue(q.private_json(cap.root/'purge-result.json')['rawFilesAbsent'])

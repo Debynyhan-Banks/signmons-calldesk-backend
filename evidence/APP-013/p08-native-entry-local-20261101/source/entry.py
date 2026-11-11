@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from authority import Capability, committed, digest, load
 from private_inventory import Stop, need, inspect, read, reserve, purge
-from native_io import NativeIO, load_acl
+from native_io import NativeIO, PreflightIO, load_acl
 from handoff import Handoff
 
 readbacks = load('p08-native-closeout-local-20261031/source/adapter.py', 'entry_readback_contract')
@@ -36,6 +36,8 @@ PREFLIGHT_CODES = frozenset({
     'DATABASE_ERROR_OUTPUT_LIMIT', 'DATABASE_STATEMENT_TIMEOUT',
     'DATABASE_COMMAND_FAILED', 'DATABASE_OUTPUT_LIMIT', 'DATABASE_OUTPUT_ENCODING',
     'CLOCK_ROLLBACK', 'DEADLINE', 'INTERRUPTED', 'PAYMENT_PREFLIGHT_STOP',
+    'PREFLIGHT_CLI_DENIED', 'PREFLIGHT_SQL_DENIED', 'PREFLIGHT_SQL_ENV',
+    'PREFLIGHT_HTTPS_DENIED', 'PREFLIGHT_CHILD_DENIED', 'PREFLIGHT_PROCESS_UNCONFIRMED',
 })
 
 
@@ -195,6 +197,99 @@ class Coordinator(c.Coordinator):
         return super().closeout(independent=independent)
 
 
+def run_preflight_entry(envelope_path, mode, io_factory=None, clock=time.time, read_commit=committed):
+    """NQ1 reads only. Never call Coordinator.run or resource closeout."""
+    import signal
+    path = Path(envelope_path)
+    need(path.name == 'envelope.json', 'ENVELOPE_PATH')
+    cap = Capability(read(path), path.parent, mode, clock, read_commit)
+    need(cap.e.get('purpose') == 'NATIVE_PREFLIGHT_ONLY', 'PREFLIGHT_PURPOSE')
+    lock = os.open(cap.root/'entry.lock', os.O_WRONLY|os.O_CREAT|os.O_NOFOLLOW, 0o600)
+    io = None
+    try:
+        try: fcntl.flock(lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
+        except BlockingIOError: raise Stop('ENTRY_ALREADY_RUNNING') from None
+        inspect(cap.root, cap.plan['operationId'])
+        io = (io_factory or PreflightIO)(cap)
+        need(cap.external is (not io.proof), 'TRANSPORT_AUTHORITY_MISMATCH')
+        runtime = RuntimeAdapter(cap, io, clock=clock); runtime.q = cap.e['qualification']
+        # Any legacy payment-child request is explicitly forbidden by this mode.
+        runtime.payment_preflight = lambda: need(False, 'PREFLIGHT_CHILD_DENIED')
+        ports = Ports(cap, io, None, runtime)
+        controller = Coordinator(cap, io, runtime, ports)
+        identity = {'operationId':cap.plan['operationId'], 'planSha256':digest(cap.plan)}
+        if mode == 'preflight':
+            reserve(cap.root/'attempt.json', identity)
+            controller.j.update(preflightOnly=True, preflightPassed=False, preflightProcessPending=False)
+            controller.save()
+            previous = {sig:signal.getsignal(sig) for sig in (signal.SIGINT,signal.SIGTERM)}
+            for sig in previous: signal.signal(sig,lambda *_:setattr(controller,'abort',True))
+            try:
+                rp = controller.runtime_plan()
+                c.need(controller.invoke('preflight',rp,cap.e['qualification'],owner=runtime) is True,'RUNTIME_PREFLIGHT')
+                pre = controller.invoke('preflight',owner=ports)
+                c.need(isinstance(pre,dict) and pre.get('bindingsAbsent') is True and
+                       pre.get('apiKeysService') in ('ENABLED','DISABLED'),'ACCESS_PREFLIGHT')
+                roles = controller.modules['bridge'].packet.module('roles').ROLES
+                c.need(isinstance(pre.get('roles'),list) and len(pre['roles'])==len(roles)==2 and
+                       all(controller.modules['bridge'].packet.module('roles').definition_shape(v,role) in
+                           ('EXACT_ACTIVE_EXPLICIT','EXACT_ACTIVE_DEFAULTED') for v,role in zip(pre['roles'],roles)), 'ROLE_DRIFT')
+                controller.j['preflightPassed'] = True
+            except BaseException as error:
+                controller.j['failure'] = (error.args[0] if isinstance(error,c.Stop) and len(error.args)==1 and
+                    error.args[0] in PREFLIGHT_CODES | {'RUNTIME_PREFLIGHT','ACCESS_PREFLIGHT','ROLE_DRIFT'} else 'LOCAL_ADAPTER_OR_SOURCE_STOP')
+            finally:
+                for sig,handler in previous.items():signal.signal(sig,handler)
+                controller.save()
+        else:
+            need(read(cap.root/'attempt.json') == identity, 'ATTEMPT_BINDING')
+            controller.j = read(cap.root/'journal.json')
+            need(controller.j.get('preflightOnly') is True and controller.j.get('operationId')==cap.plan['operationId'] and
+                 controller.j.get('planSha256')==digest(cap.plan) and
+                 controller.j.get('nativeEntry',{}).get('envelopeSha256')==cap.envelope_hash and
+                 controller.j.get('runtimeAttempted')==[] and controller.j.get('iamAttempted')==[] and
+                 controller.j.get('authAttempted') is False and controller.j.get('keyCreateAttempted') is False, 'PREFLIGHT_CLOSEOUT_BINDING')
+            calls=controller.j['nativeEntry']['calls']
+            need(set(calls)=={'cli','https','sql','child'} and all(type(v)is int and 0<=v<=cap.e['limits'][k] for k,v in calls.items()) and calls['child']==0,'PREFLIGHT_CLOSEOUT_BUDGET')
+        reserve(cap.root/('closeout.json' if mode=='preflight' else 'independent-closeout.json'),identity)
+        residuals = [x for x in controller.j.get('residuals',[]) if x in
+                     ('PREFLIGHT_PROCESS_HISTORY_UNKNOWN','PREFLIGHT_PROCESS_CLOSEOUT')]
+        if controller.j.get('preflightProcessPending') is not False:
+            residuals.append('PREFLIGHT_PROCESS_HISTORY_UNKNOWN')
+        io.cleanup = True
+        try:
+            need(io.close_processes(cap.times['cleanupEnd']), 'PREFLIGHT_PROCESS_CLOSEOUT')
+        except BaseException: residuals.append('PREFLIGHT_PROCESS_CLOSEOUT')
+        # A fresh connection checks only this operation's application_name; no termination SQL.
+        try:
+            need(json.loads(io.sql(io.close_sql,cap.times['cleanupEnd']))=={'sessionsAbsent':True}, 'PREFLIGHT_SESSIONS')
+        except BaseException: residuals.append('PREFLIGHT_SESSIONS_UNCONFIRMED')
+        try:
+            need(io.close_processes(cap.times['cleanupEnd']), 'PREFLIGHT_PROCESS_CLOSEOUT')
+        except BaseException: residuals.append('PREFLIGHT_PROCESS_CLOSEOUT')
+        controller.j['residuals']=sorted(set(residuals));controller.save()
+        absent=False
+        if mode=='close-preflight':
+            try:
+                need(clock()<cap.times['purgeEnd'],'PURGE_DEADLINE')
+                absent=purge(cap.root,cap.plan['operationId'])
+                need(absent and clock()<cap.times['purgeEnd'],'PURGE_UNCONFIRMED')
+            except BaseException: residuals.append('PRIVATE_INVENTORY_UNCONFIRMED')
+        result={'status':('NATIVE_PREFLIGHT_CLOSED' if not residuals else 'NATIVE_PREFLIGHT_CONTAINMENT_UNCONFIRMED')
+                if mode=='close-preflight' else 'NATIVE_PREFLIGHT_AWAITING_CLOSEOUT',
+                'operationId':cap.plan['operationId'],'preflightPassed':controller.j.get('preflightPassed') is True,
+                'preflightStage':controller.j.get('preflightStage'),'failure':controller.j.get('failure'),
+                'residuals':sorted(set(residuals)),'privateInputsAbsent':absent,
+                'paymentObserved':False,'paymentReadyForAcceptance':False,'authenticationObserved':False}
+        reserve(cap.root/('result.json' if mode=='close-preflight' else 'work-result.json'),result)
+        return result
+    finally:
+        if io is not None:
+            try:io.close_processes(cap.times['cleanupEnd'])
+            finally:io.clear()
+        fcntl.flock(lock,fcntl.LOCK_UN);os.close(lock)
+
+
 def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, read_commit=committed):
     path = Path(envelope_path)
     need(path.name == 'envelope.json', 'ENVELOPE_PATH')
@@ -271,9 +366,9 @@ def main(argv):
         print(json.dumps({'envelopeSha256': cap.envelope_hash, 'operationId': cap.plan['operationId'],
                           'external': cap.external, 'mode': mode}))
         return 0
-    need(len(argv) == 2 and argv[0] in ('--run','--closeout'), 'NATIVE_ENTRY_UNBOUND')
-    result = run_entry(argv[1], argv[0][2:])
-    print(json.dumps(result)); return 0 if result['status'] == 'ENTRY_CLOSED' else 2
+    need(len(argv) == 2 and argv[0] in ('--run','--closeout','--preflight','--close-preflight'), 'NATIVE_ENTRY_UNBOUND')
+    result = (run_preflight_entry if argv[0] in ('--preflight','--close-preflight') else run_entry)(argv[1], argv[0][2:])
+    print(json.dumps(result)); return 0 if result['status'] in ('ENTRY_CLOSED','NATIVE_PREFLIGHT_CLOSED') else 2
 
 
 if __name__ == '__main__':

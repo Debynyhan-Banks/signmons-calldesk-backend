@@ -18,7 +18,7 @@
     "p08-key-correction-20261110/binding.py": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb",
     "p08-key-correction-20261110/candidate.json": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112",
     "p08-narrow-access-check-local-20261101/source/access_check.py": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9",
-    "p08-native-entry-local-20261101/source/authority.py": "31f27e95a3601d310b19b6c04c51410c11955ab135d2ef3f8adf8393b30013de",
+    "p08-native-entry-local-20261101/source/authority.py": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3",
     "p08-native-entry-local-20261101/source/authority_bridge.mjs": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c",
     "p08-native-entry-local-20261101/source/connected_payment.mjs": "18a9b0fb7bcb4fedd7f0d530de3f2b8e6b08b9a9ad5bc395a12b29b8dcd8085e",
     "p08-restoration-local-20261028/source/auth/reuse/controller.py": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca",

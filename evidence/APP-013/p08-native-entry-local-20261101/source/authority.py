@@ -57,15 +57,21 @@ def committed(repo, commit, path):
     return r.stdout
 
 
+PREFLIGHT_LIMITS = {'cli':40, 'https':1, 'sql':3, 'child':0}
+
 class Capability:
-    def __init__(self, envelope, root, mode='run', clock=time.time, read_commit=committed, continuing=False):
+    def __init__(self, envelope, root, mode=None, clock=time.time, read_commit=committed, continuing=False):
         manifest = verify_sources()
-        need(set(envelope) == ({'payment'} if envelope.get('version') == 2 else set()) | {'version', 'execution', 'plan', 'target', 'database', 'resources',
+        diagnostic = envelope.get('purpose') == 'NATIVE_PREFLIGHT_ONLY'
+        mode = ('preflight' if diagnostic else 'run') if mode is None else mode
+        need((diagnostic and mode in ('preflight', 'close-preflight')) or
+             (not diagnostic and 'purpose' not in envelope and mode in ('run', 'closeout', 'readback')), 'ENTRY_PURPOSE_MODE')
+        need(set(envelope) == ({'purpose'} if diagnostic else set()) | ({'payment'} if envelope.get('version') == 2 else set()) | {'version', 'execution', 'plan', 'target', 'database', 'resources',
                               'qualification', 'limits', 'sourceManifestSha256', 'sourceCommit', 'decision'},
              'ENVELOPE_SHAPE')
         e = json.loads(json.dumps(envelope))
         need(e['version'] in (1, 2) and e['execution'] in ('EXTERNAL', 'PROOF_ONLY') and
-             mode in ('run', 'closeout', 'readback'), 'ENTRY_MODE')
+             mode in ('run', 'closeout', 'readback', 'preflight', 'close-preflight'), 'ENTRY_MODE')
         need(e['sourceManifestSha256'] == digest((HERE / 'source-manifest.json').read_bytes()),
              'MANIFEST_BINDING')
         c = load('p08-live-binder-local-20261029/source/coordinator.py', 'entry_old_coordinator')
@@ -74,7 +80,7 @@ class Capability:
         p = e['plan']
         local_approval = {'decision': 'APPROVE_LOCAL_SINGLE_COORDINATOR', 'externalActionAuthorized': False,
                           'operationId': p['operationId'], 'planSha256': digest(p)}
-        times = c.authorize(p, local_approval, modules, clock(), closeout=mode != 'run' or continuing)
+        times = c.authorize(p, local_approval, modules, clock(), closeout=mode not in ('run', 'preflight') or continuing)
         if continuing:
             from private_inventory import read
             attempt = read(Path(root) / 'attempt.json')
@@ -113,7 +119,7 @@ class Capability:
             verify_payment_qualification(e)
         scope_hash = digest({k: v for k, v in e.items() if k != 'decision'})
         if e['execution'] == 'PROOF_ONLY':
-            need(e['decision'] == {'decision': 'APPROVE_LOCAL_NATIVE_ENTRY_PROOF', 'scopeSha256': scope_hash},
+            need(e['decision'] == {'decision': ('APPROVE_LOCAL_PREFLIGHT_PROOF' if diagnostic else 'APPROVE_LOCAL_NATIVE_ENTRY_PROOF'), 'scopeSha256': scope_hash},
                  'LOCAL_PROOF_BINDING')
         else:
             d = e['decision']
@@ -122,7 +128,9 @@ class Capability:
             raw = read_commit(GOV, d['commit'], d['path'])
             need(digest(raw) == d['sha256'], 'DECISION_DIGEST')
             need(json.loads(raw) == {'owner': 'Debynyhan Banks',
-                 'decision': ('APPROVE_EXACT_P08_CONNECTED_PAYMENT' if e['version'] == 2 else 'APPROVE_EXACT_P08_NATIVE_ENTRY'), 'externalActionAuthorized': True,
+                 'decision': ('APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ' if diagnostic else
+                              'APPROVE_EXACT_P08_CONNECTED_PAYMENT' if e['version'] == 2 else 'APPROVE_EXACT_P08_NATIVE_ENTRY'),
+                 ('externalReadAuthorized' if diagnostic else 'externalActionAuthorized'): True,
                  'operationId': p['operationId'], 'scopeSha256': scope_hash,
                  'sourceManifestSha256': e['sourceManifestSha256']}, 'EXACT_OWNER_APPROVAL')
             rel = str(HERE.relative_to(BACKEND))
@@ -144,7 +152,7 @@ class Capability:
         now = self.clock()
         need(now >= self.last, 'CLOCK_ROLLBACK'); self.last = now
         need(self.times['start'] <= now < self.times['cleanupEnd' if cleanup else 'workEnd'], 'ENTRY_DEADLINE')
-        need(cleanup or self.mode == 'run', 'CLOSEOUT_ONLY')
+        need(cleanup or self.mode in ('run', 'preflight'), 'CLOSEOUT_ONLY')
         need(cleanup or self.coordinator is None or not self.coordinator.abort, 'INTERRUPTED')
         inspect(self.root, self.plan['operationId'])
         return self.times['cleanupEnd' if cleanup else 'workEnd']
@@ -153,7 +161,8 @@ class Capability:
         deadline = self.gate(cleanup)
         need(self.coordinator is not None, 'JOURNAL_NOT_BOUND')
         budget = self.coordinator.j['nativeEntry']['calls']
-        need(budget[kind] < self.e['limits'][kind], 'ENTRY_CALL_LIMIT')
+        limit = min(self.e['limits'][kind], PREFLIGHT_LIMITS[kind]) if self.e.get('purpose')=='NATIVE_PREFLIGHT_ONLY' else self.e['limits'][kind]
+        need(budget[kind] < limit, 'ENTRY_CALL_LIMIT')
         budget[kind] += 1
         self.coordinator.save()
         return deadline

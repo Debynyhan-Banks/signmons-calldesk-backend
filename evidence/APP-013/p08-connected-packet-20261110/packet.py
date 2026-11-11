@@ -11,7 +11,8 @@ def construct(spec, endpoint_id):
     return cap,construct_values(spec,values,endpoint_id,cap)
 
 def construct_values(spec,values,endpoint_id,cap):
-    q.need(set(spec)=={'recoveryId','qualificationId','prospectiveOperationId','sourceCommit','manifestSha256','window','prospectiveWindow','prospectiveLimits','paymentRequestId','paymentWorkEnd'},'PACKET_SPEC_SHAPE')
+    q.need(set(spec)==({'nativePurpose'} if 'nativePurpose' in spec else set()) | {'recoveryId','qualificationId','prospectiveOperationId','sourceCommit','manifestSha256','window','prospectiveWindow','prospectiveLimits','paymentRequestId','paymentWorkEnd'},'PACKET_SPEC_SHAPE')
+    q.need(spec.get('nativePurpose') in (None,'NATIVE_PREFLIGHT_ONLY'),'PACKET_NATIVE_PURPOSE')
     q.need(cap.e['version']==2 and set(values)=={'projectNumber','targetId','paymentBinding'},'PACKET_RECOVERY_VERSION')
     q.validate_recovered_payment(values['paymentBinding'],cap)
     a=q.current_module('authority');c=a.load('p08-live-binder-local-20261029/source/coordinator.py','qualification_packet_validator');mods=c.sources();restore=mods['restore'];m=q.model
@@ -32,10 +33,11 @@ def construct_values(spec,values,endpoint_id,cap):
     return e
 
 
-def native_envelope(qualification_envelope,candidate):
+def native_envelope(qualification_envelope,candidate,purpose=None):
     a=q.current_module('authority');scope=qualification_envelope['nativeScope']
     q.need(candidate.get('operationId')==scope['plan']['operationId'] and candidate.get('scopeSha256')==q.model.digest(scope),'PACKET_QUALIFICATION_BINDING')
-    return {'version':2,'execution':'EXTERNAL',**copy.deepcopy(scope),'qualification':copy.deepcopy(candidate),
+    q.need(purpose in (None,'NATIVE_PREFLIGHT_ONLY'),'PACKET_NATIVE_PURPOSE')
+    return {**({'purpose':purpose} if purpose else {}),'version':2,'execution':'EXTERNAL',**copy.deepcopy(scope),'qualification':copy.deepcopy(candidate),
         'sourceManifestSha256':a.digest((a.HERE/'source-manifest.json').read_bytes()),'sourceCommit':qualification_envelope['sourceCommit']}
 
 PYTHON='/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14'
@@ -62,7 +64,7 @@ def wait_committed_decision(repo,path,expected,start,cutoff,clock=None,sleep=Non
                 return {'commit':commit,'path':path,'sha256':hashlib.sha256(raw).hexdigest()}
         sleep(min(1,max(0,cutoff-last)))
 
-def run_native_and_close(root, invoke=None):
+def run_native_and_close(root, invoke=None, preflight_only=False):
     import subprocess
     invoke=invoke or subprocess.run
     entry=str(q.current_module('authority').HERE/'entry.py')
@@ -71,13 +73,13 @@ def run_native_and_close(root, invoke=None):
         str(Path(entry).parent),'entry.py']
     work_exit=None;closeout_exit=None
     try:
-        work_exit=invoke([*command,'--run',str(root/'envelope.json')],check=False).returncode
+        work_exit=invoke([*command,'--preflight' if preflight_only else '--run',str(root/'envelope.json')],check=False).returncode
     finally:
         if (root/'attempt.json').exists() and not (root/'independent-closeout.json').exists():
-            closeout_exit=invoke([*command,'--closeout',str(root/'envelope.json')],check=False).returncode
+            closeout_exit=invoke([*command,'--close-preflight' if preflight_only else '--closeout',str(root/'envelope.json')],check=False).returncode
     return {'workExit':work_exit,'closeoutExit':closeout_exit}
 
-def execute_connected(cap,envelope,approve_native):
+def execute_connected(cap,envelope,approve_native,native_purpose=None):
     """Operation-specific sequencing; approvals/credentials are never manufactured here.
 
     The caller has already obtained the exact qualification decision. approve_native
@@ -95,13 +97,13 @@ def execute_connected(cap,envelope,approve_native):
         result=q.private_json(qualification_root/'result.json')
         q.need(result.get('status')=='CURRENT_EVIDENCE_OBSERVED' and result.get('liveObserved') is True and
                result.get('failure') is None and result.get('residuals')==[],'PACKET_QUALIFICATION_UNCONFIRMED')
-        native=native_envelope(envelope,result['candidate'])
+        native=native_envelope(envelope,result['candidate'],native_purpose)
         stage='NATIVE_APPROVAL'
         native['decision']=approve_native(copy.deepcopy(native))
         stage='NATIVE_HANDOFF'
         q.handoff_qualified_bindings(cap,native)
         stage='NATIVE_RUN_AND_CLOSEOUT'
-        exits=run_native_and_close(cap.native_root)
+        exits=run_native_and_close(cap.native_root,preflight_only=True) if native_purpose else run_native_and_close(cap.native_root)
         stage='NATIVE_RECEIPT'
         native_result=q.private_json(cap.native_root/'result.json')
     except BaseException as error:

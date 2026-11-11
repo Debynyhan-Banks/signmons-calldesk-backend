@@ -15,6 +15,8 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass,session_con
         return p.wait_committed_decision(governance,path,expected,start,cutoff)
 
     cap=None;dispatched=False;stage='PACKET_PREPARATION'
+    diagnostic=spec.get('nativePurpose')=='NATIVE_PREFLIGHT_ONLY'
+    q.need(not diagnostic or session_consent is None,'PREFLIGHT_REQUIRES_SEPARATE_CHAT_DECISIONS')
     try:
         endpoint=read_hidden('Existing Sandbox endpoint ID (hidden, starts we_): ').strip()
         cap,e=p.construct(spec,endpoint);endpoint=None
@@ -30,13 +32,13 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass,session_con
             p.capture_attended_confirmation(review,'qualification',spec,decision,e,session_consent,governance,read_line=read_confirmation)
         e['decision']=wait_decision('APP013_P08_CURRENT_QUALIFICATION_20261110.json',decision,q.model.timestamp(spec['window']['start']),q.model.timestamp(spec['window']['cutoff']))
         def approve_native(native):
-            d={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_CONNECTED_PAYMENT','externalActionAuthorized':True,'operationId':spec['prospectiveOperationId'],'scopeSha256':q.model.digest(native),'sourceManifestSha256':native['sourceManifestSha256']}
-            publish('native',d,{'operationId':spec['prospectiveOperationId'],'window':spec['prospectiveWindow'],'paymentWorkEnd':spec['paymentWorkEnd'],'qualification':native['qualification'],'limits':spec['prospectiveLimits'],'sourceCommit':spec['sourceCommit']})
+            d={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ' if diagnostic else 'APPROVE_EXACT_P08_CONNECTED_PAYMENT',('externalReadAuthorized' if diagnostic else 'externalActionAuthorized'):True,'operationId':spec['prospectiveOperationId'],'scopeSha256':q.model.digest(native),'sourceManifestSha256':native['sourceManifestSha256']}
+            publish('native',d,{'operationId':spec['prospectiveOperationId'],'window':spec['prospectiveWindow'],'paymentWorkEnd':spec['paymentWorkEnd'],'qualification':native['qualification'],'limits':spec['prospectiveLimits'],'sourceCommit':spec['sourceCommit'],**({'purpose':'NATIVE_PREFLIGHT_ONLY','activationAuthorized':False,'effectiveLimits':a.PREFLIGHT_LIMITS} if diagnostic else {})})
             if session_consent is not None:
                 p.capture_attended_confirmation(review,'native',spec,d,native,session_consent,governance,read_line=read_confirmation)
             return wait_decision('APP013_P08_NATIVE_OPERATION_20261110.json',d,q.model.timestamp(spec['prospectiveWindow']['start']),q.model.timestamp(spec['prospectiveWindow']['cutoff']))
         dispatched=True
-        result=p.execute_connected(cap,e,approve_native)
+        result=p.execute_connected(cap,e,approve_native,native_purpose=spec['nativePurpose']) if diagnostic else p.execute_connected(cap,e,approve_native)
         publish('result',{},result)
         return 0
     except BaseException as error:

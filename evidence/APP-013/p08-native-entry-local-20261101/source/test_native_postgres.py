@@ -81,6 +81,39 @@ class LifecyclePostgres(NativePostgres):
         runtime.q={'roleAclSha256':self.acl.classify_role_acl(observed['acl'],'neondb',self.acl.expected_retired_acl())[0]['roleAclSha256']}
         return t,cap,io,runtime
 
+    def test_preflight_only_actual_sql_serializer_tls_and_session_readback(self):
+        t=test_entry.EntryTests();t.setUp();self.addCleanup(t.doCleanups);t.preflight_setup()
+        cap=test_entry.a.Capability(t.e,t.root,'preflight')
+        legacy=test_entry.a.load('p08-restoration-local-20261028/source/legacy/controller.py','nq_tls_legacy')
+        cap.external=True
+        cap.e['database']={'host':legacy.DB_HOST,'port':5432,'database':legacy.DB_NAME,'user':legacy.DB_ADMIN}
+        io=entry.PreflightIO(cap)
+        cap.e['database']={'host':'127.0.0.1','port':int(self.port),'database':'neondb','user':'neondb_owner'}
+        cap.coordinator=SimpleNamespace(j={'nativeEntry':{'calls':{'cli':0,'https':0,'sql':0,'child':0}}},save=lambda:None,abort=False)
+        io.credentials=lambda:{'password':'SYNTHETIC_ONLY','accessToken':'SYNTHETIC_ONLY'}
+        owned=io.processes._owned_run
+        def local_process(argv,env,deadline):
+            self.assertEqual(argv[0],legacy.PSQL)
+            self.assertEqual(argv[argv.index('-h')+1],'127.0.0.1')
+            self.assertEqual(argv[argv.index('-p')+1],self.port)
+            self.assertEqual(env['PGSSLMODE'],'verify-full')
+            self.assertEqual(env['PGSSLROOTCERT'],'/etc/ssl/cert.pem')
+            return owned(argv,{**env,'PGSSLROOTCERT':str(self.cert)},deadline)
+        io.processes._owned_run=local_process
+        runtime=entry.RuntimeAdapter(cap,io)
+        try:
+            observed=runtime.role(cap.times['workEnd'])
+            self.assertEqual(observed['count'],1);self.assertFalse(observed['login'])
+            with self.assertRaisesRegex(Stop,'PREFLIGHT_SQL_DENIED'):
+                io.sql(entry.restore.role_sql(True,t.f.p['window']['workEnd']),cap.times['workEnd'])
+            io.cleanup=True
+            self.assertEqual(json.loads(io.sql(io.close_sql,cap.times['cleanupEnd'])),{'sessionsAbsent':True})
+            self.assertFalse(cap.coordinator.j['preflightProcessPending'])
+            self.assertEqual(cap.coordinator.j['nativeEntry']['calls']['sql'],2)
+            self.assertFalse(io.processes.children)
+        finally:
+            self.assertTrue(io.close_processes(cap.times['cleanupEnd']));io.clear()
+
     def test_actual_lifecycle_sql_tls_enabled_retired_and_column_drift(self):
         t,cap,io,runtime=self.fixture_runtime();deadline=time.time()+30
         self.assertTrue(runtime.readback('role',entry.restore.ROLE,False,t.f.p,deadline))

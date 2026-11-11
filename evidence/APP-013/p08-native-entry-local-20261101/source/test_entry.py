@@ -142,6 +142,192 @@ class EntryTests(unittest.TestCase):
                         self.assertNotIn('synthetic-private-password',json.dumps(journal))
                     finally:t.doCleanups()
 
+    def preflight_setup(self):
+        self.e['purpose']='NATIVE_PREFLIGHT_ONLY'
+        self.e['decision']={'decision':'APPROVE_LOCAL_PREFLIGHT_PROOF',
+            'scopeSha256':a.digest({k:v for k,v in self.e.items() if k!='decision'})}
+        self.path.unlink();reserve(self.path,self.e)
+
+    def preflight_factory(self,cap):
+        io=self.factory(cap);io.cleanup=cap.mode=='close-preflight'
+        original=io.sql
+        io.close_sql='SYNTHETIC_SESSION_READ'
+        io.close_processes=lambda deadline:True
+        io.sql=lambda query,deadline: ('{"sessionsAbsent":true}' if query==io.close_sql else original(query,deadline))
+        return io
+
+    def test_preflight_only_success_and_independent_cleanup(self):
+        self.preflight_setup()
+        with patch.object(entry.c.Coordinator,'run',side_effect=AssertionError('activation forbidden')), \
+             patch.object(entry.Coordinator,'closeout',side_effect=AssertionError('resource cleanup forbidden')):
+            result=entry.run_preflight_entry(self.path,'preflight',self.preflight_factory)
+            self.assertTrue(result['preflightPassed'],result)
+            self.assertFalse(result['privateInputsAbsent'])
+            self.assertFalse(result['paymentObserved'])
+            journal=read(self.root/'journal.json')
+            self.assertEqual(journal['runtimeAttempted'],[])
+            self.assertEqual(journal['iamAttempted'],[])
+            self.assertEqual(journal['nativeEntry']['calls']['child'],0)
+            with self.assertRaises(FileExistsError):entry.run_preflight_entry(self.path,'preflight',self.preflight_factory)
+            closed=entry.run_preflight_entry(self.path,'close-preflight',self.preflight_factory)
+            self.assertEqual(closed['status'],'NATIVE_PREFLIGHT_CLOSED')
+            self.assertTrue(closed['privateInputsAbsent'])
+
+    def test_preflight_only_cross_mode_authority_rejected_before_io(self):
+        self.preflight_setup()
+        with self.assertRaisesRegex(Stop,'ENTRY_PURPOSE_MODE'):self.run_entry()
+        with self.assertRaisesRegex(Stop,'ENTRY_PURPOSE_MODE'):self.run_entry('closeout')
+        self.e['decision']['decision']='APPROVE_LOCAL_NATIVE_ENTRY_PROOF'
+        self.path.unlink();reserve(self.path,self.e)
+        with self.assertRaisesRegex(Stop,'LOCAL_PROOF_BINDING'):
+            entry.run_preflight_entry(self.path,'preflight',self.preflight_factory)
+        self.assertEqual(self.calls,0)
+
+    def test_preflight_only_refusal_interruption_and_uncertain_cleanup(self):
+        for error in (Stop('ROLE_OUTPUT_UNKNOWN'),KeyboardInterrupt(),ValueError('synthetic-private-secret')):
+            t=EntryTests();t.setUp()
+            try:
+                t.preflight_setup()
+                with patch.object(entry.RuntimeAdapter,'preflight',side_effect=error):
+                    result=entry.run_preflight_entry(t.path,'preflight',t.preflight_factory)
+                self.assertFalse(result['preflightPassed'])
+                self.assertNotIn('synthetic-private-secret',json.dumps(result))
+                j=read(t.root/'journal.json');j['preflightProcessPending']=True
+                (t.root/'journal.json').write_text(json.dumps(j))
+                closed=entry.run_preflight_entry(t.path,'close-preflight',t.preflight_factory)
+                self.assertIn('PREFLIGHT_PROCESS_HISTORY_UNKNOWN',closed['residuals'])
+                self.assertTrue(closed['privateInputsAbsent'])
+            finally:t.doCleanups()
+
+    def test_preflight_only_lock_and_deadline_refuse_before_io(self):
+        self.preflight_setup()
+        fd=os.open(self.root/'entry.lock',os.O_WRONLY|os.O_CREAT,0o600)
+        try:
+            fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with self.assertRaisesRegex(Stop,'ENTRY_ALREADY_RUNNING'):
+                entry.run_preflight_entry(self.path,'preflight',self.preflight_factory)
+        finally:os.close(fd)
+        with self.assertRaises(Exception):
+            entry.run_preflight_entry(self.path,'preflight',self.preflight_factory,
+                clock=lambda:entry.restore.timestamp(self.e['plan']['window']['cutoff']))
+        self.assertEqual(self.calls,0)
+
+    def test_preflight_actual_parent_death_retains_unknown_and_independently_purges(self):
+        import signal
+        self.preflight_setup()
+        pid=os.fork()
+        if pid==0:
+            def crash(runtime,*args,**kwargs):
+                runtime.cap.coordinator.j['preflightProcessPending']=True
+                runtime.cap.coordinator.save()
+                os.kill(os.getpid(),signal.SIGKILL)
+            with patch.object(entry.RuntimeAdapter,'preflight',crash):
+                entry.run_preflight_entry(self.path,'preflight',self.preflight_factory)
+            os._exit(9)
+        _,status=os.waitpid(pid,0)
+        self.assertTrue(os.WIFSIGNALED(status))
+        closed=entry.run_preflight_entry(self.path,'close-preflight',self.preflight_factory)
+        self.assertEqual(closed['status'],'NATIVE_PREFLIGHT_CONTAINMENT_UNCONFIRMED')
+        self.assertIn('PREFLIGHT_PROCESS_HISTORY_UNKNOWN',closed['residuals'])
+        self.assertTrue(closed['privateInputsAbsent'])
+        self.assertFalse(closed['paymentObserved'])
+
+    def test_preflight_actual_read_vectors_match_firewall_and_effective_budget(self):
+        self.preflight_setup()
+        cap=a.Capability(self.e,self.root,'preflight')
+        legacy=a.load('p08-restoration-local-20261028/source/legacy/controller.py','nq_vector_legacy')
+        cap.external=True
+        cap.e['database']={'host':legacy.DB_HOST,'port':5432,'database':legacy.DB_NAME,'user':legacy.DB_ADMIN}
+        firewall=entry.PreflightIO(cap);seen=[]
+        def factory(current):
+            io=self.preflight_factory(current);cloud,cli,https=io.cloud,io.cli,io.https
+            def checked_cloud(v,d):
+                self.assertIn(tuple(v),firewall.read_vectors);seen.append(tuple(v));return cloud(v,d)
+            def checked_cli(v):
+                self.assertIn(tuple(v),firewall.read_vectors);seen.append(tuple(v));return cli(v)
+            def checked_https(d):
+                self.assertEqual(d['method'],'GET');self.assertEqual(d['url'],firewall.service_url)
+                self.assertIsNone(d['body'])
+                with patch.object(entry.NativeIO,'https',side_effect=https):return firewall.https(d)
+            io.cloud=checked_cloud;io.cli=checked_cli;io.https=checked_https
+            return io
+        result=entry.run_preflight_entry(self.path,'preflight',factory)
+        self.assertTrue(result['preflightPassed'],result)
+        self.assertTrue(seen)
+        self.assertLessEqual(len(seen)+10,a.PREFLIGHT_LIMITS['cli'])
+        controller=SimpleNamespace(j={'nativeEntry':{'calls':{'cli':0,'https':0,'sql':0,'child':0}}},save=lambda:None,abort=False)
+        cap.coordinator=controller
+        with self.assertRaisesRegex(Stop,'ENTRY_CALL_LIMIT'):cap.spend('child')
+        cap.coordinator.j['nativeEntry']['calls']['https']=1
+        with self.assertRaisesRegex(Stop,'ENTRY_CALL_LIMIT'):cap.spend('https')
+        closed=entry.run_preflight_entry(self.path,'close-preflight',factory)
+        self.assertEqual(closed['residuals'],[])
+
+    def test_preflight_external_decision_source_and_mode_are_exact(self):
+        self.preflight_setup();self.e['execution']='EXTERNAL'
+        d={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ',
+           'externalReadAuthorized':True,'operationId':self.f.p['operationId'],
+           'scopeSha256':a.digest({k:v for k,v in self.e.items() if k!='decision'}),
+           'sourceManifestSha256':self.e['sourceManifestSha256']}
+        raw=json.dumps(d).encode()
+        self.e['decision']={'commit':'1'*40,'path':'APP013_P08_NATIVE_OPERATION_20261101.json','sha256':a.digest(raw)}
+        read_commit=lambda repo,commit,path:raw if repo==a.GOV else (a.BACKEND/path).read_bytes()
+        cap=a.Capability(self.e,self.root,read_commit=read_commit)
+        self.assertEqual(cap.mode,'preflight');self.assertTrue(cap.external)
+        with self.assertRaisesRegex(Stop,'ENTRY_PURPOSE_MODE'):a.Capability(self.e,self.root,'run',read_commit=read_commit)
+        wrong=json.dumps({**d,'decision':'APPROVE_EXACT_P08_CONNECTED_PAYMENT'}).encode()
+        self.e['decision']['sha256']=a.digest(wrong)
+        with self.assertRaisesRegex(Stop,'EXACT_OWNER_APPROVAL'):
+            a.Capability(self.e,self.root,read_commit=lambda repo,c,p:wrong if repo==a.GOV else (a.BACKEND/p).read_bytes())
+        self.e['decision']['sha256']=a.digest(raw)
+        with self.assertRaisesRegex(Stop,'COMMITTED_SOURCE_MANIFEST'):
+            a.Capability(self.e,self.root,read_commit=lambda repo,c,p:raw if repo==a.GOV else b'changed')
+        self.assertEqual(self.calls,0)
+
+    def test_preflight_owned_process_output_timeout_and_cleanup(self):
+        self.preflight_setup();cap=a.Capability(self.e,self.root,'preflight')
+        legacy=a.load('p08-restoration-local-20261028/source/legacy/controller.py','nq_process_legacy')
+        cap.external=True
+        cap.e['database']={'host':legacy.DB_HOST,'port':5432,'database':legacy.DB_NAME,'user':legacy.DB_ADMIN}
+        io=entry.PreflightIO(cap)
+        cap.coordinator=SimpleNamespace(j={'nativeEntry':{'calls':{'cli':0,'https':0,'sql':0,'child':0}}},save=lambda:None,abort=False)
+        owned=io.processes._owned_run
+        vector=['/opt/homebrew/bin/gcloud','auth','list','--filter=status:ACTIVE','--format=value(account)']
+        for script,success in [("print('synthetic')",True),("print('x'*70000)",False),('import time;time.sleep(20)',False)]:
+            def synthetic(argv,env,deadline):
+                self.assertEqual(argv,vector)
+                return owned([sys.executable,'-c',script],env,min(deadline,time.time()+2.5))
+            with patch.object(io.processes,'_owned_run',side_effect=synthetic):
+                if success:self.assertEqual(io._run(vector,'cli'),'synthetic')
+                else:
+                    with self.assertRaisesRegex(Stop,'PREFLIGHT_PROCESS_UNCONFIRMED'):io._run(vector,'cli')
+            self.assertFalse(io.processes.children)
+            self.assertFalse(cap.coordinator.j['preflightProcessPending'])
+        self.assertTrue(io.close_processes(cap.times['cleanupEnd']))
+
+    def test_preflight_transport_firewall_denies_before_credentials_or_reservation(self):
+        self.preflight_setup()
+        cap=a.Capability(self.e,self.root,'preflight')
+        legacy=a.load('p08-restoration-local-20261028/source/legacy/controller.py','nq_test_legacy')
+        cap.external=True
+        cap.e['database']={'host':legacy.DB_HOST,'port':5432,'database':legacy.DB_NAME,'user':legacy.DB_ADMIN}
+        io=entry.PreflightIO(cap)
+        with patch.object(io,'ensure_owner',side_effect=AssertionError('credentials forbidden')), \
+             patch.object(cap,'spend',side_effect=AssertionError('reservation forbidden')):
+            for vector in [['services','enable','apikeys.googleapis.com'],
+                           ['secrets','versions','enable','2','--secret=signmons-staging-stripe-secret-key'],
+                           ['projects','describe','another-project','--format=json'],
+                           [*next(iter(io.read_vectors)),'--impersonate-service-account=foreign']]:
+                with self.assertRaisesRegex(Stop,'PREFLIGHT_CLI_DENIED'):io.cli(vector)
+            for query in [io.read_sql+' SELECT 1;',io.restore.role_sql(False),io.close_sql+';']:
+                with self.assertRaisesRegex(Stop,'PREFLIGHT_SQL_DENIED'):io.sql(query,cap.times['workEnd'])
+            for descriptor in [{'method':'POST','url':io.service_url,'body':None,'timeoutSeconds':8,'redirect':'error'},
+                               {'method':'GET','url':io.service_url+'/other','body':None,'timeoutSeconds':8,'redirect':'error'}]:
+                with self.assertRaisesRegex(Stop,'PREFLIGHT_HTTPS_DENIED'):io.https(descriptor)
+            with self.assertRaisesRegex(Stop,'PREFLIGHT_CHILD_DENIED'):io.child(['anything'])
+        self.assertIn(('secrets','versions','describe',cap.e['resources']['secretVersions']['signmons-staging-stripe-secret-key'],
+                       '--secret=signmons-staging-stripe-secret-key','--project=signmons','--format=json(state)'),io.read_vectors)
+
     def test_assembled_positive_authoritative_readback_and_private_purge(self):
         r=self.run_entry()
         self.assertEqual(r['status'],'ENTRY_CLOSED',r)
