@@ -1,0 +1,21 @@
+{
+  "status": "TR2_CONSUMED_VALIDITY_NOT_PROVEN",
+  "observedAt": "2026-11-11T22:58:31.219093+00:00",
+  "sourceCommit": "6dafad1223f2465f4c4e167f66a2a81a7328606f",
+  "approvalCommit": "2f411476b87cca168c3071b012f820c69d89f30f",
+  "sdkInvocations": 1,
+  "cacheChecks": 1,
+  "sdkExitCode": 0,
+  "postcheck": "CACHED_TOKEN_EXPIRED",
+  "validThroughRequested": "2026-11-11T23:50:00Z",
+  "meaning": "Expiry did not exceed requested cutoff; current validity and whether issuance occurred are UNKNOWN",
+  "sdkAuthenticationRequestCount": "UNKNOWN",
+  "providerResourceRequests": 0,
+  "ownedProcessClosureVerified": true,
+  "onTime": true,
+  "rawTokenOrExpiryRetained": false,
+  "persistentSdkCacheMaintenance": "Authorized; not rolled back",
+  "receiptVerificationSha256": "f72323050172d0794002030bc4b98d54c3bb6b211d23150368ad721559b26381",
+  "retryAuthorized": false,
+  "qualificationOrPaymentStarted": false
+}

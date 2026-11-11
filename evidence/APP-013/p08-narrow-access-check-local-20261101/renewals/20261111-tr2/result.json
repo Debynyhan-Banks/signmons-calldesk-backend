@@ -1,0 +1,21 @@
+{
+  "reservation": "renewal-20261111-tr2",
+  "sourceCommit": "6dafad1223f2465f4c4e167f66a2a81a7328606f",
+  "decisionCommit": "2f411476b87cca168c3071b012f820c69d89f30f",
+  "decisionSha256": "9fdd04a029123479f87e28c7dc115abfb9fe8a95541b11cf1eff809ff5783015",
+  "validThrough": "2026-11-11T23:50:00Z",
+  "cliReserved": 1,
+  "cacheReserved": 1,
+  "status": "CACHED_TOKEN_EXPIRED",
+  "outputDisposition": "OS_DEVNULL",
+  "providerResourceRequests": 0,
+  "sdkAuthenticationRequestCount": "UNKNOWN",
+  "sdkCacheMaintenanceAuthorized": true,
+  "ownedPid": 65714,
+  "exitCode": 0,
+  "leaderReaped": true,
+  "groupAbsent": true,
+  "completedAt": 1794437843.887569,
+  "elapsedSeconds": 0.406,
+  "onTime": true
+}
