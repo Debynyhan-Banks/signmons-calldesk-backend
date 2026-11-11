@@ -1,0 +1,19 @@
+{
+  "approvalCommit": "0267c54",
+  "calls": {
+    "child": 0,
+    "cli": 6,
+    "https": 0,
+    "sql": 1
+  },
+  "operationId": "46b46d31-dfff-451c-aec5-9d2307249cc4",
+  "privateInputsPersisted": false,
+  "providerMutations": 0,
+  "sourceCommit": "f880db5e34391bee8a71a22ea59e27d3f141a451",
+  "status": "SQL_READ_RETURNED_JSON",
+  "closeoutObservedAt": "2026-11-11T13:40:53.614339+00:00",
+  "processAbsent": true,
+  "temporaryFilesAbsent": true,
+  "historicalKr6Cause": "UNKNOWN",
+  "roleAclValidated": false
+}
