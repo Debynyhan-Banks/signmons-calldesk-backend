@@ -1,0 +1,16 @@
+{
+  "status": "LOCAL_QD1_REUSE_PREFLIGHT_COMPARISON",
+  "providerCalls": 0,
+  "sameCliVectors": true,
+  "sameEnvironmentAclReturnUrl": true,
+  "expectedQualificationComparisonPassed": true,
+  "onlyPreflightHttpDifference": "reuse omits secretmanager.versions.add permission request",
+  "remainingRunDifferences": [
+    "preflight then key versus qualification key then preflight",
+    "direct exact version2 metadata GET and DISABLED check after key",
+    "new operation-specific candidate absence"
+  ],
+  "historicalKr3Failure": "UNKNOWN; no deterministic defect reproduced",
+  "nextSmallestMissingObservation": "exact version2 metadata through existing NativePorts.reuse_version_check; no payload or enablement",
+  "verificationNote": "Initial local probe accidentally repeated preflight on one port and correctly hit CALL_LIMIT; corrected comparison uses one preflight per independent fixture."
+}
