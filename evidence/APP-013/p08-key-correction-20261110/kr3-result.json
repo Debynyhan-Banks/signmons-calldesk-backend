@@ -1,0 +1,47 @@
+{
+  "operationId": "510b44b5-7eb9-4d93-abbb-f59e68cab297",
+  "sourceCommit": "1648cf82084d0299ecf88348144bf18cc20866b2",
+  "runApprovalCommit": "2e2b4a9e90a166048b68ea83d49b2f7be237fb92",
+  "closeoutApprovalCommit": "fbb2a82984321123d27f137d6e918b1562a3a996",
+  "run": {
+    "adopted": false,
+    "candidate": "signmons-calldesk-staging-p07key510b44b57eb9",
+    "candidateReadyObserved": false,
+    "failure": "CORRECTION_STOPPED",
+    "operationId": "510b44b5-7eb9-4d93-abbb-f59e68cab297",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_AWAITING_INDEPENDENT_CLOSEOUT",
+    "stripeVersion": null
+  },
+  "closeout": {
+    "adopted": false,
+    "candidate": "signmons-calldesk-staging-p07key510b44b57eb9",
+    "candidateReadyObserved": false,
+    "failure": "CORRECTION_STOPPED",
+    "operationId": "510b44b5-7eb9-4d93-abbb-f59e68cab297",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_CLOSED",
+    "stripeVersion": null
+  },
+  "journal": {
+    "candidate": "signmons-calldesk-staging-p07key510b44b57eb9",
+    "failure": "CORRECTION_STOPPED",
+    "intents": [],
+    "operationId": "510b44b5-7eb9-4d93-abbb-f59e68cab297",
+    "planSha256": "34f0e77c55c19d1cc7cd558e172b10b70e285ce445deafe2706995a138539909",
+    "readiness": null,
+    "version": null
+  },
+  "processAbsent": true,
+  "providerMutations": 0,
+  "privateInputsPersisted": false,
+  "exactFailureCause": "UNKNOWN",
+  "readCallCounts": "UNKNOWN: failure receipt did not retain stage or call ledger",
+  "ownedLaunchersAndSpecsRemoved": true
+}
