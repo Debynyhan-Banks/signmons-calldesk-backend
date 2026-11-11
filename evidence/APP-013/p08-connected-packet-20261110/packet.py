@@ -253,3 +253,59 @@ def verify_attended_confirmation(root,stage,spec,decision,expected_review,refere
         _attended_publish(root,stage,stage+'.aw1-consumed.json',{'decisionSha256':q.model.digest(decision),'consumedAt':now})
         return copy.deepcopy(decision)
     finally:os.close(fd)
+
+# PA1 renewal preflight only. This function never invokes an SDK, reads a token,
+# reserves an operation, or changes any historical manifest.
+def renewal_tree_check(source_commit, backend=B):
+    import subprocess,re
+    q.need(isinstance(source_commit,str) and re.fullmatch('[a-f0-9]{40}',source_commit),'RENEWAL_SOURCE_REFERENCE')
+    result=subprocess.run(['/usr/bin/git','diff','--quiet',source_commit,'--','evidence/APP-013'],cwd=backend,
+        stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10)
+    q.need(result.returncode==0,'RENEWAL_COMMITTED_TREE_DRIFT')
+
+
+def renewal_preflight(source_commit, reference, expected_decision, *, config_root=None, environment=None, clock=None, read_commit=None):
+    """Exact current-source preflight; caller separately owns reviewed one-shot procedure."""
+    import os,time,sqlite3,re
+    clock=clock or time.time;a=q.current_module('authority');acl=q.current_module('acl');get=read_commit or a.committed
+    q.need(isinstance(reference,dict) and set(reference)=={'commit','path','sha256'} and
+        isinstance(reference['path'],str) and re.fullmatch('APP013_P08_TR[0-9]+_DECISION_[0-9]{8}\\.json',reference['path']),'RENEWAL_AUTHORITY_REFERENCE')
+    raw=get(G,reference['commit'],reference['path'])
+    q.need(q.model.digest(raw)==reference['sha256'] and q.strict_json(raw)==expected_decision and
+        expected_decision.get('owner')=='Debynyhan Banks' and expected_decision.get('externalActionAuthorized') is True and
+        expected_decision.get('decision')=='APPROVE_TR1_CREDENTIAL_RENEWAL_SDK_RETRY_CACHE_AND_CLEANUP' and
+        expected_decision.get('sourceCommit')==source_commit,'RENEWAL_EXACT_AUTHORITY')
+    now=clock();cutoff=q.model.timestamp(expected_decision['cutoff']);closeout=q.model.timestamp(expected_decision['closeoutEnd'])
+    q.need(now<cutoff<closeout<q.model.timestamp(expected_decision['validThrough']),'RENEWAL_WINDOW')
+    renewal_tree_check(source_commit)
+    manifest=q.model.verify_local_manifest();q.model.verify_locked_sources();native=a.verify_sources()
+    q.verify_qualification_sources(source_commit,manifest,get)
+    legacy_path=acl.HERE/'source-manifest.json';legacy=json.loads(legacy_path.read_text())
+    review_path=acl.HERE/'test-manifest.json';sdk_review=json.loads(review_path.read_text())
+    # The unchanged historical inventory is checked in full. Only authority.py
+    # maps to the already-approved current manifest; the old pin is preserved.
+    expected_legacy={'p08-role-contract-local-20261029/source/qualification_launch.py',
+        'p08-role-contract-local-20261029/source/composed_qualification.py',
+        'p08-exact-role-provisioning-local-20261028/source/role_provisioner.py',
+        'p08-restoration-local-20261028/source/restore.py','p08-native-entry-local-20261101/source/authority.py'}
+    q.need(set(legacy['lockedSources'])==expected_legacy and set(legacy['files'])=={'access_check.py'},'RENEWAL_DEPENDENCY_SET')
+    dependencies={acl.HERE/n:h for n,h in legacy['files'].items()};mapping={}
+    for name,old in legacy['lockedSources'].items():
+        current=native['files']['authority.py'] if name=='p08-native-entry-local-20261101/source/authority.py' else old
+        dependencies[acl.APP/name]=current;mapping[name]={'historical':old,'current':current,'changed':old!=current}
+    for path in (legacy_path,review_path,a.HERE/'source-manifest.json',Path(__file__)):
+        dependencies[path]=q.model.digest(path.read_bytes())
+    for path,expected in dependencies.items():
+        q.need(path.is_file() and not path.is_symlink() and q.model.digest(path.read_bytes())==expected,'RENEWAL_DEPENDENCY_DRIFT')
+        q.need(q.model.digest(get(B,source_commit,str(path.relative_to(B))))==expected,'RENEWAL_COMMITTED_DEPENDENCY')
+    sdk={}
+    for entries in (legacy['sdkFiles'],sdk_review['sdkReviewFiles'],manifest['sdkReview']['files']):
+        for name,expected in entries.items():
+            q.need(name not in sdk or sdk[name]==expected,'RENEWAL_SDK_PIN_CONFLICT');sdk[name]=expected
+    for name,expected in sdk.items():
+        q.need(q.model.digest(Path(name).read_bytes())==expected,'RENEWAL_SDK_DRIFT')
+    q.need((sys.platform,sys.version_info[:3],sqlite3.sqlite_version)==acl.LOCAL_RUNTIME,'LOCAL_RUNTIME_DRIFT')
+    acl.config_snapshot(acl.CONFIG_ROOT if config_root is None else config_root,os.environ if environment is None else environment)
+    q.need(now<=clock()<cutoff,'RENEWAL_PREFLIGHT_DEADLINE')
+    return {'status':'PREFLIGHT_VERIFIED_NO_OPERATION_RESERVED','sourceCommit':source_commit,
+        'dependencyMapping':mapping,'sdkFilesVerified':len(sdk),'credentialStoresRead':False,'providerCalls':0}
