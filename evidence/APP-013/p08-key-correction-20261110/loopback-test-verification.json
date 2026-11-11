@@ -1,0 +1,15 @@
+{
+  "status": "LOCAL_NATIVE_SUITE_PASSED_WITH_LOOPBACK_PERMISSION",
+  "observedAt": "2026-11-11T12:40:25.388944+00:00",
+  "sourceCommit": "a3fd5fa356eaeecfa59fbfe499b3ce90e98b37a7",
+  "restrictedSandboxLoopbackBind": "EPERM",
+  "focusedTestsPassed": 2,
+  "nativeEntryTestsPassed": 30,
+  "command": "python3 -B -m unittest test_entry",
+  "workingDirectory": "evidence/APP-013/p08-native-entry-local-20261101/source",
+  "externalProviders": "synthetic",
+  "providerCalls": 0,
+  "runtimeCodeChanges": false,
+  "historicalKr6SqlCause": "UNKNOWN",
+  "previousEvidencePreserved": "sql-classification-verification.json"
+}
