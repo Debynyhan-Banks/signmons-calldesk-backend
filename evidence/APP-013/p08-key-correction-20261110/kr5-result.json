@@ -1,0 +1,97 @@
+{
+  "operationId": "a5b95063-e4c6-4251-804d-5147041d99cf",
+  "sourceCommit": "388ff8b5c5ff2e5270c3d3cc4148eef89f028f70",
+  "runApprovalCommit": "e6b101ee6dc56ac2e0f825cefe67f2a725134890",
+  "closeoutApprovalCommit": "33ce1748f3ec15b24ff8312bd359ce506b7a4d7d",
+  "run": {
+    "adopted": false,
+    "calls": {
+      "child": 1,
+      "cli": 0,
+      "https": 0,
+      "sql": 0
+    },
+    "candidate": "signmons-calldesk-staging-p07keya5b95063e4c6",
+    "candidateReadyObserved": false,
+    "cleanupDiagnostics": [],
+    "failure": "KEY_ENDPOINT_PIN",
+    "failureEvidence": {
+      "calls": {
+        "child": 1,
+        "cli": 0,
+        "https": 0,
+        "sql": 0
+      },
+      "category": "VALIDATION_STOP",
+      "code": "KEY_ENDPOINT_PIN",
+      "endpointInput": {
+        "controlOrNonAscii": false,
+        "exactMatch": false,
+        "formatValid": false,
+        "inputLength": 38,
+        "isString": true,
+        "looksLikeUrl": false,
+        "providerCalls": 0,
+        "status": "LOCAL_ENDPOINT_INPUT_INSPECTED",
+        "surroundingWhitespace": false,
+        "trimmedMatch": false
+      },
+      "stage": "SANDBOX_KEY"
+    },
+    "operationId": "a5b95063-e4c6-4251-804d-5147041d99cf",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_AWAITING_INDEPENDENT_CLOSEOUT",
+    "stripeVersion": null
+  },
+  "closeout": {
+    "adopted": false,
+    "calls": {
+      "child": 0,
+      "cli": 0,
+      "https": 0,
+      "sql": 0
+    },
+    "candidate": "signmons-calldesk-staging-p07keya5b95063e4c6",
+    "candidateReadyObserved": false,
+    "cleanupDiagnostics": [],
+    "failure": "KEY_ENDPOINT_PIN",
+    "failureEvidence": {
+      "calls": {
+        "child": 1,
+        "cli": 0,
+        "https": 0,
+        "sql": 0
+      },
+      "category": "VALIDATION_STOP",
+      "code": "KEY_ENDPOINT_PIN",
+      "endpointInput": {
+        "controlOrNonAscii": false,
+        "exactMatch": false,
+        "formatValid": false,
+        "inputLength": 38,
+        "isString": true,
+        "looksLikeUrl": false,
+        "providerCalls": 0,
+        "status": "LOCAL_ENDPOINT_INPUT_INSPECTED",
+        "surroundingWhitespace": false,
+        "trimmedMatch": false
+      },
+      "stage": "SANDBOX_KEY"
+    },
+    "operationId": "a5b95063-e4c6-4251-804d-5147041d99cf",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_CLOSED",
+    "stripeVersion": null
+  },
+  "processAbsent": true,
+  "providerCalls": 0,
+  "providerMutations": 0,
+  "privateInputsPersisted": false,
+  "ownedLaunchersAndSpecsRemoved": true
+}
