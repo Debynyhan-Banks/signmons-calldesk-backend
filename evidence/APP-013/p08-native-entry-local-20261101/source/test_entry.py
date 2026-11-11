@@ -358,6 +358,28 @@ class EntryTests(unittest.TestCase):
         cap.coordinator=SimpleNamespace(abort=False,j={'nativeEntry':{'calls':dict.fromkeys(('cli','https','sql','child'),0)}},save=lambda:None)
         return cap,entry.NativeIO(cap)
 
+    def test_actual_lifecycle_mutations_select_json_and_reject_missing_structured_output(self):
+        cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';r=io.restore;plan={**cap.plan,'iam':[]}
+        cases=[('tag',r.TAG),('secretBinding',r.POLICIES[0]),('identity',r.IDENTITY),('version',r.SECRETS[0])]
+        for kind,name in cases:
+            for enabled in (True,False):
+                vector=r.command(plan,kind,name,enabled);original=list(vector)
+                def response(argv,**kwargs):
+                    return subprocess.CompletedProcess([],0,b'{}' if '--format=json' in argv else b'bindings: []',b'')
+                with patch('native_io.subprocess.run',side_effect=response) as run:
+                    self.assertEqual(io.cloud(vector,0),{});self.assertEqual(vector,original)
+                    self.assertEqual(run.call_args.args[0],['/opt/homebrew/bin/gcloud',*original,'--format=json'])
+        for kind,name in cases:
+            vector=r.command(plan,kind,name,False)
+            for raw in (b'',b'null',b'[]',b'status: unknown'):
+                with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,raw,b'')):
+                    if raw==b'' and kind in ('identity','version'):self.assertEqual(io.cloud(vector,0),{})
+                    else:
+                        with self.assertRaisesRegex(Stop,'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
+        vector=['run','services','describe','signmons-calldesk-staging','--project=signmons','--region=us-east5','--format=json(status.traffic)']
+        with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,b'{}',b'')) as run:
+            self.assertEqual(io.cloud(vector,0),{});self.assertEqual(run.call_args.args[0],['/opt/homebrew/bin/gcloud',*vector])
+
     def test_actual_native_sql_serializer_uses_pinned_tls_and_safe_errors(self):
         cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';io.password='SYNTHETIC_PASSWORD'
         query=next(q for q in io.allowed_sql if 'aclexplode' in q)

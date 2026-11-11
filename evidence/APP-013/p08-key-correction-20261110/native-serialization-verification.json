@@ -1,0 +1,13 @@
+{
+  "status": "NATIVE_LIFECYCLE_SERIALIZATION_VERIFIED_LOCALLY",
+  "observedAt": "2026-11-11T20:58:22.664231+00:00",
+  "baseSource": "da7f998",
+  "reproducedBeforeFix": "JSONDecodeError through actual NativeIO.cloud with synthetic YAML mutation response",
+  "nativeTestsPassed": 31,
+  "packetTestsPassed": 18,
+  "currentQualificationTestsPassed": 23,
+  "correctionTestsPassed": 52,
+  "providerCalls": 0,
+  "historicalKr7RawOutputCause": "UNKNOWN",
+  "changedBehavior": "Exact generated lifecycle mutation vectors select JSON; status-only empty identity/version responses permitted; structured mutation objects required; read/auth vectors unchanged."
+}

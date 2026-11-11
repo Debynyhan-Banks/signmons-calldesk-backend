@@ -106,8 +106,19 @@ class NativeIO:
         return self._run(['/opt/homebrew/bin/gcloud', *vector], 'cli')
 
     def cloud(self, vector, deadline):
-        raw = self.cli(vector)
-        return raw if vector[:2] == ['auth', 'list'] else json.loads(raw)
+        # Match the original exact lifecycle vector before selecting serialization.
+        plan = {**self.cap.plan, 'iam': self.cap.plan.get('iam', [])}
+        mutations = {tuple(self.restore.command(plan, kind, name, enabled)): kind
+                     for kind, name in self.restore.operations(plan) if kind != 'role'
+                     for enabled in (True, False)}
+        kind = mutations.get(tuple(vector))
+        raw = self.cli([*vector, '--format=json'] if kind is not None else vector)
+        if vector[:2] == ['auth', 'list']: return raw
+        if raw == '' and kind in ('identity', 'version'): return {}
+        try: value = json.loads(raw)
+        except (ValueError, TypeError): raise __import__('private_inventory').Stop('NATIVE_OUTPUT_SHAPE') from None
+        if kind is not None: need(isinstance(value, dict), 'NATIVE_OUTPUT_SHAPE')
+        return value
 
     def sql(self, query, deadline):
         need(query in self.allowed_sql, 'SQL_ALLOWLIST')
