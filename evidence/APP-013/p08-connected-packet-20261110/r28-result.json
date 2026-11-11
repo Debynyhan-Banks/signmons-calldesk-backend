@@ -1,0 +1,31 @@
+{
+  "status": "R28_TERMINAL_CONFIRMATION_REFUSED_CLOSED",
+  "observedAt": "2026-11-11T22:29:12.054312+00:00",
+  "recoveryOperationId": "8ca3138d-e400-4b44-b0ba-54d0712c45c8",
+  "sourceCommit": "25937602c5ec142ba7a2f6d1f17e387be81ac073",
+  "approvalCommit": "efbf996",
+  "recoveryStatus": "HANDOFF_RETAINED",
+  "stop": "ATTENDED_CONFIRMATION_REFUSED",
+  "stopEvidence": "Owner supplied Terminal stop line",
+  "exactInputMismatchCause": "UNKNOWN; rejected input intentionally not retained",
+  "qualificationConfirmationPresent": false,
+  "qualificationStarted": false,
+  "nativeStarted": false,
+  "paymentStarted": false,
+  "guardAndConnectedProcessesAbsent": true,
+  "ownedLauncherAndConsentReferenceAbsent": true,
+  "purge": {
+    "completedAt": 1794436016.2082298,
+    "onTime": true,
+    "operationId": "8ca3138d-e400-4b44-b0ba-54d0712c45c8",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "replayAllowed": false,
+  "ownerEntryMethod": "Owner reports copying only the full APPROVE phrase"
+}
