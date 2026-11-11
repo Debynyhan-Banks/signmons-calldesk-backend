@@ -1,0 +1,22 @@
+{
+  "reservation": "owner-signin-20261111-tr4",
+  "sourceCommit": "85a68f5a195999023b51d4447369707df8167480",
+  "decisionCommit": "c59f93bb3c189cf9918cdb933b000b0fa44f8573",
+  "decisionSha256": "6a7126aa8872ed61b7d2cc4301a679b45ee9af868b01cf5a98e11560aab9efdd",
+  "validThrough": "2026-11-12T00:00:00Z",
+  "cliReserved": 1,
+  "cacheReserved": 1,
+  "status": "VALID_THROUGH_CUTOFF",
+  "outputDisposition": "OS_DEVNULL",
+  "providerResourceRequests": 0,
+  "sdkAuthenticationRequestCount": "UNKNOWN",
+  "sdkCacheMaintenanceAuthorized": true,
+  "ownedPid": 71322,
+  "exitCode": 0,
+  "leaderReaped": true,
+  "groupAbsent": true,
+  "configurationUnchanged": true,
+  "completedAt": 1794438460.238307,
+  "elapsedSeconds": 25.938,
+  "onTime": true
+}

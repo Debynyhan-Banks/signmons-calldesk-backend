@@ -1,0 +1,21 @@
+{
+  "status": "TR3_CONSUMED_CLOSED",
+  "observedAt": "2026-11-11T23:08:41.161905+00:00",
+  "sourceCommit": "85a68f5a195999023b51d4447369707df8167480",
+  "approvalCommit": "db6476a5ab6a905109de5ea2ae4d469d5459e571",
+  "sdkInvocations": 1,
+  "cacheChecks": 0,
+  "sdkExitCode": 1,
+  "postcheck": "SDK_OR_PROCESS_UNCONFIRMED",
+  "validThroughRequested": "2026-11-12T00:00:00Z",
+  "configurationUnchanged": null,
+  "ownedProcessClosureVerified": true,
+  "onTime": true,
+  "rawTokenOrExpiryRetained": false,
+  "credentialState": "UNKNOWN; owner reports choosing personal Gmail; exact suppressed SDK error not retained",
+  "persistentSdkCacheMaintenance": "Authorized; not rolled back",
+  "browserSession": "Owner managed; not closed or signed out by assistant",
+  "receiptVerificationSha256": "7bbc953fb7c2fcfde7545f132ab46df08422fb9df6aa309576e220e93526b38a",
+  "retryAuthorized": false,
+  "qualificationOrPaymentStarted": false
+}

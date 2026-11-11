@@ -1,0 +1,21 @@
+{
+  "status": "TR4_CONSUMED_CLOSED",
+  "observedAt": "2026-11-11T23:08:41.162329+00:00",
+  "sourceCommit": "85a68f5a195999023b51d4447369707df8167480",
+  "approvalCommit": "c59f93bb3c189cf9918cdb933b000b0fa44f8573",
+  "sdkInvocations": 1,
+  "cacheChecks": 1,
+  "sdkExitCode": 0,
+  "postcheck": "VALID_THROUGH_CUTOFF",
+  "validThroughRequested": "2026-11-12T00:00:00Z",
+  "configurationUnchanged": true,
+  "ownedProcessClosureVerified": true,
+  "onTime": true,
+  "rawTokenOrExpiryRetained": false,
+  "credentialState": "Validity beyond7pm observed",
+  "persistentSdkCacheMaintenance": "Authorized; not rolled back",
+  "browserSession": "Owner managed; not closed or signed out by assistant",
+  "receiptVerificationSha256": "b4267b31524c34ce80f4fc69e4d58a0f7112bcb736378e1b563aed63620188eb",
+  "retryAuthorized": false,
+  "qualificationOrPaymentStarted": false
+}
