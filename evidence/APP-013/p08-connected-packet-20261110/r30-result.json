@@ -1,0 +1,76 @@
+{
+  "status": "R30_NATIVE_PREFLIGHT_STOPPED_CLEANLY",
+  "observedAt": "2026-11-11T23:17:43.293270+00:00",
+  "sourceCommit": "69584eeed42d857874a81418a1ce7d3708b59923",
+  "recoveryOperationId": "7db6b94f-4f56-4e38-a1bf-8d759cc42058",
+  "qualificationOperationId": "f953b789-ad04-48af-8a23-244aab6d8b7d",
+  "nativeOperationId": "4ba11bdb-1f40-4036-88c2-13d048825211",
+  "recoveryAndDelegationApproval": "fa8a457",
+  "qualificationApproval": "79ba10e",
+  "nativeApproval": "a077bc0",
+  "ownerTerminalConfirmationsVerifiedAndConsumed": true,
+  "qualification": {
+    "status": "CURRENT_EVIDENCE_OBSERVED",
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "residuals": [],
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 20,
+      "sql": 4
+    },
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "databaseFailedChecks": []
+  },
+  "native": {
+    "authProofReady": false,
+    "authenticationObserved": false,
+    "childResultSha256": null,
+    "liveAuthorization": true,
+    "operationId": "4ba11bdb-1f40-4036-88c2-13d048825211",
+    "paymentObserved": false,
+    "paymentReadyForAcceptance": false,
+    "privateInputsAbsent": true,
+    "residuals": [],
+    "status": "ENTRY_CLOSED"
+  },
+  "nativeJournal": {
+    "phase": "CLOSED",
+    "failure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+    "unknown": [],
+    "residuals": [],
+    "runtimeAttempted": [],
+    "iamAttempted": [],
+    "keyCreateAttempted": false,
+    "authAttempted": false,
+    "nativeEntry": {
+      "calls": {
+        "child": 0,
+        "cli": 98,
+        "https": 0,
+        "sql": 5
+      },
+      "envelopeSha256": "ad9801deb379c74917ae2e54e678291562a94069add4b5e00bf38f2055ba86fb"
+    }
+  },
+  "failureMeaning": "Non-Stop exception before PREFLIGHT phase. Exact exception and failing preflight boundary UNKNOWN; raw exception not retained. No runtime or IAM enablement attempted. No authentication/payment. Do not replay.",
+  "purge": {
+    "completedAt": 1794439028.762312,
+    "onTime": true,
+    "operationId": "7db6b94f-4f56-4e38-a1bf-8d759cc42058",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "independentQualificationCloseoutReserved": true,
+  "independentNativeCloseoutReserved": true,
+  "ownedProcessesAbsent": true,
+  "ownedTemporaryLaunchAndReferenceFilesAbsent": true,
+  "replayAllowed": false
+}
