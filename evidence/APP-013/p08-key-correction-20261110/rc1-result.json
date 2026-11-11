@@ -1,0 +1,106 @@
+{
+  "approvalCommit": "0c23326bc62c3d2d042a980e39053cb90aa511d4",
+  "calls": {
+    "child": 1,
+    "cli": 22,
+    "https": 0,
+    "sql": 1
+  },
+  "operationId": "ec21d570-80e8-4967-ab04-1497ab03066c",
+  "privateInputsPersisted": false,
+  "providerMutations": 0,
+  "retirementPredicates": [
+    {
+      "kind": "version",
+      "name": "signmons-staging-stripe-secret-key",
+      "retired": true
+    },
+    {
+      "kind": "identity",
+      "name": "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+      "retired": true
+    },
+    {
+      "kind": "version",
+      "name": "signmons-staging-p07-payment-database-url",
+      "retired": true
+    },
+    {
+      "kind": "version",
+      "name": "signmons-staging-p07-stripe-webhook-secret",
+      "retired": true
+    },
+    {
+      "kind": "version",
+      "name": "signmons-staging-p07-disabled-openai-key",
+      "retired": true
+    },
+    {
+      "kind": "version",
+      "name": "signmons-staging-p07-admin-token",
+      "retired": true
+    },
+    {
+      "kind": "version",
+      "name": "signmons-staging-p07-conversation-key",
+      "retired": true
+    },
+    {
+      "kind": "version",
+      "name": "signmons-staging-p07-technician-link-key",
+      "retired": true
+    },
+    {
+      "kind": "secretBinding",
+      "name": "signmons-staging-p07-payment-database-url",
+      "retired": true
+    },
+    {
+      "kind": "secretBinding",
+      "name": "signmons-staging-p07-stripe-webhook-secret",
+      "retired": true
+    },
+    {
+      "kind": "secretBinding",
+      "name": "signmons-staging-p07-disabled-openai-key",
+      "retired": true
+    },
+    {
+      "kind": "secretBinding",
+      "name": "signmons-staging-p07-admin-token",
+      "retired": true
+    },
+    {
+      "kind": "secretBinding",
+      "name": "signmons-staging-p07-conversation-key",
+      "retired": true
+    },
+    {
+      "kind": "secretBinding",
+      "name": "signmons-staging-p07-technician-link-key",
+      "retired": true
+    },
+    {
+      "kind": "secretBinding",
+      "name": "signmons-staging-stripe-secret-key",
+      "retired": true
+    },
+    {
+      "kind": "tag",
+      "name": "app013-p07-atomic",
+      "retired": true
+    },
+    {
+      "kind": "role",
+      "name": "p07_payment_runtime",
+      "retired": true
+    }
+  ],
+  "sourceCommit": "3cfc6ff634d62871ab73d5fa42f634ee2c673f9e",
+  "status": "KR7_RETIREMENT_OBSERVED",
+  "targetOperationId": "7e45dc51-2e17-481c-9128-63fa568725a4",
+  "processAbsent": true,
+  "ownedTemporaryFilesAbsent": true,
+  "closeoutObservedAt": "2026-11-11T20:39:04.130462+00:00",
+  "historicalKr7ReceiptPreserved": true
+}
