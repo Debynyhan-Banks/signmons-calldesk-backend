@@ -1,0 +1,30 @@
+{
+  "status": "R27_TERMINAL_CONFIRMATION_REFUSED_CLOSED",
+  "observedAt": "2026-11-11T22:22:01.070373+00:00",
+  "recoveryOperationId": "308dbda2-021d-4c88-965c-85d866b6d4f5",
+  "sourceCommit": "3ab094bf538250f2c4e1be6b720226f3cb92dcdb",
+  "approvalCommit": "fa5697b",
+  "recoveryStatus": "HANDOFF_RETAINED",
+  "recoveryFailure": null,
+  "stop": "ATTENDED_CONFIRMATION_REFUSED",
+  "stopEvidence": "Owner supplied final Terminal status; typed abbreviated phrase instead of exact displayed case-sensitive operation/nonce phrase",
+  "qualificationConfirmationPresent": false,
+  "qualificationStarted": false,
+  "nativeStarted": false,
+  "paymentStarted": false,
+  "guardAndConnectedProcessesAbsent": true,
+  "ownedLauncherAndConsentReferenceAbsent": true,
+  "purge": {
+    "completedAt": 1794435645.9099982,
+    "onTime": true,
+    "operationId": "308dbda2-021d-4c88-965c-85d866b6d4f5",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "replayAllowed": false
+}
