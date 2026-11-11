@@ -1,0 +1,18 @@
+{
+  "calls": {
+    "child": 0,
+    "cli": 6,
+    "https": 1,
+    "sql": 0
+  },
+  "operationId": "f3122303-f4c9-406a-a28b-888408957f44",
+  "privateInputsPersisted": false,
+  "providerMutations": 0,
+  "status": "VERSION2_DISABLED_METADATA_VERIFIED",
+  "sourceCommit": "f103a8bfd0e54d77891afd92983a0ad20e0f27dd",
+  "approvalCommit": "6af7b078fa85473515d1796c01d0a12d7986b855",
+  "processExited": true,
+  "exitCode": 0,
+  "temporaryLauncherOrSpecCreated": false,
+  "historicalKr3Cause": "UNKNOWN_NOT_REPRODUCED"
+}
