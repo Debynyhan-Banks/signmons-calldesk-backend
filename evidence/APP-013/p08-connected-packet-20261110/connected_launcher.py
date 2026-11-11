@@ -4,11 +4,11 @@ from pathlib import Path
 import packet as p
 q=p.q
 
-def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass):
+def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass,session_consent=None,read_confirmation=None):
     review=Path(review) if review is not None else Path('/private/tmp/p08-public-review-'+spec['recoveryId'])
     def publish(stage,decision,details):
         review.mkdir(mode=0o700,exist_ok=True)
-        with (review/(stage+'.json')).open('x') as f:json.dump({'stage':stage,'decisionForReview':decision,**details},f,indent=2)
+        q.model.reserve(review/(stage+'.json'),{'stage':stage,'decisionForReview':decision,**details})
         print(stage.upper()+'_READY_FOR_EXACT_APPROVAL',flush=True)
 
     def wait_decision(path,expected,start,cutoff):
@@ -26,10 +26,14 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass):
         qc=q.QualificationCapability(test,clock=lambda:q.model.timestamp(spec['window']['start'])+1,read_commit=read);qc.prepare()
         publish('qualification',decision,{'operationId':spec['qualificationId'],'nativeScopeSha256':e['plan']['nativeScopeSha256'],'window':spec['window'],'limits':e['sdkReview']['limits'],'sourceCommit':spec['sourceCommit'],'endpointHashMatched':True,'localCapabilityPreflight':'PASS_PROPOSED_CLOCK_ONLY','providerCalls':0})
         stage='QUALIFICATION_APPROVAL'
+        if session_consent is not None:
+            p.capture_attended_confirmation(review,'qualification',spec,decision,e,session_consent,governance,read_line=read_confirmation)
         e['decision']=wait_decision('APP013_P08_CURRENT_QUALIFICATION_20261110.json',decision,q.model.timestamp(spec['window']['start']),q.model.timestamp(spec['window']['cutoff']))
         def approve_native(native):
             d={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_CONNECTED_PAYMENT','externalActionAuthorized':True,'operationId':spec['prospectiveOperationId'],'scopeSha256':q.model.digest(native),'sourceManifestSha256':native['sourceManifestSha256']}
             publish('native',d,{'operationId':spec['prospectiveOperationId'],'window':spec['prospectiveWindow'],'paymentWorkEnd':spec['paymentWorkEnd'],'qualification':native['qualification'],'limits':spec['prospectiveLimits'],'sourceCommit':spec['sourceCommit']})
+            if session_consent is not None:
+                p.capture_attended_confirmation(review,'native',spec,d,native,session_consent,governance,read_line=read_confirmation)
             return wait_decision('APP013_P08_NATIVE_OPERATION_20261110.json',d,q.model.timestamp(spec['prospectiveWindow']['start']),q.model.timestamp(spec['prospectiveWindow']['cutoff']))
         dispatched=True
         result=p.execute_connected(cap,e,approve_native)
@@ -48,6 +52,7 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass):
             print('RECOVERY_PURGE_VERIFIED' if result.get('rawFilesAbsent') else 'RECOVERY_PURGE_UNKNOWN',flush=True)
 
 if __name__=='__main__':
-    if len(sys.argv)!=2:
-        raise SystemExit('Supply only the reviewed public specification path; no consumed-operation default.')
-    raise SystemExit(main(json.loads(Path(sys.argv[1]).read_text())))
+    if len(sys.argv) not in (2,4) or (len(sys.argv)==4 and sys.argv[2]!='--terminal-consent'):
+        raise SystemExit('Supply reviewed public spec and optional --terminal-consent private reference; no consumed-operation default.')
+    reference=q.private_json(Path(sys.argv[3])) if len(sys.argv)==4 else None
+    raise SystemExit(main(json.loads(Path(sys.argv[1]).read_text()),session_consent=reference))

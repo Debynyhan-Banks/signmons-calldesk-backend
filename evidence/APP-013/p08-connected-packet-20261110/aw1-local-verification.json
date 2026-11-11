@@ -1,0 +1,43 @@
+{
+  "section": "APP-013/3A/P08/AW1",
+  "status": "LOCALLY_VERIFIED_NOT_LIVE_AUTHORIZED",
+  "recordedAt": "2026-11-11T22:06:45.405616+00:00",
+  "approvedProposalCommit": "c254b7a",
+  "baseSourceCommit": "1de1d36",
+  "files": {
+    "packet.py": "1632ecfe9afb31c7e866c0a72f9ea78ed09cb085441d5226d9d082b07094f442",
+    "connected_launcher.py": "1a64bacb0d0632e30fd75276347dad03052bb4df3bb4a131974902f76e667106",
+    "test_attended_approval.py": "ddfb3de447e40139a01cdcb974c7305494f3e64dabe61800925d0ca5e737770e",
+    "test_launcher.py": "3d7d1f908ab98cb27a8ab45be66496ed05f294f4672521ff84fd359076618b7d"
+  },
+  "tests": {
+    "packet": {
+      "passed": 31,
+      "logSha256": "c3798b6242ac47c58d8ecb724d8d6cd86ba2e31ff6d62e6d5779ad509d552587"
+    },
+    "native": {
+      "passed": 31,
+      "logSha256": "b5c4932acb901f7509d6a61cb04ddd326a2776b04a955cddc0c024f55515ce5c"
+    },
+    "qualification": {
+      "passed": 23,
+      "logSha256": "b3662f3902ba75d7f4ffe4aef2aaf7602ed4d21dc4412bfb39f6a82ba309a6dc"
+    },
+    "correction": {
+      "passed": 52,
+      "logSha256": "3667fd29599485a862b3e65972360de57cf717f73899cca015ea85b1edaf3d01"
+    }
+  },
+  "providerCalls": 0,
+  "liveSessionAuthorized": false,
+  "sessionDelegationGranted": false,
+  "acceptedMilestones": 4,
+  "walkthroughDenominator": 8,
+  "threeA": "OPEN",
+  "limitations": [
+    "Terminal attestation is not cryptographic identity proof",
+    "Assistant must independently verify and commit each exact decision while actively supervising",
+    "Fresh source-bound session consent and operation authority still required",
+    "Current provider access and payment acceptance UNKNOWN"
+  ]
+}

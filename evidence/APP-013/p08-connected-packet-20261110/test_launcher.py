@@ -6,7 +6,7 @@ import connected_launcher as launcher
 import packet
 
 class LauncherBoundaryTests(unittest.TestCase):
-    def run_case(self,expire=None,interrupt=False):
+    def run_case(self,expire=None,interrupt=False,attended=False,decline=None):
         with tempfile.TemporaryDirectory(prefix='p08-launch-boundary-',dir='/private/tmp') as tmp:
             root=Path(tmp);repo=root/'gov';repo.mkdir();review=root/'review'
             def git(*args):return subprocess.check_output(['git',*args],cwd=repo,stderr=subprocess.PIPE)
@@ -30,6 +30,10 @@ class LauncherBoundaryTests(unittest.TestCase):
                     (repo/path).write_text(json.dumps(expected));git('add',path)
                     git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','explicit synthetic approval')
                 return original(gov,path,expected,start,cutoff,clock=lambda:now[0],sleep=advance)
+            def capture(root,stage,*args,**kwargs):
+                sequence.append(stage+'-confirmation')
+                self.assertFalse(any('dispatch' in item for item in sequence) if stage=='qualification' else 'native-dispatch' in sequence)
+                if decline==stage:raise packet.q.model.Stop('ATTENDED_CONFIRMATION_REFUSED')
             def execute(c,e,approve):
                 sequence.append('qualification-dispatch')
                 self.assertEqual(e['nativeScope']['private'],'PRIVATE_SENTINEL')
@@ -40,8 +44,8 @@ class LauncherBoundaryTests(unittest.TestCase):
                 finally:sequence.append('connected-cleanup')
             def cleanup(_):sequence.append('prequalification-purge');return {'rawFilesAbsent':True}
             output=io.StringIO()
-            with patch.object(packet,'construct',return_value=(cap,envelope)),patch.object(packet,'wait_committed_decision',side_effect=wait),patch.object(packet,'execute_connected',side_effect=execute),patch.object(packet.q,'QualificationCapability',return_value=SimpleNamespace(prepare=lambda:None)),patch.object(packet.q,'qualification_cleanup_scope',return_value={'synthetic':True}),patch.object(packet.q,'private_json',return_value={}),patch.object(packet.q,'BindingRecoveryCapability',return_value=cap),patch.object(packet.q,'closeout_binding_recovery',side_effect=cleanup),contextlib.redirect_stdout(output):
-                code=launcher.main(spec,governance=repo,review=review,read_hidden=lambda _: 'we_synthetic')
+            with patch.object(packet,'capture_attended_confirmation',side_effect=capture),patch.object(packet,'construct',return_value=(cap,envelope)),patch.object(packet,'wait_committed_decision',side_effect=wait),patch.object(packet,'execute_connected',side_effect=execute),patch.object(packet.q,'QualificationCapability',return_value=SimpleNamespace(prepare=lambda:None)),patch.object(packet.q,'qualification_cleanup_scope',return_value={'synthetic':True}),patch.object(packet.q,'private_json',return_value={}),patch.object(packet.q,'BindingRecoveryCapability',return_value=cap),patch.object(packet.q,'closeout_binding_recovery',side_effect=cleanup),contextlib.redirect_stdout(output):
+                code=launcher.main(spec,governance=repo,review=review,read_hidden=lambda _: 'we_synthetic',session_consent={} if attended else None)
             self.assertNotIn('PRIVATE_SENTINEL',output.getvalue())
             if expire=='qualification':self.assertIn('CONNECTED_STAGE_QUALIFICATION_APPROVAL',output.getvalue())
             return code,sequence
@@ -57,3 +61,15 @@ class LauncherBoundaryTests(unittest.TestCase):
     def test_native_wait_interruption_returns_through_connected_cleanup(self):
         code,seq=self.run_case(interrupt=True);self.assertEqual(code,2)
         self.assertEqual(seq,['qualification-wait','qualification-dispatch','native-wait','connected-cleanup'])
+
+    def test_terminal_confirmation_still_requires_both_committed_decisions(self):
+        code,seq=self.run_case(attended=True);self.assertEqual(code,0)
+        self.assertEqual(seq,['qualification-confirmation','qualification-wait','qualification-dispatch','native-confirmation','native-wait','native-dispatch','connected-cleanup'])
+    def test_terminal_confirmation_without_commit_cannot_dispatch(self):
+        code,seq=self.run_case(attended=True,expire='qualification');self.assertEqual(code,2)
+        self.assertEqual(seq,['qualification-confirmation','qualification-wait','prequalification-purge'])
+    def test_terminal_decline_preserves_cleanup_at_each_stage(self):
+        code,seq=self.run_case(attended=True,decline='qualification');self.assertEqual(code,2)
+        self.assertEqual(seq,['qualification-confirmation','prequalification-purge'])
+        code,seq=self.run_case(attended=True,decline='native');self.assertEqual(code,2)
+        self.assertEqual(seq,['qualification-confirmation','qualification-wait','qualification-dispatch','native-confirmation','connected-cleanup'])

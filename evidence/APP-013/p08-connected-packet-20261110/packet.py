@@ -124,3 +124,132 @@ def execute_connected(cap,envelope,approve_native):
 
 if __name__=='__main__':
     raise SystemExit('PACKET_REQUIRES_GUARDED_BINDINGS_AND_SEPARATE_AUTHORITY')
+
+# AW1 only captures an explicitly delegated owner's local attestation. It never
+# writes a Git decision or substitutes for the existing capability validators.
+AW1_FILES={'qualification.json','native.json','result.json',*(stage+suffix for stage in ('qualification','native') for suffix in ('.aw1-review.json','.aw1-confirmation.json','.aw1-consumed.json','.aw1.lock','.aw1-next.json'))}
+
+def attended_consent(spec,reference,governance=G,clock=None,read_commit=None):
+    import time,re
+    clock=clock or time.time;authority=q.current_module('authority');read_commit=read_commit or authority.committed
+    q.need(isinstance(reference,dict) and set(reference)=={'commit','path','sha256'} and
+        isinstance(reference['commit'],str) and isinstance(reference['path'],str) and
+        re.fullmatch(r'[a-f0-9]{40}',reference['commit']) and
+        re.fullmatch(r'APP013_P08_ATTENDED_SESSION_[0-9]{8}\.json',reference['path']),'ATTENDED_CONSENT_REFERENCE')
+    raw=read_commit(governance,reference['commit'],reference['path'])
+    q.need(q.model.digest(raw)==reference['sha256'],'ATTENDED_CONSENT_HASH')
+    value=q.strict_json(raw)
+    expected={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_ATTENDED_TERMINAL_CONFIRMATIONS',
+        'recoveryId':spec['recoveryId'],'sourceCommit':spec['sourceCommit'],'specSha256':q.model.digest(spec),
+        'stages':['qualification','native'],'purgeEnd':spec['window']['purgeEnd'],
+        'nativeCost':{'allowanceUsd':0,'hardBillingCap':False,'existingLiabilitiesUnchanged':True}}
+    q.need(value==expected,'ATTENDED_CONSENT_SCOPE')
+    q.need(q.model.timestamp(spec['window']['start'])<=clock()<q.model.timestamp(value['purgeEnd']),'ATTENDED_CONSENT_WINDOW')
+    for name in ('packet.py','connected_launcher.py'):
+        rel='evidence/APP-013/p08-connected-packet-20261110/'+name
+        q.need(read_commit(B,spec['sourceCommit'],rel)==(B/rel).read_bytes(),'ATTENDED_SOURCE_DRIFT')
+    return value
+
+
+def stage_review(stage,spec,decision,envelope,consent):
+    q.need(stage in ('qualification','native'),'ATTENDED_STAGE')
+    operation=spec['qualificationId'] if stage=='qualification' else spec['prospectiveOperationId']
+    window=spec['window'] if stage=='qualification' else spec['prospectiveWindow']
+    common={'owner':'Debynyhan Banks','scopeSha256':q.model.digest(envelope)}
+    if stage=='qualification':
+        expected={**common,'decision':'APPROVE_EXACT_P08_CURRENT_QUALIFICATION','externalReadAuthorized':True,
+            'cleanupScopeSha256':q.model.digest(q.qualification_cleanup_scope(envelope))}
+        summary={'actions':['Read cloud identity/configuration/permissions and retired resources','Read test identity and same-job payment policy','Independent database closeout and private purge'],
+            'providerMutations':False,'limits':envelope['sdkReview']['limits'],'spendingAuthorized':False}
+    else:
+        expected={**common,'decision':'APPROVE_EXACT_P08_CONNECTED_PAYMENT','externalActionAuthorized':True,
+            'operationId':operation,'sourceManifestSha256':envelope['sourceManifestSha256']}
+        pay=envelope['payment'];resources=envelope['resources'];cost=consent['nativeCost']
+        q.need(type(pay['amountTotalCents']) is int and pay['amountTotalCents']>0 and pay['currency']=='usd','ATTENDED_PAYMENT_REVIEW')
+        q.need(envelope['plan']['allowanceUsd']==cost['allowanceUsd'] and resources==q.candidate_binding.resource_pins(q.current_module('authority').load('p08-restoration-local-20261028/source/restore.py','aw1_restore')),'ATTENDED_RESOURCE_COST')
+        summary={'actions':['Temporarily enable exact runtime identity, numeric secret versions and resource bindings','Activate bounded database role and candidate tag; normal traffic percentages unchanged','Create/delete owned restricted key; enable/close exact test identities','Enable existing Sandbox webhook; one same-job Sandbox Checkout and authentic event check','Mandatory independent cleanup and private purge'],
+            'sandboxOnly':True,'amountTotalCents':pay['amountTotalCents'],'currency':pay['currency'],
+            'candidate':resources['candidate'],'stripeVersion':resources['secretVersions']['signmons-staging-stripe-secret-key'],
+            'limits':spec['prospectiveLimits'],'paymentWorkEnd':spec['paymentWorkEnd'],'cost':cost,
+            'realChargesRefundsBookingCustomerMessagesAuthorized':False}
+    q.need(decision==expected,'ATTENDED_DECISION_SCOPE')
+    return {'stage':stage,'operationId':operation,'recoveryId':spec['recoveryId'],'sourceCommit':spec['sourceCommit'],
+        'decision':decision,'window':window,'summary':summary,'consentSha256':q.model.digest(consent)}
+
+
+def _attended_root(root,spec):
+    q.need(Path(root)==Path('/private/tmp/p08-public-review-'+spec['recoveryId']),'ATTENDED_REVIEW_ROOT')
+    q.inspect_current_root(Path(root),AW1_FILES)
+
+
+def _attended_lock(root,stage):
+    import os,fcntl
+    fd=os.open(Path(root)/(stage+'.aw1.lock'),os.O_CREAT|os.O_WRONLY|os.O_NOFOLLOW,0o600)
+    try:fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BaseException:os.close(fd);raise
+    return fd
+
+
+def _attended_publish(root,stage,name,value):
+    import os
+    root=Path(root);tmp=root/(stage+'.aw1-next.json')
+    q.model.reserve(tmp,value)
+    try:os.link(tmp,root/name) # Exclusive atomic publication, never replace a receipt.
+    finally:tmp.unlink()
+
+
+def capture_attended_confirmation(root,stage,spec,decision,envelope,reference,governance=G,clock=None,read_line=None,read_commit=None,emit=print):
+    import time,secrets,os
+    clock=clock or time.time
+    consent=attended_consent(spec,reference,governance,clock,read_commit)
+    review=stage_review(stage,spec,decision,envelope,consent)
+    _attended_root(root,spec);fd=_attended_lock(root,stage)
+    try:
+        _attended_root(root,spec)
+        now=clock();start=q.model.timestamp(review['window']['start']);cutoff=q.model.timestamp(review['window']['cutoff'])
+        q.need(start<=now<cutoff,'ATTENDED_INPUT_WINDOW')
+        nonce=secrets.token_hex(8);review.update(nonce=nonce,createdAt=now)
+        _attended_publish(root,stage,stage+'.aw1-review.json',review)
+        phrase='APPROVE '+('QUALIFICATION' if stage=='qualification' else 'SANDBOX')+' '+review['operationId'][:8]+' '+nonce
+        emit(json.dumps(review,indent=2));emit('Type '+phrase+' to approve this exact scope, or CANCEL. No default approval.')
+        if read_line is None:
+            q.need(sys.stdin.isatty(),'ATTENDED_TERMINAL_REQUIRED')
+            with q.current_module('acl').http_deadline(cutoff-clock()):answer=input('Decision: ')
+        else:answer=read_line('Decision: ')
+        checked=clock();q.need(now<=checked<cutoff,'ATTENDED_INPUT_DEADLINE')
+        q.need(answer==phrase,'ATTENDED_CONFIRMATION_REFUSED')
+        confirmation={'stage':stage,'operationId':review['operationId'],'recoveryId':spec['recoveryId'],
+            'sourceCommit':spec['sourceCommit'],'decisionSha256':q.model.digest(decision),'reviewSha256':q.model.digest(review),
+            'consentSha256':q.model.digest(consent),'nonce':nonce,'confirmedAt':checked,'expiresAt':cutoff}
+        _attended_publish(root,stage,stage+'.aw1-confirmation.json',confirmation)
+        emit('Confirmation recorded locally; awaiting independent verification and committed approval. '+('Next: hidden SQL password in this Terminal.' if stage=='qualification' else 'Next: existing native authentication and Sandbox Checkout flow. Stay in this attended session.'))
+        return confirmation
+    finally:os.close(fd)
+
+
+def verify_attended_confirmation(root,stage,spec,decision,expected_review,reference,governance=G,clock=None,read_commit=None):
+    """Operator-only verifier; consumes once, returns decision, never commits or runs it."""
+    import time,os,re
+    clock=clock or time.time;consent=attended_consent(spec,reference,governance,clock,read_commit)
+    # Operator reviews the sanitized summary, not retained private scope. Capture's
+    # source-bound renderer derives it from the actual envelope; never accept the
+    # confirmation record itself as the expected review.
+    expected=copy.deepcopy(expected_review)
+    q.need(stage in ('qualification','native') and set(expected)=={'stage','operationId','recoveryId','sourceCommit','decision','window','summary','consentSha256'},'ATTENDED_EXPECTED_REVIEW')
+    q.need(expected['stage']==stage and expected['operationId']==spec['qualificationId' if stage=='qualification' else 'prospectiveOperationId'] and expected['recoveryId']==spec['recoveryId'] and expected['sourceCommit']==spec['sourceCommit'] and expected['decision']==decision and expected['window']==spec['window' if stage=='qualification' else 'prospectiveWindow'] and expected['consentSha256']==q.model.digest(consent),'ATTENDED_EXPECTED_SCOPE')
+    q.need(decision.get('owner')=='Debynyhan Banks' and decision.get('decision')==('APPROVE_EXACT_P08_CURRENT_QUALIFICATION' if stage=='qualification' else 'APPROVE_EXACT_P08_CONNECTED_PAYMENT'),'ATTENDED_EXPECTED_DECISION')
+    _attended_root(root,spec);fd=_attended_lock(root,stage)
+    try:
+        _attended_root(root,spec);root=Path(root)
+        review=q.private_json(root/(stage+'.aw1-review.json'));confirmation=q.private_json(root/(stage+'.aw1-confirmation.json'))
+        q.need(set(review)==set(expected)|{'nonce','createdAt'} and all(review[k]==v for k,v in expected.items()),'ATTENDED_REVIEW_DRIFT')
+        q.need(isinstance(review['nonce'],str) and re.fullmatch('[a-f0-9]{16}',review['nonce']),'ATTENDED_NONCE')
+        now=clock();cutoff=q.model.timestamp(expected['window']['cutoff'])
+        q.need(type(review['createdAt']) in (int,float) and type(confirmation.get('confirmedAt')) in (int,float) and
+            q.model.timestamp(expected['window']['start'])<=review['createdAt']<=confirmation['confirmedAt']<=now<cutoff,'ATTENDED_CONFIRMATION_TIME')
+        q.need(confirmation=={'stage':stage,'operationId':expected['operationId'],'recoveryId':spec['recoveryId'],
+            'sourceCommit':spec['sourceCommit'],'decisionSha256':q.model.digest(decision),'reviewSha256':q.model.digest(review),
+            'consentSha256':q.model.digest(consent),'nonce':review['nonce'],'confirmedAt':confirmation['confirmedAt'],'expiresAt':cutoff},'ATTENDED_CONFIRMATION_DRIFT')
+        _attended_publish(root,stage,stage+'.aw1-consumed.json',{'decisionSha256':q.model.digest(decision),'consumedAt':now})
+        return copy.deepcopy(decision)
+    finally:os.close(fd)
