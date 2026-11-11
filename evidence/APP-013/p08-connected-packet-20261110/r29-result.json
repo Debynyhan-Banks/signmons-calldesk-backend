@@ -1,0 +1,46 @@
+{
+  "status": "R29_QUALIFICATION_STOPPED_CLEANLY",
+  "observedAt": "2026-11-11T22:42:06.908198+00:00",
+  "sourceCommit": "05b472ca9c673fdc15ce66cdb9bbde17b3a59d03",
+  "recoveryOperationId": "2f7f17e8-7bd0-4ad6-8c71-352603480441",
+  "qualificationOperationId": "496a0b53-7351-4e89-83c5-eb594a8532ce",
+  "recoveryAndDelegationApproval": "06d2224",
+  "qualificationApproval": "60a9620",
+  "ownerTerminalConfirmationVerifiedAndConsumed": true,
+  "qualification": {
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "failure": "CACHED_TOKEN_EXPIRED",
+    "failureStage": "cloud",
+    "transportReservations": {
+      "cache": 1,
+      "cli": 26,
+      "https": 0,
+      "sql": 2
+    },
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "liveObserved": true,
+    "residuals": [],
+    "databaseFailedChecks": []
+  },
+  "failureMeaning": "Cached token expiry did not exceed original purgeEnd; not proof it was already expired. No expiry timestamp or token retained.",
+  "purgeDeadline": "2026-11-11T23:36:00Z",
+  "purge": {
+    "completedAt": 1794436861.266885,
+    "onTime": true,
+    "operationId": "2f7f17e8-7bd0-4ad6-8c71-352603480441",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "independentQualificationCloseoutReserved": true,
+  "nativeReviewPresent": false,
+  "nativeStarted": false,
+  "paymentStarted": false,
+  "ownedProcessesAbsent": true,
+  "ownedTemporaryLaunchAndReferenceFilesAbsent": true,
+  "replayAllowed": false
+}
