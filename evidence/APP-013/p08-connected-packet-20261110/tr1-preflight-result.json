@@ -1,0 +1,20 @@
+{
+  "status": "TR1_PREFLIGHT_STOPPED_UNSTARTED",
+  "observedAt": "2026-11-11T22:48:45.817545+00:00",
+  "sourceCommit": "adb59ace240f1d21b925c32f8bd80c22066692ab",
+  "approvalCommit": "9857194",
+  "failure": "SOURCE_DRIFT",
+  "boundary": "legacy access_check.native_readiness -> verify_sources",
+  "mismatchPath": "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py",
+  "historicalExpected": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+  "actual": "31f27e95a3601d310b19b6c04c51410c11955ab135d2ef3f8adf8393b30013de",
+  "currentNativeManifestExpected": "31f27e95a3601d310b19b6c04c51410c11955ab135d2ef3f8adf8393b30013de",
+  "currentSourceChainPass": true,
+  "sdkInvocationReserved": false,
+  "sdkInvocations": 0,
+  "cacheReads": 0,
+  "credentialStoresRead": false,
+  "providerCalls": 0,
+  "operationReceiptDirectoryAbsent": true,
+  "disposition": "Stopped; no historical source pin altered or gate bypassed; renewal preflight reconciliation required"
+}
