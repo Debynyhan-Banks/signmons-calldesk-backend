@@ -39,7 +39,7 @@ export function portsFor(f,scenario='normal'){
    return super.query(sql,args);
  }},fetcher:async(url,opts)=>{
    let value;calls.push({url,method:opts.method});
-   if(url.startsWith('https://secretmanager.googleapis.com/')){secretReads++;value={name:'projects/'+f.e.plan.projectNumber+'/secrets/signmons-staging-stripe-secret-key/versions/1',payload:{data:Buffer.from('sk_test_SYNTHETIC_ONLY_1234567890'.replaceAll('_ONLY_','ONLY')).toString('base64')}};}
+   if(url.startsWith('https://secretmanager.googleapis.com/')){secretReads++;value={name:'projects/'+f.e.plan.projectNumber+'/secrets/signmons-staging-stripe-secret-key/versions/'+f.e.resources.secretVersions['signmons-staging-stripe-secret-key'],payload:{data:Buffer.from('sk_test_SYNTHETIC_ONLY_1234567890'.replaceAll('_ONLY_','ONLY')).toString('base64')}};}
    else if(url.startsWith('https://api.stripe.com/')){
      if(opts.method==='POST'){status=opts.body==='disabled=true'?'disabled':'enabled';hadDisable=status==='disabled';if(scenario==='lost_enable'&&status==='enabled')throw Error('lost response');if(scenario==='disable_failed'&&status==='disabled'){status='enabled';throw Error('disable refused');}}
      if(scenario==='disable_readback_failed'&&opts.method==='GET'&&hadDisable)throw Error('lost disable readback');

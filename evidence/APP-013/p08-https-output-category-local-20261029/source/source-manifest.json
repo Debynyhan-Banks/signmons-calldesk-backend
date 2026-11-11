@@ -3,7 +3,7 @@
     "composed_qualification.py": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a",
     "qualification_launch.py": "e558fb1a4f7288ffab4100b10c4e2decb332934666ba7e0776f02a4a9ebda3c8",
     "test_composed_qualification.py": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518",
-    "test_qualification_launch.py": "66d35dc410fdb412563e36d2c6563e7460078de5b4c6e7ac8c007dd395e3fbb0",
+    "test_qualification_launch.py": "8c8e5831643ae48d4369c996444b741ab9e1eff14ac9a5095e414f698a3a229b",
     "test_qualification_launch_postgres.py": "d0b3ba98761a3393070045eedf19563147aae9d4154290b21c842983ac312046"
   },
   "lockedSources": {
@@ -16,7 +16,7 @@
   "ownershipSha256": "65409264d701edf8201878f6d058dfbbc3302412e683b36913a81b4578e6b668",
   "producerDependencies": {
     "p08-key-correction-20261110/binding.py": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb",
-    "p08-key-correction-20261110/candidate.json": "b1207a40b9f595c9b4bfd73e4a61622d067aa812e5018ec2f72f481df178f5bf",
+    "p08-key-correction-20261110/candidate.json": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112",
     "p08-narrow-access-check-local-20261101/source/access_check.py": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9",
     "p08-native-entry-local-20261101/source/authority.py": "31f27e95a3601d310b19b6c04c51410c11955ab135d2ef3f8adf8393b30013de",
     "p08-native-entry-local-20261101/source/authority_bridge.mjs": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c",

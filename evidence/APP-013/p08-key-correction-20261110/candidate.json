@@ -1,7 +1,7 @@
 {
-  "state": "LEGACY",
-  "candidate": "signmons-calldesk-staging-app013p07atomic1",
-  "stripeVersion": "1",
-  "correctionOperationId": null,
-  "correctionReceiptSha256": null
+  "state": "CORRECTED",
+  "candidate": "signmons-calldesk-staging-p07key7e45dc512e17",
+  "stripeVersion": "2",
+  "correctionOperationId": "7e45dc51-2e17-481c-9128-63fa568725a4",
+  "correctionReceiptSha256": "2b9f1c11cda3632ccf30bab106d73166f7a15799f3163a1ec808604b1953cd34"
 }

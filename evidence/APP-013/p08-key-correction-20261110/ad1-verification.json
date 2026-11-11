@@ -1,0 +1,38 @@
+{
+  "status": "AD1_LOCAL_ADOPTION_VERIFIED",
+  "observedAt": "2026-11-11T20:49:57.814325+00:00",
+  "proposalCommit": "c1ce88d",
+  "ownerDecisionFile": "APP013_P08_AD1_DECISION_20261111.json",
+  "candidate": {
+    "state": "CORRECTED",
+    "candidate": "signmons-calldesk-staging-p07key7e45dc512e17",
+    "stripeVersion": "2",
+    "correctionOperationId": "7e45dc51-2e17-481c-9128-63fa568725a4",
+    "correctionReceiptSha256": "2b9f1c11cda3632ccf30bab106d73166f7a15799f3163a1ec808604b1953cd34"
+  },
+  "verification": {
+    "correctionPythonPassed": 52,
+    "keyNodePassed": 19,
+    "nativeEntryPassed": 30,
+    "qualificationRegressionPassed": 248,
+    "currentQualificationFocusedPassed": 23,
+    "governancePassed": 25,
+    "sourceResourceReceiptConsistency": true,
+    "architecturePassed": true,
+    "baselinePassed": true,
+    "whitespacePassed": true
+  },
+  "providerCalls": 0,
+  "historicalReceiptsUnchanged": true,
+  "runtimeProductionCodeChanged": false,
+  "notes": [
+    "Legacy correction fixtures explicitly model pre-adoption state; new test refuses correction after adoption before provider calls.",
+    "Current qualifier and native fixtures use adopted numeric version; synthetic full parent lifecycle191CLI stays within unchanged192 ceiling.",
+    "Initial sandbox-restricted broad regression interrupted; final full qualification suite passed with permissions for owned PTY and temporary Git fixtures.",
+    "Proposed evidence bundle bytes retained exactly as approved; actual owner authority lives in separate governance decision."
+  ],
+  "remaining": [
+    "Fresh source-bound connected payment qualification/execution and browser demonstration",
+    "Owner acceptance of3A"
+  ]
+}

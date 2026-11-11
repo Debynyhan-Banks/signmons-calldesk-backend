@@ -335,14 +335,14 @@ class CurrentProofTests(unittest.TestCase):
             'CUSTOMER_PAYMENT_RETURN_URL':'https://fixture.invalid/payment-return'}.items()]
         for name,secret in zip(('DATABASE_URL','STRIPE_WEBHOOK_SECRET','OPENAI_API_KEY','ADMIN_API_TOKEN','CONVERSATION_DATA_ENCRYPTION_KEY','TECHNICIAN_LINK_SECRET'),launch.SECRETS):
             self.environment.append({'name':name,'valueFrom':{'secretKeyRef':{'name':secret,'key':'1'}}})
-        self.environment.append({'name':'STRIPE_SECRET_KEY','valueFrom':{'secretKeyRef':{'name':'signmons-staging-stripe-secret-key','key':'1'}}})
+        self.environment.append({'name':'STRIPE_SECRET_KEY','valueFrom':{'secretKeyRef':{'name':'signmons-staging-stripe-secret-key','key':launch.CANDIDATE_CONFIG['stripeVersion']}}})
         self.b=binding(self.p);self.b.update(candidateImage=self.scope['resources']['image'],normalRevision=self.scope['resources']['normalRevision'])
         case=self
         class CurrentIO(FakeIO):
             proof=True
             def cli(obj,d,deadline):
                 if d['id']=='stripe_state':
-                    obj.calls.append(('cli',d));return obj.override.get('stripe_state',{'name':'projects/123456789012/secrets/signmons-staging-stripe-secret-key/versions/1','state':'ENABLED'})
+                    obj.calls.append(('cli',d));return obj.override.get('stripe_state',{'name':'projects/123456789012/secrets/signmons-staging-stripe-secret-key/versions/'+launch.CANDIDATE_CONFIG['stripeVersion'],'state':'DISABLED' if launch.CANDIDATE_CONFIG['state']=='CORRECTED' else 'ENABLED'})
                 value=super().cli(d,deadline)
                 if d['id']=='revision' and 'revision' not in obj.override:value['spec']['containers'][0]['env']=copy.deepcopy(case.environment)
                 if d['id']=='service' and 'service' not in obj.override:value['metadata']={'name':launch.SERVICE}

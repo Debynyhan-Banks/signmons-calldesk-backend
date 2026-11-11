@@ -1,0 +1,18 @@
+{
+  "status": "PROPOSED_ADOPTION_EVIDENCE_NOT_OWNER_ACCEPTED",
+  "correctionOperationId": "7e45dc51-2e17-481c-9128-63fa568725a4",
+  "candidate": "signmons-calldesk-staging-p07key7e45dc512e17",
+  "stripeVersion": "2",
+  "deploymentReceipt": {
+    "path": "evidence/APP-013/p08-key-correction-20261110/kr7-result.json",
+    "sha256": "11b33ffcca16934688e675e47f096ae417d7f0a8892fef42558f122c8fa00d80",
+    "commit": "3cfc6ff634d62871ab73d5fa42f634ee2c673f9e"
+  },
+  "retirementReceipt": {
+    "path": "evidence/APP-013/p08-key-correction-20261110/rc1-result.json",
+    "sha256": "45f338b5142fc29f14d7031d4b6705044a31b9ea5a85e9e437a0e7bbea645cd3",
+    "commit": "ae25e7c156500b52791d26270f960c015b4f5fd8"
+  },
+  "historicalResidualPreserved": true,
+  "adoptionAuthorized": false
+}

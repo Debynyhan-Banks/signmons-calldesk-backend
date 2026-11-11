@@ -20,12 +20,18 @@ from private_inventory import inspect, read, reserve, Stop
 
 sys.path.insert(0, str(a.APP / 'p08-native-closeout-local-20261031/source'))
 import test_adapter as ta
+LEGACY_FIXTURE_RESTORE=ta.restore
 
 
 class EntryTests(unittest.TestCase):
     def setUp(self):
-        self.f=ta.AdapterTests();self.f.setUp();f=self.f
+        self.f=ta.AdapterTests()
+        with patch.object(ta,'restore',LEGACY_FIXTURE_RESTORE):self.f.setUp()
+        f=self.f
         self.addCleanup(f.tearDown)
+        # Adapt only the inherited synthetic provider after its legacy constructor.
+        lifecycle_patch=patch.object(ta,'restore',entry.restore);lifecycle_patch.start();self.addCleanup(lifecycle_patch.stop)
+        f.runtime_state={x:False for x in entry.restore.operations({**f.p,'iam':[]})}
         now=int(time.time());f.now=now
         iso=lambda x:datetime.datetime.fromtimestamp(now+x,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         f.p['window']={'start':iso(-10),'cutoff':iso(120),'workEnd':iso(180),'cleanupEnd':iso(900),'purgeEnd':iso(950)}
@@ -33,8 +39,8 @@ class EntryTests(unittest.TestCase):
         self.root=Path('/private/tmp/p08-coordinator-'+f.p['operationId']);self.root.mkdir(mode=0o700)
         self.addCleanup(lambda:shutil.rmtree(self.root))
         self.path=self.root/'envelope.json'
-        resources={'candidate':ta.restore.CANDIDATE,'image':ta.restore.IMAGE,'normalRevision':ta.restore.NORMAL,
-                   'identity':ta.restore.IDENTITY,'secretVersions':{s:'1' for s in ta.restore.SECRETS}}
+        binding=a.load('p08-key-correction-20261110/binding.py','entry_test_active_binding')
+        resources=binding.resource_pins(entry.restore)
         self.e={'version':1,'execution':'PROOF_ONLY','plan':f.p,'target':f.target,
                 'database':{'host':'fixture.invalid','port':5432,'database':'fixture_child','user':'fixture_admin'},
                 'resources':resources,'limits':{'cli':180,'https':100,'sql':60,'child':6,'childRequests':200},
@@ -513,7 +519,9 @@ class ConnectedEntryTests(EntryTests):
         self.assertTrue(r['privateInputsAbsent'])
         self.assertFalse(self.path.exists())
         self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],9)
-        self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':5,'cli':181,'https':16,'sql':10})
+        # Corrected Stripe version adds its own activation/retirement readbacks; existing192 cap is unchanged.
+        self.assertLessEqual(read(self.root/'journal.json')['nativeEntry']['calls']['cli'],self.e['limits']['cli'])
+        self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':5,'cli':191,'https':16,'sql':10})
 
     def test_full_parent_failed_readbacks_have_finite_cleanup_budget(self):
         self.scenario='disable_readback_failed'
@@ -523,7 +531,8 @@ class ConnectedEntryTests(EntryTests):
         self.assertEqual(r['status'],'ENTRY_CONTAINMENT_UNCONFIRMED')
         self.assertIn('PAYMENT_ENDPOINT_UNCONFIRMED',r['residuals'])
         self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],14)
-        self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':6,'cli':181,'https':16,'sql':10})
+        self.assertLessEqual(read(self.root/'journal.json')['nativeEntry']['calls']['cli'],self.e['limits']['cli'])
+        self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':6,'cli':191,'https':16,'sql':10})
         self.assertTrue(r['privateInputsAbsent'])
         self.assertFalse(any(self.f.runtime_state.values()))
 

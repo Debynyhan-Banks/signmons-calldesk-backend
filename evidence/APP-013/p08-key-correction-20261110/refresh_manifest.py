@@ -23,4 +23,6 @@ for root,dep in [(q,'producerDependencies'),(n,'lockedSources')]:
  files|={root/name for name in v['files']};files|={APP/name for name in v[dep]}
 files.add(APP/'p08-connected-packet-20261110/packet.py')
 files.add(HERE/'kc1-result.json')
+# Adopted provenance is part of the same committed source boundary.
+if (HERE/'adoption-evidence-20261111.json').exists():files.add(HERE/'adoption-evidence-20261111.json')
 save(HERE/'source-manifest.json',{'status':'LOCAL_IMPLEMENTATION_NO_EXTERNAL_AUTHORITY','files':{str(p.relative_to(BACKEND)):sha(p) for p in files}})

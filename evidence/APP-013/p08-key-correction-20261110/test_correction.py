@@ -166,7 +166,21 @@ class InputOrderTests(unittest.TestCase):
 class BindingTests(unittest.TestCase):
  def cfg(self):
   op=str(uuid.uuid4());return {'state':'CORRECTED','candidate':c.candidate(op),'stripeVersion':'7','correctionOperationId':op,'correctionReceiptSha256':'a'*64}
- def test_active_binding_stays_legacy(self):self.assertEqual(binding.current()['state'],'LEGACY')
+ def test_active_binding_matches_approved_deployment_and_retirement(self):
+  cfg=binding.current();self.assertEqual(cfg['state'],'CORRECTED');self.assertEqual(cfg['stripeVersion'],'2')
+  bundle_path=c.HERE/'adoption-evidence-20261111.json';bundle=json.loads(bundle_path.read_text())
+  self.assertEqual(cfg['correctionReceiptSha256'],c.digest(bundle_path.read_bytes()))
+  for key in ('candidate','stripeVersion','correctionOperationId'):self.assertEqual(cfg[key],bundle[key])
+  receipts={}
+  for key in ('deploymentReceipt','retirementReceipt'):
+   ref=bundle[key];raw=(c.BACKEND/ref['path']).read_bytes();self.assertEqual(c.digest(raw),ref['sha256']);receipts[key]=json.loads(raw)
+  run=receipts['deploymentReceipt']['run'];retired=receipts['retirementReceipt']
+  self.assertEqual(run['operationId'],cfg['correctionOperationId']);self.assertEqual(run['candidate'],cfg['candidate']);self.assertTrue(run['candidateReadyObserved']);self.assertIsNone(run['failure'])
+  self.assertEqual(retired['targetOperationId'],run['operationId']);self.assertEqual(retired['status'],'KR7_RETIREMENT_OBSERVED')
+  self.assertEqual(len(retired['retirementPredicates']),17);self.assertTrue(all(x['retired'] is True for x in retired['retirementPredicates']))
+  self.assertTrue(retired['processAbsent']);self.assertTrue(retired['ownedTemporaryFilesAbsent'])
+  self.assertEqual(run['status'],'CORRECTION_CONTAINMENT_UNCONFIRMED') # Original record is never rewritten.
+
  def test_real_restore_commands_and_readbacks_bind_numeric_version(self):
   r=c.load('p08-restoration-local-20261028/source/restore.py','test_restore_binding');cfg=self.cfg();binding.apply_restore(r,cfg);p={'iam':[]}
   self.assertEqual(binding.resource_pins(r,cfg)['secretVersions'][binding.STRIPE],'7')

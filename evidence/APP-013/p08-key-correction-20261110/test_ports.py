@@ -7,6 +7,13 @@ import ports
 import binding
 class NativeSeamTests(unittest.TestCase):
  def setUp(self):
+  # These tests exercise the pre-adoption correction path explicitly.
+  self.active_binding=binding.current()
+  legacy={'state':'LEGACY','candidate':binding.LEGACY,'stripeVersion':'1','correctionOperationId':None,'correctionReceiptSha256':None}
+  self.legacy_patch=patch.object(binding,'current',return_value=legacy);self.legacy_patch.start();self.addCleanup(self.legacy_patch.stop)
+  self.qualifier_patch=patch.object(ports.q,'CANDIDATE_CONFIG',legacy);self.qualifier_patch.start();self.addCleanup(self.qualifier_patch.stop)
+  restore=binding.apply_restore(c.load('p08-restoration-local-20261028/source/restore.py','test_pre_adoption_restore'),legacy)
+  self.restore_patch=patch.object(ports.entry,'restore',restore);self.restore_patch.start();self.addCleanup(self.restore_patch.stop)
   self.now=int(time.time());self.plan={'operationId':str(uuid.uuid4()),'projectNumberSha256':'37d4aa0f46ca5b8f0b81b1148bda235a0f4a9a424b6b4638ec993d889563be54','window':{'start':self.now-5,'cutoff':self.now+60,'workEnd':self.now+300,'cleanupEnd':self.now+1000},'qualificationSha256':'0'*64,'sourceManifestSha256':'1'*64}
   self.port=ports.NativePorts(self.plan,None,{'cli':180,'https':40,'sql':40,'child':2});self.port.io.token='synthetic';self.port.io.password='synthetic'
   self.state={};self.commands=[];self.requests=[];self.login=False;self.env=[]
@@ -156,4 +163,11 @@ class NativeSeamTests(unittest.TestCase):
   self.env[-1]['valueFrom']['secretKeyRef']['key']='latest'
   with self.assertRaises(Exception):self.port.preflight(self.plan,self.port.gate())
   self.assertEqual(self.state,{})
+
+ def test_adopted_binding_refuses_correction_before_provider_calls(self):
+  self.commands.clear();self.requests.clear()
+  with patch.object(binding,'current',return_value=self.active_binding):
+   with self.assertRaisesRegex(c.Stop,'CORRECTION_ALREADY_ADOPTED'):self.port.preflight(self.plan,self.port.gate())
+  self.assertEqual(self.commands,[]);self.assertEqual(self.requests,[])
+
 if __name__=='__main__':unittest.main()
