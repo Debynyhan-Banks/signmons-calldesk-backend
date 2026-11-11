@@ -1,0 +1,16 @@
+{
+  "status": "LOCAL_BINDING_SERIALIZATION_CORRECTED",
+  "baselineSource": "a7ae8b3e82b302343d4c17c97721accdb806a3ae",
+  "reproducedBeforeFix": "CURRENT_OUTPUT at first secretBinding with SDK-style policy text",
+  "afterFix": {
+    "pythonTests": 28,
+    "nodeTests": 18,
+    "addAndRemoveExplicitJson": true,
+    "malformedOutputRefused": true,
+    "readbackPreserved": true
+  },
+  "providerCalls": 0,
+  "liveFailureExactCause": "UNKNOWN",
+  "existingVersion2": "Last observed disabled at KC1 independent closeout; no new live read",
+  "externalAuthority": false
+}

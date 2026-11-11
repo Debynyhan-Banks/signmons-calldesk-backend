@@ -48,7 +48,10 @@ class NativeSeamTests(unittest.TestCase):
    self.state[key]=args[2]=='enable';return ''
   if args[:2]==['secrets','get-iam-policy']:
    return json.dumps({'bindings':[{'role':'roles/secretmanager.secretAccessor','members':['serviceAccount:'+ports.entry.restore.IDENTITY]}] if self.state.get('binding:'+args[2]) else []})
-  if args[:2] in (['secrets','add-iam-policy-binding'],['secrets','remove-iam-policy-binding']):self.state['binding:'+args[2]]=args[1]=='add-iam-policy-binding';return ''
+  if args[:2] in (['secrets','add-iam-policy-binding'],['secrets','remove-iam-policy-binding']):
+   self.state['binding:'+args[2]]=args[1]=='add-iam-policy-binding'
+   policy={'bindings':[{'role':'roles/secretmanager.secretAccessor','members':['serviceAccount:'+ports.entry.restore.IDENTITY]}] if self.state['binding:'+args[2]] else [],'etag':'synthetic','version':1}
+   return json.dumps(policy) if '--format=json' in args else 'bindings: []\netag: synthetic\nversion: 1'
   raise AssertionError('Unexpected synthetic command '+str(args))
  def test_current_preflight_full_role_and_permissions(self):
   observed=self.port.preflight(self.plan,self.port.gate());self.assertEqual(set(observed),{'runtimeEnvironmentSha256','roleAclSha256','returnUrl'})
@@ -64,6 +67,25 @@ class NativeSeamTests(unittest.TestCase):
    self.port.change(k,n,False,self.port.gate(True));self.assertTrue(self.port.readback(k,n,False,self.port.gate(True)))
   self.assertFalse(any(self.state.values()));self.assertFalse(self.login)
   stripe=[a for a in self.commands if '--secret='+binding.STRIPE in a];self.assertTrue(stripe);self.assertTrue(all('7' in a for a in stripe))
+ def test_binding_output_is_explicit_json_for_add_and_remove(self):
+  self.port.expected=self.port.preflight(self.plan,self.port.gate())
+  name=ports.entry.restore.SECRETS[0]
+  for enabled in (True,False):
+   self.port.change('secretBinding',name,enabled,self.port.gate(True))
+   self.assertIn('--format=json',self.commands[-1])
+   self.assertTrue(self.port.readback('secretBinding',name,enabled,self.port.gate(True)))
+ def test_binding_malformed_output_has_safe_code_and_no_retry(self):
+  self.port.expected={'qualified':True}
+  for raw in ('', 'bindings: []', 'null', '[]', '{"bindings":[],"bindings":[]}'):
+   with self.subTest(raw=raw),patch.object(self.port.io,'cli',return_value=raw) as dispatch:
+    with self.assertRaisesRegex(c.Stop,'^BINDING_OUTPUT_INVALID$'):
+     self.port.change('secretBinding',ports.entry.restore.SECRETS[0],True,self.port.gate())
+    dispatch.assert_called_once()
+ def test_qualification_binding_mutation_refused_before_dispatch(self):
+  with patch.object(self.port.io,'cli') as dispatch:
+   with self.assertRaisesRegex(c.Stop,'QUALIFICATION_MUTATION_REFUSED'):
+    self.port.change('secretBinding',ports.entry.restore.SECRETS[0],True,self.port.gate())
+   dispatch.assert_not_called()
  def test_work_budget_reserves_cleanup(self):
   self.port.calls['cli']=90
   with self.assertRaisesRegex(c.Stop,'CALL_LIMIT'):self.port.spend('cli')

@@ -35,9 +35,18 @@ class NativePorts:
   restore=self.cap.modules['restore'];p={**self.cap.plan,'iam':[]}
   mutations=[restore.command(p,k,n,enabled) for k,n in restore.operations(p) if k!='role' for enabled in (True,False)]
   c.need(self.expected is not None or args not in mutations,'QUALIFICATION_MUTATION_REFUSED')
-  raw=self.io.cli(args)
+  binding_write=args in mutations and args[:2] in (['secrets','add-iam-policy-binding'],['secrets','remove-iam-policy-binding'])
+  # These SDK commands return policy objects; their default display is not JSON.
+  # Authorize the exact lifecycle vector first, then select its serialization.
+  raw=self.io.cli([*args,'--format=json'] if binding_write else args)
   if args[:2]==['auth','list']:return raw
-  if raw=='' and args in mutations:return {}
+  if raw=='' and args in mutations and not binding_write:return {}
+  if binding_write:
+   try:
+    value=q.strict_json(raw)
+    c.need(isinstance(value,dict),'BINDING_OUTPUT_INVALID')
+    return value
+   except Exception:raise c.Stop('BINDING_OUTPUT_INVALID') from None
   return q.strict_json(raw)
  def lifecycle(self,restore):
   class Lifecycle(restore.NativeAdapter):
