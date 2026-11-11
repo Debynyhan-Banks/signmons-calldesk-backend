@@ -1,0 +1,137 @@
+{
+  "run": {
+    "adopted": false,
+    "calls": {
+      "child": 2,
+      "cli": 123,
+      "https": 16,
+      "sql": 8
+    },
+    "candidate": "signmons-calldesk-staging-p07key7e45dc512e17",
+    "candidateReadyObserved": true,
+    "cleanupDiagnostics": [
+      {
+        "calls": {
+          "child": 1,
+          "cli": 62,
+          "https": 16,
+          "sql": 7
+        },
+        "category": "VALIDATION_STOP",
+        "code": "CURRENT_OUTPUT",
+        "stage": "CLEANUP_TAG"
+      }
+    ],
+    "failure": null,
+    "failureEvidence": null,
+    "operationId": "7e45dc51-2e17-481c-9128-63fa568725a4",
+    "privateInputsPersisted": false,
+    "readiness": {
+      "candidateTrafficPercent": 0,
+      "environmentExact": true,
+      "imageExact": true,
+      "liveness": 200,
+      "normalTrafficPercent": 100,
+      "readiness": 200
+    },
+    "residuals": [
+      "tag:app013-p07-atomic"
+    ],
+    "retainedResources": [],
+    "status": "CORRECTION_CONTAINMENT_UNCONFIRMED",
+    "stripeVersion": "2"
+  },
+  "journal": {
+    "candidate": "signmons-calldesk-staging-p07key7e45dc512e17",
+    "failure": null,
+    "intents": [
+      [
+        "version",
+        "signmons-staging-stripe-secret-key"
+      ],
+      [
+        "identity",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-stripe-secret-key"
+      ],
+      [
+        "role",
+        "p07_payment_runtime"
+      ],
+      [
+        "deploy",
+        "signmons-calldesk-staging-p07key7e45dc512e17"
+      ]
+    ],
+    "operationId": "7e45dc51-2e17-481c-9128-63fa568725a4",
+    "planSha256": "8e247d383099c12a9f290180b395bc499d537cd6933c66455f910bf4f1bc8bf8",
+    "readiness": {
+      "candidateTrafficPercent": 0,
+      "environmentExact": true,
+      "imageExact": true,
+      "liveness": 200,
+      "normalTrafficPercent": 100,
+      "readiness": 200
+    },
+    "version": "2"
+  },
+  "sourceCommit": "3cd66507576f5e17f713282e414067ae84c4a742",
+  "runApproval": "c841941",
+  "closeoutApproval": "b0252fb",
+  "processAbsent": true,
+  "independentCloseoutExecuted": false,
+  "independentWindowExpired": true,
+  "observedAt": "2026-11-11T20:34:44.257537+00:00",
+  "ownedTemporaryLaunchersAndSpecsAbsent": true
+}
