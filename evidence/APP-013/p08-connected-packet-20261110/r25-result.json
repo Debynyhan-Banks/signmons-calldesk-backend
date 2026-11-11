@@ -1,0 +1,68 @@
+{
+  "status": "R25_CONSUMED_PASSWORD_TIMEOUT_PRIVATE_PURGE_VERIFIED",
+  "observedAt": "2026-11-11T21:25:17.408290+00:00",
+  "sourceCommit": "b0ab7b74df4924e4b3e58155102df8a6d06bfb11",
+  "recoveryApproval": "cff754c",
+  "qualificationApproval": "e8a4eba",
+  "recoveryResult": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": null,
+    "liveObserved": true,
+    "purgeEnd": "2026-11-11T22:10:00Z",
+    "residuals": [],
+    "status": "HANDOFF_RETAINED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "privatePurge": {
+    "completedAt": 1794432241.546035,
+    "onTime": true,
+    "operationId": "745d8fbd-38f0-4def-a370-82880b7096b9",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "qualificationResult": {
+    "candidate": null,
+    "databaseFailedChecks": [],
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "RECOVERY_PASSWORD_TIMEOUT",
+    "failureStage": "preparation",
+    "liveObserved": false,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [
+      "CLOSEOUT_UNCONFIRMED",
+      "INDEPENDENT_UNCONFIRMED"
+    ],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 0,
+      "cli": 0,
+      "https": 0,
+      "sql": 0
+    }
+  },
+  "qualificationRecoveryResult": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "liveObserved": false,
+    "privateInputsAbsent": true,
+    "residuals": [
+      "OWNED_PROCESS_HISTORY_UNKNOWN",
+      "SESSIONS_UNCONFIRMED",
+      "RECOVERY_PASSWORD_TIMEOUT",
+      "PROCESS_CLEANUP_UNCONFIRMED"
+    ],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED"
+  },
+  "guardAndConnectedProcessesAbsent": true,
+  "ownedLauncherAbsent": true,
+  "nativeStageStarted": false,
+  "nativeRootAbsent": true
+}
