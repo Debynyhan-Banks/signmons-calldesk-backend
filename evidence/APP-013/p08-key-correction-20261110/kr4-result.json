@@ -1,0 +1,93 @@
+{
+  "operationId": "78fff79e-c0b4-4ede-8141-15fd8280224f",
+  "sourceCommit": "f103a8bfd0e54d77891afd92983a0ad20e0f27dd",
+  "runApprovalCommit": "82a4a34ec4ed6f10022398e0e2f9cf6a84baf1c1",
+  "closeoutApprovalCommit": "19907d5443158a817f82dd35d67f172ac8ba2998",
+  "run": {
+    "adopted": false,
+    "calls": {
+      "child": 1,
+      "cli": 27,
+      "https": 12,
+      "sql": 2
+    },
+    "candidate": "signmons-calldesk-staging-p07key78fff79ec0b4",
+    "candidateReadyObserved": false,
+    "cleanupDiagnostics": [],
+    "failure": "KEY_ENDPOINT_PIN",
+    "failureEvidence": {
+      "calls": {
+        "child": 1,
+        "cli": 27,
+        "https": 12,
+        "sql": 2
+      },
+      "category": "VALIDATION_STOP",
+      "code": "KEY_ENDPOINT_PIN",
+      "stage": "SANDBOX_KEY"
+    },
+    "operationId": "78fff79e-c0b4-4ede-8141-15fd8280224f",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_AWAITING_INDEPENDENT_CLOSEOUT",
+    "stripeVersion": null
+  },
+  "closeout": {
+    "adopted": false,
+    "calls": {
+      "child": 0,
+      "cli": 0,
+      "https": 0,
+      "sql": 0
+    },
+    "candidate": "signmons-calldesk-staging-p07key78fff79ec0b4",
+    "candidateReadyObserved": false,
+    "cleanupDiagnostics": [],
+    "failure": "KEY_ENDPOINT_PIN",
+    "failureEvidence": {
+      "calls": {
+        "child": 1,
+        "cli": 27,
+        "https": 12,
+        "sql": 2
+      },
+      "category": "VALIDATION_STOP",
+      "code": "KEY_ENDPOINT_PIN",
+      "stage": "SANDBOX_KEY"
+    },
+    "operationId": "78fff79e-c0b4-4ede-8141-15fd8280224f",
+    "privateInputsPersisted": false,
+    "readiness": null,
+    "residuals": [],
+    "retainedResources": [],
+    "status": "CORRECTION_CLOSED",
+    "stripeVersion": null
+  },
+  "journal": {
+    "candidate": "signmons-calldesk-staging-p07key78fff79ec0b4",
+    "failure": "KEY_ENDPOINT_PIN",
+    "failureEvidence": {
+      "calls": {
+        "child": 1,
+        "cli": 27,
+        "https": 12,
+        "sql": 2
+      },
+      "category": "VALIDATION_STOP",
+      "code": "KEY_ENDPOINT_PIN",
+      "stage": "SANDBOX_KEY"
+    },
+    "intents": [],
+    "operationId": "78fff79e-c0b4-4ede-8141-15fd8280224f",
+    "planSha256": "37fdbfda3f28296fecfc43e6573b30aa7a026483988b8c2769389e7341e14108",
+    "readiness": null,
+    "version": null
+  },
+  "processAbsent": true,
+  "providerMutations": 0,
+  "stripeRequests": 0,
+  "privateInputsPersisted": false,
+  "ownedLaunchersAndSpecsRemoved": true
+}
