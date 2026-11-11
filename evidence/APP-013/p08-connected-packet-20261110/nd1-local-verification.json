@@ -1,0 +1,41 @@
+{
+  "section": "APP-013/3A/P08/ND1",
+  "status": "LOCAL_DIAGNOSTIC_CORRECTION_VERIFIED",
+  "ownerApproval": "User approved ND1 local correction in chat before implementation",
+  "baseSource": "c2e2923e7a7e1b2e626f913a968684aee43b3a69",
+  "observedAt": "2026-11-11T23:25:09.109101+00:00",
+  "runtimeManifestSha256": "a139b3b868f9c7032334b1770adc3ff1a075cfeaa2a6a7e55eb0c7fd2503621d",
+  "tests": {
+    "native": 32,
+    "nativePreflightCasesWithinSuite": 20,
+    "connectedPacket": 38,
+    "correction": 52,
+    "qualification": {
+      "passedSandbox": 230,
+      "blockedSandboxProcessInspection": 1,
+      "blockedTestHostRerunPassed": 1
+    },
+    "composedQualification": 17,
+    "governance": 25
+  },
+  "checks": [
+    "current native sources",
+    "qualification local manifest and locked sources",
+    "backend governance baseline",
+    "governance frozen baseline and consistency",
+    "architecture",
+    "whitespace"
+  ],
+  "limitations": [
+    "R30 original cause remains UNKNOWN",
+    "No live execution or payment acceptance",
+    "Initial two native sandbox loopback cases passed on host rerun",
+    "Qualification parent-death test required host ps permission; focused rerun passed"
+  ],
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "historicalSourcesChanged": false,
+  "acceptedWalkthrough": "4/8",
+  "section3A": "OPEN",
+  "scopeDeviation": "None beyond owner-approved ND1 correction"
+}

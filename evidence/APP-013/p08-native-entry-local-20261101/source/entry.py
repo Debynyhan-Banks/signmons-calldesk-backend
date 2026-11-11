@@ -17,6 +17,28 @@ c, bridge, restore = readbacks.load_sources()
 load("p08-key-correction-20261110/binding.py", "runtime_candidate_binding").apply_restore(restore)
 
 
+# Only fixed, reviewed preflight codes may cross the historical coordinator boundary.
+# Never classify by a message pattern or persist arbitrary exception text.
+PREFLIGHT_CODES = frozenset({
+    'ROLE_OUTPUT_UNKNOWN', 'ROLE_IDENTITY_UNKNOWN', 'ROLE_DEADLINE',
+    'ROLE_NOT_READY', 'ROLE_READ_UNCONFIRMED', 'ROLE_EXPECTATION_DRIFT',
+    'ROLE_ACL_UNKNOWN', 'ROLE_ACL_DRIFT', 'ACL_SOURCE_DRIFT', 'OWNER_MISMATCH',
+    'CANDIDATE_SOURCE', 'ENVIRONMENT_DRIFT', 'CUSTOM_ROLE_DRIFT',
+    'POLICY_SHAPE', 'POLICY_DRIFT', 'TRAFFIC_SHAPE', 'NORMAL_TRAFFIC',
+    'PROJECT_DRIFT', 'BINDING_PRESENT', 'SERVICE_SHAPE',
+    'POLICY_OWNERSHIP', 'POLICY_CONDITION', 'CLI_OUTPUT_SHAPE',
+    'NATIVE_COMMAND_UNCONFIRMED', 'NATIVE_COMMAND_REFUSED',
+    'NATIVE_OUTPUT_SHAPE', 'NATIVE_OUTPUT_ENCODING', 'OWNER_DRIFT',
+    'OWNER_OVERRIDE', 'TOKEN_SHAPE', 'CLI_VECTOR', 'SQL_ALLOWLIST',
+    'DATABASE_PROCESS_TIMEOUT', 'DATABASE_PROCESS_UNAVAILABLE',
+    'DATABASE_TLS_CONFIGURATION', 'DATABASE_AUTHENTICATION',
+    'DATABASE_CONNECTION', 'DATABASE_SCHEMA_OR_QUERY',
+    'DATABASE_ERROR_OUTPUT_LIMIT', 'DATABASE_STATEMENT_TIMEOUT',
+    'DATABASE_COMMAND_FAILED', 'DATABASE_OUTPUT_LIMIT', 'DATABASE_OUTPUT_ENCODING',
+    'CLOCK_ROLLBACK', 'DEADLINE', 'INTERRUPTED', 'PAYMENT_PREFLIGHT_STOP',
+})
+
+
 class RuntimeAdapter(restore.NativeAdapter):
     """Full ACL validation at each inherited phase readback, including independent closure."""
     def __init__(self, cap, io, clock=time.time):
@@ -138,6 +160,19 @@ class Coordinator(c.Coordinator):
         self.j['nativeEntry'] = {'envelopeSha256': cap.envelope_hash,
             'calls': {k: 0 for k in ('cli','https','sql','child')}}
         cap.coordinator = self
+
+    def invoke(self, method, *args, owner, cleanup=False):
+        if method != 'preflight' or cleanup:
+            return super().invoke(method, *args, owner=owner, cleanup=cleanup)
+        self.j['preflightStage'] = ('RUNTIME_PREFLIGHT' if owner is self.runtime
+                                    else 'ACCESS_PREFLIGHT')
+        self.save()
+        try:
+            return super().invoke(method, *args, owner=owner, cleanup=cleanup)
+        except BaseException as error:
+            code = (error.args[0] if isinstance(error, (Stop, restore.Stop, bridge.packet.Stop, c.Stop))
+                    and len(error.args) == 1 and type(error.args[0]) is str else None)
+            raise c.Stop(code if code in PREFLIGHT_CODES else 'LOCAL_ADAPTER_OR_SOURCE_STOP') from None
 
     def closeout(self, independent=False):
         self.io.cleanup = True

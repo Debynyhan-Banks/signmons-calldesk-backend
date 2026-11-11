@@ -108,6 +108,40 @@ class EntryTests(unittest.TestCase):
     def run_entry(self,mode='run'):
         return entry.run_entry(self.path,mode,self.factory)
 
+    def test_preflight_diagnostics_through_actual_run_and_cleanup(self):
+        cases = [
+            (Stop('ROLE_OUTPUT_UNKNOWN'), 'ROLE_OUTPUT_UNKNOWN'),
+            (Stop('ROLE_ACL_DRIFT'), 'ROLE_ACL_DRIFT'),
+            (entry.restore.Stop('OWNER_MISMATCH'), 'OWNER_MISMATCH'),
+            (entry.bridge.packet.Stop('PROJECT_DRIFT'), 'PROJECT_DRIFT'),
+            (entry.c.Stop('INTERRUPTED'), 'INTERRUPTED'),
+            (Stop('UNREVIEWED_CODE'), 'LOCAL_ADAPTER_OR_SOURCE_STOP'),
+            (Stop('synthetic-private-password'), 'LOCAL_ADAPTER_OR_SOURCE_STOP'),
+            (ValueError('ROLE_OUTPUT_UNKNOWN'), 'LOCAL_ADAPTER_OR_SOURCE_STOP'),
+            (RuntimeError('synthetic-private-password'), 'LOCAL_ADAPTER_OR_SOURCE_STOP'),
+            (KeyboardInterrupt(), 'LOCAL_ADAPTER_OR_SOURCE_STOP'),
+        ]
+        for stage, adapter in [('RUNTIME_PREFLIGHT', entry.RuntimeAdapter),
+                               ('ACCESS_PREFLIGHT', entry.Ports)]:
+            for error, expected in cases:
+                with self.subTest(stage=stage, error=type(error).__name__, expected=expected):
+                    t=EntryTests();t.setUp()
+                    try:
+                        with patch.object(adapter, 'preflight', side_effect=error):
+                            result=t.run_entry()
+                        journal=read(t.root/'journal.json')
+                        self.assertEqual(journal['preflightStage'],stage)
+                        self.assertEqual(journal['failure'],expected)
+                        self.assertEqual(journal['runtimeAttempted'],[])
+                        self.assertEqual(journal['iamAttempted'],[])
+                        self.assertFalse(journal['authAttempted'])
+                        self.assertFalse(result['authenticationObserved'])
+                        self.assertEqual(result['status'],'ENTRY_CLOSED')
+                        self.assertTrue(result['privateInputsAbsent'])
+                        self.assertEqual(result['residuals'],[])
+                        self.assertNotIn('synthetic-private-password',json.dumps(journal))
+                    finally:t.doCleanups()
+
     def test_assembled_positive_authoritative_readback_and_private_purge(self):
         r=self.run_entry()
         self.assertEqual(r['status'],'ENTRY_CLOSED',r)
