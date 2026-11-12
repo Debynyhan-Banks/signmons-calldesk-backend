@@ -1,0 +1,29 @@
+{
+  "operationId": "109964d4-5156-4788-831e-5ff08f937952",
+  "scopeSha256": "420ba34ee34ce8b7db5e68caddf0d52fadee47731ab3411e41cfed51c622d2ae",
+  "ownerMatched": false,
+  "projectMatched": false,
+  "identityMatched": false,
+  "disabled": null,
+  "state": "UNKNOWN",
+  "failure": "CLI_SCOPE",
+  "reservations": 1,
+  "mutationCalls": 0,
+  "ownedProcessCleanupVerified": true,
+  "ownedPids": [],
+  "finishedAt": 1794496890.48962,
+  "onTime": true,
+  "approvalCommit": "5e7963b",
+  "providerCalls": 0,
+  "executorAbsent": true,
+  "independentProcessCleanupVerified": true,
+  "receiptModesVerified": true,
+  "temporaryExecutorRemoved": true,
+  "preReservationStops": [
+    "COMMITTED_REFERENCE",
+    "DESCRIPTORS"
+  ],
+  "cause": "Operational wrapper passed JSON argv list to exact tuple descriptor validator; CLI_SCOPE before subprocess spawn.",
+  "runtimeIdentityState": "UNKNOWN",
+  "replayAuthorized": false
+}
