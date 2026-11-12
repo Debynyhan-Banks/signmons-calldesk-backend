@@ -1,0 +1,80 @@
+{
+  "status": "R38_CONSUMED_CONTAINMENT_UNCONFIRMED",
+  "sourceCommit": "c0beb1fcedc24290fd06d128b92279deace3e388",
+  "approvals": {
+    "recovery": "42522ae",
+    "qualification": "bc072d3",
+    "native": "a7990a4"
+  },
+  "result": {
+    "authProofReady": false,
+    "authenticationObserved": false,
+    "childResultSha256": null,
+    "liveAuthorization": true,
+    "operationId": "0140c900-a13a-4ed4-aef7-95dd1255ba1c",
+    "paymentObserved": false,
+    "paymentReadyForAcceptance": false,
+    "privateInputsAbsent": true,
+    "residuals": [
+      "RUNTIME:identity:signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+    ],
+    "status": "ENTRY_CONTAINMENT_UNCONFIRMED"
+  },
+  "journal": {
+    "phase": "CLOSED",
+    "failure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+    "preflightStage": "ACCESS_PREFLIGHT",
+    "runtimeAttempted": [
+      [
+        "version",
+        "signmons-staging-stripe-secret-key"
+      ],
+      [
+        "identity",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+      ]
+    ],
+    "runtimeOwned": [
+      [
+        "version",
+        "signmons-staging-stripe-secret-key"
+      ]
+    ],
+    "runtimeCleanupAttempted": [
+      [
+        "identity",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+      ],
+      [
+        "version",
+        "signmons-staging-stripe-secret-key"
+      ]
+    ],
+    "authAttempted": false,
+    "authProofAccepted": false,
+    "keyCreateAttempted": false,
+    "iamAttempted": [],
+    "residuals": [
+      "RUNTIME:identity:signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+    ],
+    "nativeEntry": {
+      "calls": {
+        "child": 1,
+        "cli": 78,
+        "https": 1,
+        "sql": 3
+      },
+      "envelopeSha256": "0f3ffcaebee67dda2b0e42e9ae312753293807ecc12820feb83db3f0a60283fa"
+    }
+  },
+  "recoveryResourceCloseoutVerified": true,
+  "purge": {
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "onTime": true,
+    "rawFilesAbsent": true,
+    "residuals": []
+  },
+  "ownedProcessesIndependentlyAbsent": true,
+  "replayAllowed": false,
+  "unresolved": "Runtime identity cleanup state; exact activation/cleanup failure cause UNKNOWN"
+}
