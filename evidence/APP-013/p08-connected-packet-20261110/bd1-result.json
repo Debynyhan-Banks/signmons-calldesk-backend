@@ -1,0 +1,72 @@
+{
+  "section": "APP-013/3A/P08/BD1",
+  "status": "BD1_CONSUMED_SUCCEEDED_CLOSED",
+  "observedAt": "2026-11-12T13:32:06.383961+00:00",
+  "sourceCommit": "9bae04860292bcfeca8591570b30627ff60c588d",
+  "approvalCommit": "4eb808e",
+  "result": {
+    "billingDiagnostic": {
+      "accountMatched": true,
+      "billingEnabled": true,
+      "projectMatched": true,
+      "shapeValid": true
+    },
+    "candidate": null,
+    "cliReservations": 3,
+    "executionReady": false,
+    "failure": null,
+    "liveObserved": true,
+    "operationId": "29969570-0f53-43ea-9f30-2603c0139d17",
+    "ownerMatched": true,
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "scopeSha256": "958e31e8f2e813ffae79407426520e8ddb3183ea1cb74327256dd088c6354bce",
+    "status": "BILLING_METADATA_OBSERVED"
+  },
+  "independentCloseout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "29969570-0f53-43ea-9f30-2603c0139d17",
+    "processCleanupVerified": true,
+    "residuals": [],
+    "scopeSha256": "958e31e8f2e813ffae79407426520e8ddb3183ea1cb74327256dd088c6354bce"
+  },
+  "commandResults": [
+    {
+      "descriptorId": "billing_project",
+      "elapsedMilliseconds": 777,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "29969570-0f53-43ea-9f30-2603c0139d17",
+      "scopeSha256": "958e31e8f2e813ffae79407426520e8ddb3183ea1cb74327256dd088c6354bce"
+    },
+    {
+      "descriptorId": "owner",
+      "elapsedMilliseconds": 427,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "29969570-0f53-43ea-9f30-2603c0139d17",
+      "scopeSha256": "958e31e8f2e813ffae79407426520e8ddb3183ea1cb74327256dd088c6354bce"
+    },
+    {
+      "descriptorId": "project",
+      "elapsedMilliseconds": 763,
+      "failureCode": null,
+      "matched": true,
+      "operationId": "29969570-0f53-43ea-9f30-2603c0139d17",
+      "scopeSha256": "958e31e8f2e813ffae79407426520e8ddb3183ea1cb74327256dd088c6354bce"
+    }
+  ],
+  "ownedExecutorAndChildrenIndependentlyAbsent": true,
+  "receiptModesVerified": true,
+  "ownedTemporaryRequestAndExecutorAbsent": true,
+  "billingChanges": 0,
+  "sqlCalls": 0,
+  "paymentObserved": false,
+  "sdkAuthenticationRequestCount": "UNKNOWN",
+  "sdkCacheMaintenanceAuthorized": true,
+  "replayAllowed": false,
+  "meaning": "Current billing-project read succeeded with enabled billing and exact expected account/project. Original R33 nonzero exit cause remains UNKNOWN; PS1 native behavior not tested by BD1."
+}
