@@ -505,18 +505,21 @@ class NativeIO:
             if process.stdout:process.stdout.close()
             if process.stderr:process.stderr.close()
 
-    def _owned_run(self,argv,env,deadline,*,billing_diagnostic=False):
+    def _owned_run(self,argv,env,deadline,*,billing_diagnostic=False,sql_diagnostic=False):
         import selectors,time
         need(not self.closed and self.clock()+2<deadline,'PROCESS_DEADLINE')
+        need(not (billing_diagnostic and sql_diagnostic),'DIAGNOSTIC_COMMAND')
+        if sql_diagnostic:
+            need(isinstance(self,RoleDiagnosticIO) and self.cap.sql_diagnostic and argv==sql_diagnostic_argv() and env.get('LC_ALL')=='C','DIAGNOSTIC_COMMAND')
         if billing_diagnostic:
             need(tuple(argv)==next(d['argv'] for d in cli_contract() if d['id']=='billing_project'),'DIAGNOSTIC_COMMAND')
         process=subprocess.Popen(argv,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
-             stderr=subprocess.PIPE if billing_diagnostic else subprocess.DEVNULL,env=env,start_new_session=True)
+             stderr=subprocess.PIPE if billing_diagnostic or sql_diagnostic else subprocess.DEVNULL,env=env,start_new_session=True)
         self.children.add(process);chunks=[];size=0;failure=None
         last=self.clock();hard_end=time.monotonic()+max(0,deadline-last-2)
         selector=selectors.DefaultSelector();errors=[]
         try:
-            streams=[process.stdout]+([process.stderr] if billing_diagnostic else [])
+            streams=[process.stdout]+([process.stderr] if billing_diagnostic or sql_diagnostic else [])
             for stream in streams:
                 os.set_blocking(stream.fileno(),False);selector.register(stream,selectors.EVENT_READ)
             while selector.get_map():
@@ -531,7 +534,7 @@ class NativeIO:
                     (errors if key.fileobj is process.stderr else chunks).append(data)
             code=process.wait(timeout=max(.01,deadline-2-self.clock()))
             if code!=0:
-                raise model.Stop(billing_error_category(b''.join(errors)) if billing_diagnostic else 'PROCESS_REFUSED')
+                raise model.Stop(billing_error_category(b''.join(errors)) if billing_diagnostic else sql_error_category(b''.join(errors)) if sql_diagnostic else 'PROCESS_REFUSED')
         except BaseException as error:
             failure=str(error) if isinstance(error,model.Stop) else 'PROCESS_UNCONFIRMED'
         finally:
@@ -591,15 +594,19 @@ class NativeIO:
     def sql(self, descriptor, password, deadline):
         need(not self.closed and self.clock() < deadline and isinstance(password, str) and password, "SQL_DEADLINE")
         operator = _operator_module()
-        need(descriptor in ((self.cap.query,sql_contract()[1]) if isinstance(self,RoleDiagnosticIO) else recovery_sql_contract(self.cap.e['version']) if isinstance(self,BindingRecoveryIO) else current_sql_contract()), "SQL_ALLOWLIST")
+        need(descriptor in ((self.cap.query,) if isinstance(self,RoleDiagnosticIO) and self.cap.sql_diagnostic else (self.cap.query,sql_contract()[1]) if isinstance(self,RoleDiagnosticIO) else recovery_sql_contract(self.cap.e['version']) if isinstance(self,BindingRecoveryIO) else current_sql_contract()), "SQL_ALLOWLIST")
         sql = descriptor["sql"]
         need(sql is not None, "SQL_ALLOWLIST")
         env = ({k:v for k,v in sdk_environment(os.environ).items() if not k.startswith("CLOUDSDK_")} if isinstance(self,(QualificationIO,BindingRecoveryIO,ProjectDiagnosticIO,ProjectPermissionIO,RoleDiagnosticIO)) else {k: v for k, v in os.environ.items() if not k.startswith("PG") and k != "DATABASE_URL"})
         env.update({"PGPASSWORD": password, "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/cert.pem", "PGCONNECT_TIMEOUT": "10", "PGAPPNAME": "signmons_p08_qualification_" + self.binding_operation_id, "PGOPTIONS": "-c statement_timeout=15000 -c lock_timeout=5000"})
         timeout = max(1, min(25, int(deadline - self.clock())))
         try:
-            raw=self._owned_run([operator.PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',operator.DB_HOST,
-                '-U','neondb_owner','-d','neondb','-c',sql],env,min(deadline,self.clock()+25))
+            if isinstance(self,RoleDiagnosticIO) and self.cap.sql_diagnostic:
+                env['LC_ALL']='C'
+                raw=self._owned_run(sql_diagnostic_argv(),env,min(deadline,self.clock()+25),sql_diagnostic=True)
+            else:
+                raw=self._owned_run([operator.PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',operator.DB_HOST,
+                    '-U','neondb_owner','-d','neondb','-c',sql],env,min(deadline,self.clock()+25))
         finally:env['PGPASSWORD']=''
         try:raw=raw.decode('utf-8','strict').strip()
         except UnicodeError:raise model.Stop('DATABASE_OUTPUT') from None
@@ -2309,7 +2316,7 @@ ROLE_FAILURES=frozenset({'ROLE_OUTPUT_UNKNOWN','ROLE_IDENTITY_UNKNOWN','ROLE_NOT
 
 
 def role_diagnostic_failure(error):
-    return str(error) if isinstance(error,model.Stop) and str(error) in ROLE_FAILURES else 'ROLE_READ_UNCONFIRMED'
+    return str(error) if isinstance(error,model.Stop) and str(error) in ROLE_FAILURES|SQL_DIAGNOSTIC_FAILURES else 'ROLE_READ_UNCONFIRMED'
 
 
 def role_diagnostic_observation(raw):
@@ -2597,6 +2604,53 @@ def role_runtime_files():
     return (_operator_module().PSQL,ROLE_DIAGNOSTIC_PYTHON,ROLE_DIAGNOSTIC_CA)
 
 
+SQL_DIAGNOSTIC_LIBPQ='/opt/homebrew/opt/postgresql@16/lib/libpq.5.dylib'
+SQL_DIAGNOSTIC_FAILURES=frozenset({'SQL_AUTHENTICATION_REFUSED','SQL_PERMISSION_REFUSED','SQL_CONNECTION_REFUSED',
+    'SQL_TLS_REFUSED','SQL_NAME_RESOLUTION_REFUSED','SQL_CONNECTION_TIMEOUT','SQL_ERROR_UNKNOWN',
+    'SQL_IDENTITY_UNCONFIRMED','SQL_SESSIONS_PRESENT','SQL_OUTPUT_UNKNOWN'})
+
+
+def sql_session_contract():
+    return {'id':'sql_connection_sessions','readOnly':True,'sql':"SELECT json_build_object('databaseMatched',current_database()='neondb','userMatched',current_user='neondb_owner','sessionsAbsent',NOT EXISTS(SELECT 1 FROM pg_stat_activity WHERE (usename='p07_payment_runtime' OR application_name LIKE 'signmons_p08_qualification_%') AND pid<>pg_backend_pid()));"}
+
+
+def sql_diagnostic_argv():
+    op=_operator_module()
+    return [op.PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate','-h',op.DB_HOST,
+            '-U','neondb_owner','-d','neondb','-c',sql_session_contract()['sql']]
+
+
+def sql_error_category(raw):
+    # Installed psql's sqlstate format and libpq's C-locale connection messages.
+    # No raw error text, identifiers or SQLSTATE values enter receipts.
+    if not isinstance(raw,bytes) or len(raw)>MAX_OUTPUT:return 'SQL_ERROR_UNKNOWN'
+    try:text=raw.decode('utf-8','strict').strip()
+    except UnicodeError:return 'SQL_ERROR_UNKNOWN'
+    m=re.fullmatch(r'(?:ERROR|FATAL):\s+([0-9A-Z]{5})',text)
+    if m:
+        code=m.group(1)
+        return {'28P01':'SQL_AUTHENTICATION_REFUSED','28000':'SQL_AUTHENTICATION_REFUSED',
+                '42501':'SQL_PERMISSION_REFUSED','08001':'SQL_CONNECTION_REFUSED','08006':'SQL_CONNECTION_REFUSED'}.get(code,'SQL_ERROR_UNKNOWN')
+    # Exactly one connection failure line: multiple addresses/errors stay unknown.
+    prefix=r'psql: error: connection to server at "[^"\r\n]+"(?: \([^\r\n]+\))?, port [0-9]+ failed: '
+    if re.fullmatch(prefix+r'FATAL:  password authentication failed for user "neondb_owner"',text):return 'SQL_AUTHENTICATION_REFUSED'
+    if re.fullmatch(prefix+r'timeout expired',text):return 'SQL_CONNECTION_TIMEOUT'
+    if re.fullmatch(prefix+r'SSL error: certificate verify failed: [^\r\n]+',text):return 'SQL_TLS_REFUSED'
+    if re.fullmatch(r'psql: error: could not translate host name "[^"\r\n]+" to address: [^\r\n]+',text):return 'SQL_NAME_RESOLUTION_REFUSED'
+    return 'SQL_ERROR_UNKNOWN'
+
+
+def sql_session_observation(raw):
+    try:
+        v=strict_json(raw)
+        need(type(v) is dict and set(v)=={'databaseMatched','userMatched','sessionsAbsent'} and
+             all(type(x) is bool for x in v.values()),'SQL_OUTPUT_UNKNOWN')
+        need(v['databaseMatched'] and v['userMatched'],'SQL_IDENTITY_UNCONFIRMED')
+        return {'checks':v,'failure':None if v['sessionsAbsent'] else 'SQL_SESSIONS_PRESENT'}
+    except BaseException as error:
+        return {'checks':None,'failure':str(error) if isinstance(error,model.Stop) and str(error) in SQL_DIAGNOSTIC_FAILURES else 'SQL_OUTPUT_UNKNOWN'}
+
+
 class RoleDiagnosticCapability:
     def __init__(self,envelope,clock=model.time.time,mode='diagnose',read_commit=None):
         need(mode in ('diagnose','closeout'),'DIAGNOSTIC_MODE')
@@ -2604,21 +2658,24 @@ class RoleDiagnosticCapability:
         a=current_module('authority');a.verify_sources();get=read_commit or a.committed
         need(set(e)=={'version','execution','operationId','database','role','sourceCommit','manifestSha256',
             'runtimeFiles','queryHashes','window','limits','decision'},'ROLE_ENVELOPE')
-        need(type(e['version']) is int and e['version'] in (1,2,3,4) and e['execution']==('EXTERNAL_BOUNDED_MUTATION' if e['version']==4 else 'EXTERNAL_READ_ONLY'),'ROLE_EXECUTION')
+        need(type(e['version']) is int and e['version'] in (1,2,3,4,5) and e['execution']==('EXTERNAL_BOUNDED_MUTATION' if e['version']==4 else 'EXTERNAL_READ_ONLY'),'ROLE_EXECUTION')
+        self.sql_diagnostic=e['version']==5
+        self.slots=('role','independent') if self.sql_diagnostic else ROLE_DIAGNOSTIC_SLOTS
         self.correction=e['version']==4
         self.provenance=e['version']==2
         self.temp_impact=e['version']==3
-        self.kind='TEMP_CORRECTION' if self.correction else 'TEMP_IMPACT' if self.temp_impact else 'PROVENANCE' if self.provenance else 'DIAGNOSTIC'
-        self.query=correction_snapshot_contract() if self.correction else temp_impact_contract() if self.temp_impact else role_provenance_contract() if self.provenance else current_sql_contract()[2]
+        self.kind='SQL_CONNECTION' if self.sql_diagnostic else 'TEMP_CORRECTION' if self.correction else 'TEMP_IMPACT' if self.temp_impact else 'PROVENANCE' if self.provenance else 'DIAGNOSTIC'
+        self.query=sql_session_contract() if self.sql_diagnostic else correction_snapshot_contract() if self.correction else temp_impact_contract() if self.temp_impact else role_provenance_contract() if self.provenance else current_sql_contract()[2]
         model.exact_uuid(e['operationId'],'ROLE_OPERATION')
         need(e['database']=={'host':_operator_module().DB_HOST,'port':5432,'database':'neondb','user':'neondb_owner'} and
              e['role']=='p07_payment_runtime','ROLE_RESOURCE_PINS')
-        limits={'sqlConnections':3,'sqlStatements':12,'privilegeStatements':2,'cli':0,'https':0,'cache':0} if self.correction else {'sql':3,'cli':0,'https':0,'cache':0}
+        limits={'sql':2,'cli':0,'https':0,'cache':0} if self.sql_diagnostic else {'sqlConnections':3,'sqlStatements':12,'privilegeStatements':2,'cli':0,'https':0,'cache':0} if self.correction else {'sql':3,'cli':0,'https':0,'cache':0}
         need(e['limits']==limits and all(type(v) is int for v in e['limits'].values()),'ROLE_LIMITS')
         need(e['manifestSha256']==source_manifest_sha256() and re.fullmatch('[a-f0-9]{40}',e['sourceCommit']),'ROLE_SOURCE_DRIFT')
-        descriptors=(self.query,sql_contract()[1],correction_protocol_contract()) if self.correction else (self.query,sql_contract()[1])
+        descriptors=(self.query,) if self.sql_diagnostic else (self.query,sql_contract()[1],correction_protocol_contract()) if self.correction else (self.query,sql_contract()[1])
         need(e['queryHashes']=={d['id']:model.digest(d) for d in descriptors},'ROLE_QUERY_PINS')
-        need(set(e['runtimeFiles'])==set(role_runtime_files()) and all(isinstance(v,str) and re.fullmatch('[a-f0-9]{64}',v) for v in e['runtimeFiles'].values()),'ROLE_RUNTIME_PINS')
+        runtime_paths=role_runtime_files()+((SQL_DIAGNOSTIC_LIBPQ,) if self.sql_diagnostic else ())
+        need(set(e['runtimeFiles'])==set(runtime_paths) and all(isinstance(v,str) and re.fullmatch('[a-f0-9]{64}',v) for v in e['runtimeFiles'].values()),'ROLE_RUNTIME_PINS')
         for path in role_runtime_files()[:2]:need(e['runtimeFiles'][path]==m['sdkReview']['files'][path],'ROLE_RUNTIME_PINS')
         need(set(e['window'])=={'start','cutoff','readEnd','closeoutEnd'},'ROLE_WINDOW')
         times={k:model.timestamp(v) for k,v in e['window'].items()}
@@ -2633,7 +2690,7 @@ class RoleDiagnosticCapability:
         sql_manifest=copy.deepcopy(m);sql_manifest['sdkReview']['files']={p:e['runtimeFiles'][p] for p in role_runtime_files()[:2]}
         verify_qualification_sources(e['sourceCommit'],sql_manifest,get)
         self.e=e;self.clock=clock;self.mode=mode;self.times=times;self.last=clock();self.scope_hash=scope
-        self.root=Path(('/private/tmp/p08-temp-correction-' if self.correction else '/private/tmp/p08-temp-impact-' if self.temp_impact else '/private/tmp/p08-role-provenance-' if self.provenance else '/private/tmp/p08-database-role-')+e['operationId']);self.manifest=m
+        self.root=Path(('/private/tmp/p08-sql-connection-' if self.sql_diagnostic else '/private/tmp/p08-temp-correction-' if self.correction else '/private/tmp/p08-temp-impact-' if self.temp_impact else '/private/tmp/p08-role-provenance-' if self.provenance else '/private/tmp/p08-database-role-')+e['operationId']);self.manifest=m
         if mode=='diagnose':
             need(times['start']<=self.last<times['cutoff'],'DIAGNOSTIC_START_WINDOW')
             need(not os.path.lexists(self.root),'DIAGNOSTIC_CONSUMED')
@@ -2647,11 +2704,12 @@ class RoleDiagnosticCapability:
         inspect_current_root(self.root,ROLE_DIAGNOSTIC_MARKERS|({'correction-state.json'} if self.correction else set()))
         need(private_json(self.root/'envelope.json')==self.e and private_json(self.root/'attempt.json')=={
             'operationId':self.e['operationId'],'scopeSha256':self.scope_hash},'ROLE_ROOT_BINDING')
-        for slot in ROLE_DIAGNOSTIC_SLOTS:
+        if self.sql_diagnostic:need(not (self.root/'sql-normal.json').exists(),'ROLE_READ_SCOPE')
+        for slot in self.slots:
             path=self.root/f'sql-{slot}.json'
             if path.exists():need(private_json(path)=={'operationId':self.e['operationId'],'scopeSha256':self.scope_hash,'slot':slot},'ROLE_RESERVATION')
     def gate(self,slot):
-        need(slot in ROLE_DIAGNOSTIC_SLOTS and (self.mode=='diagnose' or slot=='independent'),'ROLE_READ_SCOPE')
+        need(slot in self.slots and (self.mode=='diagnose' or slot=='independent'),'ROLE_READ_SCOPE')
         now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
         need(self.times['start']<=now<self.times['readEnd' if slot=='role' else 'closeoutEnd'],'DIAGNOSTIC_DEADLINE')
         self.prepare();self.inspect()
@@ -2668,7 +2726,7 @@ class RoleDiagnosticIO(NativeIO):
     def https(self,*args):raise model.Stop('ROLE_HTTPS_FORBIDDEN')
     def sql(self,d,password,deadline):
         slot='independent' if self.cleanup_only else 'role' if d==self.cap.query else 'normal'
-        need(d==(self.cap.query if slot=='role' else sql_contract()[1]),'ROLE_READ_SCOPE')
+        need(d==(self.cap.query if slot=='role' or self.cap.sql_diagnostic else sql_contract()[1]),'ROLE_READ_SCOPE')
         return super().sql(d,password,min(deadline,self.cap.gate(slot)))
     def independent(self):return RoleDiagnosticIO(self.cap,True)
 
@@ -2783,7 +2841,7 @@ def run_temp_correction(cap,io=None):
         result={'status':'TEMP_CORRECTION_VERIFIED' if verified else 'CORRECTION_UNCONFIRMED',
             'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'commitAcknowledged':ack,'failure':failure,
             'normalCleanup':normal,'independent':fresh,'verified':verified,
-            'connectionReservations':sum((cap.root/f'sql-{s}.json').exists() for s in ROLE_DIAGNOSTIC_SLOTS),
+            'connectionReservations':sum((cap.root/f'sql-{s}.json').exists() for s in cap.slots),
             'liveObserved':not getattr(io,'proof',False),'candidate':None,'executionReady':False}
         model.reserve(cap.root/'result.json',result);return result
     finally:
@@ -2828,7 +2886,7 @@ def role_cleanup(io,password,deadline):
     sessions=False;closed=False
     try:
         need(password is not None,'PASSWORD_SHAPE')
-        sessions=strict_json(io.sql(sql_contract()[1],password,deadline))=={'sessionsAbsent':True}
+        sessions=(sql_session_observation(io.sql(io.cap.query,password,deadline))['failure'] is None) if io.cap.sql_diagnostic else strict_json(io.sql(sql_contract()[1],password,deadline))=={'sessionsAbsent':True}
     except BaseException:pass
     finally:
         try:closed=io.close(deadline) is True
@@ -2857,12 +2915,15 @@ def run_role_diagnostic(cap,io=None):
             raw=io.sql(cap.query,password,cap.times['readEnd'])
             try:
                 need(cap.last<=cap.clock()<cap.times['readEnd'],'DIAGNOSTIC_DEADLINE')
-                observation=(temp_impact_observation if cap.temp_impact else role_provenance_observation if cap.provenance else role_diagnostic_observation)(raw)
+                observation=(sql_session_observation if cap.sql_diagnostic else temp_impact_observation if cap.temp_impact else role_provenance_observation if cap.provenance else role_diagnostic_observation)(raw)
             finally:raw=None
         except BaseException as error:failure=role_diagnostic_failure(error);failure_stage=stage
         finally:
             cleaning=True
-            if not role_cleanup(io,password,cap.times['closeoutEnd']):residuals.append('NORMAL_CLOSEOUT_UNCONFIRMED')
+            if cap.sql_diagnostic:
+                try:need(io.close(cap.times['closeoutEnd']) is True,'PROCESS_CLEANUP_UNCONFIRMED')
+                except BaseException:residuals.append('NORMAL_PROCESS_CLOSEOUT_UNCONFIRMED')
+            elif not role_cleanup(io,password,cap.times['closeoutEnd']):residuals.append('NORMAL_CLOSEOUT_UNCONFIRMED')
             fresh=None
             try:
                 fresh=io.independent();need(fresh is not io,'ROLE_PORT')
@@ -2870,9 +2931,9 @@ def run_role_diagnostic(cap,io=None):
             except BaseException:residuals.append('INDEPENDENT_CLOSEOUT_UNCONFIRMED')
             password=None
         cap.inspect()
-        result={'status':('TEMP_IMPACT_DIAGNOSED' if cap.temp_impact else 'DATABASE_ROLE_PROVENANCE_DIAGNOSED' if cap.provenance else 'DATABASE_ROLE_DIAGNOSED') if observation is not None and observation['failure'] in (None,'ROLE_NOT_READY','ROLE_ACL_DRIFT') and not residuals and failure is None else 'DATABASE_ROLE_UNCONFIRMED',
+        result={'status':('SQL_CONNECTION_DIAGNOSED' if cap.sql_diagnostic else 'TEMP_IMPACT_DIAGNOSED' if cap.temp_impact else 'DATABASE_ROLE_PROVENANCE_DIAGNOSED' if cap.provenance else 'DATABASE_ROLE_DIAGNOSED') if observation is not None and observation['failure'] in (None,'ROLE_NOT_READY','ROLE_ACL_DRIFT') and not residuals and failure is None else 'DATABASE_ROLE_UNCONFIRMED',
             'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'observation':observation,'failure':failure,
-            'failureStage':failure_stage,'residuals':residuals,'sqlReservations':sum((cap.root/f'sql-{s}.json').exists() for s in ROLE_DIAGNOSTIC_SLOTS),
+            'failureStage':failure_stage,'residuals':residuals,'sqlReservations':sum((cap.root/f'sql-{s}.json').exists() for s in cap.slots),
             'liveObserved':not getattr(io,'proof',False) and (cap.root/'sql-role.json').exists(),'executionReady':False,'candidate':None}
         model.reserve(cap.root/'result.json',result);return result
     finally:
@@ -2890,7 +2951,7 @@ def closeout_role_diagnostic(cap,io=None):
         fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         need(not (cap.root/'closeout.json').exists(),'ROLE_CLOSEOUT_CONSUMED')
         prior=private_json(cap.root/'result.json') if (cap.root/'result.json').exists() else None
-        verified=bool(prior and prior.get('operationId')==cap.e['operationId'] and prior.get('scopeSha256')==cap.scope_hash and prior.get('residuals')==[] and all((cap.root/f'sql-{s}.json').exists() for s in ROLE_DIAGNOSTIC_SLOTS))
+        verified=bool(prior and prior.get('operationId')==cap.e['operationId'] and prior.get('scopeSha256')==cap.scope_hash and prior.get('residuals')==[] and all((cap.root/f'sql-{s}.json').exists() for s in cap.slots))
         if not verified:
             residuals.append('PROCESS_HISTORY_UNKNOWN')
             if not (cap.root/'sql-independent.json').exists() and cap.clock()<cap.times['closeoutEnd']:
@@ -2906,19 +2967,19 @@ def closeout_role_diagnostic(cap,io=None):
 
 
 def role_diagnostic_main(argv):
-    need(len(argv)==2 and argv[0] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance','--diagnose-temp-impact','--closeout-temp-impact'),'ROLE_ARGUMENTS')
+    need(len(argv)==2 and argv[0] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance','--diagnose-temp-impact','--closeout-temp-impact','--diagnose-sql-connection','--closeout-sql-connection'),'ROLE_ARGUMENTS')
     path=Path(argv[1])
-    kind='TEMP_IMPACT' if argv[0].endswith('temp-impact') else 'PROVENANCE' if argv[0].endswith('role-provenance') else 'DIAGNOSTIC'
+    kind='SQL_CONNECTION' if argv[0].endswith('sql-connection') else 'TEMP_IMPACT' if argv[0].endswith('temp-impact') else 'PROVENANCE' if argv[0].endswith('role-provenance') else 'DIAGNOSTIC'
     if argv[0].startswith('--diagnose-'):
         cap=RoleDiagnosticCapability(private_json(path));need(cap.kind==kind,'ROLE_COMMAND_SCOPE')
         result=run_role_diagnostic(cap)
-        print(result['status']);return 0 if result['status'] in ('DATABASE_ROLE_DIAGNOSED','DATABASE_ROLE_PROVENANCE_DIAGNOSED','TEMP_IMPACT_DIAGNOSED') else 2
+        print(result['status']);return 0 if result['status'] in ('DATABASE_ROLE_DIAGNOSED','DATABASE_ROLE_PROVENANCE_DIAGNOSED','TEMP_IMPACT_DIAGNOSED','SQL_CONNECTION_DIAGNOSED') else 2
     cap=RoleDiagnosticCapability(private_json(path/'envelope.json'),mode='closeout');need(path==cap.root and cap.kind==kind,'ROLE_ROOT_BINDING')
     result=closeout_role_diagnostic(cap);print('DATABASE_ROLE_CLOSED' if result['verified'] else 'DATABASE_ROLE_CLOSEOUT_UNCONFIRMED')
     return 0 if result['verified'] else 2
 
 
 if __name__ == "__main__":
-    try:raise SystemExit(billing_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-billing','--closeout-billing') else temp_correction_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--correct-temp','--closeout-temp-correction') else role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance','--diagnose-temp-impact','--closeout-temp-impact') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
+    try:raise SystemExit(billing_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-billing','--closeout-billing') else temp_correction_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--correct-temp','--closeout-temp-correction') else role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance','--diagnose-temp-impact','--closeout-temp-impact','--diagnose-sql-connection','--closeout-sql-connection') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
     except Exception:
         print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)

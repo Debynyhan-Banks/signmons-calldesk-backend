@@ -1,0 +1,50 @@
+{
+  "section": "APP-013/3A/P08/SD1",
+  "status": "IMPLEMENTED_LOCAL_VERIFIED",
+  "sourceBefore": "63fea28",
+  "ownerApprovalCommit": "3a409a9",
+  "verifiedAt": "2026-11-12T14:33:09.442106+00:00",
+  "interfaces": [
+    "--diagnose-sql-connection",
+    "--closeout-sql-connection"
+  ],
+  "authority": "APPROVE_EXACT_P08_DATABASE_ROLE_SQL_CONNECTION",
+  "version": 5,
+  "limits": {
+    "sql": 2,
+    "cli": 0,
+    "https": 0,
+    "cache": 0
+  },
+  "behavior": [
+    "existing role lifecycle with primary and independent slots only",
+    "exact identity/session Boolean query with prior session filter",
+    "exact pinned psql/libpq, verify-full TLS, C locale, VERBOSITY=sqlstate",
+    "opt-in bounded dual-stream classification; raw buffers discarded",
+    "unsupported/mixed messages SQL_ERROR_UNKNOWN",
+    "independent closure attempted after primary failure; parent history uncertainty retained"
+  ],
+  "tests": {
+    "qualificationIncludingLocalPostgresTLS": 287,
+    "native": 43,
+    "connected": 44,
+    "correction": 52,
+    "governance": 25,
+    "total": 451,
+    "architecture": "PASS",
+    "baseline": "PASS",
+    "consistency": "PASS",
+    "whitespace": "PASS"
+  },
+  "initialFailures": [
+    "new synthetic output exceeded intentional byte limit; classification fixture reduced and explicit limit/timeout test added",
+    "native test provenance hash refreshed",
+    "sandbox denied process inspection and local PostgreSQL/loopback fixtures; unchanged suites passed with local permissions"
+  ],
+  "localPostgresCleanup": "VERIFIED_SERVER_REAPED_SCRATCH_ABSENT",
+  "providerCalls": 0,
+  "credentialsRead": false,
+  "liveDatabaseCause": "UNKNOWN",
+  "r36DatabaseSessions": "UNCONFIRMED",
+  "next": "Prepare exact two-read external diagnostic and independent closure for separate approval"
+}

@@ -1,0 +1,16 @@
+{
+  "inspectedAt": "2026-11-12T14:31:08.283311+00:00",
+  "installedFiles": {
+    "/opt/homebrew/opt/postgresql@16/bin/psql": "e67224e11a8d29541c02528b814b17c0757da7d961f16c58003561e20263528d",
+    "/opt/homebrew/opt/postgresql@16/lib/libpq.5.dylib": "c4342c4c349f076dea1ffa55c13128ff7c8c02a44cc65928aac45073d533bb2f",
+    "/opt/homebrew/opt/postgresql@16/bin/postgres": "414e4416168bb5e332dee28fea071b910f42c167f72c5aab85fe194f68b08dc5"
+  },
+  "method": "Local otool dependency and installed binary message-string inspection; no database connection",
+  "contracts": [
+    "psql supports VERBOSITY=sqlstate",
+    "psql links exact pinned libpq.5.dylib",
+    "libpq C-locale connection prefix, timeout expired, hostname resolution and certificate verification strings",
+    "postgres password authentication failed message"
+  ],
+  "limits": "Remote server message compatibility UNKNOWN; non-exact/multiple/unrecognized messages classify SQL_ERROR_UNKNOWN. Binary strings are evidence of installed format vocabulary, not proof of live error."
+}

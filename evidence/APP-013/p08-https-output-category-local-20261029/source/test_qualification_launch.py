@@ -2967,3 +2967,99 @@ q.model.reserve=delayed_reserve
 
 for _name in dir(ConnectedGuardLifecycleTests):
     if _name.startswith('test_') and _name not in ConnectedPublicationTests.__dict__:setattr(ConnectedPublicationTests,_name,None)
+
+class SqlConnectionDiagnosticTests(unittest.TestCase):
+    def setUp(self):
+        import shutil
+        self.f=RoleDiagnosticTests();self.f.setUp();self.addCleanup(self.f.doCleanups)
+        f=self.f;self.e=copy.deepcopy(f.e);self.e.pop('decision')
+        self.e.update(version=5,limits={'sql':2,'cli':0,'https':0,'cache':0},queryHashes={'sql_connection_sessions':model.digest(launch.sql_session_contract())})
+        self.e['runtimeFiles'][launch.SQL_DIAGNOSTIC_LIBPQ]=model.digest(Path(launch.SQL_DIAGNOSTIC_LIBPQ).read_bytes())
+        path='APP013_P08_DATABASE_ROLE_SQL_CONNECTION_OPERATION_20261112.json'
+        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_DATABASE_ROLE_SQL_CONNECTION','externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
+        repo=f.fixture.repo;(repo/path).write_bytes(raw);f.fixture.git('add',path);f.fixture.git('-c','core.hooksPath=/dev/null','commit','-qm','synthetic sql diagnostic')
+        self.e['decision']={'commit':f.fixture.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
+        self.root=Path('/private/tmp/p08-sql-connection-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+        self.calls=[];self.clients=[];self.fail_primary=False;self.fail_independent=False
+    def cap(self,mode='diagnose'):
+        return launch.RoleDiagnosticCapability(self.e,lambda:self.f.now,mode,self.f.fixture.read_commit)
+    def io(self,cap,independent=False):
+        case=self
+        class IO(launch.RoleDiagnosticIO):
+            proof=True
+            def _owned_run(obj,argv,env,deadline,**kw):
+                case.calls.append('independent' if obj.cleanup_only else 'primary')
+                case.assertEqual(argv,launch.sql_diagnostic_argv());case.assertEqual(kw,{'sql_diagnostic':True})
+                case.assertEqual(env['LC_ALL'],'C');case.assertEqual(env['PGSSLMODE'],'verify-full')
+                if case.fail_independent if obj.cleanup_only else case.fail_primary:raise model.Stop('SQL_AUTHENTICATION_REFUSED')
+                return b'{"databaseMatched":true,"userMatched":true,"sessionsAbsent":true}'
+            def independent(obj):return case.io(cap,True)
+        io=IO(cap,independent);self.clients.append(io);return io
+    def run_case(self):
+        cap=self.cap()
+        with patch.object(launch,'hidden_password',return_value='PRIVATE_SQL_PASSWORD'):
+            result=launch.run_role_diagnostic(cap,self.io(cap))
+        self.assertEqual(self.calls,['primary','independent']);self.assertTrue(all(c.closed for c in self.clients))
+        self.assertNotIn('PRIVATE_SQL_PASSWORD',''.join(p.read_text() for p in self.root.glob('*.json')))
+        return result
+    def test_two_reads_and_verified_closeout_no_replay(self):
+        r=self.run_case();self.assertEqual(r['status'],'SQL_CONNECTION_DIAGNOSED');self.assertEqual(r['sqlReservations'],2)
+        self.assertFalse(r['executionReady']);self.assertIsNone(r['candidate'])
+        self.assertTrue(launch.closeout_role_diagnostic(self.cap('closeout'))['verified'])
+        with self.assertRaises(model.Stop):self.cap()
+        with self.assertRaises(model.Stop):launch.closeout_role_diagnostic(self.cap('closeout'))
+    def test_primary_failure_still_independently_checks_and_closes(self):
+        self.fail_primary=True;r=self.run_case();self.assertEqual(r['failure'],'SQL_AUTHENTICATION_REFUSED');self.assertEqual(r['residuals'],[])
+    def test_independent_failure_never_claims_session_closure(self):
+        self.fail_independent=True;r=self.run_case();self.assertIn('INDEPENDENT_CLOSEOUT_UNCONFIRMED',r['residuals'])
+        self.assertFalse(launch.closeout_role_diagnostic(self.cap('closeout'))['verified'])
+    def test_wrong_transport_query_and_slot_refuse(self):
+        cap=self.cap();io=launch.RoleDiagnosticIO(cap)
+        for action in [lambda:io.cli(None,0),lambda:io.https(None,None,0),lambda:io.sql(launch.sql_contract()[1],'hidden',self.f.now+10),lambda:cap.gate('normal')]:
+            with self.assertRaises(model.Stop):action()
+        with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_COMMAND'):
+            io._owned_run(['wrong'],{'LC_ALL':'C'},self.f.now+10,sql_diagnostic=True)
+    def test_strict_identity_and_session_output(self):
+        good={'databaseMatched':True,'userMatched':True,'sessionsAbsent':True}
+        self.assertIsNone(launch.sql_session_observation(good)['failure'])
+        for key in good:
+            for bad in [None,1,'true']:
+                self.assertEqual(launch.sql_session_observation({**good,key:bad})['failure'],'SQL_OUTPUT_UNKNOWN')
+        self.assertEqual(launch.sql_session_observation({**good,'sessionsAbsent':False})['failure'],'SQL_SESSIONS_PRESENT')
+        self.assertEqual(launch.sql_session_observation({**good,'userMatched':False})['failure'],'SQL_IDENTITY_UNCONFIRMED')
+        self.assertEqual(launch.sql_session_observation({**good,'extra':'PRIVATE'})['failure'],'SQL_OUTPUT_UNKNOWN')
+    def test_conservative_error_categories(self):
+        cases={b'ERROR:  42501':'SQL_PERMISSION_REFUSED',b'FATAL:  28P01':'SQL_AUTHENTICATION_REFUSED',
+            b'psql: error: connection to server at "synthetic" (127.0.0.1), port 5432 failed: FATAL:  password authentication failed for user "neondb_owner"':'SQL_AUTHENTICATION_REFUSED',
+            b'psql: error: connection to server at "synthetic", port 5432 failed: timeout expired':'SQL_CONNECTION_TIMEOUT',
+            b'psql: error: could not translate host name "synthetic" to address: nodename unknown':'SQL_NAME_RESOLUTION_REFUSED',
+            b'psql: error: connection to server at "synthetic", port 5432 failed: SSL error: certificate verify failed: synthetic':'SQL_TLS_REFUSED'}
+        for raw,expected in cases.items():
+            self.assertEqual(launch.sql_error_category(raw),expected)
+            self.assertEqual(launch.sql_error_category(raw+b'\nPRIVATE_OTHER_FAILURE'),'SQL_ERROR_UNKNOWN')
+        for raw in [b'PRIVATE_PASSWORD',b'ERROR:  XX000',b'\xff',b'x'*(launch.MAX_OUTPUT+1)]:self.assertEqual(launch.sql_error_category(raw),'SQL_ERROR_UNKNOWN')
+    def test_actual_process_boundary_drains_both_pipes_and_classifies(self):
+        import sys,time
+        cap=self.cap();io=launch.RoleDiagnosticIO(cap);io.clock=time.time
+        command=[sys.executable,'-c',"import sys;sys.stdout.write('x'*8000);sys.stderr.write('ERROR:  42501');sys.exit(1)"]
+        with patch.object(launch,'sql_diagnostic_argv',return_value=command):
+            with self.assertRaisesRegex(model.Stop,'SQL_PERMISSION_REFUSED'):io._owned_run(command,{'LC_ALL':'C'},time.time()+5,sql_diagnostic=True)
+        self.assertFalse(io.children)
+    def test_parent_death_keeps_history_unknown_and_single_independent_slot(self):
+        cap=self.cap();cap.root.mkdir(mode=0o700)
+        (cap.root/'entry.lock').touch(mode=0o600)
+        model.reserve(cap.root/'envelope.json',cap.e);model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash})
+        cap.gate('role')
+        close=self.cap('closeout')
+        with patch.object(launch,'hidden_password',return_value='PRIVATE_SQL_PASSWORD'):
+            r=launch.closeout_role_diagnostic(close,self.io(close,True))
+        self.assertFalse(r['verified']);self.assertIn('PROCESS_HISTORY_UNKNOWN',r['residuals']);self.assertEqual(self.calls,['independent'])
+
+    def test_actual_process_output_limit_and_timeout_reap_children(self):
+        import sys,time
+        for code,expected,seconds in [("import sys;sys.stdout.write('x'*100000);sys.stderr.write('y'*100000)",'PROCESS_OUTPUT_LIMIT',5),
+                                      ('import time;time.sleep(10)','PROCESS_TIMEOUT',2.2)]:
+            cap=self.cap();io=launch.RoleDiagnosticIO(cap);io.clock=time.time;command=[sys.executable,'-c',code]
+            with patch.object(launch,'sql_diagnostic_argv',return_value=command):
+                with self.assertRaisesRegex(model.Stop,expected):io._owned_run(command,{'LC_ALL':'C'},time.time()+seconds,sql_diagnostic=True)
+            self.assertFalse(io.children)

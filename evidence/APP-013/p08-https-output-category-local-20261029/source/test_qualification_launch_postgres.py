@@ -60,6 +60,13 @@ INSERT INTO "Job" VALUES ('%s','%s','{"intakeAdmission":{"version":1,"humanRevie
         self.command("UPDATE \"TenantOrganization\" SET settings=jsonb_set(settings,'{organizationPaymentPolicyV1,approved,actorId}','\"changed-owner\"');")
         adapter,_=self.adapter();self.assertFalse(adapter.read_database(adapter.times['readEnd'])['paymentGateExact'])
 
+    def test_sd1_exact_session_query_returns_only_identity_and_session_booleans(self):
+        result=json.loads(self.command(launch.sql_session_contract()['sql']))
+        self.assertEqual(result,{'databaseMatched':self.command('SELECT current_database()')=='neondb',
+                                'userMatched':self.command('SELECT current_user')=='neondb_owner',
+                                'sessionsAbsent':True})
+        self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"),'0')
+
     def test_query_is_read_only_and_leaves_no_session(self):
         before = self.command('SELECT count(*) FROM "User";'); self.raw(); after = self.command('SELECT count(*) FROM "User";')
         self.assertEqual(before, after); self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%'"), '0')
