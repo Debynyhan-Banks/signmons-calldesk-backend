@@ -14,8 +14,8 @@
   "lockedSources": {
     "p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "p08-coordinator-auth-local-20261031/source/authority.mjs": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
-    "p08-https-output-category-local-20261029/source/qualification_launch.py": "e558fb1a4f7288ffab4100b10c4e2decb332934666ba7e0776f02a4a9ebda3c8",
-    "p08-https-output-category-local-20261029/source/source-manifest.json": "13d988114ea74e01f268518cd235b8d31939cfd9ec8cdd3e232e993de290a6ae",
+    "p08-https-output-category-local-20261029/source/qualification_launch.py": "3ea7ace4ffd3d5d82160116ef093709bb0b018ca17740ed162dfcc8b67d11d26",
+    "p08-https-output-category-local-20261029/source/source-manifest.json": "3bb67a8ec2b7fb593466c4d256894ff7f52befbdbc64768a2f007d0502bc6cf4",
     "p08-key-correction-20261110/binding.py": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb",
     "p08-key-correction-20261110/candidate.json": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112",
     "p08-live-binder-local-20261029/source/coordinator.py": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",

@@ -1955,6 +1955,87 @@ class ProjectDiagnosticTests(unittest.TestCase):
         self.e['decision'].update(commit=f.git('rev-parse','HEAD'),sha256=model.digest(raw))
         with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_APPROVAL'):self.cap('closeout')
 
+
+class BillingDiagnosticTests(unittest.TestCase):
+    def setUp(self):
+        import shutil,uuid
+        self.f=ProjectDiagnosticTests();self.f.setUp();self.addCleanup(self.f.doCleanups)
+        self.e=copy.deepcopy(self.f.e);self.e.pop('decision');self.e['operationId']=str(uuid.uuid4())
+        self.e['limits']=launch.BillingDiagnosticCapability.limits
+        path='APP013_P08_BILLING_DIAGNOSTIC_OPERATION_20261112.json'
+        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_BILLING_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
+        f=self.f.fixture;(f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic billing decision')
+        self.e['decision']={'commit':f.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
+        self.root=Path('/private/tmp/p08-billing-diagnostic-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
+        pin=patch.object(launch,'BILLING_ACCOUNT_SHA256',__import__('hashlib').sha256(b'billingAccounts/SYNTHETIC').hexdigest());pin.start();self.addCleanup(pin.stop)
+    def cap(self,mode='diagnose'):
+        return launch.BillingDiagnosticCapability(self.e,lambda:self.f.now,mode,self.f.fixture.read_commit)
+    def test_sequence_success_private_receipts_no_retry_and_closeout(self):
+        v={'billingAccountName':'billingAccounts/SYNTHETIC','billingEnabled':True,'projectId':model.PROJECT}
+        io=self.f.io({'billing_project':json.dumps(v).encode()})
+        r=launch.run_project_diagnostic(self.cap(),io)
+        self.assertEqual(r['status'],'BILLING_METADATA_OBSERVED');self.assertEqual(r['cliReservations'],3)
+        self.assertEqual([d['id'] for d in io.calls],['owner','project','billing_project'])
+        self.assertTrue(r['billingDiagnostic']['accountMatched']);self.assertFalse(r['executionReady'])
+        self.assertNotIn('billingAccounts/SYNTHETIC',''.join(p.read_text() for p in self.root.iterdir()))
+        self.assertEqual(launch.closeout_project_diagnostic(self.cap('closeout'))['residuals'],[])
+        with self.assertRaises(model.Stop):self.cap()
+        with self.assertRaises(model.Stop):launch.closeout_project_diagnostic(self.cap('closeout'))
+    def test_output_and_category_failures_are_sanitized(self):
+        import shutil
+        for value in [b'null',b'{}',b'{"billingAccountName":"SECRET_CANARY","billingEnabled":true,"projectId":"signmons"}',model.Stop('BILLING_PERMISSION_DENIED'),RuntimeError('SECRET_CANARY')]:
+            io=self.f.io({'billing_project':value});r=launch.run_project_diagnostic(self.cap(),io)
+            self.assertEqual(r['status'],'BILLING_METADATA_UNQUALIFIED');self.assertEqual(r['residuals'],[])
+            self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+            self.assertEqual(launch.closeout_project_diagnostic(self.cap('closeout'))['residuals'],[])
+            shutil.rmtree(self.root)
+    def test_wrong_order_and_forbidden_transports_fail_before_launch(self):
+        cap=self.cap();io=launch.BillingDiagnosticIO(cap)
+        with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_COMMAND'):io.cli(cap.commands()[-1],self.f.now+30)
+        for method in (io.sql,io.https):
+            with self.assertRaises(model.Stop):method(None)
+        self.assertEqual(cap.count,0);self.assertFalse(self.root.exists())
+    def test_parent_interruption_keeps_closeout_unknown_and_refuses_replay(self):
+        import signal
+        pid=os.fork()
+        if pid==0:
+            io=self.f.io()
+            io.cli=lambda *args:os.kill(os.getpid(),signal.SIGKILL)
+            launch.run_project_diagnostic(self.cap(),io)
+            os._exit(3)
+        _,status=os.waitpid(pid,0)
+        self.assertEqual(os.WTERMSIG(status),signal.SIGKILL)
+        result=launch.closeout_project_diagnostic(self.cap('closeout'))
+        self.assertEqual(result['residuals'],['PROCESS_HISTORY_UNKNOWN'])
+        with self.assertRaises(model.Stop):self.cap()
+
+    def test_classifier_exact_forms_unknown_and_private_canaries(self):
+        prefix=b'ERROR: (gcloud.billing.projects.describe) HTTPError '
+        for code,category in [(b'401','BILLING_UNAUTHENTICATED'),(b'403','BILLING_PERMISSION_DENIED'),(b'408','BILLING_TRANSPORT_TIMEOUT'),(b'503','BILLING_SERVICE_UNAVAILABLE'),(b'504','BILLING_TRANSPORT_TIMEOUT')]:
+            self.assertEqual(launch.billing_error_category(prefix+code+b': SECRET_CANARY\n'),category)
+        for raw in [b'permission denied SECRET_CANARY',prefix+b'403\n'+prefix+b'503',prefix+b'403: HTTPError 503',prefix+b'403:\xff',b'ERROR: (other) HTTPError 403',b'x'*(launch.MAX_OUTPUT+1)]:
+            self.assertEqual(launch.billing_error_category(raw),'BILLING_ERROR_UNKNOWN')
+    def test_actual_owned_child_dual_stream_limit_timeout_and_cleanup(self):
+        import subprocess,time,sys,uuid
+        original=subprocess.Popen;descriptor=next(d for d in launch.cli_contract() if d['id']=='billing_project')
+        cases=[("import sys;sys.stdout.write('x'*1000);sys.stderr.write('ERROR: (gcloud.billing.projects.describe) HTTPError 503: SECRET_CANARY');sys.exit(1)",'BILLING_SERVICE_UNAVAILABLE'),
+               ("import sys;sys.stdout.write('x'*40000);sys.stderr.write('x'*40000)",'PROCESS_OUTPUT_LIMIT'),
+               ("import time;time.sleep(10)",'PROCESS_TIMEOUT'),
+               ("print('{}')",None)]
+        for script,expected in cases:
+            io=launch.NativeIO(time.time,str(uuid.uuid4()))
+            def spawn(argv,**kwargs):
+                self.assertEqual(tuple(argv),descriptor['argv'])
+                return original([sys.executable,'-c',script],**kwargs)
+            with patch.object(launch.subprocess,'Popen',side_effect=spawn):
+                if expected:
+                    with self.assertRaisesRegex(model.Stop,expected):io._owned_run(descriptor['argv'],os.environ.copy(),time.time()+3,billing_diagnostic=True)
+                else:self.assertEqual(io._owned_run(descriptor['argv'],os.environ.copy(),time.time()+3,billing_diagnostic=True).strip(),b'{}')
+            self.assertEqual(io.children,set())
+        io=launch.NativeIO(time.time,str(uuid.uuid4()))
+        with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_COMMAND'):io._owned_run(['/bin/false'],{},time.time()+3,billing_diagnostic=True)
+
+
 class ProjectPermissionTests(unittest.TestCase):
     def setUp(self):
         import uuid,shutil

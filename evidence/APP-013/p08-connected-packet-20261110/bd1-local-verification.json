@@ -1,0 +1,47 @@
+{
+  "section": "APP-013/3A/P08/BD1",
+  "status": "LOCAL_IMPLEMENTATION_VERIFIED_NO_EXTERNAL_OPERATION",
+  "approvalCommit": "dbe5d11",
+  "sourceBaseline": "3187fd0",
+  "observedAt": "2026-11-12T12:56:29.688382+00:00",
+  "interface": [
+    "--diagnose-billing",
+    "--closeout-billing"
+  ],
+  "limits": {
+    "cli": 3,
+    "sql": 0,
+    "https": 0,
+    "cache": 0
+  },
+  "commands": [
+    "owner",
+    "project",
+    "billing_project"
+  ],
+  "errorContract": "Opt-in exact billing descriptor only; concurrent bounded stdout/stderr drain, combined MAX_OUTPUT, same owned-process deadline and finally cleanup. Exact anchored installed SDK HTTPError 401/403/408/503/504 forms only; other/multiple/invalid output UNKNOWN. No raw output retained.",
+  "successContract": "Existing exact project and raw-byte billing account hash; strict output shape; retain booleans only. Metadata observation does not grant qualification or payment authority.",
+  "tests": {
+    "qualificationAndComposition": 254,
+    "nativeEntry": 43,
+    "connectedPacket": 43,
+    "keyCorrection": 52,
+    "governance": 25
+  },
+  "initialFailures": "Initial new test used invalid synthetic UUID; fixed fixture. One full suite had nine source-drift subtest errors because manifest refreshed mid-run; final frozen-source 254-test rerun passed.",
+  "sdkErrorSourcePins": {
+    "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/exceptions.py": "a1c6b6d13f7e0a4501a1163a744e0ab5fe696a223059af6a4015c65026519d06",
+    "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/calliope/exceptions.py": "5e6ed013f00dac280a379e5ee99adc2b02ba2b0ff3dd7c98073b603378113673"
+  },
+  "historicalSourcesUnchanged": [
+    "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+    "evidence/APP-013/p08-exact-role-provisioning-local-20261028/source/role_provisioner.py",
+    "evidence/APP-013/p08-restoration-local-20261028/source/restore.py"
+  ],
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "r33Cause": "UNKNOWN",
+  "ps1LiveOutcome": "NOT_REACHED",
+  "externalExecutionAuthorized": false,
+  "scopeDeviation": "Owner-approved BD1 extension only; no further deviation"
+}

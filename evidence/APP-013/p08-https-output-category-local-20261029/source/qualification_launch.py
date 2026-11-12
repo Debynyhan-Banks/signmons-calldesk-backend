@@ -503,34 +503,39 @@ class NativeIO:
         except (OSError,subprocess.TimeoutExpired,model.Stop):return False
         finally:
             if process.stdout:process.stdout.close()
+            if process.stderr:process.stderr.close()
 
-    def _owned_run(self,argv,env,deadline):
+    def _owned_run(self,argv,env,deadline,*,billing_diagnostic=False):
         import selectors,time
         need(not self.closed and self.clock()+2<deadline,'PROCESS_DEADLINE')
+        if billing_diagnostic:
+            need(tuple(argv)==next(d['argv'] for d in cli_contract() if d['id']=='billing_project'),'DIAGNOSTIC_COMMAND')
         process=subprocess.Popen(argv,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
-             stderr=subprocess.DEVNULL,env=env,start_new_session=True)
+             stderr=subprocess.PIPE if billing_diagnostic else subprocess.DEVNULL,env=env,start_new_session=True)
         self.children.add(process);chunks=[];size=0;failure=None
         last=self.clock();hard_end=time.monotonic()+max(0,deadline-last-2)
-        selector=selectors.DefaultSelector()
+        selector=selectors.DefaultSelector();errors=[]
         try:
-            os.set_blocking(process.stdout.fileno(),False);selector.register(process.stdout,selectors.EVENT_READ)
-            while True:
+            streams=[process.stdout]+([process.stderr] if billing_diagnostic else [])
+            for stream in streams:
+                os.set_blocking(stream.fileno(),False);selector.register(stream,selectors.EVENT_READ)
+            while selector.get_map():
                 now=self.clock();need(now>=last,'CLOCK_ROLLBACK');last=now
                 need(now<deadline-2 and time.monotonic()<hard_end,'PROCESS_TIMEOUT')
                 events=selector.select(min(.05,max(.001,deadline-2-self.clock())))
-                if events:
-                    data=os.read(process.stdout.fileno(),min(8192,MAX_OUTPUT+1-size))
-                    if not data:break
-                    chunks.append(data);size+=len(data);need(size<=MAX_OUTPUT,'PROCESS_OUTPUT_LIMIT')
-                elif process.poll() is not None:
-                    data=os.read(process.stdout.fileno(),min(8192,MAX_OUTPUT+1-size))
-                    if not data:break
-                    chunks.append(data);size+=len(data);need(size<=MAX_OUTPUT,'PROCESS_OUTPUT_LIMIT')
-            need(process.wait(timeout=max(.01,deadline-2-self.clock()))==0,'PROCESS_REFUSED')
+                for key,_ in events:
+                    data=os.read(key.fileobj.fileno(),min(8192,MAX_OUTPUT+1-size))
+                    if not data:
+                        selector.unregister(key.fileobj);continue
+                    size+=len(data);need(size<=MAX_OUTPUT,'PROCESS_OUTPUT_LIMIT')
+                    (errors if key.fileobj is process.stderr else chunks).append(data)
+            code=process.wait(timeout=max(.01,deadline-2-self.clock()))
+            if code!=0:
+                raise model.Stop(billing_error_category(b''.join(errors)) if billing_diagnostic else 'PROCESS_REFUSED')
         except BaseException as error:
             failure=str(error) if isinstance(error,model.Stop) else 'PROCESS_UNCONFIRMED'
         finally:
-            selector.close()
+            selector.close();errors.clear()
             if not self._finish(process,deadline):failure='PROCESS_CLEANUP_UNCONFIRMED'
         if failure:raise model.Stop(failure)
         return b''.join(chunks)
@@ -1981,6 +1986,25 @@ PROJECT_DIAGNOSTIC_FAILURES=CLI_FAILURE_CODES|frozenset({'INTERRUPTED','OWNER_MI
     'HTTPS_OUTPUT_OVERSIZE','HTTPS_REDIRECT','HTTPS_REFUSED','HTTPS_DEADLINE','PERMISSION_RESPONSE_UNCONFIRMED'})
 
 
+BILLING_FAILURES=frozenset({'BILLING_PERMISSION_DENIED','BILLING_UNAUTHENTICATED',
+    'BILLING_SERVICE_UNAVAILABLE','BILLING_TRANSPORT_TIMEOUT','BILLING_ERROR_UNKNOWN',
+    'BILLING_OUTPUT_INVALID','BILLING_BINDING_MISMATCH'})
+PROJECT_DIAGNOSTIC_FAILURES=PROJECT_DIAGNOSTIC_FAILURES|BILLING_FAILURES
+
+
+def billing_error_category(raw):
+    # Installed SDK HttpErrorPayload._MakeDescription and _LogKnownError format.
+    # Human-readable permission/account prose is deliberately not interpreted.
+    try:text=raw.decode('utf-8','strict')
+    except (UnicodeError,AttributeError):return 'BILLING_ERROR_UNKNOWN'
+    if len(raw)>MAX_OUTPUT or text.count('ERROR:')!=1 or len(re.findall(r'\bHTTPError [0-9]{3}\b',text))!=1:return 'BILLING_ERROR_UNKNOWN'
+    match=re.match(r'\AERROR: \(gcloud\.billing\.projects\.describe\) HTTPError (401|403|408|503|504)(?::[^\r\n]*)?(?:\r?\n)?\Z',text)
+    if not match:return 'BILLING_ERROR_UNKNOWN'
+    return {'401':'BILLING_UNAUTHENTICATED','403':'BILLING_PERMISSION_DENIED',
+            '408':'BILLING_TRANSPORT_TIMEOUT','503':'BILLING_SERVICE_UNAVAILABLE',
+            '504':'BILLING_TRANSPORT_TIMEOUT'}[match.group(1)]
+
+
 class ProjectDiagnosticCapability:
     limits={'cli':2,'sql':0,'https':0,'cache':0}
     decision_pattern=r'APP013_P08_OWNER_PROJECT_DIAGNOSTIC_OPERATION_[0-9]{8}\.json'
@@ -2054,6 +2078,25 @@ class ProjectDiagnosticIO(NativeIO):
     def https(self,*args):raise model.Stop('DIAGNOSTIC_HTTPS_FORBIDDEN')
 
 
+class BillingDiagnosticCapability(ProjectDiagnosticCapability):
+    limits={'cli':3,'sql':0,'https':0,'cache':0}
+    decision_pattern=r'APP013_P08_BILLING_DIAGNOSTIC_OPERATION_[0-9]{8}\.json'
+    decision_action='APPROVE_EXACT_P08_BILLING_DIAGNOSTIC'
+    root_prefix='/private/tmp/p08-billing-diagnostic-'
+    markers=PROJECT_DIAGNOSTIC_MARKERS|{'command-attempt-billing_project.json','command-result-billing_project.json'}
+    def commands(self):return (*super().commands(),next(d for d in cli_contract() if d['id']=='billing_project'))
+
+
+class BillingDiagnosticIO(ProjectDiagnosticIO):
+    def __init__(self,cap):
+        need(type(cap) is BillingDiagnosticCapability and cap.mode=='diagnose','DIAGNOSTIC_PORT')
+        NativeIO.__init__(self,cap.clock,cap.e['operationId']);self.cap=cap
+    def cli(self,d,deadline):return NativeIO.cli(self,d,min(deadline,self.cap.gate(d)))
+    def _owned_run(self,argv,env,deadline):
+        return super()._owned_run(argv,env,deadline,billing_diagnostic=
+            tuple(argv)==next(d['argv'] for d in cli_contract() if d['id']=='billing_project'))
+
+
 class ProjectPermissionCapability(ProjectDiagnosticCapability):
     limits={'cli':3,'sql':0,'https':1,'cache':1}
     decision_pattern=r'APP013_P08_PROJECT_PERMISSION_DIAGNOSTIC_OPERATION_[0-9]{8}\.json'
@@ -2107,13 +2150,14 @@ def project_diagnostic_failure(error):
 
 def run_project_diagnostic(cap,io=None):
     import fcntl,signal,threading,time
-    need(type(cap) in (ProjectDiagnosticCapability,ProjectPermissionCapability) and cap.mode=='diagnose','DIAGNOSTIC_MODE')
+    need(type(cap) in (ProjectDiagnosticCapability,ProjectPermissionCapability,BillingDiagnosticCapability) and cap.mode=='diagnose','DIAGNOSTIC_MODE')
     need(io is None or (getattr(io,'proof',None) is True),'DIAGNOSTIC_PORT')
     need(cap.times['start']<=cap.clock()<cap.times['cutoff'],'DIAGNOSTIC_START_WINDOW')
     cap.root.mkdir(mode=0o700)
     fd=os.open(cap.root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
     failure=None;cleaned=False;owner=None;project=None;handlers={};cleaning=False;value=None
     permission_mode=type(cap) is ProjectPermissionCapability
+    billing_mode=type(cap) is BillingDiagnosticCapability;billing=None
     number=None;token=None;permission=None
     def interrupted(*_):
         if not cleaning:raise model.Stop('INTERRUPTED')
@@ -2124,7 +2168,7 @@ def run_project_diagnostic(cap,io=None):
         if threading.current_thread() is threading.main_thread():
             for sig in (signal.SIGINT,signal.SIGTERM):handlers[sig]=signal.signal(sig,interrupted)
         try:
-            cap.prepare();io=io or (ProjectPermissionIO(cap) if permission_mode else ProjectDiagnosticIO(cap))
+            cap.prepare();io=io or (BillingDiagnosticIO(cap) if billing_mode else ProjectPermissionIO(cap) if permission_mode else ProjectDiagnosticIO(cap))
             for d in cap.commands():
                 deadline=cap.gate(d) if getattr(io,'proof',False) else cap.times['readEnd']
                 started=time.monotonic();code=None;matched=False
@@ -2141,6 +2185,11 @@ def run_project_diagnostic(cap,io=None):
                              re.fullmatch('[0-9]{6,20}',value['projectNumber']) and model.digest(value['projectNumber'])==cap.e['projectNumberSha256'],'PROJECT_MISMATCH')
                         project=True
                         if permission_mode:number=value['projectNumber']
+                    elif d['id']=='billing_project':
+                        need(billing_mode and isinstance(value,dict) and set(value)=={'billingAccountName','billingEnabled','projectId'} and
+                             isinstance(value['billingAccountName'],str) and type(value['billingEnabled']) is bool,'BILLING_OUTPUT_INVALID')
+                        need(value['projectId']==model.PROJECT and hashlib.sha256(value['billingAccountName'].encode()).hexdigest()==BILLING_ACCOUNT_SHA256,'BILLING_BINDING_MISMATCH')
+                        billing={'shapeValid':True,'projectMatched':True,'accountMatched':True,'billingEnabled':value['billingEnabled']}
                     else:
                         need(permission_mode and isinstance(value,dict) and set(value)=={'accessToken'} and isinstance(value['accessToken'],str),'TOKEN_OUTPUT')
                         current_module('acl').validate_token(value['accessToken']);token=value['accessToken']
@@ -2185,6 +2234,8 @@ def run_project_diagnostic(cap,io=None):
             'residuals':[] if cleaned else ['PROCESS_CLEANUP_UNCONFIRMED'],
             'cliReservations':cap.count,'reservationSemantics':'RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS',
             'liveObserved':not getattr(io,'proof',False) and cap.count>0,'executionReady':False,'candidate':None}
+        if billing_mode:
+            result.update(status='BILLING_METADATA_OBSERVED' if owner and project and cleaned and not failure and billing else 'BILLING_METADATA_UNQUALIFIED',billingDiagnostic=billing)
         if permission_mode:result.update(permissionDiagnostic=permission,cacheReservations=cap.cache_count,httpsReservations=cap.https_count)
         model.reserve(cap.root/'result.json',result);return result
     finally:
@@ -2194,7 +2245,7 @@ def run_project_diagnostic(cap,io=None):
 
 def closeout_project_diagnostic(cap):
     import fcntl
-    need(type(cap) in (ProjectDiagnosticCapability,ProjectPermissionCapability) and cap.mode=='closeout','DIAGNOSTIC_MODE');cap.inspect()
+    need(type(cap) in (ProjectDiagnosticCapability,ProjectPermissionCapability,BillingDiagnosticCapability) and cap.mode=='closeout','DIAGNOSTIC_MODE');cap.inspect()
     fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW)
     try:
         fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -2216,6 +2267,18 @@ def project_diagnostic_main(argv):
     cap=ProjectDiagnosticCapability(private_json(path/'envelope.json'),mode='closeout')
     need(path==cap.root,'DIAGNOSTIC_ROOT_BINDING');result=closeout_project_diagnostic(cap)
     print('OWNER_PROJECT_CLOSED' if result['processCleanupVerified'] else 'OWNER_PROJECT_CLOSEOUT_UNCONFIRMED')
+    return 0 if result['processCleanupVerified'] else 2
+
+
+def billing_diagnostic_main(argv):
+    need(len(argv)==2 and argv[0] in ('--diagnose-billing','--closeout-billing'),'DIAGNOSTIC_ARGUMENTS')
+    path=Path(argv[1])
+    if argv[0]=='--diagnose-billing':
+        result=run_project_diagnostic(BillingDiagnosticCapability(private_json(path)))
+        print(result['status']);return 0 if result['status']=='BILLING_METADATA_OBSERVED' else 2
+    cap=BillingDiagnosticCapability(private_json(path/'envelope.json'),mode='closeout')
+    need(path==cap.root,'DIAGNOSTIC_ROOT_BINDING');result=closeout_project_diagnostic(cap)
+    print('BILLING_DIAGNOSTIC_CLOSED' if result['processCleanupVerified'] else 'BILLING_DIAGNOSTIC_CLOSEOUT_UNCONFIRMED')
     return 0 if result['processCleanupVerified'] else 2
 
 
@@ -2856,6 +2919,6 @@ def role_diagnostic_main(argv):
 
 
 if __name__ == "__main__":
-    try:raise SystemExit(temp_correction_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--correct-temp','--closeout-temp-correction') else role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance','--diagnose-temp-impact','--closeout-temp-impact') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
+    try:raise SystemExit(billing_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-billing','--closeout-billing') else temp_correction_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--correct-temp','--closeout-temp-correction') else role_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-database-role','--closeout-database-role','--diagnose-role-provenance','--closeout-role-provenance','--diagnose-temp-impact','--closeout-temp-impact') else project_permission_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-project-permissions','--closeout-project-permissions') else project_diagnostic_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--diagnose-owner-project','--closeout-owner-project') else recovery_main(sys.argv[1:]) if sys.argv[1:2] and sys.argv[1] in ('--recover-binding-inputs','--closeout-binding-inputs','--binding-input-purge-guard') else current_main())
     except Exception:
         print('CURRENT_QUALIFICATION_REFUSED');raise SystemExit(2)
