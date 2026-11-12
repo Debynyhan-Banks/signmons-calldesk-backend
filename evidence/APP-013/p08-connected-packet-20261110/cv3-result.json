@@ -1,0 +1,32 @@
+{
+  "section": "APP-013/3A/P08/CV3",
+  "status": "CV3_CONSUMED_SUCCEEDED_CLOSED",
+  "sourceCommit": "b8261db0ba62356f4f5d82a7a86d1ab4c127c9d1",
+  "validThrough": "2026-11-12T14:30:00Z",
+  "attempt": {
+    "approvalCommit": "9a600576d94da05fd9b4829c6a10006fe8bf961a",
+    "cacheReadReserved": true,
+    "operationId": "345bc43d-879c-42ac-90c5-8a1251143813",
+    "pid": 41570,
+    "scopeSha256": "5c74b6b314e74b53ff88548d7be55c0a45bd46e58ab2f8f5fa85dcd7c6a9ce63",
+    "startedAt": 1794490495.3838458
+  },
+  "result": {
+    "cacheFunctionCompleted": true,
+    "cacheReadInvocations": 1,
+    "completedAt": 1794490495.388003,
+    "onTime": true,
+    "operationId": "345bc43d-879c-42ac-90c5-8a1251143813",
+    "providerCalls": 0,
+    "rawTokenOrExpiryRetained": false,
+    "recoveryStarted": false,
+    "sdkInvocations": 0,
+    "status": "VALID_THROUGH_CUTOFF"
+  },
+  "ownedProcessIndependentlyAbsent": true,
+  "ownedOperatorScriptAbsent": true,
+  "receiptInventoryAndModesVerified": true,
+  "isolatedProcessExit": 0,
+  "replayAllowed": false,
+  "observedAt": "2026-11-12T13:35:10.134599+00:00"
+}
