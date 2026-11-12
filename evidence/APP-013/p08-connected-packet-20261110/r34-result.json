@@ -1,0 +1,74 @@
+{
+  "status": "R34_NATIVE_PREFLIGHT_PASSED_CLOSED",
+  "observedAt": "2026-11-12T13:43:58.493417+00:00",
+  "sourceCommit": "f238db8d2ee985ecd8b3f12783b14fb5a77f10e2",
+  "recoveryOperationId": "93b46d56-56f1-45b8-981e-b77c0b641c4c",
+  "qualificationOperationId": "ae860fb8-2aaf-4110-bf2e-f502304f9d2f",
+  "nativeOperationId": "22cfb3c3-a90a-4394-af05-f0426c99a3ca",
+  "recoveryApproval": "15b599c",
+  "qualificationApproval": "a9015d8",
+  "nativeApproval": "7b155df",
+  "qualification": {
+    "status": "CURRENT_EVIDENCE_OBSERVED",
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "residuals": [],
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 20,
+      "sql": 4
+    },
+    "databaseFailedChecks": []
+  },
+  "native": {
+    "authenticationObserved": false,
+    "failure": null,
+    "operationId": "22cfb3c3-a90a-4394-af05-f0426c99a3ca",
+    "paymentObserved": false,
+    "paymentReadyForAcceptance": false,
+    "preflightPassed": true,
+    "preflightStage": "ACCESS_PREFLIGHT",
+    "privateInputsAbsent": true,
+    "residuals": [],
+    "status": "NATIVE_PREFLIGHT_CLOSED"
+  },
+  "nativeJournal": {
+    "phase": "PREPARED",
+    "failure": null,
+    "preflightStage": "ACCESS_PREFLIGHT",
+    "preflightPassed": true,
+    "unknown": [],
+    "residuals": [],
+    "runtimeAttempted": [],
+    "iamAttempted": [],
+    "keyCreateAttempted": false,
+    "authAttempted": false,
+    "nativeEntry": {
+      "calls": {
+        "child": 0,
+        "cli": 33,
+        "https": 1,
+        "sql": 3
+      },
+      "envelopeSha256": "fbaddf9c21c366ffb65176990ece583327a59302778b3b900c2ce26c2192baeb"
+    }
+  },
+  "purge": {
+    "completedAt": 1794490985.646549,
+    "onTime": true,
+    "operationId": "93b46d56-56f1-45b8-981e-b77c0b641c4c",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "ownedProcessesIndependentlyAbsent": true,
+  "ownedTemporaryFilesAbsent": true,
+  "replayAllowed": false,
+  "meaning": "PS1 corrected native access preflight passed live; diagnostic-only scope, no activation/authentication/payment. Full connected journey remains unverified."
+}
