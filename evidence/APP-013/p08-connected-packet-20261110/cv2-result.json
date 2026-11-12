@@ -1,0 +1,31 @@
+{
+  "section": "APP-013/3A/P08/CV2",
+  "status": "CV2_CONSUMED_CLOSED",
+  "sourceCommit": "34e6b183c04269825a4a6d117ab1d1dacd3f3790",
+  "attempt": {
+    "approvalCommit": "2fdc26a1ee6a7fd361f82dde4a05030f221269a8",
+    "cacheReadReserved": true,
+    "operationId": "88c0bb91-9ab1-473c-982a-5ea01d1172c8",
+    "pid": 73621,
+    "scopeSha256": "a2171ddffc936fb4674253ab1bd39b776b7751f0053481bb537cb06e862caba2",
+    "startedAt": 1794485731.1511989
+  },
+  "result": {
+    "cacheFunctionCompleted": true,
+    "cacheReadInvocations": 1,
+    "completedAt": 1794485731.153845,
+    "onTime": true,
+    "operationId": "88c0bb91-9ab1-473c-982a-5ea01d1172c8",
+    "providerCalls": 0,
+    "rawTokenOrExpiryRetained": false,
+    "recoveryStarted": false,
+    "sdkInvocations": 0,
+    "status": "CACHED_TOKEN_EXPIRED"
+  },
+  "ownedProcessIndependentlyAbsent": true,
+  "ownedOperatorScriptAbsent": true,
+  "isolatedProcessExit": 0,
+  "meaning": "Cached expiry did not exceed 2026-11-12T13:15:00Z; not proof the token was already expired. Actual expiry and token not retained.",
+  "replayAllowed": false,
+  "observedAt": "2026-11-12T12:15:47.405571+00:00"
+}
