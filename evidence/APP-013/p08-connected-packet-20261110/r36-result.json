@@ -1,0 +1,35 @@
+{
+  "status": "R36_CONSUMED_SQL_REFUSED_PRIVATE_PURGE_VERIFIED",
+  "sourceCommit": "845cb9b8b0d931f27f3fec384b9986ce21962618",
+  "approvalCommit": "a1e909a",
+  "recovery": {
+    "executionReady": false,
+    "failure": "PROCESS_REFUSED",
+    "residuals": [
+      "MAIN_SESSIONS_UNCONFIRMED",
+      "INDEPENDENT_SESSIONS_UNCONFIRMED"
+    ],
+    "status": "BINDING_INPUT_RECOVERY_UNQUALIFIED"
+  },
+  "resourceCloseout": {
+    "residuals": [
+      "MAIN_SESSIONS_UNCONFIRMED",
+      "INDEPENDENT_SESSIONS_UNCONFIRMED"
+    ],
+    "verified": false
+  },
+  "purge": {
+    "onTime": true,
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "ownedLauncherAndGuardIndependentlyAbsent": true,
+  "qualificationStarted": false,
+  "nativeStarted": false,
+  "paymentObserved": false,
+  "failureBoundary": "Recovery SQL subprocess nonzero exit after owner/project validations passed",
+  "cause": "UNKNOWN_RAW_STDERR_NOT_RETAINED",
+  "ownerInputReport": "Same Neon database password used successfully for R35; not independently verified",
+  "replayAllowed": false
+}
