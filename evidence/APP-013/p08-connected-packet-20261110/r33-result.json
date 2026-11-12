@@ -1,0 +1,82 @@
+{
+  "status": "R33_QUALIFICATION_BILLING_CLI_REFUSED_CLOSED",
+  "observedAt": "2026-11-12T12:45:09.348071+00:00",
+  "sourceCommit": "e99abe072cb79b8eae9d6dd573de9145c1da035f",
+  "recoveryOperationId": "957ca991-c5e5-4c15-b13e-b0e8c96c242f",
+  "qualificationOperationId": "946f337e-b8b4-44dd-86dd-4f74d260cceb",
+  "nativeOperationId": "3ab8de9e-5f7a-46c2-b8f1-62ebb74dc759",
+  "recoveryApproval": "f3b2c42",
+  "qualificationApproval": "cfdd19f",
+  "qualification": {
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "failure": "PROCESS_REFUSED",
+    "failureStage": "cloud",
+    "liveObserved": true,
+    "residuals": [],
+    "transportReservations": {
+      "cache": 0,
+      "cli": 4,
+      "https": 0,
+      "sql": 2
+    },
+    "databaseFailedChecks": []
+  },
+  "cliResults": [
+    {
+      "cleanupScopeSha256": "331c1ddbb540c941cc326f6e7005c8435f15637cb482ccd5accdf3cb48fb151b",
+      "descriptorId": "owner",
+      "elapsedMilliseconds": 367,
+      "failureCode": null,
+      "operationId": "946f337e-b8b4-44dd-86dd-4f74d260cceb",
+      "ordinal": 1,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "331c1ddbb540c941cc326f6e7005c8435f15637cb482ccd5accdf3cb48fb151b",
+      "descriptorId": "config",
+      "elapsedMilliseconds": 213,
+      "failureCode": null,
+      "operationId": "946f337e-b8b4-44dd-86dd-4f74d260cceb",
+      "ordinal": 2,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "331c1ddbb540c941cc326f6e7005c8435f15637cb482ccd5accdf3cb48fb151b",
+      "descriptorId": "project",
+      "elapsedMilliseconds": 538,
+      "failureCode": null,
+      "operationId": "946f337e-b8b4-44dd-86dd-4f74d260cceb",
+      "ordinal": 3,
+      "status": "RETURNED"
+    },
+    {
+      "cleanupScopeSha256": "331c1ddbb540c941cc326f6e7005c8435f15637cb482ccd5accdf3cb48fb151b",
+      "descriptorId": "billing_project",
+      "elapsedMilliseconds": 26423,
+      "failureCode": "PROCESS_REFUSED",
+      "operationId": "946f337e-b8b4-44dd-86dd-4f74d260cceb",
+      "ordinal": 4,
+      "status": "FAILED"
+    }
+  ],
+  "purge": {
+    "completedAt": 1794487469.387546,
+    "onTime": true,
+    "operationId": "957ca991-c5e5-4c15-b13e-b0e8c96c242f",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "independentQualificationCloseoutReserved": true,
+  "nativeAttemptAbsent": true,
+  "ownedProcessesIndependentlyAbsent": true,
+  "ownedTemporaryFilesAbsent": true,
+  "authenticationObserved": false,
+  "paymentObserved": false,
+  "replayAllowed": false,
+  "meaning": "billing_project CLI process returned nonzero; no raw stderr retained. Cause UNKNOWN, not proof billing disabled or credentials invalid. PS1 live behavior not reached."
+}
