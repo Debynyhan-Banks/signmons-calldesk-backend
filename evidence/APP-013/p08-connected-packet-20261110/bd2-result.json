@@ -1,0 +1,39 @@
+{
+  "status": "BD2_CONSUMED_SUCCEEDED_CLOSED",
+  "sourceCommit": "347010369a788820780fdf0d8ad6442c38297a66",
+  "approvalCommit": "08e479f",
+  "result": {
+    "billingDiagnostic": {
+      "accountMatched": true,
+      "billingEnabled": true,
+      "projectMatched": true,
+      "shapeValid": true
+    },
+    "candidate": null,
+    "cliReservations": 3,
+    "executionReady": false,
+    "failure": null,
+    "liveObserved": true,
+    "operationId": "a90c83fa-59f5-4105-881d-c46c4638119c",
+    "ownerMatched": true,
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "scopeSha256": "bda0dd0debdb9266b3bfe2d9a4a0e069d9d5dccd11f182bfd43b4f6d4bc1c4fa",
+    "status": "BILLING_METADATA_OBSERVED"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "a90c83fa-59f5-4105-881d-c46c4638119c",
+    "processCleanupVerified": true,
+    "residuals": [],
+    "scopeSha256": "bda0dd0debdb9266b3bfe2d9a4a0e069d9d5dccd11f182bfd43b4f6d4bc1c4fa"
+  },
+  "ownedProcessesIndependentlyAbsent": true,
+  "receiptModesVerified": true,
+  "originalR37TimeoutCause": "UNKNOWN",
+  "replayAllowed": false,
+  "paymentObserved": false
+}
