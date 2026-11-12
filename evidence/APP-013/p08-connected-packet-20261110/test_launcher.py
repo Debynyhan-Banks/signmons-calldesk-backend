@@ -4,9 +4,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 import connected_launcher as launcher
 import packet
+import copy,test_packet
 
 class LauncherBoundaryTests(unittest.TestCase):
-    def run_case(self,expire=None,interrupt=False,attended=False,decline=None,diagnostic=False):
+    def run_case(self,expire=None,interrupt=False,attended=False,decline=None,diagnostic=False,malformed=None):
         with tempfile.TemporaryDirectory(prefix='p08-launch-boundary-',dir='/private/tmp') as tmp:
             root=Path(tmp);repo=root/'gov';repo.mkdir();review=root/'review'
             def git(*args):return subprocess.check_output(['git',*args],cwd=repo,stderr=subprocess.PIPE)
@@ -16,6 +17,10 @@ class LauncherBoundaryTests(unittest.TestCase):
             spec={'recoveryId':'synthetic','qualificationId':'qual','prospectiveOperationId':'native','window':window,'prospectiveWindow':window,'paymentWorkEnd':'synthetic','prospectiveLimits':{},'sourceCommit':'synthetic'}
             if diagnostic:spec['nativePurpose']='NATIVE_PREFLIGHT_ONLY'
             envelope={'nativeScope':{'private':'PRIVATE_SENTINEL'},'plan':{'nativeScopeSha256':'a'*64},'sdkReview':{'limits':{}}}
+            fixture=test_packet.PacketTests();fixture.setUp();self.addCleanup(fixture.doCleanups)
+            qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+            native=packet.native_envelope(qe,{**fixture.t.e['qualification'],'scopeSha256':packet.q.model.digest(qe['nativeScope'])})
+            if malformed:malformed(native)
             cap=SimpleNamespace(root=root/'guard')
             def wait(gov,path,expected,start,cutoff):
                 stage='native' if 'NATIVE' in path else 'qualification'
@@ -30,6 +35,14 @@ class LauncherBoundaryTests(unittest.TestCase):
                     published=json.loads((review/(stage+'.json')).read_text())
                     self.assertEqual(published['decisionForReview'],expected)
                     self.assertNotIn('PRIVATE_SENTINEL',json.dumps(published))
+                    self.assertNotIn('we_PRIVATESENTINEL',json.dumps(published))
+                    if stage=='native' and not diagnostic:
+                        summary=published['summary']
+                        self.assertEqual(summary['amountTotalCents'],native['payment']['amountTotalCents'])
+                        self.assertEqual(summary['currency'],native['payment']['currency'])
+                        self.assertEqual(summary['candidate'],native['resources']['candidate'])
+                        self.assertEqual(summary['stripeVersion'],native['resources']['secretVersions']['signmons-staging-stripe-secret-key'])
+                        self.assertEqual(summary['cost'],{'allowanceUsd':0,'hardBillingCap':False,'existingLiabilitiesUnchanged':True})
                     if interrupt and stage=='native':raise KeyboardInterrupt()
                     if expire==stage:return
                     (repo/path).write_text(json.dumps(expected));git('add',path)
@@ -44,7 +57,7 @@ class LauncherBoundaryTests(unittest.TestCase):
                 sequence.append('qualification-dispatch')
                 self.assertEqual(e['nativeScope']['private'],'PRIVATE_SENTINEL')
                 try:
-                    ref=approve({'qualification':{'status':'synthetic'},'sourceManifestSha256':'b'*64})
+                    ref=approve(copy.deepcopy(native))
                     self.assertTrue(ref['commit']);sequence.append('native-dispatch')
                     return {'status':'synthetic-result'}
                 finally:sequence.append('connected-cleanup')
@@ -89,3 +102,15 @@ class LauncherBoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception,'PREFLIGHT_REQUIRES_SEPARATE_CHAT_DECISIONS'):
             launcher.main({'recoveryId':'synthetic','nativePurpose':'NATIVE_PREFLIGHT_ONLY'},
                           session_consent={},read_hidden=lambda _:self.fail('credential prompt'))
+
+    def test_incomplete_or_invalid_payment_review_cleans_without_native_publication(self):
+        mutations=[lambda n:n['payment'].pop('amountTotalCents'),
+                   lambda n:n['payment'].update(amountTotalCents=None),
+                   lambda n:n['payment'].update(currency='eur'),
+                   lambda n:n['resources'].update(candidate='wrong'),
+                   lambda n:n['plan'].update(allowanceUsd=1)]
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                code,seq=self.run_case(malformed=mutation)
+                self.assertEqual(code,2)
+                self.assertEqual(seq,['qualification-wait','qualification-dispatch','connected-cleanup'])

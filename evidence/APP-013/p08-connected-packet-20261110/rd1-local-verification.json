@@ -1,0 +1,29 @@
+{
+  "section": "APP-013/3A/P08/RD1",
+  "status": "LOCAL_VERIFIED",
+  "sourceBefore": "e5ecc86e002d9d165111e14d0320f59ace87e27f",
+  "change": "Existing native stage_review summary reused in actual chat publisher before approval wait",
+  "tests": {
+    "connected": 44,
+    "governance": 25,
+    "architecture": "PASS",
+    "baseline": "PASS",
+    "consistency": "PASS",
+    "whitespace": "PASS"
+  },
+  "negativeCoverage": [
+    "missing amount",
+    "null amount",
+    "wrong currency",
+    "wrong candidate",
+    "nonzero allowance",
+    "expiry",
+    "interruption",
+    "diagnostic separation",
+    "private sentinel excluded"
+  ],
+  "initialTestFailure": "Synthetic endpoint sentinel contained underscore; corrected fixture to valid endpoint shape; final complete suite passes",
+  "providerCalls": 0,
+  "livePayment": "UNKNOWN",
+  "r35Closed": true
+}

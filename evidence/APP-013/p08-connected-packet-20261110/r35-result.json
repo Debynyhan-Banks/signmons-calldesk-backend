@@ -1,0 +1,33 @@
+{
+  "status": "CLOSED_NATIVE_REVIEW_BLOCKED",
+  "sourceCommit": "e5ecc86e002d9d165111e14d0320f59ace87e27f",
+  "recoveryApproval": "160118e",
+  "qualificationApproval": "255fee7",
+  "qualification": {
+    "status": "CURRENT_EVIDENCE_OBSERVED",
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "residuals": [],
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 20,
+      "sql": 4
+    }
+  },
+  "nativeApproved": false,
+  "nativeStarted": false,
+  "paymentObserved": false,
+  "stopReason": "CHAT_NATIVE_REVIEW_MISSING_PAYMENT_RESOURCE_SUMMARY",
+  "resourceCloseoutVerified": true,
+  "purge": {
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "onTime": true,
+    "rawFilesAbsent": true,
+    "residuals": []
+  },
+  "ownedLauncherWrapperGuardAbsent": true,
+  "closureMethod": "Approved purge then exact PID/parent/argv verified SIGINT to waiting launcher; existing finally cleanup; independent process absence checks",
+  "retryAllowed": false
+}
