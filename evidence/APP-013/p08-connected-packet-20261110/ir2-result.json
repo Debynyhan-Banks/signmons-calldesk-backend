@@ -1,0 +1,27 @@
+{
+  "operationId": "8c2e54b8-dfaa-42bc-a3fa-a1351a15d284",
+  "scopeSha256": "a2e06ec6302c9a7670e8165cb49ea2bb329418cad89993b569048eb4811dc048",
+  "ownerMatched": true,
+  "projectMatched": true,
+  "identityMatched": true,
+  "state": "DISABLED",
+  "failure": null,
+  "reservations": 3,
+  "mutationCalls": 0,
+  "ownedProcessCleanupVerified": true,
+  "ownedPids": [
+    53795,
+    53812,
+    53830
+  ],
+  "finishedAt": 1794497521.230013,
+  "onTime": true,
+  "approvalCommit": "b37fd15e2d2e742bb5ff399a29054d39d65e5ea5",
+  "executorAndChildrenAbsent": true,
+  "independentProcessCleanupVerified": true,
+  "receiptModesVerified": true,
+  "temporaryExecutorRemoved": true,
+  "residuals": [],
+  "r38IdentityResidualReconciled": true,
+  "r38OriginalFailureCause": "UNKNOWN"
+}
