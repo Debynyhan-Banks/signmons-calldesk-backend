@@ -1,0 +1,42 @@
+{
+  "status": "R37_CONSUMED_BILLING_TIMEOUT_CLOSED",
+  "sourceCommit": "9ac00a1791178a99e1c2e55b21de2e0dae2f8c05",
+  "recoveryApproval": "620b775",
+  "qualificationApproval": "7a29e66",
+  "qualification": {
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "failure": "PROCESS_TIMEOUT",
+    "failureStage": "cloud",
+    "residuals": [],
+    "transportReservations": {
+      "cache": 0,
+      "cli": 4,
+      "https": 0,
+      "sql": 2
+    },
+    "databaseFailedChecks": []
+  },
+  "failedDescriptor": "billing_project",
+  "failedOrdinal": 4,
+  "precedingCliReturned": [
+    "owner",
+    "config",
+    "project"
+  ],
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "qualificationIndependentCloseoutPresent": true,
+  "purge": {
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "onTime": true,
+    "rawFilesAbsent": true,
+    "residuals": []
+  },
+  "ownedGuardAndLaunchersIndependentlyAbsent": true,
+  "nativeStarted": false,
+  "paymentObserved": false,
+  "cause": "CLI timeout observed; underlying service/network/SDK cause UNKNOWN",
+  "replayAllowed": false
+}
