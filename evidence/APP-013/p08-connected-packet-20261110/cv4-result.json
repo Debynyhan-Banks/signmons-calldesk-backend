@@ -1,0 +1,32 @@
+{
+  "section": "APP-013/3A/P08/CV4",
+  "status": "CV4_CONSUMED_HORIZON_REFUSED_CLOSED",
+  "sourceCommit": "14937c2c50970cf4c4f5a48de304bb9dc359b125",
+  "validThrough": "2026-11-12T15:15:00Z",
+  "attempt": {
+    "operationId": "7a14a7b4-bcc9-4c54-ada8-7b41c63d720e",
+    "scopeSha256": "2eb61c6860bfc7a260e6285364f9a1fd99ec279bb6b7e41a5bda36e5d21c45bc",
+    "approvalCommit": "89610644bb94ba9b247fe3e258c8ef153b62e31a",
+    "pid": 71623,
+    "startedAt": 1794492198.603064,
+    "cacheReadReserved": true
+  },
+  "result": {
+    "operationId": "7a14a7b4-bcc9-4c54-ada8-7b41c63d720e",
+    "status": "CACHED_TOKEN_EXPIRED",
+    "cacheReadInvocations": 1,
+    "cacheFunctionCompleted": true,
+    "completedAt": 1794492198.606064,
+    "onTime": true,
+    "providerCalls": 0,
+    "sdkInvocations": 0,
+    "rawTokenOrExpiryRetained": false,
+    "recoveryStarted": false
+  },
+  "ownedProcessIndependentlyAbsent": true,
+  "ownedOperatorScriptAbsent": true,
+  "receiptInventoryAndModesVerified": true,
+  "isolatedProcessExit": 0,
+  "replayAllowed": false,
+  "interpretation": "Cache expiry does not cover requested future horizon; not proof token is already expired."
+}
