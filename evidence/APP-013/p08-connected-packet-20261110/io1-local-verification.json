@@ -1,0 +1,23 @@
+{
+  "section": "APP-013/3A/IO1",
+  "status": "LOCAL_VERIFIED",
+  "sourceCommit": "550ebfd8a292fef271e6ef89ea005ddea3d24c6d",
+  "ownerApprovalCommit": "052527a",
+  "verifiedAt": "2026-11-12T15:40:05.375451+00:00",
+  "tests": {
+    "native": 44,
+    "qualification": 287,
+    "connected": 44,
+    "correction": 52,
+    "governance": 25,
+    "total": 452
+  },
+  "currentAndCommittedSources": "PASS",
+  "baselineConsistencyArchitectureWhitespace": "PASS",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "localPostgresCleanup": "serverReaped and scratchAbsent verified",
+  "initialRestrictedNativeRun": "Two child/payment fixture failures; unchanged suite passed with local process permissions",
+  "liveOutcome": "NOT_RUN; IR2 disabled state remains last live observation",
+  "historicalR38Cause": "UNKNOWN; demonstrated compatible output defect corrected"
+}
