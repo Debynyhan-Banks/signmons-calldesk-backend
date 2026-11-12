@@ -1,0 +1,65 @@
+{
+  "status": "R31_QUALIFICATION_PASSWORD_TIMEOUT",
+  "observedAt": "2026-11-12T12:06:21.826196+00:00",
+  "sourceCommit": "de52c53ce39afe8cd2fb45ce2f51dc4109a0574b",
+  "recoveryOperationId": "1adf565a-9df1-4af8-856d-2c2360016f30",
+  "qualificationOperationId": "7fbfbe0b-a427-4eb9-a69b-d1470434e434",
+  "nativeOperationId": "2166e747-eb17-4f95-b3a5-b96c16718c17",
+  "recoveryApproval": "3236ad0",
+  "qualificationApproval": "b3b3c97",
+  "qualification": {
+    "candidate": null,
+    "databaseFailedChecks": [],
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "RECOVERY_PASSWORD_TIMEOUT",
+    "failureStage": "preparation",
+    "liveObserved": false,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [
+      "CLOSEOUT_UNCONFIRMED",
+      "INDEPENDENT_UNCONFIRMED"
+    ],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 0,
+      "cli": 0,
+      "https": 0,
+      "sql": 0
+    }
+  },
+  "independentQualificationCloseout": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "liveObserved": false,
+    "privateInputsAbsent": true,
+    "residuals": [
+      "OWNED_PROCESS_HISTORY_UNKNOWN",
+      "SESSIONS_UNCONFIRMED",
+      "RECOVERY_PASSWORD_TIMEOUT",
+      "PROCESS_CLEANUP_UNCONFIRMED"
+    ],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED"
+  },
+  "purge": {
+    "completedAt": 1794484989.805774,
+    "onTime": true,
+    "operationId": "1adf565a-9df1-4af8-856d-2c2360016f30",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "nativeAttemptAbsent": true,
+  "authenticationObserved": false,
+  "paymentObserved": false,
+  "ownedProcessesAbsentAtCloseout": true,
+  "ownedTemporaryLaunchAndReferenceFilesAbsent": true,
+  "qualificationDatabaseCleanupReadback": "UNCONFIRMED",
+  "replayAllowed": false,
+  "scopeDeviation": "None"
+}
