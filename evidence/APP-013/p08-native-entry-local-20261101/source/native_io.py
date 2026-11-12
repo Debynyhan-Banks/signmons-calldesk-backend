@@ -117,6 +117,9 @@ class NativeIO:
         if raw == '' and kind in ('identity', 'version'): return {}
         try: value = json.loads(raw)
         except (ValueError, TypeError): raise __import__('private_inventory').Stop('NATIVE_OUTPUT_SHAPE') from None
+        # Installed IAM enable/disable hooks return None, serialized as [] by JSON.
+        # This acknowledges only the exact mutation; authoritative readback is unchanged.
+        if kind == 'identity' and value == []: return {}
         if kind is not None: need(isinstance(value, dict), 'NATIVE_OUTPUT_SHAPE')
         return value
 

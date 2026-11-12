@@ -641,12 +641,41 @@ class EntryTests(unittest.TestCase):
             vector=r.command(plan,kind,name,False)
             for raw in (b'',b'null',b'[]',b'status: unknown'):
                 with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,raw,b'')):
-                    if raw==b'' and kind in ('identity','version'):self.assertEqual(io.cloud(vector,0),{})
+                    if (raw==b'' and kind in ('identity','version')) or (raw==b'[]' and kind=='identity'):self.assertEqual(io.cloud(vector,0),{})
                     else:
                         with self.assertRaisesRegex(Stop,'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
         vector=['run','services','describe','signmons-calldesk-staging','--project=signmons','--region=us-east5','--format=json(status.traffic)']
         with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,b'{}',b'')) as run:
             self.assertEqual(io.cloud(vector,0),{});self.assertEqual(run.call_args.args[0],['/opt/homebrew/bin/gcloud',*vector])
+
+    def test_identity_empty_list_ack_is_exact_and_not_state_proof(self):
+        cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';r=io.restore;plan={**cap.plan,'iam':[]}
+        for enabled in (True,False):
+            vector=r.command(plan,'identity',r.IDENTITY,enabled)
+            # Reproduce the installed SDK hook/printer result without invoking gcloud.
+            sdk='/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib'
+            code="import sys,io;sys.path[:0]=[sys.argv[1],sys.argv[1]+'/third_party'];from googlecloudsdk.command_lib.iam import hooks;from googlecloudsdk.core.resource import resource_printer;from types import SimpleNamespace;from unittest.mock import patch;hook=getattr(hooks,sys.argv[2]);args=SimpleNamespace(command_path=[],service_account='synthetic');v=hook(object(),args);out=io.StringIO();resource_printer.Print(v,'json',out=out);print(out.getvalue(),end='')"
+            output=subprocess.check_output([sys.executable,'-c',code,sdk,'EnableIamAccountConfirmation' if enabled else 'DisableIamAccountConfirmation'])
+            self.assertEqual(output,b'[]\n')
+            with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,output,b'')):
+                self.assertEqual(io.cloud(vector,0),{})
+            for raw in (b'[{}]',b'null',b'false',b'0',b'""',b'garbage'):
+                with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,raw,b'')):
+                    with self.assertRaisesRegex(Stop,'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
+            with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],1,b'[]',b'')):
+                with self.assertRaisesRegex(Stop,'NATIVE_COMMAND_REFUSED'):io.cloud(vector,0)
+            with patch('native_io.subprocess.run',side_effect=subprocess.TimeoutExpired('synthetic',1)):
+                with self.assertRaisesRegex(Stop,'NATIVE_COMMAND_UNCONFIRMED'):io.cloud(vector,0)
+            # A foreign vector must never acquire the identity acknowledgement exception.
+            foreign=[v.replace(r.IDENTITY,'foreign@example.invalid') for v in vector]
+            with patch.object(io,'cli',return_value='[]'):
+                self.assertEqual(io.cloud(foreign,0),[])
+            # Read output remains a list, not a synthesized successful object.
+            read=['iam','service-accounts','describe',r.IDENTITY,'--project=signmons','--format=json(email,disabled)']
+            with patch.object(io,'cli',return_value='[]'):
+                self.assertEqual(io.cloud(read,0),[])
+            adapter=SimpleNamespace(cloud=lambda *args:{'email':r.IDENTITY,'disabled':enabled})
+            self.assertFalse(r.NativeAdapter.readback(adapter,'identity',r.IDENTITY,enabled,plan,0))
 
     def test_actual_native_sql_serializer_uses_pinned_tls_and_safe_errors(self):
         cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';io.password='SYNTHETIC_PASSWORD'
