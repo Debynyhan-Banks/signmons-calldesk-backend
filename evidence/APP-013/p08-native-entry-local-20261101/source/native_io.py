@@ -191,6 +191,8 @@ class PreflightIO(NativeIO):
             ['projects','get-iam-policy',cap.plan['project'],'--format=json'],
             ['iam','service-accounts','get-iam-policy',r['identity'],project,'--format=json'],
         ]
+        vectors += [[*v[:-1], '--format=json(bindings,etag,version)'] for v in vectors
+                    if 'get-iam-policy' in v]
         vectors += [['secrets','versions','describe',v,'--secret='+n,project,'--format=json(state)'] for n,v in r['secretVersions'].items()]
         vectors += [['secrets','get-iam-policy',n,project,'--format=json'] for n in self.restore.POLICIES]
         roles = cap.modules['bridge'].packet.module('roles').ROLES

@@ -142,6 +142,54 @@ class EntryTests(unittest.TestCase):
                         self.assertNotIn('synthetic-private-password',json.dumps(journal))
                     finally:t.doCleanups()
 
+    def test_policy_projection_preserves_serialized_binding_checks(self):
+        cap=a.Capability(self.e,self.root)
+        policies={}
+        calls=[]
+        def cli(vector):
+            calls.append(vector)
+            value=policies['value']
+            # Model the existing gcloud field projection, not a parser bypass.
+            if vector[-1]=='--format=json(bindings,etag,version)' and isinstance(value,dict):
+                value={k:v for k,v in value.items() if k in ('bindings','etag','version')}
+            return json.dumps(value)
+        ports=entry.Ports(cap,SimpleNamespace(cli=cli,https=lambda d:None),None,None)
+        for kind in ('lookup','signing'):
+            for value in ({}, {'bindings':[]}, {'bindings':[], 'etag':'synthetic','version':1,
+                                              'auditConfigs':[{'service':'allServices'}]}):
+                policies['value']=value
+                self.assertEqual(ports.policy(kind),'ABSENT')
+                self.assertEqual(calls[-1][-1],'--format=json(bindings,etag,version)')
+            policies['value']={'bindings':'malformed'}
+            with self.assertRaisesRegex(Exception,'POLICY_SHAPE'):ports.policy(kind)
+            role=next(r for r in ports.iam if r['kind']==kind)
+            policies['value']={'bindings':[{'role':role['roleId'],'members':['wrong-member']}]}
+            with self.assertRaisesRegex(Exception,'POLICY_OWNERSHIP'):ports.policy(kind)
+            member=('serviceAccount:'+cap.e['resources']['identity'] if kind=='lookup'
+                    else 'user:'+cap.plan['ownerPrincipal'])
+            policies['value']={'bindings':[{'role':role['roleId'],'members':[member]}]}
+            with self.assertRaisesRegex(Exception,'POLICY_CONDITION'):ports.policy(kind)
+        vector=['projects','describe',cap.plan['project'],'--format=json']
+        policies['value']={'auditConfigs':[]}
+        ports.cloud(vector)
+        self.assertEqual(calls[-1],vector)
+
+    def test_preflight_policy_projection_firewall_retains_runtime_reads(self):
+        self.preflight_setup();cap=a.Capability(self.e,self.root);cap.external=True
+        legacy=a.load('p08-restoration-local-20261028/source/legacy/controller.py','ps1_vector_legacy')
+        cap.e['database']={'host':legacy.DB_HOST,'port':5432,'database':legacy.DB_NAME,'user':legacy.DB_ADMIN}
+        io=entry.PreflightIO(cap)
+        project=cap.plan['project'];identity=cap.e['resources']['identity']
+        for vector in (['projects','get-iam-policy',project,'--format=json'],
+                       ['iam','service-accounts','get-iam-policy',identity,'--project='+project,'--format=json']):
+            self.assertIn(tuple(vector),io.read_vectors)
+            self.assertIn(tuple([*vector[:-1],'--format=json(bindings,etag,version)']),io.read_vectors)
+        with patch.object(io,'ensure_owner',side_effect=AssertionError('credentials forbidden')):
+            for vector in (['projects','get-iam-policy','other','--format=json(bindings,etag,version)'],
+                           ['projects','set-iam-policy',project,'--format=json(bindings,etag,version)']):
+                with self.assertRaisesRegex(Stop,'PREFLIGHT_CLI_DENIED'):io.cli(vector)
+        self.assertEqual(a.PREFLIGHT_LIMITS,{'cli':40,'https':1,'sql':3,'child':0})
+
     def preflight_setup(self):
         self.e['purpose']='NATIVE_PREFLIGHT_ONLY'
         self.e['decision']={'decision':'APPROVE_LOCAL_PREFLIGHT_PROOF',

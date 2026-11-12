@@ -1,0 +1,29 @@
+{
+  "section": "APP-013/3A/P08/PS1",
+  "status": "LOCAL_CORRECTION_VERIFIED_NO_LIVE_EXECUTION",
+  "approvalCommit": "52f4a6a",
+  "sourceBaseline": "3070462c4b656a916a65d0042c46d46ea576a637",
+  "observedAt": "2026-11-12T12:37:50.524613+00:00",
+  "change": "Project and exact service-account access policy reads use json(bindings,etag,version); current preflight firewall enumerates those vectors while preserving runtime reads. Historical parser and sources unchanged.",
+  "tests": {
+    "nativeEntry": 43,
+    "connectedPacket": 43,
+    "keyCorrection": 52,
+    "focusedQualification": 39
+  },
+  "testLimitations": [
+    "Initial new firewall fixture required external-mode and pinned database setup; corrected without changing runtime gates.",
+    "Two existing payment fixture tests failed under restricted local-server sandbox and passed with local fixture permissions.",
+    "No live response or provider formatter execution; serialized fixture models existing projection."
+  ],
+  "historicalSourcesUnchanged": [
+    "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+    "evidence/APP-013/p08-exact-role-provisioning-local-20261028/source/role_provisioner.py",
+    "evidence/APP-013/p08-restoration-local-20261028/source/restore.py"
+  ],
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "liveCause": "R32 POLICY_SHAPE exact response remains UNKNOWN",
+  "replayAllowed": false,
+  "scopeDeviation": "None"
+}

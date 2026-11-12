@@ -121,6 +121,17 @@ class Ports(bridge.Ports):
         super().__init__(cap.plan, io.cli, io.https, self.authenticate_receipt,
                          self.account_readback, lambda: None, cap.clock)
 
+    def cloud(self, vector):
+        # Access checks consume the same projected policy contract as qualification.
+        policy_reads = (
+            ['projects', 'get-iam-policy', self.plan['project'], '--format=json'],
+            ['iam', 'service-accounts', 'get-iam-policy', self.cap.e['resources']['identity'],
+             '--project=' + self.plan['project'], '--format=json'],
+        )
+        if vector in policy_reads:
+            vector = [*vector[:-1], '--format=json(bindings,etag,version)']
+        return super().cloud(vector)
+
     def authenticate_receipt(self, receipt):
         self.handoff(receipt)
         self.account_readback()
