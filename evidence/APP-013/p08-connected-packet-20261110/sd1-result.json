@@ -1,0 +1,39 @@
+{
+  "status": "SD1_LIVE_OBSERVED_CLOSED",
+  "approvalCommit": "545984c",
+  "sourceCommit": "500b21ca909759c24db6fea035afbc5dcf9f9719",
+  "result": {
+    "candidate": null,
+    "executionReady": false,
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "observation": {
+      "checks": {
+        "databaseMatched": true,
+        "sessionsAbsent": true,
+        "userMatched": true
+      },
+      "failure": null
+    },
+    "operationId": "8ef83a77-e417-49f0-ab8f-e9c4e31dd654",
+    "residuals": [],
+    "scopeSha256": "6aa03fd7ac75bd1fbe9f8300d3a4a6aa62f31b4d3ca4871be4c48aeee70129b8",
+    "sqlReservations": 2,
+    "status": "SQL_CONNECTION_DIAGNOSED"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "8ef83a77-e417-49f0-ab8f-e9c4e31dd654",
+    "residuals": [],
+    "scopeSha256": "6aa03fd7ac75bd1fbe9f8300d3a4a6aa62f31b4d3ca4871be4c48aeee70129b8",
+    "verified": true
+  },
+  "ownedLauncherAndChildrenIndependentlyAbsent": true,
+  "receiptInventoryModesVerified": true,
+  "originalR36Cause": "UNKNOWN",
+  "r36SessionResidualReconciled": "Current existing session filter observed absent, independently verified",
+  "retryAllowed": false,
+  "paymentObserved": false
+}
