@@ -1,0 +1,74 @@
+{
+  "status": "R32_NATIVE_PREFLIGHT_POLICY_SHAPE_CLOSED",
+  "observedAt": "2026-11-12T12:31:33.066829+00:00",
+  "sourceCommit": "c19398525618d0d6ba065c181551f1eda5c8fa04",
+  "recoveryOperationId": "63c33cb8-309c-430e-b241-715ca411c349",
+  "qualificationOperationId": "d8a7e97a-2e07-456d-a041-85acb5d0455f",
+  "nativeOperationId": "3077f02f-70ea-4efe-bdce-2dcc3f9428df",
+  "recoveryApproval": "2ad9431",
+  "qualificationApproval": "503e31e",
+  "nativeApproval": "be226c2",
+  "qualification": {
+    "status": "CURRENT_EVIDENCE_OBSERVED",
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "residuals": [],
+    "transportReservations": {
+      "cache": 1,
+      "cli": 27,
+      "https": 20,
+      "sql": 4
+    },
+    "databaseFailedChecks": []
+  },
+  "native": {
+    "authenticationObserved": false,
+    "failure": "POLICY_SHAPE",
+    "operationId": "3077f02f-70ea-4efe-bdce-2dcc3f9428df",
+    "paymentObserved": false,
+    "paymentReadyForAcceptance": false,
+    "preflightPassed": false,
+    "preflightStage": "ACCESS_PREFLIGHT",
+    "privateInputsAbsent": true,
+    "residuals": [],
+    "status": "NATIVE_PREFLIGHT_CLOSED"
+  },
+  "nativeJournal": {
+    "phase": "PREPARED",
+    "failure": "POLICY_SHAPE",
+    "preflightStage": "ACCESS_PREFLIGHT",
+    "preflightPassed": false,
+    "unknown": [],
+    "residuals": [],
+    "runtimeAttempted": [],
+    "iamAttempted": [],
+    "keyCreateAttempted": false,
+    "authAttempted": false,
+    "nativeEntry": {
+      "calls": {
+        "child": 0,
+        "cli": 32,
+        "https": 0,
+        "sql": 3
+      },
+      "envelopeSha256": "31c190fae83b2cba86656fb88c4cf1528c450e7d3d65dd68c315a50a989ef863"
+    }
+  },
+  "purge": {
+    "completedAt": 1794486631.7567098,
+    "onTime": true,
+    "operationId": "63c33cb8-309c-430e-b241-715ca411c349",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "ownedProcessesIndependentlyAbsent": true,
+  "ownedTemporaryFilesAbsent": true,
+  "replayAllowed": false,
+  "cause": "POLICY_SHAPE at ACCESS_PREFLIGHT; exact input and failing policy parser call remain UNKNOWN. No provider retry or correction authorized."
+}
