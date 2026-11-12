@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "8e0bd4165e462b72bcc85311b9ee70b602159994",
+  "verifiedAt": "2026-11-12T15:28:44.327812+00:00",
+  "tests": 5,
+  "passed": 5,
+  "boundary": "actual NativeIO.cli and validate_cli_descriptor; _owned_run mocked",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "liveState": "UNKNOWN",
+  "files": {
+    "ir_identity_dispatch.py": "116bacf6098189d87b8ec429a7dd0e4c56cc5c5f482b2dd44c44e9955b1e62af",
+    "ir_identity_dispatch_test.py": "3468d93940c2dc5c97b1ed7d8cf26ee6ed75de0d454f9c0c5fc4299bb40b11c4"
+  }
+}
