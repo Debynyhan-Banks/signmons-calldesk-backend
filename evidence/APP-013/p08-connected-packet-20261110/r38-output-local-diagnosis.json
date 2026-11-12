@@ -1,0 +1,29 @@
+{
+  "verifiedAt": "2026-11-12T15:34:15.416742+00:00",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "cases": [
+    {
+      "verb": "enable",
+      "sdkHookReturnsNone": true,
+      "sdkJsonOutput": "[]",
+      "actualNativeAdapterFailure": "NATIVE_OUTPUT_SHAPE"
+    },
+    {
+      "verb": "disable",
+      "sdkHookReturnsNone": true,
+      "sdkJsonOutput": "[]",
+      "actualNativeAdapterFailure": "NATIVE_OUTPUT_SHAPE"
+    }
+  ],
+  "sdkFiles": {
+    "surface/iam/service_accounts/enable.yaml": "cbb6c09e67deca5ebc24e3ef88bbb2739145815a45500dcc46c657e8c05f02cd",
+    "surface/iam/service_accounts/disable.yaml": "6460c4d148f6d4904d66e873760e732301dc6337be57ef0b6576b9108812ba2b",
+    "googlecloudsdk/command_lib/iam/hooks.py": "5fa1e6d47febf2a6eaa75f4db9aaf610040d591f92fdd7ea51bf34b54e009340",
+    "googlecloudsdk/core/resource/json_printer.py": "42ab2c2f08b1303f3f0c6efb096f82fe454420685286dfeb578a870889ea9c28",
+    "googlecloudsdk/core/resource/resource_printer_base.py": "724faa90a9ca0649173576baf1df26fadd6b41ca6ddebb0cc5c29bfb27627233",
+    "googlecloudsdk/command_lib/util/apis/yaml_command_translator.py": "c2354584e6dab008777aca8c24d5b38349858208b2a1d9c987d391ee2c47358f"
+  },
+  "historicalR38Cause": "UNKNOWN; reproduced mismatch is consistent with recorded stop",
+  "currentIdentityState": "DISABLED verified by IR2; no new read"
+}
