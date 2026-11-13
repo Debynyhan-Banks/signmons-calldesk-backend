@@ -1,0 +1,28 @@
+{
+  "verifiedAt": "2026-11-13T23:17:01.625260+00:00",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "serialization": [
+    {
+      "enabled": true,
+      "sdkOutputType": "list",
+      "adapterFailure": "NATIVE_OUTPUT_SHAPE"
+    },
+    {
+      "enabled": false,
+      "sdkOutputType": "list",
+      "adapterFailure": "NATIVE_OUTPUT_SHAPE"
+    }
+  ],
+  "syntheticWorkStatus": "ENTRY_AWAITING_INDEPENDENT_CLOSEOUT",
+  "syntheticIndependentStop": null,
+  "syntheticCloseoutStatus": "ENTRY_CONTAINMENT_UNCONFIRMED",
+  "historicalCause": "UNKNOWN",
+  "sdkFiles": {
+    "surface/run/services/update_traffic.py": "15a39927e0225c44cb228a27cac314630ba0b87a12243bac1a6935fc973cec33",
+    "googlecloudsdk/api_lib/run/traffic_pair.py": "e6ddbeb400c16049ea18115261965fe9b65a6837c0800142905bfc1198913f49",
+    "googlecloudsdk/core/resource/json_printer.py": "42ab2c2f08b1303f3f0c6efb096f82fe454420685286dfeb578a870889ea9c28"
+  },
+  "sourceBefore": "b99b529",
+  "syntheticCloseoutInterpretation": "Final containment result produced; missing historical result not reproduced"
+}
