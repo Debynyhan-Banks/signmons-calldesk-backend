@@ -1,0 +1,23 @@
+{
+  "section": "APP-013/3A/IO2",
+  "status": "LOCAL_VERIFIED",
+  "sourceCommit": "9de914d2f464e1e86f61fa151a186b9bbd1eaf03",
+  "ownerApprovalCommit": "5e9ea4b",
+  "verifiedAt": "2026-11-13T23:29:06.999270+00:00",
+  "tests": {
+    "native": 46,
+    "qualification": 287,
+    "connected": 44,
+    "correction": 52,
+    "governance": 25,
+    "total": 454
+  },
+  "currentAndCommittedSourceManifests": "PASS",
+  "baselineConsistencyArchitectureWhitespace": "PASS",
+  "localPostgresCleanup": "serverReaped/scratchAbsent verified",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "liveExecution": "NOT_RUN",
+  "r39MissingFinalResultCause": "UNKNOWN; synthetic independent failure-closeout final receipt passed",
+  "next": "Reconcile credential horizon and attendance before preparing any new live scope"
+}
