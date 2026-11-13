@@ -677,6 +677,55 @@ class EntryTests(unittest.TestCase):
             adapter=SimpleNamespace(cloud=lambda *args:{'email':r.IDENTITY,'disabled':enabled})
             self.assertFalse(r.NativeAdapter.readback(adapter,'identity',r.IDENTITY,enabled,plan,0))
 
+    def test_tag_sdk_lists_are_acknowledgements_only_for_exact_mutations(self):
+        cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';r=io.restore;plan={**cap.plan,'iam':[]}
+        sdk='/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib'
+        code="""import sys,io,json
+from types import SimpleNamespace
+sys.path[:0]=[sys.argv[1],sys.argv[1]+'/third_party']
+from googlecloudsdk.api_lib.run import traffic_pair
+from googlecloudsdk.core.resource import resource_printer
+normal=SimpleNamespace(percent=100,tag=None,url='',revisionName='synthetic-normal',latestRevision=False)
+tag=SimpleNamespace(percent=None,tag='synthetic-tag',url='https://synthetic.invalid',revisionName='synthetic-candidate',latestRevision=False)
+pair=lambda targets,name:traffic_pair.TrafficTargetPair(targets,targets,name,False,None)
+outputs=[]
+for rows in ([pair([normal],'synthetic-normal')],[pair([normal],'synthetic-normal'),pair([tag],'synthetic-candidate')],[pair([],'synthetic-pending')]):
+ out=io.StringIO();resource_printer.Print(rows,'json',out=out);outputs.append(json.loads(out.getvalue()))
+print(json.dumps(outputs))
+"""
+        outputs=json.loads(subprocess.check_output([sys.executable,'-c',code,sdk]))
+        for enabled in (True,False):
+            vector=r.command(plan,'tag',r.TAG,enabled)
+            for value in outputs:
+                raw=json.dumps(value).encode()
+                with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,raw,b'')):
+                    self.assertEqual(io.cloud(vector,0),{})
+            bad=[[],[{}],[None],None,False,1,'unknown']
+            for key,val in [('revisionName',None),('latestRevision',1),('statusPercent','101'),('specPercent',0),('tags',[{}]),('urls',[1])]:
+                rows=copy.deepcopy(outputs[0]);rows[0][key]=val;bad.append(rows)
+            for value in bad:
+                with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,json.dumps(value).encode(),b'')):
+                    with self.assertRaisesRegex(Stop,'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
+            with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,b'bad-json',b'')):
+                with self.assertRaisesRegex(Stop,'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
+            with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],1,json.dumps(outputs[0]).encode(),b'')):
+                with self.assertRaisesRegex(Stop,'NATIVE_COMMAND_REFUSED'):io.cloud(vector,0)
+            with patch('native_io.subprocess.run',side_effect=subprocess.TimeoutExpired('synthetic',1)):
+                with self.assertRaisesRegex(Stop,'NATIVE_COMMAND_UNCONFIRMED'):io.cloud(vector,0)
+        # Other mutation families cannot use the tag response exception.
+        for kind,name in [('identity',r.IDENTITY),('version',r.SECRETS[0]),('secretBinding',r.POLICIES[0])]:
+            with patch.object(io,'cli',return_value=json.dumps(outputs[0])):
+                with self.assertRaisesRegex(Stop,'NATIVE_OUTPUT_SHAPE'):io.cloud(r.command(plan,kind,name,True),0)
+        with patch.object(io,'cli',return_value=json.dumps(outputs[0])):
+            self.assertEqual(io.cloud(['run','services','describe','synthetic'],0),outputs[0])
+        # Authoritative state, never the acknowledgement, controls restoration.
+        adapter=SimpleNamespace(cloud=lambda *args:{'status':{'traffic':[{'revisionName':r.NORMAL,'percent':100}]}})
+        self.assertFalse(r.NativeAdapter.traffic(adapter,plan,0,True))
+        adapter.cloud=lambda *args:{}
+        with self.assertRaises(Exception):r.NativeAdapter.traffic(adapter,plan,0,False)
+        adapter.cloud=lambda *args:{'status':{'traffic':[{'revisionName':r.NORMAL,'percent':99}]}}
+        with self.assertRaises(Exception):r.NativeAdapter.traffic(adapter,plan,0,False)
+
     def test_actual_native_sql_serializer_uses_pinned_tls_and_safe_errors(self):
         cap,io=self.native_fixture();io.token='SYNTHETIC_TOKEN';io.password='SYNTHETIC_PASSWORD'
         query=next(q for q in io.allowed_sql if 'aclexplode' in q)
@@ -841,6 +890,24 @@ class ConnectedEntryTests(EntryTests):
         # Corrected Stripe version adds its own activation/retirement readbacks; existing192 cap is unchanged.
         self.assertLessEqual(read(self.root/'journal.json')['nativeEntry']['calls']['cli'],self.e['limits']['cli'])
         self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':5,'cli':191,'https':16,'sql':10})
+
+    def test_failed_tag_before_auth_has_independent_final_receipt(self):
+        def factory(cap):
+            io=self.factory(cap);cloud=io.cloud
+            def fail_tag(vector,deadline):
+                value=cloud(vector,deadline)
+                if vector[:3]==['run','services','update-traffic']:
+                    raise Stop('NATIVE_OUTPUT_SHAPE')
+                return value
+            io.cloud=fail_tag;return io
+        work=entry.run_entry(self.path,io_factory=factory)
+        self.assertEqual(work['status'],'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+        self.assertFalse(read(self.root/'journal.json')['authAttempted'])
+        closed=entry.run_entry(self.path,'closeout',io_factory=factory)
+        self.assertEqual(closed['status'],'ENTRY_CONTAINMENT_UNCONFIRMED')
+        self.assertTrue(closed['privateInputsAbsent'])
+        self.assertTrue((self.root/'result.json').exists())
+        self.assertTrue(any('tag' in x.lower() for x in closed['residuals']))
 
     def test_full_parent_failed_readbacks_have_finite_cleanup_budget(self):
         self.scenario='disable_readback_failed'

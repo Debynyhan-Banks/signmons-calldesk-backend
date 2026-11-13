@@ -120,6 +120,23 @@ class NativeIO:
         # Installed IAM enable/disable hooks return None, serialized as [] by JSON.
         # This acknowledges only the exact mutation; authoritative readback is unchanged.
         if kind == 'identity' and value == []: return {}
+        if kind == 'tag' and isinstance(value, list):
+            # update-traffic returns TrafficTargetPair[], not a Service resource.
+            # Treat it only as acknowledgement; restore.traffic still verifies state.
+            def percent(v):
+                return isinstance(v, str) and (v == '-' or
+                    (v.isascii() and v.isdecimal() and 0 <= int(v) <= 100))
+            need(bool(value) and all(isinstance(row, dict) and
+                 isinstance(row.get('revisionName'), str) and bool(row['revisionName']) and
+                 type(row.get('latestRevision')) is bool and
+                 percent(row.get('specPercent')) and percent(row.get('statusPercent')) and
+                 isinstance(row.get('tags'), list) and all(isinstance(tag, dict) and
+                     isinstance(tag.get('tag'), str) and bool(tag['tag']) and
+                     type(tag.get('inSpec')) is bool and type(tag.get('inStatus')) is bool
+                     for tag in row['tags']) and
+                 isinstance(row.get('urls'), list) and all(isinstance(url, str) for url in row['urls'])
+                 for row in value), 'NATIVE_OUTPUT_SHAPE')
+            return {}
         if kind is not None: need(isinstance(value, dict), 'NATIVE_OUTPUT_SHAPE')
         return value
 
