@@ -1,0 +1,61 @@
+{
+  "status": "R40_CONSUMED_QUALIFICATION_PASSWORD_TIMEOUT",
+  "approvals": {
+    "recovery": "bef4d69",
+    "qualification": "2dbfe70"
+  },
+  "sourceCommit": "fc9090b2e093a25749d75874899be620b6be9694",
+  "qualification": {
+    "candidate": null,
+    "databaseFailedChecks": [],
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "failure": "RECOVERY_PASSWORD_TIMEOUT",
+    "failureStage": "preparation",
+    "liveObserved": false,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [
+      "CLOSEOUT_UNCONFIRMED",
+      "INDEPENDENT_UNCONFIRMED"
+    ],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "transportReservations": {
+      "cache": 0,
+      "cli": 0,
+      "https": 0,
+      "sql": 0
+    }
+  },
+  "independentCloseout": {
+    "candidate": null,
+    "execution": "EXTERNAL_READ_ONLY",
+    "executionReady": false,
+    "liveObserved": false,
+    "privateInputsAbsent": true,
+    "residuals": [
+      "OWNED_PROCESS_HISTORY_UNKNOWN",
+      "SESSIONS_UNCONFIRMED",
+      "RECOVERY_PASSWORD_TIMEOUT",
+      "PROCESS_CLEANUP_UNCONFIRMED"
+    ],
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "privatePurge": {
+    "completedAt": 1794614315.024891,
+    "onTime": true,
+    "operationId": "ef35be6b-e717-43a7-8500-997ceec4dca5",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recordedProcessesIndependentlyAbsent": true,
+  "temporaryExecutorsRemoved": true,
+  "nativeStarted": false,
+  "paymentObserved": false,
+  "replayAllowed": false,
+  "databaseSessionReadback": "UNCONFIRMED; zero qualification SQL reservations does not replace readback"
+}
