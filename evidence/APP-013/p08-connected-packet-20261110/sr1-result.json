@@ -1,0 +1,32 @@
+{
+  "operationId": "75c7b6c7-9d8e-4c98-9bfd-dd1265c9cd37",
+  "scopeSha256": "641f79fc5727f29700fe553ef0c6c3eb67ac4766045dec397528168a87b081d3",
+  "ownerMatched": true,
+  "projectMatched": true,
+  "serviceMatched": true,
+  "normalTraffic100Percent": true,
+  "candidateTagPresent": false,
+  "candidateTagMatched": false,
+  "failure": null,
+  "reservations": 3,
+  "mutationCalls": 0,
+  "candidateTagCount": 0,
+  "candidateTagPercent": null,
+  "trafficRowCount": 2,
+  "ownedProcessCleanupVerified": true,
+  "ownedPids": [
+    50133,
+    50150,
+    50167
+  ],
+  "finishedAt": 1794611589.8942778,
+  "onTime": true,
+  "approvalCommit": "0639008dbda5b0e8c0d7352279d6dac6f0bc1a6f",
+  "independentProcessCleanupVerified": true,
+  "receiptModesVerified": true,
+  "temporaryExecutorRemoved": true,
+  "r39TagResidualReconciled": true,
+  "historicalR39FailureCause": "UNKNOWN",
+  "residuals": [],
+  "replayAllowed": false
+}
