@@ -1,0 +1,12 @@
+{
+  "status": "TR10_PREFLIGHT_DEADLINE_UNSTARTED",
+  "approvalCommit": "1f454e66e9ac85916de52eb624ec09f579eeed66",
+  "failure": "RENEWAL_PREFLIGHT_DEADLINE",
+  "operationReserved": false,
+  "receiptRootAbsent": true,
+  "browserLaunched": false,
+  "credentialReads": 0,
+  "providerCalls": 0,
+  "temporaryExecutorRemoved": true,
+  "replayAllowed": false
+}
