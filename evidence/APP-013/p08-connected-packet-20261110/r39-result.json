@@ -1,0 +1,265 @@
+{
+  "status": "R39_CONSUMED_NATIVE_CLOSEOUT_UNCONFIRMED",
+  "sourceCommit": "9b94b3092885da2f7cf164d0cf6f840d8621c9c2",
+  "approvals": {
+    "recovery": "d136af9",
+    "qualification": "f592500",
+    "native": "4b15fc3"
+  },
+  "operationId": "0695cd16-3cc9-4ce0-b0fb-62d8a4671ded",
+  "journal": {
+    "phase": "CLOSED",
+    "failure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+    "runtimeAttempted": [
+      [
+        "version",
+        "signmons-staging-stripe-secret-key"
+      ],
+      [
+        "identity",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-stripe-secret-key"
+      ],
+      [
+        "tag",
+        "app013-p07-atomic"
+      ]
+    ],
+    "runtimeOwned": [
+      [
+        "version",
+        "signmons-staging-stripe-secret-key"
+      ],
+      [
+        "identity",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-stripe-secret-key"
+      ]
+    ],
+    "runtimeCleanupAttempted": [
+      [
+        "tag",
+        "app013-p07-atomic"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-stripe-secret-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "secretBinding",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-technician-link-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-conversation-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-admin-token"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-disabled-openai-key"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-stripe-webhook-secret"
+      ],
+      [
+        "version",
+        "signmons-staging-p07-payment-database-url"
+      ],
+      [
+        "identity",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com"
+      ],
+      [
+        "version",
+        "signmons-staging-stripe-secret-key"
+      ]
+    ],
+    "residuals": [
+      "RUNTIME:tag:app013-p07-atomic",
+      "RUNTIME_tag:app013-p07-atomic"
+    ],
+    "nativeEntry": {
+      "calls": {
+        "child": 1,
+        "cli": 123,
+        "https": 1,
+        "sql": 3
+      },
+      "envelopeSha256": "e76f2f6dad0a6ccfe3f8c9e0d0d66fa6403982a9e033495a9d88caa627a724fe"
+    },
+    "authAttempted": false,
+    "authProofAccepted": false,
+    "payment": {
+      "bridgeClosed": true,
+      "enableIntent": false,
+      "endpointCalls": 1,
+      "endpointDisabled": true,
+      "failureCode": null,
+      "operationId": "0695cd16-3cc9-4ce0-b0fb-62d8a4671ded",
+      "outcome": "NOT_OBSERVED",
+      "phase": "QUALIFIED",
+      "residuals": [],
+      "revision": 4,
+      "scopeSha256": "ca9f613f81a74533e06fd2884bd9e09f3a471d88fb04d549892a75eca03d397f",
+      "secretReads": 1
+    }
+  },
+  "workResult": {
+    "status": "ENTRY_AWAITING_INDEPENDENT_CLOSEOUT",
+    "privateInputsAbsent": false,
+    "residuals": [
+      "RUNTIME:tag:app013-p07-atomic",
+      "RUNTIME_tag:app013-p07-atomic"
+    ],
+    "authenticationObserved": null,
+    "paymentObserved": false
+  },
+  "finalNativeResultPresent": false,
+  "privatePurge": {
+    "completedAt": 1794611154.37121,
+    "onTime": true,
+    "operationId": "5b109a9e-a6c0-4a61-8443-0323ac553531",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "ownedOperationProcessesAbsent": true,
+  "temporaryExecutorsRemoved": true,
+  "terminalStop": "UNKNOWN_OWNER_CANNOT_LOCATE",
+  "replayAllowed": false,
+  "next": "Resolve exact native closeout stop and current candidate tag state; no payment retry inferred"
+}
