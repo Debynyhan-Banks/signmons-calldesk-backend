@@ -1,0 +1,21 @@
+{
+  "status": "KD1_EXPIRED_UNSTARTED",
+  "observedAt": "2026-11-14T13:14:50.730287+00:00",
+  "sourceCommit": "4f8140b55c650db57844f1effe924f5bb4da5a89",
+  "operationId": "18ee2b48-ecf4-4190-bcdb-8d1359ae77c8",
+  "ownerApprovalReceivedAfterCutoff": true,
+  "window": {
+    "start": "2026-11-14T12:40:00Z",
+    "cutoff": "2026-11-14T13:00:00Z",
+    "workEnd": "2026-11-14T13:03:00Z",
+    "readEnd": "2026-11-14T13:04:00Z",
+    "closeoutEnd": "2026-11-14T13:05:00Z"
+  },
+  "operationRootAbsent": true,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "mutations": 0,
+  "keyContainment": "UNRESOLVED_LAST_KS1_PRESENT",
+  "replayAllowed": false,
+  "availabilityNowConfirmedThrough": "2026-11-14T13:50:00Z"
+}
