@@ -1,0 +1,16 @@
+{
+  "verifiedAt": "2026-11-14T12:43:39.756480+00:00",
+  "status": "LOCAL_PREPARATION_ONLY",
+  "testsPassed": 15,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "deletionAuthorized": false,
+  "existingRuntimeModified": false,
+  "reusedWait": "access_readiness.Controller.wait:5polls10seconds apart,omitted done supported,last poll checked",
+  "ownership": "Explicit pending owner adoption after fresh exact metadata and creation interval check",
+  "remaining": [
+    "actual committed preflight",
+    "independent review",
+    "exact external owner approval"
+  ]
+}
