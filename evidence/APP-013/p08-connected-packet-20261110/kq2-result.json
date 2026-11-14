@@ -1,0 +1,27 @@
+{
+  "authenticationObserved": false,
+  "boundaryReached": false,
+  "cleanupMutationFailure": null,
+  "cleanupReadbackFailure": null,
+  "configurationUnchanged": true,
+  "counts": {
+    "cache": 1,
+    "cleanupHttps": 0,
+    "cli": 2,
+    "https": 0,
+    "mainHttps": 0
+  },
+  "failure": null,
+  "keyState": "NOT_CREATED",
+  "mainFailure": "KQ1_OPERATION_UNCONFIRMED",
+  "matches": {},
+  "onTime": true,
+  "operationId": "82ab0998-1d08-4405-91d7-3dcac62c6e67",
+  "paymentObserved": false,
+  "privateInputsAbsent": true,
+  "processCleanupVerified": true,
+  "providerContainmentConfirmed": true,
+  "residuals": [],
+  "scopeSha256": "9bf8b781603709a3bc2fc5e3a31e42a1599a5c62839e23f65b8111eab65933e7",
+  "status": "KQ1_CLOSED"
+}
