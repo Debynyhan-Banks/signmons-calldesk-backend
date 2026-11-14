@@ -1,0 +1,40 @@
+{
+  "status": "KS2_CONSUMED_READ_OBSERVED_LOCAL_CLEANUP_VERIFIED",
+  "sourceCommit": "5c20e11917f855ba6a0365e5102ad1b3e7326dcc",
+  "approvalCommit": "9c7058e595444d95969591d419252cb2178272b8",
+  "operationId": "4a2f8a0e-e27f-4528-a133-ddcbdf202eb6",
+  "result": {
+    "completedAt": "2026-11-14T15:01:36.275182+00:00",
+    "configurationUnchanged": true,
+    "counts": {
+      "cache": 1,
+      "cli": 2,
+      "https": 1
+    },
+    "failure": null,
+    "mutations": 0,
+    "onTime": true,
+    "ownerMatched": true,
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "residuals": [],
+    "status": "PRESENT_MATCHING_METADATA",
+    "uidMatched": true
+  },
+  "verification": {
+    "verifiedAt": "2026-11-14T15:05:45.771395+00:00",
+    "executorIndependentlyAbsent": true,
+    "receiptInventoryAndModesVerified": true,
+    "temporaryPreparationRemoved": true,
+    "configurationUnchangedReceiptVerified": true,
+    "privateReceiptFieldsAbsent": true
+  },
+  "r46KeyContainment": "PRESENT_MATCHING_UID_UNRESOLVED",
+  "accountResiduals": [
+    "ACCOUNT_SESSION",
+    "AUTH_OUTCOME_UNKNOWN",
+    "AUTH_REVOKE"
+  ],
+  "deletionAuthorized": false,
+  "replayAllowed": false
+}
