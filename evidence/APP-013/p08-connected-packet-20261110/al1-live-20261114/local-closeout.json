@@ -1,0 +1,13 @@
+{
+  "verifiedAt": "2026-11-14T22:42:35.749731+00:00",
+  "operationId": "5bbe2947-783c-4f04-adf3-380151414d11",
+  "receiptCustodyVerified": true,
+  "safeInventoryOnly": true,
+  "sourceVerified": true,
+  "configurationUnchanged": true,
+  "ownedTransportClosure": true,
+  "supervisedProcessExitCode": 0,
+  "withinCleanupDeadline": true,
+  "additionalProviderCalls": 0,
+  "privateInputFilesAbsent": true
+}
