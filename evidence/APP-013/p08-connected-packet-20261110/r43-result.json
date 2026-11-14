@@ -1,0 +1,46 @@
+{
+  "status": "R43_CONSUMED_IAM_LOOKUP_UNCONFIRMED",
+  "sourceCommit": "80923007f149bcc6c509a22e2c83036a1959be60",
+  "recoveryApproval": "cde689cd69502a81c9aaf660b090d197edb703d8",
+  "qualificationApproval": "362061adfa502b2a69d878ba85020df3101232d8",
+  "nativeApproval": "c966dc9861d3945c66ce5d563848ffe781e7ab56",
+  "qualification": "CURRENT_EVIDENCE_OBSERVED_ALL_NINE_CHECKS",
+  "nativeResult": {
+    "authProofReady": false,
+    "authenticationObserved": false,
+    "childResultSha256": null,
+    "liveAuthorization": true,
+    "operationId": "bda096f5-b4fc-463d-8b4c-332faabc0e3f",
+    "paymentObserved": false,
+    "paymentReadyForAcceptance": false,
+    "privateInputsAbsent": true,
+    "residuals": [
+      "IAM:lookup"
+    ],
+    "status": "ENTRY_CONTAINMENT_UNCONFIRMED"
+  },
+  "failure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+  "preflightStage": "ACCESS_PREFLIGHT",
+  "iamAttempted": [
+    "lookup"
+  ],
+  "iamOwned": [],
+  "iamCleanupAttempted": [
+    "lookup"
+  ],
+  "keyCreateAttempted": false,
+  "privatePurge": {
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "onTime": true,
+    "rawFilesAbsent": true,
+    "residuals": []
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "ownedProcessesIndependentlyAbsent": true,
+  "temporaryExecutorsRemoved": true,
+  "replayAllowed": false,
+  "lookupProviderState": "UNKNOWN"
+}
