@@ -1,0 +1,76 @@
+{
+  "section": "APP-013/3A/P08/CC1",
+  "status": "LOCAL_VERIFIED_NO_LIVE_RUN",
+  "preCorrectionSource": "0c83927e44b0a7673da5969e3170a3fe92a100c5",
+  "implementationAuthority": "governance b5969d963acb7bb8e687a1bcdcfa57f436b18874 CC1 fixed safe key-stage categories",
+  "verifiedAt": "2026-11-14T15:29:38.759984+00:00",
+  "changedSourceHashes": {
+    "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py": "3517f6357374017453ae4bad090f5a48579f2000853d41f5c186a6c696c782e0",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py": "4537bc62b482500b7da6682900c4b586091f150020c8211833c9d88a62aaab30",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json": "63b0f7fd888e99ee7ade87a578b6dc478e0ce0a6c587caa68e29297b3ff8fcdb",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json": "342804e0cdc17ba5645ec72a48a93e31ca1ef93830e437a4238eb0777ce7a97f",
+    "evidence/APP-013/p08-key-correction-20261110/source-manifest.json": "763c0351a8bbf4157265445644e77cab2d25b4254890b5e4d876df844154b04a"
+  },
+  "tests": {
+    "native": {
+      "tests": 104,
+      "exitCode": 0,
+      "log": "cc1-key-diagnostic-native-tests.log",
+      "sha256": "e26054d7ec97ea48cb9bc890eea391946bd9478a7f9344a3d4e56c8e573185f8"
+    },
+    "connected": {
+      "tests": 92,
+      "exitCode": 0,
+      "log": "cc1-key-diagnostic-connected-recheck.log",
+      "sha256": "4c95993077e2ad83fd88e96e864f16a466548e55323a639240c46c57d023d7ec"
+    },
+    "qualification": {
+      "tests": 290,
+      "exitCode": 0,
+      "log": "cc1-key-diagnostic-qualification-tests.log",
+      "sha256": "c7f0262b24919d7733dc827a521e8056fcf95f672d9bdeefbc00afbe305c166c"
+    },
+    "correction": {
+      "tests": 52,
+      "exitCode": 0,
+      "log": "cc1-key-diagnostic-correction-tests.log",
+      "sha256": "0d46488da606405b1255f4b57762f83fb0cc7931fd54cdf52d29e397a6a51073"
+    },
+    "node": {
+      "tests": 25,
+      "exitCode": 0,
+      "log": "cc1-key-diagnostic-node-tests.log",
+      "sha256": "79cf36ac821180ce856cbd3b6150f91bfaae0f0d840539c0694fb6eb942b5109"
+    }
+  },
+  "governanceTests": 25,
+  "totalTests": 588,
+  "build": "PASS",
+  "lint": "PASS",
+  "architecture": "PASS",
+  "baselineAndConsistency": "PASS",
+  "whitespaceBothRepositories": "PASS",
+  "currentManifestFilesVerified": 63,
+  "historicalSourceUnchanged": true,
+  "independentReview": "NO_BLOCKER_EXACT_THREE_CODE_TRANSLATION_ONLY",
+  "initialBrowserFixture": {
+    "suiteExitCode": 1,
+    "log": "cc1-key-diagnostic-connected-tests.log",
+    "sha256": "f7b0372059d71fd917088669e4e6569c91b3201878656c4f12c3e0316863e5ab",
+    "singleFixtureDiagnostic": "PASS_UNCHANGED_SOURCE_NO_AUTOMATION_ERROR_REPRODUCED",
+    "fullConnectedRecheck": "PASS_92",
+    "initialCause": "UNKNOWN"
+  },
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "localDatabaseCleanup": "SERVER_REAPED_SCRATCH_ABSENT_FROM_NATIVE_AND_QUALIFICATION_RECEIPTS",
+  "r46HistoricalCause": "UNKNOWN",
+  "noR46AuthenticationClientSideEffects": "PROVEN_BY_SOURCE_AND_RETAINED_CHILD_RESERVATIONS",
+  "sameJobPayment": "NOT_OBSERVED",
+  "acceptedMilestones": "1A/1B/2A/2B=4/8",
+  "section3A": "OPEN",
+  "noScopeDeviation": true,
+  "sourceCommit": "39474427001ac5ac7a1df68f4eb1a17e4c633aa0",
+  "committedGraphVerifiedAt": "2026-11-14T15:30:23.785029+00:00",
+  "currentAndCommittedSourceGraph": "PASS"
+}
