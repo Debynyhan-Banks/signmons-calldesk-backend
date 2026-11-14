@@ -1,0 +1,92 @@
+✔ actual native child payment and cleanup: normal (334.008291ms)
+✔ actual native child payment and cleanup: unpaid (224.574125ms)
+✔ actual native child payment and cleanup: lost_create (218.973416ms)
+✔ actual native child payment and cleanup: lost_enable (210.367458ms)
+✔ actual native child payment and cleanup: foreign_endpoint (139.433ms)
+✔ actual native child payment and cleanup: disable_failed (204.767458ms)
+✔ current payment context refuses foreign, stale, incomplete and preexisting state (79.436083ms)
+✔ endpoint missing/null/live/version/event drift fails closed (79.600083ms)
+✔ version1 cannot accept payment and scope cannot omit payment (190.447291ms)
+✔ fresh cleanup child recovers failed disable without reauthentication or new payment (267.849958ms)
+✔ recovery uses actual policy profile and keeps disabled/active phases distinct (78.835042ms)
+✔ actual payment preflight preserves safe failure evidence: denied (137.23125ms)
+✔ actual payment preflight preserves safe failure evidence: missing_payload (139.499792ms)
+✔ actual payment preflight preserves safe failure evidence: malformed_json (136.343167ms)
+✖ actual payment preflight preserves safe failure evidence: live_key (140.377375ms)
+✖ actual payment preflight preserves safe failure evidence: newline_key (142.565542ms)
+✔ actual payment preflight preserves safe failure evidence: transport (142.746041ms)
+✔ actual payment preflight preserves safe failure evidence: foreign_code (142.429209ms)
+✖ actual payment preflight preserves safe failure evidence: streamed_success (179.722ms)
+✔ native defaults reject a local proof capability before any owner/DB/fetch (240.875333ms)
+✔ actual child entry runs with injected ports and rejects reuse of one reserved call (220.04625ms)
+✔ outer capability cannot be forged for native ports (0.106541ms)
+✔ serialized oversized provider body fails before authentication (145.402625ms)
+✔ unapproved HTTPS host refuses before injected transport (148.486917ms)
+✔ child budget is finite and cleanup capability cannot run activation path (141.427125ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 22
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3437.274792
+
+✖ failing tests:
+
+test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:68:2
+✖ actual payment preflight preserves safe failure evidence: live_key (140.377375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'PAYMENT_SECRET_SHAPE'
+  - 'PAYMENT_TEST_KEY_REQUIRED'
+             ^
+  
+      at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:94:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'PAYMENT_SECRET_SHAPE',
+    expected: 'PAYMENT_TEST_KEY_REQUIRED',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:68:2
+✖ actual payment preflight preserves safe failure evidence: newline_key (142.565542ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'PAYMENT_SECRET_SHAPE'
+  - 'PAYMENT_TEST_KEY_REQUIRED'
+             ^
+  
+      at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:94:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'PAYMENT_SECRET_SHAPE',
+    expected: 'PAYMENT_TEST_KEY_REQUIRED',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:68:2
+✖ actual payment preflight preserves safe failure evidence: streamed_success (179.722ms)
+  Error: PAYMENT_SECRET_SHAPE
+      at need (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/authority_bridge.mjs:6:71)
+      at decodeStripeTestSecret (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs:223:5)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async stripeKey (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs:157:9)
+      at async Object.endpoint (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs:166:20)
+      at async runChild (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs:33:27)
+      at async TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:87:53)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    code: 'PAYMENT_SECRET_SHAPE'
+  }

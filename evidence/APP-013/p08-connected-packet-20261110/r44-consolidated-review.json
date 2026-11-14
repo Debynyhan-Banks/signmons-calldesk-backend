@@ -1,0 +1,25 @@
+{
+  "reviewedAt": "2026-11-14T12:32:21.352582+00:00",
+  "sourceBefore": "c07336bff40ddaf76c992012731b80f9e6384c4c",
+  "runtimeChanges": false,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "keyDiagnosticTests": {
+    "passed": 10
+  },
+  "downstreamNodeSuite": {
+    "passed": 22,
+    "failed": 3,
+    "cause": "Existing fixtures pin secret version1 while current scope pins2; test targets not reached"
+  },
+  "deterministicGaps": [
+    "Pending LRO omitting done rejected",
+    "Sixth poll response ignored",
+    "Unknown create has no persisted operation and no cleanup metadata read before UID guard",
+    "Default live browser handoff unassigned",
+    "Child descendant closure lacks real process-tree proof"
+  ],
+  "r44Cause": "UNKNOWN",
+  "keyState": "UNKNOWN",
+  "fullPaymentRerunReady": false
+}
