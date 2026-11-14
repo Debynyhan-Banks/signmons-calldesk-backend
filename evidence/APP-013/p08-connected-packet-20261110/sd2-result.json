@@ -1,0 +1,39 @@
+{
+  "status": "SD2_LIVE_OBSERVED_CLOSED",
+  "approvalCommit": "37e84b6",
+  "sourceCommit": "5e7fac92487aafe9ea044a29e84cb9d6e4dd590b",
+  "result": {
+    "candidate": null,
+    "executionReady": false,
+    "failure": null,
+    "failureStage": null,
+    "liveObserved": true,
+    "observation": {
+      "checks": {
+        "databaseMatched": true,
+        "sessionsAbsent": true,
+        "userMatched": true
+      },
+      "failure": null
+    },
+    "operationId": "0c51eb3c-58d9-4619-868f-40053aceba38",
+    "residuals": [],
+    "scopeSha256": "1ee8eb4a4c5274531569672abffca5d009baedcb45f8811130aa095222ada034",
+    "sqlReservations": 2,
+    "status": "SQL_CONNECTION_DIAGNOSED"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "0c51eb3c-58d9-4619-868f-40053aceba38",
+    "residuals": [],
+    "scopeSha256": "1ee8eb4a4c5274531569672abffca5d009baedcb45f8811130aa095222ada034",
+    "verified": true
+  },
+  "ownedLauncherAndChildrenIndependentlyAbsent": true,
+  "receiptInventoryModesVerified": true,
+  "temporaryRequestAndExecutorsRemoved": true,
+  "r40CurrentSessionUncertaintyReconciled": true,
+  "replayAllowed": false,
+  "paymentObserved": false
+}
