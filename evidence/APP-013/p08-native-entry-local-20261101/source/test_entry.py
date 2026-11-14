@@ -965,6 +965,132 @@ class ConnectedEntryTests(EntryTests):
             self.run_entry()
         self.assertEqual(self.calls,0)
 
+class AuthenticationDiagnosticTests(unittest.TestCase):
+    CODES = ('AUTH_KEY_SCOPE', 'AUTH_KEY_OWNERSHIP_DRIFT', 'KEY_STRING_SHAPE')
+    PRIVATE_TEXT = 'synthetic-private-auth-diagnostic-canary'
+
+    def rejected_errors(self):
+        class DerivedStop(entry.bridge.packet.Stop): pass
+        class DerivedString(str): pass
+        return [
+            Stop('AUTH_KEY_SCOPE'),
+            DerivedStop('AUTH_KEY_SCOPE'),
+            entry.bridge.packet.Stop('AUTH_KEY_SCOPE', self.PRIVATE_TEXT),
+            entry.bridge.packet.Stop(17),
+            entry.bridge.packet.Stop(DerivedString('AUTH_KEY_SCOPE')),
+            entry.bridge.packet.Stop(),
+            entry.bridge.packet.Stop(self.PRIVATE_TEXT),
+            entry.bridge.packet.Stop('AUTH_KEY_SCOPE: ' + self.PRIVATE_TEXT),
+            RuntimeError(self.PRIVATE_TEXT),
+        ]
+
+    def test_authenticate_preserves_success_and_only_translates_exact_safe_codes(self):
+        ports = object.__new__(entry.Ports)
+        result = object()
+        with patch.object(entry.bridge.Ports, 'authenticate', return_value=result) as base:
+            self.assertIs(ports.authenticate('synthetic-resource'), result)
+            base.assert_called_once_with('synthetic-resource')
+        for code in self.CODES:
+            with self.subTest(code=code):
+                with patch.object(entry.bridge.Ports, 'authenticate', side_effect=entry.bridge.packet.Stop(code)):
+                    with self.assertRaises(entry.c.Stop) as raised:
+                        ports.authenticate('synthetic-resource')
+                self.assertIs(type(raised.exception), entry.c.Stop)
+                self.assertEqual(raised.exception.args, (code,))
+                self.assertIsNone(raised.exception.__cause__)
+                self.assertTrue(raised.exception.__suppress_context__)
+
+    def test_authenticate_preserves_unknown_exception_identity(self):
+        ports = object.__new__(entry.Ports)
+        for error in self.rejected_errors():
+            with self.subTest(kind=type(error).__name__, argc=len(error.args)):
+                with patch.object(entry.bridge.Ports, 'authenticate', side_effect=error):
+                    with self.assertRaises(type(error)) as raised:
+                        ports.authenticate('synthetic-resource')
+                self.assertIs(raised.exception, error)
+
+    def test_safe_scope_and_rejected_errors_through_actual_entry_and_closeout(self):
+        cases = [(entry.bridge.packet.Stop('AUTH_KEY_SCOPE'), 'AUTH_KEY_SCOPE')]
+        cases.extend((error, 'LOCAL_ADAPTER_OR_SOURCE_STOP') for error in self.rejected_errors())
+        for error, expected in cases:
+            with self.subTest(kind=type(error).__name__, argc=len(error.args), expected=expected):
+                fixture = ConnectedEntryTests()
+                try:
+                    fixture.setUp()
+                    with patch.object(entry.bridge.Ports, 'authenticate', side_effect=error):
+                        work = fixture.run_entry()
+                        result = fixture.run_entry('closeout')
+                    journal = read(fixture.root / 'journal.json')
+                    self.assertEqual(work['status'], 'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+                    self.assertEqual(journal['failure'], expected)
+                    self.assertTrue(journal['authAttempted'])
+                    self.assertFalse(journal['authProofAccepted'])
+                    self.assertNotIn('authClient', journal)
+                    self.assertEqual(journal['nativeEntry']['calls']['child'], 1)
+                    self.assertTrue(result['privateInputsAbsent'])
+                    self.assertNotIn(self.PRIVATE_TEXT, json.dumps([journal, work, result]))
+                finally:
+                    fixture.doCleanups()
+
+    def test_real_authentication_validation_failures_preserve_r46_cleanup_signature(self):
+        cases = [('creation_etag_then_one_poll', 'AUTH_KEY_OWNERSHIP_DRIFT'),
+                 ('keystring_shape_then_cleanup_etag', 'KEY_STRING_SHAPE')]
+        for case, expected in cases:
+            with self.subTest(case=case):
+                fixture = ConnectedEntryTests()
+                try:
+                    fixture.setUp()
+                    fake = fixture.f.transport
+                    original = fake.https
+                    created = None
+                    trace = []
+                    def https(desc):
+                        nonlocal created
+                        method, url = desc['method'], desc['url']
+                        label = ('keyString' if url.endswith('/keyString') else
+                                 'poll' if '/operations/' in url else
+                                 'create' if '/keys?keyId=' in url else
+                                 'key' if '/keys/' in url else 'other')
+                        trace.append((method, label))
+                        if case == 'creation_etag_then_one_poll' and label == 'poll':
+                            return {'httpStatus': 200, 'body': json.dumps({
+                                'name': 'operations/keycreate1', 'done': True, 'response': created})}
+                        if (case == 'creation_etag_then_one_poll' and method == 'GET' and
+                                label == 'key' and fake.key is not None):
+                            fake.key['etag'] = 'synthetic-updated-etag'
+                        if case == 'keystring_shape_then_cleanup_etag' and label == 'keyString':
+                            fake.key['etag'] = 'synthetic-updated-etag'
+                            return {'httpStatus': 200, 'body': '{}'}
+                        value = original(desc)
+                        if case == 'creation_etag_then_one_poll' and label == 'create':
+                            created = copy.deepcopy(fake.key)
+                            return {'httpStatus': 200, 'body': json.dumps({'name': 'operations/keycreate1'})}
+                        return value
+                    fake.https = https
+                    # Synthetic transports, real validators/entry/cleanup; skip only the fixture poll delay.
+                    with patch.object(entry.time, 'sleep', lambda _: None):
+                        work = fixture.run_entry()
+                        result = fixture.run_entry('closeout')
+                    journal = read(fixture.root / 'journal.json')
+                    self.assertEqual(work['status'], 'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+                    self.assertEqual(journal['failure'], expected)
+                    self.assertEqual(journal['nativeEntry']['calls'], {'child': 1, 'cli': 191, 'https': 14, 'sql': 10})
+                    self.assertTrue(journal['authAttempted'])
+                    self.assertFalse(journal['authProofAccepted'])
+                    self.assertNotIn('authClient', journal)
+                    self.assertTrue(journal['keyDeleteAttempted'])
+                    self.assertFalse(fake.key.get('deleteTime'))
+                    self.assertNotIn(('DELETE', 'key'), trace)
+                    self.assertEqual(trace.count(('GET', 'keyString')), int(case == 'keystring_shape_then_cleanup_etag'))
+                    self.assertEqual(trace.count(('GET', 'poll')), int(case == 'creation_etag_then_one_poll'))
+                    self.assertEqual(result['status'], 'ENTRY_CONTAINMENT_UNCONFIRMED')
+                    self.assertEqual(result['residuals'], ['ACCOUNT_SESSION', 'AUTH_OUTCOME_UNKNOWN', 'AUTH_REVOKE', 'OWNED_KEY'])
+                    self.assertTrue(result['privateInputsAbsent'])
+                    self.assertFalse(any(fixture.f.runtime_state.values()))
+                finally:
+                    fixture.doCleanups()
+
+
 for _name in EntryTests.__dict__:
     if _name.startswith('test_'):
         setattr(ConnectedEntryTests,_name,None)

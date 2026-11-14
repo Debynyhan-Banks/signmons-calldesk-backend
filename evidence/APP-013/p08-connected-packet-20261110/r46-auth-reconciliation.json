@@ -1,0 +1,88 @@
+{
+  "status": "R46_LOCAL_ACCOUNT_AND_AUTH_BOUNDARY_RECONCILIATION",
+  "recordedAt": "2026-11-14T15:21:41.336388+00:00",
+  "inspectedSource": "0c83927e44b0a7673da5969e3170a3fe92a100c5",
+  "r46Source": "ec4f51f015f7382d3cf1089a692a0672d1c8060c",
+  "inspectedPathsMatchR46": true,
+  "r46AuthenticationChildLaunched": false,
+  "r46AuthenticationAccountTokenSessionSideEffects": "EXCLUDED_BY_PERSISTED_CHILD_COUNT_AND_EXACT_SOURCE_CONTROL_FLOW",
+  "administrativeSqlSessions": "DISTINCT_AND_OBSERVED_IN_R46",
+  "currentExternalAccountState": "NOT_REOBSERVED_UNKNOWN",
+  "historicalResidualsPreserved": [
+    "ACCOUNT_SESSION",
+    "AUTH_OUTCOME_UNKNOWN",
+    "AUTH_REVOKE"
+  ],
+  "ownedKey": "RECONCILED_BY_KD3_CONTROL_PLANE_DELETED",
+  "observedGenericFailure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+  "exactHistoricalCause": "UNKNOWN_TWO_DISTINCT_SYNTHETIC_PATHS_MATCH_COMPLETE_RETAINED_SIGNATURE",
+  "demonstratedLocalGap": "CONTROLLED_KEY_CHECK_STOP_CODES_LOST_AT_HISTORICAL_COORDINATOR_BOUNDARY",
+  "reproducedCodes": [
+    "AUTH_KEY_OWNERSHIP_DRIFT",
+    "KEY_STRING_SHAPE"
+  ],
+  "providerOrCredentialCalls": 0,
+  "reproductionScriptSha256": "21c34e20d2c15d3e6d8cc5539b43b465b2d185966de55a486a3fd23e19ce9a2b",
+  "reproductionOutputSha256": "e1f9600ec6f3a0e25ff010907ba5ca43d501f0316b649108bbec398e27f5efeb",
+  "independentReview": "CURRENT_FILES_MATCH_R46_AND_NO_AUTHENTICATION_CHILD_SIDE_EFFECTS",
+  "next": "Complete existing CC1 safe key-stage error classification requirement locally; no live authority inferred",
+  "noScopeDeviation": true,
+  "sourceEqualityProof": [
+    {
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py",
+      "sha256": "6a43236e84691afa728ac7ecabbc60a16bd17e51787039fa92957d6052d2acb6",
+      "r46EqualsPrecorrection": true
+    },
+    {
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py",
+      "sha256": "9e57a04de735a773da764704c306346f09e4431f3e5518f08f0980e3bfdf420d",
+      "r46EqualsPrecorrection": true
+    },
+    {
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py",
+      "sha256": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c",
+      "r46EqualsPrecorrection": true
+    },
+    {
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs",
+      "sha256": "899dfb4c0d72c85577dafdea059033a0bd3b4247dda8f4bd0640344a7e11e4c9",
+      "r46EqualsPrecorrection": true
+    },
+    {
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py",
+      "sha256": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3",
+      "r46EqualsPrecorrection": true
+    },
+    {
+      "path": "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+      "sha256": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce",
+      "r46EqualsPrecorrection": true
+    },
+    {
+      "path": "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+      "sha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
+      "r46EqualsPrecorrection": true
+    },
+    {
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "sha256": "d768ff2436a9e459c6f67a66d7ff9cf8d300fe6aac45ed380bb0cfe157152fb2",
+      "r46EqualsPrecorrection": true
+    },
+    {
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+      "sha256": "2bc5d0c5f214fcf4c4c2ade475ad46ac895179935f9a8bedb510096071b933cb",
+      "r46EqualsPrecorrection": true
+    }
+  ],
+  "publicDocumentationReviewed": [
+    {
+      "url": "https://docs.cloud.google.com/api-keys/docs/reference/rest/v2/projects.locations.keys",
+      "finding": "etag is current-resource checksum; no evidence that R46 etag changed survives"
+    },
+    {
+      "url": "https://docs.cloud.google.com/api-keys/docs/reference/rest/v2/projects.locations.keys/getKeyString",
+      "finding": "documented keyString-only response agrees with existing parser; no demonstrated provider contract mismatch"
+    }
+  ],
+  "reproductionExecutionNote": "Pre-correction reproduction output recorded against inspectedSource0c83927; current corrected source intentionally changes the generic-code assertion. Permanent regression cases are in test_entry.AuthenticationDiagnosticTests."
+}

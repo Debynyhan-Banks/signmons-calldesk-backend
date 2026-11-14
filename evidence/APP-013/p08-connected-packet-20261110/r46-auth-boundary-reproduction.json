@@ -1,0 +1,82 @@
+[
+  {
+    "case": "creation_etag_then_one_poll",
+    "underlyingFixedCode": [
+      "AUTH_KEY_OWNERSHIP_DRIFT"
+    ],
+    "journalFailure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+    "calls": {
+      "child": 1,
+      "cli": 191,
+      "https": 14,
+      "sql": 10
+    },
+    "authAttempted": true,
+    "authClientPresent": false,
+    "keyDeleteAttempted": true,
+    "privateInputsAbsent": true,
+    "residuals": [
+      "ACCOUNT_SESSION",
+      "AUTH_OUTCOME_UNKNOWN",
+      "AUTH_REVOKE",
+      "OWNED_KEY"
+    ],
+    "simulatedProviderKeyStillPresent": true,
+    "httpsTrace": [
+      "GET:service",
+      "POST:policy",
+      "POST:policy",
+      "POST:policy",
+      "POST:policy",
+      "GET:service",
+      "GET:key",
+      "POST:create",
+      "GET:poll",
+      "GET:key",
+      "GET:key",
+      "GET:key",
+      "GET:key",
+      "GET:key"
+    ]
+  },
+  {
+    "case": "keystring_shape_then_cleanup_etag",
+    "underlyingFixedCode": [
+      "KEY_STRING_SHAPE"
+    ],
+    "journalFailure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+    "calls": {
+      "child": 1,
+      "cli": 191,
+      "https": 14,
+      "sql": 10
+    },
+    "authAttempted": true,
+    "authClientPresent": false,
+    "keyDeleteAttempted": true,
+    "privateInputsAbsent": true,
+    "residuals": [
+      "ACCOUNT_SESSION",
+      "AUTH_OUTCOME_UNKNOWN",
+      "AUTH_REVOKE",
+      "OWNED_KEY"
+    ],
+    "simulatedProviderKeyStillPresent": true,
+    "httpsTrace": [
+      "GET:service",
+      "POST:policy",
+      "POST:policy",
+      "POST:policy",
+      "POST:policy",
+      "GET:service",
+      "GET:key",
+      "POST:create",
+      "GET:key",
+      "GET:key",
+      "GET:keyString",
+      "GET:key",
+      "GET:key",
+      "GET:key"
+    ]
+  }
+]

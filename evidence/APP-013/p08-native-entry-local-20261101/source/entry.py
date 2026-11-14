@@ -341,6 +341,16 @@ class Ports(bridge.Ports):
         # Pinned internal lifecycle marker only. Outer result additionally requires actual inventory purge.
         return dict(bridge.packet.AUTH_PROOF)
 
+    def authenticate(self, resource):
+        try:
+            return super().authenticate(resource)
+        except bridge.packet.Stop as error:
+            if (type(error) is bridge.packet.Stop and len(error.args) == 1 and
+                    type(error.args[0]) is str and error.args[0] in {
+                        'AUTH_KEY_SCOPE', 'AUTH_KEY_OWNERSHIP_DRIFT', 'KEY_STRING_SHAPE'}):
+                raise c.Stop(error.args[0]) from None
+            raise
+
     def account_readback(self):
         raw = self.handoff.readback()
         readbacks.exact_account(raw['app'], self.cap.e['target'])

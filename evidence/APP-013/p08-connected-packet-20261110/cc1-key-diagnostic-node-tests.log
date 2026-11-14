@@ -1,0 +1,33 @@
+✔ actual native child payment and cleanup: normal (263.477083ms)
+✔ actual native child payment and cleanup: unpaid (243.070625ms)
+✔ actual native child payment and cleanup: lost_create (254.526042ms)
+✔ actual native child payment and cleanup: lost_enable (272.028708ms)
+✔ actual native child payment and cleanup: foreign_endpoint (167.791625ms)
+✔ actual native child payment and cleanup: disable_failed (251.837542ms)
+✔ current payment context refuses foreign, stale, incomplete and preexisting state (160.741416ms)
+✔ endpoint missing/null/live/version/event drift fails closed (114.94325ms)
+✔ version1 cannot accept payment and scope cannot omit payment (306.242166ms)
+✔ fresh cleanup child recovers failed disable without reauthentication or new payment (345.961875ms)
+✔ recovery uses actual policy profile and keeps disabled/active phases distinct (112.469583ms)
+✔ actual payment preflight preserves safe failure evidence: denied (173.245625ms)
+✔ actual payment preflight preserves safe failure evidence: missing_payload (161.512375ms)
+✔ actual payment preflight preserves safe failure evidence: malformed_json (164.6175ms)
+✔ actual payment preflight preserves safe failure evidence: live_key (167.547666ms)
+✔ actual payment preflight preserves safe failure evidence: newline_key (195.304875ms)
+✔ actual payment preflight preserves safe failure evidence: transport (360.397208ms)
+✔ actual payment preflight preserves safe failure evidence: foreign_code (198.433541ms)
+✔ actual payment preflight preserves safe failure evidence: streamed_success (186.93375ms)
+✔ native defaults reject a local proof capability before any owner/DB/fetch (165.400542ms)
+✔ actual child entry runs with injected ports and rejects reuse of one reserved call (231.323125ms)
+✔ outer capability cannot be forged for native ports (0.104667ms)
+✔ serialized oversized provider body fails before authentication (163.863875ms)
+✔ unapproved HTTPS host refuses before injected transport (171.165667ms)
+✔ child budget is finite and cleanup capability cannot run activation path (193.868708ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4192.083959
