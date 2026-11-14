@@ -1,0 +1,25 @@
+{
+  "status": "CV5_VALID_CLOSED",
+  "result": {
+    "cacheReads": 1,
+    "completedAt": 1794617279.85226,
+    "decisionCommit": "4d6c40e804faac3152daa6410567842d60f3ee76",
+    "exitCode": 0,
+    "groupAbsent": true,
+    "leaderReaped": true,
+    "onTime": true,
+    "operationId": "b9c02123-e94f-4c59-b7ce-83cda20e93e6",
+    "ownedPid": 96444,
+    "providerCalls": 0,
+    "sourceCommit": "46057317072c21e5a4158c12372ee0e8eda8dc09",
+    "status": "VALID_THROUGH_CUTOFF",
+    "validThrough": "2026-11-14T01:35:00Z"
+  },
+  "verification": {
+    "ownedLeaderAndGroupIndependentlyAbsent": true,
+    "receiptModesAndInventoryVerified": true,
+    "temporaryCheckersRemoved": true
+  },
+  "replayAllowed": false,
+  "paymentObserved": false
+}
