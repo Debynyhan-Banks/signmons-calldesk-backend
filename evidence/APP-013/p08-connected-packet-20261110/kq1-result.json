@@ -1,0 +1,126 @@
+{
+  "status": "KQ1_DIAGNOSTIC_CONSUMED_ETAG_DRIFT_KEY_DELETED",
+  "recordedAt": "2026-11-14T17:40:19.934376+00:00",
+  "sourceCommit": "a26065ed7ae497733ded4d7ea93fa52f930193b2",
+  "proposalCommit": "444da3211f5c84068a06a8e53a37147de98c1b4a",
+  "approvalCommit": "d1ab5158688f98ed23aeb429fbf7497bb065806f",
+  "operationId": "eed61968-8014-481c-9750-69e1953b1353",
+  "scopeSha256": "b468db73640603e85bf1d97ad782cb4b9292643ec1b111bb917eccd9003582d1",
+  "result": {
+    "authenticationObserved": false,
+    "boundaryReached": false,
+    "cleanupMutationFailure": null,
+    "cleanupReadbackFailure": null,
+    "configurationUnchanged": true,
+    "counts": {
+      "cache": 2,
+      "cleanupHttps": 4,
+      "cli": 4,
+      "https": 10,
+      "mainHttps": 6
+    },
+    "failure": null,
+    "keyState": "CONTROL_PLANE_DELETED",
+    "mainFailure": "AUTH_KEY_OWNERSHIP_DRIFT",
+    "matches": {
+      "authenticate": {
+        "active": true,
+        "etag": false,
+        "uid": true
+      },
+      "postcreate": {
+        "active": true,
+        "etag": false,
+        "uid": true
+      }
+    },
+    "onTime": true,
+    "operationId": "eed61968-8014-481c-9750-69e1953b1353",
+    "paymentObserved": false,
+    "privateInputsAbsent": true,
+    "processCleanupVerified": true,
+    "providerContainmentConfirmed": true,
+    "residuals": [],
+    "scopeSha256": "b468db73640603e85bf1d97ad782cb4b9292643ec1b111bb917eccd9003582d1",
+    "status": "KQ1_CLOSED"
+  },
+  "mainResult": {
+    "authenticationObserved": false,
+    "boundaryReached": false,
+    "cleanupMutationFailure": null,
+    "cleanupReadbackFailure": null,
+    "configurationUnchanged": true,
+    "counts": {
+      "cache": 1,
+      "cleanupHttps": 0,
+      "cli": 2,
+      "https": 6,
+      "mainHttps": 6
+    },
+    "failure": "AUTH_KEY_OWNERSHIP_DRIFT",
+    "keyState": "UNOBSERVED",
+    "mainFailure": "AUTH_KEY_OWNERSHIP_DRIFT",
+    "matches": {
+      "authenticate": {
+        "active": true,
+        "etag": false,
+        "uid": true
+      },
+      "postcreate": {
+        "active": true,
+        "etag": false,
+        "uid": true
+      }
+    },
+    "onTime": true,
+    "operationId": "eed61968-8014-481c-9750-69e1953b1353",
+    "paymentObserved": false,
+    "privateInputsAbsent": false,
+    "processCleanupVerified": true,
+    "providerContainmentConfirmed": false,
+    "residuals": [
+      "KEY_CONTAINMENT_UNCONFIRMED"
+    ],
+    "scopeSha256": "b468db73640603e85bf1d97ad782cb4b9292643ec1b111bb917eccd9003582d1",
+    "status": "KQ1_AWAITING_INDEPENDENT_CLEANUP"
+  },
+  "sharedCounts": {
+    "cache": 2,
+    "cleanupHttps": 4,
+    "cli": 4,
+    "https": 10,
+    "mainHttps": 6
+  },
+  "requestCounts": {
+    "absence": 1,
+    "authenticate": 1,
+    "cleanupRead": 1,
+    "create": 1,
+    "createPoll": 1,
+    "delete": 1,
+    "deletePoll": 1,
+    "finalRead": 1,
+    "postcreate": 1,
+    "service": 1
+  },
+  "safeOwnershipSha256": "483acd296dccef4d26ab43d942304c1e17eef59e9bee98d25e198e52256202b3",
+  "independentLocalCloseout": {
+    "rootIdentityMatches": true,
+    "rootMode": "0700",
+    "allReceiptModes": "0600",
+    "ownerMatches": true,
+    "privateInputsAbsent": true,
+    "matchingOperationProcesses": [],
+    "processesAbsent": true,
+    "checkedAt": "2026-11-14T17:40:19.934503+00:00"
+  },
+  "safeReceiptSha256": {
+    "attempt.json": "a8947c1f2e064863cfdbe3a168ef625ce88066fc24210bb2b1c6bd2de8b90000",
+    "journal.json": "09fd0ac2f40cf7c2040a578e31a327c2ba7a48a0e3fb057af7d33b6319818eda",
+    "work-result.json": "0549bb422330441d7468f5044204bd4150b72416eee0452d9d6a8800c403be7b",
+    "result.json": "1c3e5d9c927dca369fbd3891f9955a990284376676e3cf9b9c347f635ef0ebe0"
+  },
+  "replayAuthorized": false,
+  "authenticationObserved": false,
+  "paymentObserved": false
+}
