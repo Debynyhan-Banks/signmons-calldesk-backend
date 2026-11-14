@@ -1,0 +1,32 @@
+{
+  "status": "KD2_CONSUMED_KEY_CONTROL_PLANE_DELETED_LOCAL_CLEANUP_VERIFIED",
+  "operationId": "74def131-fc7e-404a-99ee-38f031a25599",
+  "sourceCommit": "0b9105425bcc539bba2c6189f3373c6bc7367889",
+  "decisionCommit": "d2ade2bc2cddd142122ebd7ec33f220e0cff70b6",
+  "result": {
+    "cacheReserved": 1,
+    "cliReserved": 2,
+    "completedAt": "2026-11-14T13:22:53.276542+00:00",
+    "configurationUnchanged": true,
+    "deleteReserved": true,
+    "failure": null,
+    "httpsReserved": 4,
+    "keyContainmentConfirmed": true,
+    "localResiduals": [],
+    "mutationFailure": null,
+    "onTime": true,
+    "pollsReserved": 1,
+    "processCleanupVerified": true,
+    "readbackFailure": null,
+    "status": "CONTROL_PLANE_DELETED"
+  },
+  "verification": {
+    "executorIndependentlyAbsent": true,
+    "receiptInventoryAndModesVerified": true,
+    "ownedPreparationFilesRemoved": true
+  },
+  "r44KeyContainment": "CONTROL_PLANE_DELETED",
+  "instantaneousGlobalInvalidationClaimed": false,
+  "paymentObserved": false,
+  "replayAllowed": false
+}
