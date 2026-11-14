@@ -1,0 +1,42 @@
+{
+  "status": "BD3_CONSUMED_TIMEOUT_CLOSED",
+  "sourceCommit": "2bdd5627e3c9d373d138ba96afe31e1ce1f9f96e",
+  "approvalCommit": "6a42aa54b553362bb5158bcce7e41b316f0c1227",
+  "result": {
+    "billingDiagnostic": null,
+    "candidate": null,
+    "cliReservations": 3,
+    "executionReady": false,
+    "failure": "PROCESS_TIMEOUT",
+    "liveObserved": true,
+    "operationId": "10bde4d3-90ca-40cf-8737-cd14e693f14e",
+    "ownerMatched": true,
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "scopeSha256": "ee4d4d455b861bfb67565f6afd6118abab9e31c49b92d0f0929d8fd408c52f30",
+    "status": "BILLING_METADATA_UNQUALIFIED"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "10bde4d3-90ca-40cf-8737-cd14e693f14e",
+    "processCleanupVerified": true,
+    "residuals": [],
+    "scopeSha256": "ee4d4d455b861bfb67565f6afd6118abab9e31c49b92d0f0929d8fd408c52f30"
+  },
+  "billingCommand": {
+    "descriptorId": "billing_project",
+    "elapsedMilliseconds": 28013,
+    "failureCode": "PROCESS_TIMEOUT",
+    "matched": false,
+    "operationId": "10bde4d3-90ca-40cf-8737-cd14e693f14e",
+    "scopeSha256": "ee4d4d455b861bfb67565f6afd6118abab9e31c49b92d0f0929d8fd408c52f30"
+  },
+  "ownedProcessesIndependentlyAbsent": true,
+  "receiptInventoryModesVerified": true,
+  "temporaryRequestExecutorsRemoved": true,
+  "replayAllowed": false,
+  "paymentObserved": false
+}
