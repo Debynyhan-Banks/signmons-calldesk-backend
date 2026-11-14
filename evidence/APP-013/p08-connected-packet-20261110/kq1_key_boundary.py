@@ -206,6 +206,7 @@ class Driver:
         self.j = None
         self.request_end = None
         self.bound = False
+        self.creation_etag = None
 
     def open(self):
         if self.phase == 'main':
@@ -378,9 +379,10 @@ class Driver:
         def observed_get():
             value = original_get()
             if self.stage in ('postcreate', 'authenticate') and isinstance(value, dict):
+                need(self.creation_etag is not None, 'KQ1_PROVENANCE')
                 self.j['matches'][self.stage] = {
                     'uid': value['uid'] == self.ports.owned_uid,
-                    'etag': value['etag'] == self.ports.owned_etag,
+                    'etag': value['etag'] == self.creation_etag,
                     'active': value['deleted'] is False}
                 self.save()
             return value
@@ -478,6 +480,8 @@ class Driver:
         need(self.ports.key_get() == 'NOT_FOUND', 'KQ1_KEY_COLLISION')
         self.stage = 'create'
         value = self.ports.key_create(self.ports.key_resource, kd.key.RESTRICTIONS)
+        # Keep the diagnostic reference independent of later owned-version updates.
+        self.creation_etag = value['etag']
         probe = SimpleNamespace(modules={'bridge': entry.bridge}, access=self.ports, plan=self.plan)
         uid_hash = entry.c.Coordinator.key_metadata(probe, value, False)
         self.stage = 'postcreate'
@@ -587,6 +591,7 @@ def run_phase(scope, phase, *, owned_io_factory, cache_reader, source_guard,
                     inv.reserve(driver.root / name, result)
             except BaseException: result['residuals'].append('RESULT_UNCONFIRMED')
             driver.plan = driver.ports = driver.engine = None
+            driver.creation_etag = None
             fcntl.flock(driver.lock, fcntl.LOCK_UN); os.close(driver.lock)
         else:
             result['failure'] = failure

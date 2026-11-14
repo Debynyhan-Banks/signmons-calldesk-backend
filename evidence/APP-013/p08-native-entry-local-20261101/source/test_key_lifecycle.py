@@ -88,7 +88,11 @@ class Harness:
             if value.get('done'): value['response'] = copy.deepcopy(self.current)
             return self.response(value)
         if method == 'DELETE':
-            if not url.endswith('?etag=etag%2Fsynthetic'): raise AssertionError('etag mismatch')
+            from urllib.parse import quote
+            if not url.endswith('?etag='+quote(self.current['etag'],safe='')): raise AssertionError('etag mismatch')
+            if self.lost == 'delete-conflict':
+                self.current['etag']='etag/later-concurrent-version'
+                return self.response({'error':{'code':412,'status':'FAILED_PRECONDITION'}},412)
             if self.lost == 'delete':
                 self.current['deleteTime'] = '2026-01-01T00:00:00Z'
                 raise OSError('PROVIDER_SECRET_CANARY')
@@ -106,6 +110,8 @@ class Harness:
                 if kind == 'delete': self.current['deleteTime'] = '2026-01-01T00:00:00Z'
                 value.update(done=True, response=copy.deepcopy(self.current) if kind == 'create' else {})
             return self.response(value)
+        if url.endswith('/keyString'):
+            return self.response({'keyString':'KEYSTRING_CANARY'})
         if self.current is None:
             return self.response({'error': {'status': 'NOT_FOUND', 'code': 404}}, 404)
         return self.response(copy.deepcopy(self.current))
@@ -341,6 +347,214 @@ print('RECOVERED_AND_DELETED')
         result=subprocess.run([sys.executable,'-c',script],input=json.dumps(payload),text=True,capture_output=True,cwd=Path(__file__).parent)
         self.assertEqual(result.returncode,0,result.stderr);self.assertEqual(result.stdout.strip(),'RECOVERED_AND_DELETED')
         self.assertEqual(self.h.ports._load_lifecycle()['phase'],'DELETED')
+
+
+class OwnedVersionTests(unittest.TestCase):
+    setUp = LifecycleTests.setUp
+
+    def test_distinct_versions_preserve_provenance_and_authenticate_then_delete(self):
+        self.h.create(); original=self.h.ports._load_lifecycle(); seen=[]
+        self.h.current['etag']='etag/postcreate'
+        self.assertEqual(self.h.ports.key_get()['etag'],'etag/postcreate')
+        self.h.current['etag']='etag/authentication'
+        self.h.ports.auth=lambda receipt:seen.append(copy.deepcopy(receipt)) or {'sink':True}
+        self.assertEqual(self.h.ports.authenticate(self.h.ports.key_resource),{'sink':True})
+        self.assertEqual(seen[0]['etag'],'etag/authentication')
+        self.assertEqual(seen[0]['uid'],original['uid'])
+        self.h.io.cleanup=True;self.h.current['etag']='etag/cleanup'
+        current=self.h.ports.key_get(); refreshed=self.h.ports._load_lifecycle()
+        self.assertEqual(refreshed,{**original,'etag':'etag/cleanup'})
+        self.assertEqual(self.h.ports.owned_etag,'etag/cleanup')
+        self.assertTrue(self.h.ports.key_delete(current['etag']))
+        self.assertIn(('DELETE','https://apikeys.googleapis.com/v2/'+self.h.ports.key_resource+'?etag=etag%2Fcleanup'),self.h.calls)
+        self.assertEqual(sum(method=='POST' for method,_ in self.h.calls),1)
+        self.assertEqual(sum(url.endswith('/keyString') for _,url in self.h.calls),1)
+        self.assertEqual(sum(method=='DELETE' for method,_ in self.h.calls),1)
+        for path in self.h.root.iterdir():
+            for secret in ('KEYSTRING_CANARY',__import__('hashlib').sha256(b'KEYSTRING_CANARY').hexdigest(),'TOKEN_CANARY'):
+                self.assertNotIn(secret,path.read_text())
+
+    def test_same_instant_timestamp_representation_preserves_original_bytes(self):
+        original_make=self.h.new_key
+        self.h.new_key=lambda:{**original_make(),'createTime':datetime.datetime.fromtimestamp(self.h.now,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')+'.123000Z'}
+        self.h.create();original=self.h.ports._load_lifecycle()
+        self.h.current.update(etag='etag/new',createTime=original['createTime'][:-1]+'000Z')
+        self.h.ports.key_get()
+        self.assertEqual(self.h.ports._load_lifecycle(),{**original,'etag':'etag/new'})
+
+    def test_submicrosecond_timestamp_change_refuses_version_refresh(self):
+        original_make=self.h.new_key
+        self.h.new_key=lambda:{**original_make(),'createTime':datetime.datetime.fromtimestamp(self.h.now,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')+'.123456001Z'}
+        self.h.create(); original=self.h.ports._load_lifecycle()
+        self.h.current.update(etag='etag/new',createTime=original['createTime'].replace('123456001','123456002'))
+        with self.assertRaisesRegex(Exception,'KEY_METADATA_UNCONFIRMED'):self.h.ports.key_get()
+        self.assertEqual(self.h.ports._load_lifecycle(),original)
+        self.assertEqual(self.h.ports.owned_etag,original['etag'])
+
+    def test_absent_original_creation_time_is_not_backfilled(self):
+        original_make=self.h.new_key
+        self.h.new_key=lambda:{k:v for k,v in original_make().items() if k!='createTime'}
+        self.h.create();original=self.h.ports._load_lifecycle()
+        self.h.current.update(etag='etag/new',createTime=datetime.datetime.fromtimestamp(self.h.now,datetime.timezone.utc).isoformat().replace('+00:00','Z'))
+        self.h.ports.key_get()
+        self.assertEqual(self.h.ports._load_lifecycle(),{**original,'etag':'etag/new'})
+        self.assertIsNone(self.h.ports._load_lifecycle()['createTime'])
+
+    def test_invalid_identity_version_or_creation_metadata_never_reaches_keystring(self):
+        self.h.create();original=copy.deepcopy(self.h.current);receipt=self.h.ports._load_lifecycle()
+        cases=[('uid',str(uuid.uuid4())),('name','projects/foreign/locations/global/keys/foreign'),
+               ('displayName','foreign'),('restrictions',{}),('etag',''),('etag',None),
+               ('createTime',None),('createTime','bad'),('createTime','2020-01-01T00:00:00Z'),
+               ('createTime',datetime.datetime.fromtimestamp(self.h.now+1,datetime.timezone.utc).isoformat().replace('+00:00','Z'))]
+        self.h.ports.auth=lambda _:self.fail('Authentication sink reached')
+        for field,value in cases:
+            with self.subTest(field=field,value=value):
+                self.h.current={**original,'etag':'etag/new',field:value}
+                with self.assertRaisesRegex(Exception,'KEY_METADATA_UNCONFIRMED'):self.h.ports.authenticate(self.h.ports.key_resource)
+                self.assertEqual(self.h.ports._load_lifecycle(),receipt)
+                self.assertEqual(self.h.ports.owned_etag,receipt['etag'])
+        self.assertFalse(any(url.endswith('/keyString') or method=='DELETE' for method,url in self.h.calls))
+
+    def test_missing_foreign_and_unproven_receipt_blocks_even_matching_live_metadata(self):
+        self.h.create();path=self.h.root/'key-lifecycle-private.json';raw=path.read_bytes()
+        original=json.loads(raw);variants=[]
+        for phase in ('INTENT','CREATE_OPERATION'):
+            variants.append({**original,'phase':phase,'uid':None,'etag':None,'createTime':None,
+                             'createOperation':None if phase=='INTENT' else original['createOperation']})
+        variants.extend([{**original,'operationId':str(uuid.uuid4())},{**original,'sourceCommit':'f'*40},
+                         {**original,'requestSha256':'f'*64},{**original,'uid':str(uuid.uuid4())},
+                         {**original,'etag':'foreign-memory-version'}])
+        for value in variants:
+            with self.subTest(phase=value['phase'],uid=value['uid']):
+                path.write_text(json.dumps(value))
+                calls=len(self.h.calls)
+                with self.assertRaises(Exception):self.h.ports.authenticate(self.h.ports.key_resource)
+                self.assertEqual(len(self.h.calls),calls)
+        path.unlink()
+        with self.assertRaises(FileNotFoundError):self.h.ports.authenticate(self.h.ports.key_resource)
+        path.write_bytes(raw);path.chmod(0o600)
+        self.assertFalse(any(url.endswith('/keyString') or method=='DELETE' for method,url in self.h.calls))
+
+    def test_refresh_persistence_failure_stops_before_sensitive_dispatch(self):
+        self.h.create();before=self.h.ports._load_lifecycle();self.h.current['etag']='etag/new'
+        with patch.object(self.h.ports,'_save_lifecycle',side_effect=OSError('PRIVATE_FAILURE_CANARY')):
+            with self.assertRaisesRegex(Exception,'KEY_METADATA_UNCONFIRMED'):self.h.ports.authenticate(self.h.ports.key_resource)
+        self.assertEqual(self.h.ports._load_lifecycle(),before)
+        self.assertEqual(self.h.ports.owned_etag,before['etag'])
+        self.assertFalse(any(url.endswith('/keyString') or method=='DELETE' for method,url in self.h.calls))
+
+    def test_interrupted_atomic_refresh_leaves_unadopted_version_and_purges(self):
+        self.h.create();before=self.h.ports._load_lifecycle();self.h.current['etag']='etag/new'
+        replace=entry.os.replace
+        def interrupt(source,target):
+            if Path(target).name=='key-lifecycle-private.json':raise KeyboardInterrupt()
+            return replace(source,target)
+        with patch.object(entry.os,'replace',side_effect=interrupt):
+            with self.assertRaises(KeyboardInterrupt):self.h.ports.authenticate(self.h.ports.key_resource)
+        self.assertEqual(entry.read(self.h.root/'key-lifecycle-private.json'),before)
+        self.assertEqual(self.h.ports.owned_etag,before['etag'])
+        self.assertTrue((self.h.root/'key-lifecycle-private.json.next').exists())
+        self.h.io.cleanup=True
+        with self.assertRaises(Exception):self.h.ports.recover_key()
+        self.assertFalse(any(url.endswith('/keyString') or method=='DELETE' for method,url in self.h.calls))
+        self.assertTrue(entry.purge(self.h.root,self.h.plan['operationId']))
+
+    def test_published_refresh_recovers_after_interruption_before_memory_update(self):
+        self.h.create();before=self.h.ports._load_lifecycle();self.h.current['etag']='etag/new'
+        save=self.h.ports._save_lifecycle
+        def interrupted(value):
+            save(value)
+            if value['etag']=='etag/new':raise KeyboardInterrupt()
+        with patch.object(self.h.ports,'_save_lifecycle',side_effect=interrupted):
+            with self.assertRaises(KeyboardInterrupt):self.h.ports.key_get()
+        self.assertEqual(self.h.ports.owned_etag,before['etag'])
+        self.assertEqual(self.h.ports._load_lifecycle(),{**before,'etag':'etag/new'})
+        with self.assertRaisesRegex(Exception,'KEY_METADATA_UNCONFIRMED'):self.h.ports.key_get()
+        self.h.io.cleanup=True
+        fresh=entry.Ports(self.h.cap,self.h.io,None,None);fresh.pause=self.h.pause;fresh.recover_key()
+        self.h.current['etag']='etag/independent-cleanup'
+        current=fresh.key_get();self.assertTrue(fresh.key_delete(current['etag']))
+        self.assertEqual(sum(method=='POST' for method,_ in self.h.calls),1)
+        self.assertEqual(sum(method=='DELETE' for method,_ in self.h.calls),1)
+
+    def test_deleted_and_uncertain_delete_reads_do_not_refresh_or_retry(self):
+        self.h.create();self.h.io.cleanup=True;self.h.lost='delete-active'
+        with self.assertRaisesRegex(Exception,'KEY_DELETE_UNCONFIRMED'):self.h.ports.key_delete(self.h.ports.owned_etag)
+        before=self.h.ports._load_lifecycle();self.h.current['etag']='etag/later'
+        self.assertFalse(self.h.ports.key_get()['deleted'])
+        self.assertEqual(self.h.ports._load_lifecycle(),before)
+        self.assertEqual(self.h.ports.owned_etag,before['etag'])
+        with self.assertRaisesRegex(Exception,'KEY_DELETE_UNCONFIRMED'):self.h.ports.key_delete(self.h.current['etag'])
+        self.h.current['deleteTime']='2026-01-01T00:00:00Z'
+        self.assertTrue(self.h.ports.key_get()['deleted'])
+        self.assertEqual(self.h.ports._load_lifecycle(),before)
+        self.assertEqual(sum(method=='DELETE' for method,_ in self.h.calls),1)
+
+    def test_pending_and_deleted_provenance_never_authenticate_at_same_or_changed_etag(self):
+        self.h.create();original=self.h.ports._load_lifecycle();path=self.h.root/'key-lifecycle-private.json'
+        for phase in ('DELETE_INTENT','DELETE_OPERATION','DELETED'):
+            for changed in (False,True):
+                with self.subTest(phase=phase,changed=changed):
+                    receipt={**original,'phase':phase,'deleteIntent':True,
+                             'deleteOperation':None if phase=='DELETE_INTENT' else 'operations/delete'}
+                    path.write_text(json.dumps(receipt))
+                    self.h.current['etag']='etag/later' if changed else original['etag']
+                    self.assertEqual(self.h.ports.key_get()['etag'],self.h.current['etag'])
+                    self.assertEqual(self.h.ports._load_lifecycle(),receipt)
+                    self.assertEqual(self.h.ports.owned_etag,original['etag'])
+                    calls=len(self.h.calls)
+                    with self.assertRaisesRegex(Exception,'AUTH_KEY_SCOPE'):self.h.ports.authenticate(self.h.ports.key_resource)
+                    self.assertEqual(len(self.h.calls),calls)
+        self.assertFalse(any(url.endswith('/keyString') or method=='DELETE' for method,url in self.h.calls))
+
+    def test_provider_deleted_key_with_created_receipt_remains_readable_but_cannot_authenticate(self):
+        self.h.create();original=self.h.ports._load_lifecycle()
+        self.h.current['deleteTime']=self.h.current['createTime']
+        self.h.ports.auth=lambda _:self.fail('Authentication sink reached for deleted key')
+        for etag in (original['etag'],'etag/provider-deleted'):
+            with self.subTest(etag=etag):
+                self.h.current['etag']=etag;observed=self.h.ports.key_get()
+                self.assertTrue(observed['deleted']);self.assertEqual(observed['etag'],etag)
+                calls=len(self.h.calls)
+                with self.assertRaisesRegex(Exception,'AUTH_KEY_OWNERSHIP_DRIFT'):self.h.ports.authenticate(self.h.ports.key_resource)
+                self.assertEqual(len(self.h.calls),calls+1)
+                self.assertEqual(self.h.ports._load_lifecycle(),original)
+                self.assertEqual(self.h.ports.owned_etag,original['etag'])
+        self.assertEqual(original['phase'],'CREATED')
+        self.assertFalse(any(url.endswith('/keyString') or method=='DELETE' for method,url in self.h.calls))
+
+    def test_later_conditional_conflict_is_not_retried_after_refresh(self):
+        self.h.create();self.h.io.cleanup=True;self.h.current['etag']='etag/cleanup'
+        current=self.h.ports.key_get();self.h.lost='delete-conflict'
+        with self.assertRaisesRegex(Exception,'KEY_DELETE_UNCONFIRMED'):self.h.ports.key_delete(current['etag'])
+        before=self.h.ports._load_lifecycle()
+        self.assertEqual(before['etag'],'etag/cleanup')
+        self.assertTrue(before['deleteIntent'])
+        self.assertEqual(self.h.current['etag'],'etag/later-concurrent-version')
+        fresh=entry.Ports(self.h.cap,self.h.io,None,None);fresh.pause=self.h.pause;fresh.recover_key()
+        self.assertEqual(fresh.key_get()['etag'],'etag/later-concurrent-version')
+        self.assertEqual(fresh.owned_etag,'etag/cleanup')
+        with self.assertRaisesRegex(Exception,'KEY_DELETE_UNCONFIRMED'):fresh.key_delete(fresh.owned_etag)
+        self.assertEqual(sum(method=='DELETE' for method,_ in self.h.calls),1)
+
+    def test_fresh_process_cleanup_refreshes_before_any_authentication(self):
+        self.h.create();before=self.h.ports._load_lifecycle();self.h.current['etag']='etag/fresh-cleanup'
+        payload={'root':str(self.h.root),'plan':self.h.plan,'now':self.h.now,'current':self.h.current}
+        script="""import json,sys
+from test_key_lifecycle import Harness
+v=json.load(sys.stdin);h=Harness(v['root'],v['plan'],v['now']);h.current=v['current'];h.io.cleanup=True
+with h.transport():
+ h.ports.recover_key();current=h.ports.key_get();assert h.ports.key_delete(current['etag'])
+assert not any(url.endswith('/keyString') or method=='POST' for method,url in h.calls)
+assert sum(method=='DELETE' for method,url in h.calls)==1
+print('REFRESHED_AND_DELETED')
+"""
+        result=subprocess.run([sys.executable,'-c',script],input=json.dumps(payload),text=True,capture_output=True,cwd=Path(__file__).parent)
+        self.assertEqual(result.returncode,0,result.stderr);self.assertEqual(result.stdout.strip(),'REFRESHED_AND_DELETED')
+        receipt=self.h.ports._load_lifecycle()
+        self.assertEqual(receipt['phase'],'DELETED');self.assertEqual(receipt['etag'],'etag/fresh-cleanup')
+        for field in ('uid','createOperation','createIntentAt','absenceObservedAt','createTime'):
+            self.assertEqual(receipt[field],before[field])
 
 
 if __name__=='__main__':unittest.main()

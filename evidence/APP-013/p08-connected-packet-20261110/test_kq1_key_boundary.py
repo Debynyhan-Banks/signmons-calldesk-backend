@@ -114,7 +114,8 @@ class Provider:
                 return self.response({'error': {'status': 'NOT_FOUND', 'code': 404}}, 404)
             self.meta_reads += 1
             if self.abrupt and self.phase == 'main': os._exit(23)
-            if self.scenario == 'etag_drift' and self.phase == 'main': self.meta['etag'] = 'etag/synthetic-2'
+            if self.scenario == 'etag_drift' and 'deleteTime' not in self.meta:
+                self.meta['etag'] = 'etag/synthetic-' + str(self.meta_reads + 1)
             value = copy.deepcopy(self.meta)
             if self.phase == 'cleanup' and self.cleanup_drift:
                 value[self.cleanup_drift[0]] = self.cleanup_drift[1]
@@ -294,15 +295,20 @@ class KQ1Tests(unittest.TestCase):
         self.assert_no_auth_calls()
         self.assert_no_secret()
 
-    def test_unchanged_authentication_etag_check_stops_but_cleanup_adopts_same_uid(self):
+    def test_owned_version_refresh_reaches_sink_and_keeps_creation_reference_flags(self):
         self.f.provider.scenario = 'etag_drift'
         main = self.f.run('main')
-        self.assertIn('AUTH_KEY_OWNERSHIP_DRIFT', json.dumps(main))
-        self.assertFalse(any(u.endswith('/keyString') for _, u, _ in self.f.provider.requests))
+        self.assertTrue(main['boundaryReached'],main)
+        self.assertIsNone(main['failure'])
+        self.assertEqual(main['matches'],{'postcreate':{'uid':True,'etag':False,'active':True},
+                                          'authenticate':{'uid':True,'etag':False,'active':True}})
+        self.assertEqual(sum(u.endswith('/keyString') for _, u, _ in self.f.provider.requests),1)
+        self.assertEqual(main['counts']['mainHttps'],6)
         closed = self.f.run('cleanup')
         self.assertIn('CONTROL_PLANE_DELETED', json.dumps(closed))
         deletes = [u for m, u, _ in self.f.provider.requests if m == 'DELETE']
-        self.assertEqual(deletes, [self.f.provider.base + '?etag=etag%2Fsynthetic-2'])
+        self.assertEqual(deletes, [self.f.provider.base + '?etag=etag%2Fsynthetic-4'])
+        self.assertEqual(closed['counts']['https'],9)
         self.assert_no_secret()
 
     def test_keystring_schema_failure_is_safe_and_independently_contained(self):

@@ -34,6 +34,10 @@ class EntryTests(unittest.TestCase):
         f.runtime_state={x:False for x in entry.restore.operations({**f.p,'iam':[]})}
         now=int(time.time());f.now=now
         iso=lambda x:datetime.datetime.fromtimestamp(now+x,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        original_make_key=f.transport.make_key
+        # Current owned-version validation requires provider creation metadata.
+        # Adapt the instance seam without changing the source-locked legacy fixture.
+        f.transport.make_key=lambda:{**original_make_key(),'createTime':iso(0)}
         f.p['window']={'start':iso(-10),'cutoff':iso(120),'workEnd':iso(180),'cleanupEnd':iso(900),'purgeEnd':iso(950)}
         f.target['email']=f.p['ownerPrincipal']
         self.root=Path('/private/tmp/p08-coordinator-'+f.p['operationId']);self.root.mkdir(mode=0o700)
@@ -969,6 +973,13 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
     CODES = ('AUTH_KEY_SCOPE', 'AUTH_KEY_OWNERSHIP_DRIFT', 'KEY_STRING_SHAPE')
     PRIVATE_TEXT = 'synthetic-private-auth-diagnostic-canary'
 
+    def diagnostic_ports(self):
+        ports=object.__new__(entry.Ports)
+        ports.owned_uid='synthetic-owned-uid';ports.owned_etag='synthetic-owned-etag'
+        ports._load_lifecycle=lambda:{'phase':'CREATED','deleteIntent':False,'deleteOperation':None,
+                                     'uid':ports.owned_uid,'etag':ports.owned_etag}
+        return ports
+
     def rejected_errors(self):
         class DerivedStop(entry.bridge.packet.Stop): pass
         class DerivedString(str): pass
@@ -985,7 +996,7 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
         ]
 
     def test_authenticate_preserves_success_and_only_translates_exact_safe_codes(self):
-        ports = object.__new__(entry.Ports)
+        ports = self.diagnostic_ports()
         result = object()
         with patch.object(entry.bridge.Ports, 'authenticate', return_value=result) as base:
             self.assertIs(ports.authenticate('synthetic-resource'), result)
@@ -1001,7 +1012,7 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
                 self.assertTrue(raised.exception.__suppress_context__)
 
     def test_authenticate_preserves_unknown_exception_identity(self):
-        ports = object.__new__(entry.Ports)
+        ports = self.diagnostic_ports()
         for error in self.rejected_errors():
             with self.subTest(kind=type(error).__name__, argc=len(error.args)):
                 with patch.object(entry.bridge.Ports, 'authenticate', side_effect=error):
@@ -1032,63 +1043,54 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
                 finally:
                     fixture.doCleanups()
 
-    def test_real_authentication_validation_failures_preserve_r46_cleanup_signature(self):
-        cases = [('creation_etag_then_one_poll', 'AUTH_KEY_OWNERSHIP_DRIFT'),
-                 ('keystring_shape_then_cleanup_etag', 'KEY_STRING_SHAPE')]
-        for case, expected in cases:
-            with self.subTest(case=case):
-                fixture = ConnectedEntryTests()
-                try:
-                    fixture.setUp()
-                    fake = fixture.f.transport
-                    original = fake.https
-                    created = None
-                    trace = []
-                    def https(desc):
-                        nonlocal created
-                        method, url = desc['method'], desc['url']
-                        label = ('keyString' if url.endswith('/keyString') else
-                                 'poll' if '/operations/' in url else
-                                 'create' if '/keys?keyId=' in url else
-                                 'key' if '/keys/' in url else 'other')
-                        trace.append((method, label))
-                        if case == 'creation_etag_then_one_poll' and label == 'poll':
-                            return {'httpStatus': 200, 'body': json.dumps({
-                                'name': 'operations/keycreate1', 'done': True, 'response': created})}
-                        if (case == 'creation_etag_then_one_poll' and method == 'GET' and
-                                label == 'key' and fake.key is not None):
-                            fake.key['etag'] = 'synthetic-updated-etag'
-                        if case == 'keystring_shape_then_cleanup_etag' and label == 'keyString':
-                            fake.key['etag'] = 'synthetic-updated-etag'
-                            return {'httpStatus': 200, 'body': '{}'}
-                        value = original(desc)
-                        if case == 'creation_etag_then_one_poll' and label == 'create':
-                            created = copy.deepcopy(fake.key)
-                            return {'httpStatus': 200, 'body': json.dumps({'name': 'operations/keycreate1'})}
-                        return value
-                    fake.https = https
-                    # Synthetic transports, real validators/entry/cleanup; skip only the fixture poll delay.
-                    with patch.object(entry.time, 'sleep', lambda _: None):
-                        work = fixture.run_entry()
-                        result = fixture.run_entry('closeout')
-                    journal = read(fixture.root / 'journal.json')
-                    self.assertEqual(work['status'], 'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
-                    self.assertEqual(journal['failure'], expected)
-                    self.assertEqual(journal['nativeEntry']['calls'], {'child': 1, 'cli': 191, 'https': 14, 'sql': 10})
-                    self.assertTrue(journal['authAttempted'])
-                    self.assertFalse(journal['authProofAccepted'])
-                    self.assertNotIn('authClient', journal)
-                    self.assertTrue(journal['keyDeleteAttempted'])
-                    self.assertFalse(fake.key.get('deleteTime'))
-                    self.assertNotIn(('DELETE', 'key'), trace)
-                    self.assertEqual(trace.count(('GET', 'keyString')), int(case == 'keystring_shape_then_cleanup_etag'))
-                    self.assertEqual(trace.count(('GET', 'poll')), int(case == 'creation_etag_then_one_poll'))
-                    self.assertEqual(result['status'], 'ENTRY_CONTAINMENT_UNCONFIRMED')
-                    self.assertEqual(result['residuals'], ['ACCOUNT_SESSION', 'AUTH_OUTCOME_UNKNOWN', 'AUTH_REVOKE', 'OWNED_KEY'])
-                    self.assertTrue(result['privateInputsAbsent'])
-                    self.assertFalse(any(fixture.f.runtime_state.values()))
-                finally:
-                    fixture.doCleanups()
+    def test_distinct_owned_versions_reach_real_handoff_and_conditional_cleanup(self):
+        fixture=ConnectedEntryTests()
+        try:
+            fixture.setUp();fake=fixture.f.transport;original=fake.https;trace=[];reads=0
+            def https(desc):
+                nonlocal reads
+                method,url=desc['method'],desc['url'];trace.append((method,url))
+                if method=='GET' and '/keys/' in url and not url.endswith('/keyString') and fake.key and not fake.key.get('deleteTime'):
+                    reads+=1;fake.key['etag']='etag/native-'+str(reads+1)
+                if method=='DELETE':
+                    self.assertTrue(url.endswith('?etag=etag%2Fnative-4'))
+                return original(desc)
+            fake.https=https
+            work=fixture.run_entry()
+            self.assertEqual(work['status'],'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+            self.assertEqual(read(fixture.root/'owned-receipt.json')['etag'],'etag/native-3')
+            lifecycle=read(fixture.root/'key-lifecycle-private.json')
+            self.assertEqual(lifecycle['phase'],'DELETED');self.assertEqual(lifecycle['etag'],'etag/native-4')
+            result=fixture.run_entry('closeout');journal=read(fixture.root/'journal.json')
+            self.assertEqual(result['status'],'ENTRY_CLOSED',result)
+            self.assertEqual(result['residuals'],[])
+            self.assertTrue(journal['authProofAccepted']);self.assertIsNone(journal['failure'])
+            self.assertEqual(journal['nativeEntry']['calls'],{'child':5,'cli':191,'https':16,'sql':10})
+            self.assertEqual(sum(method=='DELETE' for method,_ in trace),1)
+            self.assertEqual(sum(url.endswith('/keyString') for _,url in trace),1)
+            self.assertTrue(result['privateInputsAbsent'])
+        finally:fixture.doCleanups()
+
+    def test_keystring_failure_remains_classified_and_changed_cleanup_version_is_contained(self):
+        fixture=ConnectedEntryTests()
+        try:
+            fixture.setUp();fake=fixture.f.transport;original=fake.https;trace=[]
+            def https(desc):
+                method,url=desc['method'],desc['url'];trace.append((method,url))
+                if url.endswith('/keyString'):
+                    fake.key['etag']='etag/cleanup-after-refusal'
+                    return {'httpStatus':200,'body':'{}'}
+                if method=='DELETE':self.assertTrue(url.endswith('?etag=etag%2Fcleanup-after-refusal'))
+                return original(desc)
+            fake.https=https
+            fixture.run_entry();result=fixture.run_entry('closeout');journal=read(fixture.root/'journal.json')
+            self.assertEqual(journal['failure'],'KEY_STRING_SHAPE')
+            self.assertFalse(journal['authProofAccepted']);self.assertNotIn('authClient',journal)
+            self.assertEqual(journal['nativeEntry']['calls']['child'],1)
+            self.assertEqual(result['residuals'],['ACCOUNT_SESSION','AUTH_OUTCOME_UNKNOWN','AUTH_REVOKE'])
+            self.assertEqual(sum(method=='DELETE' for method,_ in trace),1)
+            self.assertTrue(fake.key.get('deleteTime'));self.assertTrue(result['privateInputsAbsent'])
+        finally:fixture.doCleanups()
 
 
 for _name in EntryTests.__dict__:

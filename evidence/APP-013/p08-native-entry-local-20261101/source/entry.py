@@ -212,6 +212,39 @@ class Ports(bridge.Ports):
         try: os.fsync(fd)
         finally: os.close(fd)
 
+    def normalized_key(self, value):
+        normalized = super().normalized_key(value)
+        # Creation establishes provenance through _key_state. Deleted metadata
+        # remains readable for final containment checks, without version adoption.
+        if self.owned_uid is None or normalized['deleted']:
+            return normalized
+        receipt = self._load_lifecycle()
+        need(normalized['uid'] == receipt['uid'] == self.owned_uid, 'KEY_OWNED_METADATA_DRIFT')
+        if receipt['phase'] in ('DELETE_INTENT', 'DELETE_OPERATION', 'DELETED'):
+            return normalized
+        need(receipt['phase'] == 'CREATED' and not receipt['deleteIntent'] and
+             receipt['deleteOperation'] is None and
+             receipt['etag'] == self.owned_etag, 'KEY_OWNED_METADATA_DRIFT')
+        created = value.get('createTime')
+        need(type(created) is str and
+             re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.[0-9]{1,9})?Z', created),
+             'KEY_PRIVATE_CREATED')
+        at = datetime.datetime.fromisoformat(created.replace('Z', '+00:00')).timestamp()
+        need(self.cap.times['start'] <= at < self.cap.times['cleanupEnd'], 'KEY_PRIVATE_CREATED')
+        if receipt['createTime'] is not None:
+            original = receipt['createTime']
+            # Both strings are calendar-validated UTC with up to nine fractional
+            # digits. Compare exact fractions; datetime truncates nanoseconds.
+            need(created[:19] == original[:19] and
+                 created[20:-1].ljust(9, '0') == original[20:-1].ljust(9, '0'), 'KEY_PRIVATE_CREATED')
+        if normalized['etag'] != receipt['etag']:
+            # Preserve creation identity and intent fields byte-for-byte. A failed
+            # atomic publish cannot authorize authentication or conditional delete.
+            receipt['etag'] = normalized['etag']
+            self._save_lifecycle(receipt)
+            self.owned_etag = normalized['etag']
+        return normalized
+
     def _key_state(self, value, response=None):
         # Persist only this exact allowlisted subset, never response bodies/keyString.
         normalized = self.normalized_key(value)
@@ -343,6 +376,10 @@ class Ports(bridge.Ports):
 
     def authenticate(self, resource):
         try:
+            receipt = self._load_lifecycle()
+            bridge.need(receipt['phase'] == 'CREATED' and not receipt['deleteIntent'] and
+                        receipt['deleteOperation'] is None and receipt['uid'] == self.owned_uid and
+                        receipt['etag'] == self.owned_etag, 'AUTH_KEY_SCOPE')
             return super().authenticate(resource)
         except bridge.packet.Stop as error:
             if (type(error) is bridge.packet.Stop and len(error.args) == 1 and
