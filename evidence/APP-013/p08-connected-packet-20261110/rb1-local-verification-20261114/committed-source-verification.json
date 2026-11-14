@@ -1,0 +1,13 @@
+{
+  "status": "PASS_CURRENT_AND_COMMITTED_SOURCE_GRAPH",
+  "sourceCommit": "157d65dd512ce4b7414c4373cb889985649489cf",
+  "verifiedAt": "2026-11-14T20:47:43.276041+00:00",
+  "uniqueFilesVerified": 63,
+  "nativeManifestSha256": "75ed094bb6c3926089e9a71b35b9e9f2f9b910e83aa13889f5e3025b39b4cab0",
+  "testManifestSha256": "35923b48403d7cd43a9bead91585139fc5383cdbe2816036d1d39922b5448a4f",
+  "qualificationManifestSha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499",
+  "correctionManifestSha256": "57cac3b73444caf4ceaf06cb39fcd87cf4b17e964eddb61dbc4ad883aba125c7",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "executionReady": false
+}

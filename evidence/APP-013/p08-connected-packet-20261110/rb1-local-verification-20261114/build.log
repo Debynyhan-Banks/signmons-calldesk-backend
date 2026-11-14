@@ -1,0 +1,21 @@
+
+> signmons-calldesk-backend@0.1.0 prebuild
+> npm run prisma:generate && rimraf dist
+
+
+> signmons-calldesk-backend@0.1.0 prisma:generate
+> prisma generate && node scripts/link-prisma-client.js
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (v7.10.0) to ./node_modules/@prisma/client in 232ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+
+
+> signmons-calldesk-backend@0.1.0 build
+> NEST_CLI_TELEMETRY=false nest build
+

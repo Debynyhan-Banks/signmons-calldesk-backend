@@ -1,0 +1,5 @@
+
+> signmons-calldesk-backend@0.1.0 arch:check
+> node scripts/architecture-check.mjs
+
+architecture-check passed
