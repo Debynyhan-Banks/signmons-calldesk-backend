@@ -1,0 +1,28 @@
+{
+  "status": "KS1_CONSUMED_READ_OBSERVED_LOCAL_CLEANUP_VERIFIED",
+  "result": {
+    "completedAt": "2026-11-14T12:36:47.041314+00:00",
+    "configurationUnchanged": true,
+    "counts": {
+      "cache": 1,
+      "cli": 2,
+      "https": 1
+    },
+    "failure": null,
+    "mutations": 0,
+    "onTime": true,
+    "ownerMatched": true,
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "residuals": [],
+    "status": "PRESENT_MATCHING_METADATA"
+  },
+  "verification": {
+    "executorIndependentlyAbsent": true,
+    "receiptInventoryAndModesVerified": true,
+    "temporaryPreparationRemoved": true
+  },
+  "r44KeyContainment": "PRESENT_MATCHING_METADATA_UNRESOLVED",
+  "deletionAuthorized": false,
+  "replayAllowed": false
+}
