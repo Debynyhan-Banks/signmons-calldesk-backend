@@ -1,0 +1,48 @@
+{
+  "status": "BD4_OBSERVED_CLOSED",
+  "sourceCommit": "03655cec6829c72841379fd14f91f42bb143e8b4",
+  "approvalCommit": "80eb88d9c98d77b1f6c85ff2ef502ff6f837c935",
+  "result": {
+    "billingDiagnostic": {
+      "accountMatched": true,
+      "billingEnabled": true,
+      "projectMatched": true,
+      "shapeValid": true
+    },
+    "candidate": null,
+    "cliReservations": 3,
+    "executionReady": false,
+    "failure": null,
+    "liveObserved": true,
+    "operationId": "d2f19a04-5dd7-4075-abe1-20ccb5adc509",
+    "ownerMatched": true,
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+    "residuals": [],
+    "scopeSha256": "807dcf73d93edb296f8f5f3ba67cb1d2e6fe9b8d201be20eba780178dfc77939",
+    "status": "BILLING_METADATA_OBSERVED"
+  },
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "operationId": "d2f19a04-5dd7-4075-abe1-20ccb5adc509",
+    "processCleanupVerified": true,
+    "residuals": [],
+    "scopeSha256": "807dcf73d93edb296f8f5f3ba67cb1d2e6fe9b8d201be20eba780178dfc77939"
+  },
+  "billingCommand": {
+    "descriptorId": "billing_project",
+    "elapsedMilliseconds": 466,
+    "failureCode": null,
+    "matched": true,
+    "operationId": "d2f19a04-5dd7-4075-abe1-20ccb5adc509",
+    "scopeSha256": "807dcf73d93edb296f8f5f3ba67cb1d2e6fe9b8d201be20eba780178dfc77939"
+  },
+  "ownedProcessesIndependentlyAbsent": true,
+  "receiptInventoryModesVerified": true,
+  "temporaryRequestExecutorsRemoved": true,
+  "replayAllowed": false,
+  "paymentObserved": false,
+  "previousTimeoutCause": "UNKNOWN;success does not establish causal effect of timeout change"
+}
