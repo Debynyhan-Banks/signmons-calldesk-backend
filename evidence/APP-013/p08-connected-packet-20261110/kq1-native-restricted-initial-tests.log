@@ -1,0 +1,91 @@
+....................F.F..................................................................EEE....
+======================================================================
+ERROR: setUpClass (test_native_postgres.ConnectedPaymentPostgres)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-real-client-binding-local-20261031/source/test_bound_postgres.py", line 20, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/test_auth_postgres.py", line 9, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 19, in setUpClass
+    cls.command(args=[str(PG/'initdb'),'-D',str(cls.data),'--username=neondb_owner','--auth=trust','--no-locale','--encoding=UTF8'])
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+======================================================================
+ERROR: setUpClass (test_native_postgres.LifecyclePostgres)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 19, in setUpClass
+    cls.command(args=[str(PG/'initdb'),'-D',str(cls.data),'--username=neondb_owner','--auth=trust','--no-locale','--encoding=UTF8'])
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-real-client-binding-local-20261031/source/test_bound_postgres.py", line 20, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/test_auth_postgres.py", line 9, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 28, in setUpClass
+    except BaseException:cls.tearDownClass();raise
+                         ~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_native_postgres.py", line 42, in tearDownClass
+    assert cls.server.poll() is not None and not scratch.exists()
+           ^^^^^^^^^^
+AttributeError: type object 'LifecyclePostgres' has no attribute 'server'
+
+======================================================================
+ERROR: setUpClass (test_native_postgres.NativePostgres)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-real-client-binding-local-20261031/source/test_bound_postgres.py", line 20, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/test_auth_postgres.py", line 9, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 19, in setUpClass
+    cls.command(args=[str(PG/'initdb'),'-D',str(cls.data),'--username=neondb_owner','--auth=trust','--no-locale','--encoding=UTF8'])
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+======================================================================
+FAIL: test_late_child_return_preserves_payment_intent_for_cleanup (test_entry.ConnectedEntryTests.test_late_child_return_preserves_payment_intent_for_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 889, in test_late_child_return_preserves_payment_intent_for_cleanup
+    self.assertEqual(j['payment']['outcome'],'APPLICATION_SETTLED')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'NOT_OBSERVED' != 'APPLICATION_SETTLED'
+- NOT_OBSERVED
++ APPLICATION_SETTLED
+
+
+======================================================================
+FAIL: test_payment_parent_retains_then_independently_purges (test_entry.ConnectedEntryTests.test_payment_parent_retains_then_independently_purges)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 901, in test_payment_parent_retains_then_independently_purges
+    self.assertTrue(r['paymentObserved'],read(self.root/'journal.json'))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : {'authAttempted': True, 'authClient': {'activatedVersion': '2026-01-01T00:00:01.000Z', 'activationIntent': True, 'authenticated': True, 'closeoutAttempted': True, 'disabledVersion': '2026-01-01T00:00:02.000Z', 'firebaseEnableIntent': True, 'operationId': '3fd029e1-bf4f-4ff4-afae-18f7e7c7934c', 'phase': 'CLOSEOUT_FINISHED', 'residuals': [], 'revocationIntentAt': '2026-11-14T15:53:19.000Z', 'sessionClosed': True, 'status': 'P08_COORDINATOR_AUTHENTICATED_AND_CLOSED', 'tokenIssueIntent': True, 'version': 9}, 'authProofAccepted': True, 'childResultSha256': '89803870ecf40a4ed42fb2e3c39c65517ec080730c7ebd2d89a00cf1728e440b', 'failure': None, 'iamAttempted': ['lookup', 'signing'], 'iamCleanupAttempted': ['signing', 'lookup'], 'iamOwned': ['lookup', 'signing'], 'keyCreateAttempted': True, 'keyDeleteAttempted': True, 'keyUidSha256': '43013f33fd2c851580d0a555aa563bb1b7ba95128ce93ee2ef8bceccfe4ffe8f', 'nativeEntry': {'calls': {'child': 4, 'cli': 135, 'https': 15, 'sql': 7}, 'envelopeSha256': 'e066ad825fa94a8fb903a65792c603355f39055c4c3af60b9d398b36be354936'}, 'operationId': '3fd029e1-bf4f-4ff4-afae-18f7e7c7934c', 'payment': {'bridgeClosed': True, 'enableIntent': True, 'endpointCalls': 8, 'endpointDisabled': True, 'failureCode': 'PAYMENT_ADAPTER_UNKNOWN', 'operationId': '3fd029e1-bf4f-4ff4-afae-18f7e7c7934c', 'outcome': 'NOT_OBSERVED', 'phase': 'CLOSED', 'residuals': [], 'revision': 19, 'scopeSha256': 'eebb72c578ddc1a54ede6c36300a702bc37ebb3417160aab4be3caea7414c499', 'secretReads': 4}, 'phase': 'CLOSED', 'planSha256': 'd0198ec8d815f7107317ed1cdfc4b8cb523e3f37072be8b2cddbc5bb982b4f1f', 'preflightStage': 'ACCESS_PREFLIGHT', 'residuals': [], 'runtimeAttempted': [['version', 'signmons-staging-stripe-secret-key'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['tag', 'app013-p07-atomic'], ['role', 'p07_payment_runtime']], 'runtimeCleanupAttempted': [['role', 'p07_payment_runtime'], ['tag', 'app013-p07-atomic'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-technician-link-key'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-payment-database-url'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-stripe-secret-key']], 'runtimeOwned': [['version', 'signmons-staging-stripe-secret-key'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['tag', 'app013-p07-atomic'], ['role', 'p07_payment_runtime']], 'serviceEnableAttempted': False, 'unknown': []}
+
+----------------------------------------------------------------------
+Ran 93 tests in 20.157s
+
+FAILED (failures=2, errors=3)

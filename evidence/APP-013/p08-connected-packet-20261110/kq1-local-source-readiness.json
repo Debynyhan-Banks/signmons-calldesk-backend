@@ -1,0 +1,22 @@
+{
+  "status": "LOCAL_COMMITTED_SOURCE_READY_LIVE_UNKNOWN",
+  "recordedAt": "2026-11-14T16:12:01.139467+00:00",
+  "sourceCommit": "a26065ed7ae497733ded4d7ea93fa52f930193b2",
+  "operatorSha256": "979ff9343c3ca994f70610bcf10e995cef415980141983bc40d6be953905c9e7",
+  "testSha256": "a5bb898127faa8524a41ba2c9c8ff4a6040eabdb45a7151db721a5a48b61b128",
+  "qualificationManifestSha256": "5cc0e4a1320685316b20a6d4739691a2bdf35cc1e846c8c63ab83b42e12eebbf",
+  "nativeManifestSha256": "63b0f7fd888e99ee7ade87a578b6dc478e0ce0a6c587caa68e29297b3ff8fcdb",
+  "sdkFilesSha256": "ecd62311871d8d39cd2fc94a14b38a16b01a12032d7da04853226feacd6c71b2",
+  "dependencySha256": {
+    "packet.py": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa",
+    "ks1_read.py": "686b6a02f33b667016cb367f7533c345b181fe7eba614c424205414dddffc5d6",
+    "kd1_cleanup.py": "9f4b5ab2a7536c2c41a268fa0e872e998c9ada31c051fa05382340c8c7ad0ee1"
+  },
+  "actualSourceGuard": "PASS",
+  "aggregateLimitSeconds": 8,
+  "elapsedSeconds": 0.448209,
+  "unboundTemplateRefused": true,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "externalActionAuthorized": false
+}

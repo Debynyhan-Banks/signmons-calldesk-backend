@@ -1,0 +1,33 @@
+✔ current pointer and handoff have properly placed status and ordered steps (2.177875ms)
+✔ prior swapped-row/step failure is rejected without touching repository files (2.466333ms)
+✔ missing or duplicated backend rows fail (2.862417ms)
+✔ missing or nonsequential next actions fail (3.093666ms)
+✔ current checkout passes pinned baseline (29.409708ms)
+✔ automatic-admission amendment changes exactly two frozen sections and leaves ticket intact (2.115708ms)
+✔ old operator requirement cannot replace adopted automatic admission (0.918917ms)
+✔ core-release amendment changes exactly the approved two frozen sections (7.792792ms)
+✔ core-release proposal refuses malformed data and missing or duplicated targets (4.169291ms)
+✔ core-release amendment retains consent, delivery, privacy, audit and downstream safeguards (7.849125ms)
+✔ amendment does not permit weakening service or downstream authority (2.693583ms)
+✔ malformed amendment and missing or duplicate targets fail closed (0.180666ms)
+✔ changing acceptance text is rejected without editing repositories (0.927166ms)
+✔ changing section dependency is rejected (1.190375ms)
+✔ new section cannot silently increase denominator (0.899209ms)
+✔ reordering or renaming section is rejected (0.773417ms)
+✔ missing and duplicate protected section refuse (1.342167ms)
+✔ ticket criterion mutation is rejected, checkbox evidence change permitted (1.739583ms)
+✔ status/evidence outside frozen requirements can be updated (0.918ms)
+✔ missing pinned history fails closed (0.09325ms)
+✔ missing immutable core-release proposal fails closed even when older pins are available (40.164375ms)
+✔ current synchronized dependency order passes (1.483292ms)
+✔ blank Next and stale backend fail (0.337084ms)
+✔ out-of-order queue and pointer fail (0.204959ms)
+✔ full acceptance promotion can advance to the remaining suffix (0.182583ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 176.36825
