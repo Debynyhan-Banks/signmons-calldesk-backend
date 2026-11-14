@@ -2,6 +2,10 @@
 import json
 import os
 import subprocess
+import math
+import selectors
+import signal
+import time
 import urllib.error
 import urllib.request
 from authority import load, HERE, APP, digest
@@ -28,6 +32,8 @@ class NativeIO:
     def __init__(self, cap):
         need(cap.external, 'NATIVE_REQUIRES_EXTERNAL_AUTHORITY')
         self.cap, self.cleanup, self.token, self.password = cap, cap.mode != 'run', '', ''
+        self.child_processes = set()
+        self.child_cleanup_unconfirmed = False
         self.legacy = load('p08-restoration-local-20261028/source/legacy/controller.py', 'entry_legacy_io')
         self.restore = cap.modules['restore']
         need(cap.e['database'] == {'host': self.legacy.DB_HOST, 'port': 5432,
@@ -163,20 +169,145 @@ class NativeIO:
         request = urllib.request.Request(descriptor['url'], method=descriptor['method'],
                   data=None if body is None else body.encode(), headers={'Authorization': 'Bearer ' + self.token,
                   'Content-Type': 'application/json', 'x-goog-user-project': self.cap.plan['project']})
+        response = None
         try:
-            with urllib.request.build_opener(NoRedirect).open(request,
-                    timeout=max(.01, min(8, deadline - self.cap.clock()))) as r:
-                raw, status = r.read(65537), r.status
-        except urllib.error.HTTPError as error:
-            raw, status = error.read(65537), error.code
+            try:
+                response = urllib.request.build_opener(NoRedirect).open(request,
+                    timeout=max(.01, min(8, deadline - self.cap.clock())))
+                status = response.status
+            except urllib.error.HTTPError as error:
+                response, status = error, error.code
+            raw = response.read(65537)
+            self.cap.gate(self.cleanup)
+            need(len(raw) <= 65536 and not 300 <= status < 400, 'HTTPS_OUTPUT')
+            return {'httpStatus': status, 'body': raw.decode('utf-8', 'strict')}
         except (OSError, TimeoutError):
             raise __import__('private_inventory').Stop('HTTPS_UNCONFIRMED') from None
-        self.cap.gate(self.cleanup)
-        need(len(raw) <= 65536 and not 300 <= status < 400, 'HTTPS_OUTPUT')
-        return {'httpStatus': status, 'body': raw.decode('utf-8', 'strict')}
+        finally:
+            if response is not None:
+                try: response.close()
+                except Exception:
+                    raise __import__('private_inventory').Stop('HTTPS_RESPONSE_CLOSE_UNCONFIRMED') from None
+
+    def _child_group_alive(self, process, until):
+        # Only directly owned, start_new_session process groups are inspected/signalled.
+        need(process in self.child_processes, 'CHILD_PROCESS_OWNERSHIP')
+        while True:
+            process.poll()
+            try:
+                os.killpg(process.pid, 0)
+                return True
+            except ProcessLookupError:
+                return False
+            except PermissionError:
+                if time.monotonic() >= until:
+                    raise __import__('private_inventory').Stop('CHILD_PROCESS_OWNERSHIP_UNKNOWN') from None
+                time.sleep(min(.01, max(0, until - time.monotonic())))
+
+    def _finish_child(self, process):
+        if process not in self.child_processes:
+            return False
+        until = time.monotonic() + min(2, max(0, self.cap.times['cleanupEnd'] - self.cap.clock()))
+        try:
+            if self._child_group_alive(process, until):
+                os.killpg(process.pid, signal.SIGTERM)
+                term_end = min(until, time.monotonic() + .2)
+                while time.monotonic() < term_end and self._child_group_alive(process, until):
+                    time.sleep(.01)
+                if self._child_group_alive(process, until):
+                    os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=max(.001, until - time.monotonic()))
+            while time.monotonic() < until and self._child_group_alive(process, until):
+                time.sleep(.01)
+            absent = not self._child_group_alive(process, until)
+            if absent:
+                self.child_processes.remove(process)
+            return absent and process.returncode is not None and self.cap.clock() < self.cap.times['cleanupEnd']
+        except (OSError, subprocess.TimeoutExpired, __import__('private_inventory').Stop):
+            return False
+        finally:
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream is not None:
+                    stream.close()
 
     def child(self, argv, **kwargs):
-        return subprocess.run(argv, **kwargs)
+        # Handoff owns the request budget and exact argv; this boundary owns descendants.
+        need(set(kwargs) == {'input', 'text', 'capture_output', 'timeout', 'env'} and
+             kwargs['text'] is True and kwargs['capture_output'] is True and
+             isinstance(kwargs['input'], str), 'CHILD_PROTOCOL')
+        need(isinstance(argv, list) and bool(argv) and
+             all(isinstance(arg, str) and '\x00' not in arg for arg in argv), 'CHILD_ARGV')
+        timeout = kwargs['timeout']
+        need(type(timeout) in (int, float) and math.isfinite(timeout) and timeout > 0, 'CHILD_TIMEOUT_BOUND')
+        data = kwargs['input'].encode('utf-8')
+        need(0 < len(data) <= 131072, 'CHILD_INPUT_BOUNDS')
+        # Reserve the existing independent-cleanup horizon; never extend work or cleanup.
+        remaining = self.cap.times['cleanupEnd'] - self.cap.clock() - 2
+        need(remaining > 0, 'CHILD_PROCESS_DEADLINE')
+        hard_end = time.monotonic() + min(timeout, remaining)
+        cleanup = self.cleanup or argv[-1] in ('--closeout', '--readback')
+        self.cap.gate(cleanup)
+        process = None
+        selector = None
+        chunks = {'stdout': [], 'stderr': []}
+        sizes = {'stdout': 0, 'stderr': 0}
+        offset = 0
+        failure = None
+        last = self.cap.clock()
+        try:
+            process = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, env=kwargs['env'], start_new_session=True)
+            self.child_processes.add(process)
+            selector = selectors.DefaultSelector()
+            for stream, event, name in ((process.stdin, selectors.EVENT_WRITE, 'stdin'),
+                    (process.stdout, selectors.EVENT_READ, 'stdout'),
+                    (process.stderr, selectors.EVENT_READ, 'stderr')):
+                os.set_blocking(stream.fileno(), False)
+                selector.register(stream, event, name)
+            while selector.get_map() or process.poll() is None:
+                now = self.cap.clock()
+                need(now >= last, 'CLOCK_ROLLBACK')
+                last = now
+                if time.monotonic() >= hard_end or now >= self.cap.times['cleanupEnd'] - 2:
+                    raise subprocess.TimeoutExpired(argv, timeout)
+                self.cap.gate(cleanup)
+                for key, _ in selector.select(min(.05, max(.001, hard_end - time.monotonic()))):
+                    stream, name = key.fileobj, key.data
+                    if name == 'stdin':
+                        try: offset += os.write(stream.fileno(), data[offset:offset + 8192])
+                        except BrokenPipeError: offset = len(data)
+                        if offset == len(data):
+                            selector.unregister(stream)
+                            stream.close()
+                            data = b''
+                    else:
+                        chunk = os.read(stream.fileno(), min(8192, 8193 - sizes[name]))
+                        if not chunk:
+                            selector.unregister(stream)
+                        else:
+                            sizes[name] += len(chunk)
+                            need(sizes[name] <= 8192, 'CHILD_OUTPUT_LIMIT')
+                            chunks[name].append(chunk)
+            code = process.wait(timeout=max(.001, hard_end - time.monotonic()))
+        except BaseException as error:
+            failure = error
+        finally:
+            data = b''
+            try:
+                if selector is not None: selector.close()
+            finally:
+                if process is not None:
+                    try: closed = self._finish_child(process)
+                    except BaseException: closed = False
+                    if not closed:
+                        self.child_cleanup_unconfirmed = True
+                        failure = __import__('private_inventory').Stop('CHILD_PROCESS_CLOSEOUT_UNCONFIRMED')
+        if failure is not None:
+            for value in chunks.values(): value.clear()
+            raise failure
+        return subprocess.CompletedProcess(argv, code,
+            b''.join(chunks['stdout']).decode('utf-8', 'strict'),
+            b''.join(chunks['stderr']).decode('utf-8', 'strict'))
 
     def clear(self):
         self.token = ''; self.password = ''

@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {hash,authorizeChild} from './authority_bridge.mjs';
 import {runChild} from './native_child.mjs';
-import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint} from './connected_payment.mjs';
+import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,stripeSecretName} from './connected_payment.mjs';
 import {fixture,portsFor,runConnected} from './fixture_connected.mjs';
 for(const scenario of ['normal','unpaid','lost_create','lost_enable','foreign_endpoint','disable_failed'])test('actual native child payment and cleanup: '+scenario,async t=>{
  const f=fixture(t),ports=portsFor(f,scenario);
@@ -75,7 +75,7 @@ for (const scenario of ['denied','missing_payload','malformed_json','live_key','
    if(scenario==='foreign_code')throw Object.assign(Error('PRIVATE_SENTINEL'),{code:'PAYMENT_PRIVATE_SENTINEL'});
    if(scenario==='denied')return new Response('PRIVATE_SENTINEL denied',{status:403});
    if(scenario==='malformed_json')return new Response('{PRIVATE_SENTINEL');
-   const name='projects/'+f.e.plan.projectNumber+'/secrets/signmons-staging-stripe-secret-key/versions/1';
+   const name=stripeSecretName(f.e);
    if(scenario==='missing_payload')return new Response(JSON.stringify({name,payload:null}));
    const key=scenario==='live_key'?'sk_live_PRIVATE_SENTINEL_123456':
      scenario==='newline_key'?'sk_test_12345678901234567890\n':'sk_test_12345678901234567890';

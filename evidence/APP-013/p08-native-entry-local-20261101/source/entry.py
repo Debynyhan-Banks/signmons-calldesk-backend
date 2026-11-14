@@ -4,6 +4,10 @@ import fcntl
 import hashlib
 import json
 import os
+import re
+import stat
+import uuid
+from types import SimpleNamespace
 import sys
 import time
 from pathlib import Path
@@ -118,6 +122,8 @@ class RuntimeAdapter(restore.NativeAdapter):
 class Ports(bridge.Ports):
     def __init__(self, cap, io, handoff, runtime):
         self.cap, self.io, self.handoff, self.runtime = cap, io, handoff, runtime
+        self.absence_observed_at = None
+        self.pause = time.sleep
         super().__init__(cap.plan, io.cli, io.https, self.authenticate_receipt,
                          self.account_readback, lambda: None, cap.clock)
 
@@ -135,6 +141,199 @@ class Ports(bridge.Ports):
         if vector in policy_reads:
             vector = [*vector[:-1], '--format=json(bindings,etag,version)']
         return super().cloud(vector)
+
+    def _lifecycle_pins(self):
+        root = inspect(self.cap.root, self.plan['operationId'])
+        st = root.lstat()
+        need(st.st_uid == os.getuid(), 'KEY_PRIVATE_OWNER')
+        return {'version': 1, 'operationId': self.plan['operationId'],
+                'planSha256': digest(self.plan), 'sourceCommit': self.cap.e['sourceCommit'],
+                'envelopeSha256': self.cap.envelope_hash, 'rootIdentity': [st.st_dev, st.st_ino],
+                'resourceSha256': digest(self.key_resource),
+                'requestSha256': digest({'method': 'POST', 'resource': self.key_resource,
+                    'displayName': 'Signmons P08 ' + self.plan['operationId'],
+                    'restrictions': self.key.RESTRICTIONS})}
+
+    def _validate_lifecycle(self, value):
+        pins = self._lifecycle_pins()
+        fields = {'phase', 'absenceObservedAt', 'createIntentAt', 'createOperation',
+                  'uid', 'etag', 'createTime', 'deleteIntent', 'deleteOperation'}
+        need(isinstance(value, dict) and set(value) == set(pins) | fields and
+             all(value[k] == v for k, v in pins.items()), 'KEY_PRIVATE_BINDING')
+        need(value['phase'] in {'INTENT', 'CREATE_OPERATION', 'CREATED', 'DELETE_INTENT',
+                              'DELETE_OPERATION', 'DELETED'}, 'KEY_PRIVATE_PHASE')
+        start, end = self.cap.times['start'], self.cap.times['workEnd']
+        need(all(type(value[k]) in (int, float) for k in ('absenceObservedAt', 'createIntentAt')) and
+             start <= value['absenceObservedAt'] <= value['createIntentAt'] < end, 'KEY_PRIVATE_TIME')
+        for field in ('createOperation', 'deleteOperation'):
+            need(value[field] is None or (type(value[field]) is str and
+                 re.fullmatch(r'operations/[A-Za-z0-9_.-]{1,200}', value[field])), 'KEY_PRIVATE_OPERATION')
+        need(type(value['deleteIntent']) is bool, 'KEY_PRIVATE_DELETE')
+        uid = value['uid']
+        need(uid is None or (type(uid) is str and str(uuid.UUID(uid)) == uid), 'KEY_PRIVATE_UID')
+        need((uid is None and value['etag'] is None and value['createTime'] is None) or
+             (uid is not None and type(value['etag']) is str and 0 < len(value['etag']) <= 256),
+             'KEY_PRIVATE_METADATA')
+        created = value['createTime']
+        if created is not None:
+            need(type(created) is str and re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.[0-9]{1,9})?Z', created), 'KEY_PRIVATE_CREATED')
+            at = datetime.datetime.fromisoformat(created.replace('Z', '+00:00')).timestamp()
+            need(start <= at < self.cap.times['cleanupEnd'], 'KEY_PRIVATE_CREATED')
+        phase = value['phase']
+        need((phase == 'INTENT' and value['createOperation'] is None and uid is None and
+              not value['deleteIntent'] and value['deleteOperation'] is None) or
+             (phase == 'CREATE_OPERATION' and value['createOperation'] is not None and uid is None and
+              not value['deleteIntent'] and value['deleteOperation'] is None) or
+             (phase in {'CREATED', 'DELETE_INTENT', 'DELETE_OPERATION', 'DELETED'} and
+              value['createOperation'] is not None and uid is not None and
+              (phase != 'CREATED' or not value['deleteIntent'] and value['deleteOperation'] is None) and
+              (phase != 'DELETE_INTENT' or value['deleteIntent'] and value['deleteOperation'] is None) and
+              (phase != 'DELETE_OPERATION' or value['deleteIntent'] and value['deleteOperation'] is not None) and
+              (value['deleteOperation'] is None or value['deleteIntent'])), 'KEY_PRIVATE_PHASE')
+        return value
+
+    def _load_lifecycle(self):
+        need(not os.path.lexists(self.cap.root / 'key-lifecycle-private.json.next'), 'KEY_PRIVATE_UNFINISHED')
+        path = self.cap.root / 'key-lifecycle-private.json'
+        need(path.lstat().st_uid == os.getuid(), 'KEY_PRIVATE_OWNER')
+        return self._validate_lifecycle(read(path))
+
+    def _save_lifecycle(self, value):
+        self._validate_lifecycle(value)
+        path = self.cap.root / 'key-lifecycle-private.json'
+        pending = self.cap.root / 'key-lifecycle-private.json.next'
+        need(not os.path.lexists(pending), 'KEY_PRIVATE_UNFINISHED')
+        if os.path.lexists(path):
+            need(path.lstat().st_uid == os.getuid(), 'KEY_PRIVATE_OWNER')
+            self._validate_lifecycle(read(path))
+        reserve(pending, value)
+        os.replace(pending, path)
+        fd = os.open(self.cap.root, os.O_RDONLY | os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+
+    def _key_state(self, value, response=None):
+        # Persist only this exact allowlisted subset, never response bodies/keyString.
+        normalized = self.normalized_key(value)
+        need(normalized['deleted'] is False, 'KEY_CREATED_DELETED')
+        receipt = response if response is not None else self._load_lifecycle()
+        receipt.update(phase='CREATED', uid=normalized['uid'], etag=normalized['etag'],
+                       createTime=value.get('createTime'))
+        self._save_lifecycle(receipt)
+        self.owned_uid, self.owned_etag = normalized['uid'], normalized['etag']
+        self.cap.coordinator.j['keyUidSha256'] = hashlib.sha256(normalized['uid'].encode()).hexdigest()
+        self.cap.coordinator.save()
+        return normalized
+
+    def operation(self, initial, kind):
+        # Reuse the reviewed paced waiter, not the historical immediate-poll loop.
+        def gate(cleanup=False): self.cap.gate(self.io.cleanup)
+        def invoke(fn, *args, **kwargs):
+            gate(); value = fn(*args); gate(); return value
+        deadline = self.cap.times['cleanupEnd' if self.io.cleanup else 'workEnd']
+        waiter = SimpleNamespace(a=self.key_adapter, j={}, save=lambda: None, gate=gate,
+                                 t={'workEnd': deadline, 'cleanupEnd': deadline},
+                                 clock=self.cap.clock, pause=self.pause, invoke=invoke)
+        gate()
+        try:
+            result = self.key.Controller.wait(waiter, initial, kind, cleanup=self.io.cleanup)
+            gate(); return result
+        except BaseException as error:
+            if isinstance(error, (KeyboardInterrupt, SystemExit)): raise
+            raise c.Stop('KEY_OPERATION_UNCONFIRMED') from None
+        finally: waiter.j.clear()
+
+    def key_get(self):
+        try:
+            value = super().key_get()
+            if value == 'NOT_FOUND' and not self.io.cleanup and self.absence_observed_at is None:
+                self.absence_observed_at = self.cap.clock()
+            return value
+        except BaseException as error:
+            if isinstance(error, (KeyboardInterrupt, SystemExit)): raise
+            raise c.Stop('KEY_METADATA_UNCONFIRMED') from None
+
+    def key_create(self, resource, restrictions):
+        try:
+            self.cap.gate(False)
+            need(resource == self.key_resource and restrictions == self.key.RESTRICTIONS, 'KEY_CREATE_SCOPE')
+            need(self.absence_observed_at is not None and
+                 not os.path.lexists(self.cap.root / 'key-lifecycle-private.json') and
+                 not os.path.lexists(self.cap.root / 'key-lifecycle-private.json.next'), 'KEY_CREATE_REPLAY')
+            receipt = {**self._lifecycle_pins(), 'phase': 'INTENT',
+                       'absenceObservedAt': self.absence_observed_at, 'createIntentAt': self.cap.clock(),
+                       'createOperation': None, 'uid': None, 'etag': None, 'createTime': None,
+                       'deleteIntent': False, 'deleteOperation': None}
+            self._save_lifecycle(receipt)
+            initial = self.key_adapter.key_create()
+            need(isinstance(initial, dict) and type(initial.get('name')) is str and
+                 re.fullmatch(r'operations/[A-Za-z0-9_.-]{1,200}', initial['name']), 'KEY_OPERATION_SCOPE')
+            receipt.update(phase='CREATE_OPERATION', createOperation=initial['name'])
+            self._save_lifecycle(receipt)
+            return self._key_state(self.operation(initial, 'create'), receipt)
+        except BaseException as error:
+            if isinstance(error, (KeyboardInterrupt, SystemExit)): raise
+            raise c.Stop('KEY_CREATE_UNCONFIRMED') from None
+
+    def recover_key(self):
+        """Rehydrate only persisted create provenance; never adopt an uncertain key."""
+        receipt = self._load_lifecycle()
+        if receipt['uid'] is None:
+            if receipt['createOperation'] is None:
+                # Read-only observation cannot turn intent/marker into ownership.
+                current = self.key_get()
+                self.cap.coordinator.j['keyUnownedObservation'] = ('ABSENT' if current == 'NOT_FOUND' else 'PRESENT')
+                self.cap.coordinator.save()
+                raise c.Stop('KEY_CREATE_UNCONFIRMED')
+            initial = self.key_adapter.operation(receipt['createOperation'], 'key')
+            need(isinstance(initial, dict) and initial.get('name') == receipt['createOperation'], 'KEY_OPERATION_DRIFT')
+            self._key_state(self.operation(initial, 'create'), receipt)
+            receipt = self._load_lifecycle()
+        self.owned_uid, self.owned_etag = receipt['uid'], receipt['etag']
+        self.cap.coordinator.j['keyUidSha256'] = hashlib.sha256(receipt['uid'].encode()).hexdigest()
+        # An acknowledged delete may still be pending; observe its terminal state.
+        if receipt['deleteOperation'] is not None and receipt['phase'] != 'DELETED':
+            try:
+                pending = self.key_adapter.operation(receipt['deleteOperation'], 'key')
+                need(isinstance(pending, dict) and pending.get('name') == receipt['deleteOperation'], 'KEY_OPERATION_DRIFT')
+                self.operation(pending, 'delete')
+            except BaseException:
+                pass  # Final authoritative metadata below, never another delete.
+        if receipt['deleteIntent']:
+            self.cap.coordinator.j['keyDeleteAttempted'] = True
+        self.cap.coordinator.j['unknown'] = [v for v in self.cap.coordinator.j['unknown'] if v not in ('KEY_CREATE', 'KEY_LIFECYCLE_UNCONFIRMED')]
+        self.cap.coordinator.save()
+
+    def key_delete(self, etag):
+        failure = None
+        try:
+            self.cap.gate(True)
+            receipt = self._load_lifecycle()
+            need(receipt['uid'] == self.owned_uid and etag == self.owned_etag == receipt['etag'] and
+                 not receipt['deleteIntent'], 'KEY_DELETE_OWNERSHIP')
+            receipt.update(phase='DELETE_INTENT', deleteIntent=True)
+            self._save_lifecycle(receipt)
+            initial = self.key_adapter.key_delete(etag)
+            need(isinstance(initial, dict) and type(initial.get('name')) is str and
+                 re.fullmatch(r'operations/[A-Za-z0-9_.-]{1,200}', initial['name']), 'KEY_OPERATION_SCOPE')
+            receipt.update(phase='DELETE_OPERATION', deleteOperation=initial['name'])
+            self._save_lifecycle(receipt)
+            self.operation(initial, 'delete')
+        except BaseException as error:
+            failure = error
+        # Always attempt a final read even when acknowledgement/polling was lost.
+        try:
+            current = self.key_get()
+            need(isinstance(current, dict) and current['uid'] == self.owned_uid and
+                 current['deleted'] is True, 'KEY_DELETE_READBACK')
+            receipt = self._load_lifecycle()
+            need(receipt['uid'] == self.owned_uid, 'KEY_DELETE_OWNERSHIP')
+            receipt['phase'] = 'DELETED'
+            self._save_lifecycle(receipt)
+            return True
+        except BaseException:
+            if isinstance(failure, (KeyboardInterrupt, SystemExit)): raise failure
+            raise c.Stop('KEY_DELETE_UNCONFIRMED') from None
 
     def authenticate_receipt(self, receipt):
         self.handoff(receipt)
@@ -201,14 +400,19 @@ class Coordinator(c.Coordinator):
                  set(native.get('calls', {})) == {'cli','https','sql','child'} and
                  all(type(v) is int and 0 <= v <= self.cap.e['limits'][k]
                      for k,v in native['calls'].items()), 'INDEPENDENT_BINDING')
-            # Fresh process reconstructs key ownership only from intent plus exact authoritative metadata.
-            if self.j.get('keyUidSha256'):
-                try:
-                    current = self.access.key_get()
-                    if isinstance(current, dict) and hashlib.sha256(current['uid'].encode()).hexdigest() == self.j['keyUidSha256']:
-                        self.access.owned_uid, self.access.owned_etag = current['uid'], current['etag']
-                except Exception:
-                    pass  # Original closeout retains OWNED_KEY residual on unknown readback.
+            need(self.j.get('operationId') == self.plan['operationId'] and
+                 self.j.get('planSha256') == c.digest(self.plan), 'FOREIGN_JOURNAL')
+        if self.j.get('keyCreateAttempted'):
+            try:
+                self.access.recover_key()
+            except BaseException:
+                if 'KEY_LIFECYCLE_UNCONFIRMED' not in self.j['unknown']:
+                    self.j['unknown'].append('KEY_LIFECYCLE_UNCONFIRMED')
+                self.save()
+        if getattr(self.io, 'child_cleanup_unconfirmed', False):
+            if 'CHILD_PROCESS_CLOSEOUT_UNCONFIRMED' not in self.j['unknown']:
+                self.j['unknown'].append('CHILD_PROCESS_CLOSEOUT_UNCONFIRMED')
+            self.save()
         return super().closeout(independent=independent)
 
 

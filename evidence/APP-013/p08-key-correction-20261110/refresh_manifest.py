@@ -10,11 +10,15 @@ for k in v['files']:v['files'][k]=sha(q/k)
 for k in v['producerDependencies']:v['producerDependencies'][k]=sha(APP/k)
 save(q/'source-manifest.json',v)
 v=json.loads((n/'source-manifest.json').read_text())
+browser='p08-connected-packet-20261110/bootstrap_open.py'
+v['lockedSources'][browser]=sha(APP/browser)
 for k in v['files']:v['files'][k]=sha(n/k)
 for k in v['lockedSources']:
  if k.startswith(('p08-https-output-category-local-20261029/','p08-key-correction-20261110/')):v['lockedSources'][k]=sha(APP/k)
 save(n/'source-manifest.json',v)
 v=json.loads((n/'test-manifest.json').read_text())
+for k in ('test_key_lifecycle.py','test_child_cleanup.py','test_private_inventory_cc1.py'):
+ v['files'][k]=sha(n/k)
 for k in v['files']:v['files'][k]=sha(n/k)
 v['runtimeManifestSha256']=sha(n/'source-manifest.json');save(n/'test-manifest.json',v)
 files={p for p in HERE.iterdir() if p.suffix in ('.py','.mjs') or p.name=='candidate.json'}
@@ -22,6 +26,12 @@ for root,dep in [(q,'producerDependencies'),(n,'lockedSources')]:
  v=json.loads((root/'source-manifest.json').read_text());files.add(root/'source-manifest.json')
  files|={root/name for name in v['files']};files|={APP/name for name in v[dep]}
 files.add(APP/'p08-connected-packet-20261110/packet.py')
+files.add(APP/'p08-connected-packet-20261110/test_bootstrap_open.py')
+files.add(APP/'p08-connected-packet-20261110/bootstrap_browser_fixture.mjs')
+files.add(n/'test-manifest.json')
+# Bind the local proof files explicitly as well as the runtime graph.
+tests=json.loads((n/'test-manifest.json').read_text())
+files|={n/name for name in tests['files']}
 files.add(HERE/'kc1-result.json')
 # Adopted provenance is part of the same committed source boundary.
 if (HERE/'adoption-evidence-20261111.json').exists():files.add(HERE/'adoption-evidence-20261111.json')
