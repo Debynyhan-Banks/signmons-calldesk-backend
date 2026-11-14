@@ -1,0 +1,19 @@
+{
+  "reviewedAt": "2026-11-14T13:28:25.290346+00:00",
+  "sourceCommit": "5c191a350d03898074496a0a1ee1e6a517d9dd0c",
+  "implemented": false,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "evidence": {
+    "keyContainment": "kd2-result.json:CONTROL_PLANE_DELETED",
+    "asyncPendingField": "actual Ports/RequestAdapter omitted done reproduced OPERATION_SHAPE; explicit false and true accepted",
+    "finalPoll": "sixth response fetched but not checked in historical bridge",
+    "cleanupProvenance": "historical coordinator refuses key_get when UID hash absent; operation receipt not retained",
+    "downstreamTests": "r44-consolidated-downstream-tests.log:22/25 pass;3fixtures hardcode version1 against current2",
+    "childProcess": "independent local actual NativeIO.child reproduction left benign2second descendant alive after0.2second parent timeout; descendant naturally exited,none left",
+    "browserHandoff": "default native child writes private bootstrap; blocking launcher does not open it",
+    "httpResponse": "native HTTPError branch lacks explicit response.close finally"
+  },
+  "proposal": "CC1_CONSOLIDATED_LOCAL_CORRECTION_PENDING_OWNER",
+  "fullPaymentReady": false
+}
