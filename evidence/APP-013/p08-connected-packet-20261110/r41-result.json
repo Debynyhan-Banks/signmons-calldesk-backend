@@ -1,0 +1,37 @@
+{
+  "status": "R41_CONSUMED_QUALIFICATION_TIMEOUT_CLOSED",
+  "sourceCommit": "dfdfceccf01b91dd37eb03ca1a59a04818b9d44f",
+  "qualificationApproval": "b55e84527128c35a9c1468dddd113f31ed483e34",
+  "qualification": {
+    "status": "CURRENT_EVIDENCE_UNQUALIFIED",
+    "failure": "PROCESS_TIMEOUT",
+    "residuals": [],
+    "liveObserved": true,
+    "candidate": null
+  },
+  "failedRead": {
+    "cleanupScopeSha256": "c26123f2a739e48ef4f52dd6d730d1fb0cc103e426af2592c8b73c21d09ab7f0",
+    "descriptorId": "billing_project",
+    "elapsedMilliseconds": 28013,
+    "failureCode": "PROCESS_TIMEOUT",
+    "operationId": "c1ee049c-983c-4812-9839-d9ffb3f9404f",
+    "ordinal": 4,
+    "status": "FAILED"
+  },
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "privatePurge": {
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "onTime": true,
+    "rawFilesAbsent": true,
+    "residuals": []
+  },
+  "independentQualificationCloseoutRecorded": true,
+  "ownedProcessesIndependentlyAbsent": true,
+  "temporaryExecutorsRemoved": true,
+  "paymentObserved": false,
+  "nativeStarted": false,
+  "replayAllowed": false
+}
