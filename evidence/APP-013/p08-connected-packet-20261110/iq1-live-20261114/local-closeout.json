@@ -1,0 +1,23 @@
+{
+  "verifiedAt": "2026-11-14T21:58:14.265013+00:00",
+  "operationId": "1993c5da-d093-4a4c-a950-bf50cb5bae48",
+  "status": "CONTAINMENT_UNCONFIRMED",
+  "inputRootAbsent": true,
+  "operationProcessesAbsent": true,
+  "resourceLeaseReleased": true,
+  "configurationMatches": true,
+  "privateInputsAbsent": true,
+  "rootCustodyVerified": true,
+  "mainCliReservations": 5,
+  "cleanupCliReservations": 5,
+  "enableIntentCount": 1,
+  "disableIntentCount": 1,
+  "restorationConfirmed": false,
+  "residuals": [
+    "IDENTITY_RESTORATION_UNKNOWN"
+  ],
+  "automaticRetryPerformed": false,
+  "paymentObserved": false,
+  "initialLocalProcessInventory": "TOOL_SANDBOX_REFUSED_PS",
+  "finalLocalProcessInventory": "PASS_OUTSIDE_TOOL_SANDBOX"
+}

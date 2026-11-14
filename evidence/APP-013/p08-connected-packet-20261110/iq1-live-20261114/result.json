@@ -1,0 +1,30 @@
+{
+  "cleanupFailure": "RUNTIME_IDENTITY_DISABLED_MISSING",
+  "cleanupStage": "DISABLED_READBACK",
+  "configurationClosed": true,
+  "counts": {
+    "cleanup": 5,
+    "main": 5
+  },
+  "enableOutcomeUnknown": false,
+  "enabledReadback": true,
+  "failure": null,
+  "finishedAt": 1794693436.336573,
+  "mainStage": "ENABLED_READBACK",
+  "operationId": "1993c5da-d093-4a4c-a950-bf50cb5bae48",
+  "paymentObserved": false,
+  "privateInputsAbsent": true,
+  "processClosed": true,
+  "residuals": [
+    "IDENTITY_RESTORATION_UNKNOWN"
+  ],
+  "restorationReadback": false,
+  "rootIdentity": [
+    16777231,
+    51665534
+  ],
+  "scopeSha256": "cf73007780b912b6b2245706baccb5f6319cc2e9d183451f180d95713554b9eb",
+  "sourceClosed": true,
+  "status": "CONTAINMENT_UNCONFIRMED",
+  "uidSha256": "3d299bbf03a6c3e2315034fb3a809aedbb6f978c6e6741ff0201fe4464798f72"
+}
