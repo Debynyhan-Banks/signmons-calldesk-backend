@@ -1,0 +1,9 @@
+...Enter the SQL password and press Return within 60 seconds. Input is hidden.
+.....................
+----------------------------------------------------------------------
+Ran 24 tests in 27.503s
+
+OK
+{"status": "LIFECYCLE_TLS_CLEANUP_VERIFIED", "serverReaped": true, "scratchAbsent": true, "providerCalls": 0}
+CURRENT_EVIDENCE_OBSERVED
+{"status": "LIFECYCLE_TLS_CLEANUP_VERIFIED", "serverReaped": true, "scratchAbsent": true, "providerCalls": 0}

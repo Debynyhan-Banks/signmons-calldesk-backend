@@ -1,0 +1,27 @@
+{
+  "section": "APP-013/3A/BT1",
+  "status": "LOCAL_VERIFIED",
+  "sourceCommit": "23257d459f3ddfdd78b7cc7a660188a5ce83d94a",
+  "ownerApprovalCommit": "02a0d2d",
+  "verifiedAt": "2026-11-14T01:14:38.644497+00:00",
+  "tests": {
+    "qualification": 266,
+    "postgres": 24,
+    "native": 46,
+    "connected": 44,
+    "correction": 52,
+    "governance": 25,
+    "total": 457
+  },
+  "currentAndCommittedSources": "PASS",
+  "sdkChildTimeoutResolution": "10 seconds overridden;300 seconds default;isolated config no network",
+  "localPostgresCleanup": "serverReaped/scratchAbsent verified",
+  "normalQualificationUnchanged": true,
+  "outerDeadlineCleanupUnchanged": true,
+  "oldDiagnosticApprovalRejected": true,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "liveExecution": "NOT_RUN",
+  "rootCause": "UNKNOWN",
+  "initialTestFailures": "Fixed new test imports; sandbox fixture failures rerun with local process/socket permissions; final complete runs pass"
+}
