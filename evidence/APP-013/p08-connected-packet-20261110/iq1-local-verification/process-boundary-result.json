@@ -1,0 +1,12 @@
+{
+  "test": "IQ1_EXISTING_TRANSPORT_DETACHED_DESCENDANT",
+  "sourceBefore": "6ea74f09195dce87a86fea0fad7f5f48da1a29b3",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "transportReturnedSuccess": true,
+  "transportReportedClosed": true,
+  "descendantFinishedWhenTransportReturned": false,
+  "finiteFixtureCompletionObserved": true,
+  "conclusion": "GROUP_CLOSURE_DOES_NOT_PROVE_DESCENDANT_CLOSURE",
+  "scope": "Synthetic local prerequisite counterexample; not evidence of actual SDK escape or the R48 failure cause"
+}
