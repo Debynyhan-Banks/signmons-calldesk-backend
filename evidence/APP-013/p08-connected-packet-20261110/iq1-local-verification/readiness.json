@@ -1,0 +1,34 @@
+{
+  "recordedAt": "2026-11-14T21:45:00.536076+00:00",
+  "sourceCommit": "bdec9fa789b7a749434bf81fd23b843b885e4ebf",
+  "manifestSha256": "5fbdcc7394ba8f8757bd6b593764f5c19129bb9c93d5e317748edba11dbdc8f5",
+  "sourceGuard": "PASS",
+  "sourceGuardSeconds": 0.585,
+  "configurationShape": "PASS",
+  "providerCalls": 0,
+  "credentialCacheReads": 0,
+  "liveIdentityState": "UNKNOWN",
+  "liveCredentialUsability": "UNKNOWN",
+  "tests": {
+    "connectedFinal": 187,
+    "iq1Included": 51,
+    "native": 135
+  },
+  "build": "PASS",
+  "lint": "PASS",
+  "architecture": "PASS",
+  "governanceTests": 25,
+  "externalActionAuthorized": false,
+  "governanceResult": "PASS",
+  "frozenBaseline": "PASS",
+  "crossRepositoryConsistency": "PASS",
+  "whitespaceBothRepos": "PASS",
+  "finalValidationAt": "2026-11-14T21:46:39.691381+00:00",
+  "finalTestTotal": 347,
+  "scopeDeviation": "No scope deviation beyond owner-approved IQ1 containment amendment",
+  "developmentCorrections": [
+    "fixture UTC formatting aligned to existing strict contract",
+    "final config observation uses same dependency as phase checks",
+    "pinned interpreter canonical symlink identity checked without accepting another binary"
+  ]
+}
