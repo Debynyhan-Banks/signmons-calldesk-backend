@@ -30,6 +30,16 @@ class CleanupTests(unittest.TestCase):
         if self.deleted:meta['deleteTime']='2026-11-14T12:40:00Z'
         if self.scenario=='uiddrift' and self.engine.final:meta['uid']=str(uuid.uuid4())
         return self.reply(meta)
+    def test_foreign_packet_name_refuses_before_reads(self):
+        with patch.object(d.a,'committed') as read:
+            with self.assertRaises(Exception):d.execute('0'*40,'FOREIGN')
+            read.assert_not_called()
+    def test_kd2_binds_exact_files_and_decision(self):
+        scope={'synthetic':True}
+        approval={'owner':'Debynyhan Banks','decision':'APPROVE_KD2_EXACT_KEY_ADOPTION_DELETE_CACHE_SDK_EXCEPTION_AND_CLEANUP','scopeSha256':d.m.digest(scope),'externalActionAuthorized':True}
+        with patch.object(d.a,'committed',side_effect=[json.dumps(scope).encode(),json.dumps(approval).encode()]) as read,patch.object(d,'preflight',side_effect=RuntimeError('PREFLIGHT_REACHED')):
+            with self.assertRaisesRegex(RuntimeError,'PREFLIGHT_REACHED'):d.execute('0'*40,'KD2')
+            self.assertEqual([x.args[2] for x in read.call_args_list],['APP013_P08_KD2_KEY_REMOVAL_SCOPE_20261114.json','APP013_P08_KD2_KEY_REMOVAL_APPROVAL_20261114.json'])
     def test_async_omitted_done(self):
         r=self.engine.run();self.assertEqual(r['status'],'CONTROL_PLANE_DELETED');self.assertEqual(r['httpsReserved'],4);self.assertEqual(r['pollsReserved'],1)
     def test_fifth_poll_evaluated(self):

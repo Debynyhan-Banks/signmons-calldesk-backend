@@ -101,10 +101,11 @@ def preflight(s):
     m.need(not Path('/private/tmp/p08-kd1-'+s['operationId']).exists(),'KD1_CONSUMED')
     return t,interval,commands,env,config
 
-def execute(commit):
-    s=q.strict_json(a.committed(p.G,commit,'APP013_P08_KD1_KEY_REMOVAL_SCOPE_20261114.json'))
-    decision=q.strict_json(a.committed(p.G,commit,'APP013_P08_KD1_KEY_REMOVAL_APPROVAL_20261114.json'))
-    m.need(decision=={'owner':'Debynyhan Banks','decision':'APPROVE_KD1_EXACT_KEY_ADOPTION_DELETE_CACHE_SDK_EXCEPTION_AND_CLEANUP','scopeSha256':m.digest(s),'externalActionAuthorized':True},'KD1_APPROVAL')
+def execute(commit,packet_name='KD1'):
+    m.need(packet_name in ('KD1','KD2'),'KEY_REMOVAL_PACKET_NAME')
+    s=q.strict_json(a.committed(p.G,commit,f'APP013_P08_{packet_name}_KEY_REMOVAL_SCOPE_20261114.json'))
+    decision=q.strict_json(a.committed(p.G,commit,f'APP013_P08_{packet_name}_KEY_REMOVAL_APPROVAL_20261114.json'))
+    m.need(decision=={'owner':'Debynyhan Banks','decision':f'APPROVE_{packet_name}_EXACT_KEY_ADOPTION_DELETE_CACHE_SDK_EXCEPTION_AND_CLEANUP','scopeSha256':m.digest(s),'externalActionAuthorized':True},'KD1_APPROVAL')
     t,interval,commands,env,config=preflight(s);m.need(time.time()<t['cutoff'],'KD1_CUTOFF');os.umask(0o077)
     root=Path('/private/tmp/p08-kd1-'+s['operationId']);root.mkdir(mode=0o700)
     lock=os.open(root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_RDWR,0o600);fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -137,4 +138,4 @@ def execute(commit):
     print(json.dumps(result));return 0 if result['keyContainmentConfirmed'] and not result['localResiduals'] else 2
 
 if __name__=='__main__':
-    m.need(len(sys.argv)==2,'KD1_ARGUMENTS');raise SystemExit(execute(sys.argv[1]))
+    m.need(len(sys.argv) in (2,3),'KD1_ARGUMENTS');raise SystemExit(execute(*sys.argv[1:]))

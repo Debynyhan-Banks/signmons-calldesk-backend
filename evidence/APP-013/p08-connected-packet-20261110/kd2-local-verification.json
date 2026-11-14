@@ -1,0 +1,11 @@
+{
+  "verifiedAt": "2026-11-14T13:19:43.126745+00:00",
+  "status": "LOCAL_PREPARATION_ONLY",
+  "testsPassed": 17,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "mutationCalls": 0,
+  "change": "Permit only KD1 or KD2 exact committed scope/approval routing; removal behavior unchanged",
+  "historicalKD1Preserved": true,
+  "freshCredentialEvidence": "tr16-result.json"
+}
