@@ -142,6 +142,26 @@ class EntryTests(unittest.TestCase):
                         self.assertNotIn('synthetic-private-password',json.dumps(journal))
                     finally:t.doCleanups()
 
+    def test_exact_dynamic_iam_mutations_request_json_at_native_cli_boundary(self):
+        cap, io = self.native_fixture()
+        io.token = 'SYNTHETIC_TOKEN'
+        ports = entry.Ports(cap, io, None, None)
+        for kind in ('lookup', 'signing'):
+            for enabled in (True, False):
+                vector = ports.restore.command(ports.restore_plan, 'iam', kind, enabled)
+                with patch.object(io, '_run', return_value='{"bindings": []}') as run:
+                    self.assertEqual(ports.cloud(vector), {'bindings': []})
+                    self.assertEqual(run.call_args.args,
+                                     (['/opt/homebrew/bin/gcloud', *vector, '--format=json'], 'cli'))
+                for raw in ('bindings: []', '{broken', ''):
+                    with patch.object(io, '_run', return_value=raw):
+                        with self.assertRaises(Exception):
+                            ports.cloud(vector)
+                foreign = [*vector, '--foreign-flag']
+                with patch.object(io, '_run', return_value='{}') as run:
+                    ports.cloud(foreign)
+                    self.assertEqual(run.call_args.args[0], ['/opt/homebrew/bin/gcloud', *foreign])
+
     def test_policy_projection_preserves_serialized_binding_checks(self):
         cap=a.Capability(self.e,self.root)
         policies={}

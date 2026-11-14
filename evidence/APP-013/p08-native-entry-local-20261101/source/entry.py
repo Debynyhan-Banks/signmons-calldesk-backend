@@ -128,6 +128,10 @@ class Ports(bridge.Ports):
             ['iam', 'service-accounts', 'get-iam-policy', self.cap.e['resources']['identity'],
              '--project=' + self.plan['project'], '--format=json'],
         )
+        iam_mutations = [self.restore.command(self.restore_plan, 'iam', role['kind'], enabled)
+                         for role in self.iam for enabled in (True, False)]
+        if vector in iam_mutations:
+            vector = [*vector, '--format=json']
         if vector in policy_reads:
             vector = [*vector[:-1], '--format=json(bindings,etag,version)']
         return super().cloud(vector)

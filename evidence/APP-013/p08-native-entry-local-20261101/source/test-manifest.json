@@ -7,10 +7,10 @@
     "fixture_ports.mjs": "997f1ec95806ee98434b091dc9714274d1dae61c2d64bf83690aa1b68efbb2c6",
     "postgres_driver.mjs": "c176dd4491b048f19ff19a2cf1e8d0ce619633e2da6db4a83153d40e98dea199",
     "test_connected_payment.mjs": "52b61777e642abd681e97810817f2eeda53a2628b26fb9f007f3129456fce64c",
-    "test_entry.py": "f0b389a5c36130e950dc90fe4015e10f5eba37be9cf6b275fac3b90c9f284fc8",
+    "test_entry.py": "983ae61c2a7160c1e21b13c70f7d8a1774dfde969a9933e2df663c0813c53ff4",
     "test_native_postgres.py": "a8d358ecac9c1d5a45b628d6f7fcb32bde0bf885b2402cc98c4e69fed956ad65",
     "test_transports.mjs": "6fa6b6c5e5f93ad1ba23731d386c2b9625bcaf34fefe039c930de080a1ccd5a8"
   },
-  "runtimeManifestSha256": "f5f6d590d94f1a12fe6832faeda6d5a4c965cc81c45cb74c0e37d0dd7ff9e9ac",
+  "runtimeManifestSha256": "df74a312d905ad5838e7affcf410a241845c93a1c1281ebb569db3f4bea265c4",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }
