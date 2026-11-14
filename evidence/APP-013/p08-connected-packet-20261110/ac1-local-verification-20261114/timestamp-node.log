@@ -1,0 +1,16 @@
+✔ native defaults reject a local proof capability before any owner/DB/fetch (256.167375ms)
+✔ actual child entry runs with injected ports and rejects reuse of one reserved call (331.909916ms)
+✔ outer capability cannot be forged for native ports (0.121084ms)
+✔ serialized oversized provider body fails before authentication (167.561958ms)
+✔ unapproved HTTPS host refuses before injected transport (186.102625ms)
+✔ child budget is finite and cleanup capability cannot run activation path (181.109875ms)
+✔ native clients scope UTC timestamp parsing and delegate other OIDs/formats (152.313333ms)
+✔ native timestamp versions reject malformed calendars and excess precision without rounding (149.612958ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1750.862875

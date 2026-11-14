@@ -1,0 +1,46 @@
+.................F..F..................F.......................................................................................
+======================================================================
+FAIL: test_keystring_failure_remains_classified_and_changed_cleanup_version_is_contained (test_entry.AuthenticationDiagnosticTests.test_keystring_failure_remains_classified_and_changed_cleanup_version_is_contained)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1165, in test_keystring_failure_remains_classified_and_changed_cleanup_version_is_contained
+    self.assertEqual(result['residuals'],['ACCOUNT_SESSION','AUTH_OUTCOME_UNKNOWN','AUTH_REVOKE'])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ACC[22 chars]UTCOME_UNKNOWN', 'AUTH_REVOKE', 'PAYMENT_ENDPOINT_UNCONFIRMED'] != ['ACC[22 chars]UTCOME_UNKNOWN', 'AUTH_REVOKE']
+
+First list contains 1 additional elements.
+First extra element 3:
+'PAYMENT_ENDPOINT_UNCONFIRMED'
+
++ ['ACCOUNT_SESSION', 'AUTH_OUTCOME_UNKNOWN', 'AUTH_REVOKE']
+- ['ACCOUNT_SESSION',
+-  'AUTH_OUTCOME_UNKNOWN',
+-  'AUTH_REVOKE',
+-  'PAYMENT_ENDPOINT_UNCONFIRMED']
+
+======================================================================
+FAIL: test_full_parent_failed_readbacks_have_finite_cleanup_budget (test_entry.ConnectedEntryTests.test_full_parent_failed_readbacks_have_finite_cleanup_budget)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 943, in test_full_parent_failed_readbacks_have_finite_cleanup_budget
+    self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],14)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 10 != 14
+
+======================================================================
+FAIL: test_final_source_gate_and_separate_test_provenance (test_entry.EntryTests.test_final_source_gate_and_separate_test_provenance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 496, in test_final_source_gate_and_separate_test_provenance
+    for name,sha in manifest['files'].items():self.assertEqual(sha,a.digest((a.HERE/name).read_bytes()))
+                                              ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '57d5b1747913fb93f1f37e427e2222ce06015a97bad88d444f85aa7e1e73a12c' != '2264be7b44680baeb400cda4b57fff20f46e7e83ec4e0b9a54dc129069521be2'
+- 57d5b1747913fb93f1f37e427e2222ce06015a97bad88d444f85aa7e1e73a12c
++ 2264be7b44680baeb400cda4b57fff20f46e7e83ec4e0b9a54dc129069521be2
+
+
+----------------------------------------------------------------------
+Ran 127 tests in 38.708s
+
+FAILED (failures=3)
+{"status": "LIFECYCLE_TLS_CLEANUP_VERIFIED", "serverReaped": true, "scratchAbsent": true, "providerCalls": 0}

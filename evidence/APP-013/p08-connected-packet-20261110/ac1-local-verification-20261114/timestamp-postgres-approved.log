@@ -1,0 +1,8 @@
+test_legacy_native_timestamp_timezone_disagreement_reproduced (test_native_postgres.TimestampPostgres.test_legacy_native_timestamp_timezone_disagreement_reproduced) ... ok
+test_lost_actual_activation_response_preserves_unknown_and_never_disables_unowned_version (test_native_postgres.TimestampPostgres.test_lost_actual_activation_response_preserves_unknown_and_never_disables_unowned_version) ... ok
+test_native_utc_versions_cas_concurrency_identity_and_dst (test_native_postgres.TimestampPostgres.test_native_utc_versions_cas_concurrency_identity_and_dst) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 2.793s
+
+OK

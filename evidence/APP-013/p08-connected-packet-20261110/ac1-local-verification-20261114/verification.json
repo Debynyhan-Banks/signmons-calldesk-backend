@@ -1,0 +1,130 @@
+{
+  "status": "AC1_LOCAL_VERIFICATION_PASS",
+  "section": "APP-013 / 3A / P08",
+  "recordedAt": "2026-11-14T19:50:57.093157+00:00",
+  "sourceBefore": "ae7f2b15a948adb9f10d835180e1919291382eeb",
+  "sourceCommit": "eb5e456ed12c170f2274d194d2019aeacee9c8e2",
+  "approvalCommit": "b1929b78a7c2a9680b467db0dac73554efcbc64c",
+  "proposalSha256": "de085179b384370295e7fb0dec33ef7f7d674ac32d62122f129bbde49c24b86c",
+  "tests": {
+    "native": {
+      "status": "PASS",
+      "count": 127,
+      "command": "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -B -m unittest discover -s evidence/APP-013/p08-native-entry-local-20261101/source -p 'test_*.py'",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/ac1-local-verification-20261114/native-tests.log",
+      "logSha256": "b4ecf4deccf0ac461bd856ad109ead168620cf74ff9f7be02f60a2007340834c"
+    },
+    "connected": {
+      "status": "PASS",
+      "count": 136,
+      "command": "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -B -m unittest discover -s evidence/APP-013/p08-connected-packet-20261110 -p 'test_*.py'",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/ac1-local-verification-20261114/connected-tests.log",
+      "logSha256": "457be84b1530a6b92e5a3587547df99891f65406bbbcb410f9e4b316eae71e4f"
+    },
+    "qualification": {
+      "status": "PASS",
+      "count": 290,
+      "command": "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -B -m unittest discover -s evidence/APP-013/p08-https-output-category-local-20261029/source -p 'test_*.py'",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/ac1-local-verification-20261114/qualification-tests.log",
+      "logSha256": "785e1c60d578f86acaf8fc4ecec3e372940fcb2635c09685e4fbb3a9ff7bc00d"
+    },
+    "correction": {
+      "status": "PASS",
+      "count": 52,
+      "command": "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -B -m unittest discover -s evidence/APP-013/p08-key-correction-20261110 -p 'test_*.py'",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/ac1-local-verification-20261114/correction-tests.log",
+      "logSha256": "605319d0d181d247766272a83c15d0649a0fcabd3582da01d2514896813c292d"
+    },
+    "node": {
+      "status": "PASS",
+      "count": 44,
+      "command": "/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node --test evidence/APP-013/p08-native-entry-local-20261101/source/test_transports.mjs evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/ac1-local-verification-20261114/node-tests.log",
+      "logSha256": "e2c425f4e71938b289b496deee84e90f5040457ef351e0850ff7494125f732e2"
+    },
+    "governance": {
+      "status": "PASS",
+      "count": 25,
+      "command": "node --test scripts/frozen-baseline-check.test.mjs scripts/execution-placement.test.mjs scripts/intelligence-alignment-check.test.mjs",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/ac1-local-verification-20261114/governance-tests.log",
+      "logSha256": "e837c9501473b078b91ab74a944ab22e0c0bb7a1ad39b98f570116083b78c318"
+    }
+  },
+  "totalTests": 674,
+  "focusedTestsIncludedInFullCounts": true,
+  "sourceVerification": "ac1-source-verification.json",
+  "checks": {
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "backendGovernanceBaseline": "PASS",
+    "governanceFrozenBaseline": "PASS",
+    "crossRepositoryConsistency": "PASS",
+    "bothRepositoriesWhitespace": "PASS",
+    "independentRuntimeAndTestDiffReview": "PASS",
+    "proposalUnchanged": "PASS",
+    "historicalSourcesSchemaAndR47EvidenceUnchanged": "PASS"
+  },
+  "reviewers": [
+    "cc1_browser independently reviewed cleanup and proof-write-failure handling",
+    "key_boundary_review independently reviewed timestamp correction and final exact count/residual assertions"
+  ],
+  "testSourceNote": "Final runtime bytes exercised by all suites. Native and correction suites reran after test-only argv/count/residual alignment and current manifest refresh; connected, qualification and Node suites already passed unchanged runtime. Focused tests are included, not added again. Build completed before dist-dependent tests.",
+  "intermediateFailures": [
+    {
+      "kind": "Owned loopback fixture sandbox restriction",
+      "resolution": "Initial timestamp initdb and four payment-fixture cases could not run within restricted process/network sandbox; exact approved local fixtures passed with reviewed escalation, without changing production behavior or assertions."
+    },
+    {
+      "kind": "Test invocation argv separator",
+      "resolution": "New subprocess fixture required -- before --readback; all five parent tests reran successfully, including positive child-marker and account-read assertions."
+    },
+    {
+      "kind": "Current source pin drift during test edit",
+      "resolution": "Source guard refused stale hashes; refreshed current manifests after files froze. No guard bypass or anchor change."
+    },
+    {
+      "kind": "Two existing exact expectations changed by approved behavior",
+      "resolution": "Failed endpoint readback now uses10 instead of14 requests; missing account proof also retains PAYMENT_ENDPOINT_UNCONFIRMED. Updated exact assertions while preserving child/CLI/HTTPS/SQL limits and ownership checks; full native127 passed."
+    }
+  ],
+  "localOnly": true,
+  "externalActionAuthorized": false,
+  "credentialReads": 0,
+  "providerCalls": 0,
+  "externalSqlCalls": 0,
+  "paymentAttempts": 0,
+  "localFixtureCleanup": "Owned PostgreSQL/TLS server reaped, scratch absent and sessions0 verified; Node fixture teardown retained. Pending unsafe journal fixture intentionally reports PRIVATE_INVENTORY_UNCONFIRMED before harness teardown.",
+  "preservedHistoricalFiles": [
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/client.mjs",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+    "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py",
+    "evidence/APP-013/p08-connected-packet-20261110/r47-result.json",
+    "evidence/APP-013/p08-connected-packet-20261110/r47-work-result.json",
+    "evidence/APP-013/p08-connected-packet-20261110/r47-journal.json"
+  ],
+  "liveUnknowns": [
+    "R47 exact ACTIVATION_CONFLICT cause and discarded independent child error",
+    "Current R47 account/auth/session containment: ACCOUNT_SESSION, AUTH_OUTCOME_UNKNOWN, AUTH_REVOKE unchanged",
+    "Fresh credential coverage/effective permissions/resource pins and corrected native run",
+    "Same-job authentic Sandbox payment/event/application gate and recovery acceptance"
+  ],
+  "acceptance": "1A/1B/2A/2B accepted,4/8;3A OPEN;R1 newly closed0/27",
+  "nextObservableResult": "A separately reviewed bounded current containment observation and fresh connected-run readiness, then owner-authorized same-job Sandbox execution if prerequisites qualify. AC1 grants no external authority and never replays R47.",
+  "scopeDeviation": "No scope deviation; implements owner-approved AC1 internal correction.",
+  "finalDocumentationChecks": {
+    "checkedAt": "2026-11-14T19:51:39.951242+00:00",
+    "backendGovernanceBaseline": "PASS",
+    "governanceFrozenBaseline": "PASS",
+    "crossRepositoryConsistency": "PASS",
+    "architecture": "PASS",
+    "bothRepositoriesWhitespace": "PASS"
+  }
+}

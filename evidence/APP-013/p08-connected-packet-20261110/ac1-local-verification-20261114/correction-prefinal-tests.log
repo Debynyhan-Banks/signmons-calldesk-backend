@@ -1,0 +1,76 @@
+............................FEF.EE..................
+======================================================================
+ERROR: test_exact_qualification_is_read_only (test_launch.AuthorityTests.test_exact_qualification_is_read_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/test_launch.py", line 16, in test_exact_qualification_is_read_only
+    self.assertEqual(launch.verify(self.spec,self.approval(self.spec),self.now,self.read_commit),self.spec)
+                     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/launch.py", line 28, in verify
+    f=c.BACKEND/path;c.need(f.is_file() and not f.is_symlink() and c.digest(f.read_bytes())==h and read_commit(c.BACKEND,spec['sourceCommit'],path)==f.read_bytes(),'SOURCE_DRIFT')
+                     ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/correction.py", line 14, in need
+    if not ok:raise Stop(code)
+              ^^^^^^^^^^^^^^^^
+correction.Stop: SOURCE_DRIFT
+
+======================================================================
+ERROR: test_qualified_metadata_is_exact_and_stale_source_refused (test_launch.AuthorityTests.test_qualified_metadata_is_exact_and_stale_source_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/test_launch.py", line 24, in test_qualified_metadata_is_exact_and_stale_source_refused
+    self.assertEqual(launch.verify(s,self.approval(s),self.now,self.read_commit),s)
+                     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/launch.py", line 28, in verify
+    f=c.BACKEND/path;c.need(f.is_file() and not f.is_symlink() and c.digest(f.read_bytes())==h and read_commit(c.BACKEND,spec['sourceCommit'],path)==f.read_bytes(),'SOURCE_DRIFT')
+                     ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/correction.py", line 14, in need
+    if not ok:raise Stop(code)
+              ^^^^^^^^^^^^^^^^
+correction.Stop: SOURCE_DRIFT
+
+======================================================================
+ERROR: test_reuse_is_bound_to_committed_receipt_and_exact_scope (test_launch.AuthorityTests.test_reuse_is_bound_to_committed_receipt_and_exact_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/test_launch.py", line 33, in test_reuse_is_bound_to_committed_receipt_and_exact_scope
+    self.assertEqual(launch.verify(s,self.approval(s),self.now,self.read_commit),s)
+                     ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/launch.py", line 28, in verify
+    f=c.BACKEND/path;c.need(f.is_file() and not f.is_symlink() and c.digest(f.read_bytes())==h and read_commit(c.BACKEND,spec['sourceCommit'],path)==f.read_bytes(),'SOURCE_DRIFT')
+                     ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/correction.py", line 14, in need
+    if not ok:raise Stop(code)
+              ^^^^^^^^^^^^^^^^
+correction.Stop: SOURCE_DRIFT
+
+======================================================================
+FAIL: test_cutoff_and_mutation_authority_not_inferred (test_launch.AuthorityTests.test_cutoff_and_mutation_authority_not_inferred)
+----------------------------------------------------------------------
+correction.Stop: SOURCE_DRIFT
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/test_launch.py", line 28, in test_cutoff_and_mutation_authority_not_inferred
+    with self.assertRaisesRegex(c.Stop,'EXACT_OWNER_APPROVAL'):launch.verify(self.spec,d,self.now,self.read_commit)
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "EXACT_OWNER_APPROVAL" does not match "SOURCE_DRIFT"
+
+======================================================================
+FAIL: test_generic_approval_cannot_authorize_external_action (test_launch.AuthorityTests.test_generic_approval_cannot_authorize_external_action)
+----------------------------------------------------------------------
+correction.Stop: SOURCE_DRIFT
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-key-correction-20261110/test_launch.py", line 18, in test_generic_approval_cannot_authorize_external_action
+    with self.assertRaisesRegex(c.Stop,'EXACT_OWNER_APPROVAL'):launch.verify(self.spec,{'approved':True},self.now,self.read_commit)
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "EXACT_OWNER_APPROVAL" does not match "SOURCE_DRIFT"
+
+----------------------------------------------------------------------
+Ran 52 tests in 0.256s
+
+FAILED (failures=2, errors=3)

@@ -1,0 +1,21 @@
+{
+  "status": "AC1_COMMITTED_SOURCE_GUARD_PASS",
+  "checkedAt": "2026-11-14T19:49:16.472112+00:00",
+  "sourceCommit": "eb5e456ed12c170f2274d194d2019aeacee9c8e2",
+  "sourceManifestSha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499",
+  "nativeManifestSha256": "a04dd4473a6c40056fa2d5ea30df7c9750662ccac6b62d2d6984cbfb8233aae1",
+  "operatorSha256": "d178de94e373be00517f252de0cfde6e7bd5d07309100242037a528731428c71",
+  "sdkFilesSha256": "ecd62311871d8d39cd2fc94a14b38a16b01a12032d7da04853226feacd6c71b2",
+  "dependencySha256": {
+    "packet.py": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa",
+    "ks1_read.py": "686b6a02f33b667016cb367f7533c345b181fe7eba614c424205414dddffc5d6",
+    "kd1_cleanup.py": "9f4b5ab2a7536c2c41a268fa0e872e998c9ada31c051fa05382340c8c7ad0ee1"
+  },
+  "elapsedSeconds": 0.541227,
+  "currentAndCommittedSourcesVerified": true,
+  "sdkRuntimeAndLocalConfigurationVerified": true,
+  "credentialReads": 0,
+  "providerCalls": 0,
+  "externalActionAuthorized": false,
+  "operationReserved": false
+}
