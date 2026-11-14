@@ -1963,13 +1963,51 @@ class BillingDiagnosticTests(unittest.TestCase):
         self.e=copy.deepcopy(self.f.e);self.e.pop('decision');self.e['operationId']=str(uuid.uuid4())
         self.e['limits']=launch.BillingDiagnosticCapability.limits
         path='APP013_P08_BILLING_DIAGNOSTIC_OPERATION_20261112.json'
-        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_BILLING_DIAGNOSTIC','externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
+        raw=json.dumps({'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_BILLING_DIAGNOSTIC_SOCKET_TIMEOUT_10S','externalReadAuthorized':True,'scopeSha256':model.digest(self.e)}).encode()
         f=self.f.fixture;(f.repo/path).write_bytes(raw);f.git('add',path);f.git('-c','core.hooksPath=/dev/null','commit','--allow-empty','-qm','synthetic billing decision')
         self.e['decision']={'commit':f.git('rev-parse','HEAD'),'path':path,'sha256':model.digest(raw)}
         self.root=Path('/private/tmp/p08-billing-diagnostic-'+self.e['operationId']);self.addCleanup(lambda:shutil.rmtree(self.root,ignore_errors=True))
         pin=patch.object(launch,'BILLING_ACCOUNT_SHA256',__import__('hashlib').sha256(b'billingAccounts/SYNTHETIC').hexdigest());pin.start();self.addCleanup(pin.stop)
     def cap(self,mode='diagnose'):
         return launch.BillingDiagnosticCapability(self.e,lambda:self.f.now,mode,self.f.fixture.read_commit)
+    def test_socket_timeout_is_child_local_and_billing_only(self):
+        io=launch.BillingDiagnosticIO(self.cap());env={'PATH':'/usr/bin'}
+        for descriptor in self.cap().commands():
+            with patch.object(launch.NativeIO,'_owned_run',return_value=b'{}') as run:
+                io._owned_run(descriptor['argv'],env,self.f.now+30)
+                args=run.call_args.args
+                self.assertEqual(args[2],self.f.now+30)
+                self.assertEqual(args[1].get('CLOUDSDK_CORE_HTTP_TIMEOUT'),
+                                 '10' if descriptor['id']=='billing_project' else None)
+                self.assertEqual(env,{'PATH':'/usr/bin'})
+        with patch.object(launch.NativeIO,'_owned_run') as run:
+            with self.assertRaisesRegex(model.Stop,'CREDENTIAL_OVERRIDE'):
+                io._owned_run(self.cap().commands()[-1]['argv'],
+                              {'CLOUDSDK_CORE_HTTP_TIMEOUT':'300'},self.f.now+30)
+            run.assert_not_called()
+    def test_installed_sdk_resolves_child_override_without_network(self):
+        import subprocess,tempfile,sys
+        sdk='/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib'
+        code="import sys;sys.path[:0]=[sys.argv[1],sys.argv[1]+'/third_party'];from googlecloudsdk.core import transport;print(transport.GetDefaultTimeout())"
+        with tempfile.TemporaryDirectory(dir='/private/tmp') as config:
+            env={'PATH':'/usr/bin:/bin','HOME':config,'CLOUDSDK_CONFIG':config,
+                 'CLOUDSDK_CORE_HTTP_TIMEOUT':'10','CLOUDSDK_CORE_DISABLE_FILE_LOGGING':'true'}
+            out=subprocess.check_output([sys.executable,'-c',code,sdk],env=env,timeout=5)
+            self.assertEqual(out.strip(),b'10')
+            del env['CLOUDSDK_CORE_HTTP_TIMEOUT']
+            out=subprocess.check_output([sys.executable,'-c',code,sdk],env=env,timeout=5)
+            self.assertEqual(out.strip(),b'300')
+    def test_old_diagnostic_approval_cannot_authorize_new_timeout(self):
+        old=self.f.fixture.read_commit
+        def read(repo,commit,path):
+            raw=old(repo,commit,path)
+            if path==self.e['decision']['path']:
+                value=json.loads(raw);value['decision']='APPROVE_EXACT_P08_BILLING_DIAGNOSTIC'
+                raw=json.dumps(value).encode();self.e['decision']['sha256']=model.digest(raw)
+            return raw
+        raw=read(None,self.e['decision']['commit'],self.e['decision']['path'])
+        with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_APPROVAL'):
+            launch.BillingDiagnosticCapability(self.e,lambda:self.f.now,read_commit=read)
     def test_sequence_success_private_receipts_no_retry_and_closeout(self):
         v={'billingAccountName':'billingAccounts/SYNTHETIC','billingEnabled':True,'projectId':model.PROJECT}
         io=self.f.io({'billing_project':json.dumps(v).encode()})

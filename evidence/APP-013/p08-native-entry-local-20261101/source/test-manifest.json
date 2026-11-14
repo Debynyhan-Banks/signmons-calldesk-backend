@@ -11,6 +11,6 @@
     "test_native_postgres.py": "a8d358ecac9c1d5a45b628d6f7fcb32bde0bf885b2402cc98c4e69fed956ad65",
     "test_transports.mjs": "6fa6b6c5e5f93ad1ba23731d386c2b9625bcaf34fefe039c930de080a1ccd5a8"
   },
-  "runtimeManifestSha256": "d0743121a9f76a65e5534b021bd880c155a152a58b6fefd6ddf52ee86ed1ea51",
+  "runtimeManifestSha256": "f5f6d590d94f1a12fe6832faeda6d5a4c965cc81c45cb74c0e37d0dd7ff9e9ac",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }

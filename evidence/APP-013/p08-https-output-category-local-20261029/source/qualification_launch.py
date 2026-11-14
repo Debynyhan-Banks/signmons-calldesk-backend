@@ -2088,7 +2088,7 @@ class ProjectDiagnosticIO(NativeIO):
 class BillingDiagnosticCapability(ProjectDiagnosticCapability):
     limits={'cli':3,'sql':0,'https':0,'cache':0}
     decision_pattern=r'APP013_P08_BILLING_DIAGNOSTIC_OPERATION_[0-9]{8}\.json'
-    decision_action='APPROVE_EXACT_P08_BILLING_DIAGNOSTIC'
+    decision_action='APPROVE_EXACT_P08_BILLING_DIAGNOSTIC_SOCKET_TIMEOUT_10S'
     root_prefix='/private/tmp/p08-billing-diagnostic-'
     markers=PROJECT_DIAGNOSTIC_MARKERS|{'command-attempt-billing_project.json','command-result-billing_project.json'}
     def commands(self):return (*super().commands(),next(d for d in cli_contract() if d['id']=='billing_project'))
@@ -2100,8 +2100,11 @@ class BillingDiagnosticIO(ProjectDiagnosticIO):
         NativeIO.__init__(self,cap.clock,cap.e['operationId']);self.cap=cap
     def cli(self,d,deadline):return NativeIO.cli(self,d,min(deadline,self.cap.gate(d)))
     def _owned_run(self,argv,env,deadline):
-        return super()._owned_run(argv,env,deadline,billing_diagnostic=
-            tuple(argv)==next(d['argv'] for d in cli_contract() if d['id']=='billing_project'))
+        billing = tuple(argv)==next(d['argv'] for d in cli_contract() if d['id']=='billing_project')
+        need('CLOUDSDK_CORE_HTTP_TIMEOUT' not in env,'CREDENTIAL_OVERRIDE')
+        child_env=dict(env)
+        if billing:child_env['CLOUDSDK_CORE_HTTP_TIMEOUT']='10'
+        return super()._owned_run(argv,child_env,deadline,billing_diagnostic=billing)
 
 
 class ProjectPermissionCapability(ProjectDiagnosticCapability):
