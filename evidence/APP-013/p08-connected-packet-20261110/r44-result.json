@@ -1,0 +1,59 @@
+{
+  "status": "R44_CONSUMED_KEY_CONTAINMENT_UNCONFIRMED",
+  "sourceCommit": "c7948c894ac8627d7b334c233df91433376d7e4a",
+  "native": {
+    "authProofReady": false,
+    "authenticationObserved": false,
+    "childResultSha256": null,
+    "liveAuthorization": true,
+    "operationId": "9b537549-1415-4927-a058-75099d875cb7",
+    "paymentObserved": false,
+    "paymentReadyForAcceptance": false,
+    "privateInputsAbsent": true,
+    "residuals": [
+      "KEY_CREATE",
+      "OWNED_KEY"
+    ],
+    "status": "ENTRY_CONTAINMENT_UNCONFIRMED"
+  },
+  "journalSummary": {
+    "phase": "CLOSED",
+    "failure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+    "preflightStage": "ACCESS_PREFLIGHT",
+    "iamAttempted": [
+      "lookup",
+      "signing"
+    ],
+    "iamOwned": [
+      "lookup",
+      "signing"
+    ],
+    "iamCleanupAttempted": [
+      "signing",
+      "lookup"
+    ],
+    "keyCreateAttempted": true,
+    "keyDeleteAttempted": false,
+    "authAttempted": false,
+    "authProofAccepted": false,
+    "residuals": [
+      "KEY_CREATE",
+      "OWNED_KEY"
+    ],
+    "unknown": [
+      "KEY_CREATE"
+    ]
+  },
+  "recoveryPurge": {
+    "completedAt": 1794658949.071717,
+    "onTime": true,
+    "operationId": "2e7ecc78-5a17-4022-aa1b-0fb1d4b95962",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "recoveryResourceCloseoutVerified": true,
+  "ownedProcessesIndependentlyAbsent": true,
+  "ownedExecutorsRemoved": true,
+  "replayAllowed": false
+}
