@@ -2,11 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {rmSync} from 'node:fs';
+import {readFileSync,rmSync} from 'node:fs';
+import {createRequire} from 'node:module';
 import {runChild} from './native_child.mjs';
 import {authorizeChild,gate} from './authority_bridge.mjs';
 import {createPorts} from './transports.mjs';
 import {fixturePorts} from './fixture_ports.mjs';
+const require=createRequire(new URL('../../../../package.json',import.meta.url));
 function fixture(t){
   const f=JSON.parse(execFileSync('/opt/homebrew/bin/python3',['-B',fileURLToPath(new URL('./fixture_envelope.py',import.meta.url))],{encoding:'utf8'}));
   t.after(()=>{for(const root of f.cleanup){assert.match(root,/^\/private\/tmp\/p08-coordinator-(?:private-)?[0-9a-f-]{36}$/);rmSync(root,{recursive:true,force:true});}});
@@ -42,4 +44,43 @@ test('child budget is finite and cleanup capability cannot run activation path',
   assert.throws(()=>gate(cap,false),{code:'CLOSEOUT_ONLY'});
   for(let n=0;n<cap.e.limits.childRequests;n++)gate(cap,true,true);
   assert.throws(()=>gate(cap,true,true),{code:'CHILD_CALL_LIMIT'});
+});
+
+test('native clients scope UTC timestamp parsing and delegate other OIDs/formats',async t=>{
+  const r=fixture(t),cap=authorizeChild(r.envelopePath,'--run'),base=fixturePorts(r);
+  const defaults=require('pg').types,before=defaults.getTypeParser(1114,'text');
+  let config;
+  class Capture extends base.ClientClass {constructor(value){super(value);config=value;}}
+  const ports=createPorts(cap,r.credentials,{...base,ClientClass:Capture});
+  const e=JSON.parse(readFileSync(r.envelopePath));
+  await ports.dbFactory(e.database,r.credentials.password,'p08-auth-'+e.plan.operationId);
+  assert.equal(config.options,'-c statement_timeout=4000 -c lock_timeout=2000 -c timezone=UTC');
+  const parser=config.types.getTypeParser(1114);
+  for(const [raw,expected] of [
+    ['2024-02-29 23:59:59','2024-02-29T23:59:59.000Z'],
+    ['2026-03-08 02:30:00.1','2026-03-08T02:30:00.100Z'],
+    ['2026-11-01 01:30:00.12','2026-11-01T01:30:00.120Z'],
+    ['0001-01-01 00:00:00.123','0001-01-01T00:00:00.123Z']]) {
+    assert.equal(parser(raw).toISOString(),expected);
+  }
+  for(const [oid,format] of [[1114,'binary'],[1184,'text'],[23,'text'],[25,'text']])
+    assert.equal(config.types.getTypeParser(oid,format),defaults.getTypeParser(oid,format));
+  assert.equal(defaults.getTypeParser(1114,'text'),before);
+  assert.notEqual(parser,before);
+});
+
+test('native timestamp versions reject malformed calendars and excess precision without rounding',async t=>{
+  const r=fixture(t),cap=authorizeChild(r.envelopePath,'--run'),base=fixturePorts(r);let config;
+  class Capture extends base.ClientClass {constructor(value){super(value);config=value;}}
+  const ports=createPorts(cap,r.credentials,{...base,ClientClass:Capture});
+  const e=JSON.parse(readFileSync(r.envelopePath));
+  await ports.dbFactory(e.database,r.credentials.password,'p08-auth-'+e.plan.operationId);
+  const parser=config.types.getTypeParser(1114,'text');
+  for(const raw of [null,0,'infinity','-infinity','0000-01-01 00:00:00','10000-01-01 00:00:00',
+    '2026-02-29 00:00:00','2026-04-31 00:00:00','2026-13-01 00:00:00','2026-01-00 00:00:00',
+    '2026-01-01 24:00:00','2026-01-01 00:60:00','2026-01-01 00:00:60',
+    '2026-01-01 00:00:00.0000','2026-01-01 00:00:00.1234','2026-01-01 00:00:00.',
+    '2026-01-01T00:00:00Z','2026-01-01 00:00:00+00','2026-01-01 00:00:00 BC',' 2026-01-01 00:00:00',
+    '2026-01-01 00:00:00\n','2026-01-01 00:00:00\r'])
+    assert.throws(()=>parser(raw),{code:'TIMESTAMP_VERSION_SHAPE'},String(raw));
 });

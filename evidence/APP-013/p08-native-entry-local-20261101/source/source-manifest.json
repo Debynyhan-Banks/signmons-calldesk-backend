@@ -2,21 +2,21 @@
   "files": {
     "authority.py": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3",
     "authority_bridge.mjs": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c",
-    "connected_payment.mjs": "18a9b0fb7bcb4fedd7f0d530de3f2b8e6b08b9a9ad5bc395a12b29b8dcd8085e",
-    "entry.py": "e7edb2928c3a7b9c33384629560bd093ed05470398bddcfba5b5c56e5af3950f",
+    "connected_payment.mjs": "c6f11db3b9eb833bc742d1afed694f4ef2ce4414ff831264f77d84cc0b9a90d9",
+    "entry.py": "705ca0dd31b294686b18627409800f7a8d6f9db6d83336416524b366441b0b0e",
     "handoff.py": "9e57a04de735a773da764704c306346f09e4431f3e5518f08f0980e3bfdf420d",
-    "native_child.mjs": "899dfb4c0d72c85577dafdea059033a0bd3b4247dda8f4bd0640344a7e11e4c9",
+    "native_child.mjs": "b46c76fe423d7b23572d482a8c7c9b51e41a3e26b0c656d6e02812ba78dc726f",
     "native_io.py": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c",
     "operator_bridge.mjs": "d692b9a2e2fca5f63c4c0a9806a52d9ad49175c68c6b89fdb1c45081b155bb41",
     "private_inventory.py": "97d2f27b6c4047420ff97f3a08e42bcc718d2577adecea3aaebaf98a99e446d0",
-    "transports.mjs": "d1dab20ada57215d55ed74aa2e43eaa764006e4de0b7a508f304685232ea6ec4"
+    "transports.mjs": "165d63920e35b9db8e0323848765a8f853edd9fb9ea5e9edbc6c03896e6ff1f5"
   },
   "lockedSources": {
     "p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "p08-connected-packet-20261110/bootstrap_open.py": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb",
     "p08-coordinator-auth-local-20261031/source/authority.mjs": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
     "p08-https-output-category-local-20261029/source/qualification_launch.py": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda",
-    "p08-https-output-category-local-20261029/source/source-manifest.json": "5cc0e4a1320685316b20a6d4739691a2bdf35cc1e846c8c63ab83b42e12eebbf",
+    "p08-https-output-category-local-20261029/source/source-manifest.json": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499",
     "p08-key-correction-20261110/binding.py": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb",
     "p08-key-correction-20261110/candidate.json": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112",
     "p08-live-binder-local-20261029/source/coordinator.py": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",

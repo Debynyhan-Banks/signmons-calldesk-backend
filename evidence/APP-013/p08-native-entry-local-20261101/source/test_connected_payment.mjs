@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,unlinkSync,chmodSync,linkSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {hash,authorizeChild} from './authority_bridge.mjs';
 import {runChild} from './native_child.mjs';
-import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,stripeSecretName} from './connected_payment.mjs';
+import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,stripeSecretName,completedPaymentCloseout} from './connected_payment.mjs';
+import {SQL} from '../../p08-coordinator-auth-local-20261031/source/client.mjs';
 import {fixture,portsFor,runConnected} from './fixture_connected.mjs';
 for(const scenario of ['normal','unpaid','lost_create','lost_enable','foreign_endpoint','disable_failed'])test('actual native child payment and cleanup: '+scenario,async t=>{
  const f=fixture(t),ports=portsFor(f,scenario);
@@ -97,3 +98,100 @@ for (const scenario of ['denied','missing_payload','malformed_json','live_key','
   assert.doesNotMatch(JSON.stringify(j),/PRIVATE_SENTINEL|sk_test_|sk_live_|Bearer /);
  });
 }
+
+const receiptPath=(f,name)=>f.r.envelopePath.replace('envelope.json',name);
+const readReceipt=(f,name)=>JSON.parse(readFileSync(receiptPath(f,name)));
+const writeReceipt=(f,name,value)=>writeFileSync(receiptPath(f,name),JSON.stringify(value),{mode:0o600});
+async function nextChild(f,mode,ports){
+ const j=readReceipt(f,'journal.json');j.nativeEntry.calls.child++;
+ writeReceipt(f,'journal.json',j);
+ return runChild(mode,{...structuredClone(f.r),childCall:j.nativeEntry.calls.child},ports);
+}
+async function completedMain(t,neverEnabled=false){
+ const f=fixture(t),ports=portsFor(f),Parent=ports.ClientClass;
+ if(neverEnabled)ports.ClientClass=class extends Parent{async query(sql,args){
+   if(sql===SQL.activate)return {rows:[],rowCount:0};return super.query(sql,args);}};
+ await runConnected(f.r,ports);
+ const before=ports.inspect().calls.filter(x=>x.url.startsWith('https://api.stripe.com/')).length;await nextChild(f,'--readback',ports);
+ assert.equal(ports.inspect().calls.filter(x=>x.url.startsWith('https://api.stripe.com/')).length,
+   before+1,'main readback performs fresh endpoint GET');
+ const j=readReceipt(f,'journal.json');j.phase='CLOSED';writeReceipt(f,'journal.json',j);
+ writeReceipt(f,'closeout.json',{operationId:f.e.plan.operationId});
+ writeReceipt(f,'independent-closeout.json',{operationId:f.e.plan.operationId});
+ writeReceipt(f,'work-result.json',{status:'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT',operationId:f.e.plan.operationId,
+   liveAuthorization:false,authProofReady:false,paymentReadyForAcceptance:false,
+   paymentObserved:j.payment.outcome==='APPLICATION_SETTLED',residuals:neverEnabled?['AUTH_REVOKE','AUTH_OUTCOME_UNKNOWN']:[],privateInputsAbsent:false});
+ return f;
+}
+function retiredPorts(f,onRead){
+ const base=portsFor(f),Parent=base.ClientClass;const observed={secrets:0,stripe:0,accounts:0,probes:0,closed:0};
+ return {...base,observed,ClientClass:class extends Parent{
+   async query(sql,args){if(sql===SQL.get){observed.accounts++;onRead?.();}if(sql.includes('pg_stat_activity'))observed.probes++;
+     return super.query(sql,args);}
+   async end(){observed.closed++;return super.end();}
+ },fetcher:async(url,options)=>{
+   if(url.startsWith('https://secretmanager.googleapis.com/')){observed.secrets++;return new Response('retired synthetic secret',{status:403});}
+   if(url.startsWith('https://api.stripe.com/'))observed.stripe++;
+   return base.fetcher(url,options);
+ }};
+}
+
+for(const neverEnabled of [false,true])test('independent account readback after secret retirement reuses only completed main proof: '+neverEnabled,async t=>{
+ const f=await completedMain(t,neverEnabled),before=readReceipt(f,'journal.json'),ports=retiredPorts(f);
+ const result=await nextChild(f,'--readback',ports);
+ assert.equal(result.app.status,'DISABLED');assert.equal(result.firebase.disabled,true);assert.equal(result.sessions,0);
+ assert.deepEqual(ports.observed,{secrets:0,stripe:0,accounts:1,probes:1,closed:2});
+ const after=readReceipt(f,'journal.json');assert.deepEqual(after.payment,before.payment);
+ assert.equal(after.authClient.tokenIssueIntent,!neverEnabled);
+ assert.doesNotMatch(JSON.stringify(after),/sk_test|Bearer |bootstrapUrl/);
+});
+
+test('main readback failure records payment uncertainty after fresh account/session cleanup',async t=>{
+ const f=fixture(t),base=portsFor(f);await runConnected(f.r,base);
+ const ports=retiredPorts(f);await assert.rejects(()=>nextChild(f,'--readback',ports),/PAYMENT_ENDPOINT_UNCONFIRMED/);
+ assert.equal(ports.observed.secrets,1);assert.equal(ports.observed.accounts,1);assert.equal(ports.observed.probes,1);
+ assert.deepEqual(readReceipt(f,'journal.json').payment.residuals,['PAYMENT_ENDPOINT_UNCONFIRMED']);
+});
+
+const proofFailures={
+ missing_work:f=>unlinkSync(receiptPath(f,'work-result.json')),
+ missing_independent:f=>unlinkSync(receiptPath(f,'independent-closeout.json')),
+ foreign_marker:f=>writeReceipt(f,'independent-closeout.json',{operationId:randomUUID()}),
+ failed_account:f=>{const v=readReceipt(f,'work-result.json');v.residuals.push('ACCOUNT_SESSION');writeReceipt(f,'work-result.json',v);},
+ failed_payment:f=>{const v=readReceipt(f,'work-result.json');v.residuals.push('PAYMENT_ENDPOINT_UNCONFIRMED');writeReceipt(f,'work-result.json',v);},
+ stale_outcome:f=>{const v=readReceipt(f,'work-result.json');v.paymentObserved=!v.paymentObserved;writeReceipt(f,'work-result.json',v);},
+ pending_publish:f=>writeReceipt(f,'journal.json.payment-next',readReceipt(f,'journal.json')),
+ later_enable:f=>{const v=readReceipt(f,'journal.json');v.payment.phase='ENABLE_INTENT';writeReceipt(f,'journal.json',v);},
+ unknown_endpoint:f=>{const v=readReceipt(f,'journal.json');v.payment.endpointDisabled=false;writeReceipt(f,'journal.json',v);},
+ open_bridge:f=>{const v=readReceipt(f,'journal.json');v.payment.bridgeClosed=false;writeReceipt(f,'journal.json',v);},
+ foreign_scope:f=>{const v=readReceipt(f,'journal.json');v.payment.scopeSha256='a'.repeat(64);writeReceipt(f,'journal.json',v);},
+};
+for(const [name,mutate] of Object.entries(proofFailures))test('bad independent payment proof still attempts account/session reads: '+name,async t=>{
+ const f=await completedMain(t);mutate(f);const ports=retiredPorts(f);
+ await assert.rejects(()=>nextChild(f,'--readback',ports),/PAYMENT_ENDPOINT_UNCONFIRMED/);
+ assert.equal(ports.observed.secrets,0);assert.equal(ports.observed.stripe,0);
+ assert.equal(ports.observed.accounts,1);assert.equal(ports.observed.probes,1);
+ if(!['foreign_scope','pending_publish'].includes(name))
+   assert.ok(readReceipt(f,'journal.json').payment.residuals.includes('PAYMENT_ENDPOINT_UNCONFIRMED'));
+});
+
+for(const name of ['work_replaced','later_intent'])test('concurrent proof drift during account readback never becomes payment success: '+name,async t=>{
+ const f=await completedMain(t);let changed=false;
+ const ports=retiredPorts(f,()=>{if(changed)return;changed=true;
+   if(name==='work_replaced'){const path=receiptPath(f,'work-result.json'),v=readReceipt(f,'work-result.json');unlinkSync(path);writeReceipt(f,'work-result.json',v);}
+   else {const v=readReceipt(f,'journal.json');v.payment.phase='ENABLE_INTENT';writeReceipt(f,'journal.json',v);}
+ });
+ await assert.rejects(()=>nextChild(f,'--readback',ports),/PAYMENT_ENDPOINT_UNCONFIRMED/);
+ assert.equal(ports.observed.probes,1);assert.equal(ports.observed.secrets,0);
+ assert.ok(readReceipt(f,'journal.json').payment.residuals.includes('PAYMENT_ENDPOINT_UNCONFIRMED'));
+});
+
+test('completed payment proof enforces custody and deadline through actual authorized capability',async t=>{
+ const f=await completedMain(t),cap=authorizeChild(f.r.envelopePath,'--readback'),digest=hash(f.e),path=receiptPath(f,'work-result.json');
+ const verify=completedPaymentCloseout(cap,f.r.envelopePath,digest);verify();
+ chmodSync(path,0o644);assert.throws(()=>completedPaymentCloseout(cap,f.r.envelopePath,digest));chmodSync(path,0o600);
+ const linked=receiptPath(f,'journal-next.json');linkSync(path,linked);
+ assert.throws(()=>completedPaymentCloseout(cap,f.r.envelopePath,digest));unlinkSync(linked);
+ const now=Date.now;Date.now=()=>Date.parse(f.e.plan.window.cleanupEnd);
+ try{assert.throws(()=>verify(),/OUTER_DEADLINE/);}finally{Date.now=now;}
+});

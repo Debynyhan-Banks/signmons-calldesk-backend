@@ -582,6 +582,30 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
             need(attempt == {'operationId': cap.plan['operationId'], 'planSha256': digest(cap.plan)}, 'ATTEMPT_BINDING')
         result = controller.run() if mode == 'run' else controller.closeout(independent=True)
         residuals = list(result['residuals'])
+        if cap.e['version'] == 2:
+            payment = controller.j.get('payment')
+            # Main readback failure must survive into work-result: the independent
+            # child may only reuse a completed, successful payment observation.
+            if controller.j.get('authAttempted') and (
+                    any(v in residuals for v in ('ACCOUNT_SESSION', 'PAYMENT_JOURNAL_UNCONFIRMED')) or
+                    (cap.root / 'journal.json.payment-next').exists()):
+                # The unchanged Handoff schema rejects a failed child or an
+                # uncommitted journal before account success can be accepted.
+                # With no separate payment receipt, that readback cannot serve
+                # as completed payment evidence either.
+                residuals.append('PAYMENT_ENDPOINT_UNCONFIRMED')
+            if isinstance(payment, dict):
+                if payment.get('enableIntent') or controller.j.get('authAttempted'):
+                    payment_residuals = payment.get('residuals')
+                    payment_bound = (payment.get('operationId') == cap.plan['operationId'] and
+                                     payment.get('scopeSha256') == digest(cap.e['payment']) and
+                                     isinstance(payment_residuals, list))
+                    if not payment_bound or payment.get('endpointDisabled') is not True or 'PAYMENT_ENDPOINT_UNCONFIRMED' in payment_residuals:
+                        residuals.append('PAYMENT_ENDPOINT_UNCONFIRMED')
+                    if payment.get('bridgeClosed') is not True or (isinstance(payment_residuals, list) and 'PAYMENT_BRIDGE_UNCONFIRMED' in payment_residuals):
+                        residuals.append('PAYMENT_BRIDGE_UNCONFIRMED')
+            elif controller.j.get('authAttempted'):
+                residuals.append('PAYMENT_ENDPOINT_UNCONFIRMED')
         private_absent = False
         try:
             need(clock() < cap.times['purgeEnd'], 'PURGE_DEADLINE')

@@ -910,7 +910,7 @@ class ConnectedEntryTests(EntryTests):
         self.assertEqual(r['residuals'],[])
         self.assertTrue(r['privateInputsAbsent'])
         self.assertFalse(self.path.exists())
-        self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],9)
+        self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],8)
         # Corrected Stripe version adds its own activation/retirement readbacks; existing192 cap is unchanged.
         self.assertLessEqual(read(self.root/'journal.json')['nativeEntry']['calls']['cli'],self.e['limits']['cli'])
         self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':5,'cli':191,'https':16,'sql':10})
@@ -940,7 +940,8 @@ class ConnectedEntryTests(EntryTests):
         r=self.run_entry('closeout')
         self.assertEqual(r['status'],'ENTRY_CONTAINMENT_UNCONFIRMED')
         self.assertIn('PAYMENT_ENDPOINT_UNCONFIRMED',r['residuals'])
-        self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],14)
+        # Independent refusal uses the failed main proof without retrieving the retired secret.
+        self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],10)
         self.assertLessEqual(read(self.root/'journal.json')['nativeEntry']['calls']['cli'],self.e['limits']['cli'])
         self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':6,'cli':191,'https':16,'sql':10})
         self.assertTrue(r['privateInputsAbsent'])
@@ -968,6 +969,81 @@ class ConnectedEntryTests(EntryTests):
         with self.assertRaisesRegex(Stop,'PAYMENT_ENDPOINT_PIN'):
             self.run_entry()
         self.assertEqual(self.calls,0)
+
+class IndependentPaymentProofTests(ConnectedEntryTests):
+
+    def factory(self, cap):
+        io = ConnectedEntryTests.factory(self, cap)
+        child = io.child
+        def invoke(argv, **kwargs):
+            retire = cap.mode != 'run' or (getattr(self, 'fail_main_readback', False) and argv[2] == '--readback')
+            if not retire:
+                return child(argv, **kwargs)
+            script = """import {readFileSync} from 'node:fs';
+import {runChild} from %s;
+import {portsFor,rawFor} from %s;
+const request=JSON.parse(readFileSync(0,'utf8')),e=JSON.parse(readFileSync(request.envelopePath));
+const ports=portsFor({r:request,e,raw:rawFor(e)}),fetcher=ports.fetcher;let secretReads=0;
+ports.fetcher=async(url,opts)=>{if(url.startsWith('https://secretmanager.googleapis.com/')){
+ secretReads++;return new Response('SYNTHETIC_RETIRED_SECRET',{status:403});}return fetcher(url,opts);};
+try{const result=await runChild(process.argv[1],request,ports);
+ if(%s && secretReads!==0)throw Error('UNEXPECTED_RETIRED_SECRET_READ');
+ process.stdout.write(JSON.stringify(result)+'\\n');
+}catch(error){process.stderr.write(String(error.code??error.message)+'\\n');process.exitCode=2;}
+""" % (json.dumps((a.HERE/'native_child.mjs').as_uri()),
+       json.dumps((a.HERE/'fixture_connected.mjs').as_uri()), 'true' if cap.mode != 'run' else 'false')
+            return subprocess.run([argv[0], '--input-type=module', '-e', script, '--', argv[2]], **kwargs)
+        io.child = invoke
+        return io
+
+    def test_fresh_independent_child_reads_account_after_secret_retirement(self):
+        self.assertEqual(self.run_entry()['residuals'], [])
+        before = read(self.root/'journal.json')['payment']
+        result = self.run_entry('closeout')
+        self.assertEqual(result['status'], 'ENTRY_CLOSED', result)
+        self.assertTrue(result['privateInputsAbsent'])
+        self.assertEqual(read(self.root/'journal.json')['payment'], before)
+
+    def test_failed_main_endpoint_readback_is_preserved_in_work_and_final_results(self):
+        self.fail_main_readback = True
+        result = self.run_entry()
+        self.assertIn('PAYMENT_ENDPOINT_UNCONFIRMED', result['residuals'])
+        self.assertEqual(read(self.root/'work-result.json'), result)
+        closed = self.run_entry('closeout')
+        self.assertIn('PAYMENT_ENDPOINT_UNCONFIRMED', closed['residuals'])
+        self.assertFalse(closed['authProofReady'])
+        self.assertTrue(closed['privateInputsAbsent'])
+
+    def test_missing_main_receipt_refuses_payment_proof_and_still_closes_accounts(self):
+        self.run_entry();(self.root/'work-result.json').unlink()
+        result = self.run_entry('closeout')
+        self.assertIn('PAYMENT_ENDPOINT_UNCONFIRMED', result['residuals'])
+        self.assertIn('ACCOUNT_SESSION', result['residuals'])
+        self.assertEqual(read(self.root/'child-5.json')['mode'], '--readback')
+        self.assertTrue(result['privateInputsAbsent'])
+
+    def test_pending_payment_publish_cannot_hide_payment_failure_when_recording_fails(self):
+        self.run_entry()
+        reserve(self.root/'journal.json.payment-next', read(self.root/'journal.json'))
+        result = self.run_entry('closeout')
+        self.assertIn('PAYMENT_ENDPOINT_UNCONFIRMED', result['residuals'])
+        self.assertIn('ACCOUNT_SESSION', result['residuals'])
+        self.assertIn('PRIVATE_INVENTORY_UNCONFIRMED', result['residuals'])
+        self.assertFalse(result['privateInputsAbsent'])
+
+    def test_malformed_payment_shape_preserves_uncertainty_and_purge(self):
+        self.run_entry();journal=read(self.root/'journal.json')
+        journal['payment']['unexpected']='SYNTHETIC_UNTRUSTED_FIELD'
+        (self.root/'journal.json').write_text(json.dumps(journal))
+        result=self.run_entry('closeout')
+        self.assertIn('PAYMENT_ENDPOINT_UNCONFIRMED',result['residuals'])
+        self.assertFalse(result['authProofReady']);self.assertTrue(result['privateInputsAbsent'])
+
+
+for _name in dir(ConnectedEntryTests):
+    if _name.startswith('test_') and _name not in IndependentPaymentProofTests.__dict__:
+        setattr(IndependentPaymentProofTests, _name, None)
+
 
 class AuthenticationDiagnosticTests(unittest.TestCase):
     CODES = ('AUTH_KEY_SCOPE', 'AUTH_KEY_OWNERSHIP_DRIFT', 'KEY_STRING_SHAPE')
@@ -1087,7 +1163,8 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
             self.assertEqual(journal['failure'],'KEY_STRING_SHAPE')
             self.assertFalse(journal['authProofAccepted']);self.assertNotIn('authClient',journal)
             self.assertEqual(journal['nativeEntry']['calls']['child'],1)
-            self.assertEqual(result['residuals'],['ACCOUNT_SESSION','AUTH_OUTCOME_UNKNOWN','AUTH_REVOKE'])
+            self.assertEqual(result['residuals'],['ACCOUNT_SESSION','AUTH_OUTCOME_UNKNOWN','AUTH_REVOKE',
+                                                  'PAYMENT_ENDPOINT_UNCONFIRMED'])
             self.assertEqual(sum(method=='DELETE' for method,_ in trace),1)
             self.assertTrue(fake.key.get('deleteTime'));self.assertTrue(result['privateInputsAbsent'])
         finally:fixture.doCleanups()

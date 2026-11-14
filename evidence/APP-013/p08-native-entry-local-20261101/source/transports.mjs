@@ -5,6 +5,17 @@ import {gate, need} from './authority_bridge.mjs';
 const require = createRequire(new URL('../../../../package.json', import.meta.url));
 const exec = promisify(execFile);
 
+// Canonical User versions are UTC TIMESTAMP(3), not local wall-clock instants.
+// Scope this parser to these clients; unrelated OIDs and binary formats retain pg defaults.
+function timestampUTC(value) {
+  const match=typeof value==='string' && /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/.exec(value);
+  need(match && match[0]===value && Number(match[1])>0,'TIMESTAMP_VERSION_SHAPE');
+  const canonical=`${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}:${match[6]}.${(match[7]??'').padEnd(3,'0')}Z`;
+  const date=new Date(canonical);
+  need(Number.isFinite(date.getTime()) && date.toISOString()===canonical,'TIMESTAMP_VERSION_SHAPE');
+  return date;
+}
+
 /** Proof mode requires all injected transports; native defaults require exact external authority. */
 export function createPorts(cap, credentials, injected = {}) {
   gate(cap, true);
@@ -13,6 +24,10 @@ export function createPorts(cap, credentials, injected = {}) {
   need(credentials && typeof credentials.password === 'string' && credentials.password.length > 0 &&
     typeof credentials.accessToken === 'string' && credentials.accessToken.length >= 20, 'MEMORY_CREDENTIALS');
   const Client = injected.ClientClass ?? require('pg').Client;
+  const defaultTypes=require('pg').types;
+  const types={getTypeParser(oid,format='text') {
+    return oid===1114 && format==='text' ? timestampUTC : defaultTypes.getTypeParser(oid,format);
+  }};
   const window = cap.e.plan.window;
   const deadline = cleanup => Date.parse(window[cleanup ? 'cleanupEnd' : 'workEnd']);
   const timeout = cleanup => Math.max(1, Math.min(5000, deadline(cleanup)-Date.now()));
@@ -26,7 +41,7 @@ export function createPorts(cap, credentials, injected = {}) {
   const config = name => ({...cap.e.database, password:credentials.password,
     application_name:name, ssl:cap.external ? {rejectUnauthorized:true} : (injected.ssl ?? {rejectUnauthorized:true}),
     connectionTimeoutMillis:timeout(true), query_timeout:timeout(true),
-    options:'-c statement_timeout=4000 -c lock_timeout=2000'});
+    options:'-c statement_timeout=4000 -c lock_timeout=2000 -c timezone=UTC',types});
   async function ownerAuth({project,principal}) {
     need(project===cap.e.plan.project && principal===cap.e.plan.ownerPrincipal,'OWNER_SCOPE');
     if (injected.owner) return bounded(()=>injected.owner({project,principal}));

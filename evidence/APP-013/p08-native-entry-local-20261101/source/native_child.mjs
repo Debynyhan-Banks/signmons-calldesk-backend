@@ -50,26 +50,30 @@ export async function runChild(mode, request, injected = {}) {
   const cap=authorize(p,approval,{target:e.target,receipt:request.receipt,runtime,journalPath,now,
     mode:mode==='--run'?'run':'closeout'});
   const credentials=request.credentials,secret={password:credentials.password};
-  let clients, paymentPorts, paymentJournal, closeAttempted=false;
+  let clients, paymentPorts, paymentJournal, verifyPaymentCloseout, payment, closeAttempted=false,paymentReadbackFailed=false;
+  const paymentUnconfirmed=()=>{paymentReadbackFailed=true;try{payment.paymentReadbackUnconfirmed(paymentJournal);}catch{}};
   try {
     const ports=createPorts(outer,credentials,injected);
     let paymentDb;
     if(e.version===2){
       const originalFactory=ports.dbFactory;
       ports.dbFactory=async(...args)=>{paymentDb=await originalFactory(...args);return paymentDb;};
-      const payment=await import('./connected_payment.mjs');
+      payment=await import('./connected_payment.mjs');
       paymentJournal=new payment.PaymentJournal(outer,journalPath);
       paymentPorts=payment.createPaymentPorts(outer,credentials,paymentJournal,injected);
       if(mode!=='--run'){
-        const j=JSON.parse(readFileSync(journalPath));
-        if(j.payment){paymentJournal.load();
-          if(mode==='--readback'){
-            payment.endpoint(await paymentPorts.endpoint('GET',null,true),e.payment,'disabled');
-          }else {
-            // Endpoint failure must not prevent identity/session cleanup. Parent verifies both results.
-            try {await payment.closePayment(outer,paymentJournal,paymentPorts);}catch {}
+        // Main account readback still verifies the endpoint before secret retirement.
+        // The independent process may reuse that completed observation, with fresh
+        // account/session reads, only while every bound receipt remains unchanged.
+        try {
+          if(payment.independentPaymentCloseoutPresent(request.envelopePath))
+            verifyPaymentCloseout=payment.completedPaymentCloseout(outer,request.envelopePath,envelopeDigest);
+          else {
+            paymentJournal.load();
+            if(mode==='--readback')payment.endpoint(await paymentPorts.endpoint('GET',null,true),e.payment,'disabled');
+            else if(!await payment.closePayment(outer,paymentJournal,paymentPorts))paymentUnconfirmed();
           }
-        }
+        }catch{paymentUnconfirmed();}
       }
     }
     const binding={operationId:p.operationId,planSha256:planHash(p),project:p.project,
@@ -107,7 +111,10 @@ export async function runChild(mode, request, injected = {}) {
     return mode==='--run'?await sequence.run():await sequence.closeout(true);
   } finally {
     if(clients&&!closeAttempted){try{await clients.close();}catch{}}
+    if(verifyPaymentCloseout){try{verifyPaymentCloseout();}catch{paymentUnconfirmed();}}
     paymentPorts?.clear();clients?.clear(); secret.password=''; credentials.password='';credentials.accessToken='';close(cap);
+    // A failed evidence write must not turn a bad proof into successful output.
+    need(!paymentReadbackFailed,'PAYMENT_ENDPOINT_UNCONFIRMED');
   }
 }
 

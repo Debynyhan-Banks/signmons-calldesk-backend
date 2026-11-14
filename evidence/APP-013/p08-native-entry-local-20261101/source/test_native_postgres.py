@@ -186,6 +186,51 @@ for _name in dir(NativePostgres):
     if _name.startswith('test_') and _name not in LifecyclePostgres.__dict__:
         setattr(LifecyclePostgres,_name,None)
 
+class TimestampPostgres(prior.BoundPostgreSQL):
+    """Actual canonical schema and pg parser under independent client/server timezones."""
+    def timestamp_case(self,scenario,client_timezone,server_timezone,value):
+        self.assertIn(client_timezone,('UTC','America/New_York'))
+        self.assertIn(server_timezone,('UTC','America/New_York'))
+        self.command(f"ALTER DATABASE neondb SET timezone='{server_timezone}';")
+        self.command('UPDATE "User" SET status=\'DISABLED\',"updatedAt"=\''+value+'\'::timestamp;')
+        t=test_entry.EntryTests();t.setUp()
+        try:
+            t.e['database']={'host':'127.0.0.1','port':int(self.port),'database':'neondb','user':'neondb_owner'}
+            t.e['qualification']['scopeSha256']=digest({k:t.e[k] for k in ('plan','target','database','resources','limits')})
+            t.seal();request=child_fixture(t)
+            payload={'request':request,'cert':str(self.cert),'scenario':scenario,
+                     'serverTimezone':server_timezone,'expectedVersion':value.replace(' ','T')+'Z'}
+            result=subprocess.run([prior.historical.fixture.c.NODE,str(ROOT/'postgres_driver.mjs')],
+                input=json.dumps(payload).encode(),capture_output=True,timeout=30,
+                env={**self.env,'TZ':client_timezone},cwd=ROOT)
+            self.assertEqual(result.returncode,0,result.stderr.decode())
+            self.assertEqual(json.loads(result.stdout),{'status':'PASS','providerCalls':0})
+            self.assertEqual(self.command('SELECT status::text FROM "User";'),
+                             'ACTIVE' if scenario=='timestamp-lost' else 'DISABLED')
+            self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'p08-%'"),'0')
+        finally:
+            t.doCleanups()
+            self.command('ALTER DATABASE neondb RESET timezone;')
+
+    def test_legacy_native_timestamp_timezone_disagreement_reproduced(self):
+        self.timestamp_case('timestamp-legacy','America/New_York','UTC','2026-01-01 00:00:00.123')
+
+    def test_native_utc_versions_cas_concurrency_identity_and_dst(self):
+        cases=[('UTC','UTC','2026-01-01 00:00:00.123'),
+               ('America/New_York','UTC','2026-03-08 02:30:00.123'),
+               ('UTC','America/New_York','2026-03-08 02:30:00.123'),
+               ('America/New_York','America/New_York','2026-11-01 01:30:00.123')]
+        for client,server,value in cases:
+            with self.subTest(client=client,server=server,value=value):
+                self.timestamp_case('timestamp-corrected',client,server,value)
+
+    def test_lost_actual_activation_response_preserves_unknown_and_never_disables_unowned_version(self):
+        self.timestamp_case('timestamp-lost','America/New_York','UTC','2026-03-08 02:30:00.123')
+
+for _name in dir(prior.BoundPostgreSQL):
+    if _name.startswith('test_') and _name not in TimestampPostgres.__dict__:
+        setattr(TimestampPostgres,_name,None)
+
 if __name__=='__main__':unittest.main()
 
 class ConnectedPaymentPostgres(prior.BoundPostgreSQL):

@@ -1,5 +1,6 @@
 // Owned payment phase for native entry. No ambient credentials or provider clients.
-import {readFileSync,writeFileSync,renameSync,readSync} from 'node:fs';
+import {readFileSync,writeFileSync,renameSync,readSync,lstatSync,realpathSync,openSync,closeSync,fstatSync,constants} from 'node:fs';
+import {dirname,join} from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {hash,need,gate} from './authority_bridge.mjs';
@@ -74,6 +75,84 @@ export class PaymentJournal {
     writeFileSync(this.path+'.payment-next',JSON.stringify({...j,payment:next}),{mode:0o600,flag:'wx'});
     renameSync(this.path+'.payment-next',this.path);this.state=next;return next;
   }
+}
+
+const paymentFields='operationId,scopeSha256,revision,phase,enableIntent,endpointDisabled,bridgeClosed,outcome,failureCode,endpointCalls,secretReads,residuals';
+const exactKeys=(value,fields)=>value && typeof value==='object' && !Array.isArray(value) &&
+  Object.keys(value).sort().join(',')===fields.split(',').sort().join(',');
+const present=path=>{try{lstatSync(path);return true;}catch(error){if(error.code==='ENOENT')return false;throw error;}};
+
+// Either marker makes this a post-main observation. A missing counterpart must
+// never fall back to retrieving a credential that main cleanup already retired.
+export function independentPaymentCloseoutPresent(envelopePath) {
+  const root=dirname(envelopePath);
+  return present(join(root,'work-result.json')) || present(join(root,'independent-closeout.json'));
+}
+
+export function paymentReadbackUnconfirmed(journal) {
+  const state=journal.state??journal.load();
+  need(exactKeys(state,paymentFields) && Array.isArray(state.residuals),'PAYMENT_JOURNAL_SHAPE');
+  journal.save({phase:'CLOSEOUT_UNKNOWN',endpointDisabled:false,
+    residuals:[...new Set([...state.residuals,'PAYMENT_ENDPOINT_UNCONFIRMED'])].sort()});
+}
+
+/** Reuse only the completed main observation; this never claims a new provider read. */
+export function completedPaymentCloseout(cap,envelopePath,envelopeDigest) {
+  gate(cap,true);
+  need(['--readback','--closeout'].includes(cap.mode),'PAYMENT_CLOSEOUT_MODE');
+  const root=dirname(envelopePath),operation=cap.e.plan.operationId;
+  need(root==='/private/tmp/p08-coordinator-'+operation && envelopePath===join(root,'envelope.json'),
+    'PAYMENT_CLOSEOUT_ROOT');
+  const stamp=s=>[s.dev,s.ino,s.mode,s.uid,s.nlink,s.size,s.mtimeNs,s.ctimeNs].map(String).join(':');
+  const rootStamp=()=>{const s=lstatSync(root,{bigint:true});
+    need(s.isDirectory() && !s.isSymbolicLink() && Number(s.mode&0o777n)===0o700 &&
+      s.uid===BigInt(process.getuid()) && realpathSync(root)===root,'PAYMENT_CLOSEOUT_CUSTODY');
+    // Child marker creation changes directory timestamps; identity and custody are stable.
+    return [s.dev,s.ino,s.mode,s.uid].map(String).join(':');};
+  const identity=rootStamp(),snapshots=[];
+  function read(name){
+    const path=join(root,name),s=lstatSync(path,{bigint:true});
+    need(s.isFile() && !s.isSymbolicLink() && Number(s.mode&0o777n)===0o600 && s.nlink===1n &&
+      s.uid===BigInt(process.getuid()) && s.size<=65536n,'PAYMENT_CLOSEOUT_CUSTODY');
+    const fd=openSync(path,constants.O_RDONLY|constants.O_NOFOLLOW),buffer=Buffer.alloc(65537);
+    try {
+      need(stamp(fstatSync(fd,{bigint:true}))===stamp(s),'PAYMENT_CLOSEOUT_CHANGED');
+      const used=readSync(fd,buffer,0,buffer.length,0);
+      need(used<=65536 && BigInt(used)===s.size && stamp(fstatSync(fd,{bigint:true}))===stamp(s) &&
+        stamp(lstatSync(path,{bigint:true}))===stamp(s),'PAYMENT_CLOSEOUT_CHANGED');
+      return {value:JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(buffer.subarray(0,used))),stamp:stamp(s),digest:hash(buffer.subarray(0,used))};
+    }finally{buffer.fill(0);closeSync(fd);}
+  }
+  function observe(name){const v=read(name);snapshots.push([name,v.stamp,v.digest]);return v.value;}
+  const envelope=observe('envelope.json'),work=observe('work-result.json'),main=observe('closeout.json'),
+    independent=observe('independent-closeout.json'),j=observe('journal.json'),p=j.payment;
+  need(hash(envelope)===envelopeDigest && hash(envelope.payment)===hash(cap.e.payment) &&
+    j.operationId===operation && j.planSha256===hash(cap.e.plan) && j.nativeEntry?.envelopeSha256===envelopeDigest &&
+    j.phase==='CLOSED' && j.authAttempted===true,'PAYMENT_CLOSEOUT_BINDING');
+  for(const marker of [main,independent])need(exactKeys(marker,'operationId') && marker.operationId===operation,'PAYMENT_CLOSEOUT_MARKER');
+  need(exactKeys(work,'status,operationId,liveAuthorization,authProofReady,paymentReadyForAcceptance,paymentObserved,residuals,privateInputsAbsent') &&
+    work.status==='ENTRY_AWAITING_INDEPENDENT_CLOSEOUT' && work.operationId===operation && work.liveAuthorization===cap.external &&
+    work.authProofReady===false && work.paymentReadyForAcceptance===false && work.privateInputsAbsent===false &&
+    typeof work.paymentObserved==='boolean' && Array.isArray(work.residuals) && work.residuals.every(x=>typeof x==='string') &&
+    !work.residuals.some(x=>['ACCOUNT_SESSION','PAYMENT_ENDPOINT_UNCONFIRMED','PAYMENT_BRIDGE_UNCONFIRMED','PAYMENT_JOURNAL_UNCONFIRMED'].includes(x)),
+    'PAYMENT_MAIN_READBACK_UNCONFIRMED');
+  need(exactKeys(p,paymentFields) && p.operationId===operation && p.scopeSha256===hash(cap.e.payment) &&
+    Number.isSafeInteger(p.revision) && p.revision>0 && Number.isSafeInteger(p.endpointCalls) && p.endpointCalls>=2 && p.endpointCalls<=14 &&
+    Number.isSafeInteger(p.secretReads) && p.secretReads>=1 && p.secretReads<=cap.e.limits.child &&
+    p.endpointDisabled===true && p.bridgeClosed===true && Array.isArray(p.residuals) && p.residuals.length===0 &&
+    (p.failureCode===null || /^PAYMENT_[A-Z_]{1,48}$/.test(p.failureCode)) &&
+    ['NOT_OBSERVED','APPLICATION_SETTLED'].includes(p.outcome) && work.paymentObserved===(p.outcome==='APPLICATION_SETTLED') &&
+    ((p.phase==='QUALIFIED' && p.enableIntent===false && p.outcome==='NOT_OBSERVED' && p.failureCode===null) ||
+     (p.phase==='CLOSED' && p.enableIntent===true)),'PAYMENT_CLOSEOUT_STATE');
+  need(exactKeys(j.nativeEntry.calls,'cli,https,sql,child') && Object.entries(j.nativeEntry.calls).every(([k,v])=>
+    Number.isSafeInteger(v) && v>=0 && v<=cap.e.limits[k]),'PAYMENT_CLOSEOUT_COUNTERS');
+  const verify=()=>{
+    gate(cap,true);need(rootStamp()===identity,'PAYMENT_CLOSEOUT_CHANGED');
+    need(!['journal-next.json','journal.json.payment-next','journal.json.auth-next'].some(name=>present(join(root,name))),
+      'PAYMENT_UNCOMMITTED_INTENT');
+    for(const [name,s,d] of snapshots){const v=read(name);need(v.stamp===s && v.digest===d,'PAYMENT_CLOSEOUT_CHANGED');}
+  };
+  verify();return verify;
 }
 
 export async function readPaymentContext(db,e) {
