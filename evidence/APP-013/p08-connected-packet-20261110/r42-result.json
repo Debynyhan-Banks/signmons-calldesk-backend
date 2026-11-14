@@ -1,0 +1,27 @@
+{
+  "status": "R42_CONSUMED_PREQUALIFICATION_STOP_CLOSED",
+  "sourceCommit": "ebe6f3fd41eecaa160a71b9dad49d36c23db71a0",
+  "recoveryApproval": "0a5fce779aa7a169148a5c9e753ba4cb259b598e",
+  "recoveryStatus": "HANDOFF_RETAINED",
+  "resourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "privatePurge": {
+    "status": "PRIVATE_PURGE_VERIFIED",
+    "residuals": [],
+    "rawFilesAbsent": true,
+    "onTime": true
+  },
+  "qualificationReviewPublished": false,
+  "qualificationStarted": false,
+  "nativeStarted": false,
+  "paymentObserved": false,
+  "exactStop": "CONNECTED_STOP_Stop",
+  "ownedProcessesIndependentlyAbsent": true,
+  "temporaryExecutorsRemoved": true,
+  "replayAllowed": false,
+  "connectedStage": "PACKET_PREPARATION",
+  "ownerReportedCloseout": "BINDING_RECOVERY_CLOSED",
+  "underlyingCause": "UNKNOWN"
+}
