@@ -1,0 +1,29 @@
+{
+  "recordedAt": "2026-11-14T21:30:15.663160+00:00",
+  "sourceBefore": "ea3ab5b",
+  "scope": "LOCAL_DESIGN_REVIEW_ONLY",
+  "providerCalls": 0,
+  "realCredentialReads": 0,
+  "results": {
+    "single_process": true,
+    "popen_detached_denied": true,
+    "fork_denied": true,
+    "posix_spawn_denied": true,
+    "isolated_sdk_help": true,
+    "sdk_help_exit": 0
+  },
+  "initialNestedSandboxAttempt": "SANDBOX_APPLY_EPERM",
+  "localProbeOutsideToolSandbox": "PASS",
+  "liveCompatibility": "UNKNOWN",
+  "implementation": "NOT_IMPLEMENTED",
+  "hashes": {
+    "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/iq1-local-verification/containment_probe.py": "0f9a7a7517338b1e9975d9914189d21e6fe90a83cd9136beec644c7072646191",
+    "/usr/bin/sandbox-exec": "e7e596515c7357d2e50a182f7db5fef2b71762d85efaac9594599ccb6e0a73d5",
+    "/opt/homebrew/share/google-cloud-sdk/bin/gcloud": "8628b9f971d07c5e52fd2c6d469ee4a0940c75eb51820d628c3dd068981bd260",
+    "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py": "d223bce54ff2e1441268e73b06eec4830032dd7b4b17b8fa9e2638d4f6d8d39d",
+    "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/metrics.py": "045019bf8cd4739e12f106529e87760a2a4d192920b1331ba968db00e8448724",
+    "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/util/platforms.py": "97f0c82d1fe8df84ade4e53ff601dd17ac584095f652d8a692f7f2048e4fa0c2",
+    "/opt/homebrew/share/google-cloud-sdk/lib/surface/iam/service_accounts/enable.yaml": "cbb6c09e67deca5ebc24e3ef88bbb2739145815a45500dcc46c657e8c05f02cd",
+    "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda"
+  }
+}
