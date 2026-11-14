@@ -1170,6 +1170,212 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
         finally:fixture.doCleanups()
 
 
+class IdentityReadbackDiagnosticTests(unittest.TestCase):
+    PRIVATE_TEXT = 'synthetic-private-identity-readback-canary'
+    VECTOR = ['iam', 'service-accounts', 'describe', entry.restore.IDENTITY,
+              '--project=signmons', '--format=json(email,disabled)']
+
+    def fixture(self, connected=False):
+        fixture = ConnectedEntryTests() if connected else EntryTests()
+        fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        return fixture
+
+    def test_same_native_read_preserves_legacy_predicate_and_classifies_rejections(self):
+        fixture = self.fixture()
+        cap, io = fixture.native_fixture(); io.token = 'SYNTHETIC_TOKEN'
+        adapter = entry.RuntimeAdapter(cap, io)
+        identity = entry.restore.IDENTITY
+        cases = [(None, 'OUTPUT_SHAPE'), ([], 'OUTPUT_SHAPE'), (False, 'OUTPUT_SHAPE'),
+                 ({}, 'EMAIL_MISSING'), ({'email': self.PRIVATE_TEXT}, 'EMAIL_MISMATCH')]
+        cases += [({'email': identity, 'disabled': value},
+                   'STATE_MISMATCH' if type(value) in (bool, int, float) and value in (0, 1)
+                   else 'DISABLED_INVALID')
+                  for value in (True, False, 0, 1, 0.0, 1.0, None, 'false', [], {}, 2, -1, 0.5)]
+        cases.append(({'email': identity}, 'DISABLED_MISSING'))
+        for enabled in (True, False):
+            for value, code in cases:
+                with self.subTest(enabled=enabled, value=value):
+                    # The immutable original supplies the compatibility oracle.
+                    legacy = SimpleNamespace(cloud=lambda *args: value)
+                    try:
+                        accepted = entry.restore.NativeAdapter.readback(
+                            legacy, 'identity', identity, enabled, cap.plan, 0) is True
+                    except (AttributeError, TypeError):
+                        accepted = False
+                    response = subprocess.CompletedProcess([], 0, json.dumps(value).encode(), b'')
+                    with patch('native_io.subprocess.run', return_value=response) as run:
+                        if accepted:
+                            self.assertIs(adapter.readback('identity', identity, enabled, cap.plan, 0), True)
+                        else:
+                            with self.assertRaises(entry.c.Stop) as error:
+                                adapter.readback('identity', identity, enabled, cap.plan, 0)
+                            self.assertEqual(error.exception.args, ('RUNTIME_IDENTITY_' + code,))
+                            self.assertNotIn(self.PRIVATE_TEXT, str(error.exception))
+                        self.assertEqual(run.call_count, 1)
+                        self.assertEqual(run.call_args.args[0], ['/opt/homebrew/bin/gcloud', *self.VECTOR])
+
+    def test_installed_sdk_projection_passes_through_actual_native_parser(self):
+        sdk = '/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib'
+        code = """import sys,io,json
+sys.path[:0]=[sys.argv[1],sys.argv[1]+'/third_party']
+from googlecloudsdk.generated_clients.apis.iam.v1 import iam_v1_messages as iam
+from googlecloudsdk.core.resource import resource_printer
+rows=[]
+for fields in ({'disabled':True},{'disabled':False},{}):
+ out=io.StringIO()
+ resource_printer.Print(iam.ServiceAccount(email=sys.argv[2],**fields),'json(email,disabled)',out=out)
+ rows.append(out.getvalue())
+print(json.dumps(rows))
+"""
+        serialized = json.loads(subprocess.check_output(
+            [sys.executable, '-B', '-c', code, sdk, entry.restore.IDENTITY]))
+        fixture = self.fixture(); cap, io = fixture.native_fixture(); io.token = 'SYNTHETIC_TOKEN'
+        adapter = entry.RuntimeAdapter(cap, io)
+        for raw, enabled in zip(serialized, (False, True, True)):
+            with patch('native_io.subprocess.run', return_value=subprocess.CompletedProcess([], 0, raw.encode(), b'')) as run:
+                self.assertIs(adapter.readback('identity', entry.restore.IDENTITY, enabled, cap.plan, 0), True)
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(run.call_args.args[0], ['/opt/homebrew/bin/gcloud', *self.VECTOR])
+
+    def test_malformed_json_is_safe_and_other_native_failures_are_not_reclassified(self):
+        fixture = self.fixture(); cap, io = fixture.native_fixture(); io.token = 'SYNTHETIC_TOKEN'
+        adapter = entry.RuntimeAdapter(cap, io)
+        cases = [(subprocess.CompletedProcess([], 0, raw, self.PRIVATE_TEXT.encode()),
+                  entry.c.Stop, 'RUNTIME_IDENTITY_OUTPUT_SHAPE') for raw in (b'', b'{', b'null', b'[]')]
+        cases += [(subprocess.CompletedProcess([], 1, b'', self.PRIVATE_TEXT.encode()), Stop, 'NATIVE_COMMAND_REFUSED'),
+                  (subprocess.CompletedProcess([], 0, b'\xff', b''), Stop, 'NATIVE_OUTPUT_ENCODING'),
+                  (subprocess.TimeoutExpired(self.PRIVATE_TEXT, 1), Stop, 'NATIVE_COMMAND_UNCONFIRMED')]
+        for response, kind, code in cases:
+            with self.subTest(code=code):
+                kwargs = {'side_effect': response} if isinstance(response, BaseException) else {'return_value': response}
+                with patch('native_io.subprocess.run', **kwargs) as run:
+                    with self.assertRaises(kind) as error:
+                        adapter.readback('identity', entry.restore.IDENTITY, True, cap.plan, 0)
+                    self.assertEqual(error.exception.args, (code,))
+                    self.assertNotIn(self.PRIVATE_TEXT, str(error.exception))
+                    self.assertEqual(run.call_count, 1)
+        class DerivedStop(Stop): pass
+        class DerivedString(str): pass
+        errors = [DerivedStop('NATIVE_OUTPUT_SHAPE'), Stop(DerivedString('NATIVE_OUTPUT_SHAPE')),
+                  Stop('NATIVE_OUTPUT_SHAPE', self.PRIVATE_TEXT), Stop(self.PRIVATE_TEXT),
+                  RuntimeError(self.PRIVATE_TEXT), KeyboardInterrupt()]
+        for error in errors:
+            with patch.object(adapter, 'cloud', side_effect=error) as cloud:
+                with self.assertRaises(type(error)) as raised:
+                    adapter.readback('identity', entry.restore.IDENTITY, True, cap.plan, 0)
+                self.assertIs(raised.exception, error)
+                cloud.assert_called_once()
+
+    def stopped_run(self, value, expected, *, baseline=False, preflight=False,
+                    cleanup_mismatch=False, interrupt=False):
+        fixture = self.fixture(connected=True)
+        trace = []; injected = []
+        identity_item = ['identity', entry.restore.IDENTITY]
+        def factory(cap):
+            io = fixture.factory(cap); original = io.cloud
+            def cloud(vector, deadline):
+                result = original(vector, deadline)
+                trace.append((cap.mode, io.cleanup, list(vector)))
+                if vector == self.VECTOR:
+                    active = fixture.f.runtime_state[tuple(identity_item)]
+                    target = not io.cleanup and (not active if preflight else active)
+                    if target:
+                        injected.append(True)
+                        if interrupt:
+                            cap.coordinator.abort = True
+                            return result
+                        if isinstance(value, BaseException): raise value
+                        # Exercise the real JSON boundary without a provider or credential.
+                        parser = SimpleNamespace(cap=cap, restore=entry.restore,
+                                                 cli=lambda argv: json.dumps(value))
+                        return entry.NativeIO.cloud(parser, vector, deadline)
+                    if cleanup_mismatch and io.cleanup:
+                        return {'email': entry.restore.IDENTITY, 'disabled': False}
+                return result
+            io.cloud = cloud
+            return io
+        current = entry.RuntimeAdapter.readback
+        def old_identity(adapter, kind, name, enabled, plan, deadline):
+            if kind == 'identity':
+                return entry.restore.NativeAdapter.readback(adapter, kind, name, enabled, plan, deadline)
+            return current(adapter, kind, name, enabled, plan, deadline)
+        with patch.object(entry.RuntimeAdapter, 'readback', old_identity if baseline else current):
+            work = entry.run_entry(fixture.path, io_factory=factory)
+            final = entry.run_entry(fixture.path, 'closeout', io_factory=factory)
+        journal = read(fixture.root/'journal.json')
+        self.assertEqual(journal['failure'], expected)
+        self.assertEqual(work['status'], 'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+        self.assertFalse(work['paymentObserved']); self.assertFalse(final['authenticationObserved'])
+        self.assertFalse(final['paymentObserved']); self.assertFalse(journal['authAttempted'])
+        self.assertFalse(journal['keyCreateAttempted']); self.assertEqual(journal['iamAttempted'], [])
+        self.assertFalse((journal.get('payment') or {}).get('enableIntent', False))
+        self.assertEqual(journal['nativeEntry']['calls']['child'], 0 if preflight else 1)
+        self.assertEqual(len(injected), 1)
+        self.assertTrue(final['privateInputsAbsent']); self.assertFalse(fixture.path.exists())
+        self.assertFalse((fixture.root/'payment-bootstrap-open-attempt.json').exists())
+        self.assertFalse(any(fixture.f.runtime_state.values()))
+        if preflight:
+            self.assertEqual(journal['preflightStage'], 'RUNTIME_PREFLIGHT')
+            self.assertEqual(journal['runtimeAttempted'], [])
+        else:
+            self.assertEqual(journal['runtimeAttempted'][-1], identity_item)
+            self.assertNotIn(identity_item, journal['runtimeOwned'])
+            self.assertIn(identity_item, journal['runtimeCleanupAttempted'])
+            plan = {**fixture.f.p, 'iam': []}
+            for enabled in (True, False):
+                mutation = entry.restore.command(plan, 'identity', entry.restore.IDENTITY, enabled)
+                self.assertEqual(sum(vector == mutation for _, _, vector in trace), 1)
+            self.assertTrue(any(mode == 'closeout' and vector == self.VECTOR for mode, _, vector in trace))
+        if cleanup_mismatch:
+            self.assertEqual(final['status'], 'ENTRY_CONTAINMENT_UNCONFIRMED')
+            self.assertIn('RUNTIME_identity:' + entry.restore.IDENTITY, final['residuals'])
+        else:
+            self.assertEqual(final['status'], 'ENTRY_CLOSED')
+            self.assertEqual(final['residuals'], [])
+        for path in fixture.root.iterdir():
+            self.assertNotIn(self.PRIVATE_TEXT.encode(), path.read_bytes())
+        return journal
+
+    def test_legacy_generic_failure_reproduced_through_assembled_parent(self):
+        for value in ({'email': entry.restore.IDENTITY, 'disabled': True},
+                      {'email': self.PRIVATE_TEXT, 'disabled': False}):
+            self.stopped_run(value, 'RUNTIME_READBACK', baseline=True)
+
+    def test_specific_failures_survive_main_and_independent_closeout(self):
+        for value, code in [(None, 'OUTPUT_SHAPE'), ({}, 'EMAIL_MISSING'),
+                            ({'email': self.PRIVATE_TEXT}, 'EMAIL_MISMATCH'),
+                            ({'email': entry.restore.IDENTITY, 'disabled': None}, 'DISABLED_INVALID'),
+                            ({'email': entry.restore.IDENTITY, 'disabled': True}, 'STATE_MISMATCH')]:
+            with self.subTest(code=code):
+                self.stopped_run(value, 'RUNTIME_IDENTITY_' + code)
+        self.stopped_run({'email': entry.restore.IDENTITY}, 'RUNTIME_IDENTITY_DISABLED_MISSING', preflight=True)
+
+    def test_failed_reads_and_private_errors_remain_unconfirmed_without_retries(self):
+        for error in (Stop('NATIVE_COMMAND_REFUSED'), Stop('NATIVE_COMMAND_UNCONFIRMED'),
+                      Stop('NATIVE_OUTPUT_ENCODING'), RuntimeError(self.PRIVATE_TEXT)):
+            self.stopped_run(error, 'LOCAL_ADAPTER_OR_SOURCE_STOP')
+
+    def test_interruption_and_cleanup_disagreement_preserve_conservative_outcomes(self):
+        self.stopped_run(None, 'INTERRUPTED', interrupt=True)
+        self.stopped_run({'email': entry.restore.IDENTITY, 'disabled': True},
+                         'RUNTIME_IDENTITY_STATE_MISMATCH', cleanup_mismatch=True)
+
+    def test_concurrent_connected_entry_never_reaches_readback(self):
+        fixture = self.fixture(connected=True)
+        fd = os.open(fixture.root/'entry.lock', os.O_CREAT | os.O_WRONLY, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with patch.object(entry.RuntimeAdapter, 'readback') as readback:
+                with self.assertRaisesRegex(Stop, 'ENTRY_ALREADY_RUNNING'):
+                    fixture.run_entry()
+                readback.assert_not_called()
+            self.assertEqual(fixture.calls, 0)
+            self.assertFalse((fixture.root/'attempt.json').exists())
+        finally:
+            os.close(fd)
+
+
 for _name in EntryTests.__dict__:
     if _name.startswith('test_'):
         setattr(ConnectedEntryTests,_name,None)

@@ -8,12 +8,12 @@
     "postgres_driver.mjs": "3ff902f711a7ccfc97a84df798fddf2bfe0c3fc46dc3ecc7b3acb9240061b034",
     "test_child_cleanup.py": "47b789abb53393218993ec1dde58593101087eb52772b24ae146a34987643b7d",
     "test_connected_payment.mjs": "9786f9321f5a66e2befd74f120a3ccb9817c5690cc128240c1658de486a10082",
-    "test_entry.py": "760762a75497e2d88a98fe276c0a06e705b0fb8c45b57fd6e82510559006bbc3",
+    "test_entry.py": "1407f3c88a57aa209dee499caa7c5e9900cbe3c180b097aae00fc375bb68394c",
     "test_key_lifecycle.py": "875fe1b8b1a34374118ac904255e3c116e9524308c3348d77d1b67b36b9ccfd6",
     "test_native_postgres.py": "4abdd64770526ecd81d99d700c5ab1d36e1f67f18265eb38cf79274abb3a7896",
     "test_private_inventory_cc1.py": "ff50193e6f48428a77a3a0068e71c9afec698b75b05e03a10584bd554cf7cd3f",
     "test_transports.mjs": "23368feeb28ff41aaed729c2653fac2ae352e2e5d39722b39123fbac247a1a4d"
   },
-  "runtimeManifestSha256": "a04dd4473a6c40056fa2d5ea30df7c9750662ccac6b62d2d6984cbfb8233aae1",
+  "runtimeManifestSha256": "75ed094bb6c3926089e9a71b35b9e9f2f9b910e83aa13889f5e3025b39b4cab0",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }

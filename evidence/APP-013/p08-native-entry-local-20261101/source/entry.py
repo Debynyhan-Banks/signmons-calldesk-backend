@@ -42,6 +42,9 @@ PREFLIGHT_CODES = frozenset({
     'CLOCK_ROLLBACK', 'DEADLINE', 'INTERRUPTED', 'PAYMENT_PREFLIGHT_STOP',
     'PREFLIGHT_CLI_DENIED', 'PREFLIGHT_SQL_DENIED', 'PREFLIGHT_SQL_ENV',
     'PREFLIGHT_HTTPS_DENIED', 'PREFLIGHT_CHILD_DENIED', 'PREFLIGHT_PROCESS_UNCONFIRMED',
+    'RUNTIME_IDENTITY_OUTPUT_SHAPE', 'RUNTIME_IDENTITY_EMAIL_MISSING',
+    'RUNTIME_IDENTITY_EMAIL_MISMATCH', 'RUNTIME_IDENTITY_DISABLED_MISSING',
+    'RUNTIME_IDENTITY_DISABLED_INVALID', 'RUNTIME_IDENTITY_STATE_MISMATCH',
 })
 
 
@@ -97,6 +100,32 @@ class RuntimeAdapter(restore.NativeAdapter):
 
 
     def readback(self, kind, name, enabled, p, deadline):
+        if kind == 'identity':
+            try:
+                value = self.cloud(['iam', 'service-accounts', 'describe', restore.IDENTITY,
+                                    '--project=signmons', '--format=json(email,disabled)'], deadline)
+            except BaseException as error:
+                if (type(error) is Stop and len(error.args) == 1 and
+                        type(error.args[0]) is str and error.args[0] == 'NATIVE_OUTPUT_SHAPE'):
+                    raise c.Stop('RUNTIME_IDENTITY_OUTPUT_SHAPE') from None
+                raise
+            if not isinstance(value, dict):
+                raise c.Stop('RUNTIME_IDENTITY_OUTPUT_SHAPE') from None
+            # Preserve the inherited predicate, including omitted-field and numeric
+            # equality behavior. Classification changes only rejected observations.
+            if value.get('email') == restore.IDENTITY and value.get('disabled', False) == (not enabled):
+                return True
+            if 'email' not in value:
+                code = 'RUNTIME_IDENTITY_EMAIL_MISSING'
+            elif value.get('email') != restore.IDENTITY:
+                code = 'RUNTIME_IDENTITY_EMAIL_MISMATCH'
+            elif 'disabled' not in value:
+                code = 'RUNTIME_IDENTITY_DISABLED_MISSING'
+            elif type(value['disabled']) not in (bool, int, float) or value['disabled'] not in (False, True):
+                code = 'RUNTIME_IDENTITY_DISABLED_INVALID'
+            else:
+                code = 'RUNTIME_IDENTITY_STATE_MISMATCH'
+            raise c.Stop(code) from None
         if kind != 'role':
             observed = super().readback(kind, name, enabled, p, deadline)
             if (observed and enabled and kind == 'version' and name == 'signmons-staging-stripe-secret-key'
