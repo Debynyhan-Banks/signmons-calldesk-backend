@@ -1,0 +1,55 @@
+{
+  "status": "KD3_CONSUMED_KEY_CONTAINMENT_OBSERVED_LOCAL_CLEANUP_VERIFIED",
+  "sourceCommit": "136ec7289410ad803e8cb1afc849fcbc88096d83",
+  "approvalCommit": "1ec1e5fd82a1a859513c74df1dbd8805091c56c6",
+  "operationId": "1d8d4749-365f-4ac5-8195-244fbcd6b754",
+  "r46OperationId": "6c03d490-2a71-4392-baaa-a41dd274dc41",
+  "result": {
+    "cacheReserved": 1,
+    "cliReserved": 2,
+    "completedAt": "2026-11-14T15:12:15.405139+00:00",
+    "configurationUnchanged": true,
+    "deleteReserved": true,
+    "expectedUidBound": true,
+    "failure": null,
+    "httpsReserved": 4,
+    "keyContainmentConfirmed": true,
+    "localResiduals": [],
+    "mutationFailure": null,
+    "onTime": true,
+    "pollsReserved": 1,
+    "processCleanupVerified": true,
+    "readbackFailure": null,
+    "status": "CONTROL_PLANE_DELETED"
+  },
+  "verification": {
+    "verifiedAt": "2026-11-14T15:12:45.782004+00:00",
+    "executorIndependentlyAbsent": true,
+    "receiptInventoryAndModesVerified": true,
+    "ownedPreparationRemoved": true,
+    "configurationUnchangedReceiptVerified": true,
+    "rawPrivateReceiptFieldsAbsent": true,
+    "onTime": true
+  },
+  "receiptHashes": {
+    "read-cache.json": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+    "result.json": "19d6c6b61259ae046fbe45993ee2d2a861def0d8787b0351ba0658e29d24caaa",
+    "read-final.json": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+    "read-initial.json": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+    "read-delete.json": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+    "attempt.json": "e94478d600996674f0119332059ba39633ee2084d7760d5d767b30af19de00a6",
+    "read-project.json": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+    "read-poll-1.json": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+    "read-owner.json": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+    "entry.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "r46OwnedKeyContainment": "RECONCILED_BY_FRESH_CONTROL_PLANE_DELETED_READ",
+  "accountResiduals": [
+    "ACCOUNT_SESSION",
+    "AUTH_OUTCOME_UNKNOWN",
+    "AUTH_REVOKE"
+  ],
+  "historicalNativeFailureCause": "UNKNOWN",
+  "paymentObserved": false,
+  "replayAllowed": false
+}
