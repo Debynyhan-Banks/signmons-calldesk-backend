@@ -1,0 +1,20 @@
+{
+  "cliReservations": 3,
+  "configurationMatches": true,
+  "disabledBoolean": true,
+  "disabledPresent": true,
+  "disabledValue": true,
+  "emailMatched": true,
+  "failure": null,
+  "finishedAt": "2026-11-14T22:02:54.999891+00:00",
+  "onTime": true,
+  "operationId": "8a9f60c5-05f8-44ac-8973-0134f230f536",
+  "ownerMatched": true,
+  "paymentObserved": false,
+  "privateInputsAbsent": true,
+  "processClosed": true,
+  "projectMatched": true,
+  "providerMutations": 0,
+  "status": "CURRENT_DISABLED_CONFIRMED",
+  "uidMatched": true
+}

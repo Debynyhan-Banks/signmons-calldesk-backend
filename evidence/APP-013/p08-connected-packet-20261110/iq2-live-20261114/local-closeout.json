@@ -1,0 +1,13 @@
+{
+  "operationId": "8a9f60c5-05f8-44ac-8973-0134f230f536",
+  "verifiedAt": "2026-11-14T22:04:09.322286+00:00",
+  "rootCustodyVerified": true,
+  "safeInventoryOnly": true,
+  "processClosed": true,
+  "configurationMatches": true,
+  "privateInputsAbsent": true,
+  "onTime": true,
+  "status": "CURRENT_DISABLED_CONFIRMED",
+  "reconciles": "IQ1_IDENTITY_RESTORATION_UNKNOWN",
+  "originalIq1ReceiptUnchanged": true
+}
