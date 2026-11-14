@@ -1,0 +1,110 @@
+{
+  "verifiedAt": "2026-11-14T20:30:40.620965+00:00",
+  "survivingOriginalRootIdentitiesVerified": true,
+  "qualificationInputRootAbsent": true,
+  "receiptCustodyVerified": true,
+  "privateInputsAbsent": true,
+  "locksReleased": true,
+  "configurationUnchanged": true,
+  "privateInventorySource": "p08-native-entry-local-20261101/source/private_inventory.py:PRIVATE and inspect",
+  "originalReceiptHashes": {
+    "native/attempt.json": {
+      "sha256": "2d0819b36b4007d042152566f5f3150da4ca410a150d8a5b25bb6b761a8a3a79",
+      "size": 137
+    },
+    "native/journal.json": {
+      "sha256": "783ce25c05f57ebf6dabc7d6a9a9384153013c16c05f63a865a1fa715f4043bd",
+      "size": 1416
+    },
+    "native/work-result.json": {
+      "sha256": "7d17c20187ea03deef715e176e5fee3a3676889749c431aafe2c1fee059b8fee",
+      "size": 250
+    },
+    "native/result.json": {
+      "sha256": "eaf8c978df30b631f3626fa51f04561a01ff29259a5d07163f2d29786e2aeb2b",
+      "size": 282
+    },
+    "native/closeout.json": {
+      "sha256": "6e02093f6aafa4f3e6a836c7904428d00432e785c52c5e593bb14b7cd2bfc481",
+      "size": 55
+    },
+    "native/independent-closeout.json": {
+      "sha256": "6e02093f6aafa4f3e6a836c7904428d00432e785c52c5e593bb14b7cd2bfc481",
+      "size": 55
+    },
+    "native/child-1.json": {
+      "sha256": "bb24167dd17c7528d433f64f432c0c7fa7f1245c4b6efb69beedff97891efe44",
+      "size": 83
+    },
+    "recovery/attempt.json": {
+      "sha256": "b8073f811edc8fb30fdb767a7cea709c6e784a29ba9d2f292aa00e63b73ae6bf",
+      "size": 176
+    },
+    "recovery/recovery-result.json": {
+      "sha256": "6094cc73fd5d63921f62c7dc1c909b95a7088cb4b4c4fd617e67387c5eb722c3",
+      "size": 201
+    },
+    "recovery/resource-closeout.json": {
+      "sha256": "cb524bb80fbd3f6723cf552f276e21639827ecf27ef8bc93e8d3102a701c9223",
+      "size": 35
+    },
+    "recovery/purge-result.json": {
+      "sha256": "44c3fdd48002903ba82bfeaa3d68525a6cdc87d81b8da741c8c71faeac235435",
+      "size": 182
+    },
+    "qualification/attempt.json": {
+      "sha256": "adc79a1db36b7083ff4831174c787807f046acd60333a549a3adb43cece7d65b",
+      "size": 228
+    },
+    "qualification/result.json": {
+      "sha256": "330128ab7553f110f0239fc87c9964788dc6a908642c0b7166b0b2d427d41f97",
+      "size": 948
+    },
+    "qualification/independent-closeout.json": {
+      "sha256": "2ef348bfaeee77160504e2b18442dc2af998a0d43b8065b60c4834524d50f26d",
+      "size": 55
+    }
+  },
+  "additionalProviderCalls": 0,
+  "credentialReads": 0,
+  "processAndUi": {
+    "verifiedAt": "2026-11-14T20:31:03.005094+00:00",
+    "exactOperationProcessesAbsent": true,
+    "originalPurgeGuardPidAbsent": true,
+    "terminalWindowId": 24463,
+    "terminalBusy": false,
+    "chromeWindowMetadata": [
+      {
+        "id": "1250953261",
+        "mode": "normal"
+      },
+      {
+        "id": "1250954560",
+        "mode": "incognito"
+      }
+    ],
+    "browserOpenerAttemptAbsent": true,
+    "readTerminalContents": false,
+    "readBrowserTabsOrUrls": false
+  },
+  "browserWindowSetUnchanged": true,
+  "copiedReceiptHashes": {
+    "r48-native-attempt.json": "2d0819b36b4007d042152566f5f3150da4ca410a150d8a5b25bb6b761a8a3a79",
+    "r48-native-journal.json": "783ce25c05f57ebf6dabc7d6a9a9384153013c16c05f63a865a1fa715f4043bd",
+    "r48-native-work-result.json": "7d17c20187ea03deef715e176e5fee3a3676889749c431aafe2c1fee059b8fee",
+    "r48-native-result.json": "eaf8c978df30b631f3626fa51f04561a01ff29259a5d07163f2d29786e2aeb2b",
+    "r48-native-closeout.json": "6e02093f6aafa4f3e6a836c7904428d00432e785c52c5e593bb14b7cd2bfc481",
+    "r48-native-independent-closeout.json": "6e02093f6aafa4f3e6a836c7904428d00432e785c52c5e593bb14b7cd2bfc481",
+    "r48-native-child-1.json": "bb24167dd17c7528d433f64f432c0c7fa7f1245c4b6efb69beedff97891efe44",
+    "r48-recovery-attempt.json": "b8073f811edc8fb30fdb767a7cea709c6e784a29ba9d2f292aa00e63b73ae6bf",
+    "r48-recovery-recovery-result.json": "6094cc73fd5d63921f62c7dc1c909b95a7088cb4b4c4fd617e67387c5eb722c3",
+    "r48-recovery-resource-closeout.json": "cb524bb80fbd3f6723cf552f276e21639827ecf27ef8bc93e8d3102a701c9223",
+    "r48-recovery-purge-result.json": "44c3fdd48002903ba82bfeaa3d68525a6cdc87d81b8da741c8c71faeac235435",
+    "r48-qualification-attempt.json": "adc79a1db36b7083ff4831174c787807f046acd60333a549a3adb43cece7d65b",
+    "r48-qualification-result.json": "330128ab7553f110f0239fc87c9964788dc6a908642c0b7166b0b2d427d41f97",
+    "r48-qualification-independent-closeout.json": "2ef348bfaeee77160504e2b18442dc2af998a0d43b8065b60c4834524d50f26d"
+  },
+  "independentSafeReceiptReview": "PASS_CURRENT_OPERATION_ONLY_NOT_PAYMENT_SUCCESS",
+  "sourceBoundaryReview": "NO_DETERMINISTIC_SOURCE_DEFECT_REPRODUCED;EXACT_LIVE_MISMATCH_UNKNOWN",
+  "scopeDeviation": "No scope deviation"
+}
