@@ -1,0 +1,31 @@
+{
+  "status": "TR16_CONSUMED_SUCCEEDED_CLOSED",
+  "result": {
+    "cacheReserved": 1,
+    "cliReserved": 1,
+    "completedAt": 1794662274.963288,
+    "configurationUnchanged": true,
+    "decisionCommit": "cfe476edf0878d21adf58051736eafa6481721e7",
+    "elapsedSeconds": 27.194,
+    "exitCode": 0,
+    "groupAbsent": true,
+    "leaderReaped": true,
+    "onTime": true,
+    "outputDisposition": "OS_DEVNULL",
+    "ownedPid": 39373,
+    "providerResourceRequests": 0,
+    "reservation": "owner-signin-20261114-tr16",
+    "sdkAuthenticationRequestCount": "UNKNOWN",
+    "sdkCacheMaintenanceAuthorized": true,
+    "sourceCommit": "2646cff1d900a9bd1ec7f410f1bb5ef37638f797",
+    "status": "VALID_THROUGH_CUTOFF",
+    "validThrough": "2026-11-14T13:50:00Z"
+  },
+  "verification": {
+    "ownedLeaderAndGroupIndependentlyAbsent": true,
+    "receiptModesAndInventoryVerified": true,
+    "executorRemoved": true
+  },
+  "replayAllowed": false,
+  "paymentObserved": false
+}
