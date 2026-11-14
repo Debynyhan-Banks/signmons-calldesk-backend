@@ -1,0 +1,25 @@
+{
+  "status": "LR1_LOOKUP_ABSENT_CLOSED",
+  "sourceCommit": "ce282d1e4e9f76636bb189fa22287f6ba3a6973e",
+  "approvalCommit": "a591ba65f9b152839c57c9b95035d1afaf594f57",
+  "result": {
+    "cliReservations": 3,
+    "failure": null,
+    "lookupState": "ABSENT",
+    "onTime": true,
+    "operationId": "99491ae3-9898-4e87-8ca8-9671da346c22",
+    "ownerMatched": true,
+    "processCleanupVerified": true,
+    "projectMatched": true,
+    "providerMutations": 0,
+    "residuals": [],
+    "scopeSha256": "b3c2e8d78b38e48c0e904c8a3d7d2a56a736a49d2db3844e7d466f0657fba594"
+  },
+  "ownedProcessesIndependentlyAbsent": true,
+  "receiptInventoryModesVerified": true,
+  "temporaryExecutorsRemoved": true,
+  "r43CurrentLookupUncertaintyReconciled": true,
+  "r43FailureCause": "UNKNOWN",
+  "replayAllowed": false,
+  "paymentObserved": false
+}
