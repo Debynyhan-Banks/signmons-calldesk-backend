@@ -1,0 +1,30 @@
+{
+  "status": "LOCAL_EXCEPTION_MASKING_REPRODUCED",
+  "cases": [
+    {
+      "case": "synthetic_endpoint_pin",
+      "actualValidatorCode": "PAYMENT_ENDPOINT_PIN",
+      "exceptionClass": "Stop",
+      "recognizedByLauncher": false,
+      "exitCode": 2,
+      "launcherOutput": [
+        "CONNECTED_STAGE_PACKET_PREPARATION",
+        "CONNECTED_STOP_Stop"
+      ]
+    },
+    {
+      "case": "synthetic_timing",
+      "actualValidatorCode": "PAYMENT_TIMING",
+      "exceptionClass": "Stop",
+      "recognizedByLauncher": false,
+      "exitCode": 2,
+      "launcherOutput": [
+        "CONNECTED_STAGE_PACKET_PREPARATION",
+        "CONNECTED_STOP_Stop"
+      ]
+    }
+  ],
+  "r42UnderlyingCause": "UNKNOWN;original inputs purged",
+  "providerCalls": 0,
+  "credentialReads": 0
+}
