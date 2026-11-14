@@ -1,0 +1,20 @@
+{
+  "verifiedAt": "2026-11-14T20:06:30.552272+00:00",
+  "status": "TR21_CLOSED",
+  "sourceCommit": "45c4da2c4a87ff9c90147ec0a0dd5a3884d4376a",
+  "approvalCommit": "f6b4771921b4bb564beeaa24c77a8b6e1493d2fb",
+  "validThrough": "2026-11-14T21:00:00Z",
+  "resultSha256": "89ccc8619cfbe283a37b1ee8ff7d4f545bd6b90857b8758e19f505ea1ddc4423",
+  "ownedLeaderAbsent": true,
+  "ownedGroupAbsent": true,
+  "configurationUnchanged": true,
+  "receiptCustodyVerified": true,
+  "exclusiveLockReleased": true,
+  "executorRemoved": true,
+  "executedSha256": "f093a3bedb5f1a0378af938060fc97bab6c4264bfba29538135e8359b682c752",
+  "localResiduals": [],
+  "providerResourceRequests": 0,
+  "credentialCheck": "SINGLE_CONSUMED_VALID_THROUGH_CUTOFF",
+  "sdkAuthenticationRequestCount": "UNKNOWN",
+  "scopeDeviation": "No scope deviation"
+}
