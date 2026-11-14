@@ -1,0 +1,179 @@
+{
+  "acceptedWalkthroughMilestones": "1A/1B/2A/2B = 4/8",
+  "aggregateManifestSha256": "6c794f8780219d09d7f31bdb825b765afdb2e48761b6d85729dfc74a6b7dfdc9",
+  "bounds": {
+    "cleanupReserveUnchanged": true,
+    "cliCeilingUnchanged": 192,
+    "combinedFivePollCreateFivePollDeleteAndIndependentReadHttps": 15,
+    "combinedSimulatedPollSeconds": 100,
+    "everyPossibleSlowProviderCompletionGuaranteed": false,
+    "existingWorstCaseCli": 191,
+    "httpsCeilingUnchanged": 100
+  },
+  "checks": {
+    "architecture": true,
+    "backendGovernanceBaseline": true,
+    "build": true,
+    "committedRuntimeTestQualificationAndAggregateGraphs": true,
+    "docsConsistency": true,
+    "frozenBaseline": true,
+    "historicalBridgeCoordinatorAdapterUnchanged": true,
+    "independentReadOnlyReview": "NO_BLOCKING_FINDING",
+    "lint": true,
+    "priorNativeLockedHashesUnchanged": true,
+    "whitespaceBothRepositories": true
+  },
+  "coverage": {
+    "browser": "15 tests including actual existing bridge/headless Chrome, exact JXA on local synthetic page in owned incognito window, URL via stdin, authority/private-file/deadline/rollback guards, concurrent one-attempt marker and no automatic payment actions.",
+    "connectedWorkflow": "Full25 Node transport/payment tests plus desktop/mobile local TLS PostgreSQL application/browser tests; forged/foreign/unpaid/duplicate/out-of-order event behavior and single logical payment request remain verified locally.",
+    "keyLifecycle": "24 actual capability-gate, NativeIO HTTPS and RequestAdapter tests with synthetic provider replies; omitted done, paced final poll, malformed/error/foreign output, durable intent/operation/UID, interruption, fresh-process recovery, lost POST gated, one DELETE with final readback, metadata drift and no secret leakage.",
+    "privateInventory": "4 tests including fresh-process purge of malformed/unfinished lifecycle receipts; existing uncommitted-journal STOP preserved; marker retained without URL.",
+    "processAndHttps": "14 tests with actual local children/descendants, unrelated sentinel, coordinator abort, Handoff timeout merge, held pipe, oversize and TERM/KILL/reap; response closure on success/error/interrupt."
+  },
+  "credentialReads": 0,
+  "externalExecutionAuthorized": false,
+  "implementationBase": "bacadceb2213576e9ff14636cbc64bc5aa7bb16f",
+  "nextObservableResult": "Fresh exact readiness review followed, only under fresh authority, by attended same-job Sandbox payment, authentic matching event/application readback, independent cleanup and owner acceptance.",
+  "ownerApprovalCommit": "b5969d963acb7bb8e687a1bcdcfa57f436b18874",
+  "ownerDecision": "APPROVE_CC1_CONSOLIDATED_LOCAL_IMPLEMENTATION",
+  "owners": {
+    "credentials": "credential custodian",
+    "liveScopeAndAttendance": "owner",
+    "localVerification": "implementer",
+    "providerContainment": "cloud custodian"
+  },
+  "paymentReadyForAcceptance": false,
+  "preliminaryRunNotes": [
+    "Repeated npm build cleared dist but retained generated TypeScript build cache; cleared only tsconfig.build.tsbuildinfo and clean build emitted required modules. No build configuration change.",
+    "Early integrated runs were invalidated by concurrent local source edits and SOURCE_DRIFT. Final584 tests ran after source was frozen and committed.",
+    "First exact JXA fixture dispatch was unconfirmed; cause UNKNOWN. Subsequent isolated exact-JXA and final full connected suite passed. No automatic live retry authorized.",
+    "Existing bridge CSS exposes Checkout label before href exists. New fixture verifies no href/navigation/payment/provider call; UI unchanged."
+  ],
+  "productionDatabaseCalls": 0,
+  "providerCalls": 0,
+  "r1NewlyClosed": "0/27",
+  "runtimeManifestSha256": "80c177fa09b1062940871624a5ce2fa5667d4867ae7654e5e944d84f4a94b05f",
+  "sandboxPaymentPerformed": false,
+  "scope": "No scope deviation beyond owner-approved CC1 internal corrections. No acceptance criteria, section count/order or future ticket promotion changed.",
+  "section": "APP-013/3A/P08/CC1",
+  "section3A": "OPEN",
+  "sourceCommit": "bb809d9c0b304a1d4a43386b1f3521dd600c0f26",
+  "status": "LOCAL_VERIFIED_LIVE_NOT_RUN",
+  "testManifestSha256": "e475ba313c42081e72934c246458981a6108bb2e85d4595bac8dca126d204129",
+  "tests": {
+    "build": {
+      "command": "Remove only generated tsconfig.build.tsbuildinfo; npm run build",
+      "exitCode": 0,
+      "log": "cc1-build-checks.log",
+      "sha256": "cfb251bed5b3af3fdc1177a6b5d1ded009ff57d50c77d11363cd2609239c8474"
+    },
+    "connected": {
+      "command": [
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "evidence/APP-013/p08-connected-packet-20261110",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0,
+      "log": "cc1-connected-tests.log",
+      "sha256": "b2bf0e6ccb9546bd346e8538d8f6e484e43ee03f9e7e958dd4edbce9ace6d6b0",
+      "sourceCommit": "bb809d9c0b304a1d4a43386b1f3521dd600c0f26",
+      "tests": 92
+    },
+    "correction": {
+      "command": [
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "evidence/APP-013/p08-key-correction-20261110",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0,
+      "log": "cc1-correction-tests.log",
+      "sha256": "1b65037bf5631309ad0c3d84a4a94d2eb771e7b9779a317bc22b0f6d7feb0b6a",
+      "sourceCommit": "bb809d9c0b304a1d4a43386b1f3521dd600c0f26",
+      "tests": 52
+    },
+    "governance": {
+      "command": [
+        "node",
+        "--test",
+        "scripts/frozen-baseline-check.test.mjs",
+        "scripts/execution-placement.test.mjs",
+        "scripts/intelligence-alignment-check.test.mjs"
+      ],
+      "exitCode": 0,
+      "log": "cc1-governance-checks.log",
+      "sha256": "4913a4561e47a38a055c0016b0489d9d902808bc0d06b2d9da6e01ca366536e2",
+      "tests": 25
+    },
+    "lint": {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "log": "cc1-lint-checks.log",
+      "sha256": "e8d3f9d6543c48ac36c4ffc99ef5d6896f17c3ffa28b6eafff5a911545f0df93"
+    },
+    "native": {
+      "command": [
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "evidence/APP-013/p08-native-entry-local-20261101/source",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0,
+      "log": "cc1-native-tests.log",
+      "sha256": "d2caf6c6507564051d7bd1c20f2f09174e03886cbd86439940d22f233a3d36de",
+      "sourceCommit": "bb809d9c0b304a1d4a43386b1f3521dd600c0f26",
+      "tests": 100
+    },
+    "node": {
+      "command": [
+        "node",
+        "--test",
+        "evidence/APP-013/p08-native-entry-local-20261101/source/test_transports.mjs",
+        "evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs"
+      ],
+      "exitCode": 0,
+      "log": "cc1-node-tests.log",
+      "sha256": "bcbf1f854f6c8954a53cd9db6a6f5d02292c3cfce063574a382a06a8693b6abf",
+      "sourceCommit": "bb809d9c0b304a1d4a43386b1f3521dd600c0f26",
+      "tests": 25
+    },
+    "qualification": {
+      "command": [
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "evidence/APP-013/p08-https-output-category-local-20261029/source",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0,
+      "log": "cc1-qualification-tests.log",
+      "sha256": "a411d269c63251b384b671aacc6ac499efee76ca4ff12c18a1adbb69bca597b9",
+      "sourceCommit": "bb809d9c0b304a1d4a43386b1f3521dd600c0f26",
+      "tests": 290
+    }
+  },
+  "totalTests": 584,
+  "unknowns": [
+    "Current provider configuration and effective permissions",
+    "Current credential validity",
+    "Live API operation propagation and browser execution",
+    "Same-job authentic Sandbox event and application gate acceptance"
+  ],
+  "verifiedAt": "2026-11-14T13:52:09.431101+00:00"
+}

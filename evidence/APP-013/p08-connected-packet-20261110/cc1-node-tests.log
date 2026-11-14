@@ -1,0 +1,33 @@
+✔ actual native child payment and cleanup: normal (289.937375ms)
+✔ actual native child payment and cleanup: unpaid (264.717083ms)
+✔ actual native child payment and cleanup: lost_create (263.429375ms)
+✔ actual native child payment and cleanup: lost_enable (245.592958ms)
+✔ actual native child payment and cleanup: foreign_endpoint (163.8385ms)
+✔ actual native child payment and cleanup: disable_failed (249.710167ms)
+✔ current payment context refuses foreign, stale, incomplete and preexisting state (96.993792ms)
+✔ endpoint missing/null/live/version/event drift fails closed (90.7175ms)
+✔ version1 cannot accept payment and scope cannot omit payment (226.752917ms)
+✔ fresh cleanup child recovers failed disable without reauthentication or new payment (314.647375ms)
+✔ recovery uses actual policy profile and keeps disabled/active phases distinct (100.712625ms)
+✔ actual payment preflight preserves safe failure evidence: denied (178.311167ms)
+✔ actual payment preflight preserves safe failure evidence: missing_payload (179.846333ms)
+✔ actual payment preflight preserves safe failure evidence: malformed_json (181.64325ms)
+✔ actual payment preflight preserves safe failure evidence: live_key (192.996584ms)
+✔ actual payment preflight preserves safe failure evidence: newline_key (282.672542ms)
+✔ actual payment preflight preserves safe failure evidence: transport (272.824333ms)
+✔ actual payment preflight preserves safe failure evidence: foreign_code (202.803416ms)
+✔ actual payment preflight preserves safe failure evidence: streamed_success (177.5235ms)
+✔ native defaults reject a local proof capability before any owner/DB/fetch (178.379542ms)
+✔ actual child entry runs with injected ports and rejects reuse of one reserved call (254.355459ms)
+✔ outer capability cannot be forged for native ports (0.125833ms)
+✔ serialized oversized provider body fails before authentication (166.611417ms)
+✔ unapproved HTTPS host refuses before injected transport (185.533375ms)
+✔ child budget is finite and cleanup capability cannot run activation path (179.829667ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4088.496958
