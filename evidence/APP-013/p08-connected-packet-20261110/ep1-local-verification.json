@@ -1,0 +1,24 @@
+{
+  "section": "APP-013/3A/EP1",
+  "status": "LOCAL_VERIFIED",
+  "sourceCommit": "c1897c9272d5d9354d8ffc626d5776585db8de55",
+  "ownerApprovalCommit": "3f6ef3c",
+  "verifiedAt": "2026-11-14T11:34:47.984703+00:00",
+  "tests": {
+    "connected": 50,
+    "governance": 25,
+    "total": 75
+  },
+  "exactCommittedChangedFiles": "PASS",
+  "sourceManifests": "unchanged and verified; launcher uses existing committed-source binding",
+  "normalQualifierNativeSqlTransportSources": "unchanged; historical BT1 runtime evidence not represented as new",
+  "safeNativeCodes": 6,
+  "unknownForeignMalformedSecretMessages": "generic fallback verified",
+  "actualValidatorPinAndTiming": "distinct safe codes; rejection preserved",
+  "independentPurgeAfterBoundPreparationFailure": "PASS",
+  "baselineConsistencyArchitectureWhitespace": "PASS",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "r42UnderlyingCause": "UNKNOWN;original inputs purged",
+  "liveExecution": "NOT_RUN"
+}
