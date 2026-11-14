@@ -1,0 +1,37 @@
+{
+  "status": "TR18_CONSUMED_SUCCEEDED_CLOSED",
+  "result": {
+    "cacheReserved": 1,
+    "cliReserved": 1,
+    "completedAt": 1794666813.601412,
+    "configurationUnchanged": true,
+    "decisionCommit": "3130cac9ed8cd963f816dc3b71278eca232372f1",
+    "elapsedSeconds": 10.073,
+    "exitCode": 0,
+    "groupAbsent": true,
+    "leaderReaped": true,
+    "localResiduals": [],
+    "onTime": true,
+    "outputDisposition": "OS_DEVNULL",
+    "ownedPid": 39701,
+    "providerResourceRequests": 0,
+    "reservation": "owner-signin-20261114-tr18",
+    "sdkAuthenticationRequestCount": "UNKNOWN",
+    "sdkCacheMaintenanceAuthorized": true,
+    "sourceCommit": "12e69f607cefd02f66ae35d35b003b4eb8981fa1",
+    "status": "VALID_THROUGH_CUTOFF",
+    "validThrough": "2026-11-14T15:30:00Z"
+  },
+  "verification": {
+    "verifiedAt": "2026-11-14T14:34:35.047284+00:00",
+    "ownedLeaderAndGroupIndependentlyAbsent": true,
+    "receiptModesAndInventoryVerified": true,
+    "currentExactConfigurationVerified": true,
+    "executorRemoved": true,
+    "executorSha256": "9da97a366649e32cb98cc2c99e333f549ff2a4702957c515f283960f4a35fa04",
+    "credentialReadsDuringVerification": 0,
+    "providerCallsDuringVerification": 0
+  },
+  "replayAllowed": false,
+  "paymentObserved": false
+}
