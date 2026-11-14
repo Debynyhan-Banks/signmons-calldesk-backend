@@ -270,6 +270,7 @@ class Boundary:
         self.process_closed = True
         self.config_closed = False
         self.failure = self.cleanup_failure = None
+        self.cleanup_readback_failure = None
         self.stage = 'PREPARE'
         self.cloud = Cloud(self.send)
         self.adapter = object.__new__(entry.RuntimeAdapter)
@@ -361,7 +362,18 @@ class Boundary:
         self.stage = 'DISABLE'
         self.adapter.change('identity', m.IDENTITY, False, {}, self.times['cleanupEnd'])
         self.stage = 'DISABLED_READBACK'
-        need(self.adapter.readback('identity', m.IDENTITY, False, {}, self.times['cleanupEnd']), 'IQ1_READBACK')
+        try:
+            need(self.adapter.readback('identity', m.IDENTITY, False, {}, self.times['cleanupEnd']), 'IQ1_READBACK')
+        except entry.c.Stop as error:
+            reason = code(error)
+            # This read returned through the owned transport/serializer. Retain
+            # its failure, then use the already budgeted final UID observation.
+            # Source/configuration/transport failures are not classified RB1
+            # observations and must not enter this continuation path.
+            if not reason.startswith('RUNTIME_IDENTITY_'):
+                raise
+            self.cleanup_readback_failure = reason
+            self.cleanup_failure = reason
         self.stage = 'FINAL_UID'
         final_uid, disabled = self.metadata()
         need(final_uid == self.uid and disabled is True, 'IQ1_UID')
@@ -418,6 +430,7 @@ def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time
     result = {**journal.binding(), 'status': 'QUALIFIED_AND_CLOSED' if qualified else
               'CONTAINMENT_UNCONFIRMED' if residuals else 'FAILED_AND_CLOSED',
               'failure': driver.failure, 'cleanupFailure': driver.cleanup_failure,
+              'cleanupReadbackFailure': driver.cleanup_readback_failure,
               'mainStage': main_stage, 'cleanupStage': driver.stage,
               'counts': driver.counts, 'uidSha256': driver.uid,
               'enabledReadback': driver.enabled, 'restorationReadback': driver.restored,

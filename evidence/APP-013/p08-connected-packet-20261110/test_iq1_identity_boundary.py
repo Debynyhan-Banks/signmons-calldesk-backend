@@ -156,11 +156,108 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(r['failure'], 'RUNTIME_IDENTITY_OUTPUT_SHAPE')
         self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
 
-    def test_cleanup_disagreement_stays_unknown(self):
+    def test_cleanup_disagreement_still_blocks_qualification_after_final_restoration(self):
         self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY, 'disabled': False}).encode() if i == 10 else None
         r = self.run_case()
         self.assertEqual(r['cleanupFailure'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
+        self.assertTrue(r['restorationReadback'])
+        self.assertEqual(r['cleanupReadbackFailure'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
+        self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
+        self.assertEqual(r['counts']['cleanup'], 6)
+
+    def test_missing_disabled_readback_final_uid_restoration(self):
+        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY}).encode() if i == 10 else None
+        r = self.run_case()
+        self.assertEqual(r['cleanupFailure'], 'RUNTIME_IDENTITY_DISABLED_MISSING')
+        self.assertEqual(r['cleanupReadbackFailure'], 'RUNTIME_IDENTITY_DISABLED_MISSING')
+        self.assertTrue(r['restorationReadback'])
+        self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
+        self.assertEqual(r['counts']['cleanup'], 6)
+
+    def test_malformed_readback_and_final_uid_mismatch_retain_both_codes(self):
+        def hook(name, i):
+            if i == 10:
+                return b'null'
+            if i == 11:
+                self.fake.uid = '999999999999999999999'
+        self.fake.hook = hook
+        r = self.run_case()
+        self.assertEqual(r['cleanupReadbackFailure'], 'RUNTIME_IDENTITY_OUTPUT_SHAPE')
+        self.assertEqual(r['cleanupFailure'], 'IQ1_UID')
         self.assertFalse(r['restorationReadback'])
+        self.assertEqual(r['status'], 'CONTAINMENT_UNCONFIRMED')
+
+    def test_final_metadata_missing_disabled_does_not_confirm_restoration(self):
+        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY, 'uniqueId': UID}).encode() if i == 11 else None
+        r = self.run_case()
+        self.assertFalse(r['restorationReadback'])
+        self.assertIn('IDENTITY_RESTORATION_UNKNOWN', r['residuals'])
+
+    def test_readback_transport_failure_does_not_dispatch_final_read(self):
+        def hook(name, i):
+            if i == 10:
+                raise k.m.Stop('PROCESS_CLEANUP_UNCONFIRMED')
+        self.fake.hook = hook
+        r = self.run_case()
+        self.assertEqual(r['counts']['cleanup'], 5)
+        self.assertEqual(r['cleanupFailure'], 'IQ1_PROCESS')
+        self.assertIsNone(r['cleanupReadbackFailure'])
+
+    def test_final_transport_failure_preserves_first_readback_code(self):
+        def hook(name, i):
+            if i == 10:
+                return b'null'
+            if i == 11:
+                raise k.m.Stop('PROCESS_TIMEOUT')
+        self.fake.hook = hook
+        r = self.run_case()
+        self.assertEqual(r['cleanupReadbackFailure'], 'RUNTIME_IDENTITY_OUTPUT_SHAPE')
+        self.assertEqual(r['cleanupFailure'], 'IQ1_DEADLINE')
+        self.assertFalse(r['restorationReadback'])
+
+    def test_configuration_drift_after_classified_readback_blocks_final_read(self):
+        calls = [0]
+        def config():
+            calls[0] += 1
+            # The hook arms drift after readback transport; the immediate gate
+            # catches it before a classified response can authorize continuation.
+            return 'b' * 64 if len(self.fake.calls) >= 10 else CONFIG
+        self.config = config
+        self.fake.hook = lambda name, i: b'null' if i == 10 else None
+        r = self.run_case()
+        self.assertEqual(r['counts']['cleanup'], 5)
+        self.assertFalse(r['restorationReadback'])
+
+    def test_source_drift_between_classified_readback_and_final_read_blocks_dispatch(self):
+        checks = [0]
+        def guard(s):
+            if len(self.fake.calls) == 10:
+                checks[0] += 1
+                if checks[0] > 1:
+                    raise k.Stop('IQ1_SOURCE')
+        self.guard = guard
+        self.fake.hook = lambda name, i: b'null' if i == 10 else None
+        r = self.run_case()
+        self.assertEqual(r['cleanupReadbackFailure'], 'RUNTIME_IDENTITY_OUTPUT_SHAPE')
+        self.assertEqual(r['cleanupFailure'], 'IQ1_SOURCE')
+        self.assertEqual(r['counts']['cleanup'], 5)
+
+    def test_deadline_after_classified_readback_blocks_final_dispatch(self):
+        def coordinate(driver):
+            sequential(driver)
+            original = driver.adapter.readback
+            def readback(*args):
+                try:
+                    return original(*args)
+                except k.entry.c.Stop:
+                    self.now += 801
+                    raise
+            driver.adapter.readback = readback
+        self.fake.hook = lambda name, i: b'null' if i == 10 else None
+        r = self.run_case(coordinate)
+        self.assertEqual(r['cleanupReadbackFailure'], 'RUNTIME_IDENTITY_OUTPUT_SHAPE')
+        self.assertEqual(r['cleanupFailure'], 'IQ1_DEADLINE')
+        self.assertEqual(r['counts']['cleanup'], 5)
 
     def test_final_uid_disagreement_stays_unknown(self):
         def hook(name, i):
