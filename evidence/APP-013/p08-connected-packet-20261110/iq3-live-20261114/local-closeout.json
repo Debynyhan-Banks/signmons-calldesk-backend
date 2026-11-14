@@ -1,0 +1,14 @@
+{
+  "verifiedAt": "2026-11-14T22:31:19.061061+00:00",
+  "operationId": "37c34fd2-6b2e-4b7f-bd1a-108756c5c627",
+  "status": "FAILED_AND_CLOSED",
+  "processesAbsent": true,
+  "leaseReleased": true,
+  "configurationUnchanged": true,
+  "sourceVerified": true,
+  "privateInputDirectoryAbsent": true,
+  "receiptCustodyVerified": true,
+  "withinPurgeDeadline": true,
+  "providerCallsAdded": 0,
+  "automaticRetryAllowed": false
+}
