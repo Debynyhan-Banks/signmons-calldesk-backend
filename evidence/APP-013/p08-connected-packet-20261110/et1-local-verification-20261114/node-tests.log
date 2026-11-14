@@ -1,0 +1,33 @@
+✔ actual native child payment and cleanup: normal (278.863666ms)
+✔ actual native child payment and cleanup: unpaid (263.470125ms)
+✔ actual native child payment and cleanup: lost_create (256.445875ms)
+✔ actual native child payment and cleanup: lost_enable (254.677958ms)
+✔ actual native child payment and cleanup: foreign_endpoint (154.29325ms)
+✔ actual native child payment and cleanup: disable_failed (226.814958ms)
+✔ current payment context refuses foreign, stale, incomplete and preexisting state (89.311416ms)
+✔ endpoint missing/null/live/version/event drift fails closed (89.7095ms)
+✔ version1 cannot accept payment and scope cannot omit payment (207.912625ms)
+✔ fresh cleanup child recovers failed disable without reauthentication or new payment (289.0695ms)
+✔ recovery uses actual policy profile and keeps disabled/active phases distinct (83.773333ms)
+✔ actual payment preflight preserves safe failure evidence: denied (150.685041ms)
+✔ actual payment preflight preserves safe failure evidence: missing_payload (150.0485ms)
+✔ actual payment preflight preserves safe failure evidence: malformed_json (157.548125ms)
+✔ actual payment preflight preserves safe failure evidence: live_key (151.835584ms)
+✔ actual payment preflight preserves safe failure evidence: newline_key (153.861875ms)
+✔ actual payment preflight preserves safe failure evidence: transport (140.818667ms)
+✔ actual payment preflight preserves safe failure evidence: foreign_code (139.920958ms)
+✔ actual payment preflight preserves safe failure evidence: streamed_success (138.911417ms)
+✔ native defaults reject a local proof capability before any owner/DB/fetch (173.234458ms)
+✔ actual child entry runs with injected ports and rejects reuse of one reserved call (254.755625ms)
+✔ outer capability cannot be forged for native ports (0.10325ms)
+✔ serialized oversized provider body fails before authentication (168.749625ms)
+✔ unapproved HTTPS host refuses before injected transport (170.501375ms)
+✔ child budget is finite and cleanup capability cannot run activation path (181.55ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3472.505834

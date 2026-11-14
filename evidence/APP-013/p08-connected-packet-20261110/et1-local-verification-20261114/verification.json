@@ -1,0 +1,105 @@
+{
+  "status": "ET1_LOCAL_VERIFICATION_PASS",
+  "section": "APP-013 / 3A / P08",
+  "recordedAt": "2026-11-14T18:03:50.339423+00:00",
+  "sourceBefore": "53925c43f95c2a713341dafdbba0be8d44c65668",
+  "sourceCommit": "4173ec0b3b8bf3dc81d607275a427101615a4c35",
+  "approvalCommit": "32cabcd29d926be11c3073747c5a8c883bb1cecb",
+  "proposalSha256": "3305612d4aca2cd7c5af481103d5876cdced1dba2e86f98adb652649cbea5507",
+  "tests": {
+    "native": {
+      "status": "PASS",
+      "count": 119,
+      "command": "python3 -B -m unittest discover -s evidence/APP-013/p08-native-entry-local-20261101/source -p 'test_*.py'",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/et1-local-verification-20261114/native-tests.log",
+      "logSha256": "d75ecf5edc2e603b12dc1470529975ec80d0d4fbbbfa90c8acd7108d49808899"
+    },
+    "connected": {
+      "status": "PASS",
+      "count": 136,
+      "command": "python3 -B -m unittest discover -s evidence/APP-013/p08-connected-packet-20261110 -p 'test_*.py'",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/et1-local-verification-20261114/connected-tests.log",
+      "logSha256": "3a2aedccb0f166e0878829ff4bceacfc22f713afb43cc7fb60e3dabddb0942a5"
+    },
+    "qualification": {
+      "status": "PASS",
+      "count": 290,
+      "command": "python3 -B -m unittest discover -s evidence/APP-013/p08-https-output-category-local-20261029/source -p 'test_*.py'",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/et1-local-verification-20261114/qualification-tests.log",
+      "logSha256": "142d1559445ff44d3174304d162dee58c1656d700a3a674bfda5fd92d27c4f6a"
+    },
+    "correction": {
+      "status": "PASS",
+      "count": 52,
+      "command": "python3 -B -m unittest discover -s evidence/APP-013/p08-key-correction-20261110 -p 'test_*.py'",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/et1-local-verification-20261114/correction-tests.log",
+      "logSha256": "42863763b5b216fd68b4261b3742f17c25f7abdcc98802ee04c7d0a51f0a57b7"
+    },
+    "node": {
+      "status": "PASS",
+      "count": 25,
+      "command": "node --test evidence/APP-013/p08-native-entry-local-20261101/source/test_transports.mjs evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/et1-local-verification-20261114/node-tests.log",
+      "logSha256": "f44b4a986d3fd81f8976c989203fe7eaa37ca5974d56b44105cb15ff7edb83ef"
+    },
+    "governance": {
+      "status": "PASS",
+      "count": 25,
+      "command": "node --test scripts/frozen-baseline-check.test.mjs scripts/execution-placement.test.mjs scripts/intelligence-alignment-check.test.mjs",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "log": "evidence/APP-013/p08-connected-packet-20261110/et1-local-verification-20261114/governance-tests.log",
+      "logSha256": "bc26c7e554e1b30c3fae3f5b04a6e42fc40d61cef0ae3c591ea6fab30417b1ab"
+    }
+  },
+  "totalTests": 647,
+  "focusedTestsIncludedInFullCounts": true,
+  "sourceVerification": "et1-source-verification.json",
+  "checks": {
+    "lint": "PASS",
+    "build": "PASS",
+    "architecture": "PASS",
+    "backendGovernanceBaseline": "PASS",
+    "governanceFrozenBaseline": "PASS",
+    "crossRepositoryConsistency": "PASS",
+    "bothRepositoriesWhitespace": "PASS",
+    "independentRuntimeAndTestDiffReview": "PASS",
+    "proposalUnchanged": "PASS",
+    "historicalSourceAndKQ1EvidenceUnchanged": "PASS"
+  },
+  "reviewer": "cc1_browser read-only independent review, including final deleted-metadata negative case",
+  "testSourceNote": "All suites exercised final runtime bytes. Native suite reran after the final additional negative test and manifest refresh; other suites were not redundantly rerun for test-only changes. The committed-source guard verified exact current and committed runtime/source graphs.",
+  "localOnly": true,
+  "externalActionAuthorized": false,
+  "credentialReads": 0,
+  "providerCalls": 0,
+  "externalSqlCalls": 0,
+  "paymentAttempts": 0,
+  "preservedHistoricalFiles": [
+    "evidence/APP-013/p08-connected-packet-20261110/kq1-result.json",
+    "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+    "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+    "evidence/APP-013/p08-connected-packet-20261110/kd1_cleanup.py"
+  ],
+  "liveUnknowns": [
+    "Fresh provider metadata/keyString behavior under corrected source",
+    "Live authentication and admitted-job payment/application gate",
+    "Why KQ1 provider etag changed",
+    "R46 historical cause"
+  ],
+  "acceptance": "1A/1B/2A/2B accepted, 4/8; 3A OPEN; R1 newly closed 0/27",
+  "nextObservableResult": "A new separately approved qualification either reaches the keyString/inert-sink boundary and confirms independent deletion/private purge, or records one bounded safe failure; no replay of consumed KQ1.",
+  "scopeDeviation": "No scope deviation; implements owner-approved ET1 internal correction.",
+  "finalDocumentationChecks": {
+    "checkedAt": "2026-11-14T18:05:37.882614+00:00",
+    "backendGovernanceBaseline": "PASS",
+    "governanceFrozenBaseline": "PASS",
+    "crossRepositoryConsistency": "PASS",
+    "architecture": "PASS",
+    "bothRepositoriesWhitespace": "PASS"
+  }
+}
