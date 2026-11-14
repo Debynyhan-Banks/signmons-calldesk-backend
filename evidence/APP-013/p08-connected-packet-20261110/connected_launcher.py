@@ -4,6 +4,19 @@ from pathlib import Path
 import packet as p
 q=p.q
 
+
+PAYMENT_FAILURE_CODES=frozenset({'PAYMENT_SCOPE_SHAPE','PAYMENT_SCOPE','PAYMENT_TIMESTAMP',
+    'PAYMENT_TIMING','PAYMENT_ENDPOINT_PIN','PAYMENT_BUILD_DRIFT'})
+
+def safe_failure_code(error):
+    if isinstance(error,q.model.Stop):return str(error)
+    try:native_stop=q.current_module('authority').Stop
+    except Exception:return type(error).__name__
+    if (type(error) is native_stop and len(error.args)==1 and type(error.args[0]) is str
+            and error.args[0] in PAYMENT_FAILURE_CODES):
+        return error.args[0]
+    return type(error).__name__
+
 def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass,session_consent=None,read_confirmation=None):
     review=Path(review) if review is not None else Path('/private/tmp/p08-public-review-'+spec['recoveryId'])
     def publish(stage,decision,details):
@@ -46,7 +59,7 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass,session_con
         stages={'PACKET_PREPARATION','QUALIFICATION_APPROVAL','RECOVERY_HANDOFF','CURRENT_QUALIFICATION','QUALIFICATION_RECEIPT','NATIVE_APPROVAL','NATIVE_HANDOFF','NATIVE_RUN_AND_CLOSEOUT','NATIVE_RECEIPT','RECOVERY_CLOSEOUT'}
         failure_stage=getattr(error,'connected_stage',stage)
         print('CONNECTED_STAGE_'+(failure_stage if failure_stage in stages else 'UNKNOWN'),flush=True)
-        print('CONNECTED_STOP_'+(str(error) if isinstance(error,q.model.Stop) else type(error).__name__),flush=True)
+        print('CONNECTED_STOP_'+safe_failure_code(error),flush=True)
         return 2
     finally:
         if cap is not None and not dispatched:

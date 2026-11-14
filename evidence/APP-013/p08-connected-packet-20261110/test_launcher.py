@@ -114,3 +114,63 @@ class LauncherBoundaryTests(unittest.TestCase):
                 code,seq=self.run_case(malformed=mutation)
                 self.assertEqual(code,2)
                 self.assertEqual(seq,['qualification-wait','qualification-dispatch','connected-cleanup'])
+
+
+class SafePreparationFailureTests(unittest.TestCase):
+    def output_for(self,error):
+        output=io.StringIO()
+        with patch.object(packet,'construct',side_effect=error),patch.object(packet,'execute_connected') as dispatch,contextlib.redirect_stdout(output):
+            result=launcher.main({'recoveryId':'synthetic'},read_hidden=lambda _: 'we_SECRET_CANARY')
+        self.assertEqual(result,2);dispatch.assert_not_called()
+        self.assertNotIn('SECRET_CANARY',output.getvalue())
+        return output.getvalue()
+
+    def test_exact_native_codes_are_visible_before_qualification(self):
+        native=packet.q.current_module('authority')
+        for code in launcher.PAYMENT_FAILURE_CODES:
+            with self.subTest(code=code):
+                self.assertEqual(self.output_for(native.Stop(code)),
+                    'CONNECTED_STAGE_PACKET_PREPARATION\nCONNECTED_STOP_'+code+'\n')
+
+    def test_unknown_foreign_subclass_and_malformed_messages_stay_generic(self):
+        native=packet.q.current_module('authority');foreign=type('Stop',(Exception,),{})
+        class Derived(native.Stop):pass
+        cases=[native.Stop('SECRET_CANARY'),native.Stop('PAYMENT_SCOPE\nSECRET_CANARY'),
+               native.Stop('PAYMENT_SCOPE:SECRET_CANARY'),native.Stop(),
+               native.Stop('PAYMENT_SCOPE','SECRET_CANARY'),native.Stop({'secret':'SECRET_CANARY'}),
+               foreign('PAYMENT_SCOPE'),Derived('PAYMENT_SCOPE'),RuntimeError('SECRET_CANARY')]
+        for error in cases:
+            with self.subTest(kind=type(error).__name__):
+                self.assertEqual(self.output_for(error),
+                    'CONNECTED_STAGE_PACKET_PREPARATION\nCONNECTED_STOP_'+type(error).__name__+'\n')
+
+    def test_existing_model_stop_and_interruption_remain_unchanged(self):
+        self.assertIn('CONNECTED_STOP_ATTENDED_CONFIRMATION_REFUSED',
+                      self.output_for(packet.q.model.Stop('ATTENDED_CONFIRMATION_REFUSED')))
+        self.assertIn('CONNECTED_STOP_KeyboardInterrupt',self.output_for(KeyboardInterrupt()))
+
+    def test_actual_payment_validator_distinguishes_pin_and_timing(self):
+        fixture=test_packet.PacketTests();fixture.setUp();self.addCleanup(fixture.doCleanups)
+        e=packet.construct_values(fixture.spec,fixture.values,'we_synthetic',fixture.cap)
+        a=packet.q.current_module('authority')
+        times={k:packet.q.model.timestamp(v) for k,v in fixture.spec['prospectiveWindow'].items()}
+        for code in ['PAYMENT_ENDPOINT_PIN','PAYMENT_TIMING']:
+            pay=copy.deepcopy(e['nativeScope']['payment'])
+            if code=='PAYMENT_TIMING':pay['workEnd']=fixture.spec['prospectiveWindow']['start']
+            try:a.validate_payment({'payment':pay,'execution':'EXTERNAL'},times)
+            except a.Stop as error:self.assertIn('CONNECTED_STOP_'+code,self.output_for(error))
+            else:self.fail('validator unexpectedly accepted synthetic scope')
+
+    def test_authority_loader_failure_does_not_leak_or_replace_original_category(self):
+        with patch.object(packet.q,'current_module',side_effect=RuntimeError('SECRET_CANARY')):
+            self.assertEqual(launcher.safe_failure_code(ValueError('SECRET_CANARY')),'ValueError')
+
+    def test_native_failure_after_recovery_binding_still_runs_independent_purge(self):
+        cap=SimpleNamespace(root=Path('/private/tmp/synthetic-ep1'))
+        e={'nativeScope':{},'plan':{'nativeScopeSha256':'a'*64}}
+        error=packet.q.current_module('authority').Stop('PAYMENT_TIMING')
+        output=io.StringIO()
+        with patch.object(packet,'construct',return_value=(cap,e)),patch.object(packet.q,'qualification_cleanup_scope',return_value={}),patch.object(packet.q,'QualificationCapability',side_effect=error),patch.object(packet.q,'private_json',return_value={}),patch.object(packet.q,'BindingRecoveryCapability',return_value=cap),patch.object(packet.q,'closeout_binding_recovery',return_value={'rawFilesAbsent':True}) as close,patch.object(packet,'execute_connected') as dispatch,contextlib.redirect_stdout(output):
+            self.assertEqual(launcher.main({'recoveryId':'synthetic'},read_hidden=lambda _: 'we_synthetic'),2)
+        close.assert_called_once_with(cap);dispatch.assert_not_called()
+        self.assertEqual(output.getvalue(),'CONNECTED_STAGE_PACKET_PREPARATION\nCONNECTED_STOP_PAYMENT_TIMING\nRECOVERY_PURGE_VERIFIED\n')
