@@ -1,0 +1,21 @@
+{
+  "observedAt": "2026-11-15T22:02:02.312864+00:00",
+  "privateInputsAbsent": true,
+  "matchingOperationProcessesAbsent": true,
+  "receiptCustodyVerified": true,
+  "browserOpenMarkerAbsent": true,
+  "providerContainment": "UNCONFIRMED",
+  "residuals": [
+    "ACCOUNT_SESSION",
+    "AUTH_OUTCOME_UNKNOWN",
+    "AUTH_REVOKE",
+    "PAYMENT_ENDPOINT_UNCONFIRMED"
+  ],
+  "noRetry": true,
+  "journalResiduals": [
+    "ACCOUNT_SESSION",
+    "AUTH_OUTCOME_UNKNOWN",
+    "AUTH_REVOKE"
+  ],
+  "endpointEvidence": "Final receipt unconfirmed; retained journal endpointDisabled true. Difference not reconciled."
+}

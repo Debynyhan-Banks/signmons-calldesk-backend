@@ -1,0 +1,27 @@
+{
+  "operationId": "cc2c1ce5-640f-41f4-a993-31063630207c",
+  "phase": "CLOSED",
+  "failure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+  "authAttempted": true,
+  "authProofAccepted": false,
+  "childResultSha256": null,
+  "residuals": [
+    "ACCOUNT_SESSION",
+    "AUTH_OUTCOME_UNKNOWN",
+    "AUTH_REVOKE"
+  ],
+  "unknown": [],
+  "authClientPresent": false,
+  "payment": {
+    "phase": "QUALIFIED",
+    "failureCode": null,
+    "enableIntent": false,
+    "endpointDisabled": true,
+    "endpointCalls": 1,
+    "secretReads": 1,
+    "residuals": []
+  },
+  "sourceJournalSha256": "73b8b7a26acded35afd0cc4ffd1e200167da8b0a6ecddd358603828ff4d4bff8",
+  "runtimeAttemptedCount": 17,
+  "runtimeCleanupAttemptedCount": 17
+}
