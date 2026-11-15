@@ -1,0 +1,21 @@
+{
+  "sourceCommit": "9d2de893e2ed61325b6d25df41eb713bf06f4196",
+  "manifestSha256": "104c3ff522047f3b96b41d70556d3a09a76fdc8c9bda18450ba622f11b5cd7a4",
+  "timestamp": "2026-11-15T14:39:35.754227+00:00",
+  "status": "LOCAL_VERIFIED_NOT_LIVE_READY",
+  "committedSourceGuard": "PASS",
+  "connectedTests": 232,
+  "nativeTests": 135,
+  "governanceTests": 25,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "historicalReceipts": "UNCHANGED_FROM_52eaeb7",
+  "unknowns": [
+    "Current provider identity state and effective access",
+    "Current credential usability",
+    "Actual cause of IQ4 missing state",
+    "R47 historical account flags"
+  ],
+  "authority": "SD3 local approval 3f55f45 and storage amendment approval 01a3f26",
+  "next": "Separate source-pinned qualification review; no launch authority"
+}
