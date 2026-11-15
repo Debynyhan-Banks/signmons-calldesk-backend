@@ -21,6 +21,7 @@ import time
 from types import SimpleNamespace
 
 import packet as p
+import identity_sdk_observation as sd3
 
 q, m = p.q, p.q.model
 a = q.current_module('authority')
@@ -129,8 +130,11 @@ def commands():
     return values
 
 
-def wrapped(argv):
+def wrapped(argv, binding='<SD3_BINDING>'):
     need(list(argv) in commands().values(), 'IQ1_COMMAND')
+    if list(argv) in (commands()['identity'], commands()['readback']):
+        return [SANDBOX, '-p', PROFILE, p.PYTHON, '-I', '-B', '-S',
+                str(HERE / 'identity_sdk_observation.py'), '--binding', binding, '--', *argv[1:]]
     return [SANDBOX, '-p', PROFILE, p.PYTHON, '-I', '-B', '-S', str(SDK), *argv[1:]]
 
 
@@ -166,8 +170,19 @@ def source_guard(scope, committed=True):
     manifest = json.loads(MANIFEST.read_bytes())
     need(set(manifest) == {'version', 'files', 'sdkFiles'} and manifest['version'] == 1, 'IQ1_SOURCE')
     need({str((HERE / name).relative_to(p.B)) for name in
-          ('iq1_identity_boundary.py', 'test_iq1_identity_boundary.py', 'packet.py')} <= set(manifest['files']) and
+          ('iq1_identity_boundary.py', 'test_iq1_identity_boundary.py', 'packet.py',
+           'identity_sdk_observation.py', 'test_identity_sdk_observation.py')} <= set(manifest['files']) and
          {SANDBOX, p.PYTHON, str(SDK)} <= set(manifest['sdkFiles']), 'IQ1_SOURCE')
+    need(sd3.SDK.resolve() == SDK.resolve() and
+         {str(SDK.parent / name) for name in (
+             'third_party/apitools/base/py/base_api.py',
+             'third_party/apitools/base/py/encoding.py',
+             'googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_messages.py',
+             'googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_client.py',
+             'surface/iam/service_accounts/describe.py',
+             'googlecloudsdk/core/resource/resource_projector.py',
+             'googlecloudsdk/core/resource/json_printer.py')}
+         <= set(manifest['sdkFiles']), 'IQ1_SOURCE')
     for name, expected in manifest['files'].items():
         path = p.B / name
         need(not Path(name).is_absolute() and '..' not in Path(name).parts and
@@ -292,7 +307,7 @@ class Cloud:
 
 
 class Boundary:
-    def __init__(self, scope, journal, *, factory, guard, config, clock=time.time):
+    def __init__(self, scope, journal, *, factory, guard, config, clock=time.time, diagnostics=None):
         self.scope, self.journal, self.factory = scope, journal, factory
         self.guard, self.config, self.clock = guard, config, clock
         self.times = validate(scope, clock(), True)
@@ -307,6 +322,7 @@ class Boundary:
         self.failure = self.cleanup_failure = None
         self.cleanup_readback_failure = None
         self.observations = []
+        self.diagnostics = diagnostics
         self.stage = 'PREPARE'
         self.cloud = Cloud(self.send)
         self.adapter = object.__new__(entry.RuntimeAdapter)
@@ -332,6 +348,12 @@ class Boundary:
         deadline = self.gate()
         self.journal.put(f'{self.phase}-{index}.json', {**self.journal.binding(), 'step': expected[index]})
         self.counts[self.phase] += 1
+        binding = None
+        if self.diagnostics is not None and expected[index] in ('identity', 'readback'):
+            try:
+                binding = self.diagnostics.prepare(f'{self.phase}-{index}')
+            except Exception:
+                binding = None
         observation = {'phase': self.phase.upper(), 'step': expected[index], 'ordinal': index,
                        'startedAt': None, 'returnedAt': None, 'elapsedMs': None,
                        'outcome': 'NOT_CLASSIFIED'}
@@ -342,7 +364,10 @@ class Boundary:
         except Exception:
             pass  # Diagnostic clocks never replace the enforced execution clocks.
         try:
-            raw = self.io.run(argv, deadline)
+            if isinstance(self.io, NativeTransport):
+                raw = self.io.run(argv, deadline, diagnostic=binding)
+            else:
+                raw = self.io.run(argv, deadline)
         except BaseException:
             observation['outcome'] = 'TRANSPORT_FAILED'
             raise
@@ -358,6 +383,11 @@ class Boundary:
             except Exception:
                 pass  # Optional diagnostics cannot suppress the real predicate/cleanup.
         finally:
+            if self.diagnostics is not None and expected[index] in ('identity', 'readback'):
+                try:
+                    observation['sdkResponse'] = self.diagnostics.read(binding)
+                except Exception:
+                    observation['sdkResponse'] = {'status': 'UNAVAILABLE'}
             try:
                 if started is not None and ended is not None:
                     elapsed = ended - started
@@ -452,9 +482,10 @@ class Boundary:
         self.restored = True
 
 
-def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time.time):
+def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time.time, diagnostics=None):
     """One worker attempt. All injected dependencies mandatory; no native fallback."""
-    driver = Boundary(scope, journal, factory=factory, guard=guard, config=config, clock=clock)
+    driver = Boundary(scope, journal, factory=factory, guard=guard, config=config, clock=clock,
+                      diagnostics=diagnostics)
     journal.put('worker.json', journal.binding())
     try:
         driver.gate()
@@ -472,6 +503,12 @@ def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time
             driver.cleanup_failure = code(error)
         finally:
             driver.finish_processes()
+    diagnostic_closed = True
+    if diagnostics is not None:
+        try:
+            diagnostic_closed = diagnostics.close() if driver.process_closed else False
+        except Exception:
+            diagnostic_closed = False
     try:
         driver.config_closed = driver.config() == scope['configSha256']
         journal.inspect()
@@ -484,6 +521,8 @@ def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time
     except BaseException:
         source_closed = False
     residuals = []
+    if not diagnostic_closed:
+        residuals.append('DIAGNOSTIC_CLOSURE_UNKNOWN')
     if driver.intent and not driver.restored:
         residuals.append('IDENTITY_RESTORATION_UNKNOWN')
     if driver.intent and not driver.ack:
@@ -512,6 +551,7 @@ def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time
               'privateInputsAbsent': private_absent, 'residuals': residuals,
               'paymentObserved': False, 'finishedAt': clock()}
     result['observations'] = driver.observations
+    result['diagnosticClosed'] = diagnostic_closed
     journal.put('result.json', result)
     return result
 
@@ -534,10 +574,10 @@ class NativeTransport:
         self.io = q.NativeIO(time.time, scope['operationId'])
         self.env = q.sdk_environment(os.environ)
 
-    def run(self, argv, deadline):
+    def run(self, argv, deadline, diagnostic=None):
         previous = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGTERM})
         try:
-            return self.io._owned_run(wrapped(argv), self.env, deadline)
+            return self.io._owned_run(wrapped(argv, sd3.encode_binding(diagnostic)), self.env, deadline)
         finally:
             signal.pthread_sigmask(signal.SIG_SETMASK, previous)
 
@@ -629,7 +669,8 @@ def native_main(argv):
         signal.signal(signal.SIGTERM, interrupted)
         return run_worker(scope, journal, factory=lambda: NativeTransport(scope),
                           guard=lambda s: source_guard(s, committed=False), config=configuration,
-                          coordinate=coordinator)
+                          coordinate=coordinator,
+                          diagnostics=sd3.Store(scope['operationId'], journal.identity))
 
 
 if __name__ == '__main__':

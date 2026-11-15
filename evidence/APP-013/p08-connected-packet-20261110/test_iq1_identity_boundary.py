@@ -105,6 +105,43 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(self.fake.disabled)
         self.assertEqual(self.fake.closed, 2)
 
+    def test_partial_diagnostic_does_not_block_authoritative_cleanup(self):
+        store = k.sd3.Store(self.s['operationId'], self.j.identity,
+                           directory=Path(self.temp.name) / 'optional')
+        def partial(name, count):
+            for slot in store.records:
+                path = store.path / (slot + '.json')
+                path.write_bytes(b'{')
+        self.fake.hook = partial
+        result = k.run_worker(self.s, self.j, factory=lambda: self.fake, guard=self.guard,
+                              config=self.config, coordinate=sequential, clock=self.clock,
+                              diagnostics=store)
+        self.assertEqual(result['status'], 'QUALIFIED_AND_CLOSED')
+        self.assertTrue(result['diagnosticClosed'])
+        self.assertTrue(self.fake.disabled)
+        self.assertEqual(result['counts'], {'main': 5, 'cleanup': 6})
+        self.assertFalse(store.path.exists())
+
+    def test_foreign_diagnostic_retained_without_blocking_disable(self):
+        store = k.sd3.Store(self.s['operationId'], self.j.identity,
+                           directory=Path(self.temp.name) / 'optional')
+        def foreign(name, count):
+            if count == 5:
+                binding = dict(store.records['main-4'])
+                binding['nonce'] = '0' * 32
+                (store.path / 'main-4.json').write_text(json.dumps(
+                    {'binding': binding, 'labels': {'status': 'NO_MATCH'}}))
+        self.fake.hook = foreign
+        result = k.run_worker(self.s, self.j, factory=lambda: self.fake, guard=self.guard,
+                              config=self.config, coordinate=sequential, clock=self.clock,
+                              diagnostics=store)
+        self.assertFalse(result['diagnosticClosed'])
+        self.assertIn('DIAGNOSTIC_CLOSURE_UNKNOWN', result['residuals'])
+        self.assertTrue(result['restorationReadback'])
+        self.assertTrue(self.fake.disabled)
+        self.assertTrue((store.path / 'main-4.json').exists())
+        self.assertEqual(result['counts'], {'main': 5, 'cleanup': 6})
+
     def test_observations_preserve_counts_and_bind_baseline_without_raw_values(self):
         r = self.run_case()
         self.assertEqual(len(r['observations']), 11)
@@ -508,10 +545,16 @@ class BoundaryTests(unittest.TestCase):
                 getattr(cloud, name)()
 
     def test_wrapper_exact_scope_and_no_fallback(self):
-        for vector in k.commands().values():
+        for name, vector in k.commands().items():
             actual = k.wrapped(vector)
             self.assertEqual(actual[:7], [k.SANDBOX, '-p', k.PROFILE, k.p.PYTHON, '-I', '-B', '-S'])
-            self.assertEqual(actual[8:], vector[1:])
+            if name in ('identity', 'readback'):
+                self.assertEqual(actual[7], str(k.HERE / 'identity_sdk_observation.py'))
+                self.assertEqual(actual[8:11], ['--binding', '<SD3_BINDING>', '--'])
+                self.assertEqual(actual[11:], vector[1:])
+            else:
+                self.assertEqual(actual[7], str(k.SDK))
+                self.assertEqual(actual[8:], vector[1:])
         for vector in (['/usr/bin/true'], [k.q.GCLOUD, 'auth', 'print-access-token'],
                        [*k.commands()['enable'], '--project=other']):
             with self.assertRaises(k.Stop):

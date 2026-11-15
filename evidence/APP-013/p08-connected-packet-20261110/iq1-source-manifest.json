@@ -2,9 +2,11 @@
   "files": {
     "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb",
-    "evidence/APP-013/p08-connected-packet-20261110/iq1_identity_boundary.py": "2fb47182a5ff146d0f804e1fdda1d49747bf0947a4b843337896239dc504e812",
+    "evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py": "3342fd30bbffcfe628583a75958fcbb029e2f508a4f1ccf7d8de938374a27a2f",
+    "evidence/APP-013/p08-connected-packet-20261110/iq1_identity_boundary.py": "310c0cc1332d89da50b421698ce4dc3a686022b942b5206fecb59d47f301a79d",
     "evidence/APP-013/p08-connected-packet-20261110/packet.py": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa",
-    "evidence/APP-013/p08-connected-packet-20261110/test_iq1_identity_boundary.py": "15a5df756e6b165c9d73eb967ce2bb8d05994ca4ee7d9185d5068bec40c333b8",
+    "evidence/APP-013/p08-connected-packet-20261110/test_identity_sdk_observation.py": "482c8d89b8409c3fa5a82ef3da4210ecd1fbe885bbaa80317659df173f6d3fcb",
+    "evidence/APP-013/p08-connected-packet-20261110/test_iq1_identity_boundary.py": "5c9774b744d88a56980c04bc2ce91c90019e5c35b6319ebcd0cf97489b7455cf",
     "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs": "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5",
     "evidence/APP-013/p08-https-output-category-local-20261029/source/composed_qualification.py": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a",
     "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda",
@@ -80,7 +82,14 @@
     "/opt/homebrew/opt/postgresql@16/bin/psql": "e67224e11a8d29541c02528b814b17c0757da7d961f16c58003561e20263528d",
     "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py": "d223bce54ff2e1441268e73b06eec4830032dd7b4b17b8fa9e2638d4f6d8d39d",
     "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/metrics.py": "045019bf8cd4739e12f106529e87760a2a4d192920b1331ba968db00e8448724",
+    "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/resource/json_printer.py": "42ab2c2f08b1303f3f0c6efb096f82fe454420685286dfeb578a870889ea9c28",
+    "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/resource/resource_projector.py": "27fe2f3a5ce0b1f16adbd57ce82e9beda26b9da56aa34f62a39c0bd4a3da6e21",
     "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/util/platforms.py": "97f0c82d1fe8df84ade4e53ff601dd17ac584095f652d8a692f7f2048e4fa0c2",
+    "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_client.py": "304f81531be1e0f8bb05c726aec9a6053f80a11cec1867245231f6276ad0ebcf",
+    "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_messages.py": "5afc8f08c9a04eb4f956a7ca6771cd657f708f474255e5ca0d98d6dc367b8f85",
+    "/opt/homebrew/share/google-cloud-sdk/lib/surface/iam/service_accounts/describe.py": "e44a2fa74029ddf2205212c4ae5242abb396926389d01e7df0b7dc84c2ad9e97",
+    "/opt/homebrew/share/google-cloud-sdk/lib/third_party/apitools/base/py/base_api.py": "5e2ad1e9565f101fe347302a4085494079dfa6ceead73c2240e2a15f8318733c",
+    "/opt/homebrew/share/google-cloud-sdk/lib/third_party/apitools/base/py/encoding.py": "463c35d071e2325a603f01880e1192cb2d18fe056f6718ced9f22144a00dd955",
     "/usr/bin/sandbox-exec": "e7e596515c7357d2e50a182f7db5fef2b71762d85efaac9594599ccb6e0a73d5"
   },
   "version": 1
