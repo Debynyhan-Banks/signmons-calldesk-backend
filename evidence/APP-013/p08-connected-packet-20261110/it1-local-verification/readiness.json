@@ -1,0 +1,27 @@
+{
+  "recordedAt": "2026-11-15T14:06:42.298505+00:00",
+  "sourceCommit": "943f1c9477e5f66e0a57c9f873f56c90d0962231",
+  "manifestSha256": "ebbd1c9bda6aa8a9a157397d8d486dfb2be70ed3714d42deaaa79290f2e6158f",
+  "committedSourceGuard": "PASS",
+  "sourceGuardSeconds": 0.506,
+  "connectedTests": 205,
+  "iq1TestsIncluded": 69,
+  "nativeTests": 135,
+  "providerCalls": 0,
+  "credentialCacheReads": 0,
+  "historicReceipts": "UNCHANGED",
+  "status": "LOCAL_DIAGNOSTIC_IMPLEMENTATION_COMPLETE_LIVE_UNTESTED",
+  "newProviderCallsAllowed": false,
+  "unknowns": [
+    "live observation outcome",
+    "original IQ3 cause",
+    "current external state"
+  ],
+  "scopeDeviation": "No deviation beyond approved IT1 safe result fields",
+  "governanceTests": 25,
+  "finalTestTotal": 365,
+  "architecture": "PASS",
+  "frozenBaseline": "PASS",
+  "crossRepositoryConsistency": "PASS",
+  "whitespaceBothRepositories": "PASS"
+}
