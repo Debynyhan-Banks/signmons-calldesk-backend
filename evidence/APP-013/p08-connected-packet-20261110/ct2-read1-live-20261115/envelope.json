@@ -1,0 +1,58 @@
+{
+  "decision": {
+    "commit": "291e3460f95f3f0097d2d8d2ed9519233a94d4b9",
+    "path": "APP013_P08_CT2_EXTERNAL_20261115_94b345bd.json",
+    "sha256": "b74bcdb534830bee485f5b0f3a552741bf2cafe01d0a6949c878160ac193721a"
+  },
+  "scope": {
+    "action": "READ_CURRENT_ACCOUNT_CONTAINMENT_ONCE",
+    "commands": [
+      {
+        "argv": [
+          "/opt/homebrew/bin/gcloud",
+          "auth",
+          "list",
+          "--filter=status:ACTIVE",
+          "--format=json(account,status)"
+        ],
+        "id": "owner"
+      },
+      {
+        "argv": [
+          "/opt/homebrew/bin/gcloud",
+          "projects",
+          "describe",
+          "signmons",
+          "--format=json(projectId,projectNumber,lifecycleState)"
+        ],
+        "id": "project"
+      },
+      {
+        "argv": [
+          "/opt/homebrew/bin/gcloud",
+          "auth",
+          "print-access-token"
+        ],
+        "id": "token"
+      }
+    ],
+    "configSha256": "528ceadadc8a5491e54ee82dbad0026eda881252564f96f2be242d70d1d2f111",
+    "limits": {
+      "accountSql": 1,
+      "cli": 3,
+      "closeoutSql": 1,
+      "firebase": 1
+    },
+    "manifestSha256": "e11f7d43db0f4fea0926f2e597e0e88269f755a543ef9d67921b53287f3755fe",
+    "operationId": "94b345bd-287d-4a8a-92cf-cf50d2a18dd5",
+    "sdkException": "SDK_OWNER_REFRESH_RETRY_CACHE_EXPLICIT_TOKEN_MEMORY_ONLY",
+    "sourceCommit": "a93fc72aef90e7d3e8e3424f3d25f9f9551a6575",
+    "window": {
+      "cleanupEnd": "2026-11-15T16:30:00Z",
+      "cutoff": "2026-11-15T16:15:00Z",
+      "purgeEnd": "2026-11-15T16:32:00Z",
+      "readEnd": "2026-11-15T16:20:00Z",
+      "start": "2026-11-15T16:00:00Z"
+    }
+  }
+}

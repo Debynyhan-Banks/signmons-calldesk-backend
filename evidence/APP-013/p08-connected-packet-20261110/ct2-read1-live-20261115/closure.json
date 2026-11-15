@@ -1,0 +1,14 @@
+{
+  "operationId": "94b345bd-287d-4a8a-92cf-cf50d2a18dd5",
+  "observedAt": "2026-11-15T16:03:28.877530+00:00",
+  "safeReceiptCustody": "VERIFIED",
+  "mainReservations": 5,
+  "cleanupReservations": 1,
+  "operationCommandAbsent": true,
+  "configurationUnchanged": true,
+  "temporaryLaunchEnvelopeAbsent": true,
+  "privatePayloadsPersisted": false,
+  "externalRetry": false,
+  "status": "CLOSED",
+  "historicalAuthentication": "UNKNOWN"
+}
