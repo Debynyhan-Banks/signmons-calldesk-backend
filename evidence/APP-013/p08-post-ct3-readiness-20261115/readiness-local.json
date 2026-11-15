@@ -1,0 +1,29 @@
+{
+  "sourceCommit": "e4212d9c11856fb6b75684773b96c244ef497743",
+  "observedAt": "2026-11-15T23:46:47.707356+00:00",
+  "status": "LOCAL_REVIEW_NOT_LIVE_AUTHORITY",
+  "existingRecoveryPrepare": "PASS_ACTUAL_CURRENT_SOURCE_AND_CONFIG_WITH_INERT_AUTHORITY_AND_CLOCK",
+  "qualificationManifestSha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499",
+  "nativeManifestSha256": "e1e2fc56e5dd20d7d7a11743cb621d2a4e4a82af8f0ddc8141646afe8afa5288",
+  "sdkFiles": 43,
+  "nativeFiles": 10,
+  "nativeLockedSources": 18,
+  "committedQualificationNativeSourceAndSdkGuards": "PASS",
+  "actualNativeCapabilityProofOnly": {
+    "suite": "test_packet.PacketTests",
+    "testsRun": 5,
+    "passed": true,
+    "syntheticPrivateFields": true
+  },
+  "attemptOrLiveDecisionCreated": false,
+  "temporaryProofRootsRemoved": true,
+  "credentialReads": 0,
+  "providerCalls": 0,
+  "liveCredentialHorizon": "UNKNOWN",
+  "currentRuntimeIdentityAndSecretVersionState": "UNKNOWN",
+  "liveAuthenticationPayment": "UNKNOWN",
+  "currentContainmentEvidence": "CT3_LIVE2_RESULT_20261115_23:41:35Z",
+  "liveAuthority": "NONE",
+  "attendanceConfirmedThrough": "2026-11-16T00:00:00Z",
+  "boundReplacementWindow": "NOT_PREPARED"
+}

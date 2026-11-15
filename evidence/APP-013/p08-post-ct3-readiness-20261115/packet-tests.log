@@ -1,0 +1,10 @@
+test_candidate_must_match_complete_payment_scope (test_packet.PacketTests.test_candidate_must_match_complete_payment_scope) ... ok
+test_constructs_actual_native_capability_without_writing_or_authorizing (test_packet.PacketTests.test_constructs_actual_native_capability_without_writing_or_authorizing) ... ok
+test_foreign_operation_manifest_account_and_limits_refuse (test_packet.PacketTests.test_foreign_operation_manifest_account_and_limits_refuse) ... ok
+test_missing_binding_or_extended_retention_refuses (test_packet.PacketTests.test_missing_binding_or_extended_retention_refuses) ... ok
+test_preflight_purpose_binds_distinct_authority_and_rejects_payment_mode (test_packet.PacketTests.test_preflight_purpose_binds_distinct_authority_and_rejects_payment_mode) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.112s
+
+OK
