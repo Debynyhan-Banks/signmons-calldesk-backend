@@ -1,0 +1,17 @@
+...fatal: not a git repository (or any of the parent directories): .git
+.......................E......................................................................................................................................................................................................................
+======================================================================
+ERROR: test_production_jxa_dispatches_loopback_and_closes_only_owned_window (test_bootstrap_open.BootstrapTests.test_production_jxa_dispatches_loopback_and_closes_only_owned_window)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_bootstrap_open.py", line 251, in test_production_jxa_dispatches_loopback_and_closes_only_owned_window
+    b.open_chrome('http://127.0.0.1:' + str(server.server_port) + '/s/' + 'b' * 64, 10)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py", line 118, in open_chrome
+    raise Stop('BOOTSTRAP_CHROME_UNCONFIRMED') from None
+private_inventory.Stop: BOOTSTRAP_CHROME_UNCONFIRMED
+
+----------------------------------------------------------------------
+Ran 241 tests in 17.691s
+
+FAILED (errors=1)

@@ -1,0 +1,54 @@
+{
+  "sourceCommit": "2f19eb8326bcce6035eb0c1bfcceba7f3d62ad02",
+  "manifestSha256": "1f538314f845ceed4ec41c39ab0664191b6a8d91cf313b29784216d7ff14c2c8",
+  "recordedAt": "2026-11-15T15:09:12.659334+00:00",
+  "status": "LOCAL_VERIFIED_NOT_LIVE_READY",
+  "approval": "37c5329",
+  "sourceGuard": "PASS_COMMITTED",
+  "connectedTests": 241,
+  "nativeTests": 135,
+  "governanceTests": 25,
+  "initialConnectedFailure": "Chrome loopback fixture; isolated recheck and sequential full suite passed; first log retained",
+  "limits": {
+    "mainCli": 7,
+    "cleanupCli": 8,
+    "enable": 1,
+    "disable": 1,
+    "cache": 0,
+    "https": 0,
+    "sql": 0,
+    "payment": 0
+  },
+  "readbackPolicy": {
+    "maxPerPhase": 3,
+    "delaysAfterPreviousReturnSeconds": [
+      0,
+      5,
+      10
+    ],
+    "phaseMonotonicMaximumSeconds": 45,
+    "mutationRetries": 0
+  },
+  "safeDiagnosticSlots": [
+    "cleanup-2",
+    "cleanup-4",
+    "cleanup-5",
+    "cleanup-6",
+    "cleanup-7",
+    "main-2",
+    "main-4",
+    "main-5",
+    "main-6"
+  ],
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "unknowns": [
+    "Current live identity and effective permissions",
+    "Current credentials and configuration for any future operation",
+    "Cause of historical inconsistent responses",
+    "Whether proposed finite observation budget is sufficient",
+    "R47 historical account flags"
+  ],
+  "historicalReceipts": "UNCHANGED_FROM_588a285",
+  "next": "Fresh exact source/vector/budget/window qualification-only review; no automatic live packet or launch"
+}
