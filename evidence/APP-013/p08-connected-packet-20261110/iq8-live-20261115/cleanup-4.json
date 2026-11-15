@@ -1,0 +1,9 @@
+{
+  "operationId": "b4a5def1-2e23-4e3a-986b-ae936a9fca36",
+  "rootIdentity": [
+    16777231,
+    51922681
+  ],
+  "scopeSha256": "953db2c93ee4f0641c634bdfe5d83aa8d28bd4fdd2dd5833974b55c278a57365",
+  "step": "readback"
+}

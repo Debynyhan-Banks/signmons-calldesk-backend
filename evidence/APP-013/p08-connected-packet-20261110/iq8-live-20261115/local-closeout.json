@@ -1,0 +1,16 @@
+{
+  "verifiedAt": "2026-11-15T15:16:01.977833+00:00",
+  "operationId": "b4a5def1-2e23-4e3a-986b-ae936a9fca36",
+  "status": "QUALIFIED_AND_CLOSED",
+  "processesAbsent": true,
+  "leaseReleased": true,
+  "configurationUnchanged": true,
+  "sourceVerified": true,
+  "privateInputDirectoryAbsent": true,
+  "diagnosticDirectoryAbsent": true,
+  "receiptCustodyVerified": true,
+  "withinPurgeDeadline": true,
+  "providerCallsAdded": 0,
+  "identityRestoration": "CONFIRMED_AT_FINAL_OBSERVATION",
+  "automaticRetryAllowed": false
+}
