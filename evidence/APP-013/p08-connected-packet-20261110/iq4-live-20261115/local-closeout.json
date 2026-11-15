@@ -1,0 +1,15 @@
+{
+  "verifiedAt": "2026-11-15T14:11:12.018918+00:00",
+  "operationId": "e943ee1f-d8bb-47aa-a2b2-918206e1cf14",
+  "status": "CONTAINMENT_UNCONFIRMED",
+  "processesAbsent": true,
+  "leaseReleased": true,
+  "configurationUnchanged": true,
+  "sourceVerified": true,
+  "privateInputDirectoryAbsent": true,
+  "receiptCustodyVerified": true,
+  "withinPurgeDeadline": true,
+  "providerCallsAdded": 0,
+  "identityRestoration": "UNKNOWN",
+  "automaticRetryAllowed": false
+}
