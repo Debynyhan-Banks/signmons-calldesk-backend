@@ -27,10 +27,11 @@ LOCKS = {
 }
 OWNED_RECEIPT = "owned-receipt.json"
 MAX_OUTPUT = 4096
+AUTH_DIAGNOSTIC_FIELDS = {"authStage", "failureCategory", "httpStatus"}
 AUTH_FIELDS = {"operationId", "version", "phase", "activationIntent", "firebaseEnableIntent",
                "tokenIssueIntent", "authenticated", "closeoutAttempted", "activatedVersion",
                "disabledVersion", "residuals", "failureStage", "failureCode", "status",
-               "sessionClosed", "revocationIntentAt"}
+               "sessionClosed", "revocationIntentAt"} | AUTH_DIAGNOSTIC_FIELDS
 
 
 class Stop(Exception):
@@ -133,6 +134,18 @@ class Handoff:
             isinstance(child.get("residuals"), list) and
             all(isinstance(x, str) and re.fullmatch(r"[A-Z_]{2,48}", x) for x in child["residuals"]),
             "CHILD_JOURNAL_SHAPE")
+        diagnostics = set(child) & AUTH_DIAGNOSTIC_FIELDS
+        if diagnostics:
+            need(diagnostics == AUTH_DIAGNOSTIC_FIELDS and
+                 child.get("failureCode") == "SIGN_EXCHANGE_REFUSED" and
+                 type(child.get("authStage")) is str and
+                 child["authStage"] in {"SIGN", "KEY_READ", "EXCHANGE", "UNKNOWN"} and
+                 type(child.get("failureCategory")) is str and
+                 child["failureCategory"] in {"TRANSPORT", "HTTP", "RESPONSE_VALIDATION", "UNKNOWN"} and
+                 (child.get("httpStatus") is None or
+                  (type(child["httpStatus"]) is int and 100 <= child["httpStatus"] <= 599)) and
+                 (child["failureCategory"] == "HTTP" or child["httpStatus"] is None),
+                 "CHILD_JOURNAL_SHAPE")
         previous = before.get("authClient")
         need((previous is None and child["version"] >= 1) or
              (isinstance(previous, dict) and child["version"] >= previous.get("version", 0) and

@@ -6,12 +6,123 @@ import shutil
 import sys
 import time
 import unittest
+import uuid
 from pathlib import Path
+from types import SimpleNamespace
 
 import bound_handoff as h
 
 sys.path.insert(0, str(h.APP / 'p08-native-closeout-local-20261031/source'))
 import test_adapter as ta
+
+
+class ChildJournalMergeTests(unittest.TestCase):
+    """Exercise the real private-file/parent merge with supplied inert journals."""
+
+    def setUp(self):
+        operation = str(uuid.uuid4())
+        self.root = Path('/private/tmp/p08-coordinator-' + operation)
+        self.root.mkdir(mode=0o700)
+        self.plan = {'operationId': operation}
+        self.before = {'operationId': operation, 'planSha256': h.digest(self.plan),
+                       'authAttempted': True, 'phase': 'PREFLIGHT'}
+        # No constructor/launch/source-check substitution: this fixture invokes only
+        # the supplied-journal merge, never a coordinator run or provider port.
+        self.h = object.__new__(h.Handoff)
+        self.h.plan, self.h.dir = self.plan, self.root
+        self.h.coordinator = SimpleNamespace(j=copy.deepcopy(self.before))
+        self.child = {'operationId': operation, 'version': 7,
+                      'phase': 'CLOSEOUT_FINISHED', 'authenticated': False,
+                      'closeoutAttempted': True, 'residuals': [],
+                      'failureStage': 'TOKEN_INTENT', 'failureCode': 'SIGN_EXCHANGE_REFUSED',
+                      'sessionClosed': True, 'status': 'P08_COORDINATOR_AUTH_STOPPED_AND_CLOSED'}
+
+    def tearDown(self):
+        shutil.rmtree(self.root)
+
+    def merge(self, child, *, before=None, parent_changes=None):
+        before = copy.deepcopy(self.before if before is None else before)
+        self.h.coordinator.j = copy.deepcopy(before)
+        after = {**before, **(parent_changes or {}), 'authClient': child}
+        path = self.root / 'journal.json'
+        path.write_text(json.dumps(after))
+        os.chmod(path, 0o600)
+        return self.h._merge_child(before)
+
+    def assert_refused(self, child, code='CHILD_JOURNAL_SHAPE', **kwargs):
+        expected = copy.deepcopy(kwargs.get('before', self.before))
+        with self.assertRaisesRegex(h.Stop, '^' + code + '$') as caught:
+            self.merge(child, **kwargs)
+        self.assertEqual(self.h.coordinator.j, expected)
+        self.assertNotIn('PRIVATE_DIAGNOSTIC_SENTINEL', str(caught.exception))
+        self.assertNotIn('PRIVATE_DIAGNOSTIC_SENTINEL', json.dumps(self.h.coordinator.j))
+
+    def test_complete_diagnostics_survive_merge_and_parent_save(self):
+        for stage in ('SIGN', 'KEY_READ', 'EXCHANGE', 'UNKNOWN'):
+            for category, statuses in (('HTTP', (None, 100, 403, 599)),
+                                       ('TRANSPORT', (None,)),
+                                       ('RESPONSE_VALIDATION', (None,)), ('UNKNOWN', (None,))):
+                for status in statuses:
+                    with self.subTest(stage=stage, category=category, status=status):
+                        child = {**self.child, 'authStage': stage,
+                                 'failureCategory': category, 'httpStatus': status}
+                        self.assertEqual(self.merge(child), child)
+                        # A subsequent parent serialization must retain the accepted
+                        # fields, which the previous schema rejected before copying.
+                        saved = json.loads(json.dumps(self.h.coordinator.j))
+                        self.assertEqual(saved['authClient'], child)
+                        self.assertEqual({k: v for k, v in saved.items() if k != 'authClient'},
+                                         self.before)
+
+    def test_absent_diagnostic_group_remains_compatible(self):
+        for code in ('SIGN_EXCHANGE_REFUSED', 'ADAPTER_REFUSED_OR_UNKNOWN', None):
+            with self.subTest(code=code):
+                child = {**self.child}
+                if code is None:
+                    child.pop('failureCode')
+                else:
+                    child['failureCode'] = code
+                self.assertEqual(self.merge(child), child)
+
+    def test_partial_diagnostics_and_wrong_failure_code_refused(self):
+        values = {'authStage': 'SIGN', 'failureCategory': 'HTTP', 'httpStatus': 403}
+        keys = tuple(values)
+        for mask in range(1, 7):
+            with self.subTest(mask=mask):
+                group = {key: values[key] for i, key in enumerate(keys) if mask & (1 << i)}
+                self.assert_refused({**self.child, **group})
+        for code in ('ADAPTER_REFUSED_OR_UNKNOWN', None, False, ['SIGN_EXCHANGE_REFUSED']):
+            with self.subTest(code=code):
+                self.assert_refused({**self.child, **values, 'failureCode': code})
+
+    def test_invalid_diagnostic_enums_types_and_category_status_refused(self):
+        valid = {**self.child, 'authStage': 'SIGN', 'failureCategory': 'HTTP', 'httpStatus': 403}
+        for field in ('authStage', 'failureCategory'):
+            for value in (None, False, 403, [], {}, 'PRIVATE_DIAGNOSTIC_SENTINEL', 'sign'):
+                with self.subTest(field=field, value=value):
+                    self.assert_refused({**valid, field: value})
+        for status in (True, False, 99, 600, -1, 403.0, '403', [], {}):
+            with self.subTest(status=status):
+                self.assert_refused({**valid, 'httpStatus': status})
+        for category in ('TRANSPORT', 'RESPONSE_VALIDATION', 'UNKNOWN'):
+            with self.subTest(category=category):
+                self.assert_refused({**valid, 'failureCategory': category})
+
+    def test_unknown_fields_and_private_values_never_enter_parent(self):
+        valid = {**self.child, 'authStage': 'SIGN', 'failureCategory': 'HTTP', 'httpStatus': 403}
+        for field in ('message', 'stack', 'body', 'url', 'accessToken', 'password'):
+            with self.subTest(field=field):
+                self.assert_refused({**valid, field: 'PRIVATE_DIAGNOSTIC_SENTINEL'})
+
+    def test_diagnostics_do_not_bypass_identity_version_parent_or_temp_guards(self):
+        child = {**self.child, 'authStage': 'EXCHANGE', 'failureCategory': 'HTTP', 'httpStatus': 403}
+        self.assert_refused({**child, 'operationId': str(uuid.uuid4())}, 'CHILD_JOURNAL_ABSENT')
+        previous = {**self.before, 'authClient': {**child, 'version': 8}}
+        self.assert_refused(child, 'CHILD_JOURNAL_VERSION', before=previous)
+        self.assert_refused(child, 'JOURNAL_PARENT_DRIFT', parent_changes={'phase': 'FOREIGN'})
+        temporary = self.root / 'journal.json.auth-next'
+        temporary.write_text('PRIVATE_DIAGNOSTIC_SENTINEL')
+        self.assert_refused(child, 'JOURNAL_TEMP_REMAINS')
 
 
 class BoundHandoffTests(unittest.TestCase):

@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {readFileSync,rmSync} from 'node:fs';
+import {readFileSync,writeFileSync,rmSync} from 'node:fs';
 import {createRequire} from 'node:module';
-import {runChild} from './native_child.mjs';
+import {runChild,CHILD_FAILURE_STAGES,CHILD_FAILURE_CODES,childRefusal,serializeChildResult} from './native_child.mjs';
+import {PREFLIGHT_SQL} from '../../p08-real-client-binding-local-20261031/source/bound-clients.mjs';
 import {authorizeChild,gate} from './authority_bridge.mjs';
 import {createPorts} from './transports.mjs';
 import {fixturePorts} from './fixture_ports.mjs';
@@ -97,4 +98,100 @@ test('actual native child retains bounded HTTP failure status without response b
   assert.equal(signingCalls,1);assert.equal(result.authenticated,false);
   assert.equal(result.sessionClosed,true);assert.deepEqual(result.residuals,[]);
   assert.ok(!raw.includes('PRIVATE_SENTINEL'));
+});
+
+test('refusal contract is finite and ignores provider stage, messages and accessors',()=>{
+  for(const values of [CHILD_FAILURE_STAGES,CHILD_FAILURE_CODES]){
+    assert.ok(Object.isFrozen(values));assert.equal(new Set(values).size,values.length);
+  }
+  for(const error of [null,undefined,'PRIVATE_SENTINEL',new Error('PRIVATE_SENTINEL'),
+    {stage:'AUTHORITY',code:'PRIVATE_SENTINEL'},
+    Object.defineProperty({stage:'AUTHORITY'},'code',{get(){throw Error('PRIVATE_SENTINEL');}})]){
+    assert.deepEqual(childRefusal(error),{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'UNKNOWN',code:'UNCLASSIFIED'});
+  }
+  assert.deepEqual(childRefusal({code:'OWNER_DRIFT',stage:'AUTHORITY'}),
+    {status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'UNKNOWN',code:'OWNER_DRIFT'});
+});
+
+test('shared result serializer fixes the RESULT boundary without exposing thrown contents',()=>{
+  const result={toJSON(){throw Object.assign(Error('PRIVATE_SENTINEL'),{stage:'AUTHORITY'});}};
+  assert.throws(()=>serializeChildResult(result),error=>{
+    assert.deepEqual(childRefusal(error),{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'RESULT',code:'UNCLASSIFIED'});
+    return true;
+  });
+  assert.throws(()=>serializeChildResult(undefined),error=>childRefusal(error).code==='CHILD_RESULT');
+});
+
+test('real process and fixture share bounded INPUT refusal serialization',()=>{
+  for(const filename of ['native_child.mjs','fixture_child.mjs'])for(const input of ['', '{PRIVATE_SENTINEL', 'x'.repeat(131073)]){
+    const result=spawnSync(process.execPath,[fileURLToPath(new URL('./'+filename,import.meta.url)),'--run'],
+      {input,encoding:'utf8',timeout:10000,maxBuffer:8192});
+    assert.equal(result.status,2);assert.equal(result.stderr,'');
+    const frame=JSON.parse(result.stdout);
+    assert.deepEqual(frame,{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'INPUT',
+      code:input.length===0||input.length>131072?'CHILD_INPUT_BOUNDS':'UNCLASSIFIED'});
+    assert.ok(!result.stdout.includes('PRIVATE_SENTINEL'));
+  }
+});
+
+test('actual child labels input, authority and reservation independently',async t=>{
+  await assert.rejects(()=>runChild('--run',null),error=>{
+    assert.deepEqual(childRefusal(error),{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'INPUT',code:'CHILD_INPUT'});return true;
+  });
+  const authority=fixture(t);authority.receipt.deleted=true;
+  await assert.rejects(()=>runChild('--run',authority,fixturePorts(authority)),error=>{
+    assert.deepEqual(childRefusal(error),{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'AUTHORITY',code:'OWNED_KEY_SCOPE'});return true;
+  });
+  const reservation=fixture(t);reservation.childCall++;
+  await assert.rejects(()=>runChild('--run',reservation,fixturePorts(reservation)),error=>{
+    assert.deepEqual(childRefusal(error),{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'RESERVATION',code:'CHILD_RESERVATION'});return true;
+  });
+});
+
+for(const scenario of ['owner','connect','tls','preflight'])test('actual child startup failure retains CLIENT_BINDING: '+scenario,async t=>{
+  const r=fixture(t),ports=fixturePorts(r),Parent=ports.ClientClass;
+  if(scenario==='owner')ports.owner=async()=>{throw Object.assign(Error('PRIVATE_SENTINEL'),{code:'OWNER_DRIFT',stage:'RESULT'});};
+  else ports.ClientClass=class extends Parent {
+    constructor(config){super(config);this.auth=config.application_name.startsWith('p08-auth-');
+      if(this.auth&&scenario==='tls')this.connection.stream.authorized=false;}
+    async connect(){if(this.auth&&scenario==='connect')throw Error('PRIVATE_SENTINEL');return super.connect();}
+    async query(sql,args){return scenario==='preflight'&&sql===PREFLIGHT_SQL?{rows:[]}:super.query(sql,args);}
+  };
+  await assert.rejects(()=>runChild('--run',r,ports),error=>{
+    assert.deepEqual(childRefusal(error),{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'CLIENT_BINDING',
+      code:{owner:'OWNER_DRIFT',connect:'UNCLASSIFIED',tls:'TLS_REQUIRED',preflight:'DATABASE_PREFLIGHT'}[scenario]});return true;
+  });
+  const raw=readFileSync(r.envelopePath.replace(/envelope\.json$/,'journal.json'),'utf8');
+  assert.equal(JSON.parse(raw).authClient,undefined);assert.ok(!raw.includes('PRIVATE_SENTINEL'));
+});
+
+test('sequence initialization refusal retains its boundary',async t=>{
+  const r=fixture(t),path=r.envelopePath.replace(/envelope\.json$/,'journal.json'),j=JSON.parse(readFileSync(path));
+  j.authClient={operationId:j.operationId,version:1};writeFileSync(path,JSON.stringify(j));
+  await assert.rejects(()=>runChild('--run',r,fixturePorts(r)),error=>{
+    assert.deepEqual(childRefusal(error),{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'AUTH_SEQUENCE',code:'JOURNAL_CONCURRENT_DRIFT'});return true;
+  });
+});
+
+test('primary readback refusal survives a failing independent session close',async t=>{
+  const r=fixture(t),ports=fixturePorts(r),Parent=ports.ClientClass;let closes=0;
+  ports.ClientClass=class extends Parent {
+    constructor(config){super(config);this.auth=config.application_name.startsWith('p08-auth-');}
+    async end(){await super.end();if(this.auth){closes++;throw Error('PRIVATE_SENTINEL');}}
+  };
+  await assert.rejects(()=>runChild('--readback',r,ports),error=>{
+    assert.deepEqual(childRefusal(error),{status:'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED',stage:'READBACK',code:'REVOCATION_READBACK'});return true;
+  });
+  assert.equal(closes,1);
+});
+
+for(const failure of ['end','probe'])test('session '+failure+' failure still refuses successful containment',async t=>{
+  const r=fixture(t),ports=fixturePorts(r),Parent=ports.ClientClass;
+  ports.ClientClass=class extends Parent {
+    constructor(config){super(config);this.auth=config.application_name.startsWith('p08-auth-');}
+    async end(){await super.end();if(this.auth&&failure==='end')throw Error('PRIVATE_SENTINEL');}
+    async query(sql,args){return failure==='probe'&&sql.includes('pg_stat_activity')?{rows:[{count:1}]}:super.query(sql,args);}
+  };
+  const result=await runChild('--run',r,ports);
+  assert.equal(result.sessionClosed,false);assert.ok(result.residuals.includes('SESSION_CLOSEOUT'));
 });

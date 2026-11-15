@@ -1380,4 +1380,246 @@ for _name in EntryTests.__dict__:
     if _name.startswith('test_'):
         setattr(ConnectedEntryTests,_name,None)
 
+class ChildOutputContractTests(unittest.TestCase):
+    def test_python_and_node_literal_failure_contracts_match(self):
+        import handoff
+        script = "import {CHILD_FAILURE_STAGES,CHILD_FAILURE_CODES} from " + json.dumps((a.HERE/'native_child.mjs').as_uri()) + ";process.stdout.write(JSON.stringify({stages:CHILD_FAILURE_STAGES,codes:CHILD_FAILURE_CODES}));"
+        result = subprocess.run(['/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node',
+                                 '--input-type=module', '-e', script], capture_output=True, text=True, check=True)
+        value = json.loads(result.stdout)
+        self.assertEqual(set(value['stages']), handoff.CHILD_FAILURE_STAGES)
+        self.assertEqual(set(value['codes']), handoff.CHILD_FAILURE_CODES)
+
+    def test_diagnostic_recording_failure_cannot_replace_primary_or_create_success(self):
+        import handoff
+        for primary in (None,handoff.old.Stop('CHILD_JOURNAL_ABSENT')):
+            h=object.__new__(handoff.Handoff)
+            h.coordinator=SimpleNamespace(j={'nativeEntry':{'calls':{'child':1}},'unknown':[]})
+            h.cap=SimpleNamespace(spend=lambda *args:time.time()+30,e={'version':2},
+                                  root=Path('/synthetic'),coordinator=h.coordinator,clock=time.time,
+                                  times={'workEnd':time.time()+30},gate=lambda *args:None)
+            h.io=SimpleNamespace(credentials=lambda:{},child=lambda *args,**kwargs:
+                                 SimpleNamespace(returncode=0,stderr='',stdout='{"status":"PAYMENT_PREFLIGHT_QUALIFIED","qualified":true}'))
+            h._journal=lambda:{}
+            def merge(before):
+                if primary is not None:raise primary
+                return None
+            h._merge_child=merge
+            h._record_child_observation=lambda value:(_ for _ in ()).throw(RuntimeError('SYNTHETIC_PRIVATE_RECORDING_ERROR'))
+            with self.assertRaises(handoff.old.Stop) as raised:
+                h.invoke_child(None,'--payment-preflight')
+            if primary is not None:self.assertIs(raised.exception,primary)
+            else:self.assertEqual(raised.exception.args,('CHILD_DIAGNOSTIC_UNCONFIRMED',))
+            self.assertEqual(h.coordinator.j['unknown'],['CHILD_DIAGNOSTIC_UNCONFIRMED'])
+            self.assertNotIn('SYNTHETIC_PRIVATE_RECORDING_ERROR',json.dumps(h.coordinator.j))
+
+    def test_strict_bounded_process_frame_rejects_private_or_ambiguous_output(self):
+        import handoff
+        good = {'status':'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED', 'stage':'CLIENT_BINDING', 'code':'TLS_REQUIRED'}
+        result = lambda out, code=2, err='': SimpleNamespace(stdout=out, returncode=code, stderr=err)
+        self.assertEqual(handoff.child_output(result(json.dumps(good))),
+                         (None, {'stage':'CLIENT_BINDING', 'code':'TLS_REQUIRED'}))
+        self.assertEqual(handoff.child_output(result('{"ok":true}', 0)), ({'ok':True}, None))
+        invalid = ['', 'null', '[]', '42', 'false', 'malformed', 'x'*8193,
+                   '{"status":"NATIVE_CHILD_REFUSED_OR_UNCONFIRMED","stage":"INPUT","stage":"RESULT","code":"UNCLASSIFIED"}',
+                   '{"private":NaN}', '{"private":Infinity}', '{"ok":{"duplicate":1,"duplicate":2}}',
+                   json.dumps({**good,'message':'SYNTHETIC_PRIVATE_FRAME'}),
+                   json.dumps({**good,'stage':'SYNTHETIC_PRIVATE_FRAME'}),
+                   json.dumps({**good,'code':'SYNTHETIC_PRIVATE_FRAME'}),
+                   json.dumps({**good,'stage':None}), json.dumps({**good,'code':True}),
+                   json.dumps({**good,'code':[]})]
+        for text in invalid:
+            with self.subTest(length=len(text)):
+                self.assertEqual(handoff.child_output(result(text)), (None,None))
+        for code in (0, 1, -9, True, '2'):
+            self.assertEqual(handoff.child_output(result(json.dumps(good),code)), (None,None))
+        self.assertEqual(handoff.child_output(result(json.dumps(good),2,'SYNTHETIC_PRIVATE_FRAME')), (None,None))
+
+
+class JournalContractIntegrationTests(unittest.TestCase):
+    PRIVATE = 'JC1_PRIVATE_SENTINEL'
+
+    def fixture(self, scenario='normal'):
+        value = ConnectedEntryTests()
+        value.setUp()
+        self.addCleanup(value.doCleanups)
+        value.scenario = scenario
+        return value
+
+    def completed(self, scenario, *, mutate_io=None):
+        fixture = self.fixture(scenario)
+        before_merge = []
+        original = fixture.factory
+        def factory(cap):
+            io = original(cap)
+            child = io.child
+            def invoke(argv, **kwargs):
+                result = child(argv, **kwargs)
+                if argv[2] == '--run':
+                    auth = read(fixture.root/'journal.json').get('authClient')
+                    before_merge.append(copy.deepcopy(auth))
+                return result
+            io.child = invoke
+            if mutate_io is not None:
+                mutate_io(io, cap, fixture)
+            return io
+        work = entry.run_entry(fixture.path, io_factory=factory)
+        final = entry.run_entry(fixture.path, 'closeout', io_factory=factory)
+        journal = read(fixture.root/'journal.json')
+        self.assertTrue(final['privateInputsAbsent'])
+        self.assertFalse(fixture.path.exists())
+        self.assertFalse((fixture.root/'payment-bootstrap-open-attempt.json').exists())
+        self.assertLessEqual(journal['nativeEntry']['calls']['child'], fixture.e['limits']['child'])
+        observations = journal['nativeEntry'].get('childObservations', [])
+        self.assertEqual([x['childCall'] for x in observations],
+                         list(range(1,journal['nativeEntry']['calls']['child']+1)))
+        self.assertLessEqual(len(observations),fixture.e['limits']['child'])
+        self.assertEqual(set(final), {'status','operationId','liveAuthorization','authProofReady',
+                                      'authenticationObserved','residuals','privateInputsAbsent',
+                                      'childResultSha256','paymentObserved','paymentReadyForAcceptance'})
+        for path in fixture.root.iterdir():
+            self.assertNotIn(self.PRIVATE.encode(),path.read_bytes())
+            self.assertNotIn(b'PRIVATE_SENTINEL',path.read_bytes())
+        return fixture, work, final, journal, before_merge
+
+    def test_ad2_diagnostics_survive_real_subprocess_parent_and_independent_cleanup(self):
+        for scenario, stage in [('auth_sign_http403','SIGN'), ('auth_key_http403','KEY_READ'),
+                                ('auth_exchange_http403','EXCHANGE')]:
+            with self.subTest(stage=stage):
+                _, work, final, journal, before = self.completed(scenario)
+                self.assertEqual(before[0]['authStage'],stage)
+                auth=journal['authClient']
+                self.assertEqual((auth['authStage'],auth['failureCategory'],auth['httpStatus']),
+                                 (stage,'HTTP',403))
+                self.assertEqual(auth['phase'],'CLOSEOUT_FINISHED')
+                self.assertEqual(auth['residuals'],[])
+                self.assertTrue(auth['sessionClosed'])
+                self.assertEqual(final['residuals'],['AUTH_OUTCOME_UNKNOWN'])
+                self.assertFalse(final['authenticationObserved']);self.assertFalse(final['paymentObserved'])
+                self.assertFalse(work['paymentObserved'])
+                self.assertTrue(all(x['journalMerge']=='ACCEPTED' for x in journal['nativeEntry']['childObservations']))
+
+    def test_previous_schema_reproduces_the_observed_evidence_loss(self):
+        import handoff
+        previous = handoff.old.AUTH_FIELDS - {'authStage','failureCategory','httpStatus'}
+        with patch.object(handoff.old,'AUTH_FIELDS',previous):
+            _, _, final, journal, before = self.completed('auth_sign_http403')
+        self.assertEqual(before[0]['authStage'],'SIGN')
+        self.assertNotIn('authClient',journal)
+        self.assertEqual(final['residuals'],['ACCOUNT_SESSION','AUTH_OUTCOME_UNKNOWN','AUTH_REVOKE','PAYMENT_ENDPOINT_UNCONFIRMED'])
+        observations=journal['nativeEntry']['childObservations']
+        self.assertEqual(next(x for x in observations if x['mode']=='--run')['journalMerge'],'REJECTED')
+        self.assertEqual(journal['failure'],'LOCAL_ADAPTER_OR_SOURCE_STOP')
+
+    def test_early_refusals_retain_stage_and_cleanup_cannot_replace_primary(self):
+        for scenario, code in [('owner_refused','OWNER_DRIFT'),
+                               ('db_connect_refused','NATIVE_IO_TIMEOUT'), ('db_tls_refused','TLS_REQUIRED'),
+                               ('db_preflight_refused','DATABASE_PREFLIGHT')]:
+            with self.subTest(scenario=scenario):
+                _, _, final, journal, _ = self.completed(scenario)
+                observations=journal['nativeEntry']['childObservations']
+                primary=next(x for x in observations if x['mode']=='--run')
+                self.assertEqual((primary['stage'],primary['code'],primary['processOutcome']),
+                                 ('CLIENT_BINDING',code,'REFUSED'))
+                self.assertEqual(primary['journalMerge'],'ABSENT')
+                self.assertIn('ACCOUNT_SESSION',final['residuals'])
+                self.assertIn('AUTH_OUTCOME_UNKNOWN',final['residuals'])
+                self.assertFalse(final['paymentObserved'])
+                self.assertTrue(any(x['mode']=='--closeout' for x in observations))
+                self.assertEqual(observations[1],primary)
+
+    def test_authority_reservation_and_sequence_refusals_survive_parent(self):
+        for scenario,stage in [('authority_refused','AUTHORITY'),('reservation_refused','RESERVATION'),
+                               ('sequence_start_refused','AUTH_SEQUENCE')]:
+            with self.subTest(scenario=scenario):
+                _, _, final, journal, _ = self.completed(scenario)
+                primary=next(x for x in journal['nativeEntry']['childObservations'] if x['mode']=='--run')
+                self.assertEqual(primary['stage'],stage)
+                self.assertEqual(primary['processOutcome'],'REFUSED')
+                self.assertIn(primary['journalMerge'],{'ABSENT','REJECTED'})
+                self.assertFalse(final['authenticationObserved'])
+                self.assertFalse(final['paymentObserved'])
+                self.assertIn('AUTH_OUTCOME_UNKNOWN',final['residuals'])
+
+    def test_result_serialization_refusal_is_retained_without_runtime_activation(self):
+        fixture, _, final, journal, _ = self.completed('result_serialization_refused')
+        self.assertFalse(journal['authAttempted'])
+        self.assertFalse(any(fixture.f.runtime_state.values()))
+        primary=journal['nativeEntry']['childObservations'][0]
+        self.assertEqual((primary['stage'],primary['code'],primary['processOutcome']),
+                         ('RESULT','UNCLASSIFIED','REFUSED'))
+        self.assertEqual(primary['journalMerge'],'ACCEPTED')
+        self.assertEqual(len(journal['nativeEntry']['childObservations']),1)
+        self.assertFalse(final['paymentObserved'])
+
+    def test_main_refusal_and_cleanup_failure_keep_distinct_safe_observations(self):
+        _, _, final, journal, _ = self.completed('main_and_cleanup_refused')
+        observations=journal['nativeEntry']['childObservations']
+        main=next(x for x in observations if x['mode']=='--run')
+        self.assertEqual(main['stage'],'CLIENT_BINDING')
+        self.assertEqual(main['code'],'OWNER_DRIFT')
+        cleanup=[x for x in observations if x['mode']=='--closeout']
+        self.assertTrue(cleanup)
+        self.assertTrue(all(x['processOutcome']=='REFUSED' for x in cleanup))
+        self.assertIn('ACCOUNT_SESSION',final['residuals'])
+
+    def test_valid_auth_intent_survives_lost_or_untrusted_process_output(self):
+        outputs=['', 'not-json', 'null', '{"status":NaN}', 'x'*8193,
+                 '{"status":"NATIVE_CHILD_REFUSED_OR_UNCONFIRMED","stage":"INPUT","stage":"RESULT","code":"UNCLASSIFIED"}',
+                 json.dumps({'status':'NATIVE_CHILD_REFUSED_OR_UNCONFIRMED','stage':'RESULT',
+                             'code':'UNCLASSIFIED','message':self.PRIVATE})]
+        for out in outputs:
+            with self.subTest(length=len(out)):
+                def alter(io,cap,fixture):
+                    child=io.child
+                    def invoke(argv,**kwargs):
+                        result=child(argv,**kwargs)
+                        if argv[2]=='--run':
+                            return subprocess.CompletedProcess(argv,2,out,'')
+                        return result
+                    io.child=invoke
+                _, _, final, journal, _ = self.completed('auth_sign_http403',mutate_io=alter)
+                self.assertEqual(journal['authClient']['authStage'],'SIGN')
+                primary=next(x for x in journal['nativeEntry']['childObservations'] if x['mode']=='--run')
+                self.assertEqual(primary['code'],'CHILD_OUTPUT')
+                self.assertEqual(primary['journalMerge'],'ACCEPTED')
+                self.assertEqual(final['residuals'],['AUTH_OUTCOME_UNKNOWN'])
+
+    def test_timeout_and_exit_preserve_committed_child_state_without_retry(self):
+        for kind in ('timeout','exit'):
+            def alter(io,cap,fixture):
+                child=io.child
+                def invoke(argv,**kwargs):
+                    result=child(argv,**kwargs)
+                    if argv[2]=='--run':
+                        if kind=='timeout':raise subprocess.TimeoutExpired(argv,1,output=self.PRIVATE)
+                        raise RuntimeError(self.PRIVATE)
+                    return result
+                io.child=invoke
+            _, _, final, journal, _ = self.completed('auth_sign_http403',mutate_io=alter)
+            self.assertEqual(journal['authClient']['authStage'],'SIGN')
+            primary=next(x for x in journal['nativeEntry']['childObservations'] if x['mode']=='--run')
+            self.assertEqual(primary['processOutcome'],'TIMEOUT' if kind=='timeout' else 'EXIT_UNKNOWN')
+            self.assertEqual(primary['journalMerge'],'ACCEPTED')
+            self.assertEqual(sum(x['mode']=='--run' for x in journal['nativeEntry']['childObservations']),1)
+            self.assertEqual(final['residuals'],['AUTH_OUTCOME_UNKNOWN'])
+
+    def test_observations_use_actual_approved_child_limit_and_reject_replay(self):
+        import handoff
+        h=object.__new__(handoff.Handoff)
+        h.cap=SimpleNamespace(e={'limits':{'child':8}})
+        h.coordinator=SimpleNamespace(j={'nativeEntry':{'calls':{'child':0}}})
+        h.cap.coordinator=h.coordinator
+        for call in range(1,9):
+            h.coordinator.j['nativeEntry']['calls']['child']=call
+            h._record_child_observation({'childCall':call,'mode':'--readback','stage':'RESULT','code':'NONE',
+                                         'processOutcome':'RETURNED','journalMerge':'ACCEPTED'})
+        self.assertEqual(len(h.coordinator.j['nativeEntry']['childObservations']),8)
+        with self.assertRaisesRegex(Stop,'CHILD_OBSERVATION_LIMIT'):
+            h._record_child_observation(h.coordinator.j['nativeEntry']['childObservations'][-1])
+        h.cap.e['limits']['child']=2
+        with self.assertRaisesRegex(Stop,'CHILD_OBSERVATION_SCOPE'):
+            h._record_child_observation(h.coordinator.j['nativeEntry']['childObservations'][-1])
+
+
 if __name__=='__main__':unittest.main()
