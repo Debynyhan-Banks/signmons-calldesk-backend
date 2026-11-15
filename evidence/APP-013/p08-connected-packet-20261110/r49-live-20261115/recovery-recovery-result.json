@@ -1,0 +1,10 @@
+{
+  "candidate": null,
+  "execution": "EXTERNAL_READ_ONLY",
+  "executionReady": false,
+  "failure": null,
+  "liveObserved": true,
+  "purgeEnd": "2026-11-15T18:00:00Z",
+  "residuals": [],
+  "status": "HANDOFF_RETAINED"
+}

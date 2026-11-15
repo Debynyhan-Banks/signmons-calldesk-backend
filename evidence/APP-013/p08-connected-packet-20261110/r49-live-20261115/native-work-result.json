@@ -1,0 +1,12 @@
+{
+  "authProofReady": false,
+  "liveAuthorization": true,
+  "operationId": "f09281f3-0b96-4325-a2bb-b86bede11173",
+  "paymentObserved": false,
+  "paymentReadyForAcceptance": false,
+  "privateInputsAbsent": false,
+  "residuals": [
+    "AUTH_OUTCOME_UNKNOWN"
+  ],
+  "status": "ENTRY_AWAITING_INDEPENDENT_CLOSEOUT"
+}

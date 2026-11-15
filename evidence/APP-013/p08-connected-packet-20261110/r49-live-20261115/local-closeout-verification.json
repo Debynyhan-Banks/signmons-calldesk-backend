@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-11-15T17:11:53.222659+00:00",
+  "privateInputsAbsent": true,
+  "receiptCustodyVerified": true,
+  "matchingOperationProcessCount": 0,
+  "providerContainment": "UNCONFIRMED",
+  "residuals": [
+    "AUTH_OUTCOME_UNKNOWN",
+    "RUNTIME_version:signmons-staging-p07-stripe-webhook-secret"
+  ],
+  "noRetry": true,
+  "browserOpened": false,
+  "browserOpenMarkerAbsent": true,
+  "browserMarkerChecked": "payment-bootstrap-open-attempt.json"
+}

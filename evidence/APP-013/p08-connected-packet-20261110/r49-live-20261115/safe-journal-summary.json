@@ -1,0 +1,34 @@
+{
+  "operationId": "f09281f3-0b96-4325-a2bb-b86bede11173",
+  "phase": "CLOSED",
+  "failure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+  "authAttempted": true,
+  "authProofAccepted": false,
+  "residuals": [
+    "AUTH_OUTCOME_UNKNOWN",
+    "RUNTIME_version:signmons-staging-p07-stripe-webhook-secret"
+  ],
+  "unknown": [],
+  "authClient": {
+    "failureCode": "SIGN_EXCHANGE_REFUSED",
+    "failureStage": "TOKEN_INTENT",
+    "phase": "CLOSEOUT_FINISHED",
+    "authenticated": false,
+    "sessionClosed": true,
+    "closeoutAttempted": true,
+    "tokenIssueIntent": true,
+    "firebaseEnableIntent": true,
+    "revocationIntentAt": "2026-11-15T17:08:00.000Z"
+  },
+  "calls": {
+    "child": 6,
+    "cli": 191,
+    "https": 18,
+    "sql": 10
+  },
+  "runtimeAttemptedCount": 17,
+  "runtimeOwnedCount": 17,
+  "runtimeCleanupAttemptedCount": 17,
+  "paymentPhase": "QUALIFIED",
+  "sourceJournalSha256": "f4a0fd10d6558d6069deb3b5c352490aa0589d44799a24fc640bfae376237cca"
+}

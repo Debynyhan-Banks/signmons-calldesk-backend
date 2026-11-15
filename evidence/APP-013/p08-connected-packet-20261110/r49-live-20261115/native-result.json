@@ -1,0 +1,15 @@
+{
+  "authProofReady": false,
+  "authenticationObserved": false,
+  "childResultSha256": null,
+  "liveAuthorization": true,
+  "operationId": "f09281f3-0b96-4325-a2bb-b86bede11173",
+  "paymentObserved": false,
+  "paymentReadyForAcceptance": false,
+  "privateInputsAbsent": true,
+  "residuals": [
+    "AUTH_OUTCOME_UNKNOWN",
+    "RUNTIME_version:signmons-staging-p07-stripe-webhook-secret"
+  ],
+  "status": "ENTRY_CONTAINMENT_UNCONFIRMED"
+}
