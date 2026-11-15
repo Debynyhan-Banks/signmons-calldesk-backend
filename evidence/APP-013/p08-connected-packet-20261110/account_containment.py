@@ -2,6 +2,7 @@
 import datetime
 import hashlib
 import json
+import math
 import re
 from types import SimpleNamespace
 
@@ -11,6 +12,16 @@ q = source.q
 R47_OPERATION = 'bea4fe6b-2202-48ed-9df1-84a17d23fcd8'
 R47_JOURNAL_SHA256 = '7ea07c21fdc737f671a025de9b44980b2771ddbe9cfdd02cfdb26b9063c5323f'
 R47_INTENT = '2026-11-14T19:22:30.000Z'
+R51_OPERATION = 'cc2c1ce5-640f-41f4-a993-31063630207c'
+R51_RESULT_SHA256 = '920b2c641716482ebbc8dffea8a08f9d31e1519b9e99e53e6bd89fdb80cee26c'
+R51_CLOSEOUT_SHA256 = '9109229c263c1aa9dcf777aad5f01cece1a60981ead47d6894e49b38ded01d7e'
+R51_POLICY_SECOND = 1794780123
+CURRENT_ACCOUNT_FLAGS = ('bindingExact', 'accountIdentityExact', 'accountExactDisabled',
+                         'databaseSessionsAbsent', 'validatorAccepted')
+CURRENT_FIREBASE_FLAGS = ('bindingExact', 'firebaseIdentityExact', 'firebaseDisabled',
+                          'claimsExact', 'emailUnverified', 'revocationTimestampValid',
+                          'revocationNotFuture', 'revocationBoundMet', 'validatorAccepted')
+MAX_VALID_SINCE = 253402300799
 FLAGS = ('bindingExact', 'accountExactDisabled', 'databaseSessionsAbsent',
          'firebaseIdentityExact', 'firebaseDisabled', 'claimsExact',
          'emailUnverified', 'revocationBoundMet')
@@ -101,3 +112,145 @@ def validate(binding, database, firebase, historical_journal):
         pass  # Never expose raw provider data, identifiers or exception text.
     return {'status': 'CURRENT_CONTAINMENT_CONFIRMED' if all(flags.values()) else 'CURRENT_CONTAINMENT_UNKNOWN',
             'flags': flags, 'historicalAuthentication': 'UNKNOWN'}
+
+
+def r51_policy(native_result_raw, closeout_raw):
+    """Bind the approved current policy, never reconstruct historical revocation intent."""
+    try:
+        require(type(native_result_raw) is bytes and type(closeout_raw) is bytes and
+                hashlib.sha256(native_result_raw).hexdigest() == R51_RESULT_SHA256 and
+                hashlib.sha256(closeout_raw).hexdigest() == R51_CLOSEOUT_SHA256)
+        native, closeout = parse(native_result_raw), parse(closeout_raw)
+        require(native['operationId'] == R51_OPERATION and
+                native['status'] == 'ENTRY_CONTAINMENT_UNCONFIRMED' and
+                native['privateInputsAbsent'] is True and
+                closeout['privateInputsAbsent'] is True and
+                closeout['matchingOperationProcessesAbsent'] is True and
+                closeout['receiptCustodyVerified'] is True and closeout['noRetry'] is True)
+        observed = datetime.datetime.fromisoformat(closeout['observedAt'].replace('Z', '+00:00'))
+        require(observed.tzinfo is not None and
+                observed.isoformat() == '2026-11-15T22:02:02.312864+00:00' and
+                math.ceil(observed.timestamp()) == R51_POLICY_SECOND)
+        return {'kind': 'POST_PROCESS_OBSERVATION', 'historicalOperationId': R51_OPERATION,
+                'minimumValidSince': R51_POLICY_SECOND, 'historicalAuthentication': 'UNKNOWN'}
+    except Exception:
+        raise ValueError('CONTAINMENT_UNKNOWN') from None
+
+
+def current_account(operation, database, *, final=False):
+    """Return safe flags and a transient target only after exact disabled-account proof."""
+    flags = dict.fromkeys(CURRENT_ACCOUNT_FLAGS, None)
+    target = None
+    try:
+        source.m.exact_uuid(operation, 'CONTAINMENT_OPERATION')
+        require(type(final) is bool and type(database) is dict and
+                set(database) == {'operationId', 'body'})
+        flags['bindingExact'] = database['operationId'] == operation
+        require(flags['bindingExact'])
+        db = parse(database['body'])
+        require(type(db) is dict)
+        if final:
+            require(set(db) == {'operatorCount', 'operator', 'sessionsAbsent'} and
+                    type(db['operatorCount']) is int and db['operatorCount'] >= 0)
+            flags['databaseSessionsAbsent'] = (db['sessionsAbsent']
+                                               if type(db['sessionsAbsent']) is bool else None)
+        else:
+            require(set(db) == {'jobCount', 'job', 'tenantCount', 'tenant', 'operatorCount',
+                               'operator', 'calendarCount', 'roleCount', 'sessionCount'})
+            require(all(type(db[key]) is int and db[key] >= 0 for key in
+                        ('jobCount', 'tenantCount', 'operatorCount', 'calendarCount',
+                         'roleCount', 'sessionCount')))
+            flags['databaseSessionsAbsent'] = db['sessionCount'] == 0
+        if db['operatorCount'] != 1:
+            flags['accountIdentityExact'] = False
+            return flags, None
+        row = db['operator']
+        fields = ('id', 'tenantId', 'email', 'fullName', 'role', 'status')
+        require(type(row) is dict and set(row) == set(fields) and
+                all(type(row[key]) is str for key in fields))
+        candidate = {key: row[key] for key in fields}
+        source.m.exact_uuid(candidate['id'], 'CONTAINMENT_UID')
+        # Fingerprint the immutable identity with its expected status, then check
+        # the actually observed status independently. ACTIVE can never authorize use.
+        expected = {**candidate, 'status': 'DISABLED'}
+        flags['accountIdentityExact'] = target_digest(expected) == q.TARGET_SHA256
+        flags['accountExactDisabled'] = row['status'] == 'DISABLED'
+        require(flags['accountIdentityExact'] and flags['accountExactDisabled'])
+        source.entry.readbacks.exact_account(row, expected)
+        if not final:
+            adapter = object.__new__(q.Adapter)
+            adapter.io = SimpleNamespace(sql=lambda *args: db)
+            adapter.binding = {'databasePassword': 'INERT_NO_CREDENTIAL'}
+            adapter.times, adapter.clock = {'readEnd': 0}, lambda: 0
+            require(q.Adapter.read_database(adapter, 0)['operatorExactDisabled'] is True)
+        flags['validatorAccepted'] = True
+        target = expected
+    except Exception:
+        pass  # Only fixed booleans/unknowns escape; no row or exception text.
+    return flags, target
+
+
+def current_firebase(operation, firebase, target, now_seconds, *, initial_valid_since=None,
+                     requested_valid_since=None):
+    """Return safe flags plus transient seconds; raw user data never leaves this helper."""
+    flags = dict.fromkeys(CURRENT_FIREBASE_FLAGS, None)
+    observed_seconds = None
+    try:
+        source.m.exact_uuid(operation, 'CONTAINMENT_OPERATION')
+        fields = ('id', 'tenantId', 'email', 'fullName', 'role', 'status')
+        require(type(target) is dict and set(target) == set(fields) and
+                all(type(target[key]) is str for key in fields))
+        exact_target = {key: target[key] for key in fields}
+        require(target_digest(exact_target) == q.TARGET_SHA256)
+        source.m.exact_uuid(exact_target['id'], 'CONTAINMENT_UID')
+        source.entry.readbacks.exact_account(exact_target, exact_target)
+        require(type(now_seconds) is int and R51_POLICY_SECOND <= now_seconds <= MAX_VALID_SINCE)
+        for value in (initial_valid_since, requested_valid_since):
+            require(value is None or (type(value) is int and 0 <= value <= now_seconds))
+        require(requested_valid_since is None or
+                (initial_valid_since is not None and
+                 requested_valid_since >= max(R51_POLICY_SECOND, initial_valid_since)))
+        require(type(firebase) is dict and set(firebase) == {'operationId', 'status', 'body'})
+        flags['bindingExact'] = firebase['operationId'] == operation
+        require(flags['bindingExact'] and type(firebase['status']) is int and firebase['status'] == 200)
+        body = parse(firebase['body'])
+        require(type(body) is dict and type(body.get('users')) is list and len(body['users']) == 1)
+        user = body['users'][0]
+        required = {'localId', 'email', 'displayName', 'disabled', 'emailVerified',
+                    'customAttributes', 'validSince'}
+        require(type(user) is dict and required <= set(user) and 'tokensValidAfterTime' not in user)
+        flags['firebaseIdentityExact'] = (user['localId'] == exact_target['id'] and
+                                          user['email'] == exact_target['email'] and
+                                          user['displayName'] == exact_target['fullName'])
+        flags['firebaseDisabled'] = user['disabled'] if type(user['disabled']) is bool else None
+        flags['emailUnverified'] = not user['emailVerified'] if type(user['emailVerified']) is bool else None
+        claims = parse(user['customAttributes'])
+        flags['claimsExact'] = (type(claims) is dict and set(claims) == {'tenantId', 'role', 'testOnly'} and
+                               claims['tenantId'] == exact_target['tenantId'] and claims['role'] == 'admin' and
+                               claims['testOnly'] is True)
+        value = user['validSince']
+        flags['revocationTimestampValid'] = (type(value) is str and
+                                             re.fullmatch(r'[0-9]{1,12}', value) is not None)
+        require(flags['revocationTimestampValid'])
+        seconds = int(value)
+        flags['revocationTimestampValid'] = seconds <= MAX_VALID_SINCE
+        require(flags['revocationTimestampValid'])
+        flags['revocationNotFuture'] = seconds <= now_seconds
+        require(flags['revocationNotFuture'])
+        observed_seconds = seconds
+        threshold = max(R51_POLICY_SECOND, initial_valid_since or 0, requested_valid_since or 0)
+        flags['revocationBoundMet'] = seconds >= threshold
+        identity_flags = ('bindingExact', 'firebaseIdentityExact', 'firebaseDisabled', 'claimsExact',
+                          'emailUnverified', 'revocationTimestampValid', 'revocationNotFuture')
+        if all(flags[key] is True for key in identity_flags):
+            normalized = {'uid': user['localId'], 'email': user['email'], 'displayName': user['displayName'],
+                          'disabled': user['disabled'], 'emailVerified': user['emailVerified'],
+                          'customClaims': claims,
+                          'tokensValidAfterTime': datetime.datetime.fromtimestamp(seconds, datetime.timezone.utc).isoformat()}
+            # A stale cutoff is a permitted observation before conditional correction;
+            # the separate bound flag still refuses final containment acceptance.
+            source.entry.readbacks.exact_firebase(normalized, exact_target, min(seconds, threshold))
+            flags['validatorAccepted'] = True
+    except Exception:
+        pass
+    return flags, observed_seconds
