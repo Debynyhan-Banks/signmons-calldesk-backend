@@ -1,0 +1,102 @@
+{
+  "authority": "PENDING_EXACT_OWNER_DECISION",
+  "automaticRetryAllowed": false,
+  "commands": {
+    "identity": [
+      "/opt/homebrew/bin/gcloud",
+      "iam",
+      "service-accounts",
+      "describe",
+      "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+      "--project",
+      "signmons",
+      "--format=json(email,disabled,uniqueId)"
+    ],
+    "owner": [
+      "/opt/homebrew/bin/gcloud",
+      "auth",
+      "list",
+      "--filter=status:ACTIVE",
+      "--format=json(account,status)"
+    ],
+    "project": [
+      "/opt/homebrew/bin/gcloud",
+      "projects",
+      "describe",
+      "signmons",
+      "--format=json(projectId,projectNumber,lifecycleState)"
+    ]
+  },
+  "configSha256": "528ceadadc8a5491e54ee82dbad0026eda881252564f96f2be242d70d1d2f111",
+  "currentState": "UNKNOWN",
+  "limits": {
+    "cli": 3,
+    "explicitCache": 0,
+    "mutations": 0,
+    "payment": 0,
+    "sql": 0
+  },
+  "manifestSha256": "104c3ff522047f3b96b41d70556d3a09a76fdc8c9bda18450ba622f11b5cd7a4",
+  "operationId": "d7231d82-9b47-45ce-88ff-e7c0311c8787",
+  "readiness": "Fresh committed source/configuration/vector check PASS; IQ6 owned processes closed and lease released14:46:10Z. Current provider state UNKNOWN. Same NativeTransport.run diagnostic=None yields exact binding dash; no optional receipt directory is created.",
+  "recordedAt": "2026-11-15T14:46:56.770461+00:00",
+  "sdkException": "SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPORT",
+  "sourceCommit": "9d2de893e2ed61325b6d25df41eb713bf06f4196",
+  "status": "PREPARED_NOT_APPROVED",
+  "uidSha256": "3d299bbf03a6c3e2315034fb3a809aedbb6f978c6e6741ff0201fe4464798f72",
+  "window": {
+    "cleanupEnd": "2026-11-15T15:00:00Z",
+    "cutoff": "2026-11-15T14:55:00Z",
+    "readsEnd": "2026-11-15T14:58:00Z"
+  },
+  "wrappedCommands": {
+    "identity": [
+      "/usr/bin/sandbox-exec",
+      "-p",
+      "(version 1)(allow default)(deny process-fork)",
+      "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "-I",
+      "-B",
+      "-S",
+      "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py",
+      "--binding",
+      "-",
+      "--",
+      "iam",
+      "service-accounts",
+      "describe",
+      "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+      "--project",
+      "signmons",
+      "--format=json(email,disabled,uniqueId)"
+    ],
+    "owner": [
+      "/usr/bin/sandbox-exec",
+      "-p",
+      "(version 1)(allow default)(deny process-fork)",
+      "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "-I",
+      "-B",
+      "-S",
+      "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py",
+      "auth",
+      "list",
+      "--filter=status:ACTIVE",
+      "--format=json(account,status)"
+    ],
+    "project": [
+      "/usr/bin/sandbox-exec",
+      "-p",
+      "(version 1)(allow default)(deny process-fork)",
+      "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "-I",
+      "-B",
+      "-S",
+      "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py",
+      "projects",
+      "describe",
+      "signmons",
+      "--format=json(projectId,projectNumber,lifecycleState)"
+    ]
+  }
+}

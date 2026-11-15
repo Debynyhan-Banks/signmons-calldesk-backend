@@ -1,0 +1,19 @@
+{
+  "cliCalls": 3,
+  "configurationClosed": true,
+  "failure": null,
+  "finishedAt": "2026-11-15T14:54:42.988012+00:00",
+  "flags": {
+    "disabledBoolean": true,
+    "disabledPresent": true,
+    "emailMatch": true,
+    "uidMatch": true
+  },
+  "operationId": "d7231d82-9b47-45ce-88ff-e7c0311c8787",
+  "paymentObserved": false,
+  "privateInputsAbsent": true,
+  "processClosed": true,
+  "providerMutations": 0,
+  "sourceClosed": true,
+  "status": "CURRENT_DISABLED_CONFIRMED"
+}

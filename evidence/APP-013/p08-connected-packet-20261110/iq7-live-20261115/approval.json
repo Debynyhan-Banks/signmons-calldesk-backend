@@ -1,0 +1,10 @@
+{
+  "cleanupAuthorized": true,
+  "decision": "APPROVE_IQ7_THREE_READS_SDK_EXCEPTION_AND_LOCAL_CLEANUP",
+  "externalReadAuthorized": true,
+  "mutationsAuthorized": false,
+  "operationId": "d7231d82-9b47-45ce-88ff-e7c0311c8787",
+  "ownerReply": "i approve",
+  "paymentAuthorized": false,
+  "readinessSha256": "c24eceb19017aee268e5be6c13f882e9f887297e50154050753d8ce71695e1d3"
+}
