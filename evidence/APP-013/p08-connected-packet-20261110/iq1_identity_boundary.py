@@ -5,6 +5,7 @@ SDK Popen; its main coordinator can request only five ordered steps. SDK childre
 cannot fork. No PID discovered from disk or a process listing is ever adopted.
 """
 import contextlib
+import datetime
 import fcntl
 import hashlib
 import json
@@ -47,6 +48,40 @@ COORDINATOR = ('import sys\nfor i in range(5):\n print(i,flush=True)\n'
 
 class Stop(Exception):
     pass
+
+
+def observation_fields(raw, step, uid):
+    """Fixed labels only; never transform bytes consumed by the real adapter."""
+    if step not in ('identity', 'readback'):
+        return {}
+    fields = {'shape': 'INVALID_JSON', 'email': 'INVALID',
+              'disabled': 'OTHER', 'uid': 'NOT_REQUESTED' if step == 'readback' else 'NOT_CLASSIFIED'}
+    try:
+        value = json.loads(raw)
+    except (ValueError, TypeError, UnicodeError):
+        return fields
+    fields['shape'] = 'OBJECT' if type(value) is dict else 'OTHER'
+    if type(value) is not dict:
+        return fields
+    email = value.get('email')
+    fields['email'] = ('ABSENT' if 'email' not in value else 'INVALID' if type(email) is not str
+                       else 'MATCH' if email == m.IDENTITY else 'MISMATCH')
+    disabled = value.get('disabled')
+    fields['disabled'] = ('MISSING' if 'disabled' not in value else 'NULL' if disabled is None
+                          else 'BOOL_TRUE' if disabled is True else 'BOOL_FALSE' if disabled is False
+                          else 'NUMBER_ONE' if type(disabled) in (int, float) and disabled == 1
+                          else 'NUMBER_ZERO' if type(disabled) in (int, float) and disabled == 0 else 'OTHER')
+    if step == 'identity':
+        observed = value.get('uniqueId')
+        fields['uid'] = ('ABSENT' if 'uniqueId' not in value else 'INVALID'
+                         if type(observed) is not str or not re.fullmatch('[0-9]{6,30}', observed)
+                         else 'NOT_CLASSIFIED' if uid is None
+                         else 'MATCH' if digest(observed.encode()) == uid else 'MISMATCH')
+    return fields
+
+
+def observation_time():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
 def need(value, code):
@@ -271,6 +306,7 @@ class Boundary:
         self.config_closed = False
         self.failure = self.cleanup_failure = None
         self.cleanup_readback_failure = None
+        self.observations = []
         self.stage = 'PREPARE'
         self.cloud = Cloud(self.send)
         self.adapter = object.__new__(entry.RuntimeAdapter)
@@ -296,7 +332,41 @@ class Boundary:
         deadline = self.gate()
         self.journal.put(f'{self.phase}-{index}.json', {**self.journal.binding(), 'step': expected[index]})
         self.counts[self.phase] += 1
-        raw = self.io.run(argv, deadline)
+        observation = {'phase': self.phase.upper(), 'step': expected[index], 'ordinal': index,
+                       'startedAt': None, 'returnedAt': None, 'elapsedMs': None,
+                       'outcome': 'NOT_CLASSIFIED'}
+        started = ended = None
+        try:
+            observation['startedAt'] = observation_time()
+            started = time.monotonic()
+        except Exception:
+            pass  # Diagnostic clocks never replace the enforced execution clocks.
+        try:
+            raw = self.io.run(argv, deadline)
+        except BaseException:
+            observation['outcome'] = 'TRANSPORT_FAILED'
+            raise
+        else:
+            observation['outcome'] = 'RETURNED'
+            try:
+                ended = time.monotonic()
+                observation['returnedAt'] = observation_time()
+            except Exception:
+                pass
+            try:
+                observation.update(observation_fields(raw, expected[index], self.uid))
+            except Exception:
+                pass  # Optional diagnostics cannot suppress the real predicate/cleanup.
+        finally:
+            try:
+                if started is not None and ended is not None:
+                    elapsed = ended - started
+                    if 0 <= elapsed < float('inf'):
+                        observation['elapsedMs'] = round(elapsed * 1000, 3)
+            except Exception:
+                pass
+            if len(self.observations) < 11:
+                self.observations.append(observation)
         self.gate()
         return raw
 
@@ -325,6 +395,8 @@ class Boundary:
             uid, disabled = self.metadata()
             need(disabled is True, 'IQ1_INITIAL_STATE')
             self.uid = uid
+            if self.observations and self.observations[-1].get('uid') == 'NOT_CLASSIFIED':
+                self.observations[-1]['uid'] = 'BASELINE_VALIDATED'
         elif index == 3:
             self.gate()
             need(inv.read(self.journal.root / 'ready.json') == self.journal.binding(), 'IQ1_CUSTODY')
@@ -439,6 +511,7 @@ def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time
               'sourceClosed': source_closed,
               'privateInputsAbsent': private_absent, 'residuals': residuals,
               'paymentObserved': False, 'finishedAt': clock()}
+    result['observations'] = driver.observations
     journal.put('result.json', result)
     return result
 

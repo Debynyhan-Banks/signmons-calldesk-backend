@@ -105,6 +105,103 @@ class WorkerTests(unittest.TestCase):
         self.assertTrue(self.fake.disabled)
         self.assertEqual(self.fake.closed, 2)
 
+    def test_observations_preserve_counts_and_bind_baseline_without_raw_values(self):
+        r = self.run_case()
+        self.assertEqual(len(r['observations']), 11)
+        self.assertEqual(r['observations'][2]['uid'], 'BASELINE_VALIDATED')
+        self.assertEqual(r['observations'][4]['uid'], 'NOT_REQUESTED')
+        self.assertEqual(r['observations'][4]['disabled'], 'BOOL_FALSE')
+        self.assertEqual(r['observations'][7]['uid'], 'MATCH')
+        self.assertEqual(r['observations'][-1]['disabled'], 'BOOL_TRUE')
+        for o in r['observations']:
+            self.assertEqual(o['outcome'], 'RETURNED')
+            self.assertGreaterEqual(o['elapsedMs'], 0)
+            datetime.datetime.fromisoformat(o['startedAt'])
+            datetime.datetime.fromisoformat(o['returnedAt'])
+        self.assertNotIn(k.m.IDENTITY, json.dumps(r['observations']))
+
+    def test_iq3_mismatch_then_later_existing_read_observes_enabled(self):
+        self.fake.hook = lambda name, index: json.dumps({'email': k.m.IDENTITY, 'disabled': True}).encode() if index == 5 else None
+        r = self.run_case()
+        self.assertEqual(r['failure'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
+        self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
+        self.assertEqual(r['observations'][4]['disabled'], 'BOOL_TRUE')
+        self.assertEqual(r['observations'][7]['disabled'], 'BOOL_FALSE')
+        self.assertEqual(r['observations'][7]['uid'], 'MATCH')
+        self.assertTrue(r['restorationReadback'])
+
+    def test_classifier_failure_does_not_change_real_success_or_cleanup(self):
+        with patch.object(k, 'observation_fields', side_effect=ValueError('PRIVATE_CANARY')):
+            r = self.run_case()
+        self.assertEqual(r['status'], 'QUALIFIED_AND_CLOSED')
+        self.assertEqual(r['counts'], {'main': 5, 'cleanup': 6})
+        self.assertNotIn('PRIVATE_CANARY', json.dumps(r))
+
+    def test_both_observations_disabled_remain_a_failure(self):
+        def hook(name, index):
+            if index == 5:
+                self.fake.disabled = True
+        self.fake.hook = hook
+        r = self.run_case()
+        self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
+        self.assertEqual([r['observations'][n]['disabled'] for n in (4, 7)], ['BOOL_TRUE', 'BOOL_TRUE'])
+
+    def test_result_publication_failure_occurs_after_cleanup_and_is_unknown(self):
+        original = self.j.put
+        def publish(name, value):
+            if name == 'result.json':
+                raise OSError('PRIVATE_CANARY')
+            original(name, value)
+        with patch.object(self.j, 'put', side_effect=publish):
+            with self.assertRaises(OSError):
+                self.run_case()
+        self.assertTrue(self.fake.disabled)
+        self.assertEqual(self.fake.closed, 2)
+        self.assertEqual(k.read_result(self.j)['status'], 'CONTAINMENT_UNCONFIRMED')
+
+    def test_safe_uid_classification_never_invents_a_match(self):
+        for obj, label in [({}, 'ABSENT'), ({'uniqueId': None}, 'INVALID'),
+                           ({'uniqueId': UID}, 'MISMATCH')]:
+            self.assertEqual(k.observation_fields(json.dumps(obj), 'identity', 'f' * 64)['uid'], label)
+        self.assertEqual(k.observation_fields(json.dumps({'uniqueId': UID}), 'identity', k.digest(UID.encode()))['uid'], 'MATCH')
+
+    def test_large_private_string_is_reduced_to_fixed_label(self):
+        raw = json.dumps({'email': k.m.IDENTITY, 'disabled': 'PRIVATE_CANARY' * 4000}).encode()
+        o = k.observation_fields(raw, 'readback', None)
+        self.assertEqual(o['disabled'], 'OTHER')
+        self.assertLess(len(json.dumps(o)), 200)
+
+    def test_diagnostic_wall_clock_failure_does_not_change_execution(self):
+        with patch.object(k, 'observation_time', side_effect=ValueError('PRIVATE_CANARY')):
+            r = self.run_case()
+        self.assertEqual(r['status'], 'QUALIFIED_AND_CLOSED')
+        self.assertTrue(all(o['startedAt'] is None for o in r['observations']))
+
+    def test_transport_error_retains_no_fabricated_return_and_runs_cleanup(self):
+        def hook(name, index):
+            if index == 5:
+                raise k.m.Stop('PROCESS_TIMEOUT')
+        self.fake.hook = hook
+        r = self.run_case()
+        self.assertEqual(r['observations'][4]['outcome'], 'TRANSPORT_FAILED')
+        self.assertIsNone(r['observations'][4]['returnedAt'])
+        self.assertNotIn('disabled', r['observations'][4])
+        self.assertTrue(r['restorationReadback'])
+
+    def test_safe_classifier_types_and_private_values(self):
+        for value, label in [(True, 'BOOL_TRUE'), (False, 'BOOL_FALSE'), (1, 'NUMBER_ONE'),
+                             (0, 'NUMBER_ZERO'), (None, 'NULL'), ('PRIVATE_CANARY', 'OTHER')]:
+            o = k.observation_fields(json.dumps({'email': 'PRIVATE_CANARY', 'disabled': value,
+                                                'uniqueId': 'PRIVATE_CANARY'}), 'identity', 'a' * 64)
+            self.assertEqual(o['disabled'], label)
+            self.assertEqual(o['email'], 'MISMATCH')
+            self.assertEqual(o['uid'], 'INVALID')
+            self.assertNotIn('PRIVATE_CANARY', json.dumps(o))
+        self.assertEqual(k.observation_fields(b'{}', 'readback', None)['disabled'], 'MISSING')
+        self.assertEqual(k.observation_fields(b'[]', 'readback', None)['shape'], 'OTHER')
+        self.assertEqual(k.observation_fields(b'PRIVATE_CANARY', 'readback', None)['shape'], 'INVALID_JSON')
+        self.assertEqual(k.observation_fields(b'PRIVATE_CANARY', 'owner', None), {})
+
     def test_initially_enabled_has_no_mutation(self):
         self.fake.disabled = False
         r = self.run_case()
