@@ -9,7 +9,7 @@
     "native_io.py": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c",
     "operator_bridge.mjs": "d692b9a2e2fca5f63c4c0a9806a52d9ad49175c68c6b89fdb1c45081b155bb41",
     "private_inventory.py": "97d2f27b6c4047420ff97f3a08e42bcc718d2577adecea3aaebaf98a99e446d0",
-    "transports.mjs": "165d63920e35b9db8e0323848765a8f853edd9fb9ea5e9edbc6c03896e6ff1f5"
+    "transports.mjs": "ff9ed3b2d51b69d43457bbe414f7209b32ceac517ea46fefcf9355bfd10cf584"
   },
   "lockedSources": {
     "p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",

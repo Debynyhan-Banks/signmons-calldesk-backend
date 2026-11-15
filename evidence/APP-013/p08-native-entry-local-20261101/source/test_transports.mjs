@@ -84,3 +84,17 @@ test('native timestamp versions reject malformed calendars and excess precision 
     '2026-01-01 00:00:00\n','2026-01-01 00:00:00\r'])
     assert.throws(()=>parser(raw),{code:'TIMESTAMP_VERSION_SHAPE'},String(raw));
 });
+
+test('actual native child retains bounded HTTP failure status without response body',async t=>{
+  const r=fixture(t),base=fixturePorts(r);let signingCalls=0;
+  const result=await runChild('--run',structuredClone(r),{...base,fetcher:async(url,options)=>{
+    if(url.includes(':signBlob')){signingCalls++;return {ok:false,status:403,text:async()=>'{"error":"PRIVATE_SENTINEL"}'};}
+    return base.fetcher(url,options);
+  }});
+  const raw=readFileSync(r.envelopePath.replace(/envelope\.json$/,'journal.json'),'utf8');
+  const auth=JSON.parse(raw).authClient;
+  assert.equal(auth.authStage,'SIGN');assert.equal(auth.failureCategory,'HTTP');assert.equal(auth.httpStatus,403);
+  assert.equal(signingCalls,1);assert.equal(result.authenticated,false);
+  assert.equal(result.sessionClosed,true);assert.deepEqual(result.residuals,[]);
+  assert.ok(!raw.includes('PRIVATE_SENTINEL'));
+});

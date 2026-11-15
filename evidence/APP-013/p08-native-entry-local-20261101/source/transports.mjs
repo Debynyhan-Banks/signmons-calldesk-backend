@@ -93,7 +93,7 @@ export function createPorts(cap, credentials, injected = {}) {
       finally {await reader.cancel().catch(()=>{});}
       text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
     } else {text=await bounded(()=>response.text());need(Buffer.byteLength(text)<=65536,'AUTH_OUTPUT_LIMIT');}
-    return {ok:response.ok,text:async()=>text};
+    return {ok:response.ok,status:Number.isInteger(response.status) && response.status>=100 && response.status<=599 ? response.status : null,text:async()=>text};
   }
   return {ownerAuth,dbFactory,sessionProbe,fetcher};
 }
