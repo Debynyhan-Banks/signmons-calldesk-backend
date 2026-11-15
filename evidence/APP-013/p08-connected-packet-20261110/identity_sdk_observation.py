@@ -12,7 +12,7 @@ import sys
 
 SDK = Path('/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py')
 IDENTITY = 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'
-SLOTS = frozenset({'main-2', 'main-4', 'cleanup-2', 'cleanup-4', 'cleanup-5'})
+SLOTS = frozenset({'main-2', 'main-4', 'main-5', 'main-6', 'cleanup-2', 'cleanup-4', 'cleanup-5', 'cleanup-6', 'cleanup-7'})
 STATES = frozenset({'BOOL_TRUE', 'BOOL_FALSE', 'MISSING', 'NULL', 'OTHER'})
 SHAPES = frozenset({'OBJECT', 'OTHER', 'INVALID', 'TOO_LARGE'})
 
@@ -207,7 +207,7 @@ class Store:
     def prepare(self, slot):
         try:
             self.check()
-            require(slot in SLOTS and slot not in self.records and len(self.records) < 5)
+            require(slot in SLOTS and slot not in self.records and len(self.records) < 9)
             fd = os.open(slot + '.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                          0o600, dir_fd=self.fd)
             try:

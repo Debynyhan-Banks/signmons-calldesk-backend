@@ -81,20 +81,137 @@ class WorkerTests(unittest.TestCase):
         self.guard = lambda s: None
         self.config = lambda: CONFIG
         self.clock = lambda: self.now
+        self.mono = 100.0
+        self.monotonic = lambda: self.mono
+        def sleep(seconds):
+            self.mono += seconds
+            self.now += seconds
+        self.sleeper = sleep
         self.patch = patch.object(k.q, 'PROJECT_NUMBER_SHA256', k.m.digest(NUMBER))
         self.patch.start()
         self.addCleanup(self.patch.stop)
 
     def run_case(self, coordinate=sequential):
         result = k.run_worker(self.s, self.j, factory=lambda: self.fake, guard=self.guard,
-                              config=self.config, coordinate=coordinate, clock=self.clock)
+                              config=self.config, coordinate=coordinate, clock=self.clock,
+                              monotonic=self.monotonic, sleeper=self.sleeper)
         self.assertLessEqual(self.fake.calls.count('enable'), 1)
         self.assertLessEqual(self.fake.calls.count('disable'), 1)
-        self.assertLessEqual(len(self.fake.calls), 11)
+        self.assertLessEqual(len(self.fake.calls), 15)
         raw = ''.join(f.read_text() for f in self.j.root.iterdir())
         self.assertNotIn(UID, raw)
         self.assertNotIn('PRIVATE_CANARY', raw)
         return result
+
+    def test_br1_exact_maximum_budget_schedule_and_nine_receipts(self):
+        store = k.sd3.Store(self.s['operationId'], self.j.identity,
+                           directory=Path(self.temp.name) / 'br1-optional')
+        times = []
+        def hook(name, index):
+            if name == 'readback':
+                times.append(self.mono)
+                return json.dumps({'email': k.m.IDENTITY, 'disabled': 'disable' not in self.fake.calls}).encode()
+        self.fake.hook = hook
+        r = k.run_worker(self.s, self.j, factory=lambda: self.fake, guard=self.guard,
+                         config=self.config, coordinate=sequential, clock=self.clock,
+                         diagnostics=store, monotonic=self.monotonic, sleeper=self.sleeper)
+        self.assertEqual(r['counts'], {'main': 7, 'cleanup': 8})
+        self.assertEqual(times, [100, 105, 115, 115, 120, 130])
+        self.assertEqual(self.fake.calls.count('enable'), 1)
+        self.assertEqual(self.fake.calls.count('disable'), 1)
+        self.assertEqual(len(store.records), 9)
+        self.assertFalse(store.path.exists())
+        self.assertTrue(r['diagnosticClosed'])
+        self.assertTrue(r['restorationReadback'])
+        self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
+        self.assertEqual(r['failure'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
+        self.assertEqual(r['cleanupFailure'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
+        self.assertEqual(len(r['observations']), 15)
+
+    def test_br1_cleanup_converges_and_retains_intermediate_failure(self):
+        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY}).encode() if i == 10 else None
+        r = self.run_case()
+        self.assertEqual(r['status'], 'QUALIFIED_AND_CLOSED')
+        self.assertEqual(r['counts'], {'main': 5, 'cleanup': 7})
+        self.assertEqual(r['observations'][9]['readbackResult'], 'RUNTIME_IDENTITY_DISABLED_MISSING')
+        self.assertEqual(r['observations'][10]['readbackResult'], 'MATCH')
+        self.assertIsNone(r['cleanupFailure'])
+
+    def test_br1_foreign_malformed_numeric_or_extra_fields_never_repeat(self):
+        for value in [{'email': 'foreign', 'disabled': True},
+                      {'email': k.m.IDENTITY, 'disabled': 'true'},
+                      {'email': k.m.IDENTITY, 'disabled': 1},
+                      {'email': k.m.IDENTITY, 'disabled': True, 'extra': True}]:
+            with self.subTest(value=value):
+                # A fresh isolated worker for each rejected response.
+                s = scope(self.now)
+                j = k.Journal(Path(self.temp.name) / s['operationId'], s, create=True)
+                fake = Fake()
+                fake.hook = lambda name, i: json.dumps(value).encode() if i == 5 else None
+                r = k.run_worker(s, j, factory=lambda: fake, guard=self.guard, config=self.config,
+                                 coordinate=sequential, clock=self.clock,
+                                 monotonic=self.monotonic, sleeper=self.sleeper)
+                self.assertEqual(r['counts']['main'], 5)
+                self.assertTrue(r['restorationReadback'])
+                self.assertEqual(fake.calls.count('enable'), 1)
+
+    def test_br1_transport_error_never_repeats_read(self):
+        def hook(name, i):
+            if i == 5:
+                raise k.m.Stop('PROCESS_TIMEOUT')
+        self.fake.hook = hook
+        r = self.run_case()
+        self.assertEqual(r['failure'], 'IQ1_DEADLINE')
+        self.assertEqual(r['counts']['main'], 5)
+        self.assertTrue(r['restorationReadback'])
+
+    def test_br1_phase_cap_applies_to_transport_and_cleanup_still_runs(self):
+        def hook(name, i):
+            if i == 5:
+                self.mono += 46
+                self.now += 46
+        self.fake.hook = hook
+        r = self.run_case()
+        self.assertEqual(r['failure'], 'IQ1_DEADLINE')
+        self.assertEqual(r['counts']['main'], 5)
+        self.assertTrue(r['restorationReadback'])
+
+    def test_br1_interrupt_during_wait_restores_without_second_read(self):
+        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY, 'disabled': True}).encode() if i == 5 else None
+        def interrupt(seconds):
+            raise KeyboardInterrupt()
+        self.sleeper = interrupt
+        r = self.run_case()
+        self.assertEqual(r['failure'], 'IQ1_INTERRUPTED')
+        self.assertEqual(r['counts']['main'], 5)
+        self.assertTrue(r['restorationReadback'])
+
+    def test_br1_deadline_during_wait_preserves_cleanup_reserve(self):
+        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY, 'disabled': True}).encode() if i == 5 else None
+        def expire(seconds):
+            self.now += 121
+            self.mono += 121
+        self.sleeper = expire
+        r = self.run_case()
+        self.assertEqual(r['failure'], 'IQ1_DEADLINE')
+        self.assertEqual(r['counts']['main'], 5)
+        self.assertTrue(r['restorationReadback'])
+
+    def test_br1_monotonic_rollback_refuses_more_calls(self):
+        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY, 'disabled': True}).encode() if i == 5 else None
+        def rollback(seconds):
+            self.mono -= 1
+        self.sleeper = rollback
+        r = self.run_case()
+        self.assertEqual(r['failure'], 'IQ1_CLOCK')
+        self.assertEqual(r['counts'], {'main': 5, 'cleanup': 0})
+        self.assertIn('IDENTITY_RESTORATION_UNKNOWN', r['residuals'])
+
+    def test_br1_old_budget_authority_is_rejected(self):
+        old = copy.deepcopy(self.s)
+        old['limits'].update(mainCli=5, cleanupCli=6)
+        with self.assertRaises(k.Stop):
+            k.validate(old, self.now, True)
 
     def test_positive_exact_counts_and_real_serialization(self):
         r = self.run_case()
@@ -160,11 +277,12 @@ class WorkerTests(unittest.TestCase):
     def test_iq3_mismatch_then_later_existing_read_observes_enabled(self):
         self.fake.hook = lambda name, index: json.dumps({'email': k.m.IDENTITY, 'disabled': True}).encode() if index == 5 else None
         r = self.run_case()
-        self.assertEqual(r['failure'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
-        self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
+        self.assertIsNone(r['failure'])
+        self.assertEqual(r['status'], 'QUALIFIED_AND_CLOSED')
         self.assertEqual(r['observations'][4]['disabled'], 'BOOL_TRUE')
-        self.assertEqual(r['observations'][7]['disabled'], 'BOOL_FALSE')
-        self.assertEqual(r['observations'][7]['uid'], 'MATCH')
+        self.assertEqual(r['observations'][4]['readbackResult'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
+        self.assertEqual(r['observations'][5]['readbackResult'], 'MATCH')
+        self.assertEqual(r['counts'], {'main': 6, 'cleanup': 6})
         self.assertTrue(r['restorationReadback'])
 
     def test_classifier_failure_does_not_change_real_success_or_cleanup(self):
@@ -181,7 +299,7 @@ class WorkerTests(unittest.TestCase):
         self.fake.hook = hook
         r = self.run_case()
         self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
-        self.assertEqual([r['observations'][n]['disabled'] for n in (4, 7)], ['BOOL_TRUE', 'BOOL_TRUE'])
+        self.assertEqual([r['observations'][n]['disabled'] for n in (4, 9)], ['BOOL_TRUE', 'BOOL_TRUE'])
 
     def test_result_publication_failure_occurs_after_cleanup_and_is_unknown(self):
         original = self.j.put
@@ -291,22 +409,22 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
 
     def test_cleanup_disagreement_still_blocks_qualification_after_final_restoration(self):
-        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY, 'disabled': False}).encode() if i == 10 else None
+        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY, 'disabled': False}).encode() if name == 'readback' and i >= 10 else None
         r = self.run_case()
         self.assertEqual(r['cleanupFailure'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
         self.assertTrue(r['restorationReadback'])
         self.assertEqual(r['cleanupReadbackFailure'], 'RUNTIME_IDENTITY_STATE_MISMATCH')
         self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
-        self.assertEqual(r['counts']['cleanup'], 6)
+        self.assertEqual(r['counts']['cleanup'], 8)
 
     def test_missing_disabled_readback_final_uid_restoration(self):
-        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY}).encode() if i == 10 else None
+        self.fake.hook = lambda name, i: json.dumps({'email': k.m.IDENTITY}).encode() if name == 'readback' and i >= 10 else None
         r = self.run_case()
         self.assertEqual(r['cleanupFailure'], 'RUNTIME_IDENTITY_DISABLED_MISSING')
         self.assertEqual(r['cleanupReadbackFailure'], 'RUNTIME_IDENTITY_DISABLED_MISSING')
         self.assertTrue(r['restorationReadback'])
         self.assertEqual(r['status'], 'FAILED_AND_CLOSED')
-        self.assertEqual(r['counts']['cleanup'], 6)
+        self.assertEqual(r['counts']['cleanup'], 8)
 
     def test_malformed_readback_and_final_uid_mismatch_retain_both_codes(self):
         def hook(name, i):

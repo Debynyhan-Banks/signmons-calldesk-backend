@@ -251,7 +251,7 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(self.store.read(binding), {'status': 'UNAVAILABLE'})
         self.assertIsNone(self.store.prepare('main-2'))
         self.assertIsNone(self.store.prepare('main-3'))
-        self.assertEqual(len(self.store.records), 5)
+        self.assertEqual(len(self.store.records), 9)
         self.assertTrue(self.store.close())
 
     def test_permission_failure_is_optional_without_created_files(self):

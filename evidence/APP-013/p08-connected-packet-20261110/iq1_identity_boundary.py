@@ -41,7 +41,7 @@ SDK = Path('/opt/homebrew/bin/gcloud').resolve().parents[1] / 'lib/gcloud.py'
 ACTION = 'IQ1_IDENTITY_ENABLE_READBACK_RESTORE_ONCE'
 DECISION = 'APPROVE_IQ1_IDENTITY_QUALIFICATION_SDK_EXCEPTION_AND_INDEPENDENT_CLEANUP'
 SDK_EXCEPTION = 'SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPORT'
-LIMITS = {'mainCli': 5, 'cleanupCli': 6, 'enable': 1, 'disable': 1,
+LIMITS = {'mainCli': 7, 'cleanupCli': 8, 'enable': 1, 'disable': 1,
           'cache': 0, 'https': 0, 'sql': 0, 'payment': 0}
 COORDINATOR = ('import sys\nfor i in range(5):\n print(i,flush=True)\n'
                ' if sys.stdin.readline()!= "OK\\n":sys.exit(1)\n')
@@ -175,6 +175,11 @@ def source_guard(scope, committed=True):
          {SANDBOX, p.PYTHON, str(SDK)} <= set(manifest['sdkFiles']), 'IQ1_SOURCE')
     need(sd3.SDK.resolve() == SDK.resolve() and
          {str(SDK.parent / name) for name in (
+             'surface/iam/service_accounts/enable.yaml',
+             'surface/iam/service_accounts/disable.yaml',
+             'googlecloudsdk/command_lib/iam/resources.yaml',
+             'googlecloudsdk/command_lib/iam/hooks.py',
+             'googlecloudsdk/command_lib/iam/iam_util.py',
              'third_party/apitools/base/py/base_api.py',
              'third_party/apitools/base/py/encoding.py',
              'googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_messages.py',
@@ -247,7 +252,7 @@ class Journal:
         need(not hasattr(self, 'identity') or self.identity == identity, 'IQ1_CUSTODY')
         for path in self.root.iterdir():
             info = path.lstat()
-            need(re.fullmatch('(envelope|launch|worker|ready|result|main-[0-4]|cleanup-[0-5]|enable|disable)\\.json', path.name) and
+            need(re.fullmatch('(envelope|launch|worker|ready|result|main-[0-6]|cleanup-[0-7]|enable|disable)\\.json', path.name) and
                  stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and info.st_uid == os.getuid() and
                  stat.S_IMODE(info.st_mode) == 0o600 and info.st_size <= 65536, 'IQ1_CUSTODY')
             current = digest(inv.read(path))
@@ -257,7 +262,7 @@ class Journal:
 
     def put(self, name, value):
         self.inspect()
-        need(re.fullmatch('(envelope|launch|worker|ready|result|main-[0-4]|cleanup-[0-5]|enable|disable)\\.json', name), 'IQ1_CUSTODY')
+        need(re.fullmatch('(envelope|launch|worker|ready|result|main-[0-6]|cleanup-[0-7]|enable|disable)\\.json', name), 'IQ1_CUSTODY')
         inv.reserve(self.root / name, value)
         self.hashes[name] = digest(value)
         fd = os.open(self.root, os.O_RDONLY)
@@ -307,11 +312,17 @@ class Cloud:
 
 
 class Boundary:
-    def __init__(self, scope, journal, *, factory, guard, config, clock=time.time, diagnostics=None):
+    def __init__(self, scope, journal, *, factory, guard, config, clock=time.time, diagnostics=None, monotonic=time.monotonic, sleeper=time.sleep):
         self.scope, self.journal, self.factory = scope, journal, factory
         self.guard, self.config, self.clock = guard, config, clock
         self.times = validate(scope, clock(), True)
-        self.last, self.started = clock(), time.monotonic()
+        self.monotonic, self.sleeper = monotonic, sleeper
+        self.last, self.started = clock(), monotonic()
+        self.mono_last = self.started
+        self.readback_end = None
+        self.readback_active = self.cleanup_final = False
+        self.reconciled = set()
+        self.readback_retryable = False
         self.hard_end = self.started + self.times['cleanupEnd'] - self.last
         self.phase, self.counts = 'main', {'main': 0, 'cleanup': 0}
         self.io = None
@@ -333,28 +344,42 @@ class Boundary:
         need(now >= self.last, 'IQ1_CLOCK')
         self.last = now
         deadline = self.times['workEnd' if self.phase == 'main' else 'cleanupEnd']
-        need(now + 3 < deadline and time.monotonic() < self.hard_end, 'IQ1_DEADLINE')
+        mono = self.monotonic()
+        need(mono >= self.mono_last, 'IQ1_CLOCK')
+        self.mono_last = mono
+        need(now + 3 < deadline and mono < self.hard_end, 'IQ1_DEADLINE')
+        if self.readback_end is not None:
+            need(mono < self.readback_end, 'IQ1_DEADLINE')
+            deadline = min(deadline, now + self.readback_end - mono)
         self.journal.inspect()
         self.guard(self.scope)
         need(self.config() == self.scope['configSha256'], 'IQ1_CONFIG')
         return min(deadline, now + 8)
 
     def send(self, argv):
-        expected = (['owner', 'project', 'identity', 'enable', 'readback'] if self.phase == 'main'
-                    else ['owner', 'project', 'identity', 'disable', 'readback', 'identity'])
         index = self.counts[self.phase]
-        need(index < len(expected), 'IQ1_BUDGET')
-        need(list(argv) == commands()[expected[index]], 'IQ1_COMMAND')
+        limit = LIMITS['mainCli' if self.phase == 'main' else 'cleanupCli']
+        need(index < limit, 'IQ1_BUDGET')
+        if index < 4:
+            step = ['owner', 'project', 'identity', 'enable' if self.phase == 'main' else 'disable'][index]
+        elif self.readback_active:
+            need(index <= 6, 'IQ1_BUDGET')
+            step = 'readback'
+        else:
+            need(self.phase == 'cleanup' and self.cleanup_final, 'IQ1_COMMAND')
+            step = 'identity'
+            self.cleanup_final = False
+        need(list(argv) == commands()[step], 'IQ1_COMMAND')
         deadline = self.gate()
-        self.journal.put(f'{self.phase}-{index}.json', {**self.journal.binding(), 'step': expected[index]})
+        self.journal.put(f'{self.phase}-{index}.json', {**self.journal.binding(), 'step': step})
         self.counts[self.phase] += 1
         binding = None
-        if self.diagnostics is not None and expected[index] in ('identity', 'readback'):
+        if self.diagnostics is not None and step in ('identity', 'readback'):
             try:
                 binding = self.diagnostics.prepare(f'{self.phase}-{index}')
             except Exception:
                 binding = None
-        observation = {'phase': self.phase.upper(), 'step': expected[index], 'ordinal': index,
+        observation = {'phase': self.phase.upper(), 'step': step, 'ordinal': index,
                        'startedAt': None, 'returnedAt': None, 'elapsedMs': None,
                        'outcome': 'NOT_CLASSIFIED'}
         started = ended = None
@@ -379,11 +404,11 @@ class Boundary:
             except Exception:
                 pass
             try:
-                observation.update(observation_fields(raw, expected[index], self.uid))
+                observation.update(observation_fields(raw, step, self.uid))
             except Exception:
                 pass  # Optional diagnostics cannot suppress the real predicate/cleanup.
         finally:
-            if self.diagnostics is not None and expected[index] in ('identity', 'readback'):
+            if self.diagnostics is not None and step in ('identity', 'readback'):
                 try:
                     observation['sdkResponse'] = self.diagnostics.read(binding)
                 except Exception:
@@ -395,10 +420,56 @@ class Boundary:
                         observation['elapsedMs'] = round(elapsed * 1000, 3)
             except Exception:
                 pass
-            if len(self.observations) < 11:
+            if len(self.observations) < 15:
                 self.observations.append(observation)
+        self.readback_retryable = False
+        if step == 'readback':
+            try:
+                value = q.strict_json(raw)
+                self.readback_retryable = (type(value) is dict and set(value) <= {'email', 'disabled'}
+                    and value.get('email') == m.IDENTITY
+                    and ('disabled' not in value or type(value['disabled']) is bool))
+            except Exception:
+                pass
         self.gate()
         return raw
+
+    def reconcile(self, enabled):
+        need(self.phase not in self.reconciled, 'IQ1_REPLAY')
+        self.reconciled.add(self.phase)
+        self.gate()
+        self.readback_end = self.monotonic() + 45
+        self.readback_active = True
+        try:
+            for attempt, delay in enumerate((0, 5, 10)):
+                until = self.monotonic() + delay
+                while True:
+                    self.gate()
+                    remaining = until - self.monotonic()
+                    if remaining <= 0:
+                        break
+                    self.sleeper(min(.1, remaining))
+                self.gate()
+                self.readback_retryable = False
+                before = len(self.observations)
+                try:
+                    observed = self.adapter.readback('identity', m.IDENTITY, enabled, {}, self.gate())
+                    need(observed, 'IQ1_READBACK')
+                except entry.c.Stop as error:
+                    reason = code(error)
+                    if len(self.observations) > before:
+                        self.observations[-1]['readbackResult'] = reason
+                    if (reason not in ('RUNTIME_IDENTITY_STATE_MISMATCH', 'RUNTIME_IDENTITY_DISABLED_MISSING')
+                            or not self.readback_retryable or attempt == 2):
+                        raise
+                else:
+                    self.gate()
+                    if len(self.observations) > before:
+                        self.observations[-1]['readbackResult'] = 'MATCH'
+                    return
+        finally:
+            self.readback_active = False
+            self.readback_end = None
 
     def metadata(self):
         value = q.strict_json(self.send(commands()['identity']))
@@ -436,7 +507,7 @@ class Boundary:
             self.adapter.change('identity', m.IDENTITY, True, {}, self.times['workEnd'])
             self.ack = True
         elif index == 4:
-            need(self.adapter.readback('identity', m.IDENTITY, True, {}, self.times['workEnd']), 'IQ1_READBACK')
+            self.reconcile(True)
             self.enabled = True
 
     def finish_processes(self):
@@ -465,7 +536,7 @@ class Boundary:
         self.adapter.change('identity', m.IDENTITY, False, {}, self.times['cleanupEnd'])
         self.stage = 'DISABLED_READBACK'
         try:
-            need(self.adapter.readback('identity', m.IDENTITY, False, {}, self.times['cleanupEnd']), 'IQ1_READBACK')
+            self.reconcile(False)
         except entry.c.Stop as error:
             reason = code(error)
             # This read returned through the owned transport/serializer. Retain
@@ -477,15 +548,16 @@ class Boundary:
             self.cleanup_readback_failure = reason
             self.cleanup_failure = reason
         self.stage = 'FINAL_UID'
+        self.cleanup_final = True
         final_uid, disabled = self.metadata()
         need(final_uid == self.uid and disabled is True, 'IQ1_UID')
         self.restored = True
 
 
-def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time.time, diagnostics=None):
+def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time.time, diagnostics=None, monotonic=time.monotonic, sleeper=time.sleep):
     """One worker attempt. All injected dependencies mandatory; no native fallback."""
     driver = Boundary(scope, journal, factory=factory, guard=guard, config=config, clock=clock,
-                      diagnostics=diagnostics)
+                      diagnostics=diagnostics, monotonic=monotonic, sleeper=sleeper)
     journal.put('worker.json', journal.binding())
     try:
         driver.gate()
@@ -535,7 +607,7 @@ def run_worker(scope, journal, *, factory, guard, config, coordinate, clock=time
         residuals.append('PRIVATE_INVENTORY_UNKNOWN')
     if not source_closed:
         residuals.append('SOURCE_CHANGED')
-    if clock() >= driver.times['cleanupEnd'] or time.monotonic() >= driver.hard_end:
+    if clock() >= driver.times['cleanupEnd'] or driver.monotonic() >= driver.hard_end:
         residuals.append('CLEANUP_DEADLINE')
     qualified = driver.enabled and driver.restored and not residuals and not driver.failure and not driver.cleanup_failure
     result = {**journal.binding(), 'status': 'QUALIFIED_AND_CLOSED' if qualified else
