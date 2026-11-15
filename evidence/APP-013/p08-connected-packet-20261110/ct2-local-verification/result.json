@@ -1,0 +1,22 @@
+{
+  "section": "APP-013/3A",
+  "change": "CT2",
+  "sourceCommit": "a93fc72aef90e7d3e8e3424f3d25f9f9551a6575",
+  "approvalCommit": "4140ab7",
+  "date": "2026-11-15",
+  "status": "LOCAL_VERIFIED_NOT_LIVE_QUALIFIED",
+  "focusedTests": 17,
+  "connectedTestsIncludingFocused": 270,
+  "governanceTests": 25,
+  "sourceManifestFiles": 43,
+  "committedSourceAndSdkGuards": "PASS",
+  "architecture": "PASS",
+  "governanceBaselineAndConsistency": "PASS",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "sharedRuntimeFilesModified": 0,
+  "historicalManifestsModified": 0,
+  "currentContainment": "UNKNOWN",
+  "historicalAuthentication": "UNKNOWN",
+  "scopeDeviation": false
+}
