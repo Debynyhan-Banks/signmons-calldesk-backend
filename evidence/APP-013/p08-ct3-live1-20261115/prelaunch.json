@@ -1,0 +1,19 @@
+{
+  "operationId": "2512649e-f563-4311-b8a7-00b37ed32258",
+  "checkedAt": "2026-11-15T23:29:39.541768+00:00",
+  "sourceConfigResourceBinaryAuthorityChecks": "PASS",
+  "latestLaunch": "2026-11-15T23:35:00Z",
+  "decisionCommit": "746d5abf5161112e346124279f1e886d3a07347c",
+  "scopeSha256": "ae7ab2261432466193b0b72c1013b95c544095abb5060d6763548813181b3560",
+  "command": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "-c",
+    "import sys,runpy;sys.path.insert(0,sys.argv.pop(1));sys.argv[0]=\"account_containment_read\";runpy.run_module(\"account_containment_read\",run_name=\"__main__\")",
+    "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110",
+    "--run-ct3",
+    "/private/tmp/p08-ct3-live1-2512649e-f563-4311-b8a7-00b37ed32258-envelope.json"
+  ],
+  "ownerReadyNoOverlapReachableThrough": "2026-11-16T00:00:00Z"
+}

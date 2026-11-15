@@ -1,0 +1,27 @@
+{
+  "operationId": "2512649e-f563-4311-b8a7-00b37ed32258",
+  "closedAt": "2026-11-15T23:33:38.068568+00:00",
+  "status": "INPUT_OR_LAUNCH_REFUSED_CLOSED",
+  "runtimeResultAt": "2026-11-15T23:31:06.131627+00:00",
+  "standaloneTerminalLaunchedAt": "2026-11-15T23:29:39.819765+00:00",
+  "providerCalls": 0,
+  "providerMutations": 0,
+  "credentialsRequestedViaHiddenInput": true,
+  "privateReferencesCleared": true,
+  "rawPrivateInputsPersisted": false,
+  "operationRunnerAbsent": true,
+  "operationLeaseReleased": true,
+  "configurationUnchanged": true,
+  "publicLaunchEnvelopeAbsent": true,
+  "historicalAuthentication": "UNKNOWN",
+  "currentProviderContainment": "UNKNOWN",
+  "ownerReportedInputIssue": "Destination ID was entered at the Sandbox secret-key prompt; value not retained.",
+  "runtimeExactRefusalReason": "NOT_RECORDED",
+  "replayAuthorized": false,
+  "safeReceiptSha256": {
+    "prelaunch.json": "071f93ae635bbe195a5bb977c93f6fb53bf560f5e94dab670a3657f97c0d6303",
+    "result.json": "0e5c248667f7d2aa1aefd65689f40019c9c8c101a9a816ef2be39951dc465f68",
+    "launch.json": "cc56bcfc1fa5de756b3353d20934cacb700afb0643e1b95bc727d63ff94a320b",
+    "envelope.json": "7c3104327a97a340cb85d5999e59d1318f70cfd9d45f8f4148d4a0bc1bcf9c96"
+  }
+}
