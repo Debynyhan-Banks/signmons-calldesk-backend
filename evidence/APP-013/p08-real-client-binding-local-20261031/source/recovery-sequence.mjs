@@ -81,7 +81,13 @@ export class CoordinatorAuthSequence {
       await this.step(() => this.clients.authenticate(token));
       this.save({phase: 'AUTHENTICATED', authenticated: true});
     } catch (error) {
-      this.save({phase: 'STOPPED', failureStage: this.state.phase, failureCode: safeCode(error)});
+      this.save({phase: 'STOPPED', failureStage: this.state.phase, failureCode: safeCode(error),
+        ...(error?.code === 'SIGN_EXCHANGE_REFUSED' ? {
+          authStage: ['SIGN', 'KEY_READ', 'EXCHANGE'].includes(error.authStage) ? error.authStage : 'UNKNOWN',
+          failureCategory: ['TRANSPORT', 'HTTP', 'RESPONSE_VALIDATION'].includes(error.failureCategory) ? error.failureCategory : 'UNKNOWN',
+          httpStatus: error.failureCategory === 'HTTP' && Number.isInteger(error.httpStatus) &&
+            error.httpStatus >= 100 && error.httpStatus <= 599 ? error.httpStatus : null,
+        } : {})});
     } finally {
       token = '';
       this.clients.dropToken();

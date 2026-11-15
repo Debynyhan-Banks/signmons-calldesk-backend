@@ -17,9 +17,9 @@ LOCKS = {
     "coordinator": (APP / "p08-live-binder-local-20261029/source/coordinator.py", "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"),
     "bridge": (APP / "p08-native-bridge-local-20261029/source/bridge.py", "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"),
     "adapter": (APP / "p08-native-closeout-local-20261031/source/adapter.py", "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"),
-    "authority": (APP / "p08-coordinator-auth-local-20261031/source/authority.mjs", "0bcd2c7b86cfd98a77bcedb86b5d02735a8bc148f040d4d53d3d80b8e00a9aa5"),
+    "authority": (APP / "p08-coordinator-auth-local-20261031/source/authority.mjs", "074a0f6f2ca41bb3cc4b691eda3e44d870234579a3e7c3cd476041a1dd979c39"),
     "sequence": (APP / "p08-coordinator-auth-local-20261031/source/sequence.mjs", "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c"),
-    "client": (APP / "p08-coordinator-auth-local-20261031/source/client.mjs", "0ae21eed01f6d0af2fc5497e825f9c05a5ecd3a0f75476616b04d81054d589c9"),
+    "client": (APP / "p08-coordinator-auth-local-20261031/source/client.mjs", "4dd54eb7caaea2d334c3a4c82ef49a6d914dc0feb58a7e089a280656f53d4dec"),
     "bridge_plan": (APP / "p08-authentication-local-20261026/source/reuse/plan.json", "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"),
 }
 OWNED_RECEIPT = "owned-receipt.json"

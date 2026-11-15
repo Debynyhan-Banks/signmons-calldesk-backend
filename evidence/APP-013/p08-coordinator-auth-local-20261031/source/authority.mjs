@@ -36,7 +36,18 @@ export function verifySources() {
     .replace("from './reuse/operator-bridge.mjs'", "from '../../p08-authentication-local-20261026/source/reuse/operator-bridge.mjs'")
     .replace('fetcher=fetch,now=Date.now', 'fetcher,now=Date.now')
     .replace('const {p}=gate(cap,true),s=p.target;let idToken=', "const {p}=gate(cap,true),s=p.target;need(typeof fetcher==='function','INJECTED_TRANSPORT_REQUIRED');let idToken=");
-  need(readFileSync(resolve(HERE, 'client.mjs'), 'utf8') === extracted, 'EXTRACTION_DRIFT');
+  // AD2: exact diagnostic-only extraction; historical source and full equality remain guarded.
+  const instrumented = extracted
+    .replace(" async function call(url", " let failureCategory='UNKNOWN',httpStatus=null;\n async function call(url")
+    .replace("{gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');const end", "{failureCategory='UNKNOWN';httpStatus=null;gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');const end")
+    .replace("const r=await fetcher(url", "failureCategory='TRANSPORT';const r=await fetcher(url")
+    .replace("need(r.ok,'PROVIDER_REQUEST_REFUSED');const text=await r.text();", "if(!r.ok){failureCategory='HTTP';httpStatus=Number.isInteger(r.status)&&r.status>=100&&r.status<=599?r.status:null;}need(r.ok,'PROVIDER_REQUEST_REFUSED');const text=await r.text();failureCategory='RESPONSE_VALIDATION';")
+    .replace("let stage='SIGN';try{gate(cap)", "let stage='SIGN';failureCategory='UNKNOWN';httpStatus=null;try{gate(cap)")
+    .replace("stage='EXCHANGE';const key", "stage='KEY_READ';const key")
+    .replace("const v=await call('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken", "stage='EXCHANGE';const v=await call('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
+    .replace("authStage:stage})", "authStage:stage,failureCategory,httpStatus})")
+    .replace("gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');return v", "failureCategory='UNKNOWN';gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');failureCategory='RESPONSE_VALIDATION';return v");
+  need(readFileSync(resolve(HERE, 'client.mjs'), 'utf8') === instrumented, 'EXTRACTION_DRIFT');
   return true;
 }
 

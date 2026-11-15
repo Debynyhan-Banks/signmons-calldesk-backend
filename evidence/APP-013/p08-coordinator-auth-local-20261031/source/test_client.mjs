@@ -284,3 +284,61 @@ test('independent closeout after cutoff uses the same journal and no mutation re
   assert.equal(result.sessionClosed, true);
   close(c);
 });
+
+// Exercise the actual native sequence, including its persisted safe diagnostics.
+import {CoordinatorAuthSequence as RecoverySequence} from '../../p08-real-client-binding-local-20261031/source/recovery-sequence.mjs';
+for (const stage of ['SIGN', 'KEY_READ', 'EXCHANGE']) {
+  for (const category of ['TRANSPORT', 'HTTP', 'RESPONSE_VALIDATION']) {
+    test(`native diagnostics: ${stage}/${category}, cleanup and no retry`, async t => {
+      const f = fixture(t), c = cap(f), {clients, state} = fakeSequenceClients(f);
+      let calls = 0;
+      const stages = ['SIGN', 'KEY_READ', 'EXCHANGE'];
+      const api = adapters(c, {accessToken: 'SECRET_SENTINEL', fetcher: async () => {
+        const current = stages[calls++];
+        if (current === stage) {
+          if (category === 'TRANSPORT') throw Error('SECRET_SENTINEL');
+          if (category === 'HTTP') return {ok: false, status: 403, text: async () => {throw Error('MUST_NOT_READ_BODY');}};
+          return {ok: true, text: async () => '{SECRET_SENTINEL'};
+        }
+        return {ok: true, text: async () => JSON.stringify(current === 'SIGN' ?
+          {signedBlob: 'c2ln'} : {keyString: 'synthetic-key'})};
+      }});
+      clients.fb.revoke = async () => {state.user.tokensValidAfterTime = JSON.parse(readFileSync(f.journalPath)).authClient.revocationIntentAt;};
+      clients.issue = () => api.issue();
+      const result = await new RecoverySequence(c, clients).run();
+      const j = JSON.parse(readFileSync(f.journalPath)).authClient;
+      assert.equal(j.authStage, stage); assert.equal(j.failureCategory, category);
+      assert.equal(j.httpStatus, category === 'HTTP' ? 403 : null);
+      assert.equal(j.failureStage, 'TOKEN_INTENT');
+      assert.equal(result.authenticated, false); assert.deepEqual(result.residuals, []);
+      assert.equal(state.row.status, 'DISABLED'); assert.equal(state.user.disabled, true);
+      assert.ok(state.closed && state.cleared);
+      assert.ok(!JSON.stringify(j).includes('SECRET_SENTINEL'));
+      await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
+      assert.equal(calls, stages.indexOf(stage) + 1);
+      api.clear(); close(c);
+    });
+  }
+}
+
+test('native journal rejects untrusted diagnostic values', async t => {
+  const f = fixture(t), c = cap(f), {clients} = fakeSequenceClients(f);
+  clients.issue = async () => {throw Object.assign(Error('SECRET_SENTINEL'), {
+    code: 'SIGN_EXCHANGE_REFUSED', authStage: 'SECRET_SENTINEL',
+    failureCategory: 'SECRET_SENTINEL', httpStatus: 'SECRET_SENTINEL'});};
+  await new RecoverySequence(c, clients).run();
+  const j = JSON.parse(readFileSync(f.journalPath)).authClient;
+  assert.equal(j.authStage, 'UNKNOWN'); assert.equal(j.failureCategory, 'UNKNOWN');
+  assert.equal(j.httpStatus, null); assert.ok(!JSON.stringify(j).includes('SECRET_SENTINEL'));
+  close(c);
+});
+
+test('issuance interruption is UNKNOWN with no transport or retry', async t => {
+  const f = fixture(t), signal = {aborted: false}, c = cap(f, {signal});
+  let calls = 0;
+  const api = adapters(c, {accessToken: 'SECRET_SENTINEL', fetcher: async () => {calls++;}});
+  signal.aborted = true;
+  await assert.rejects(() => api.issue(), {code: 'SIGN_EXCHANGE_REFUSED', authStage: 'SIGN', failureCategory: 'UNKNOWN', httpStatus: null});
+  await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
+  assert.equal(calls, 0); api.clear(); close(c);
+});

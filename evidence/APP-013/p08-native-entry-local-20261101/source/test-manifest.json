@@ -14,6 +14,6 @@
     "test_private_inventory_cc1.py": "ff50193e6f48428a77a3a0068e71c9afec698b75b05e03a10584bd554cf7cd3f",
     "test_transports.mjs": "23368feeb28ff41aaed729c2653fac2ae352e2e5d39722b39123fbac247a1a4d"
   },
-  "runtimeManifestSha256": "75ed094bb6c3926089e9a71b35b9e9f2f9b910e83aa13889f5e3025b39b4cab0",
+  "runtimeManifestSha256": "f40849825f4933025bd7daa40b1503d55d5a9a95996b8d3afdfe58e3afac1b5e",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }
