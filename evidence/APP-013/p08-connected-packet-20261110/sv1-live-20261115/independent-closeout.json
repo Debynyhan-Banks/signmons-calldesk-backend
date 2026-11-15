@@ -1,0 +1,11 @@
+{
+  "operationId": "a6bb293e-ca06-42cd-aa72-7e57b89c56ca",
+  "executorAbsent": true,
+  "matchingProcessesAbsent": true,
+  "receiptCustodyVerified": true,
+  "temporaryExecutorAbsent": true,
+  "executorSha256": "e9106778216894d7211391bee480b2574aa89a0d51fed68b175f13d867e05083",
+  "closedAt": "2026-11-15T17:31:20.021759+00:00",
+  "onTime": true,
+  "residuals": []
+}
