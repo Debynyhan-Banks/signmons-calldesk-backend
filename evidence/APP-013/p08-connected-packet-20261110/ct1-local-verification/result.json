@@ -1,0 +1,21 @@
+{
+  "section": "APP-013/3A",
+  "change": "CT1",
+  "approvalCommit": "c14934b",
+  "date": "2026-11-15",
+  "status": "LOCAL_VERIFIED",
+  "focusedTests": 12,
+  "connectedTestsIncludingFocused": 253,
+  "governanceTests": 25,
+  "sourceManifestFilesVerified": 40,
+  "architecture": "PASS",
+  "frozenBaseline": "PASS",
+  "crossRepositoryConsistency": "PASS",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "currentContainment": "UNKNOWN",
+  "historicalAuthentication": "UNKNOWN",
+  "nativeRegression": "NOT_RERUN_UNCHANGED_RUNTIME",
+  "productionTargetPositiveTest": "NOT_CLAIMED_SYNTHETIC_PARSER_SEAM_ONLY",
+  "scopeDeviation": false
+}
