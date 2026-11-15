@@ -1,0 +1,87 @@
+.............................................FFFFFFF.F.................
+======================================================================
+FAIL: test_each_exact_r51_session_blocks_both_descriptors (test_account_containment_read.CT3DisposableTLS.test_each_exact_r51_session_blocks_both_descriptors) (application='p08-runtime-cc2c1ce5-640f-41f4-a993-31063630207c')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 656, in test_each_exact_r51_session_blocks_both_descriptors
+    self.assertEqual(initial['sessionCount'],1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 1
+
+======================================================================
+FAIL: test_each_exact_r51_session_blocks_both_descriptors (test_account_containment_read.CT3DisposableTLS.test_each_exact_r51_session_blocks_both_descriptors) (application='p08-probe-cc2c1ce5-640f-41f4-a993-31063630207c')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 656, in test_each_exact_r51_session_blocks_both_descriptors
+    self.assertEqual(initial['sessionCount'],1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 3 != 1
+
+======================================================================
+FAIL: test_each_exact_r51_session_blocks_both_descriptors (test_account_containment_read.CT3DisposableTLS.test_each_exact_r51_session_blocks_both_descriptors)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 663, in test_each_exact_r51_session_blocks_both_descriptors
+    self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'p08-%';"),'0')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '3' != '0'
+- 3
++ 0
+
+
+======================================================================
+FAIL: test_existing_role_and_qualification_predicates_and_unrelated_exclusion (test_account_containment_read.CT3DisposableTLS.test_existing_role_and_qualification_predicates_and_unrelated_exclusion) (application='signmons_p08_qualification_synthetic')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 677, in test_existing_role_and_qualification_predicates_and_unrelated_exclusion
+    self.assertEqual(initial['sessionCount'],int(expected))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 4 != 1
+
+======================================================================
+FAIL: test_existing_role_and_qualification_predicates_and_unrelated_exclusion (test_account_containment_read.CT3DisposableTLS.test_existing_role_and_qualification_predicates_and_unrelated_exclusion) (application='ct3-runtime-role-synthetic')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 677, in test_existing_role_and_qualification_predicates_and_unrelated_exclusion
+    self.assertEqual(initial['sessionCount'],int(expected))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 5 != 1
+
+======================================================================
+FAIL: test_existing_role_and_qualification_predicates_and_unrelated_exclusion (test_account_containment_read.CT3DisposableTLS.test_existing_role_and_qualification_predicates_and_unrelated_exclusion) (application='ct3-unrelated-synthetic')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 677, in test_existing_role_and_qualification_predicates_and_unrelated_exclusion
+    self.assertEqual(initial['sessionCount'],int(expected))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 5 != 0
+
+======================================================================
+FAIL: test_existing_role_and_qualification_predicates_and_unrelated_exclusion (test_account_containment_read.CT3DisposableTLS.test_existing_role_and_qualification_predicates_and_unrelated_exclusion)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 685, in test_existing_role_and_qualification_predicates_and_unrelated_exclusion
+    self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'ct3-%' OR application_name LIKE 'signmons_p08_qualification_%';"),'0')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '3' != '0'
+- 3
++ 0
+
+
+======================================================================
+FAIL: test_untrusted_tls_and_unlisted_sql_refuse_and_reap_owned_processes (test_account_containment_read.CT3DisposableTLS.test_untrusted_tls_and_unlisted_sql_refuse_and_reap_owned_processes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 710, in test_untrusted_tls_and_unlisted_sql_refuse_and_reap_owned_processes
+    self.assertEqual(self.command("SELECT count(*) FROM pg_stat_activity WHERE application_name LIKE 'signmons_p08_qualification_%';"),'0')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '1' != '0'
+- 1
++ 0
+
+
+----------------------------------------------------------------------
+Ran 66 tests in 2.463s
+
+FAILED (failures=8)
+{"status": "CT3_TLS_CLEANUP_VERIFIED", "serverReaped": true, "scratchAbsent": true, "providerCalls": 0}

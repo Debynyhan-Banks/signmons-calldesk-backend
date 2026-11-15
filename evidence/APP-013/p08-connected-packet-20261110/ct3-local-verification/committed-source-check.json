@@ -1,0 +1,19 @@
+{
+  "status": "COMMITTED_SOURCE_AND_SDK_GUARDS_PASSED",
+  "sourceCommit": "148d2dcd20847e650c001bf7cb94a14cfde6690b",
+  "observedAt": "2026-11-15T23:13:57.301843+00:00",
+  "manifestReferences": 153,
+  "manifestSha256": "0440dddaf370be8574212ead7ee040acae911423911bb65fc9ade39c1e624a76",
+  "policy": {
+    "kind": "POST_PROCESS_OBSERVATION",
+    "historicalOperationId": "cc2c1ce5-640f-41f4-a993-31063630207c",
+    "minimumValidSince": 1794780123,
+    "historicalAuthentication": "UNKNOWN"
+  },
+  "resourcesSha256": "5fa63feea88513e402b813ccaa07a168e346a0d24431aa9440f09fcad46ddc41",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "liveAuthorityCreated": false,
+  "actualAuthorityParserWithInertDecision": "PASS",
+  "keyCorrectionCommittedVerifier": "PASS"
+}

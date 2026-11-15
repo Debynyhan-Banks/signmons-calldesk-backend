@@ -1,0 +1,62 @@
+.........................................F..E...........F.....
+======================================================================
+ERROR: setUpClass (test_account_containment_read.CT3DisposableTLS)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 19, in setUpClass
+    cls.command(args=[str(PG/'initdb'),'-D',str(cls.data),'--username=neondb_owner','--auth=trust','--no-locale','--encoding=UTF8'])
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 13, in command
+    if r.returncode:raise AssertionError('LOCAL_POSTGRES_COMMAND_FAILED')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: LOCAL_POSTGRES_COMMAND_FAILED
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-real-client-binding-local-20261031/source/test_bound_postgres.py", line 20, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/test_auth_postgres.py", line 9, in setUpClass
+    super().setUpClass()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-authentication-local-20261026/source/reuse/test_postgres_contract.py", line 28, in setUpClass
+    except BaseException:cls.tearDownClass();raise
+                         ~~~~~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 555, in tearDownClass
+    assert cls.server.poll() is not None and not scratch.exists()
+           ^^^^^^^^^^
+AttributeError: type object 'CT3DisposableTLS' has no attribute 'server'
+
+======================================================================
+FAIL: test_real_fixed_coordinator_compatible (test_account_containment_read.CT3Composition.test_real_fixed_coordinator_compatible)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 402, in test_real_fixed_coordinator_compatible
+    self.assertEqual(self.execute(coordinate_fn=r.k.coordinator)['status'], 'CURRENT_CONTAINMENT_CONFIRMED')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CURRENT_CONTAINMENT_UNKNOWN' != 'CURRENT_CONTAINMENT_CONFIRMED'
+- CURRENT_CONTAINMENT_UNKNOWN
+?                     ^ ^^^^^
++ CURRENT_CONTAINMENT_CONFIRMED
+?                     ^^ ^^^^^^
+
+
+======================================================================
+FAIL: test_real_coordinator_process (test_account_containment_read.Composition.test_real_coordinator_process)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 103, in test_real_coordinator_process
+    self.assertEqual(self.execute(coordinator=r.k.coordinator)['status'],'CURRENT_CONTAINMENT_CONFIRMED')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'CURRENT_CONTAINMENT_UNKNOWN' != 'CURRENT_CONTAINMENT_CONFIRMED'
+- CURRENT_CONTAINMENT_UNKNOWN
+?                     ^ ^^^^^
++ CURRENT_CONTAINMENT_CONFIRMED
+?                     ^^ ^^^^^^
+
+
+----------------------------------------------------------------------
+Ran 61 tests in 1.067s
+
+FAILED (failures=2, errors=1)

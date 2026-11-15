@@ -1,0 +1,59 @@
+{
+  "section": "APP-013/3A",
+  "change": "CT3",
+  "authority": "governance51f4edd / APP013_P08_CT3_APPROVAL_20261115.md",
+  "sourceBase": "72f0390a5ba3b1336cd870f0d701eb599e5d02cb",
+  "status": "LOCALLY_VERIFIED_LIVE_QUALIFICATION_NOT_RUN",
+  "observedAt": "2026-11-15T23:14:33.462226+00:00",
+  "externalActions": 0,
+  "credentialReads": 0,
+  "liveQualification": "NOT_RUN",
+  "currentProviderContainment": "UNKNOWN",
+  "historicalAuthentication": "UNKNOWN",
+  "acceptedMilestones": "4/8",
+  "r1NewlyClosed": "0/27",
+  "scopeDeviation": "NONE_BEYOND_APPROVED_CT3",
+  "limits": {
+    "cli": 3,
+    "accountSql": 1,
+    "firebase": 3,
+    "firebaseUpdate": 1,
+    "stripe": 3,
+    "stripeDisable": 1,
+    "child": 3,
+    "closeoutSql": 1,
+    "cache": 0
+  },
+  "tests": {
+    "connectedFull": 322,
+    "nativeFull": 147,
+    "nodeDistinct": 134,
+    "focusedIncludedInConnected": 81,
+    "governance": 25,
+    "distinctTotal": 628,
+    "hiddenInputPtyIncludedInConnected": 2
+  },
+  "conditionalMutationRetry": false,
+  "futureLiveAuthority": "SEPARATE_EXACT_APPROVAL_REQUIRED",
+  "knownLimitations": [
+    "Provider access and credentials remain UNKNOWN.",
+    "Stripe read and disable are not atomic against outside actors.",
+    "Lease serializes CT3 only; no overlap assurance required later.",
+    "Abrupt machine loss or unconfirmed final state remains UNKNOWN.",
+    "Private reference clearing is not cryptographic erasure of runtime strings.",
+    "Provider JSON retains existing Node JSON.parse duplicate-member semantics; parent output and SQL use strict duplicate rejection."
+  ],
+  "initialFailures": [
+    "Restricted process/TLS test execution required local permissions.",
+    "Disposable session fixture initially reaped psql without terminating its owned sleeping backend; exact fixture backend cleanup was corrected, all assertions retained.",
+    "Four Node bridge tests failed under sandbox restrictions; all36 payment tests passed with local loopback permission."
+  ],
+  "pending": [
+    "Separate exact live containment packet and owner/custodian authority"
+  ],
+  "sourceCommit": "148d2dcd20847e650c001bf7cb94a14cfde6690b",
+  "committedSourceGuards": "PASS",
+  "independentReview": "PASS",
+  "manifestReferences": 153,
+  "distinctManifestFiles": 78
+}

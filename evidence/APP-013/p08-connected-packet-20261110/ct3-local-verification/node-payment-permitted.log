@@ -1,0 +1,44 @@
+✔ actual native child payment and cleanup: normal (269.198ms)
+✔ actual native child payment and cleanup: unpaid (241.366875ms)
+✔ actual native child payment and cleanup: lost_create (230.534334ms)
+✔ actual native child payment and cleanup: lost_enable (231.78825ms)
+✔ actual native child payment and cleanup: foreign_endpoint (160.261041ms)
+✔ actual native child payment and cleanup: disable_failed (230.765792ms)
+✔ current payment context refuses foreign, stale, incomplete and preexisting state (113.1885ms)
+✔ endpoint missing/null/live/version/event drift fails closed (121.981458ms)
+✔ version1 cannot accept payment and scope cannot omit payment (217.888709ms)
+✔ fresh cleanup child recovers failed disable without reauthentication or new payment (294.562917ms)
+✔ recovery uses actual policy profile and keeps disabled/active phases distinct (97.263208ms)
+✔ actual payment preflight preserves safe failure evidence: denied (160.536708ms)
+✔ actual payment preflight preserves safe failure evidence: missing_payload (169.783042ms)
+✔ actual payment preflight preserves safe failure evidence: malformed_json (161.538875ms)
+✔ actual payment preflight preserves safe failure evidence: live_key (157.912292ms)
+✔ actual payment preflight preserves safe failure evidence: newline_key (158.53375ms)
+✔ actual payment preflight preserves safe failure evidence: transport (157.214542ms)
+✔ actual payment preflight preserves safe failure evidence: foreign_code (162.020875ms)
+✔ actual payment preflight preserves safe failure evidence: streamed_success (158.800125ms)
+✔ independent account readback after secret retirement reuses only completed main proof: false (365.353417ms)
+✔ independent account readback after secret retirement reuses only completed main proof: true (348.952041ms)
+✔ main readback failure records payment uncertainty after fresh account/session cleanup (292.141458ms)
+✔ bad independent payment proof still attempts account/session reads: missing_work (464.822917ms)
+✔ bad independent payment proof still attempts account/session reads: missing_independent (372.229666ms)
+✔ bad independent payment proof still attempts account/session reads: foreign_marker (376.268292ms)
+✔ bad independent payment proof still attempts account/session reads: failed_account (352.978708ms)
+✔ bad independent payment proof still attempts account/session reads: failed_payment (355.122584ms)
+✔ bad independent payment proof still attempts account/session reads: stale_outcome (360.018292ms)
+✔ bad independent payment proof still attempts account/session reads: pending_publish (351.858667ms)
+✔ bad independent payment proof still attempts account/session reads: later_enable (350.948083ms)
+✔ bad independent payment proof still attempts account/session reads: unknown_endpoint (356.2455ms)
+✔ bad independent payment proof still attempts account/session reads: open_bridge (358.459875ms)
+✔ bad independent payment proof still attempts account/session reads: foreign_scope (354.524166ms)
+✔ concurrent proof drift during account readback never becomes payment success: work_replaced (351.344834ms)
+✔ concurrent proof drift during account readback never becomes payment success: later_intent (353.082625ms)
+✔ completed payment proof enforces custody and deadline through actual authorized capability (356.899042ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9703.936542
