@@ -1,0 +1,193 @@
+{
+  "decision": {
+    "commit": "21dae214ab70bb1a8a7e7a8704a9d12f51a706a3",
+    "path": "APP013_P08_IQ1_EXTERNAL_20261115_8a2b4de1.json",
+    "sha256": "559d52d892ee1f9a58cddbb563e0a2d22125c0a4392441f8337ae3efa3473619"
+  },
+  "scope": {
+    "action": "IQ1_IDENTITY_ENABLE_READBACK_RESTORE_ONCE",
+    "allowanceUsd": 0,
+    "automaticRetryAllowed": false,
+    "commands": {
+      "disable": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "service-accounts",
+        "disable",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project=signmons",
+        "--quiet",
+        "--format=json"
+      ],
+      "enable": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "service-accounts",
+        "enable",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project=signmons",
+        "--quiet",
+        "--format=json"
+      ],
+      "identity": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "service-accounts",
+        "describe",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project",
+        "signmons",
+        "--format=json(email,disabled,uniqueId)"
+      ],
+      "owner": [
+        "/opt/homebrew/bin/gcloud",
+        "auth",
+        "list",
+        "--filter=status:ACTIVE",
+        "--format=json(account,status)"
+      ],
+      "project": [
+        "/opt/homebrew/bin/gcloud",
+        "projects",
+        "describe",
+        "signmons",
+        "--format=json(projectId,projectNumber,lifecycleState)"
+      ],
+      "readback": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "service-accounts",
+        "describe",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project=signmons",
+        "--format=json(email,disabled)"
+      ]
+    },
+    "configSha256": "528ceadadc8a5491e54ee82dbad0026eda881252564f96f2be242d70d1d2f111",
+    "limits": {
+      "cache": 0,
+      "cleanupCli": 6,
+      "disable": 1,
+      "enable": 1,
+      "https": 0,
+      "mainCli": 5,
+      "payment": 0,
+      "sql": 0
+    },
+    "manifestSha256": "104c3ff522047f3b96b41d70556d3a09a76fdc8c9bda18450ba622f11b5cd7a4",
+    "operationId": "8a2b4de1-2612-4396-8860-81bd8dfa8105",
+    "sdkException": "SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPORT",
+    "sourceCommit": "9d2de893e2ed61325b6d25df41eb713bf06f4196",
+    "version": 1,
+    "window": {
+      "cleanupEnd": "2026-11-15T15:16:00Z",
+      "cutoff": "2026-11-15T15:00:00Z",
+      "purgeEnd": "2026-11-15T15:18:00Z",
+      "start": "2026-11-15T14:45:00Z",
+      "workEnd": "2026-11-15T15:05:00Z"
+    },
+    "wrappedCommands": {
+      "disable": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1)(allow default)(deny process-fork)",
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-I",
+        "-B",
+        "-S",
+        "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py",
+        "iam",
+        "service-accounts",
+        "disable",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project=signmons",
+        "--quiet",
+        "--format=json"
+      ],
+      "enable": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1)(allow default)(deny process-fork)",
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-I",
+        "-B",
+        "-S",
+        "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py",
+        "iam",
+        "service-accounts",
+        "enable",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project=signmons",
+        "--quiet",
+        "--format=json"
+      ],
+      "identity": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1)(allow default)(deny process-fork)",
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-I",
+        "-B",
+        "-S",
+        "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py",
+        "--binding",
+        "<SD3_BINDING>",
+        "--",
+        "iam",
+        "service-accounts",
+        "describe",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project",
+        "signmons",
+        "--format=json(email,disabled,uniqueId)"
+      ],
+      "owner": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1)(allow default)(deny process-fork)",
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-I",
+        "-B",
+        "-S",
+        "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py",
+        "auth",
+        "list",
+        "--filter=status:ACTIVE",
+        "--format=json(account,status)"
+      ],
+      "project": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1)(allow default)(deny process-fork)",
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-I",
+        "-B",
+        "-S",
+        "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py",
+        "projects",
+        "describe",
+        "signmons",
+        "--format=json(projectId,projectNumber,lifecycleState)"
+      ],
+      "readback": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1)(allow default)(deny process-fork)",
+        "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+        "-I",
+        "-B",
+        "-S",
+        "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py",
+        "--binding",
+        "<SD3_BINDING>",
+        "--",
+        "iam",
+        "service-accounts",
+        "describe",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project=signmons",
+        "--format=json(email,disabled)"
+      ]
+    }
+  }
+}

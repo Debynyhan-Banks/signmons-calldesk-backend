@@ -1,0 +1,203 @@
+{
+  "cleanupFailure": "IQ1_UID",
+  "cleanupReadbackFailure": "RUNTIME_IDENTITY_DISABLED_MISSING",
+  "cleanupStage": "FINAL_UID",
+  "configurationClosed": true,
+  "counts": {
+    "cleanup": 6,
+    "main": 5
+  },
+  "diagnosticClosed": true,
+  "enableOutcomeUnknown": false,
+  "enabledReadback": false,
+  "failure": "RUNTIME_IDENTITY_STATE_MISMATCH",
+  "finishedAt": 1794753923.7585468,
+  "mainStage": "ENABLED_READBACK",
+  "observations": [
+    {
+      "elapsedMs": 314.572,
+      "ordinal": 0,
+      "outcome": "RETURNED",
+      "phase": "MAIN",
+      "returnedAt": "2026-11-15T14:45:18.736224+00:00",
+      "startedAt": "2026-11-15T14:45:18.421550+00:00",
+      "step": "owner"
+    },
+    {
+      "elapsedMs": 579.56,
+      "ordinal": 1,
+      "outcome": "RETURNED",
+      "phase": "MAIN",
+      "returnedAt": "2026-11-15T14:45:19.345178+00:00",
+      "startedAt": "2026-11-15T14:45:18.765602+00:00",
+      "step": "project"
+    },
+    {
+      "disabled": "BOOL_TRUE",
+      "elapsedMs": 435.073,
+      "email": "MATCH",
+      "ordinal": 2,
+      "outcome": "RETURNED",
+      "phase": "MAIN",
+      "returnedAt": "2026-11-15T14:45:19.810339+00:00",
+      "sdkResponse": {
+        "decoded": "BOOL_TRUE",
+        "decoder": "RETURNED",
+        "disabled": "BOOL_TRUE",
+        "http": "SUCCESS",
+        "identity": "MATCH",
+        "requestMatch": true,
+        "shape": "OBJECT",
+        "status": "OBSERVED"
+      },
+      "shape": "OBJECT",
+      "startedAt": "2026-11-15T14:45:19.375251+00:00",
+      "step": "identity",
+      "uid": "BASELINE_VALIDATED"
+    },
+    {
+      "elapsedMs": 627.635,
+      "ordinal": 3,
+      "outcome": "RETURNED",
+      "phase": "MAIN",
+      "returnedAt": "2026-11-15T14:45:20.482779+00:00",
+      "startedAt": "2026-11-15T14:45:19.855128+00:00",
+      "step": "enable"
+    },
+    {
+      "disabled": "BOOL_TRUE",
+      "elapsedMs": 548.719,
+      "email": "MATCH",
+      "ordinal": 4,
+      "outcome": "RETURNED",
+      "phase": "MAIN",
+      "returnedAt": "2026-11-15T14:45:21.064634+00:00",
+      "sdkResponse": {
+        "decoded": "BOOL_TRUE",
+        "decoder": "RETURNED",
+        "disabled": "BOOL_TRUE",
+        "http": "SUCCESS",
+        "identity": "MATCH",
+        "requestMatch": true,
+        "shape": "OBJECT",
+        "status": "OBSERVED"
+      },
+      "shape": "OBJECT",
+      "startedAt": "2026-11-15T14:45:20.515894+00:00",
+      "step": "readback",
+      "uid": "NOT_REQUESTED"
+    },
+    {
+      "elapsedMs": 201.602,
+      "ordinal": 0,
+      "outcome": "RETURNED",
+      "phase": "CLEANUP",
+      "returnedAt": "2026-11-15T14:45:21.365495+00:00",
+      "startedAt": "2026-11-15T14:45:21.163880+00:00",
+      "step": "owner"
+    },
+    {
+      "elapsedMs": 596.847,
+      "ordinal": 1,
+      "outcome": "RETURNED",
+      "phase": "CLEANUP",
+      "returnedAt": "2026-11-15T14:45:21.983471+00:00",
+      "startedAt": "2026-11-15T14:45:21.386608+00:00",
+      "step": "project"
+    },
+    {
+      "disabled": "BOOL_TRUE",
+      "elapsedMs": 329.489,
+      "email": "MATCH",
+      "ordinal": 2,
+      "outcome": "RETURNED",
+      "phase": "CLEANUP",
+      "returnedAt": "2026-11-15T14:45:22.334126+00:00",
+      "sdkResponse": {
+        "decoded": "BOOL_TRUE",
+        "decoder": "RETURNED",
+        "disabled": "BOOL_TRUE",
+        "http": "SUCCESS",
+        "identity": "MATCH",
+        "requestMatch": true,
+        "shape": "OBJECT",
+        "status": "OBSERVED"
+      },
+      "shape": "OBJECT",
+      "startedAt": "2026-11-15T14:45:22.004618+00:00",
+      "step": "identity",
+      "uid": "MATCH"
+    },
+    {
+      "elapsedMs": 518.213,
+      "ordinal": 3,
+      "outcome": "RETURNED",
+      "phase": "CLEANUP",
+      "returnedAt": "2026-11-15T14:45:22.887080+00:00",
+      "startedAt": "2026-11-15T14:45:22.368852+00:00",
+      "step": "disable"
+    },
+    {
+      "disabled": "MISSING",
+      "elapsedMs": 446.441,
+      "email": "MATCH",
+      "ordinal": 4,
+      "outcome": "RETURNED",
+      "phase": "CLEANUP",
+      "returnedAt": "2026-11-15T14:45:23.356791+00:00",
+      "sdkResponse": {
+        "decoded": "MISSING",
+        "decoder": "RETURNED",
+        "disabled": "MISSING",
+        "http": "SUCCESS",
+        "identity": "MATCH",
+        "requestMatch": true,
+        "shape": "OBJECT",
+        "status": "OBSERVED"
+      },
+      "shape": "OBJECT",
+      "startedAt": "2026-11-15T14:45:22.910335+00:00",
+      "step": "readback",
+      "uid": "NOT_REQUESTED"
+    },
+    {
+      "disabled": "MISSING",
+      "elapsedMs": 354.547,
+      "email": "MATCH",
+      "ordinal": 5,
+      "outcome": "RETURNED",
+      "phase": "CLEANUP",
+      "returnedAt": "2026-11-15T14:45:23.735096+00:00",
+      "sdkResponse": {
+        "decoded": "MISSING",
+        "decoder": "RETURNED",
+        "disabled": "MISSING",
+        "http": "SUCCESS",
+        "identity": "MATCH",
+        "requestMatch": true,
+        "shape": "OBJECT",
+        "status": "OBSERVED"
+      },
+      "shape": "OBJECT",
+      "startedAt": "2026-11-15T14:45:23.380534+00:00",
+      "step": "identity",
+      "uid": "MATCH"
+    }
+  ],
+  "operationId": "8a2b4de1-2612-4396-8860-81bd8dfa8105",
+  "paymentObserved": false,
+  "privateInputsAbsent": true,
+  "processClosed": true,
+  "residuals": [
+    "IDENTITY_RESTORATION_UNKNOWN"
+  ],
+  "restorationReadback": false,
+  "rootIdentity": [
+    16777231,
+    51869880
+  ],
+  "scopeSha256": "f5a77bec127240f928d0390751aaddf1a460423112a47e0cf26821fb331bc89d",
+  "sourceClosed": true,
+  "status": "CONTAINMENT_UNCONFIRMED",
+  "uidSha256": "3d299bbf03a6c3e2315034fb3a809aedbb6f978c6e6741ff0201fe4464798f72"
+}
