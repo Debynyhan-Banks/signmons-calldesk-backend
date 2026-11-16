@@ -1,0 +1,22 @@
+.....................F......................................................................................................................................
+======================================================================
+FAIL: test_actual_payment_deadline_refuses_before_first_mutation (test_entry.CT4TimingTests.test_actual_payment_deadline_refuses_before_first_mutation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1800, in test_actual_payment_deadline_refuses_before_first_mutation
+    self.assertTrue(closed['privateInputsAbsent']);self.assertEqual(closed['residuals'],[])
+                                                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['RUNTIME:version:signmons-staging-stripe-secret-key'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'RUNTIME:version:signmons-staging-stripe-secret-key'
+
+- ['RUNTIME:version:signmons-staging-stripe-secret-key']
++ []
+
+----------------------------------------------------------------------
+Ran 156 tests in 63.754s
+
+FAILED (failures=1)
+{"status": "LIFECYCLE_TLS_CLEANUP_VERIFIED", "serverReaped": true, "scratchAbsent": true, "providerCalls": 0}

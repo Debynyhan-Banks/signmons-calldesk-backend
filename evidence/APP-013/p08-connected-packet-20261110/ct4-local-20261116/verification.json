@@ -1,0 +1,23 @@
+{
+  "section": "APP-013/3A/P08/CT4",
+  "checkedAt": "2026-11-16T15:33:29.087594+00:00",
+  "runtimeSourceFiles": [
+    "entry.py"
+  ],
+  "testFiles": [
+    "test_entry.py"
+  ],
+  "derivedManifests": 7,
+  "nativeTests": 156,
+  "connectedTests": 422,
+  "nodeTests": 57,
+  "focusedNewTests": 9,
+  "allFinalTestsPassed": true,
+  "manifestReferences": 400,
+  "providerCalls": 0,
+  "credentialsRead": 0,
+  "liveSigningOrPayment": false,
+  "historicalEvidenceUnchanged": true,
+  "initialFailures": "Restricted loopback invocation failed two payment fixtures; unrestricted local fixtures passed. Longer shared fixture windows exceeded packet retention; construction fixtures restored. TLS execution fixtures explicitly extended. New early-admission regression found intent-before-refusal cleanup uncertainty; fixed before runtime preflight with immediate mutation recheck retained. Nested manifest hash drift repaired and full reference closure verified.",
+  "scopeDeviation": "Only approved CT4 timing correction; no expanded source files."
+}

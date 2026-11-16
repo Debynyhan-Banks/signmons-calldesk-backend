@@ -24,7 +24,10 @@ LEGACY_FIXTURE_RESTORE=ta.restore
 
 
 class EntryTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self, timing=None):
+        # Reused packet-construction fixtures retain their original short windows.
+        # Executed native cases explicitly opt into the CT4 work reservation.
+        self.timing_window=True if timing is None else timing
         self.f=ta.AdapterTests()
         with patch.object(ta,'restore',LEGACY_FIXTURE_RESTORE):self.f.setUp()
         f=self.f
@@ -38,7 +41,7 @@ class EntryTests(unittest.TestCase):
         # Current owned-version validation requires provider creation metadata.
         # Adapt the instance seam without changing the source-locked legacy fixture.
         f.transport.make_key=lambda:{**original_make_key(),'createTime':iso(0)}
-        f.p['window']={'start':iso(-10),'cutoff':iso(120),'workEnd':iso(180),'cleanupEnd':iso(900),'purgeEnd':iso(950)}
+        f.p['window']={'start':iso(-10),'cutoff':iso(120),'workEnd':iso(2000 if self.timing_window else 180),'cleanupEnd':iso(2720 if self.timing_window else 900),'purgeEnd':iso(2770 if self.timing_window else 950)}
         f.target['email']=f.p['ownerPrincipal']
         self.root=Path('/private/tmp/p08-coordinator-'+f.p['operationId']);self.root.mkdir(mode=0o700)
         self.addCleanup(lambda:shutil.rmtree(self.root))
@@ -51,8 +54,22 @@ class EntryTests(unittest.TestCase):
                 'sourceManifestSha256':a.digest((a.HERE/'source-manifest.json').read_bytes()),'sourceCommit':'0'*40}
         scope={k:self.e[k] for k in ('plan','target','database','resources','limits')}
         self.e['qualification']={'status':'QUALIFIED_FOR_NATIVE_ENTRY','operationId':f.p['operationId'],
-            'scopeSha256':a.digest(scope),'qualifiedUntil':iso(900),**f.q,
+            'scopeSha256':a.digest(scope),'qualifiedUntil':iso(2720 if self.timing_window else 900),**f.q,
             'checks':{k:True for k in ('owner','billing','effectiveAccess','services','database','firebase','job','retiredRuntime','privateInventory')}}
+        # Exercise the full interval with a synthetic monotonic clock, never sleep seven real minutes.
+        original_init=entry.Coordinator.__init__
+        self.settle_sleeps=[]
+        def timed_init(controller,*args,**kwargs):
+            original_init(controller,*args,**kwargs)
+            elapsed=[0.0]
+            controller.monotonic=lambda:elapsed[0]
+            controller.last_monotonic=0.0
+            controller.work_monotonic_end=max(0,controller.forward_end-controller.clock())
+            def pause(seconds):
+                self.settle_sleeps.append(seconds);elapsed[0]+=seconds
+            controller.pause=pause
+        timing=patch.object(entry.Coordinator,'__init__',timed_init)
+        timing.start();self.addCleanup(timing.stop)
         self.acl=entry.load_acl();self.role_reads=0;self.role_mutator=None
         rows=self.acl.expected_retired_acl()
         for row in rows:
@@ -129,7 +146,7 @@ class EntryTests(unittest.TestCase):
                                ('ACCESS_PREFLIGHT', entry.Ports)]:
             for error, expected in cases:
                 with self.subTest(stage=stage, error=type(error).__name__, expected=expected):
-                    t=EntryTests();t.setUp()
+                    t=EntryTests();t.setUp(timing=True)
                     try:
                         with patch.object(adapter, 'preflight', side_effect=error):
                             result=t.run_entry()
@@ -257,7 +274,7 @@ class EntryTests(unittest.TestCase):
 
     def test_preflight_only_refusal_interruption_and_uncertain_cleanup(self):
         for error in (Stop('ROLE_OUTPUT_UNKNOWN'),KeyboardInterrupt(),ValueError('synthetic-private-secret')):
-            t=EntryTests();t.setUp()
+            t=EntryTests();t.setUp(timing=True)
             try:
                 t.preflight_setup()
                 with patch.object(entry.RuntimeAdapter,'preflight',side_effect=error):
@@ -414,6 +431,8 @@ class EntryTests(unittest.TestCase):
             self.assertNotIn(value,text)
         self.assertFalse(self.path.exists());self.assertFalse((self.root/'owned-receipt.json').exists())
         self.assertGreater(self.calls,0)
+        self.assertEqual(sum(self.settle_sleeps),420)
+        self.assertTrue(all(0 < n <= 1 for n in self.settle_sleeps))
 
     def test_local_envelope_never_dispatches_native_ports(self):
         with self.assertRaisesRegex(Stop,'NATIVE_REQUIRES_EXTERNAL_AUTHORITY'):
@@ -546,7 +565,7 @@ class EntryTests(unittest.TestCase):
     def test_lifecycle_column_drift_at_each_phase_blocks_success(self):
         for phase in ('preflight','enabled','retired'):
             with self.subTest(phase=phase):
-                t=EntryTests();t.setUp()
+                t=EntryTests();t.setUp(timing=True)
                 try:
                     seen=[False]
                     def mutate(v,cleanup):
@@ -808,8 +827,8 @@ print(json.dumps(outputs))
 
 
 class ConnectedEntryTests(EntryTests):
-    def setUp(self):
-        super().setUp()
+    def setUp(self, timing=None):
+        super().setUp(timing=(self._testMethodName != 'runTest') if timing is None else timing)
         import uuid
         p=self.e['plan']; stamp='2026-01-01T00:00:00.000Z'
         draft={'currency':'usd','serviceFeeRequired':False,'serviceFeeCents':None,'depositRequired':True,
@@ -823,7 +842,7 @@ class ConnectedEntryTests(EntryTests):
             'connectedAccountSha256':a.digest(b'acct_synthetic'),'amountTotalCents':12500,'currency':'usd',
             'approvedAt':stamp,'policyDigest':a.digest(json.dumps(approved,separators=(',',':')).encode()),
             'jobUpdatedAt':stamp,'requestId':str(uuid.uuid4()),
-            'workEnd':datetime.datetime.fromtimestamp(time.time()+90,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+            'workEnd':datetime.datetime.fromtimestamp(time.time()+(1940 if self.timing_window else 90),datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
         self.e['qualification']['scopeSha256']=a.digest({k:self.e[k] for k in ('plan','target','database','resources','limits','payment')})
         self.seal()
 
@@ -1103,7 +1122,7 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
             with self.subTest(kind=type(error).__name__, argc=len(error.args), expected=expected):
                 fixture = ConnectedEntryTests()
                 try:
-                    fixture.setUp()
+                    fixture.setUp(timing=True)
                     with patch.object(entry.bridge.Ports, 'authenticate', side_effect=error):
                         work = fixture.run_entry()
                         result = fixture.run_entry('closeout')
@@ -1122,7 +1141,7 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
     def test_distinct_owned_versions_reach_real_handoff_and_conditional_cleanup(self):
         fixture=ConnectedEntryTests()
         try:
-            fixture.setUp();fake=fixture.f.transport;original=fake.https;trace=[];reads=0
+            fixture.setUp(timing=True);fake=fixture.f.transport;original=fake.https;trace=[];reads=0
             def https(desc):
                 nonlocal reads
                 method,url=desc['method'],desc['url'];trace.append((method,url))
@@ -1150,7 +1169,7 @@ class AuthenticationDiagnosticTests(unittest.TestCase):
     def test_keystring_failure_remains_classified_and_changed_cleanup_version_is_contained(self):
         fixture=ConnectedEntryTests()
         try:
-            fixture.setUp();fake=fixture.f.transport;original=fake.https;trace=[]
+            fixture.setUp(timing=True);fake=fixture.f.transport;original=fake.https;trace=[]
             def https(desc):
                 method,url=desc['method'],desc['url'];trace.append((method,url))
                 if url.endswith('/keyString'):
@@ -1177,7 +1196,7 @@ class IdentityReadbackDiagnosticTests(unittest.TestCase):
 
     def fixture(self, connected=False):
         fixture = ConnectedEntryTests() if connected else EntryTests()
-        fixture.setUp()
+        fixture.setUp(timing=True)
         self.addCleanup(fixture.doCleanups)
         return fixture
 
@@ -1441,7 +1460,7 @@ class JournalContractIntegrationTests(unittest.TestCase):
 
     def fixture(self, scenario='normal'):
         value = ConnectedEntryTests()
-        value.setUp()
+        value.setUp(timing=True)
         self.addCleanup(value.doCleanups)
         value.scenario = scenario
         return value
@@ -1623,3 +1642,159 @@ class JournalContractIntegrationTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+
+class CT4TimingTests(unittest.TestCase):
+    def controller(self, remaining=2000, owned=None):
+        obj=object.__new__(entry.Coordinator)
+        clock={'wall':1000.,'mono':0.}
+        obj.clock=lambda:clock['wall'];obj.monotonic=lambda:clock['mono']
+        obj.last=1000.;obj.last_monotonic=0.;obj.abort=False
+        obj.times={'workEnd':1000.+remaining,'cleanupEnd':5000.}
+        obj.forward_end=obj.times['workEnd'];obj.work_monotonic_end=remaining
+        obj.cap=SimpleNamespace(gate=lambda cleanup=False:None)
+        obj.j={'iamOwned':['lookup','signing'] if owned is None else owned}
+        obj.mutation_admitted=False;obj.settling_attempted=False
+        calls=[]
+        obj.runtime=SimpleNamespace(change=lambda *a,**kw:calls.append('change'))
+        obj.access=SimpleNamespace(stage_a=lambda:calls.append(('stage_a',clock['mono'])))
+        def pause(seconds):clock['mono']+=seconds;clock['wall']+=seconds
+        obj.pause=pause
+        return obj,clock,calls
+
+    def test_actual_invoke_waits_before_prediction_once(self):
+        c,t,calls=self.controller()
+        c.invoke('change',owner=c.runtime)
+        c.invoke('stage_a',owner=c.access)
+        self.assertEqual(calls,['change',('stage_a',420.)])
+        with self.assertRaisesRegex(entry.c.Stop,'ALREADY_ATTEMPTED'):
+            c.invoke('stage_a',owner=c.access)
+        self.assertEqual(len(calls),2)
+
+    def test_admission_before_mutation_and_before_wait(self):
+        for remaining in (0,1379.999):
+            c,t,calls=self.controller(remaining)
+            with self.assertRaisesRegex(entry.c.Stop,'DEADLINE'):
+                c.invoke('change',owner=c.runtime)
+            self.assertFalse(calls)
+        c,t,calls=self.controller(1400)
+        c.invoke('change',owner=c.runtime);t['mono']=21
+        with self.assertRaisesRegex(entry.c.Stop,'DEADLINE'):
+            c.invoke('stage_a',owner=c.access)
+        self.assertEqual(calls,['change'])
+
+    def test_exact_boundary_and_owned_bindings(self):
+        c,t,calls=self.controller(1380)
+        c.invoke('stage_a',owner=c.access)
+        self.assertEqual(calls,[('stage_a',420.)])
+        for owned in ([],['lookup'],['signing'],['lookup','foreign'],['signing','lookup']):
+            c,t,calls=self.controller(owned=owned)
+            with self.assertRaisesRegex(entry.c.Stop,'IAM_READBACK'):
+                c.invoke('stage_a',owner=c.access)
+            self.assertFalse(calls)
+
+    def test_freeze_rollback_nonfinite_and_interruption(self):
+        for mode in ('freeze','rollback','nan','wall_rollback','interrupt','deadline'):
+            with self.subTest(mode=mode):
+                c,t,calls=self.controller()
+                def pause(seconds):
+                    if mode=='rollback':t['mono']-=1
+                    elif mode=='nan':t['mono']=float('nan')
+                    elif mode=='wall_rollback':t['mono']+=1;t['wall']-=1
+                    elif mode=='interrupt':t['mono']+=1;c.abort=True
+                    elif mode=='deadline':t['mono']=2100
+                c.pause=pause
+                with self.assertRaises(entry.c.Stop):c.invoke('stage_a',owner=c.access)
+                self.assertFalse(calls)
+                # Existing cleanup must run even after monotonic failure or interruption.
+                t['wall']=1000.;c.last=1000.
+                c.invoke('change',owner=c.runtime,cleanup=True)
+                self.assertEqual(calls,['change'])
+
+    def test_early_wakeup_does_not_shorten_wait(self):
+        c,t,calls=self.controller()
+        def pause(seconds):t['mono']+=seconds/2 if seconds>.01 else seconds
+        c.pause=pause;c.invoke('stage_a',owner=c.access)
+        self.assertEqual(calls,[('stage_a',420.)])
+
+    def test_wall_and_monotonic_horizons_both_enforced(self):
+        for field in ('wall','mono'):
+            c,t,calls=self.controller(1400);t[field]+=21
+            with self.assertRaisesRegex(entry.c.Stop,'DEADLINE'):c.invoke('stage_a',owner=c.access)
+            self.assertFalse(calls)
+
+    def test_actual_connected_interruption_closes_without_auth_or_browser(self):
+        f=ConnectedEntryTests();f.setUp(timing=True);self.addCleanup(f.doCleanups)
+        original=entry.Coordinator.settle_bindings
+        def interrupted(controller):
+            def pause(seconds):controller.abort=True;controller.monotonic=lambda:1.
+            controller.pause=pause
+            return original(controller)
+        with patch.object(entry.Coordinator,'settle_bindings',interrupted):r=f.run_entry()
+        j=read(f.root/'journal.json')
+        self.assertFalse(j['authAttempted']);self.assertFalse(j['keyCreateAttempted'])
+        self.assertEqual(j['failure'],'INTERRUPTED')
+        self.assertFalse(f.f.transport.bindings);self.assertFalse(any(f.f.runtime_state.values()))
+        self.assertFalse(r['paymentObserved'])
+        self.assertEqual(r['residuals'],[])
+        closed=f.run_entry('closeout')
+        self.assertTrue(closed['privateInputsAbsent']);self.assertEqual(closed['residuals'],[])
+
+    def test_killed_native_worker_during_wait_allows_independent_closeout(self):
+        import signal,select
+        f=ConnectedEntryTests();f.setUp(timing=True);self.addCleanup(f.doCleanups)
+        rd,wr=os.pipe();pid=os.fork()
+        if pid==0:
+            os.close(rd)
+            original=entry.Coordinator.settle_bindings
+            def waiting(controller):
+                sent=False
+                def pause(seconds):
+                    nonlocal sent
+                    if not sent:
+                        state={'runtime':[[list(k),v] for k,v in f.f.runtime_state.items()],
+                               'bindings':sorted(f.f.transport.bindings)}
+                        os.write(wr,json.dumps(state).encode()+b'\n');sent=True
+                    time.sleep(seconds)
+                controller.pause=pause
+                controller.monotonic=time.monotonic
+                controller.last_monotonic=time.monotonic()
+                controller.work_monotonic_end=controller.last_monotonic+1900
+                return original(controller)
+            try:
+                with patch.object(entry.Coordinator,'settle_bindings',waiting):f.run_entry()
+            finally:os._exit(2)
+        os.close(wr)
+        try:
+            self.assertTrue(select.select([rd],[],[],10)[0],'worker did not enter real wait')
+            state=json.loads(os.read(rd,16384))
+            with self.assertRaisesRegex(Exception,'OVERLAP|LOCK|CONCURRENT|ATTEMPT|ALREADY'):
+                f.run_entry()
+            os.kill(pid,signal.SIGKILL);_,status=os.waitpid(pid,0);pid=None
+            self.assertTrue(os.WIFSIGNALED(status))
+            f.f.runtime_state.clear();f.f.runtime_state.update({tuple(k):v for k,v in state['runtime']})
+            f.f.transport.bindings=set(state['bindings'])
+            journal=read(f.root/'journal.json')
+            self.assertFalse(journal['authAttempted']);self.assertFalse(journal['keyCreateAttempted'])
+            closed=f.run_entry('closeout')
+            self.assertEqual(closed['residuals'],[],closed)
+            self.assertTrue(closed['privateInputsAbsent'])
+            self.assertFalse(any(f.f.runtime_state.values()));self.assertFalse(f.f.transport.bindings)
+        finally:
+            os.close(rd)
+            if pid is not None:
+                try:os.kill(pid,signal.SIGKILL)
+                except ProcessLookupError:pass
+                os.waitpid(pid,0)
+
+
+    def test_actual_payment_deadline_refuses_before_first_mutation(self):
+        f=ConnectedEntryTests();f.setUp(timing=True);self.addCleanup(f.doCleanups)
+        f.e['payment']['workEnd']=datetime.datetime.fromtimestamp(time.time()+1300,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        f.e['qualification']['scopeSha256']=a.digest({k:f.e[k] for k in ('plan','target','database','resources','limits','payment')})
+        f.seal();r=f.run_entry();j=read(f.root/'journal.json')
+        self.assertEqual(j['failure'],'DEADLINE')
+        self.assertFalse(j['runtimeOwned']);self.assertFalse(j['iamAttempted'])
+        self.assertFalse(j['authAttempted']);self.assertEqual(f.settle_sleeps,[])
+        closed=f.run_entry('closeout')
+        self.assertTrue(closed['privateInputsAbsent']);self.assertEqual(closed['residuals'],[])

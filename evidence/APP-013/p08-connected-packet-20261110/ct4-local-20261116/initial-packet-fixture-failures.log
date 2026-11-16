@@ -1,0 +1,529 @@
+....................................................................................fatal: not a git repository (or any of the parent directories): .git
+...EEEEEEEEEEFFFFFFFF...............................................................................................................................................................................................EE.EEEEEEEEEEEE........EEE..EEE..........................................................................................................
+======================================================================
+ERROR: test_actual_visible_terminal_input (test_attended_approval.AttendedApprovalTests.test_actual_visible_terminal_input)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_actual_visible_terminal_timeout (test_attended_approval.AttendedApprovalTests.test_actual_visible_terminal_timeout)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_exact_confirmation_requires_independent_verification_and_is_one_use (test_attended_approval.AttendedApprovalTests.test_exact_confirmation_requires_independent_verification_and_is_one_use)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_foreign_file_symlink_and_concurrent_writer_refused (test_attended_approval.AttendedApprovalTests.test_foreign_file_symlink_and_concurrent_writer_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_generic_complete_yes_enter_cancel_and_wrong_nonce_refused (test_attended_approval.AttendedApprovalTests.test_generic_complete_yes_enter_cancel_and_wrong_nonce_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_interruption_has_no_confirmation_and_duplicate_capture_refused (test_attended_approval.AttendedApprovalTests.test_interruption_has_no_confirmation_and_duplicate_capture_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_late_input_and_clock_rollback_publish_no_confirmation (test_attended_approval.AttendedApprovalTests.test_late_input_and_clock_rollback_publish_no_confirmation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_missing_consent_source_and_consent_scope_drift_refuse (test_attended_approval.AttendedApprovalTests.test_missing_consent_source_and_consent_scope_drift_refuse)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_mutated_confirmation_and_review_and_expected_scope_refused (test_attended_approval.AttendedApprovalTests.test_mutated_confirmation_and_review_and_expected_scope_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_native_review_derives_amount_cost_resources_from_actual_envelope (test_attended_approval.AttendedApprovalTests.test_native_review_derives_amount_cost_resources_from_actual_envelope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 12, in setUp
+    self.envelope=packet.construct_values(self.spec,self.f.values,'we_synthetic',self.f.cap)
+                  ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_actual_wrapper_waits_for_both_initially_absent_committed_decisions (test_launcher.LauncherBoundaryTests.test_actual_wrapper_waits_for_both_initially_absent_committed_decisions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 72, in test_actual_wrapper_waits_for_both_initially_absent_committed_decisions
+    code,seq=self.run_case();self.assertEqual(code,0)
+             ~~~~~~~~~~~~~^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_diagnostic_launcher_requires_separate_read_authority (test_launcher.LauncherBoundaryTests.test_diagnostic_launcher_requires_separate_read_authority)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 97, in test_diagnostic_launcher_requires_separate_read_authority
+    code,seq=self.run_case(diagnostic=True)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_incomplete_or_invalid_payment_review_cleans_without_native_publication (test_launcher.LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication) (mutation=<function LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication.<locals>.<lambda> at 0x102fcc880>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 114, in test_incomplete_or_invalid_payment_review_cleans_without_native_publication
+    code,seq=self.run_case(malformed=mutation)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_incomplete_or_invalid_payment_review_cleans_without_native_publication (test_launcher.LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication) (mutation=<function LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication.<locals>.<lambda> at 0x1060671c0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 114, in test_incomplete_or_invalid_payment_review_cleans_without_native_publication
+    code,seq=self.run_case(malformed=mutation)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_incomplete_or_invalid_payment_review_cleans_without_native_publication (test_launcher.LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication) (mutation=<function LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication.<locals>.<lambda> at 0x106067740>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 114, in test_incomplete_or_invalid_payment_review_cleans_without_native_publication
+    code,seq=self.run_case(malformed=mutation)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_incomplete_or_invalid_payment_review_cleans_without_native_publication (test_launcher.LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication) (mutation=<function LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication.<locals>.<lambda> at 0x106067320>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 114, in test_incomplete_or_invalid_payment_review_cleans_without_native_publication
+    code,seq=self.run_case(malformed=mutation)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_incomplete_or_invalid_payment_review_cleans_without_native_publication (test_launcher.LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication) (mutation=<function LauncherBoundaryTests.test_incomplete_or_invalid_payment_review_cleans_without_native_publication.<locals>.<lambda> at 0x105ff8300>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 114, in test_incomplete_or_invalid_payment_review_cleans_without_native_publication
+    code,seq=self.run_case(malformed=mutation)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_native_expiry_returns_through_connected_cleanup (test_launcher.LauncherBoundaryTests.test_native_expiry_returns_through_connected_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 78, in test_native_expiry_returns_through_connected_cleanup
+    code,seq=self.run_case(expire='native');self.assertEqual(code,2)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_native_wait_interruption_returns_through_connected_cleanup (test_launcher.LauncherBoundaryTests.test_native_wait_interruption_returns_through_connected_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 81, in test_native_wait_interruption_returns_through_connected_cleanup
+    code,seq=self.run_case(interrupt=True);self.assertEqual(code,2)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_qualification_expiry_purges_without_dispatch (test_launcher.LauncherBoundaryTests.test_qualification_expiry_purges_without_dispatch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 75, in test_qualification_expiry_purges_without_dispatch
+    code,seq=self.run_case(expire='qualification');self.assertEqual(code,2)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_terminal_confirmation_still_requires_both_committed_decisions (test_launcher.LauncherBoundaryTests.test_terminal_confirmation_still_requires_both_committed_decisions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 85, in test_terminal_confirmation_still_requires_both_committed_decisions
+    code,seq=self.run_case(attended=True);self.assertEqual(code,0)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_terminal_confirmation_without_commit_cannot_dispatch (test_launcher.LauncherBoundaryTests.test_terminal_confirmation_without_commit_cannot_dispatch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 88, in test_terminal_confirmation_without_commit_cannot_dispatch
+    code,seq=self.run_case(attended=True,expire='qualification');self.assertEqual(code,2)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_terminal_decline_preserves_cleanup_at_each_stage (test_launcher.LauncherBoundaryTests.test_terminal_decline_preserves_cleanup_at_each_stage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 91, in test_terminal_decline_preserves_cleanup_at_each_stage
+    code,seq=self.run_case(attended=True,decline='qualification');self.assertEqual(code,2)
+             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 21, in run_case
+    qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_actual_payment_validator_distinguishes_pin_and_timing (test_launcher.SafePreparationFailureTests.test_actual_payment_validator_distinguishes_pin_and_timing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_launcher.py", line 154, in test_actual_payment_validator_distinguishes_pin_and_timing
+    e=packet.construct_values(fixture.spec,fixture.values,'we_synthetic',fixture.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_actual_qualified_transfer_diagnostic_closeout_and_guard_purge (test_packet.DiagnosticCustodyTests.test_actual_qualified_transfer_diagnostic_closeout_and_guard_purge)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_packet.py", line 157, in test_actual_qualified_transfer_diagnostic_closeout_and_guard_purge
+    self.assertEqual(q.handoff_qualified_bindings(cap,envelope)['status'],'NATIVE_INPUT_TRANSFERRED')
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 1905, in handoff_qualified_bindings
+    need(envelope.get('version')==2 and envelope.get('sourceCommit')==cap.e['sourceCommit'] and envelope.get('execution')==('EXTERNAL' if cap.external else 'PROOF_ONLY') and
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         envelope['plan']['operationId']==cap.e['nativeOperationId'] and envelope['payment']['qualificationId']==cap.e['qualificationId'] and
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         model.timestamp(envelope['plan']['window']['purgeEnd'])<=cap.times['purgeEnd'],'RECOVERY_NATIVE_SCOPE')
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: RECOVERY_NATIVE_SCOPE
+
+======================================================================
+ERROR: test_candidate_must_match_complete_payment_scope (test_packet.PacketTests.test_candidate_must_match_complete_payment_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_packet.py", line 50, in test_candidate_must_match_complete_payment_scope
+    e=packet.construct_values(self.spec,self.values,'we_synthetic',self.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_constructs_actual_native_capability_without_writing_or_authorizing (test_packet.PacketTests.test_constructs_actual_native_capability_without_writing_or_authorizing)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_packet.py", line 22, in test_constructs_actual_native_capability_without_writing_or_authorizing
+    qualification=packet.construct_values(self.spec,self.values,'we_synthetic',self.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_preflight_purpose_binds_distinct_authority_and_rejects_payment_mode (test_packet.PacketTests.test_preflight_purpose_binds_distinct_authority_and_rejects_payment_mode)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_packet.py", line 33, in test_preflight_purpose_binds_distinct_authority_and_rejects_payment_mode
+    e=packet.construct_values(spec,self.values,'we_synthetic',self.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_declined_native_approval_still_purges_without_native_dispatch (test_packet.RetainedScopeTests.test_declined_native_approval_still_purges_without_native_dispatch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_packet.py", line 100, in test_declined_native_approval_still_purges_without_native_dispatch
+    self.sequence(True)
+    ~~~~~~~~~~~~~^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_packet.py", line 104, in sequence
+    e=packet.construct_values(self.spec,self.values,'we_synthetic',self.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+ERROR: test_qualification_input_removal_preserves_in_memory_native_scope (test_packet.RetainedScopeTests.test_qualification_input_removal_preserves_in_memory_native_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_packet.py", line 98, in test_qualification_input_removal_preserves_in_memory_native_scope
+    self.sequence(False)
+    ~~~~~~~~~~~~~^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_packet.py", line 104, in sequence
+    e=packet.construct_values(self.spec,self.values,'we_synthetic',self.cap)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/packet.py", line 32, in construct_values
+    q.need(m.timestamp(native['window']['purgeEnd'])<=cap.times['purgeEnd'] and m.timestamp(plan['window']['purgeEnd'])<=cap.times['purgeEnd'],'PACKET_RETENTION')
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py", line 61, in need
+    raise model.Stop(code)
+composed_qualification.Stop: PACKET_RETENTION
+
+======================================================================
+FAIL: test_actual_pty_paste_matrix (test_attended_approval.PasteBoundaryTests.test_actual_pty_paste_matrix) (case='exact')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 185, in test_actual_pty_paste_matrix
+    process.wait(timeout=2);self.assertEqual(process.returncode,0)
+                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_actual_pty_paste_matrix (test_attended_approval.PasteBoundaryTests.test_actual_pty_paste_matrix) (case='leading')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 185, in test_actual_pty_paste_matrix
+    process.wait(timeout=2);self.assertEqual(process.returncode,0)
+                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_actual_pty_paste_matrix (test_attended_approval.PasteBoundaryTests.test_actual_pty_paste_matrix) (case='trailing')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 185, in test_actual_pty_paste_matrix
+    process.wait(timeout=2);self.assertEqual(process.returncode,0)
+                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_actual_pty_paste_matrix (test_attended_approval.PasteBoundaryTests.test_actual_pty_paste_matrix) (case='crlf')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 185, in test_actual_pty_paste_matrix
+    process.wait(timeout=2);self.assertEqual(process.returncode,0)
+                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_actual_pty_paste_matrix (test_attended_approval.PasteBoundaryTests.test_actual_pty_paste_matrix) (case='split')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 185, in test_actual_pty_paste_matrix
+    process.wait(timeout=2);self.assertEqual(process.returncode,0)
+                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_actual_pty_paste_matrix (test_attended_approval.PasteBoundaryTests.test_actual_pty_paste_matrix) (case='paste_control')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 185, in test_actual_pty_paste_matrix
+    process.wait(timeout=2);self.assertEqual(process.returncode,0)
+                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_actual_pty_paste_matrix (test_attended_approval.PasteBoundaryTests.test_actual_pty_paste_matrix) (case='eof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 185, in test_actual_pty_paste_matrix
+    process.wait(timeout=2);self.assertEqual(process.returncode,0)
+                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_actual_pty_paste_matrix (test_attended_approval.PasteBoundaryTests.test_actual_pty_paste_matrix) (case='interrupt')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_attended_approval.py", line 185, in test_actual_pty_paste_matrix
+    process.wait(timeout=2);self.assertEqual(process.returncode,0)
+                            ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 422 tests in 39.657s
+
+FAILED (failures=8, errors=30)
+{"status": "CT3_TLS_CLEANUP_VERIFIED", "serverReaped": true, "scratchAbsent": true, "providerCalls": 0}

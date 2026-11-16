@@ -3,6 +3,7 @@ import datetime
 import fcntl
 import hashlib
 import json
+import math
 import os
 import re
 import stat
@@ -444,6 +445,9 @@ class Ports(bridge.Ports):
 
 
 class Coordinator(c.Coordinator):
+    SETTLE_SECONDS = 420
+    POST_SETTLE_SECONDS = 960
+
     def __init__(self, cap, io, runtime, ports):
         super().__init__(cap.plan, cap.local_approval, cap.e['qualification'], runtime, ports,
                          cap.root, cap.clock, closeout=cap.mode != 'run')
@@ -452,8 +456,54 @@ class Coordinator(c.Coordinator):
         self.j['nativeEntry'] = {'envelopeSha256': cap.envelope_hash,
             'calls': {k: 0 for k in ('cli','https','sql','child')}}
         cap.coordinator = self
+        self.monotonic, self.pause = time.monotonic, time.sleep
+        self.last_monotonic = self.monotonic()
+        self.forward_end = min(self.times['workEnd'], restore.timestamp(cap.e['payment']['workEnd'])) if cap.e.get('version') == 2 else self.times['workEnd']
+        self.work_monotonic_end = self.last_monotonic + max(0, self.forward_end - self.clock())
+        self.mutation_admitted = False
+        self.settling_attempted = False
+
+    def gate(self, cleanup=False):
+        super().gate(cleanup)
+        self.cap.gate(cleanup)
+        if not cleanup:
+            now = self.monotonic()
+            c.need(math.isfinite(now) and now >= self.last_monotonic, 'CLOCK_ROLLBACK')
+            self.last_monotonic = now
+            c.need(now < self.work_monotonic_end, 'DEADLINE')
+
+    def require_work(self, seconds):
+        self.gate()
+        c.need(min(self.forward_end - self.clock(),
+                   self.work_monotonic_end - self.monotonic()) >= seconds, 'DEADLINE')
+
+    def settle_bindings(self):
+        c.need(not self.settling_attempted, 'IAM_SETTLE_ALREADY_ATTEMPTED')
+        self.settling_attempted = True
+        c.need(self.j.get('iamOwned') == ['lookup', 'signing'], 'IAM_READBACK')
+        self.require_work(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
+        until = self.monotonic() + self.SETTLE_SECONDS
+        while True:
+            self.gate()
+            before = self.monotonic()
+            if before >= until:
+                break
+            self.pause(min(1, until - before))
+            after = self.monotonic()
+            c.need(math.isfinite(after) and after > before, 'CLOCK_ROLLBACK')
+        self.require_work(self.POST_SETTLE_SECONDS)
 
     def invoke(self, method, *args, owner, cleanup=False):
+        if not cleanup:
+            # Refuse an already-short session before the inherited coordinator
+            # records any mutation intent; recheck immediately before dispatch.
+            if method == 'preflight' and owner is self.runtime and self.cap.mode == 'run':
+                self.require_work(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
+            if method == 'change' and owner is self.runtime and not self.mutation_admitted:
+                self.require_work(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
+                self.mutation_admitted = True
+            if method == 'stage_a' and owner is self.access:
+                self.settle_bindings()
         if method != 'preflight' or cleanup:
             return super().invoke(method, *args, owner=owner, cleanup=cleanup)
         self.j['preflightStage'] = ('RUNTIME_PREFLIGHT' if owner is self.runtime
