@@ -1,0 +1,780 @@
+{
+  "ack-disable.json": {
+    "action": "disable",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "ack-enable.json": {
+    "action": "enable",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "ack-policyAdd.json": {
+    "action": "policyAdd",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "ack-policyRemove.json": {
+    "action": "policyRemove",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "ack-sign.json": {
+    "action": "sign",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "attempt.json": {
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "baseline-identity.json": {
+    "disabled": true,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "uidSha256": "3d299bbf03a6c3e2315034fb3a809aedbb6f978c6e6741ff0201fe4464798f72"
+  },
+  "baseline-policy.json": {
+    "absent": true,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "uidSha256": "3d299bbf03a6c3e2315034fb3a809aedbb6f978c6e6741ff0201fe4464798f72"
+  },
+  "cleanup-cache-00.json": {
+    "index": 0,
+    "kind": "cache",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "owner-token"
+  },
+  "cleanup-cli-00.json": {
+    "index": 0,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "owner"
+  },
+  "cleanup-cli-01.json": {
+    "index": 1,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "project"
+  },
+  "cleanup-cli-02.json": {
+    "index": 2,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "identity"
+  },
+  "cleanup-cli-03.json": {
+    "index": 3,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "token_owner"
+  },
+  "cleanup-cli-04.json": {
+    "index": 4,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "config_impersonation"
+  },
+  "cleanup-cli-05.json": {
+    "index": 5,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "config_credential"
+  },
+  "cleanup-cli-06.json": {
+    "index": 6,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "config_access_token"
+  },
+  "cleanup-cli-07.json": {
+    "index": 7,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "token"
+  },
+  "cleanup-cli-08.json": {
+    "index": 8,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "readback-0"
+  },
+  "cleanup-cli-09.json": {
+    "index": 9,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "final-uid"
+  },
+  "cleanup-https-00.json": {
+    "index": 0,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "policy_cleanup_before"
+  },
+  "cleanup-https-01.json": {
+    "index": 1,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "policy_remove"
+  },
+  "cleanup-https-02.json": {
+    "index": 2,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "policy_cleanup_after"
+  },
+  "cleanup-https-03.json": {
+    "index": 3,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "disable"
+  },
+  "cleanup-phase.json": {
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "envelope.json": {
+    "decisionCommit": "0fac483fe41664d89bb8f6a9fbd7a64f0fbe0db5",
+    "decisionPath": "APP013_P08_SQ1_APPROVAL_20261116_7a2fb87f.json",
+    "scopeCommit": "0d588f0c6bd485c19f954d40f91da167fba3b89a",
+    "scopePath": "APP013_P08_SQ1_SCOPE_20261116_7a2fb87f.json"
+  },
+  "intent-disable.json": {
+    "action": "disable",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "intent-enable.json": {
+    "action": "enable",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "intent-policyAdd.json": {
+    "action": "policyAdd",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "intent-policyRemove.json": {
+    "action": "policyRemove",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "intent-sign.json": {
+    "action": "sign",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "last-clock.json": {
+    "mono": 1306504.182577291,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "wall": 1794842109.824945
+  },
+  "launch.json": {
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "main-cache-00.json": {
+    "index": 0,
+    "kind": "cache",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "owner-token"
+  },
+  "main-cli-00.json": {
+    "index": 0,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "owner"
+  },
+  "main-cli-01.json": {
+    "index": 1,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "project"
+  },
+  "main-cli-02.json": {
+    "index": 2,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "identity"
+  },
+  "main-cli-03.json": {
+    "index": 3,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "role"
+  },
+  "main-cli-04.json": {
+    "index": 4,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "token_owner"
+  },
+  "main-cli-05.json": {
+    "index": 5,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "config_impersonation"
+  },
+  "main-cli-06.json": {
+    "index": 6,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "config_credential"
+  },
+  "main-cli-07.json": {
+    "index": 7,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "config_access_token"
+  },
+  "main-cli-08.json": {
+    "index": 8,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "token"
+  },
+  "main-cli-09.json": {
+    "index": 9,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "readback-0"
+  },
+  "main-cli-10.json": {
+    "index": 10,
+    "kind": "cli",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "pre-sign-uid"
+  },
+  "main-https-00.json": {
+    "index": 0,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "service_signing"
+  },
+  "main-https-01.json": {
+    "index": 1,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "service_troubleshooter"
+  },
+  "main-https-02.json": {
+    "index": 2,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "project_permissions"
+  },
+  "main-https-03.json": {
+    "index": 3,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "identity_permissions"
+  },
+  "main-https-04.json": {
+    "index": 4,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "policy_before"
+  },
+  "main-https-05.json": {
+    "index": 5,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "enable"
+  },
+  "main-https-06.json": {
+    "index": 6,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "policy_add"
+  },
+  "main-https-07.json": {
+    "index": 7,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "policy_after"
+  },
+  "main-https-08.json": {
+    "index": 8,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "prediction"
+  },
+  "main-https-09.json": {
+    "index": 9,
+    "kind": "https",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "slot": "sign"
+  },
+  "main-phase.json": {
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  },
+  "main-result.json": {
+    "automaticRetryAllowed": false,
+    "cleanupFailures": {},
+    "configurationClosed": true,
+    "counts": {
+      "cache": 1,
+      "cli": 11,
+      "https": 10
+    },
+    "failure": null,
+    "finishedAt": 1794842057.87979,
+    "identityDisabled": null,
+    "mainCounts": null,
+    "mainFailure": null,
+    "onTime": true,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "paymentObserved": false,
+    "phase": "main",
+    "policyAbsent": null,
+    "privateInputsAbsent": true,
+    "processClosed": true,
+    "residuals": [],
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "signResult": {
+      "errorCode": "UNKNOWN",
+      "errorInfo": [],
+      "errorStatus": "UNKNOWN",
+      "failureCategory": null,
+      "httpStatus": 200,
+      "outcome": "SIGNED",
+      "signatureObserved": true
+    },
+    "sourceClosed": true,
+    "status": "SQ1_MAIN_FINISHED"
+  },
+  "result.json": {
+    "automaticRetryAllowed": false,
+    "cleanupFailures": {},
+    "configurationClosed": true,
+    "counts": {
+      "cache": 1,
+      "cli": 10,
+      "https": 4
+    },
+    "failure": null,
+    "finishedAt": 1794842110.789542,
+    "identityDisabled": true,
+    "mainCounts": {
+      "cache": 1,
+      "cli": 11,
+      "https": 10
+    },
+    "mainFailure": null,
+    "onTime": true,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "paymentObserved": false,
+    "phase": "cleanup",
+    "policyAbsent": true,
+    "privateInputsAbsent": true,
+    "processClosed": true,
+    "residuals": [],
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "signResult": {
+      "errorCode": "UNKNOWN",
+      "errorInfo": [],
+      "errorStatus": "UNKNOWN",
+      "failureCategory": null,
+      "httpStatus": 200,
+      "outcome": "SIGNED",
+      "signatureObserved": true
+    },
+    "sourceClosed": true,
+    "status": "SQ1_DIAGNOSTIC_CLOSED"
+  },
+  "scope.json": {
+    "action": "SQ1_EXACT_NON_AUTHENTICATION_SIGN_ONCE",
+    "allowanceUsd": 0,
+    "automaticRetryAllowed": false,
+    "commands": {
+      "config_access_token": [
+        "/opt/homebrew/bin/gcloud",
+        "config",
+        "get-value",
+        "auth/access_token_file"
+      ],
+      "config_credential": [
+        "/opt/homebrew/bin/gcloud",
+        "config",
+        "get-value",
+        "auth/credential_file_override"
+      ],
+      "config_impersonation": [
+        "/opt/homebrew/bin/gcloud",
+        "config",
+        "get-value",
+        "auth/impersonate_service_account"
+      ],
+      "identity": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "service-accounts",
+        "describe",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project",
+        "signmons",
+        "--format=json(email,disabled,uniqueId)"
+      ],
+      "owner": [
+        "/opt/homebrew/bin/gcloud",
+        "auth",
+        "list",
+        "--filter=status:ACTIVE",
+        "--format=json(account,status)"
+      ],
+      "project": [
+        "/opt/homebrew/bin/gcloud",
+        "projects",
+        "describe",
+        "signmons",
+        "--format=json(projectId,projectNumber,lifecycleState)"
+      ],
+      "readback": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "service-accounts",
+        "describe",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project=signmons",
+        "--format=json(email,disabled)"
+      ],
+      "role": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "roles",
+        "describe",
+        "signmonsP08ServiceAccountSignBlob",
+        "--project",
+        "signmons",
+        "--format=json(name,title,description,includedPermissions,stage,deleted,etag)"
+      ],
+      "token": [
+        "/opt/homebrew/bin/gcloud",
+        "auth",
+        "print-access-token",
+        "--account=debynyhan@signmons.com"
+      ],
+      "token_owner": [
+        "/opt/homebrew/bin/gcloud",
+        "auth",
+        "list",
+        "--filter=status:ACTIVE",
+        "--format=value(account)"
+      ]
+    },
+    "configSha256": "528ceadadc8a5491e54ee82dbad0026eda881252564f96f2be242d70d1d2f111",
+    "iq1ManifestSha256": "aa4874c488ae2fdcd25b475534a26a4c537b669963e59aa699c8e029d9136b03",
+    "limits": {
+      "cache": 2,
+      "cleanupCli": 12,
+      "cleanupHttps": 4,
+      "disable": 1,
+      "enable": 1,
+      "mainCli": 13,
+      "mainHttps": 10,
+      "policyAdd": 1,
+      "policyRemove": 1,
+      "sign": 1
+    },
+    "manifestSha256": "d572ac13394a4db8b35fa91e2da3ff904fb9d713df4a74f7349bb87ad2cca0cc",
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "projectNumberSha256": "37d4aa0f46ca5b8f0b81b1148bda235a0f4a9a424b6b4638ec993d889563be54",
+    "sdkException": "SDK_READ_OWNER_REFRESH_INTERNAL_AUTH_RETRY_CACHE_NO_MUTATION_RETRY",
+    "sourceCommit": "48a0a7d01481bb054ba47b5b73a70f8b0df94058",
+    "uidSha256": "3d299bbf03a6c3e2315034fb3a809aedbb6f978c6e6741ff0201fe4464798f72",
+    "version": 1,
+    "window": {
+      "cleanupEnd": "2026-11-16T15:46:00Z",
+      "cutoff": "2026-11-16T15:15:00Z",
+      "purgeEnd": "2026-11-16T15:48:00Z",
+      "start": "2026-11-16T15:05:00Z",
+      "workEnd": "2026-11-16T15:35:00Z"
+    }
+  },
+  "supervision.json": {
+    "cleanupResult": "SQ1_DIAGNOSTIC_CLOSED",
+    "failure": null,
+    "finishedAt": 1794842110.806337,
+    "interrupted": false,
+    "onTime": true,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "supervisorOwnedProcessesClosed": true
+  },
+  "supervisor-phase.json": {
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b"
+  }
+}

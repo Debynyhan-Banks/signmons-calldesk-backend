@@ -1,0 +1,108 @@
+{
+  "checkedAt": "2026-11-16T15:15:28.039601+00:00",
+  "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+  "sourceCommit": "48a0a7d01481bb054ba47b5b73a70f8b0df94058",
+  "scopeCommit": "0d588f0c6bd485c19f954d40f91da167fba3b89a",
+  "approvalCommit": "0fac483fe41664d89bb8f6a9fbd7a64f0fbe0db5",
+  "custodySourceConfigurationVerified": true,
+  "mainResult": {
+    "automaticRetryAllowed": false,
+    "cleanupFailures": {},
+    "configurationClosed": true,
+    "counts": {
+      "cache": 1,
+      "cli": 11,
+      "https": 10
+    },
+    "failure": null,
+    "finishedAt": 1794842057.87979,
+    "identityDisabled": null,
+    "mainCounts": null,
+    "mainFailure": null,
+    "onTime": true,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "paymentObserved": false,
+    "phase": "main",
+    "policyAbsent": null,
+    "privateInputsAbsent": true,
+    "processClosed": true,
+    "residuals": [],
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "signResult": {
+      "errorCode": "UNKNOWN",
+      "errorInfo": [],
+      "errorStatus": "UNKNOWN",
+      "failureCategory": null,
+      "httpStatus": 200,
+      "outcome": "SIGNED",
+      "signatureObserved": true
+    },
+    "sourceClosed": true,
+    "status": "SQ1_MAIN_FINISHED"
+  },
+  "cleanupResult": {
+    "automaticRetryAllowed": false,
+    "cleanupFailures": {},
+    "configurationClosed": true,
+    "counts": {
+      "cache": 1,
+      "cli": 10,
+      "https": 4
+    },
+    "failure": null,
+    "finishedAt": 1794842110.789542,
+    "identityDisabled": true,
+    "mainCounts": {
+      "cache": 1,
+      "cli": 11,
+      "https": 10
+    },
+    "mainFailure": null,
+    "onTime": true,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "paymentObserved": false,
+    "phase": "cleanup",
+    "policyAbsent": true,
+    "privateInputsAbsent": true,
+    "processClosed": true,
+    "residuals": [],
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "signResult": {
+      "errorCode": "UNKNOWN",
+      "errorInfo": [],
+      "errorStatus": "UNKNOWN",
+      "failureCategory": null,
+      "httpStatus": 200,
+      "outcome": "SIGNED",
+      "signatureObserved": true
+    },
+    "sourceClosed": true,
+    "status": "SQ1_DIAGNOSTIC_CLOSED"
+  },
+  "supervision": {
+    "cleanupResult": "SQ1_DIAGNOSTIC_CLOSED",
+    "failure": null,
+    "finishedAt": 1794842110.806337,
+    "interrupted": false,
+    "onTime": true,
+    "operationId": "7a2fb87f-65da-4de9-9684-102a6f18e7db",
+    "rootIdentity": [
+      16777231,
+      52448933
+    ],
+    "scopeSha256": "6a3e32bae383dd175a47f053ec2d83dc7651c1780ffd24f3dfd5ae17327a836b",
+    "supervisorOwnedProcessesClosed": true
+  },
+  "localPolicyAckToSignIntentSeconds": 437.1120991706848,
+  "timingMeaning": "Local receipt timestamps, not provider event times",
+  "toolExitCode": 0,
+  "replayAuthorized": false
+}
