@@ -1,0 +1,69 @@
+{
+  "operation": "TR24",
+  "verifiedAt": "2026-11-16T00:01:33.728029+00:00",
+  "status": "TR24_CLOSED",
+  "decisionCommit": "e81209b70450914e6c90761cb90b05014dc152d3",
+  "sourceCommit": "160c008012ccb9479948a6bebefa39b64fe9700a",
+  "resultSha256": "006cd31eb5a5802f705161647e0cfb3e0aad194574a1b99f5d6942172b99bc2f",
+  "executorSessionExitCode": 0,
+  "ownedPidAbsent": true,
+  "ownedGroupAbsent": true,
+  "safeReceiptCustodyVerified": true,
+  "executorRemoved": true,
+  "recoveredTemplateRemoved": true,
+  "temporaryPrelaunchRemoved": true,
+  "executorSha256": "0aadc85641cf438163a191c465908f464471e70457fdc49efadce0972921bc44",
+  "credentialCoverage": "STRICTLY_BEYOND_2026-11-16T01:00:00Z",
+  "configurationUnchanged": true,
+  "rawCredentialsRetained": false,
+  "credentialsRemainUnderSdkException": true,
+  "localResiduals": [],
+  "prelaunch": {
+    "operation": "TR24",
+    "checkedAt": "2026-11-15T23:59:21.969741+00:00",
+    "decisionCommit": "e81209b70450914e6c90761cb90b05014dc152d3",
+    "sourceCommit": "160c008012ccb9479948a6bebefa39b64fe9700a",
+    "executorSha256": "0aadc85641cf438163a191c465908f464471e70457fdc49efadce0972921bc44",
+    "preparedExecutorSha256": "a0bda9c031d52a26784a4180c67c32d1963d1ccb920b28e6c7815f9bad5b94f6",
+    "approvalBindingChangeOnly": true,
+    "actualCommittedPreflight": {
+      "status": "PREFLIGHT_VERIFIED_NO_OPERATION_RESERVED",
+      "sourceCommit": "160c008012ccb9479948a6bebefa39b64fe9700a",
+      "dependencyMapping": {
+        "p08-exact-role-provisioning-local-20261028/source/role_provisioner.py": {
+          "historical": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
+          "current": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9",
+          "changed": false
+        },
+        "p08-native-entry-local-20261101/source/authority.py": {
+          "historical": "763dd24f5dac70b3ec87d350ab2efc6d0fe110aae9f261708aba8c54e481e365",
+          "current": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3",
+          "changed": true
+        },
+        "p08-restoration-local-20261028/source/restore.py": {
+          "historical": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+          "current": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
+          "changed": false
+        },
+        "p08-role-contract-local-20261029/source/composed_qualification.py": {
+          "historical": "2c2f9603cb71957239816f4942549be8277c446cbcc5f2b7bae1f139fd552df4",
+          "current": "2c2f9603cb71957239816f4942549be8277c446cbcc5f2b7bae1f139fd552df4",
+          "changed": false
+        },
+        "p08-role-contract-local-20261029/source/qualification_launch.py": {
+          "historical": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18",
+          "current": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18",
+          "changed": false
+        }
+      },
+      "sdkFilesVerified": 51,
+      "credentialStoresRead": false,
+      "providerCalls": 0
+    },
+    "startNotBefore": "2026-11-16T00:00:00Z",
+    "cutoff": "2026-11-16T00:05:00Z",
+    "closeoutEnd": "2026-11-16T00:12:00Z",
+    "validThrough": "2026-11-16T01:00:00Z",
+    "reservationAbsent": true
+  }
+}
