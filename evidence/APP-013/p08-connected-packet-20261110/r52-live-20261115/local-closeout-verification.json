@@ -1,0 +1,32 @@
+{
+  "observedAt": "2026-11-16T00:24:12.457510+00:00",
+  "privateInputsAbsent": true,
+  "matchingOperationProcessesAbsent": true,
+  "purgeGuardAbsent": true,
+  "processObservationAt": "2026-11-16T00:23:03.785172+00:00",
+  "receiptCustodyVerified": true,
+  "browserOpenMarkerAbsent": true,
+  "authoritativeFinalStatus": "ENTRY_CONTAINMENT_UNCONFIRMED",
+  "restorationReadbacks": "SUCCEEDED",
+  "authenticationOutcome": "UNKNOWN",
+  "residuals": [
+    "AUTH_OUTCOME_UNKNOWN"
+  ],
+  "noRetry": true,
+  "rawJournalCopied": false,
+  "privateInventoryCheck": "existing private_inventory.inspect; all PRIVATE files absent",
+  "receiptSha256": {
+    "recovery-attempt.json": "7a1759bc3e2e92ac450c5eb373f837e9028dc202da8d7dfa599aa18bb139902b",
+    "recovery-recovery-result.json": "2e6ab2adcab5de6d751b8249ca22e0bbbd4726defc810d84146f949a2f50a041",
+    "recovery-resource-closeout.json": "cb524bb80fbd3f6723cf552f276e21639827ecf27ef8bc93e8d3102a701c9223",
+    "recovery-purge-result.json": "206b3718d01b2f352a9cf8721002584461ea827e611906ce79711f1e58589c16",
+    "qualification-attempt.json": "5372dbe9907c182c04b1a845fc95ff801f2abc622ff7054283e8d397f9cd404a",
+    "qualification-result.json": "0228d0f950e2fecbbcc09c717f7547e48fd2fae0a1d1a286e435797f79074a01",
+    "qualification-independent-closeout.json": "a7fbe6545f89e652b98be48e790521d649b433b509a8787852674b457a298fa7",
+    "native-attempt.json": "8524b4d117eef9220d0b5fbb6a2417c23ce87a53a4ae8413828d462c60442f63",
+    "native-work-result.json": "97a30de62dab9c593235f552c3a33a37683409d69052c172b1edd5306edda3bd",
+    "native-result.json": "0195691c4a88f2fcc086e3c7a2e9010258f9a96632ecfdcd8e4b07869bc3a17c",
+    "native-closeout.json": "b13e4c1401978c1cd9c982b56c72d69194acd55ab4dbac56dc37cc7ba3bbe080",
+    "native-independent-closeout.json": "b13e4c1401978c1cd9c982b56c72d69194acd55ab4dbac56dc37cc7ba3bbe080"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "operationId": "5f34f28c-318c-4f70-a88f-fb0504712a85",
+  "phase": "CLOSED",
+  "failure": "LOCAL_ADAPTER_OR_SOURCE_STOP",
+  "authAttempted": true,
+  "authProofAccepted": false,
+  "childResultSha256": null,
+  "residuals": [
+    "AUTH_OUTCOME_UNKNOWN"
+  ],
+  "unknown": [],
+  "authClientPresent": true,
+  "authClient": {
+    "version": 9,
+    "operationId": "5f34f28c-318c-4f70-a88f-fb0504712a85",
+    "phase": "CLOSEOUT_FINISHED",
+    "status": "P08_COORDINATOR_AUTH_STOPPED_AND_CLOSED",
+    "authStage": "SIGN",
+    "failureCategory": "HTTP",
+    "httpStatus": 403,
+    "failureCode": "SIGN_EXCHANGE_REFUSED",
+    "failureStage": "TOKEN_INTENT",
+    "authenticated": false,
+    "sessionClosed": true,
+    "closeoutAttempted": true,
+    "activationIntent": true,
+    "firebaseEnableIntent": true,
+    "tokenIssueIntent": true,
+    "revocationIntentAt": "2026-11-16T00:16:31.000Z",
+    "residuals": []
+  },
+  "payment": {
+    "phase": "QUALIFIED",
+    "failureCode": null,
+    "enableIntent": false,
+    "endpointDisabled": true,
+    "bridgeClosed": true,
+    "endpointCalls": 2,
+    "secretReads": 2,
+    "residuals": []
+  },
+  "sourceJournalSha256": "1b8f71c4904989c0660bdc2343667f3542ee74d788bfe66102ec10108fbe54d1",
+  "runtimeAttemptedCount": 17,
+  "runtimeCleanupAttemptedCount": 17,
+  "recordedCalls": {
+    "child": 6,
+    "cli": 191,
+    "https": 18,
+    "sql": 10
+  },
+  "childObservations": [
+    {
+      "childCall": 1,
+      "code": "NONE",
+      "journalMerge": "ACCEPTED",
+      "mode": "--payment-preflight",
+      "processOutcome": "RETURNED",
+      "stage": "RESULT"
+    },
+    {
+      "childCall": 2,
+      "code": "NONE",
+      "journalMerge": "ACCEPTED",
+      "mode": "--run",
+      "processOutcome": "RETURNED",
+      "stage": "RESULT"
+    },
+    {
+      "childCall": 3,
+      "code": "NONE",
+      "journalMerge": "ACCEPTED",
+      "mode": "--closeout",
+      "processOutcome": "RETURNED",
+      "stage": "RESULT"
+    },
+    {
+      "childCall": 4,
+      "code": "NONE",
+      "journalMerge": "ACCEPTED",
+      "mode": "--readback",
+      "processOutcome": "RETURNED",
+      "stage": "RESULT"
+    },
+    {
+      "childCall": 5,
+      "code": "NONE",
+      "journalMerge": "ACCEPTED",
+      "mode": "--closeout",
+      "processOutcome": "RETURNED",
+      "stage": "RESULT"
+    },
+    {
+      "childCall": 6,
+      "code": "NONE",
+      "journalMerge": "ACCEPTED",
+      "mode": "--readback",
+      "processOutcome": "RETURNED",
+      "stage": "RESULT"
+    }
+  ]
+}
