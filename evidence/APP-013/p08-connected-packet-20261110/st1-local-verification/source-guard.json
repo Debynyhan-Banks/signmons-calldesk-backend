@@ -1,0 +1,14 @@
+{
+  "status": "COMMITTED_SOURCE_GUARD_PASS",
+  "checkedAt": "2026-11-16T14:08:34.773180+00:00",
+  "sourceCommit": "48a0a7d01481bb054ba47b5b73a70f8b0df94058",
+  "manifestSha256": "d572ac13394a4db8b35fa91e2da3ff904fb9d713df4a74f7349bb87ad2cca0cc",
+  "repositoryFiles": 51,
+  "sdkFiles": 61,
+  "seconds": 0.993,
+  "historicalScopeRefused": true,
+  "credentialReads": 0,
+  "providerCalls": 0,
+  "authorityCreated": false,
+  "scopeUse": "In-memory static guard arguments only; no validation or live dispatch."
+}

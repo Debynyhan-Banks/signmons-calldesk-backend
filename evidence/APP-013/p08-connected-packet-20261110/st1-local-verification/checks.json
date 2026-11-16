@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-11-16 14:10:01 UTC",
+  "checks": [
+    {
+      "repo": "backend",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "cmd": "SIGNMONS_GOVERNANCE_REPO='/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery' node scripts/check-governance-baseline.mjs && node scripts/architecture-check.mjs && git diff --check",
+      "result": {
+        "chunk_id": "b00b1a",
+        "wall_time_seconds": 0.525492542,
+        "exit_code": 0,
+        "original_token_count": 14,
+        "output": "docs-consistency-check passed\narchitecture-check passed\n"
+      }
+    },
+    {
+      "repo": "governance",
+      "cwd": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "cmd": "node scripts/frozen-baseline-check.mjs && SIGNMONS_BACKEND_REPO='/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery' node scripts/docs-consistency-check.mjs && node --test scripts/frozen-baseline-check.test.mjs scripts/execution-placement.test.mjs scripts/intelligence-alignment-check.test.mjs && git diff --check",
+      "result": {
+        "chunk_id": "150bf2",
+        "wall_time_seconds": 0.752331667,
+        "exit_code": 0,
+        "original_token_count": 522,
+        "output": "frozen-baseline-check passed\ndocs-consistency-check passed\n✔ current pointer and handoff have properly placed status and ordered steps (1.726333ms)\n✔ prior swapped-row/step failure is rejected without touching repository files (2.442167ms)\n✔ missing or duplicated backend rows fail (2.793083ms)\n✔ missing or nonsequential next actions fail (2.989333ms)\n✔ current checkout passes pinned baseline (25.519875ms)\n✔ automatic-admission amendment changes exactly two frozen sections and leaves ticket intact (1.686625ms)\n✔ old operator requirement cannot replace adopted automatic admission (1.061584ms)\n✔ core-release amendment changes exactly the approved two frozen sections (6.984292ms)\n✔ core-release proposal refuses malformed data and missing or duplicated targets (3.666125ms)\n✔ core-release amendment retains consent, delivery, privacy, audit and downstream safeguards (6.899458ms)\n✔ amendment does not permit weakening service or downstream authority (2.281042ms)\n✔ malformed amendment and missing or duplicate targets fail closed (0.145708ms)\n✔ changing acceptance text is rejected without editing repositories (0.913042ms)\n✔ changing section dependency is rejected (0.974125ms)\n✔ new section cannot silently increase denominator (0.832375ms)\n✔ reordering or renaming section is rejected (0.828958ms)\n✔ missing and duplicate protected section refuse (1.427375ms)\n✔ ticket criterion mutation is rejected, checkbox evidence change permitted (1.790333ms)\n✔ status/evidence outside frozen requirements can be updated (0.732542ms)\n✔ missing pinned history fails closed (0.068ms)\n✔ missing immutable core-release proposal fails closed even when older pins are available (40.452916ms)\n✔ current synchronized dependency order passes (0.782667ms)\n✔ blank Next and stale backend fail (0.103083ms)\n✔ out-of-order queue and pointer fail (0.056458ms)\n✔ full acceptance promotion can advance to the remaining suffix (0.057375ms)\nℹ tests 25\nℹ suites 0\nℹ pass 25\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 165.273541\n"
+      }
+    }
+  ],
+  "runtimeSuites": "100focused/422connectedIncludingFocused passed on committed48a0a7d; not rerun for documentation edits.",
+  "providerCalls": 0,
+  "credentialReads": 0
+}
