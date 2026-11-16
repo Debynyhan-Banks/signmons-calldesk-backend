@@ -1,0 +1,70 @@
+{
+  "attempt.json": {
+    "operationId": "ac1bd7cc-5c28-4255-9203-22e80494848b",
+    "readinessSha256": "8e3c8c66b89ea0c0491fdd66b528f794d2de1a36c35d1f1f269ded98360bedf2",
+    "rootIdentity": [
+      16777231,
+      52448236
+    ],
+    "startedAt": 1794840795.5153852
+  },
+  "call-0.json": {
+    "operationId": "ac1bd7cc-5c28-4255-9203-22e80494848b",
+    "readinessSha256": "8e3c8c66b89ea0c0491fdd66b528f794d2de1a36c35d1f1f269ded98360bedf2",
+    "rootIdentity": [
+      16777231,
+      52448236
+    ],
+    "slot": "owner",
+    "status": "RESERVED"
+  },
+  "call-1.json": {
+    "operationId": "ac1bd7cc-5c28-4255-9203-22e80494848b",
+    "readinessSha256": "8e3c8c66b89ea0c0491fdd66b528f794d2de1a36c35d1f1f269ded98360bedf2",
+    "rootIdentity": [
+      16777231,
+      52448236
+    ],
+    "slot": "project",
+    "status": "RESERVED"
+  },
+  "result.json": {
+    "automaticRetryAllowed": false,
+    "calls": [
+      {
+        "elapsedMonotonicSeconds": 0.420761,
+        "ownerMatch": true,
+        "projectMatch": null,
+        "safeFailureCode": null,
+        "slot": "owner",
+        "status": "MATCHED_WITHIN_SIX_SECONDS"
+      },
+      {
+        "elapsedMonotonicSeconds": 0.898949,
+        "ownerMatch": null,
+        "projectMatch": true,
+        "safeFailureCode": null,
+        "slot": "project",
+        "status": "MATCHED_WITHIN_SIX_SECONDS"
+      }
+    ],
+    "configurationClosed": true,
+    "explicitCacheReads": 0,
+    "failure": null,
+    "finishedAt": 1794840800.2965481,
+    "interrupted": false,
+    "onTime": true,
+    "operationId": "ac1bd7cc-5c28-4255-9203-22e80494848b",
+    "paymentObserved": false,
+    "privateInputsAbsent": true,
+    "processClosed": true,
+    "providerMutations": 0,
+    "readinessSha256": "8e3c8c66b89ea0c0491fdd66b528f794d2de1a36c35d1f1f269ded98360bedf2",
+    "rootIdentity": [
+      16777231,
+      52448236
+    ],
+    "sourceClosed": true,
+    "status": "READS_FINISHED"
+  }
+}

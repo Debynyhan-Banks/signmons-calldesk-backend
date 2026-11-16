@@ -1,0 +1,43 @@
+{
+  "status": "READS_MATCHED_AND_LOCAL_CLOSEOUT_VERIFIED",
+  "checkedAt": "2026-11-16T14:54:33.525150+00:00",
+  "operationId": "ac1bd7cc-5c28-4255-9203-22e80494848b",
+  "sourceCommit": "48a0a7d01481bb054ba47b5b73a70f8b0df94058",
+  "approvalCommit": "889ca171f7c7cb23f46beee04cced9b343ba6f9c",
+  "readinessCommit": "f4eb64108ae894bf05d39a003187a890b0146d14",
+  "readinessSha256": "8e3c8c66b89ea0c0491fdd66b528f794d2de1a36c35d1f1f269ded98360bedf2",
+  "calls": [
+    {
+      "elapsedMonotonicSeconds": 0.420761,
+      "ownerMatch": true,
+      "projectMatch": null,
+      "safeFailureCode": null,
+      "slot": "owner",
+      "status": "MATCHED_WITHIN_SIX_SECONDS"
+    },
+    {
+      "elapsedMonotonicSeconds": 0.898949,
+      "ownerMatch": null,
+      "projectMatch": true,
+      "safeFailureCode": null,
+      "slot": "project",
+      "status": "MATCHED_WITHIN_SIX_SECONDS"
+    }
+  ],
+  "finishedAt": "2026-11-16T14:53:20.296548+00:00",
+  "processClosed": true,
+  "exactOperatorProcessAbsent": true,
+  "operatorSourceSha256": "74e8edd63f11781332fc0422c9ccf88a13af7d87bf16a35b9ab2b8411ccf198f",
+  "operatorRemovalVerified": true,
+  "sourceConfigurationCustodyVerified": true,
+  "privateInputsAbsent": true,
+  "providerMutations": 0,
+  "paymentObserved": false,
+  "cliCalls": 2,
+  "directHttps": 0,
+  "explicitCacheReads": 0,
+  "elapsedMeaning": "Local monotonic dispatch-through-owned-process-close and validation time, not isolated server latency.",
+  "interpretation": "Project matched within six seconds in this attempt. This does not prove SQ2 cause or that a longer timeout was necessary; no global/signing timeout change is justified by this result.",
+  "replayAuthorized": false,
+  "residuals": []
+}
