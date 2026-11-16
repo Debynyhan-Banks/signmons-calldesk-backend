@@ -1,0 +1,37 @@
+{
+  "status": "NOT_MUTATED_LOCAL_CLOSEOUT_VERIFIED",
+  "checkedAt": "2026-11-16T14:27:49.216388+00:00",
+  "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+  "sourceCommit": "48a0a7d01481bb054ba47b5b73a70f8b0df94058",
+  "scopeCommit": "0b5c64f7a25034b0330d3433a69db3fd446de41a",
+  "approvalCommit": "ee52799a268b139d646c091b1b0e5606fdc7c573",
+  "mainFailure": "SQ1_PROCESS_TIMEOUT",
+  "lastReservedCliSlot": "project",
+  "counts": {
+    "cache": 0,
+    "cli": 2,
+    "https": 0
+  },
+  "cleanupCounts": {
+    "cache": 0,
+    "cli": 0,
+    "https": 0
+  },
+  "mutationAndSignIntentsAbsent": true,
+  "signResult": null,
+  "waitReached": false,
+  "policyAbsent": null,
+  "identityDisabled": null,
+  "currentProviderState": "UNKNOWN_NOT_READ_BACK",
+  "processClosed": true,
+  "supervisorOwnedProcessesClosed": true,
+  "sourceConfigurationCustodyMatch": true,
+  "privateInputsAbsent": true,
+  "residuals": [],
+  "finishedAt": "2026-11-16T14:26:04.924975+00:00",
+  "toolExitCode": 0,
+  "receiptFiles": 14,
+  "replayAuthorized": false,
+  "interpretation": "Project metadata CLI timed out before identity/role/credential checks, IAM changes, settling interval or SIGN. Timeout source/remote cause unknown; no claim that ST1 succeeded or failed live. Existing8-second command envelope includes an earlier watchdog deadline minus2seconds; no change/retry authorized. SDK internal auth/cache effects remain governed by approved exception, not counted as explicit cache reads.",
+  "nextDecision": "Review the read-only project-command deadline allocation and prepare the smallest metadata-only qualification before another IAM/signing operation; no implementation or extra provider read authorized by this result."
+}

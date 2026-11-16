@@ -1,0 +1,269 @@
+{
+  "attempt.json": {
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2"
+  },
+  "cleanup-phase.json": {
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2"
+  },
+  "envelope.json": {
+    "decisionCommit": "ee52799a268b139d646c091b1b0e5606fdc7c573",
+    "decisionPath": "APP013_P08_SQ1_APPROVAL_20261116_e8aebe8e.json",
+    "scopeCommit": "0b5c64f7a25034b0330d3433a69db3fd446de41a",
+    "scopePath": "APP013_P08_SQ1_SCOPE_20261116_e8aebe8e.json"
+  },
+  "last-clock.json": {
+    "mono": 1303558.1599995,
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2",
+    "wall": 1794839163.789644
+  },
+  "launch.json": {
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2"
+  },
+  "main-cli-00.json": {
+    "index": 0,
+    "kind": "cli",
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2",
+    "slot": "owner"
+  },
+  "main-cli-01.json": {
+    "index": 1,
+    "kind": "cli",
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2",
+    "slot": "project"
+  },
+  "main-phase.json": {
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2"
+  },
+  "main-result.json": {
+    "automaticRetryAllowed": false,
+    "cleanupFailures": {},
+    "configurationClosed": true,
+    "counts": {
+      "cache": 0,
+      "cli": 2,
+      "https": 0
+    },
+    "failure": "SQ1_PROCESS_TIMEOUT",
+    "finishedAt": 1794839159.288051,
+    "identityDisabled": null,
+    "mainCounts": null,
+    "mainFailure": "SQ1_PROCESS_TIMEOUT",
+    "onTime": true,
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "paymentObserved": false,
+    "phase": "main",
+    "policyAbsent": null,
+    "privateInputsAbsent": true,
+    "processClosed": true,
+    "residuals": [],
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2",
+    "signResult": null,
+    "sourceClosed": true,
+    "status": "SQ1_MAIN_FINISHED"
+  },
+  "result.json": {
+    "automaticRetryAllowed": false,
+    "cleanupFailures": {},
+    "configurationClosed": true,
+    "counts": {
+      "cache": 0,
+      "cli": 0,
+      "https": 0
+    },
+    "failure": null,
+    "finishedAt": 1794839164.9151602,
+    "identityDisabled": null,
+    "mainCounts": {
+      "cache": 0,
+      "cli": 2,
+      "https": 0
+    },
+    "mainFailure": "SQ1_PROCESS_TIMEOUT",
+    "onTime": true,
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "paymentObserved": false,
+    "phase": "cleanup",
+    "policyAbsent": null,
+    "privateInputsAbsent": true,
+    "processClosed": true,
+    "residuals": [],
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2",
+    "signResult": null,
+    "sourceClosed": true,
+    "status": "SQ1_NOT_MUTATED"
+  },
+  "scope.json": {
+    "action": "SQ1_EXACT_NON_AUTHENTICATION_SIGN_ONCE",
+    "allowanceUsd": 0,
+    "automaticRetryAllowed": false,
+    "commands": {
+      "config_access_token": [
+        "/opt/homebrew/bin/gcloud",
+        "config",
+        "get-value",
+        "auth/access_token_file"
+      ],
+      "config_credential": [
+        "/opt/homebrew/bin/gcloud",
+        "config",
+        "get-value",
+        "auth/credential_file_override"
+      ],
+      "config_impersonation": [
+        "/opt/homebrew/bin/gcloud",
+        "config",
+        "get-value",
+        "auth/impersonate_service_account"
+      ],
+      "identity": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "service-accounts",
+        "describe",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project",
+        "signmons",
+        "--format=json(email,disabled,uniqueId)"
+      ],
+      "owner": [
+        "/opt/homebrew/bin/gcloud",
+        "auth",
+        "list",
+        "--filter=status:ACTIVE",
+        "--format=json(account,status)"
+      ],
+      "project": [
+        "/opt/homebrew/bin/gcloud",
+        "projects",
+        "describe",
+        "signmons",
+        "--format=json(projectId,projectNumber,lifecycleState)"
+      ],
+      "readback": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "service-accounts",
+        "describe",
+        "signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com",
+        "--project=signmons",
+        "--format=json(email,disabled)"
+      ],
+      "role": [
+        "/opt/homebrew/bin/gcloud",
+        "iam",
+        "roles",
+        "describe",
+        "signmonsP08ServiceAccountSignBlob",
+        "--project",
+        "signmons",
+        "--format=json(name,title,description,includedPermissions,stage,deleted,etag)"
+      ],
+      "token": [
+        "/opt/homebrew/bin/gcloud",
+        "auth",
+        "print-access-token",
+        "--account=debynyhan@signmons.com"
+      ],
+      "token_owner": [
+        "/opt/homebrew/bin/gcloud",
+        "auth",
+        "list",
+        "--filter=status:ACTIVE",
+        "--format=value(account)"
+      ]
+    },
+    "configSha256": "528ceadadc8a5491e54ee82dbad0026eda881252564f96f2be242d70d1d2f111",
+    "iq1ManifestSha256": "aa4874c488ae2fdcd25b475534a26a4c537b669963e59aa699c8e029d9136b03",
+    "limits": {
+      "cache": 2,
+      "cleanupCli": 12,
+      "cleanupHttps": 4,
+      "disable": 1,
+      "enable": 1,
+      "mainCli": 13,
+      "mainHttps": 10,
+      "policyAdd": 1,
+      "policyRemove": 1,
+      "sign": 1
+    },
+    "manifestSha256": "d572ac13394a4db8b35fa91e2da3ff904fb9d713df4a74f7349bb87ad2cca0cc",
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "projectNumberSha256": "37d4aa0f46ca5b8f0b81b1148bda235a0f4a9a424b6b4638ec993d889563be54",
+    "sdkException": "SDK_READ_OWNER_REFRESH_INTERNAL_AUTH_RETRY_CACHE_NO_MUTATION_RETRY",
+    "sourceCommit": "48a0a7d01481bb054ba47b5b73a70f8b0df94058",
+    "uidSha256": "3d299bbf03a6c3e2315034fb3a809aedbb6f978c6e6741ff0201fe4464798f72",
+    "version": 1,
+    "window": {
+      "cleanupEnd": "2026-11-16T15:06:00Z",
+      "cutoff": "2026-11-16T14:35:00Z",
+      "purgeEnd": "2026-11-16T15:08:00Z",
+      "start": "2026-11-16T14:25:00Z",
+      "workEnd": "2026-11-16T14:55:00Z"
+    }
+  },
+  "supervision.json": {
+    "cleanupResult": "SQ1_NOT_MUTATED",
+    "failure": null,
+    "finishedAt": 1794839164.9249752,
+    "interrupted": false,
+    "onTime": true,
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2",
+    "supervisorOwnedProcessesClosed": true
+  },
+  "supervisor-phase.json": {
+    "operationId": "e8aebe8e-3fa9-4385-8a4a-4f587a6b8d61",
+    "rootIdentity": [
+      16777231,
+      52444738
+    ],
+    "scopeSha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2"
+  }
+}

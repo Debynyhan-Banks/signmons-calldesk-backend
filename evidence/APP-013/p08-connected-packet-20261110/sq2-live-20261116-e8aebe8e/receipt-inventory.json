@@ -1,0 +1,86 @@
+[
+  {
+    "name": "attempt.json",
+    "sha256": "1c4d2ede2dfdef3eb75a559abcd025288052beff188d4702609dca66f75f2064",
+    "bytes": 170,
+    "localModifiedAt": "2026-11-16T14:25:40.357752+00:00"
+  },
+  {
+    "name": "cleanup-phase.json",
+    "sha256": "1c4d2ede2dfdef3eb75a559abcd025288052beff188d4702609dca66f75f2064",
+    "bytes": 170,
+    "localModifiedAt": "2026-11-16T14:26:02.637419+00:00"
+  },
+  {
+    "name": "entry.lock",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0,
+    "localModifiedAt": "2026-11-16T14:25:44.747748+00:00"
+  },
+  {
+    "name": "envelope.json",
+    "sha256": "eae16e53c284c521c16ebd6b4662b71cc49b6a3064c315c3646fee30dc4d4e16",
+    "bytes": 240,
+    "localModifiedAt": "2026-11-16T14:25:40.357868+00:00"
+  },
+  {
+    "name": "last-clock.json",
+    "sha256": "b9badcb9c883089ff74d091ca724ee6c5f9097ca79de7e622669c2fcdac8ceb3",
+    "bytes": 218,
+    "localModifiedAt": "2026-11-16T14:26:03.789968+00:00"
+  },
+  {
+    "name": "launch.json",
+    "sha256": "1c4d2ede2dfdef3eb75a559abcd025288052beff188d4702609dca66f75f2064",
+    "bytes": 170,
+    "localModifiedAt": "2026-11-16T14:25:40.357982+00:00"
+  },
+  {
+    "name": "main-cli-00.json",
+    "sha256": "d0884efa00dcc4ae6c8e1a9e72919cfe10451f66600bac454e9ae69c152fb752",
+    "bytes": 208,
+    "localModifiedAt": "2026-11-16T14:25:46.894612+00:00"
+  },
+  {
+    "name": "main-cli-01.json",
+    "sha256": "cfb34c4ce32090dc70867d4fc86ce95c66fc1bac797a4812cc01c18c64220714",
+    "bytes": 210,
+    "localModifiedAt": "2026-11-16T14:25:50.893316+00:00"
+  },
+  {
+    "name": "main-phase.json",
+    "sha256": "1c4d2ede2dfdef3eb75a559abcd025288052beff188d4702609dca66f75f2064",
+    "bytes": 170,
+    "localModifiedAt": "2026-11-16T14:25:44.747980+00:00"
+  },
+  {
+    "name": "main-result.json",
+    "sha256": "27804b20c5286451028a411b24fbedc39e7629f905dd42272e3834e662707f97",
+    "bytes": 631,
+    "localModifiedAt": "2026-11-16T14:25:59.289552+00:00"
+  },
+  {
+    "name": "result.json",
+    "sha256": "6294ccc81efbb16f2b0cc5fde5eeca0d85fe741cc68104bdb56c96f11b3eae30",
+    "bytes": 641,
+    "localModifiedAt": "2026-11-16T14:26:04.915588+00:00"
+  },
+  {
+    "name": "scope.json",
+    "sha256": "be6316e6ed67144bb1e2a2a6ff122f1defc20999af7a48fd34bb63b33524c6c2",
+    "bytes": 2410,
+    "localModifiedAt": "2026-11-16T14:25:40.357565+00:00"
+  },
+  {
+    "name": "supervision.json",
+    "sha256": "5afe0a9686fedd9488adbc49bb84defa48cd85354f2669eab5df71d8986f0d70",
+    "bytes": 323,
+    "localModifiedAt": "2026-11-16T14:26:04.926245+00:00"
+  },
+  {
+    "name": "supervisor-phase.json",
+    "sha256": "1c4d2ede2dfdef3eb75a559abcd025288052beff188d4702609dca66f75f2064",
+    "bytes": 170,
+    "localModifiedAt": "2026-11-16T14:25:41.428756+00:00"
+  }
+]
