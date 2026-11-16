@@ -48,6 +48,9 @@ ERROR_STATUSES = frozenset(('CANCELLED', 'UNKNOWN', 'INVALID_ARGUMENT', 'DEADLIN
                           'ABORTED', 'OUT_OF_RANGE', 'UNIMPLEMENTED', 'INTERNAL', 'UNAVAILABLE',
                           'DATA_LOSS', 'UNAUTHENTICATED'))
 MAX_OUTPUT = 65536
+SETTLE_SECONDS = 420
+MAIN_ADMISSION_SECONDS = SETTLE_SECONDS + 300
+POST_SETTLE_SECONDS = 60
 SDK_BOOTSTRAP = ("import sys,os,time,threading,runpy\n"
                  "sys.argv.pop(0); end=float(sys.argv.pop(0)); remaining=min(8.0,end-time.time())\n"
                  "if remaining<=0: os._exit(124)\n"
@@ -141,7 +144,8 @@ def validate_scope(scope, now, phase='main'):
          times['purgeEnd'] - times['start'] <= 3600, 'SQ1_WINDOW')
     need(phase in ('main', 'cleanup'), 'SQ1_SCOPE')
     if phase == 'main':
-        need(times['start'] <= now < times['cutoff'] and times['workEnd'] - now >= 300, 'SQ1_DEADLINE')
+        need(times['start'] <= now < times['cutoff'] and
+             times['workEnd'] - now >= MAIN_ADMISSION_SECONDS, 'SQ1_DEADLINE')
     else:
         need(times['start'] <= now < times['cleanupEnd'], 'SQ1_DEADLINE')
     return times
@@ -658,6 +662,25 @@ class Driver:
                 return
         raise Stop('SQ1_IDENTITY')
 
+    def require_remaining(self, seconds):
+        self.gate()
+        need(min(self.end - self.h.clock(), self.hard_end - self.h.monotonic()) >= seconds,
+             'SQ1_DEADLINE')
+
+    def settle(self):
+        self.require_remaining(SETTLE_SECONDS + POST_SETTLE_SECONDS)
+        until = self.h.monotonic() + SETTLE_SECONDS
+        while True:
+            self.gate()
+            before = self.h.monotonic()
+            if before >= until:
+                break
+            self.h.sleep(min(1, until - before))
+            # Refuse a broken/non-progressing clock instead of spinning forever.
+            # Early wakeups with positive progress must still cover the interval.
+            need(self.h.monotonic() > before, 'SQ1_CLOCK')
+        self.gate()
+
     def main(self):
         self.owner_project_uid(initial=True)
         roles = entry.bridge.packet.module('roles')
@@ -675,11 +698,13 @@ class Driver:
         policy = self.http('policy_before')
         need(policy_state(policy, self.scope) == 'ABSENT', 'SQ1_POLICY_OWNERSHIP')
         self.j.put('baseline-policy.json', {**self.j.base, 'absent': True, 'uidSha256': self.scope['uidSha256']})
+        self.require_remaining(MAIN_ADMISSION_SECONDS)
         self.http('enable'); self.reconcile(True)
         update = modified_policy(policy, self.scope, True); policy = None
         self.http('policy_add', update); update = None
         policy = self.http('policy_after')
         need(policy_state(policy, self.scope) == 'OWNED', 'SQ1_POLICY_OWNERSHIP'); policy = None
+        self.settle()
         when = datetime.datetime.fromtimestamp(self.h.clock(), datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         need(self.http('prediction', receive_time=when).get('overallAccessState') == 'CAN_ACCESS', 'SQ1_PREDICTION')
         need(self.metadata('pre-sign-uid') is False, 'SQ1_IDENTITY')

@@ -62,7 +62,7 @@ def scope(now):
             "uidSha256": hashlib.sha256(UID.encode()).hexdigest(),
             "projectNumberSha256": s.m.digest(NUMBER),
             "window": {k: iso(v) for k, v in (("start", -1), ("cutoff", 60),
-                        ("workEnd", 420), ("cleanupEnd", 1100), ("purgeEnd", 1230))},
+                        ("workEnd", 1000), ("cleanupEnd", 1680), ("purgeEnd", 1810))},
             "limits": dict(s.LIMITS), "sdkException": s.SDK_EXCEPTION,
             "commands": s.commands(), "allowanceUsd": 0, "automaticRetryAllowed": False}
 
@@ -473,6 +473,190 @@ class PhaseContract(unittest.TestCase):
         retained = "".join(p.read_text() for p in self.root.rglob("*") if p.is_file()) if self.root.exists() else ""
         for sentinel in (UID, NUMBER, TOKEN, PRIVATE, SIGNATURE):
             self.assertNotIn(sentinel, retained)
+
+    def advance_to_remaining(self, remaining):
+        end = s.m.timestamp(self.scope["window"]["workEnd"]) - 10
+        delta = end - remaining - self.clock.now
+        self.clock.now += delta
+        self.clock.mono += delta
+
+    def remaining_after_read(self, target, seconds):
+        original = s.Driver.http
+        def boundary(driver, name, *args, **kwargs):
+            result = original(driver, name, *args, **kwargs)
+            if driver.phase == "main" and name == target:
+                self.advance_to_remaining(seconds)
+            return result
+        return patch.object(s.Driver, "http", boundary)
+
+    def assert_wait_stop_restored(self, expected):
+        main = self.phase("main")
+        self.assertEqual(main["mainFailure"], expected)
+        self.assertFalse([n for _, n, _ in self.provider.requests if n == "sign"])
+        self.guard_hook = lambda _: None
+        self.configuration_hook = lambda: CONFIG
+        cleanup = self.phase("cleanup")
+        self.assertTrue(cleanup["policyAbsent"])
+        self.assertTrue(cleanup["identityDisabled"])
+        self.assert_bounds_and_privacy()
+        return main, cleanup
+
+    def test_settling_interval_precedes_fresh_prediction_and_single_sign(self):
+        observed = {}
+        def trace(name, phase, request):
+            if phase == "main":
+                observed[name] = (self.clock(), self.clock.monotonic(), request)
+        self.provider.request_hook = trace
+        main, cleanup = self.pair()
+        self.assertEqual(main["signResult"]["httpStatus"], 403)
+        self.assertEqual(observed["prediction"][1] - observed["policy_after"][1], 420)
+        self.assertGreaterEqual(observed["sign"][1], observed["prediction"][1])
+        expected = datetime.datetime.fromtimestamp(observed["prediction"][0], datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.assertIn(expected, set(strings(json.loads(observed["prediction"][2].data))))
+        self.assertEqual(sum(self.clock.sleeps), 420)
+        self.assertTrue(all(0 < delay <= 1 for delay in self.clock.sleeps))
+        self.assertEqual([n for phase, n, _ in self.provider.requests if phase == "main"],
+                         ["service_signing", "service_troubleshooter", "project_permissions", "identity_permissions",
+                          "policy_before", "enable", "policy_add", "policy_after", "prediction", "sign"])
+        self.assertEqual(cleanup["residuals"], [])
+
+    def test_settling_early_wakeups_do_not_shorten_interval(self):
+        original = self.clock.sleep
+        self.clock.sleep = lambda seconds: original(min(seconds, .5))
+        main, cleanup = self.pair()
+        self.assertIsNotNone(main["signResult"])
+        self.assertEqual(sum(self.clock.sleeps), 420)
+        self.assertEqual(len(self.clock.sleeps), 840)
+        self.assertEqual(cleanup["residuals"], [])
+
+    def test_entry_requires_720_seconds_and_accepts_exact_boundary(self):
+        end = s.m.timestamp(self.scope["window"]["workEnd"])
+        changed = copy.deepcopy(self.scope)
+        changed["window"]["cutoff"] = changed["window"]["workEnd"]
+        # Keep a valid cutoff after each sampled entry instant.
+        changed["window"]["cutoff"] = datetime.datetime.fromtimestamp(end - 1, datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        s.validate_scope(changed, end - 720)
+        with self.assertRaisesRegex(s.Stop, "SQ1_DEADLINE"):
+            s.validate_scope(changed, end - 719.999)
+
+    def test_pre_enable_short_window_stops_before_mutations(self):
+        with self.remaining_after_read("policy_before", 719.999):
+            main = self.phase("main")
+        self.assertEqual(main["mainFailure"], "SQ1_DEADLINE")
+        self.assertFalse([n for _, n, _ in self.provider.requests if n in ("enable", "policy_add", "sign")])
+        self.phase("cleanup")
+        self.assert_bounds_and_privacy()
+
+    def test_exact_pre_enable_720_second_boundary_can_finish(self):
+        with self.remaining_after_read("policy_before", 720):
+            main, cleanup = self.pair()
+        self.assertIsNotNone(main["signResult"])
+        self.assertEqual(cleanup["residuals"], [])
+
+    def test_pre_wait_short_window_restores_without_sleep_or_sign(self):
+        with self.remaining_after_read("policy_after", 479.999):
+            self.assert_wait_stop_restored("SQ1_DEADLINE")
+        self.assertEqual(self.clock.sleeps, [])
+
+    def test_exact_pre_wait_480_second_boundary_can_finish(self):
+        with self.remaining_after_read("policy_after", 480):
+            main, cleanup = self.pair()
+        self.assertIsNotNone(main["signResult"])
+        self.assertEqual(sum(self.clock.sleeps), 420)
+        self.assertEqual(cleanup["residuals"], [])
+
+    def test_frozen_wait_clock_stops_without_spinning(self):
+        calls = []
+        self.clock.sleep = lambda seconds: calls.append(seconds)
+        self.assert_wait_stop_restored("SQ1_CLOCK")
+        self.assertEqual(calls, [1])
+
+    def test_wait_wall_clock_forward_jump_stops_sign_and_restores(self):
+        original = self.clock.sleep
+        def leap(seconds):
+            original(seconds)
+            self.clock.now = s.m.timestamp(self.scope["window"]["workEnd"])
+        self.clock.sleep = leap
+        self.assert_wait_stop_restored("SQ1_DEADLINE")
+
+    def test_wait_monotonic_forward_jump_stops_sign_and_restores(self):
+        original = self.clock.sleep
+        def leap(seconds):
+            original(seconds)
+            self.clock.mono += 1000
+        self.clock.sleep = leap
+        self.assert_wait_stop_restored("SQ1_DEADLINE")
+
+    def test_wait_wall_clock_rollback_preserves_failure_then_restores(self):
+        original = self.clock.sleep
+        def rollback(seconds):
+            original(seconds)
+            self.clock.now -= 2
+        self.clock.sleep = rollback
+        main = self.phase("main")
+        self.assertEqual(main["mainFailure"], "SQ1_CLOCK")
+        self.assertIsNone(main["signResult"])
+        self.clock.now += 3
+        cleanup = self.phase("cleanup")
+        self.assertTrue(cleanup["identityDisabled"])
+        self.assertTrue(cleanup["policyAbsent"])
+        self.assert_bounds_and_privacy()
+
+    def test_wait_monotonic_rollback_preserves_failure_then_restores(self):
+        original = self.clock.sleep
+        def rollback(seconds):
+            original(seconds)
+            self.clock.mono -= 2
+        self.clock.sleep = rollback
+        main = self.phase("main")
+        self.assertEqual(main["mainFailure"], "SQ1_CLOCK")
+        self.assertIsNone(main["signResult"])
+        self.clock.mono += 3
+        cleanup = self.phase("cleanup")
+        self.assertTrue(cleanup["identityDisabled"])
+        self.assertTrue(cleanup["policyAbsent"])
+        self.assert_bounds_and_privacy()
+
+    def test_wait_source_drift_prevents_sign_and_restores(self):
+        def guard(_):
+            if self.provider.phase == "main" and self.clock.sleeps:
+                raise s.Stop("SQ1_SOURCE")
+        self.guard_hook = guard
+        main, cleanup = self.assert_wait_stop_restored("SQ1_SOURCE")
+        self.assertIn("SOURCE_UNCONFIRMED", cleanup["residuals"])
+
+    def test_wait_configuration_drift_prevents_sign_and_restores(self):
+        self.configuration_hook = lambda: "f" * 64 if self.clock.sleeps and self.provider.phase == "main" else CONFIG
+        main, cleanup = self.assert_wait_stop_restored("SQ1_CONFIG")
+        self.assertIn("CONFIGURATION_UNCONFIRMED", cleanup["residuals"])
+
+    def test_wait_custody_drift_prevents_sign_and_keeps_unknown(self):
+        original = self.clock.sleep
+        foreign = self.root / "foreign"
+        def drift(seconds):
+            original(seconds)
+            foreign.write_text("synthetic")
+        self.clock.sleep = drift
+        with self.assertRaises(s.Stop):
+            self.phase("main")
+        self.assertFalse([n for _, n, _ in self.provider.requests if n == "sign"])
+        foreign.unlink()
+        cleanup = self.phase("cleanup")
+        self.assertTrue(cleanup["identityDisabled"])
+        self.assertTrue(cleanup["policyAbsent"])
+        self.assertTrue(cleanup["residuals"])
+        self.assert_bounds_and_privacy()
+
+    def test_uid_refusal_after_full_wait_never_signs(self):
+        identities = []
+        def changed(name, phase):
+            if name == "identity" and phase == "main":
+                identities.append(name)
+                if len(identities) == 2:
+                    return wire({"email": s.m.IDENTITY, "uniqueId": "9" * 21, "disabled": False})
+        self.provider.command_hook = changed
+        main, cleanup = self.assert_wait_stop_restored("SQ1_UID")
+        self.assertEqual(sum(self.clock.sleeps), 420)
 
     def test_structured_denial_then_independent_restoration(self):
         main, cleanup = self.pair()
@@ -1376,7 +1560,21 @@ def process_fixture(argv, control_path):
     class Hooks:
         def __init__(self, refs, scope, phase, *, parent=None):
             self.scope, self.phase, self.parent = scope, phase, parent
-            self.clock, self.monotonic, self.sleep = time.time, time.monotonic, time.sleep
+            # Accelerate only injected phase sleeps. Persist the synthetic offset
+            # across exec so cleanup observes the same clock history. Supervision,
+            # subprocess ownership, signal delivery and real timeouts remain real.
+            offset_path = Path(control["state"] + ".clock")
+            def offset():
+                return float(offset_path.read_text()) if offset_path.exists() else 0.0
+            self.clock = lambda: time.time() + offset()
+            self.monotonic = lambda: time.monotonic() + offset()
+            def sleep(seconds):
+                if phase == "main" and control["scenario"].startswith("wait-"):
+                    checkpoint.write_text(json.dumps({"pid": os.getpid(), "parent": os.getppid(), "phase": "wait"}))
+                    time.sleep(seconds)
+                else:
+                    offset_path.write_text(str(offset() + seconds))
+            self.sleep = sleep
             self.provider = Stateful(phase)
             self.opener = self.provider
 
@@ -1596,6 +1794,46 @@ class ActualProcessBoundaries(unittest.TestCase):
         result, ledger = self.completed()
         self.assertFalse([row for row in ledger if row.get("event") == "sign"])
         self.assertTrue(result["residuals"])
+
+    def test_sigint_during_settling_wait_restores_without_sign(self):
+        process = self.start("wait-int")
+        checkpoint = self.wait_file(self.control["checkpoint"])
+        self.assertEqual(checkpoint["phase"], "wait")
+        os.kill(checkpoint["pid"], signal.SIGINT)
+        result, ledger = self.completed()
+        process.communicate(timeout=5)
+        self.assertEqual(result["mainFailure"], "SQ1_INTERRUPTED")
+        self.assertFalse([row for row in ledger if row.get("event") == "sign"])
+        self.assertTrue([row for row in ledger if row.get("event") == "policy_add"])
+
+    def test_sigterm_during_settling_wait_restores_without_sign(self):
+        process = self.start("wait-term")
+        checkpoint = self.wait_file(self.control["checkpoint"])
+        os.kill(checkpoint["pid"], signal.SIGTERM)
+        result, ledger = self.completed()
+        process.communicate(timeout=5)
+        self.assertEqual(result["mainFailure"], "SQ1_INTERRUPTED")
+        self.assertFalse([row for row in ledger if row.get("event") == "sign"])
+
+    def test_worker_kill_during_wait_uses_independent_supervisor_cleanup(self):
+        process = self.start("wait-kill")
+        checkpoint = self.wait_file(self.control["checkpoint"])
+        os.kill(checkpoint["pid"], signal.SIGKILL)
+        result, ledger = self.completed()
+        process.communicate(timeout=5)
+        self.assertTrue(result["residuals"])
+        self.assertFalse([row for row in ledger if row.get("event") == "sign"])
+        self.assertNotEqual(next(row["pid"] for row in ledger if row.get("phase") == "cleanup"), checkpoint["pid"])
+
+    def test_supervisor_kill_during_wait_preserves_worker_cleanup(self):
+        process = self.start("wait-supervisor-kill")
+        checkpoint = self.wait_file(self.control["checkpoint"])
+        os.kill(process.pid, signal.SIGKILL)
+        result, ledger = self.completed()
+        process.communicate(timeout=5)
+        self.assertTrue(result["residuals"])
+        self.assertFalse([row for row in ledger if row.get("event") == "sign"])
+        self.assertEqual(next(row["pid"] for row in ledger if row.get("phase") == "cleanup"), checkpoint["pid"])
 
     def test_cleanup_sigterm_does_not_skip_authorized_restoration(self):
         self.start("cleanup-term")
