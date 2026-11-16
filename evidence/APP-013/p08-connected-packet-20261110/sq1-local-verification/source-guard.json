@@ -1,0 +1,11 @@
+{
+  "status": "COMMITTED_SOURCE_GUARD_PASS",
+  "sourceCommit": "bf2d2c1cc5e6c73dde5e6247d9ee610fd04f0eb4",
+  "manifestSha256": "34ae6ef74c6bd1195e82b6599073c2d27daa402ef12bc92612b28d697f56a9d9",
+  "checkedAt": "2026-11-16T13:17:02.705153+00:00",
+  "seconds": 0.944,
+  "repositoryFiles": 51,
+  "sdkFiles": 61,
+  "credentialReads": 0,
+  "providerCalls": 0
+}

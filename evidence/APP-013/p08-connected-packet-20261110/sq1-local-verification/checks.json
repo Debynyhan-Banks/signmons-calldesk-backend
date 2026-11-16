@@ -1,0 +1,68 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-11-16 13:19:44 UTC",
+  "backendSourceCommit": "bf2d2c1cc5e6c73dde5e6247d9ee610fd04f0eb4",
+  "checks": [
+    {
+      "id": "backend-architecture",
+      "cmd": "node scripts/architecture-check.mjs",
+      "exit_code": 0,
+      "output": "architecture-check passed\n"
+    },
+    {
+      "id": "backend-baseline",
+      "cmd": "SIGNMONS_GOVERNANCE_REPO='/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery' node scripts/check-governance-baseline.mjs",
+      "exit_code": 0,
+      "output": "docs-consistency-check passed\n"
+    },
+    {
+      "id": "frozen-baseline",
+      "cmd": "node scripts/frozen-baseline-check.mjs",
+      "exit_code": 0,
+      "output": "frozen-baseline-check passed\n"
+    },
+    {
+      "id": "docs-consistency",
+      "cmd": "SIGNMONS_BACKEND_REPO='/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery' node scripts/docs-consistency-check.mjs",
+      "exit_code": 0,
+      "output": "docs-consistency-check passed\n"
+    },
+    {
+      "id": "governance-tests",
+      "cmd": "node --test scripts/frozen-baseline-check.test.mjs scripts/execution-placement.test.mjs scripts/intelligence-alignment-check.test.mjs",
+      "exit_code": 0,
+      "output": "\u2714 current pointer and handoff have properly placed status and ordered steps (2.624708ms)\n\u2714 prior swapped-row/step failure is rejected without touching repository files (4.188625ms)\n\u2714 missing or duplicated backend rows fail (4.10675ms)\n\u2714 missing or nonsequential next actions fail (3.711333ms)\n\u2714 current checkout passes pinned baseline (30.114542ms)\n\u2714 automatic-admission amendment changes exactly two frozen sections and leaves ticket intact (3.263291ms)\n\u2714 old operator requirement cannot replace adopted automatic admission (1.30375ms)\n\u2714 core-release amendment changes exactly the approved two frozen sections (7.133917ms)\n\u2714 core-release proposal refuses malformed data and missing or duplicated targets (3.950583ms)\n\u2714 core-release amendment retains consent, delivery, privacy, audit and downstream safeguards (6.864792ms)\n\u2714 amendment does not permit weakening service or downstream authority (2.271042ms)\n\u2714 malformed amendment and missing or duplicate targets fail closed (0.146125ms)\n\u2714 changing acceptance text is rejected without editing repositories (0.872416ms)\n\u2714 changing section dependency is rejected (2.036417ms)\n\u2714 new section cannot silently increase denominator (0.886917ms)\n\u2714 reordering or renaming section is rejected (3.496709ms)\n\u2714 missing and duplicate protected section refuse (2.051042ms)\n\u2714 ticket criterion mutation is rejected, checkbox evidence change permitted (2.833ms)\n\u2714 status/evidence outside frozen requirements can be updated (1.948167ms)\n\u2714 missing pinned history fails closed (0.256584ms)\n\u2714 missing immutable core-release proposal fails closed even when older pins are available (76.563334ms)\n\u2714 current synchronized dependency order passes (1.70325ms)\n\u2714 blank Next and stale backend fail (0.1365ms)\n\u2714 out-of-order queue and pointer fail (0.060625ms)\n\u2714 full acceptance promotion can advance to the remaining suffix (0.058708ms)\n\u2139 tests 25\n\u2139 suites 0\n\u2139 pass 25\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 248.976\n"
+    },
+    {
+      "id": "backend-whitespace",
+      "cmd": "git diff --check",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "id": "governance-whitespace",
+      "cmd": "git diff --check",
+      "exit_code": 0,
+      "output": ""
+    }
+  ],
+  "focusedTests": {
+    "pass": 80,
+    "fail": 0,
+    "skipped": 0,
+    "seconds": 7.861,
+    "log": "focused-tests.log"
+  },
+  "connectedPacketTests": {
+    "pass": 402,
+    "fail": 0,
+    "skipped": 0,
+    "seconds": 31.262,
+    "log": "connected-packet-tests.log"
+  },
+  "expectedNegativeFixtureStderr": "test_approval_wait.ApprovalWaitTests.test_repository_error_is_not_treated_as_absent_approval emits fatal: not a git repository.",
+  "postTestChange": "Only trailing blank lines at test EOF removed, then new manifest test hash refreshed. No code or assertion logic changed.",
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "paymentObserved": false
+}
