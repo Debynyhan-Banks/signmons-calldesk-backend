@@ -1,0 +1,22 @@
+{
+  "recordedAt": "2026-11-16T12:19:15.983358+00:00",
+  "operatorSourceSha256": "adb1501b686d8d29d100d27bddbc752ddedee7d7434d78191c01eb4790f5836d",
+  "reusedReferenceSha256": "dc719e9137cefb4570dc97df904a2a0cee57ac83d54d19f74a3c565c00d984ca",
+  "compiled": "PASS",
+  "safeClassifierCases": 8,
+  "safeClassifierResult": "PASS",
+  "nanosecondBoundary": "PASS",
+  "actualOperatorSigtermDeferral": "PASS_WITH_FAKE_NATIVE_IO_NO_PROVIDER_OR_OPERATION_ROOT",
+  "independentOperatorReview": "PASS_BEFORE_LIVE_DISPATCH",
+  "temporarySourceRemovalVerified": true,
+  "rawAuditOrCredentialsPersisted": false,
+  "receiptSha256": {
+    "attempt.json": "812fc060091b8d9a6e6ed0592a1de4226630793f52cb4140b3b0d0a23dcc8853",
+    "call-0.json": "447f53f465f41442f37c600b9d62179b15b9c74c720d5c9ee9b6d0b007942cf9",
+    "call-1.json": "96e0402cdba83400125c9f8f6eb236d41d9e53e5770b5e32b5d6c8ed2aaaaf69",
+    "call-2.json": "551c85f997e397c9f2fdc4a32bf9e291f6fd7dced7d3f2168bde04c5a404e205",
+    "call-3.json": "fc680f85fabf1a03d96c00d0335590becd89326472cd7396247dcb76dc4aced3",
+    "result.json": "16a2fd33cf7ee37d6d8abb0d90f2522d6b84827a3e4e91ea698d752b34064bf7",
+    "local-closeout.json": "b2c8b3ad76bffe83bb5db62894a82f840c0389ee204eb97e59e79ac00a7ee377"
+  }
+}

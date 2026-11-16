@@ -1,0 +1,20 @@
+{
+  "operationId": "6f7295fd-0c90-440f-98f7-f2a32bd27eb8",
+  "observedAt": "2026-11-16T12:18:17.863020+00:00",
+  "matchingOperationProcessesAbsent": true,
+  "receiptCustodyVerified": true,
+  "safeInventoryVerified": true,
+  "privateInputsAbsent": true,
+  "rawAuditRecordsPersisted": false,
+  "temporaryOperatorRemoved": true,
+  "historicalReferenceRemoved": true,
+  "temporarySourceSha256": {
+    "al2-execute-approved.py": "adb1501b686d8d29d100d27bddbc752ddedee7d7434d78191c01eb4790f5836d",
+    "al2-al1-reference.py": "dc719e9137cefb4570dc97df904a2a0cee57ac83d54d19f74a3c565c00d984ca"
+  },
+  "configurationClosed": true,
+  "sourceClosed": true,
+  "onTime": true,
+  "providerCallsForCloseout": 0,
+  "residuals": []
+}
