@@ -1,0 +1,65 @@
+{
+  "approvalCommit": "c8250f1311f316403d6dbca66ecdc0bf9501cbe1",
+  "automaticRetryAllowed": false,
+  "checkedAt": "2026-11-16T13:51:09.936255+00:00",
+  "cleanupCounts": {
+    "cache": 1,
+    "cli": 10,
+    "https": 4
+  },
+  "cleanupResult": "SQ1_DIAGNOSTIC_CLOSED",
+  "cleanupSdkProcessesClosed": true,
+  "configurationMatch": true,
+  "custodyVerified": true,
+  "localReceiptSecondsPolicyAddAckToSignIntent": 12.884207,
+  "mainCounts": {
+    "cache": 1,
+    "cli": 11,
+    "https": 10
+  },
+  "mainSdkProcessesClosed": true,
+  "oneSignReservation": true,
+  "operationId": "73e461e4-a1f6-4ded-b1a1-f4372c19e7e1",
+  "paymentObserved": false,
+  "policyAbsent": true,
+  "privateInputsAbsent": true,
+  "qualificationResult": "SIGN_REFUSED",
+  "r52HistoricalAuthenticationOutcome": "UNCHANGED_UNKNOWN",
+  "replayAuthorized": false,
+  "residuals": [],
+  "safeReceiptFiles": 60,
+  "sameIdentityDisabled": true,
+  "scopeCommit": "9071663c10fcafb403b32c5dfe36f8b6068c3703",
+  "scopeSha256": "3037dad95f288cd18276f3ecb5f775d020fb0568b9dd19a908446ec7226fe1b0",
+  "signResult": {
+    "errorCode": 403,
+    "errorInfo": [
+      {
+        "domain": "iam.googleapis.com",
+        "metadataMatches": {
+          "consumer": "UNKNOWN",
+          "permission": "MATCH",
+          "service": "UNKNOWN",
+          "target": "UNKNOWN"
+        },
+        "reason": "IAM_PERMISSION_DENIED"
+      }
+    ],
+    "errorStatus": "PERMISSION_DENIED",
+    "failureCategory": "HTTP",
+    "httpStatus": 403,
+    "outcome": "REFUSED",
+    "signatureObserved": false
+  },
+  "sourceCommit": "bf2d2c1cc5e6c73dde5e6247d9ee610fd04f0eb4",
+  "sourceMatch": true,
+  "status": "INDEPENDENT_LOCAL_CLOSEOUT_VERIFIED",
+  "supervisorOwnedProcessesClosed": true,
+  "timestampMeaning": "Local filesystem receipt acknowledgement/intent times; not provider application or arrival timestamps.",
+  "toolProcessExitCode": 0,
+  "totals": {
+    "cache": 2,
+    "cli": 21,
+    "https": 14
+  }
+}

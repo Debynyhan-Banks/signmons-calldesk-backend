@@ -1,0 +1,13 @@
+{
+  "currentEvidence": "HTTP403/PERMISSION_DENIED/IAM_PERMISSION_DENIED; permission MATCH, consumer/service/target UNKNOWN; signatureObservedfalse.",
+  "guidance": "IAM policy edits are eventually consistent; typically2minutes, potentially7minutes or longer.",
+  "inference": "Propagation is plausible but unproven. The short interval cannot rule it out; policy readback and access prediction do not establish propagation to every enforcement point.",
+  "limits": "Seven minutes cannot guarantee convergence. No cause for historicalR52, no application-authentication/payment acceptance and no live retry inferred.",
+  "nextDecision": "Prepare a bounded local amendment for a fixed7-minute post-policy-readback settling interval before the existing prediction/UID/single-SIGN sequence, preserving deadlines, cleanup reserves and all call ceilings. Owner approval precedes implementation and fresh live qualification.",
+  "provenance": "Exact safe main and final result, validated against original scope; predicates before SIGN passed in pinned source.",
+  "publicSource": "https://docs.cloud.google.com/iam/docs/access-change-propagation",
+  "publicSourceChecked": "2026-11-16",
+  "publicSourceUpdated": "2026-11-13",
+  "timingBasis": "Local ack-policyAdd and intent-sign receipt modification times only.",
+  "timingObservationSeconds": 12.884207
+}
