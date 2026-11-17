@@ -460,6 +460,7 @@ class Coordinator(c.Coordinator):
         self.last_monotonic = self.monotonic()
         self.forward_end = min(self.times['workEnd'], restore.timestamp(cap.e['payment']['workEnd'])) if cap.e.get('version') == 2 else self.times['workEnd']
         self.work_monotonic_end = self.last_monotonic + max(0, self.forward_end - self.clock())
+        self.child_monotonic_end = self.last_monotonic + max(0, self.times['cutoff'] - self.clock())
         self.mutation_admitted = False
         self.settling_attempted = False
 
@@ -477,11 +478,19 @@ class Coordinator(c.Coordinator):
         c.need(min(self.forward_end - self.clock(),
                    self.work_monotonic_end - self.monotonic()) >= seconds, 'DEADLINE')
 
+    def require_child_entry(self, seconds):
+        # The authentication child authorizes against cutoff, not workEnd.
+        # Admission must preserve both budgets without extending either one.
+        self.require_work(seconds)
+        c.need(min(self.times['cutoff'] - self.clock(),
+                   self.child_monotonic_end - self.monotonic()) >= seconds,
+               'START_CUTOFF')
+
     def settle_bindings(self):
         c.need(not self.settling_attempted, 'IAM_SETTLE_ALREADY_ATTEMPTED')
         self.settling_attempted = True
         c.need(self.j.get('iamOwned') == ['lookup', 'signing'], 'IAM_READBACK')
-        self.require_work(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
+        self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
         until = self.monotonic() + self.SETTLE_SECONDS
         while True:
             self.gate()
@@ -491,16 +500,16 @@ class Coordinator(c.Coordinator):
             self.pause(min(1, until - before))
             after = self.monotonic()
             c.need(math.isfinite(after) and after > before, 'CLOCK_ROLLBACK')
-        self.require_work(self.POST_SETTLE_SECONDS)
+        self.require_child_entry(self.POST_SETTLE_SECONDS)
 
     def invoke(self, method, *args, owner, cleanup=False):
         if not cleanup:
             # Refuse an already-short session before the inherited coordinator
             # records any mutation intent; recheck immediately before dispatch.
             if method == 'preflight' and owner is self.runtime and self.cap.mode == 'run':
-                self.require_work(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
+                self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
             if method == 'change' and owner is self.runtime and not self.mutation_admitted:
-                self.require_work(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
+                self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
                 self.mutation_admitted = True
             if method == 'stage_a' and owner is self.access:
                 self.settle_bindings()

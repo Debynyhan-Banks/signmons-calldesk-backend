@@ -1,0 +1,19 @@
+{
+  "section": "APP-013/3A/P08/CT5",
+  "approvalCommit": "f75d207",
+  "baseSource": "c57cb9c86c8f06dac70c856ea6bc7de9887715e7",
+  "checkedAt": "2026-11-17T11:08:27.607736+00:00",
+  "nativeTests": 160,
+  "connectedTests": 422,
+  "nodeTests": 79,
+  "timingTests": 13,
+  "governanceTests": 25,
+  "allFinalTestsPassed": true,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "liveActions": false,
+  "initialFailure": "Four Node loopback fixtures failed under restricted execution; all79 passed with local loopback access. Initial log retained.",
+  "lastEdit": "Removed unused local test function; repeated13 timing tests and regenerated seven derived manifests; no runtime behavior change after full suite.",
+  "remaining": "R54 containment flags unresolved. No live retry authorized.",
+  "scope": "Only approved CT5 source/test/seven derived manifests and evidence."
+}

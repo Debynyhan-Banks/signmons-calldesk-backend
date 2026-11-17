@@ -41,7 +41,7 @@ class EntryTests(unittest.TestCase):
         # Current owned-version validation requires provider creation metadata.
         # Adapt the instance seam without changing the source-locked legacy fixture.
         f.transport.make_key=lambda:{**original_make_key(),'createTime':iso(0)}
-        f.p['window']={'start':iso(-10),'cutoff':iso(120),'workEnd':iso(2000 if self.timing_window else 180),'cleanupEnd':iso(2720 if self.timing_window else 900),'purgeEnd':iso(2770 if self.timing_window else 950)}
+        f.p['window']={'start':iso(-10),'cutoff':iso(1800 if self.timing_window else 120),'workEnd':iso(2000 if self.timing_window else 180),'cleanupEnd':iso(2720 if self.timing_window else 900),'purgeEnd':iso(2770 if self.timing_window else 950)}
         f.target['email']=f.p['ownerPrincipal']
         self.root=Path('/private/tmp/p08-coordinator-'+f.p['operationId']);self.root.mkdir(mode=0o700)
         self.addCleanup(lambda:shutil.rmtree(self.root))
@@ -65,6 +65,7 @@ class EntryTests(unittest.TestCase):
             controller.monotonic=lambda:elapsed[0]
             controller.last_monotonic=0.0
             controller.work_monotonic_end=max(0,controller.forward_end-controller.clock())
+            controller.child_monotonic_end=max(0,controller.times['cutoff']-controller.clock())
             def pause(seconds):
                 self.settle_sleeps.append(seconds);elapsed[0]+=seconds
             controller.pause=pause
@@ -1650,7 +1651,8 @@ class CT4TimingTests(unittest.TestCase):
         clock={'wall':1000.,'mono':0.}
         obj.clock=lambda:clock['wall'];obj.monotonic=lambda:clock['mono']
         obj.last=1000.;obj.last_monotonic=0.;obj.abort=False
-        obj.times={'workEnd':1000.+remaining,'cleanupEnd':5000.}
+        obj.times={'cutoff':1000.+remaining,'workEnd':1000.+remaining,'cleanupEnd':5000.}
+        obj.child_monotonic_end=remaining
         obj.forward_end=obj.times['workEnd'];obj.work_monotonic_end=remaining
         obj.cap=SimpleNamespace(gate=lambda cleanup=False:None)
         obj.j={'iamOwned':['lookup','signing'] if owned is None else owned}
@@ -1760,6 +1762,7 @@ class CT4TimingTests(unittest.TestCase):
                 controller.monotonic=time.monotonic
                 controller.last_monotonic=time.monotonic()
                 controller.work_monotonic_end=controller.last_monotonic+1900
+                controller.child_monotonic_end=controller.last_monotonic+1800
                 return original(controller)
             try:
                 with patch.object(entry.Coordinator,'settle_bindings',waiting):f.run_entry()
@@ -1798,3 +1801,71 @@ class CT4TimingTests(unittest.TestCase):
         self.assertFalse(j['authAttempted']);self.assertEqual(f.settle_sleeps,[])
         closed=f.run_entry('closeout')
         self.assertTrue(closed['privateInputsAbsent']);self.assertEqual(closed['residuals'],[])
+
+
+class CT5DeadlineTests(unittest.TestCase):
+    controller = CT4TimingTests.controller
+    def test_child_cutoff_refuses_before_mutation_and_cleanup_remains_available(self):
+        for remaining in (0, 1379.999):
+            c,t,calls=self.controller(2500)
+            c.times['cutoff']=1000+remaining;c.child_monotonic_end=remaining
+            with self.assertRaisesRegex(entry.c.Stop,'START_CUTOFF'):
+                c.invoke('change',owner=c.runtime)
+            self.assertEqual(calls,[])
+            t['wall']=1000+remaining+1
+            c.invoke('change',owner=c.runtime,cleanup=True)
+            self.assertEqual(calls,['change'])
+
+    def test_child_horizon_rechecked_before_and_after_wait(self):
+        for field in ('wall','mono'):
+            c,t,calls=self.controller(2500)
+            c.times['cutoff']=2400;c.child_monotonic_end=1400
+            c.invoke('change',owner=c.runtime);t[field]+=21
+            with self.assertRaisesRegex(entry.c.Stop,'START_CUTOFF'):
+                c.invoke('stage_a',owner=c.access)
+            self.assertEqual(calls,['change'])
+        c,t,calls=self.controller(2500)
+        c.times['cutoff']=2380;c.child_monotonic_end=1380
+        # Force a final-sleep overshoot, retaining more than enough work time.
+        def overshoot(seconds):
+            advance=seconds+(1 if t['mono']==419 else 0)
+            t['wall']+=advance;t['mono']+=advance
+        c.pause=overshoot
+        with self.assertRaisesRegex(entry.c.Stop,'START_CUTOFF'):
+            c.invoke('stage_a',owner=c.access)
+        self.assertEqual(calls,[])
+
+    def test_r54_schedule_refused_before_any_forward_intent(self):
+        f=ConnectedEntryTests();f.setUp(timing=True);self.addCleanup(f.doCleanups)
+        f.e['plan']['window']['cutoff']=datetime.datetime.fromtimestamp(time.time()+180,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        f.e['qualification']['scopeSha256']=a.digest({k:f.e[k] for k in ('plan','target','database','resources','limits','payment')})
+        f.seal();r=f.run_entry();j=read(f.root/'journal.json')
+        self.assertEqual(j['failure'],'START_CUTOFF')
+        self.assertFalse(j['runtimeOwned']);self.assertFalse(j['iamAttempted'])
+        self.assertFalse(j['authAttempted']);self.assertFalse(j['keyCreateAttempted'])
+        self.assertEqual(f.settle_sleeps,[])
+        closed=f.run_entry('closeout')
+        self.assertTrue(closed['privateInputsAbsent']);self.assertEqual(closed['residuals'],[])
+
+    def test_actual_node_authority_after_parent_wait_and_delayed_child(self):
+        c,t,calls=self.controller(2500)
+        c.times['cutoff']=2800;c.child_monotonic_end=1800
+        c.invoke('stage_a',owner=c.access)
+        self.assertEqual(calls,[('stage_a',420.)])
+        source=a.APP/'p08-coordinator-auth-local-20261031/source'
+        prelude=(source/'test_client.mjs').read_text().split("test('source-pinned",1)[0]
+        harness=prelude+"""
+const cleanup=[];try {
+ const f=fixture({after:fn=>cleanup.push(fn)}), start=Date.parse(f.plan.window.start);
+ f.plan.window={start:iso(start),cutoff:iso(start+1800000),workEnd:iso(start+2500000),cleanupEnd:iso(start+2700000),purgeEnd:iso(start+2800000)};
+ f.approval.planSha256=planHash(f.plan);
+ const j=JSON.parse(readFileSync(f.journalPath));j.planSha256=planHash(f.plan);writeFileSync(f.journalPath,JSON.stringify(j));
+ f.clock.value=start+ELAPSED_MS;close(cap(f));
+ f.clock.value=start+1800000;assert.throws(()=>cap(f),{code:'START_CUTOFF'});
+ f.clock.value=start+1800001;close(cap(f,{mode:'closeout'}));
+ console.log('ACTUAL_CHILD_AFTER_WAIT_PASS_CUTOFF_REFUSED_CLEANUP_ALLOWED');
+}finally{for(const fn of cleanup)fn();}
+""".replace('ELAPSED_MS',str(int(t['mono']*1000)))
+        result=subprocess.run(['/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node','--input-type=module'],input=harness,text=True,cwd=source,capture_output=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('ACTUAL_CHILD_AFTER_WAIT_PASS',result.stdout)

@@ -1,0 +1,167 @@
+✔ source-pinned extraction, local authority and native refusal (4.364458ms)
+✔ approval, owner, owned key, source scope and timing refuse before transport (3.640875ms)
+✔ deadline, clock rollback and interruption are checked on every client step (0.722958ms)
+✔ single coordinator journal owns authentication and drift stops later work (1.36525ms)
+✔ historical SQL text and conditional activation/disable remain exact (1.125167ms)
+✔ injected Firebase and signing/exchange keep exact identity and one issuance (2.146708ms)
+✔ lost signing response clears token and does not imply authentication (0.989291ms)
+✔ one coordinator journal owns activation, authentication and cleanup (5.371625ms)
+✔ lost activation response retains uncertainty and never disables an unowned version (3.544292ms)
+✔ session closeout failure is a residual, not a success label (3.462917ms)
+✔ independent closeout after cutoff uses the same journal and no mutation replay (1.418709ms)
+✔ native diagnostics: SIGN/TRANSPORT, cleanup and no retry (3.548083ms)
+✔ native diagnostics: SIGN/HTTP, cleanup and no retry (3.377167ms)
+✔ native diagnostics: SIGN/RESPONSE_VALIDATION, cleanup and no retry (5.936584ms)
+✔ native diagnostics: KEY_READ/TRANSPORT, cleanup and no retry (4.451625ms)
+✔ native diagnostics: KEY_READ/HTTP, cleanup and no retry (3.231041ms)
+✔ native diagnostics: KEY_READ/RESPONSE_VALIDATION, cleanup and no retry (5.519709ms)
+✔ native diagnostics: EXCHANGE/TRANSPORT, cleanup and no retry (5.521209ms)
+✔ native diagnostics: EXCHANGE/HTTP, cleanup and no retry (3.60275ms)
+✔ native diagnostics: EXCHANGE/RESPONSE_VALIDATION, cleanup and no retry (3.87825ms)
+✔ native journal rejects untrusted diagnostic values (3.044166ms)
+✔ issuance interruption is UNKNOWN with no transport or retry (0.61875ms)
+✖ actual native child payment and cleanup: normal (346.933208ms)
+✔ actual native child payment and cleanup: unpaid (240.797583ms)
+✖ actual native child payment and cleanup: lost_create (242.146417ms)
+✔ actual native child payment and cleanup: lost_enable (240.687125ms)
+✔ actual native child payment and cleanup: foreign_endpoint (168.193166ms)
+✖ actual native child payment and cleanup: disable_failed (239.064333ms)
+✔ current payment context refuses foreign, stale, incomplete and preexisting state (107.426417ms)
+✔ endpoint missing/null/live/version/event drift fails closed (107.678959ms)
+✔ version1 cannot accept payment and scope cannot omit payment (237.243208ms)
+✖ fresh cleanup child recovers failed disable without reauthentication or new payment (330.492708ms)
+✔ recovery uses actual policy profile and keeps disabled/active phases distinct (117.502459ms)
+✔ actual payment preflight preserves safe failure evidence: denied (185.889625ms)
+✔ actual payment preflight preserves safe failure evidence: missing_payload (165.931084ms)
+✔ actual payment preflight preserves safe failure evidence: malformed_json (169.972542ms)
+✔ actual payment preflight preserves safe failure evidence: live_key (177.472792ms)
+✔ actual payment preflight preserves safe failure evidence: newline_key (177.329542ms)
+✔ actual payment preflight preserves safe failure evidence: transport (175.499083ms)
+✔ actual payment preflight preserves safe failure evidence: foreign_code (183.738ms)
+✔ actual payment preflight preserves safe failure evidence: streamed_success (175.37175ms)
+✔ independent account readback after secret retirement reuses only completed main proof: false (387.709333ms)
+✔ independent account readback after secret retirement reuses only completed main proof: true (392.015291ms)
+✔ main readback failure records payment uncertainty after fresh account/session cleanup (348.00775ms)
+✔ bad independent payment proof still attempts account/session reads: missing_work (457.774334ms)
+✔ bad independent payment proof still attempts account/session reads: missing_independent (478.835375ms)
+✔ bad independent payment proof still attempts account/session reads: foreign_marker (533.099333ms)
+✔ bad independent payment proof still attempts account/session reads: failed_account (554.487084ms)
+✔ bad independent payment proof still attempts account/session reads: failed_payment (422.549292ms)
+✔ bad independent payment proof still attempts account/session reads: stale_outcome (411.932375ms)
+✔ bad independent payment proof still attempts account/session reads: pending_publish (412.846584ms)
+✔ bad independent payment proof still attempts account/session reads: later_enable (463.208917ms)
+✔ bad independent payment proof still attempts account/session reads: unknown_endpoint (391.927208ms)
+✔ bad independent payment proof still attempts account/session reads: open_bridge (414.418ms)
+✔ bad independent payment proof still attempts account/session reads: foreign_scope (418.5815ms)
+✔ concurrent proof drift during account readback never becomes payment success: work_replaced (583.749208ms)
+✔ concurrent proof drift during account readback never becomes payment success: later_intent (409.613834ms)
+✔ completed payment proof enforces custody and deadline through actual authorized capability (521.069792ms)
+✔ native defaults reject a local proof capability before any owner/DB/fetch (253.004541ms)
+✔ actual child entry runs with injected ports and rejects reuse of one reserved call (241.536791ms)
+✔ outer capability cannot be forged for native ports (0.109375ms)
+✔ serialized oversized provider body fails before authentication (165.441ms)
+✔ unapproved HTTPS host refuses before injected transport (163.886375ms)
+✔ child budget is finite and cleanup capability cannot run activation path (174.815625ms)
+✔ native clients scope UTC timestamp parsing and delegate other OIDs/formats (165.556792ms)
+✔ native timestamp versions reject malformed calendars and excess precision without rounding (165.140459ms)
+✔ actual native child retains bounded HTTP failure status without response body (169.481125ms)
+✔ refusal contract is finite and ignores provider stage, messages and accessors (0.171041ms)
+✔ shared result serializer fixes the RESULT boundary without exposing thrown contents (0.095666ms)
+✔ real process and fixture share bounded INPUT refusal serialization (449.235958ms)
+✔ actual child labels input, authority and reservation independently (357.3555ms)
+✔ actual child startup failure retains CLIENT_BINDING: owner (194.297875ms)
+✔ actual child startup failure retains CLIENT_BINDING: connect (165.0655ms)
+✔ actual child startup failure retains CLIENT_BINDING: tls (164.523417ms)
+✔ actual child startup failure retains CLIENT_BINDING: preflight (175.899042ms)
+✔ sequence initialization refusal retains its boundary (171.044042ms)
+✔ primary readback refusal survives a failing independent session close (179.829208ms)
+✔ session end failure still refuses successful containment (185.450125ms)
+✔ session probe failure still refuses successful containment (177.551375ms)
+ℹ tests 79
+ℹ suites 0
+ℹ pass 75
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11546.938959
+
+✖ failing tests:
+
+test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:10:107
+✖ actual native child payment and cleanup: normal (346.933208ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'NOT_OBSERVED'
+  - 'APPLICATION_SETTLED'
+  
+      at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:18:74)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'NOT_OBSERVED',
+    expected: 'APPLICATION_SETTLED',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:10:107
+✖ actual native child payment and cleanup: lost_create (242.146417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'NOT_OBSERVED'
+  - 'APPLICATION_SETTLED'
+  
+      at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:18:74)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'NOT_OBSERVED',
+    expected: 'APPLICATION_SETTLED',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:10:107
+✖ actual native child payment and cleanup: disable_failed (239.064333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'NOT_OBSERVED'
+  - 'APPLICATION_SETTLED'
+  
+      at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:18:74)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'NOT_OBSERVED',
+    expected: 'APPLICATION_SETTLED',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:43:1
+✖ fresh cleanup child recovers failed disable without reauthentication or new payment (330.492708ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:49:92)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

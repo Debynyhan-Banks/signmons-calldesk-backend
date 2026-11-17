@@ -1,0 +1,42 @@
+{
+  "status": "PASS",
+  "manifests": [
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "sha256": "9105d82d0669452e108a60d0a1b112232f7a928fec4e57dc587aa37f6bbc1405",
+      "verifiedReferences": 28
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "sha256": "24774878e590ca9f49f7cbea5b62baa71bf5cb0f32027a743e4b9c863ccd9ee4",
+      "verifiedReferences": 14
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "sha256": "30ac46f4219f67abfa7c6f5afd92215a8cf3fd8a781c38aaf47e440207e25941",
+      "verifiedReferences": 63
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "sha256": "fc6bfc072d6e86327585c756f12caa2c9386f60cbbf668e2bb8354c04175ca90",
+      "verifiedReferences": 48
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "sha256": "9ffe8a6b9d403ece001706c3281cc081e3ae6b483a967c23b13607f468cdcec7",
+      "verifiedReferences": 42
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "sha256": "7c34e75faacf6f49432b551ce5c8005ecd54028468ce7186ca15263ce11f9185",
+      "verifiedReferences": 94
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "sha256": "e8ee70dbb3bea62d054fe2cf04119d8f259c44533e2fef2b7135602202755655",
+      "verifiedReferences": 112
+    }
+  ],
+  "totalReferences": 401,
+  "nestedSourceGuard": "PASS"
+}
