@@ -1,0 +1,30 @@
+{
+  "sourceCommit": "ea739833bbc8501d4216b89af57553c39d849e97",
+  "checkedAt": "2026-11-17T11:17:37.651577+00:00",
+  "actualCommittedSourceSdkGuard": "PASS",
+  "actualConfigSnapshot": "PASS_METADATA_ONLY",
+  "dynamicResourcesAndPolicy": "PASS",
+  "actualAuthorityParser": "PASS_INERT_DECISION_ONLY",
+  "absentAuthorityRefused": true,
+  "policy": {
+    "kind": "POST_PROCESS_OBSERVATION",
+    "historicalOperationId": "87fba4ce-03dd-4f97-bb1c-da56d875e526",
+    "minimumValidSince": 1794913849,
+    "historicalAuthentication": "UNKNOWN"
+  },
+  "limits": {
+    "cli": 3,
+    "accountSql": 1,
+    "firebase": 3,
+    "firebaseUpdate": 1,
+    "stripe": 3,
+    "stripeDisable": 1,
+    "child": 3,
+    "closeoutSql": 1,
+    "cache": 0
+  },
+  "providerCalls": 0,
+  "credentialCacheReads": 0,
+  "attemptCreated": false,
+  "liveAuthority": false
+}
