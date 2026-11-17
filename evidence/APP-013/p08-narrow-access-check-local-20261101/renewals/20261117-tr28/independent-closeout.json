@@ -1,0 +1,12 @@
+{
+  "status": "INDEPENDENT_LOCAL_CLOSEOUT_VERIFIED",
+  "verifiedAt": "2026-11-17T12:05:56.635343+00:00",
+  "ownedProcessAndGroupAbsent": true,
+  "receiptCustodyVerified": true,
+  "configurationUnchangedReceipt": true,
+  "removedExecutorHashes": {
+    "signmons-tr28-owner-signin.py": "7ac0f8ab72e74fea4b8c8d23eb6d455712fbe3eb7807a4f417b23835471af3b8",
+    "tr28-reviewed-template.py": "9a1688d47181d96312047d8e2dca96fa01ab2bb2234449ee5a8ecfab508bcd38"
+  },
+  "localResiduals": []
+}
