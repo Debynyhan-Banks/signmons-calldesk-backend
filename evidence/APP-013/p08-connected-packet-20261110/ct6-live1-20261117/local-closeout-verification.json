@@ -1,0 +1,13 @@
+{
+  "operationId": "f63f2b87-7f68-40f6-a022-1f06c2c3102c",
+  "observedAt": "2026-11-17T11:38:01.695204+00:00",
+  "matchingOperationProcessesAbsent": true,
+  "receiptCustodyVerified": true,
+  "sourceAndConfigurationUnchanged": true,
+  "sharedLeaseReleased": true,
+  "publicLaunchEnvelopeAbsent": true,
+  "privateReferencesCleared": true,
+  "historicalAuthentication": "UNKNOWN",
+  "noRetry": true,
+  "localResiduals": []
+}
