@@ -1,0 +1,34 @@
+{
+  "section": "APP-013/3A/P08/CT6",
+  "approvalCommit": "257c920",
+  "checkedAt": "2026-11-17T11:17:03.311367+00:00",
+  "focusedTests": 85,
+  "connectedTests": 426,
+  "allFinalTestsPassed": true,
+  "providerCalls": 0,
+  "credentialReads": 0,
+  "runtimeFiles": [
+    "account_containment.py",
+    "account_containment_read.py"
+  ],
+  "testFiles": [
+    "test_account_containment.py",
+    "test_account_containment_read.py"
+  ],
+  "manifests": [
+    {
+      "manifest": "account-containment-source-manifest.json",
+      "sha256": "14ec4062b3d56bbdb5f7e48cbc4fb04d6c8741a560c5e329c3b8a8df21658562",
+      "references": 44
+    },
+    {
+      "manifest": "account-containment-read-source-manifest.json",
+      "sha256": "5f909b798212d979b30e95f027a021a3f006190ecb6657ba1a429aa96f1bdb6f",
+      "references": 50
+    }
+  ],
+  "initialFailure": "One replay fixture omitted required R54 policy. Fixture corrected; production policy gate preserved. Initial log retained.",
+  "historicalAuthentication": "UNKNOWN",
+  "currentContainment": "UNKNOWN",
+  "scopeDeviation": "None beyond approved CT6 adaptation"
+}

@@ -258,7 +258,7 @@ class CT3Fake:
             return {'status': 403, 'body': b'SECRET_SENTINEL'}
         user = dict(self.s['user'])
         if self.kind == 'firebase_final' and self.s.get('final_decrease'):
-            user['validSince'] = str(r.c.R51_POLICY_SECOND)
+            user['validSince'] = str(r.c.R54_POLICY_SECOND)
         return {'status': 200, 'body': json.dumps({'users': [user]}).encode()}
     def endpoint(self, phase, key, endpoint_id, deadline, times, gate):
         gate(phase == 'VERIFY')
@@ -281,7 +281,7 @@ class CT3Fake:
 class CT3Composition(unittest.TestCase):
     def execute(self, change=None, coordinate_fn=coordinate, source_guard=lambda _: None):
         target, db, user = fixture()
-        user['validSince'] = str(r.c.R51_POLICY_SECOND + 1)
+        user['validSince'] = str(r.c.R54_POLICY_SECOND + 1)
         shared = {'db': db, 'user': user, 'enabled': False, 'calls': []}
         if change:
             change(shared)
@@ -290,7 +290,7 @@ class CT3Composition(unittest.TestCase):
         def factory():
             io = CT3Fake(shared, next(names)); self.transports.append(io); return io
         with tempfile.TemporaryDirectory() as folder:
-            scope = {'operationId': OP, 'configSha256': 'config'}
+            scope = {'operationId': OP, 'configSha256': 'config', 'policy': r.ct3_policy()}
             journal = r.k.Journal(Path(folder)/'receipt', scope, create=True)
             now = time.time()
             times = {'readEnd': now + 90, 'cleanupEnd': now + 180, 'purgeEnd': now + 190}
@@ -325,7 +325,7 @@ class CT3Composition(unittest.TestCase):
         self.assertEqual(self.shared['calls'].count('revoke'), 1)
         self.assertEqual(self.shared['calls'].count('DISABLE'), 1)
         self.assertIn('cleanup-2.json', self.receipts); self.assertIn('main-6.json', self.receipts)
-        self.assertGreaterEqual(self.receipts['cleanup-2.json']['requestedValidSince'], r.c.R51_POLICY_SECOND)
+        self.assertGreaterEqual(self.receipts['cleanup-2.json']['requestedValidSince'], r.c.R54_POLICY_SECOND)
 
     def test_lost_ack_final_read_without_mutation_retry(self):
         for failure in ('lost_revoke', 'lost_disable'):
@@ -450,7 +450,7 @@ class CT3Boundaries(unittest.TestCase):
         scope, decision, now = self.scope()
         for mutate in (lambda s:s['window'].update(cleanupEnd=s['window']['readEnd']),
                        lambda s:s['limits'].update(cache=False),
-                       lambda s:s['policy'].update(minimumValidSince=r.c.R51_POLICY_SECOND-1)):
+                       lambda s:s['policy'].update(minimumValidSince=r.c.R54_POLICY_SECOND-1)):
             bad = copy.deepcopy(scope); mutate(bad); envelope, raw = self.envelope(bad, decision)
             with self.assertRaises(Exception):r.authorize_ct3(envelope, now, read=lambda *_:raw, source_guard=lambda _:None)
 
@@ -482,7 +482,7 @@ class CT3Boundaries(unittest.TestCase):
                 self.assertEqual(captured['env']['PGSSLMODE'],'verify-full')
                 self.assertEqual(captured['env']['PGSSLROOTCERT'],'/etc/ssl/cert.pem')
                 self.assertTrue(all(name in descriptor['sql'] for name in
-                    [f'p08-{kind}-{r.c.R51_OPERATION}' for kind in ('auth','runtime','probe')]))
+                    [f'p08-{kind}-{r.c.R54_OPERATION}' for kind in ('auth','runtime','probe')]))
             with self.assertRaises(Exception):io.sql(r.q.sql_contract()[1],'SECRET_SENTINEL',time.time()+30)
         for raw in (b'{"a":1,"a":2}',b'NaN',b'\xff'):
             with patch.object(r.q.NativeIO, '_owned_run', return_value=raw):
@@ -501,12 +501,12 @@ class CT3Boundaries(unittest.TestCase):
         def open_request(request, timeout):
             calls.append(request);return response
         with patch.object(r.q.urllib.request,'build_opener',return_value=r.SimpleNamespace(open=open_request)):
-            out=io.https(r.revoke_descriptor('22222222-2222-4222-8222-222222222222',r.c.R51_POLICY_SECOND),
+            out=io.https(r.revoke_descriptor('22222222-2222-4222-8222-222222222222',r.c.R54_POLICY_SECOND),
                          'SECRET_SENTINEL_'*3,time.time()+30)
             self.assertEqual(out['status'],200);self.assertEqual(len(calls),1);self.assertTrue(response.closed)
-            self.assertEqual(json.loads(calls[0].data),{'localId':'22222222-2222-4222-8222-222222222222','validSince':str(r.c.R51_POLICY_SECOND)})
+            self.assertEqual(json.loads(calls[0].data),{'localId':'22222222-2222-4222-8222-222222222222','validSince':str(r.c.R54_POLICY_SECOND)})
             for change in (lambda d:d.update(url='https://wrong.invalid'),lambda d:d['body'].update(disableUser=True)):
-                bad=r.revoke_descriptor('22222222-2222-4222-8222-222222222222',r.c.R51_POLICY_SECOND);change(bad)
+                bad=r.revoke_descriptor('22222222-2222-4222-8222-222222222222',r.c.R54_POLICY_SECOND);change(bad)
                 with self.assertRaises(Exception):io.https(bad,'SECRET_SENTINEL_'*3,time.time()+30)
             self.assertEqual(len(calls),1)
         self.assertTrue(io.close(time.time()+2))
@@ -542,10 +542,10 @@ _ct3_tls_spec.loader.exec_module(_ct3_tls)
 
 
 class CT3DisposableTLS(_ct3_tls.BoundPostgreSQL):
-    R51_APPLICATIONS = (
-        'p08-auth-cc2c1ce5-640f-41f4-a993-31063630207c',
-        'p08-runtime-cc2c1ce5-640f-41f4-a993-31063630207c',
-        'p08-probe-cc2c1ce5-640f-41f4-a993-31063630207c',
+    R54_APPLICATIONS = (
+        'p08-auth-87fba4ce-03dd-4f97-bb1c-da56d875e526',
+        'p08-runtime-87fba4ce-03dd-4f97-bb1c-da56d875e526',
+        'p08-probe-87fba4ce-03dd-4f97-bb1c-da56d875e526',
     )
 
     @classmethod
@@ -668,7 +668,7 @@ class CT3DisposableTLS(_ct3_tls.BoundPostgreSQL):
         self.assertEqual(len(self.transport_calls),2)
 
     def test_each_exact_r51_session_blocks_both_descriptors(self):
-        for name in self.R51_APPLICATIONS:
+        for name in self.R54_APPLICATIONS:
             with self.subTest(application=name):
                 _, close = self.held_session(name)
                 try:
@@ -852,7 +852,7 @@ class CT3OwnedBoundaryRegressions(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             original=r.k.Journal
             with patch.object(r.k.inv,'read',return_value={}), \
-                 patch.object(r,'authorize_ct3',side_effect=[(scope,times),({**scope,'operationId':r.c.R51_OPERATION},times)]), \
+                 patch.object(r,'authorize_ct3',side_effect=[(scope,times),({**scope,'operationId':r.c.R54_OPERATION},times)]), \
                  patch.object(r.k,'configuration',return_value='config'),patch.object(r.k,'sandbox_check'), \
                  patch.object(r.k,'Journal',side_effect=lambda root,s,create:original(Path(folder)/'receipt',s,create)), \
                  patch('builtins.input',return_value='READY'),patch.object(r.q,'recovery_password',return_value='SECRET_SENTINEL'), \
@@ -863,7 +863,7 @@ class CT3OwnedBoundaryRegressions(unittest.TestCase):
 
     def test_reservation_replay_does_not_publish_twice(self):
         with tempfile.TemporaryDirectory() as folder:
-            scope={'operationId':OP,'configSha256':'config'};now=time.time()
+            scope={'operationId':OP,'configSha256':'config','policy':r.ct3_policy()};now=time.time()
             times={'readEnd':now+60,'cleanupEnd':now+120}
             journal=r.k.Journal(Path(folder)/'receipt',scope,create=True)
             d=r.CT3Driver(scope,times,journal,'SYNTHETIC','SYNTHETIC','SYNTHETIC',None,time.time,lambda _:None,lambda:'config')
@@ -930,7 +930,7 @@ class CT3HiddenInputPtyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             now = time.time()
-            scope = {'operationId': OP, 'configSha256': 'config'}
+            scope = {'operationId': OP, 'configSha256': 'config', 'policy': r.ct3_policy()}
             times = {'cutoff': now + (2 if partial else 10)}
             envelope = {'scope': scope, 'decision': {'syntheticOnly': True}}
             pid, fd = pty.fork()
@@ -1030,3 +1030,29 @@ class CT3HiddenInputPtyTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+class CT6R54Boundaries(unittest.TestCase):
+    def test_active_authority_rejects_old_action_policy_and_sql(self):
+        helper=CT3Boundaries()
+        scope,decision,now=helper.scope()
+        self.assertEqual(scope['policy']['historicalOperationId'],r.c.R54_OPERATION)
+        for change in (lambda s:s.update(action='VERIFY_R51_CURRENT_CONTAINMENT_WITH_CONDITIONAL_CORRECTION_ONCE'),
+                       lambda s:s['policy'].update(minimumValidSince=r.c.R51_POLICY_SECOND),
+                       lambda s:s['policy'].update(historicalOperationId=r.c.R51_OPERATION),
+                       lambda s:s['resources']['sql'][0].update(sql=s['resources']['sql'][0]['sql'].replace(r.c.R54_OPERATION,r.c.R51_OPERATION))):
+            bad=copy.deepcopy(scope);change(bad)
+            d={**decision,'scopeSha256':r.m.digest(bad)};env,raw=helper.envelope(bad,d)
+            with self.assertRaises(Exception):
+                r.authorize_ct3(env,now,read=lambda *_:raw,source_guard=lambda _:None)
+
+    def test_real_transport_refuses_old_sql_and_lower_revocation_before_io(self):
+        io=r.CT3Transport(time.time,OP)
+        for descriptor in r.ct3_sql_contract():
+            self.assertIn(r.c.R54_OPERATION,descriptor['sql'])
+            self.assertNotIn(r.c.R51_OPERATION,descriptor['sql'])
+            old={**descriptor,'sql':descriptor['sql'].replace(r.c.R54_OPERATION,r.c.R51_OPERATION)}
+            with patch.object(io,'_owned_run',side_effect=AssertionError('unexpected SQL')) as execute:
+                with self.assertRaises(Exception):io.sql(old,'INERT_PASSWORD',time.time()+10)
+                execute.assert_not_called()
+        with self.assertRaises(Exception):
+            r.revoke_descriptor('22222222-2222-4222-8222-222222222222',r.c.R54_POLICY_SECOND-1)

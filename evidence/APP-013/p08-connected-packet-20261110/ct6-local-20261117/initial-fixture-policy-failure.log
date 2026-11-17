@@ -1,0 +1,19 @@
+.................................................................E...................
+======================================================================
+ERROR: test_reservation_replay_does_not_publish_twice (test_account_containment_read.CT3OwnedBoundaryRegressions.test_reservation_replay_does_not_publish_twice)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py", line 869, in test_reservation_replay_does_not_publish_twice
+    d=r.CT3Driver(scope,times,journal,'SYNTHETIC','SYNTHETIC','SYNTHETIC',None,time.time,lambda _:None,lambda:'config')
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-connected-packet-20261110/account_containment_read.py", line 466, in __init__
+    need(scope.get('policy') == ct3_policy(), 'CT3_SCOPE')
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-https-output-category-local-20261029/source/composed_qualification.py", line 51, in need
+    raise Stop(code)
+composed_qualification.Stop: CT3_SCOPE
+
+----------------------------------------------------------------------
+Ran 85 tests in 4.940s
+
+FAILED (errors=1)
+{"status": "CT3_TLS_CLEANUP_VERIFIED", "serverReaped": true, "scratchAbsent": true, "providerCalls": 0}

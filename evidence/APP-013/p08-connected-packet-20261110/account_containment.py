@@ -16,6 +16,10 @@ R51_OPERATION = 'cc2c1ce5-640f-41f4-a993-31063630207c'
 R51_RESULT_SHA256 = '920b2c641716482ebbc8dffea8a08f9d31e1519b9e99e53e6bd89fdb80cee26c'
 R51_CLOSEOUT_SHA256 = '9109229c263c1aa9dcf777aad5f01cece1a60981ead47d6894e49b38ded01d7e'
 R51_POLICY_SECOND = 1794780123
+R54_OPERATION = '87fba4ce-03dd-4f97-bb1c-da56d875e526'
+R54_RESULT_SHA256 = '849697fd584717ebfaf79c14936a53222fc6a5257e95b5aaa9a45c7d45baba24'
+R54_CLOSEOUT_SHA256 = '01a728cdf75149f4ede558bd41bec8413a86ae00d0f6d2a2672b805d06a011e9'
+R54_POLICY_SECOND = 1794913849
 CURRENT_ACCOUNT_FLAGS = ('bindingExact', 'accountIdentityExact', 'accountExactDisabled',
                          'databaseSessionsAbsent', 'validatorAccepted')
 CURRENT_FIREBASE_FLAGS = ('bindingExact', 'firebaseIdentityExact', 'firebaseDisabled',
@@ -137,6 +141,29 @@ def r51_policy(native_result_raw, closeout_raw):
         raise ValueError('CONTAINMENT_UNKNOWN') from None
 
 
+def r54_policy(native_result_raw, closeout_raw):
+    """Exact current-containment bound after verified R54 process closure."""
+    try:
+        require(type(native_result_raw) is bytes and type(closeout_raw) is bytes and
+                hashlib.sha256(native_result_raw).hexdigest() == R54_RESULT_SHA256 and
+                hashlib.sha256(closeout_raw).hexdigest() == R54_CLOSEOUT_SHA256)
+        native, closeout = parse(native_result_raw), parse(closeout_raw)
+        require(native['operationId'] == closeout['operationId'] == R54_OPERATION and
+                native['status'] == 'ENTRY_CONTAINMENT_UNCONFIRMED' and
+                native['privateInputsAbsent'] is True and
+                closeout['nativePrivateFilesAbsent'] is True and
+                closeout['matchingOperationProcessesAbsent'] is True and
+                type(closeout['matchingProcessCount']) is int and closeout['matchingProcessCount'] == 0 and
+                closeout['receiptCustodyVerified'] is True and closeout['noRetry'] is True)
+        observed = datetime.datetime.fromisoformat(closeout['observedAt'])
+        require(observed.isoformat() == '2026-11-17T11:10:48.108259+00:00' and
+                math.ceil(observed.timestamp()) == R54_POLICY_SECOND)
+        return {'kind': 'POST_PROCESS_OBSERVATION', 'historicalOperationId': R54_OPERATION,
+                'minimumValidSince': R54_POLICY_SECOND, 'historicalAuthentication': 'UNKNOWN'}
+    except Exception:
+        raise ValueError('CONTAINMENT_UNKNOWN') from None
+
+
 def current_account(operation, database, *, final=False):
     """Return safe flags and a transient target only after exact disabled-account proof."""
     flags = dict.fromkeys(CURRENT_ACCOUNT_FLAGS, None)
@@ -191,11 +218,12 @@ def current_account(operation, database, *, final=False):
 
 
 def current_firebase(operation, firebase, target, now_seconds, *, initial_valid_since=None,
-                     requested_valid_since=None):
+                     requested_valid_since=None, policy_minimum=R51_POLICY_SECOND):
     """Return safe flags plus transient seconds; raw user data never leaves this helper."""
     flags = dict.fromkeys(CURRENT_FIREBASE_FLAGS, None)
     observed_seconds = None
     try:
+        require(type(policy_minimum) is int and policy_minimum in (R51_POLICY_SECOND, R54_POLICY_SECOND))
         source.m.exact_uuid(operation, 'CONTAINMENT_OPERATION')
         fields = ('id', 'tenantId', 'email', 'fullName', 'role', 'status')
         require(type(target) is dict and set(target) == set(fields) and
@@ -204,12 +232,12 @@ def current_firebase(operation, firebase, target, now_seconds, *, initial_valid_
         require(target_digest(exact_target) == q.TARGET_SHA256)
         source.m.exact_uuid(exact_target['id'], 'CONTAINMENT_UID')
         source.entry.readbacks.exact_account(exact_target, exact_target)
-        require(type(now_seconds) is int and R51_POLICY_SECOND <= now_seconds <= MAX_VALID_SINCE)
+        require(type(now_seconds) is int and policy_minimum <= now_seconds <= MAX_VALID_SINCE)
         for value in (initial_valid_since, requested_valid_since):
             require(value is None or (type(value) is int and 0 <= value <= now_seconds))
         require(requested_valid_since is None or
                 (initial_valid_since is not None and
-                 requested_valid_since >= max(R51_POLICY_SECOND, initial_valid_since)))
+                 requested_valid_since >= max(policy_minimum, initial_valid_since)))
         require(type(firebase) is dict and set(firebase) == {'operationId', 'status', 'body'})
         flags['bindingExact'] = firebase['operationId'] == operation
         require(flags['bindingExact'] and type(firebase['status']) is int and firebase['status'] == 200)
@@ -238,7 +266,7 @@ def current_firebase(operation, firebase, target, now_seconds, *, initial_valid_
         flags['revocationNotFuture'] = seconds <= now_seconds
         require(flags['revocationNotFuture'])
         observed_seconds = seconds
-        threshold = max(R51_POLICY_SECOND, initial_valid_since or 0, requested_valid_since or 0)
+        threshold = max(policy_minimum, initial_valid_since or 0, requested_valid_since or 0)
         flags['revocationBoundMet'] = seconds >= threshold
         identity_flags = ('bindingExact', 'firebaseIdentityExact', 'firebaseDisabled', 'claimsExact',
                           'emailUnverified', 'revocationTimestampValid', 'revocationNotFuture')

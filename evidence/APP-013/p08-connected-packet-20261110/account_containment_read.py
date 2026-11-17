@@ -249,7 +249,7 @@ def native_main(argv):
 
 
 # CT3 is an explicitly separate authority; a CT2 approval never permits writes.
-CT3_ACTION = 'VERIFY_R51_CURRENT_CONTAINMENT_WITH_CONDITIONAL_CORRECTION_ONCE'
+CT3_ACTION = 'VERIFY_R54_CURRENT_CONTAINMENT_WITH_CONDITIONAL_CORRECTION_ONCE'
 CT3_DECISION = 'APPROVE_CT3_CONTAINMENT_CONDITIONAL_CORRECTION_AND_INDEPENDENT_CLEANUP'
 CT3_LIMITS = {'cli': 3, 'accountSql': 1, 'firebase': 3, 'firebaseUpdate': 1,
               'stripe': 3, 'stripeDisable': 1, 'child': 3, 'closeoutSql': 1, 'cache': 0}
@@ -263,14 +263,14 @@ ENDPOINT_CODES = frozenset({'NONE', 'ENDPOINT_INPUT', 'ENDPOINT_PHASE', 'KEY_INP
 
 
 def ct3_policy():
-    root = HERE / 'r51-live-20261115'
-    return c.r51_policy((root / 'native-result.json').read_bytes(),
+    root = HERE / 'r54-live-20261117'
+    return c.r54_policy((root / 'native-result.json').read_bytes(),
                         (root / 'local-closeout-verification.json').read_bytes())
 
 
 def ct3_sql_contract():
     original = "(usename='p07_payment_runtime' OR application_name LIKE 'signmons_p08_qualification_%')"
-    names = [f'p08-{kind}-{c.R51_OPERATION}' for kind in ('auth', 'runtime', 'probe')]
+    names = [f'p08-{kind}-{c.R54_OPERATION}' for kind in ('auth', 'runtime', 'probe')]
     predicate = original[:-1] + ' OR application_name IN (' + ','.join("'" + name + "'" for name in names) + '))'
     need(q.QUALIFICATION_SQL.count(original) == 1, 'CT3_SQL_SOURCE')
     main = q.QUALIFICATION_SQL.replace(original, predicate)
@@ -303,7 +303,7 @@ def authorize_ct3(envelope, now, read=a.committed, source_guard=guard):
     need(type(s) is dict and set(s) == {'action', 'operationId', 'sourceCommit', 'manifestSha256',
          'configSha256', 'window', 'limits', 'sdkException', 'commands', 'policy', 'resources'}, 'CT3_SCOPE')
     m.exact_uuid(s['operationId'], 'CT3_OPERATION')
-    need(s['operationId'] != c.R51_OPERATION and s['action'] == CT3_ACTION and
+    need(s['operationId'] != c.R54_OPERATION and s['action'] == CT3_ACTION and
          s['limits'] == CT3_LIMITS and all(type(v) is int for v in s['limits'].values()) and
          s['sdkException'] == EXCEPTION and m.digest(s['commands']) == m.digest(commands()) and
          s['policy'] == ct3_policy() and s['resources'] == ct3_resources(), 'CT3_SCOPE')
@@ -330,7 +330,7 @@ def authorize_ct3(envelope, now, read=a.committed, source_guard=guard):
 
 def revoke_descriptor(uid, seconds):
     m.exact_uuid(uid, 'CT3_UID')
-    need(type(seconds) is int and c.R51_POLICY_SECOND <= seconds <= 253402300799, 'CT3_REVOCATION')
+    need(type(seconds) is int and c.R54_POLICY_SECOND <= seconds <= 253402300799, 'CT3_REVOCATION')
     return {'id': 'ct3_revoke', 'method': 'POST',
             'url': f'https://identitytoolkit.googleapis.com/v1/projects/{m.PROJECT}/accounts:update',
             'body': {'localId': uid, 'validSince': str(seconds)}}
@@ -463,6 +463,7 @@ def endpoint_result(result, phase):
 
 class CT3Driver(Driver):
     def __init__(self, scope, times, journal, password, key, endpoint_id, io, clock, source_guard, config):
+        need(scope.get('policy') == ct3_policy(), 'CT3_SCOPE')
         super().__init__(scope, times, journal, password, io, clock, source_guard, config)
         self.key, self.endpoint_id = key, endpoint_id
         self.target = self.initial_since = self.requested_since = None
@@ -524,7 +525,7 @@ class CT3Driver(Driver):
             if type(response) is dict and type(response.get('status')) is int and 100 <= response['status'] <= 599:
                 self.initial_http = response['status']
             self.initial_firebase, self.initial_since = c.current_firebase(self.scope['operationId'],
-                {'operationId': self.scope['operationId'], **response}, self.target, int(self.clock()))
+                {'operationId': self.scope['operationId'], **response}, self.target, int(self.clock()), policy_minimum=self.scope['policy']['minimumValidSince'])
             response = None
         self.gate()
 
@@ -585,7 +586,7 @@ def run_ct3(scope, times, journal, password, key, endpoint_id, *, factory, coord
                         flags.get('revocationBoundMet') is False and driver.initial_since is not None)
             if eligible:
                 seconds = int(clock())
-                need(seconds >= max(c.R51_POLICY_SECOND, driver.initial_since), 'CT3_REVOCATION')
+                need(seconds >= max(c.R54_POLICY_SECOND, driver.initial_since), 'CT3_REVOCATION')
                 deadline = driver.reserve('cleanup-2', 'firebase_revoke', requestedValidSince=seconds)
                 driver.requested_since = seconds
                 result['revocationAttempted'] = True
@@ -642,7 +643,8 @@ def run_ct3(scope, times, journal, password, key, endpoint_id, *, factory, coord
                             result['finalFirebaseHttpStatus'] = response['status']
                         result['finalFirebase'], _ = c.current_firebase(scope['operationId'],
                             {'operationId': scope['operationId'], **response}, driver.target, int(clock()),
-                            initial_valid_since=driver.initial_since, requested_valid_since=driver.requested_since)
+                            initial_valid_since=driver.initial_since, requested_valid_since=driver.requested_since,
+                            policy_minimum=scope['policy']['minimumValidSince'])
                         response = None
                     elif stage == 'ENDPOINT_FINAL':
                         need(io is not None and io.endpoint_closed(), 'CT3_CHILD_CLOSURE')

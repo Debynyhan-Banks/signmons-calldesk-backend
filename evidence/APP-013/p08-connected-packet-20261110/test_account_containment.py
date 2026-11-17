@@ -342,3 +342,36 @@ class CurrentContainment(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class R54PolicyTests(unittest.TestCase):
+    setUp=CurrentContainment.setUp
+    firebase=CurrentContainment.firebase
+    def test_exact_r54_receipts_and_tampering(self):
+        root=Path(__file__).parent/'r54-live-20261117'
+        native=(root/'native-result.json').read_bytes()
+        closeout=(root/'local-closeout-verification.json').read_bytes()
+        self.assertEqual(c.r54_policy(native,closeout), {
+            'kind':'POST_PROCESS_OBSERVATION','historicalOperationId':c.R54_OPERATION,
+            'minimumValidSince':c.R54_POLICY_SECOND,'historicalAuthentication':'UNKNOWN'})
+        for a,b in ((native+b' ',closeout),(native,closeout+b' '),(b'{}',closeout),(native,b'{}')):
+            with self.assertRaisesRegex(ValueError,'CONTAINMENT_UNKNOWN'):c.r54_policy(a,b)
+        old=Path(__file__).parent/'r51-live-20261115'
+        with self.assertRaisesRegex(ValueError,'CONTAINMENT_UNKNOWN'):
+            c.r54_policy((old/'native-result.json').read_bytes(),(old/'local-closeout-verification.json').read_bytes())
+
+    def test_new_policy_cannot_use_old_revocation_bound(self):
+        self.now=c.R54_POLICY_SECOND+100
+        self.user['validSince']=str(c.R51_POLICY_SECOND)
+        flags,_=self.firebase(policy_minimum=c.R54_POLICY_SECOND)
+        self.assertFalse(flags['revocationBoundMet'])
+        self.user['validSince']=str(c.R54_POLICY_SECOND)
+        flags,_=self.firebase(policy_minimum=c.R54_POLICY_SECOND)
+        self.assertTrue(all(v is True for v in flags.values()))
+        for bad in (0,True,c.R54_POLICY_SECOND-1,None):
+            flags,_=self.firebase(policy_minimum=bad)
+            self.assertFalse(all(v is True for v in flags.values()))
+        flags,_=self.firebase(policy_minimum=c.R54_POLICY_SECOND,
+                              initial_valid_since=c.R54_POLICY_SECOND,
+                              requested_valid_since=c.R54_POLICY_SECOND-1)
+        self.assertFalse(all(v is True for v in flags.values()))

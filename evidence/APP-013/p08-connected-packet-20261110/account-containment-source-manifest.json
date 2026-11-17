@@ -2,7 +2,7 @@
   "baselineCommit": "1f8fa97",
   "files": {
     "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
-    "evidence/APP-013/p08-connected-packet-20261110/account_containment.py": "bd56a75e514943257e5b7379a5348577b2d31a4b4303d90d0f5ed9cab7f5aaa5",
+    "evidence/APP-013/p08-connected-packet-20261110/account_containment.py": "08245efa21f8364751ff316e734f38fb2c96b1e4e633246c0e02dce0b7677b51",
     "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb",
     "evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py": "c0a25ce0f584b12921201effc19b0f36e8cb5f3680bad3c6c03230f3ce9fa146",
     "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json": "7c34e75faacf6f49432b551ce5c8005ecd54028468ce7186ca15263ce11f9185",
@@ -12,7 +12,7 @@
     "evidence/APP-013/p08-connected-packet-20261110/r47-result.json": "fcb1eebc0764b9686cf97966cb5f41d535e4386015ec60d71ec10bc39dfab0d1",
     "evidence/APP-013/p08-connected-packet-20261110/r51-live-20261115/local-closeout-verification.json": "9109229c263c1aa9dcf777aad5f01cece1a60981ead47d6894e49b38ded01d7e",
     "evidence/APP-013/p08-connected-packet-20261110/r51-live-20261115/native-result.json": "920b2c641716482ebbc8dffea8a08f9d31e1519b9e99e53e6bd89fdb80cee26c",
-    "evidence/APP-013/p08-connected-packet-20261110/test_account_containment.py": "c9c5b53f1e5bb4573cd39d2c88ea6f1961868278992b0d852e2e904117d53324",
+    "evidence/APP-013/p08-connected-packet-20261110/test_account_containment.py": "8729deb0946481aa55de4a80e8108d0a016c155996840e67f48f5c6a8aeea1a6",
     "evidence/APP-013/p08-connected-packet-20261110/test_identity_sdk_observation.py": "1488f8e296420300a5399565aadc02bae5714ee1cdccdbb2d8e27b8dbcc7f26b",
     "evidence/APP-013/p08-connected-packet-20261110/test_iq1_identity_boundary.py": "1988269f4683cd4644422c5bf84cd097d5659a0831be15fbdd981ea6ad03cf5f",
     "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs": "074a0f6f2ca41bb3cc4b691eda3e44d870234579a3e7c3cd476041a1dd979c39",
@@ -42,7 +42,9 @@
     "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py": "3eb45ee12617718fe6c375041d4e86e6babceb9da6145fc880d1b2c01e0672e0",
     "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs": "1db2f7575dd7e4d7791a35263eb5876a88c405287e37dd05ab118132d136f76a",
     "evidence/APP-013/p08-restoration-local-20261028/source/restore.py": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
-    "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
+    "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18",
+    "evidence/APP-013/p08-connected-packet-20261110/r54-live-20261117/native-result.json": "849697fd584717ebfaf79c14936a53222fc6a5257e95b5aaa9a45c7d45baba24",
+    "evidence/APP-013/p08-connected-packet-20261110/r54-live-20261117/local-closeout-verification.json": "01a728cdf75149f4ede558bd41bec8413a86ae00d0f6d2a2672b805d06a011e9"
   },
   "purpose": "CT1_LOCAL_ONLY"
 }
