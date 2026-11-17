@@ -1,0 +1,9 @@
+{
+  "verifiedAt": "2026-11-17T12:22:10.793969+00:00",
+  "removedPublicInputAndLauncherHashes": {
+    "sd3-envelope.json": "936c9a96bac2a8d03adab0e58bc763b738f448c00bb20c5a82d04e92ae79b000",
+    "sd3-launch.py": "2f6ed10eddb3ecfd2269da6381436ab7def3162d18a3e4bd0f280d2a9fec9da2"
+  },
+  "independentCloseoutVerified": true,
+  "residuals": []
+}
