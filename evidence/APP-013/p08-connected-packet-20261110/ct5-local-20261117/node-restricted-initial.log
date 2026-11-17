@@ -92,10 +92,10 @@ test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_p
 ✖ actual native child payment and cleanup: normal (346.933208ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   + actual - expected
-  
+
   + 'NOT_OBSERVED'
   - 'APPLICATION_SETTLED'
-  
+
       at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:18:74)
       at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
       at async Test.run (node:internal/test_runner/test:1113:7)
@@ -112,10 +112,10 @@ test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_p
 ✖ actual native child payment and cleanup: lost_create (242.146417ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   + actual - expected
-  
+
   + 'NOT_OBSERVED'
   - 'APPLICATION_SETTLED'
-  
+
       at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:18:74)
       at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
       at async Test.run (node:internal/test_runner/test:1113:7)
@@ -132,10 +132,10 @@ test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_p
 ✖ actual native child payment and cleanup: disable_failed (239.064333ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   + actual - expected
-  
+
   + 'NOT_OBSERVED'
   - 'APPLICATION_SETTLED'
-  
+
       at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:18:74)
       at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
       at async Test.run (node:internal/test_runner/test:1113:7)
@@ -151,9 +151,9 @@ test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_p
 test at evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:43:1
 ✖ fresh cleanup child recovers failed disable without reauthentication or new payment (330.492708ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
-  
+
   0 !== 1
-  
+
       at TestContext.<anonymous> (file:///Users/debynyhanbanks/Web%20Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs:49:92)
       at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
       at async Test.run (node:internal/test_runner/test:1113:7)

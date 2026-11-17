@@ -15,5 +15,10 @@
   "initialFailure": "Four Node loopback fixtures failed under restricted execution; all79 passed with local loopback access. Initial log retained.",
   "lastEdit": "Removed unused local test function; repeated13 timing tests and regenerated seven derived manifests; no runtime behavior change after full suite.",
   "remaining": "R54 containment flags unresolved. No live retry authorized.",
-  "scope": "Only approved CT5 source/test/seven derived manifests and evidence."
+  "scope": "Only approved CT5 source/test/seven derived manifests and evidence.",
+  "logFormatting": {
+    "file": "node-restricted-initial.log",
+    "originalSha256": "fec92778fd8e3c7707ce161430f20cc875ce9534e567f357b9e38b644ced70aa",
+    "change": "Trailing whitespace removed only; failure text preserved. Initial staged whitespace check failed before follow-up correction."
+  }
 }
