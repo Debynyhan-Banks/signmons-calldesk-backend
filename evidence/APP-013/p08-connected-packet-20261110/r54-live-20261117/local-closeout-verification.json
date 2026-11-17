@@ -1,0 +1,10 @@
+{
+  "operationId": "87fba4ce-03dd-4f97-bb1c-da56d875e526",
+  "observedAt": "2026-11-17T11:10:48.108259+00:00",
+  "matchingOperationProcessesAbsent": true,
+  "matchingProcessCount": 0,
+  "receiptCustodyVerified": true,
+  "nativePrivateFilesAbsent": true,
+  "noRetry": true,
+  "providerCalls": 0
+}
