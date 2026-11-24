@@ -2090,21 +2090,136 @@ class BillingDiagnosticCapability(ProjectDiagnosticCapability):
     decision_pattern=r'APP013_P08_BILLING_DIAGNOSTIC_OPERATION_[0-9]{8}\.json'
     decision_action='APPROVE_EXACT_P08_BILLING_DIAGNOSTIC_SOCKET_TIMEOUT_10S'
     root_prefix='/private/tmp/p08-billing-diagnostic-'
-    markers=PROJECT_DIAGNOSTIC_MARKERS|{'command-attempt-billing_project.json','command-result-billing_project.json'}
+    markers=PROJECT_DIAGNOSTIC_MARKERS|{'command-attempt-billing_project.json','command-result-billing_project.json',
+        'interruption.json','completion.json'}
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs);self.interrupted=False
     def commands(self):return (*super().commands(),next(d for d in cli_contract() if d['id']=='billing_project'))
+    def check_pending(self):
+        need(not self.interrupted,'INTERRUPTED')
+        now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
+        need(self.mode=='diagnose' and self.times['start']<=now<self.times['readEnd'],'DIAGNOSTIC_DEADLINE')
+    def gate(self,d):
+        self.check_pending();deadline=super().gate(d);self.check_pending();return deadline
+    def boundary(self):
+        self.check_pending();super().boundary();self.check_pending()
 
 
 class BillingDiagnosticIO(ProjectDiagnosticIO):
     def __init__(self,cap):
         need(type(cap) is BillingDiagnosticCapability and cap.mode=='diagnose','DIAGNOSTIC_PORT')
         NativeIO.__init__(self,cap.clock,cap.e['operationId']);self.cap=cap
+        self.observed=set();self.started=0
     def cli(self,d,deadline):return NativeIO.cli(self,d,min(deadline,self.cap.gate(d)))
     def _owned_run(self,argv,env,deadline):
         billing = tuple(argv)==next(d['argv'] for d in cli_contract() if d['id']=='billing_project')
         need('CLOUDSDK_CORE_HTTP_TIMEOUT' not in env,'CREDENTIAL_OVERRIDE')
         child_env=dict(env)
         if billing:child_env['CLOUDSDK_CORE_HTTP_TIMEOUT']='10'
+        self.cap.check_pending()
+        self.started+=1
         return super()._owned_run(argv,child_env,deadline,billing_diagnostic=billing)
+    def _finish(self,process,deadline):
+        # Only handles actually supplied by the existing owned runner are kept.
+        if process in self.children:self.observed.add(process)
+        return super()._finish(process,deadline)
+    def verify_absent(self,deadline):
+        if not self.closed or self.children or len(self.observed)!=self.started or self.clock()>=deadline:return False
+        for process in self.observed:
+            try:
+                if process.poll() is None or process.returncode is None:return False
+                if process.wait(timeout=0)!=process.returncode:return False
+            except (OSError,subprocess.SubprocessError):return False
+            try:
+                os.killpg(process.pid,0)
+                return False
+            except ProcessLookupError:pass
+            except OSError:return False
+        return self.clock()<deadline
+
+
+def billing_interruption_handlers(cap):
+    """Install billing-only flag handlers; the caller restores the returned map."""
+    import signal,threading
+    need(type(cap) is BillingDiagnosticCapability,'DIAGNOSTIC_MODE')
+    previous={}
+    def interrupted(*_):cap.interrupted=True
+    if threading.current_thread() is threading.main_thread():
+        for sig in (signal.SIGINT,signal.SIGTERM):previous[sig]=signal.signal(sig,interrupted)
+    return previous
+
+
+def _read_billing_result(cap,expected_digest=None,*,completion_required,interruption_required=False):
+    """Validated receipt readback, not reconstruction of operating-system ownership."""
+    need(type(completion_required) is bool and type(interruption_required) is bool,'DIAGNOSTIC_ROOT_BINDING')
+    need(type(cap) is BillingDiagnosticCapability,'DIAGNOSTIC_MODE');cap.inspect()
+    result=private_json(cap.root/'result.json');digest=model.digest(result)
+    if expected_digest is not None:
+        need(isinstance(expected_digest,str) and re.fullmatch('[a-f0-9]{64}',expected_digest) and
+             digest==expected_digest,'DIAGNOSTIC_ROOT_BINDING')
+    fields={'status','operationId','scopeSha256','failure','ownerMatched','projectMatched',
+            'processCleanupVerified','residuals','cliReservations','reservationSemantics',
+            'liveObserved','executionReady','candidate','billingDiagnostic'}
+    need(set(result) in (fields,fields|{'processAbsenceVerified'}) and
+         (result['failure'] is None or type(result['failure']) is str and
+          result['failure'] in PROJECT_DIAGNOSTIC_FAILURES|{'DIAGNOSTIC_UNCONFIRMED'}) and
+         all(result[k] is None or type(result[k]) is bool for k in ('ownerMatched','projectMatched')) and
+         type(result['processCleanupVerified']) is bool and
+         ('processAbsenceVerified' not in result or type(result['processAbsenceVerified']) is bool) and
+         result['residuals'] in ([],['PROCESS_CLEANUP_UNCONFIRMED']) and
+         type(result['cliReservations']) is int and 0<=result['cliReservations']<=3 and
+         result['reservationSemantics']=='RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS' and
+         type(result['liveObserved']) is bool and result['executionReady'] is False and result['candidate'] is None,
+         'DIAGNOSTIC_ROOT_BINDING')
+    billing=result['billingDiagnostic']
+    need(billing is None or type(billing) is dict and
+         set(billing)=={'shapeValid','projectMatched','accountMatched','billingEnabled'} and
+         all(billing[k] is True for k in ('shapeValid','projectMatched','accountMatched')) and
+         type(billing['billingEnabled']) is bool,'DIAGNOSTIC_ROOT_BINDING')
+    need(result.get('operationId')==cap.e['operationId'] and result.get('scopeSha256')==cap.scope_hash and
+         result.get('status') in ('BILLING_METADATA_OBSERVED','BILLING_METADATA_UNQUALIFIED'),
+         'DIAGNOSTIC_ROOT_BINDING')
+    if result['status']=='BILLING_METADATA_OBSERVED':
+        need(result['ownerMatched'] is True and result['projectMatched'] is True and
+             result['failure'] is None and billing is not None and result['cliReservations']==3 and
+             result['processCleanupVerified'] is True and result.get('processAbsenceVerified') is True and
+             result['residuals']==[],'DIAGNOSTIC_ROOT_BINDING')
+    completion=None
+    if completion_required:
+        try:completion=private_json(cap.root/'completion.json')
+        except (model.Stop,OSError,ValueError):raise model.Stop('DIAGNOSTIC_ROOT_BINDING') from None
+        need(type(completion.get('interrupted')) is bool and completion=={
+             'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,
+             'resultSha256':digest,'interrupted':completion['interrupted']},'DIAGNOSTIC_ROOT_BINDING')
+        need(result['failure']!='INTERRUPTED' or completion['interrupted'],'DIAGNOSTIC_ROOT_BINDING')
+        interruption_required=interruption_required or completion['interrupted']
+    marker=cap.root/'interruption.json'
+    need(type(interruption_required) is bool and (not interruption_required or os.path.lexists(marker)),
+         'DIAGNOSTIC_ROOT_BINDING')
+    if os.path.lexists(marker):
+        need(completion is None or completion['interrupted'],'DIAGNOSTIC_ROOT_BINDING')
+        need(private_json(marker)=={'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,
+             'resultSha256':digest,'failure':'INTERRUPTED'},'DIAGNOSTIC_ROOT_BINDING')
+        result.update(status='BILLING_METADATA_UNQUALIFIED',failure='INTERRUPTED')
+    if result.get('processCleanupVerified') is not True or result.get('processAbsenceVerified') is not True:
+        result.update(status='BILLING_METADATA_UNQUALIFIED',processCleanupVerified=False,
+                      processAbsenceVerified=False,residuals=['PROCESS_HISTORY_UNKNOWN'])
+    return {**result,'resultSha256':digest}
+
+
+def read_billing_result(cap,expected_digest=None,*,interruption_required=False):
+    return _read_billing_result(cap,expected_digest,completion_required=True,
+                                interruption_required=interruption_required)
+
+
+def record_billing_interruption(cap,expected_digest):
+    need(not os.path.lexists(cap.root/'completion.json'),'DIAGNOSTIC_CLOSEOUT_CONSUMED')
+    _read_billing_result(cap,expected_digest,completion_required=False)
+    value={'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,
+           'resultSha256':expected_digest,'failure':'INTERRUPTED'}
+    try:model.reserve(cap.root/'interruption.json',value)
+    except FileExistsError:need(private_json(cap.root/'interruption.json')==value,'DIAGNOSTIC_ROOT_BINDING')
+    return _read_billing_result(cap,expected_digest,completion_required=False,interruption_required=True)
 
 
 class ProjectPermissionCapability(ProjectDiagnosticCapability):
@@ -2167,7 +2282,7 @@ def run_project_diagnostic(cap,io=None):
     fd=os.open(cap.root/'entry.lock',os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
     failure=None;cleaned=False;owner=None;project=None;handlers={};cleaning=False;value=None
     permission_mode=type(cap) is ProjectPermissionCapability
-    billing_mode=type(cap) is BillingDiagnosticCapability;billing=None
+    billing_mode=type(cap) is BillingDiagnosticCapability;billing=None;absence=False
     number=None;token=None;permission=None
     def interrupted(*_):
         if not cleaning:raise model.Stop('INTERRUPTED')
@@ -2175,15 +2290,24 @@ def run_project_diagnostic(cap,io=None):
         fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         model.reserve(cap.root/'envelope.json',cap.e)
         model.reserve(cap.root/'attempt.json',{'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash})
-        if threading.current_thread() is threading.main_thread():
+        if billing_mode:
+            handlers=billing_interruption_handlers(cap)
+        elif threading.current_thread() is threading.main_thread():
             for sig in (signal.SIGINT,signal.SIGTERM):handlers[sig]=signal.signal(sig,interrupted)
         try:
             cap.prepare();io=io or (BillingDiagnosticIO(cap) if billing_mode else ProjectPermissionIO(cap) if permission_mode else ProjectDiagnosticIO(cap))
             for d in cap.commands():
+                if billing_mode:cap.check_pending()
                 deadline=cap.gate(d) if getattr(io,'proof',False) else cap.times['readEnd']
                 started=time.monotonic();code=None;matched=False
                 try:
-                    value=strict_json(io.cli(d,deadline))
+                    if billing_mode:
+                        cap.check_pending()
+                        raw=None
+                        try:
+                            raw=io.cli(d,deadline);cap.check_pending();value=strict_json(raw)
+                        finally:raw=None
+                    else:value=strict_json(io.cli(d,deadline))
                     now=cap.clock();need(now>=cap.last,'CLOCK_ROLLBACK');cap.last=now
                     need(now<cap.times['readEnd'],'DIAGNOSTIC_DEADLINE')
                     if d['id']=='owner':
@@ -2203,6 +2327,7 @@ def run_project_diagnostic(cap,io=None):
                     else:
                         need(permission_mode and isinstance(value,dict) and set(value)=={'accessToken'} and isinstance(value['accessToken'],str),'TOKEN_OUTPUT')
                         current_module('acl').validate_token(value['accessToken']);token=value['accessToken']
+                    if billing_mode:cap.check_pending()
                     matched=True
                 except BaseException as error:
                     code=project_diagnostic_failure(error);raise model.Stop(code) from None
@@ -2237,6 +2362,11 @@ def run_project_diagnostic(cap,io=None):
             cleaning=True;value=None;number=None;token=None
             try:cleaned=io is not None and io.close(cap.times['closeoutEnd']) is True
             except BaseException:cleaned=False
+            if billing_mode:
+                try:absence=io is not None and io.verify_absent(cap.times['closeoutEnd']) is True
+                except BaseException:absence=False
+                cleaned=cleaned and absence
+                if cap.interrupted:failure='INTERRUPTED'
         cap.inspect()
         result={'status':('PROJECT_PERMISSIONS_OBSERVED' if permission_mode else 'OWNER_PROJECT_OBSERVED') if owner and project and cleaned and not failure else ('PROJECT_PERMISSIONS_UNQUALIFIED' if permission_mode else 'OWNER_PROJECT_UNQUALIFIED'),
             'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'failure':failure,
@@ -2245,8 +2375,25 @@ def run_project_diagnostic(cap,io=None):
             'cliReservations':cap.count,'reservationSemantics':'RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS',
             'liveObserved':not getattr(io,'proof',False) and cap.count>0,'executionReady':False,'candidate':None}
         if billing_mode:
-            result.update(status='BILLING_METADATA_OBSERVED' if owner and project and cleaned and not failure and billing else 'BILLING_METADATA_UNQUALIFIED',billingDiagnostic=billing)
+            result.update(status='BILLING_METADATA_OBSERVED' if owner and project and cleaned and not failure and billing else 'BILLING_METADATA_UNQUALIFIED',
+                          billingDiagnostic=billing,processAbsenceVerified=absence)
         if permission_mode:result.update(permissionDiagnostic=permission,cacheReservations=cap.cache_count,httpsReservations=cap.https_count)
+        if billing_mode:
+            if cap.interrupted:result.update(status='BILLING_METADATA_UNQUALIFIED',failure='INTERRUPTED')
+            digest=model.digest(result)
+            model.reserve(cap.root/'result.json',result)
+            if cap.interrupted or result['failure']=='INTERRUPTED':record_billing_interruption(cap,digest)
+            result=_read_billing_result(cap,digest,completion_required=False,
+                                        interruption_required=cap.interrupted or result['failure']=='INTERRUPTED')
+            # End deferred signal handling before the single durable completion
+            # boundary. A later default-handler interruption cannot turn a
+            # completed, closed observation into an unpersisted deferred veto.
+            for sig,handler in handlers.items():signal.signal(sig,handler)
+            handlers={}
+            if cap.interrupted or result['failure']=='INTERRUPTED':result=record_billing_interruption(cap,digest)
+            model.reserve(cap.root/'completion.json',{'operationId':cap.e['operationId'],
+                'scopeSha256':cap.scope_hash,'resultSha256':digest,'interrupted':result['failure']=='INTERRUPTED'})
+            return read_billing_result(cap,digest)
         model.reserve(cap.root/'result.json',result);return result
     finally:
         for sig,handler in handlers.items():signal.signal(sig,handler)
@@ -2260,10 +2407,17 @@ def closeout_project_diagnostic(cap):
     try:
         fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
         need(not (cap.root/'closeout.json').exists(),'DIAGNOSTIC_CLOSEOUT_CONSUMED')
-        normal=private_json(cap.root/'result.json') if (cap.root/'result.json').exists() else None
+        billing_mode=type(cap) is BillingDiagnosticCapability
+        if billing_mode:
+            try:normal=read_billing_result(cap) if (cap.root/'result.json').exists() else None
+            except (model.Stop,OSError,ValueError):normal=None
+        else:normal=private_json(cap.root/'result.json') if (cap.root/'result.json').exists() else None
         verified=bool(normal and normal.get('operationId')==cap.e['operationId'] and normal.get('scopeSha256')==cap.scope_hash and normal.get('processCleanupVerified') is True)
+        if billing_mode:verified=verified and normal.get('processAbsenceVerified') is True
         result={'operationId':cap.e['operationId'],'scopeSha256':cap.scope_hash,'processCleanupVerified':verified,
             'residuals':[] if verified else ['PROCESS_HISTORY_UNKNOWN'],'candidate':None,'executionReady':False}
+        if billing_mode:result.update(processAbsenceVerified=bool(normal and normal.get('processAbsenceVerified') is True),
+                                      interrupted=bool(normal and normal.get('failure')=='INTERRUPTED'))
         model.reserve(cap.root/'closeout.json',result);return result
     finally:fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
 
@@ -2284,7 +2438,8 @@ def billing_diagnostic_main(argv):
     need(len(argv)==2 and argv[0] in ('--diagnose-billing','--closeout-billing'),'DIAGNOSTIC_ARGUMENTS')
     path=Path(argv[1])
     if argv[0]=='--diagnose-billing':
-        result=run_project_diagnostic(BillingDiagnosticCapability(private_json(path)))
+        cap=BillingDiagnosticCapability(private_json(path));result=run_project_diagnostic(cap)
+        result=read_billing_result(cap,result['resultSha256'])
         print(result['status']);return 0 if result['status']=='BILLING_METADATA_OBSERVED' else 2
     cap=BillingDiagnosticCapability(private_json(path/'envelope.json'),mode='closeout')
     need(path==cap.root,'DIAGNOSTIC_ROOT_BINDING');result=closeout_project_diagnostic(cap)

@@ -314,7 +314,8 @@ class CurrentProofTests(unittest.TestCase):
         path=model.ROOT.parent.parent/'p08-native-entry-local-20261101/source'
         sys.path.insert(0,str(path))
         import test_entry
-        self.native=test_entry.EntryTests();self.native.setUp();self.addCleanup(self.native.doCleanups)
+        # Reuse packet construction; this fixture does not execute the native run.
+        self.native=test_entry.EntryTests();self.native.setUp(timing=False);self.addCleanup(self.native.doCleanups)
         self.scope={k:copy.deepcopy(self.native.e[k]) for k in ('plan','target','database','resources','limits')}
         self.now=int(time.time());self.p=plan();self.p['operationId']=str(uuid.uuid4())
         self.p['prospectiveOperationId']=self.scope['plan']['operationId'];self.p['prospectiveKeyId']='signmons-p08-'+self.p['prospectiveOperationId'].replace('-','')
@@ -1970,6 +1971,16 @@ class BillingDiagnosticTests(unittest.TestCase):
         pin=patch.object(launch,'BILLING_ACCOUNT_SHA256',__import__('hashlib').sha256(b'billingAccounts/SYNTHETIC').hexdigest());pin.start();self.addCleanup(pin.stop)
     def cap(self,mode='diagnose'):
         return launch.BillingDiagnosticCapability(self.e,lambda:self.f.now,mode,self.f.fixture.read_commit)
+    def io(self,override=None):
+        values={'billing_project':json.dumps({'billingAccountName':'billingAccounts/SYNTHETIC',
+            'billingEnabled':True,'projectId':model.PROJECT}).encode()}
+        values.update(override or {})
+        transport=self.f.io(values);transport.absence_checks=[]
+        def verify_absent(deadline):
+            transport.absence_checks.append(deadline)
+            return transport.closed is True and self.f.now<deadline
+        transport.verify_absent=verify_absent
+        return transport
     def test_socket_timeout_is_child_local_and_billing_only(self):
         io=launch.BillingDiagnosticIO(self.cap());env={'PATH':'/usr/bin'}
         for descriptor in self.cap().commands():
@@ -2010,11 +2021,12 @@ class BillingDiagnosticTests(unittest.TestCase):
             launch.BillingDiagnosticCapability(self.e,lambda:self.f.now,read_commit=read)
     def test_sequence_success_private_receipts_no_retry_and_closeout(self):
         v={'billingAccountName':'billingAccounts/SYNTHETIC','billingEnabled':True,'projectId':model.PROJECT}
-        io=self.f.io({'billing_project':json.dumps(v).encode()})
+        io=self.io({'billing_project':json.dumps(v).encode()})
         r=launch.run_project_diagnostic(self.cap(),io)
         self.assertEqual(r['status'],'BILLING_METADATA_OBSERVED');self.assertEqual(r['cliReservations'],3)
         self.assertEqual([d['id'] for d in io.calls],['owner','project','billing_project'])
         self.assertTrue(r['billingDiagnostic']['accountMatched']);self.assertFalse(r['executionReady'])
+        self.assertTrue(r['processAbsenceVerified']);self.assertEqual(io.absence_checks,[self.f.now+90])
         self.assertNotIn('billingAccounts/SYNTHETIC',''.join(p.read_text() for p in self.root.iterdir()))
         self.assertEqual(launch.closeout_project_diagnostic(self.cap('closeout'))['residuals'],[])
         with self.assertRaises(model.Stop):self.cap()
@@ -2022,7 +2034,7 @@ class BillingDiagnosticTests(unittest.TestCase):
     def test_output_and_category_failures_are_sanitized(self):
         import shutil
         for value in [b'null',b'{}',b'{"billingAccountName":"SECRET_CANARY","billingEnabled":true,"projectId":"signmons"}',model.Stop('BILLING_PERMISSION_DENIED'),RuntimeError('SECRET_CANARY')]:
-            io=self.f.io({'billing_project':value});r=launch.run_project_diagnostic(self.cap(),io)
+            io=self.io({'billing_project':value});r=launch.run_project_diagnostic(self.cap(),io)
             self.assertEqual(r['status'],'BILLING_METADATA_UNQUALIFIED');self.assertEqual(r['residuals'],[])
             self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
             self.assertEqual(launch.closeout_project_diagnostic(self.cap('closeout'))['residuals'],[])
@@ -2037,7 +2049,7 @@ class BillingDiagnosticTests(unittest.TestCase):
         import signal
         pid=os.fork()
         if pid==0:
-            io=self.f.io()
+            io=self.io()
             io.cli=lambda *args:os.kill(os.getpid(),signal.SIGKILL)
             launch.run_project_diagnostic(self.cap(),io)
             os._exit(3)
@@ -2046,6 +2058,370 @@ class BillingDiagnosticTests(unittest.TestCase):
         result=launch.closeout_project_diagnostic(self.cap('closeout'))
         self.assertEqual(result['residuals'],['PROCESS_HISTORY_UNKNOWN'])
         with self.assertRaises(model.Stop):self.cap()
+
+    def test_real_sigint_and_sigterm_before_registration_reap_owned_child(self):
+        import signal,shutil
+        original=subprocess.Popen
+        for sig in (signal.SIGINT,signal.SIGTERM):
+            with self.subTest(signal=sig.name):
+                shutil.rmtree(self.root,ignore_errors=True);created=[];cap=self.cap()
+                previous=signal.getsignal(sig)
+                def spawn(argv,**kwargs):
+                    self.assertEqual(tuple(argv),cap.commands()[0]['argv'])
+                    # The real child exists before NativeIO can register its handle.
+                    child=original([launch.sys.executable,'-I','-B','-c',
+                        'import sys;sys.stdout.write(sys.argv[1])',
+                        json.dumps([{'account':model.OWNER,'status':'ACTIVE'}])],**kwargs)
+                    created.append(child);os.kill(os.getpid(),sig)
+                    return child
+                try:
+                    with patch.object(launch.subprocess,'Popen',side_effect=spawn):
+                        result=launch.run_project_diagnostic(cap)
+                    self.assertEqual(len(created),1);self.assertEqual(result['cliReservations'],1)
+                    self.assertEqual(result['status'],'BILLING_METADATA_UNQUALIFIED')
+                    self.assertEqual(result['failure'],'INTERRUPTED')
+                    self.assertTrue(result['processCleanupVerified']);self.assertTrue(result['processAbsenceVerified'])
+                    self.assertIsNotNone(created[0].poll());self.assertTrue(created[0].stdout.closed)
+                    self.assertIsNone(result['billingDiagnostic']);self.assertFalse(result['executionReady'])
+                    self.assertIs(signal.getsignal(sig),previous)
+                    with self.assertRaises(model.Stop):self.cap()
+                finally:
+                    # The canary remains harness-owned even if the regression fails.
+                    for child in created:
+                        if child.poll() is None:os.killpg(child.pid,signal.SIGKILL)
+                        child.wait(timeout=3)
+                        if child.stdout:child.stdout.close()
+                        if child.stderr:child.stderr.close()
+
+    def test_pending_during_prepare_boundary_reservation_or_gate_stops_dispatch(self):
+        import signal,shutil
+        for stage,expected in [('prepare',0),('boundary',0),('reservation',1),('gate',1)]:
+            with self.subTest(stage=stage):
+                shutil.rmtree(self.root,ignore_errors=True);cap=self.cap();transport=self.io()
+                real_reserve=model.reserve
+                with contextlib.ExitStack() as stack:
+                    if stage=='reservation':
+                        def reserve(path,value):
+                            answer=real_reserve(path,value)
+                            if path.name=='command-attempt-owner.json':os.kill(os.getpid(),signal.SIGTERM)
+                            return answer
+                        stack.enter_context(patch.object(model,'reserve',side_effect=reserve))
+                    else:
+                        # Inject within the inherited guard, before the billing
+                        # boundary's pending check, rather than after that check.
+                        target='inspect' if stage=='boundary' else stage
+                        method=getattr(cap,target);emitted=[]
+                        def pending(*args):
+                            answer=method(*args)
+                            if not emitted:emitted.append(True);os.kill(os.getpid(),signal.SIGTERM)
+                            return answer
+                        stack.enter_context(patch.object(cap,target,side_effect=pending))
+                    result=launch.run_project_diagnostic(cap,transport)
+                self.assertEqual(transport.calls,[]);self.assertEqual(result['cliReservations'],expected)
+                self.assertEqual(result['failure'],'INTERRUPTED')
+                self.assertEqual(result['status'],'BILLING_METADATA_UNQUALIFIED')
+                self.assertTrue(transport.closed)
+
+    def test_pending_at_native_predispatch_does_not_create_child(self):
+        import signal
+        cap=self.cap();original=launch.validate_cli_descriptor
+        def validate(descriptor):
+            answer=original(descriptor);os.kill(os.getpid(),signal.SIGINT);return answer
+        with patch.object(launch,'validate_cli_descriptor',side_effect=validate), \
+             patch.object(launch.subprocess,'Popen',side_effect=AssertionError('must not dispatch')) as spawn:
+            result=launch.run_project_diagnostic(cap)
+        spawn.assert_not_called();self.assertEqual(result['cliReservations'],1)
+        self.assertEqual(result['failure'],'INTERRUPTED')
+        self.assertEqual(result['status'],'BILLING_METADATA_UNQUALIFIED')
+
+    def test_signal_after_each_cli_stops_next_call_and_success(self):
+        import signal,shutil
+        for target,count in [('owner',1),('project',2),('billing_project',3)]:
+            with self.subTest(target=target):
+                shutil.rmtree(self.root,ignore_errors=True);transport=self.io();original=transport.cli
+                def cli(d,deadline):
+                    value=original(d,deadline)
+                    if d['id']==target:os.kill(os.getpid(),signal.SIGTERM)
+                    return value
+                transport.cli=cli;result=launch.run_project_diagnostic(self.cap(),transport)
+                self.assertEqual(len(transport.calls),count);self.assertEqual(result['cliReservations'],count)
+                self.assertEqual(result['failure'],'INTERRUPTED')
+                self.assertEqual(result['status'],'BILLING_METADATA_UNQUALIFIED')
+                self.assertTrue(result['processCleanupVerified']);self.assertIsNone(result['candidate'])
+
+    def test_deadline_exhausted_after_reservation_or_before_native_dispatch(self):
+        import shutil
+        now=self.f.now
+        for stage in ('reservation','predispatch'):
+            with self.subTest(stage=stage):
+                shutil.rmtree(self.root,ignore_errors=True);self.f.now=now;cap=self.cap()
+                with contextlib.ExitStack() as stack:
+                    if stage=='reservation':
+                        original=model.reserve
+                        def reserve(path,value):
+                            answer=original(path,value)
+                            if path.name=='command-attempt-owner.json':self.f.now=now+61
+                            return answer
+                        stack.enter_context(patch.object(model,'reserve',side_effect=reserve))
+                    else:
+                        original=launch.validate_cli_descriptor
+                        def validate(d):
+                            answer=original(d);self.f.now=now+61;return answer
+                        stack.enter_context(patch.object(launch,'validate_cli_descriptor',side_effect=validate))
+                    spawn=stack.enter_context(patch.object(launch.subprocess,'Popen',side_effect=AssertionError('no late child')))
+                    result=launch.run_project_diagnostic(cap)
+                spawn.assert_not_called();self.assertEqual(result['cliReservations'],1)
+                self.assertEqual(result['failure'],'DIAGNOSTIC_DEADLINE')
+                self.assertEqual(result['status'],'BILLING_METADATA_UNQUALIFIED')
+        self.f.now=now
+
+    def test_success_uses_real_owned_handles_and_second_absence_check(self):
+        original=subprocess.Popen;created=[];cap=self.cap();commands=cap.commands()
+        values=[json.dumps([{'account':model.OWNER,'status':'ACTIVE'}]),
+            json.dumps({'projectId':model.PROJECT,'projectNumber':self.f.number,'lifecycleState':'ACTIVE'}),
+            json.dumps({'billingAccountName':'billingAccounts/SYNTHETIC','billingEnabled':True,'projectId':model.PROJECT})]
+        def spawn(argv,**kwargs):
+            index=len(created);self.assertEqual(tuple(argv),commands[index]['argv'])
+            child=original([launch.sys.executable,'-I','-B','-c',
+                'import sys;sys.stdout.write(sys.argv[1])',values[index]],**kwargs)
+            created.append(child);return child
+        try:
+            with patch.object(launch.subprocess,'Popen',side_effect=spawn):
+                result=launch.run_project_diagnostic(cap)
+            self.assertEqual(result['status'],'BILLING_METADATA_OBSERVED');self.assertEqual(len(created),3)
+            self.assertTrue(result['processCleanupVerified']);self.assertTrue(result['processAbsenceVerified'])
+            self.assertTrue(all(child.poll() is not None and child.stdout.closed for child in created))
+            self.assertEqual(launch.closeout_project_diagnostic(self.cap('closeout'))['residuals'],[])
+            text=''.join(p.read_text() for p in self.root.iterdir())
+            for private in ('billingAccounts/SYNTHETIC',self.f.number,'argv','pid','accessToken'):
+                self.assertNotIn(private,text)
+        finally:
+            import signal
+            for child in created:
+                if child.poll() is None:os.killpg(child.pid,signal.SIGKILL)
+                child.wait(timeout=3)
+                if child.stdout:child.stdout.close()
+                if child.stderr:child.stderr.close()
+
+    def test_cleanup_absence_failure_or_missing_verifier_cannot_be_success(self):
+        import shutil
+        for failure in ('close','absence','absence-error','missing-verifier','nonboolean'):
+            with self.subTest(failure=failure):
+                shutil.rmtree(self.root,ignore_errors=True);transport=self.io()
+                if failure=='close':transport.close=lambda _:False
+                elif failure=='absence':transport.verify_absent=lambda _:False
+                elif failure=='absence-error':transport.verify_absent=lambda _:(_ for _ in ()).throw(OSError('SECRET_CANARY'))
+                elif failure=='missing-verifier':del transport.verify_absent
+                else:transport.verify_absent=lambda _:1
+                result=launch.run_project_diagnostic(self.cap(),transport)
+                self.assertEqual(result['status'],'BILLING_METADATA_UNQUALIFIED')
+                self.assertFalse(result['processCleanupVerified'])
+                self.assertEqual(result['residuals'],['PROCESS_HISTORY_UNKNOWN'])
+                self.assertEqual(json.loads((self.root/'result.json').read_text())['residuals'],['PROCESS_CLEANUP_UNCONFIRMED'])
+                closeout=launch.closeout_project_diagnostic(self.cap('closeout'))
+                self.assertFalse(closeout['processCleanupVerified']);self.assertEqual(closeout['residuals'],['PROCESS_HISTORY_UNKNOWN'])
+                self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+
+    def test_retained_completed_handle_requires_reap_and_group_absence(self):
+        original=subprocess.Popen;created=[];cap=self.cap();transport=launch.BillingDiagnosticIO(cap)
+        descriptor=cap.commands()[0]
+        def spawn(argv,**kwargs):
+            child=original([launch.sys.executable,'-I','-B','-c','print("{}")'],**kwargs)
+            created.append(child);return child
+        with patch.object(launch.subprocess,'Popen',side_effect=spawn):
+            self.assertEqual(transport._owned_run(descriptor['argv'],{'PATH':'/usr/bin:/bin'},self.f.now+30).strip(),b'{}')
+        self.assertTrue(transport.close(self.f.now+90));self.assertFalse(transport.children)
+        self.assertEqual(len(created),1);self.assertIn(created[0],transport.observed)
+        self.assertTrue(transport.verify_absent(self.f.now+90))
+        with patch.object(launch.os,'killpg',return_value=None):
+            self.assertFalse(transport.verify_absent(self.f.now+90))
+        with patch.object(launch.os,'killpg',side_effect=PermissionError('SECRET_CANARY')):
+            self.assertFalse(transport.verify_absent(self.f.now+90))
+        for error in (subprocess.TimeoutExpired('synthetic',0),ProcessLookupError('SECRET_CANARY'),OSError('SECRET_CANARY')):
+            with self.subTest(reap=type(error).__name__),patch.object(created[0],'wait',side_effect=error):
+                self.assertFalse(transport.verify_absent(self.f.now+90))
+        with patch.object(created[0],'poll',side_effect=ProcessLookupError('SECRET_CANARY')):
+            self.assertFalse(transport.verify_absent(self.f.now+90))
+        self.assertTrue(transport.verify_absent(self.f.now+90))
+
+    def test_failed_creation_without_retained_handle_is_not_proof_of_absence(self):
+        cap=self.cap()
+        with patch.object(launch.subprocess,'Popen',side_effect=OSError('SECRET_CANARY')) as spawn:
+            result=launch.run_project_diagnostic(cap)
+        self.assertEqual(spawn.call_count,1);self.assertEqual(result['cliReservations'],1)
+        self.assertEqual(result['status'],'BILLING_METADATA_UNQUALIFIED')
+        self.assertFalse(result['processCleanupVerified']);self.assertFalse(result['processAbsenceVerified'])
+        self.assertEqual(result['residuals'],['PROCESS_HISTORY_UNKNOWN'])
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+
+    def test_finalization_signal_vetoes_readback_without_another_command(self):
+        import signal,shutil
+        for stage in ('close','before-result','after-result'):
+            with self.subTest(stage=stage):
+                shutil.rmtree(self.root,ignore_errors=True);transport=self.io();original=model.reserve
+                if stage=='close':
+                    close=transport.close
+                    def interrupted_close(deadline):
+                        value=close(deadline);os.kill(os.getpid(),signal.SIGINT);return value
+                    transport.close=interrupted_close
+                def reserve(path,value):
+                    if path.name=='result.json' and stage=='before-result':os.kill(os.getpid(),signal.SIGTERM)
+                    answer=original(path,value)
+                    if path.name=='result.json' and stage=='after-result':os.kill(os.getpid(),signal.SIGTERM)
+                    return answer
+                with patch.object(model,'reserve',side_effect=reserve):
+                    result=launch.run_project_diagnostic(self.cap(),transport)
+                self.assertEqual(len(transport.calls),3)
+                self.assertEqual(result['status'],'BILLING_METADATA_UNQUALIFIED');self.assertEqual(result['failure'],'INTERRUPTED')
+                readback=launch.read_billing_result(self.cap('closeout'))
+                self.assertEqual(readback['status'],'BILLING_METADATA_UNQUALIFIED');self.assertEqual(readback['failure'],'INTERRUPTED')
+                self.assertTrue((self.root/'interruption.json').exists())
+                closeout=launch.closeout_project_diagnostic(self.cap('closeout'))
+                self.assertNotEqual(closeout.get('status'),'BILLING_METADATA_OBSERVED')
+                with self.assertRaises(model.Stop):self.cap()
+
+    def test_failed_late_veto_write_cannot_leave_success_for_fresh_reader(self):
+        import signal
+        transport=self.io();original=model.reserve;veto_attempts=[]
+        def reserve(path,value):
+            if path.name=='interruption.json':
+                veto_attempts.append(True);raise OSError('SECRET_CANARY')
+            answer=original(path,value)
+            if path.name=='result.json':os.kill(os.getpid(),signal.SIGTERM)
+            return answer
+        with patch.object(model,'reserve',side_effect=reserve):
+            try:result=launch.run_project_diagnostic(self.cap(),transport)
+            except (model.Stop,OSError):result=None
+        self.assertTrue(veto_attempts);self.assertEqual(len(transport.calls),3)
+        if result is not None:self.assertNotEqual(result['status'],'BILLING_METADATA_OBSERVED')
+        # A later process has neither the interrupted capability nor an expected-marker flag.
+        cap=self.cap('closeout');self.assertFalse(cap.interrupted)
+        try:readback=launch.read_billing_result(cap)
+        except model.Stop:readback=None
+        if readback is not None:self.assertNotEqual(readback['status'],'BILLING_METADATA_OBSERVED')
+        try:closeout=launch.closeout_project_diagnostic(cap)
+        except model.Stop:closeout=None
+        if closeout is not None:self.assertFalse(closeout['processCleanupVerified'])
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+
+    def test_missing_main_cleanup_history_is_unknown_without_pid_adoption(self):
+        launch.run_project_diagnostic(self.cap(),self.io())
+        path=self.root/'result.json';legacy=json.loads(path.read_text())
+        del legacy['processAbsenceVerified'];path.write_text(json.dumps(legacy))
+        with patch.object(launch.NativeIO,'cli',side_effect=AssertionError('no work')), \
+             patch.object(launch.os,'killpg',side_effect=AssertionError('no disk PID adoption')):
+            result=launch.closeout_project_diagnostic(self.cap('closeout'))
+        self.assertFalse(result['processCleanupVerified']);self.assertEqual(result['residuals'],['PROCESS_HISTORY_UNKNOWN'])
+
+    def test_veto_binding_tamper_and_required_marker_deletion_refuse_readback(self):
+        import signal
+        original=model.reserve
+        def reserve(path,value):
+            answer=original(path,value)
+            if path.name=='result.json':os.kill(os.getpid(),signal.SIGTERM)
+            return answer
+        with patch.object(model,'reserve',side_effect=reserve):
+            launch.run_project_diagnostic(self.cap(),self.io())
+        cap=self.cap('closeout');raw=json.loads((self.root/'result.json').read_text());digest=model.digest(raw)
+        marker=self.root/'interruption.json';saved=marker.read_bytes();value=json.loads(saved)
+        self.assertEqual(value,{'operationId':self.e['operationId'],'scopeSha256':cap.scope_hash,
+            'resultSha256':digest,'failure':'INTERRUPTED'})
+        self.assertEqual(launch.read_billing_result(cap,digest,interruption_required=True)['failure'],'INTERRUPTED')
+        for key,bad in [('operationId','00000000-0000-4000-8000-000000000000'),
+            ('scopeSha256','0'*64),('resultSha256','0'*64),('failure','SECRET_CANARY')]:
+            with self.subTest(key=key):
+                altered={**value,key:bad};marker.write_text(json.dumps(altered))
+                with self.assertRaises(model.Stop):launch.read_billing_result(cap,digest,interruption_required=True)
+        marker.unlink()
+        with self.assertRaises(model.Stop):launch.read_billing_result(cap,digest,interruption_required=True)
+        with self.assertRaises(model.Stop):launch.read_billing_result(cap)
+        model.reserve(marker,value)
+        with self.assertRaises(model.Stop):launch.read_billing_result(cap,'0'*64,interruption_required=True)
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+
+    def test_billing_readback_rejects_unknown_private_and_wrong_type_fields(self):
+        launch.run_project_diagnostic(self.cap(),self.io())
+        path=self.root/'result.json';saved=path.read_bytes();value=json.loads(saved);cap=self.cap('closeout')
+        for key,bad in [('processAbsenceVerified',1),('processCleanupVerified','true'),
+            ('cliReservations',True),('unexpected','SECRET_CANARY'),('status','FOREIGN'),
+            ('billingDiagnostic',{'accountMatched':True,'private':'SECRET_CANARY'}),
+            ('ownerMatched',False),('projectMatched',False),('failure','INTERRUPTED'),
+            ('billingDiagnostic',None),('cliReservations',2)]:
+            with self.subTest(key=key):
+                path.write_text(json.dumps({**value,key:bad}))
+                with self.assertRaises(model.Stop):launch.read_billing_result(cap)
+        path.write_bytes(saved)
+        self.assertEqual(launch.read_billing_result(cap)['status'],'BILLING_METADATA_OBSERVED')
+
+    def test_completion_is_required_and_bound_to_exact_safe_main_result(self):
+        launch.run_project_diagnostic(self.cap(),self.io())
+        cap=self.cap('closeout');path=self.root/'completion.json';saved=path.read_bytes();value=json.loads(saved)
+        digest=model.digest(json.loads((self.root/'result.json').read_text()))
+        self.assertEqual(value,{'operationId':self.e['operationId'],'scopeSha256':cap.scope_hash,
+            'resultSha256':digest,'interrupted':False})
+        for key,bad in [('operationId','00000000-0000-4000-8000-000000000000'),
+            ('scopeSha256','0'*64),('resultSha256','0'*64),('interrupted',1),('private','SECRET_CANARY')]:
+            with self.subTest(key=key):
+                path.write_text(json.dumps({**value,key:bad}))
+                with self.assertRaises(model.Stop):launch.read_billing_result(cap)
+        path.unlink()
+        with self.assertRaises(model.Stop):launch.read_billing_result(cap)
+        with patch.object(launch.NativeIO,'cli',side_effect=AssertionError('no work')), \
+             patch.object(launch.os,'killpg',side_effect=AssertionError('no disk PID adoption')):
+            closeout=launch.closeout_project_diagnostic(cap)
+        self.assertFalse(closeout['processCleanupVerified']);self.assertEqual(closeout['residuals'],['PROCESS_HISTORY_UNKNOWN'])
+        self.assertNotIn('SECRET_CANARY',''.join(p.read_text() for p in self.root.iterdir()))
+
+    def test_public_billing_precompletion_readback_signal_persists_veto(self):
+        import signal
+        path=self.f.fixture.repo/'billing-input.json';model.reserve(path,self.e)
+        actual_module=launch.current_module;authority=actual_module('authority')
+        actual_run=launch.run_project_diagnostic;actual_read=launch.private_json
+        transport=self.io();reads=[];output=io.StringIO()
+        def module(name):return authority if name=='authority' else actual_module(name)
+        def read(path):
+            result=actual_read(path)
+            if Path(path)==self.root/'result.json' and not reads:
+                self.assertFalse((self.root/'completion.json').exists())
+                reads.append(True);os.kill(os.getpid(),signal.SIGTERM)
+            return result
+        previous=signal.getsignal(signal.SIGTERM)
+        with patch.object(authority,'committed',side_effect=self.f.fixture.read_commit), \
+             patch.object(launch,'current_module',side_effect=module), \
+             patch.object(launch,'run_project_diagnostic',side_effect=lambda cap:actual_run(cap,transport)), \
+             patch.object(launch,'private_json',side_effect=read),contextlib.redirect_stdout(output):
+            code=launch.billing_diagnostic_main(['--diagnose-billing',str(path)])
+        self.assertEqual(code,2);self.assertNotIn('BILLING_METADATA_OBSERVED',output.getvalue())
+        self.assertEqual(reads,[True])
+        self.assertEqual(len(transport.calls),3);self.assertTrue((self.root/'interruption.json').exists())
+        self.assertTrue(json.loads((self.root/'completion.json').read_text())['interrupted'])
+        self.assertEqual(launch.read_billing_result(self.cap('closeout'))['failure'],'INTERRUPTED')
+        self.assertIs(signal.getsignal(signal.SIGTERM),previous)
+
+    def test_duplicate_concurrent_billing_start_never_repeats_commands(self):
+        import threading,concurrent.futures
+        first=self.cap();second=self.cap();started=threading.Event();release=threading.Event()
+        transport=self.io();original=transport.cli
+        def cli(d,deadline):started.set();release.wait(5);return original(d,deadline)
+        transport.cli=cli
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            pending=pool.submit(launch.run_project_diagnostic,first,transport);self.assertTrue(started.wait(5))
+            try:
+                with self.assertRaises(FileExistsError):launch.run_project_diagnostic(second,self.io())
+                with self.assertRaises(BlockingIOError):launch.closeout_project_diagnostic(self.cap('closeout'))
+            finally:release.set()
+            self.assertEqual(pending.result()['status'],'BILLING_METADATA_OBSERVED')
+        self.assertEqual([d['id'] for d in transport.calls],['owner','project','billing_project'])
+
+    def test_nonbilling_result_and_immediate_signal_semantics_are_unchanged(self):
+        import signal
+        transport=self.f.io()
+        def interrupted(d,deadline):os.kill(os.getpid(),signal.SIGTERM)
+        transport.cli=interrupted
+        result=launch.run_project_diagnostic(self.f.cap(),transport)
+        self.assertEqual(result['status'],'OWNER_PROJECT_UNQUALIFIED');self.assertEqual(result['failure'],'INTERRUPTED')
+        self.assertNotIn('processAbsenceVerified',result)
+        self.assertFalse((self.f.root/'interruption.json').exists())
 
     def test_classifier_exact_forms_unknown_and_private_canaries(self):
         prefix=b'ERROR: (gcloud.billing.projects.describe) HTTPError '
