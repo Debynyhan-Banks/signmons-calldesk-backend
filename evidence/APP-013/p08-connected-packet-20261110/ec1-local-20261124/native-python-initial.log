@@ -1,0 +1,29 @@
+....................................................................................FF..................................................................
+======================================================================
+FAIL: test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) (kind='documented')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1745, in test_ec1_documented_response_and_optional_identity_reach_authenticated_payment
+    self.ec1_completed({'kind': kind}, success=True)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1738, in ec1_completed
+    self.assertTrue(any(x['mode'] == '--closeout' for x in observations))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) (kind='matching')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1745, in test_ec1_documented_response_and_optional_identity_reach_authenticated_payment
+    self.ec1_completed({'kind': kind}, success=True)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1738, in ec1_completed
+    self.assertTrue(any(x['mode'] == '--closeout' for x in observations))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 151 tests in 100.812s
+
+FAILED (failures=2)

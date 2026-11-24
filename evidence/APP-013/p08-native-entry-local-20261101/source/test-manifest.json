@@ -4,16 +4,16 @@
     "fixture_child.mjs": "4a139e2e3b2500b885ed9c3ebfa5602f98422e77cf66b4c6e6838832ccefb34f",
     "fixture_connected.mjs": "5dfcface93c5029f6f3c42fdb1a715ce27e8817fa16edaacc3554602c3a3affd",
     "fixture_envelope.py": "3495b9fa9a5822029c26ad10854c044477232067b75f0b51fb12066c0e541742",
-    "fixture_ports.mjs": "997f1ec95806ee98434b091dc9714274d1dae61c2d64bf83690aa1b68efbb2c6",
+    "fixture_ports.mjs": "1a0f46a688c4090bcd7ab2a704a5ae59f7ec71bba89b04b4bbc9b950c9119c4d",
     "postgres_driver.mjs": "3ff902f711a7ccfc97a84df798fddf2bfe0c3fc46dc3ecc7b3acb9240061b034",
     "test_child_cleanup.py": "47b789abb53393218993ec1dde58593101087eb52772b24ae146a34987643b7d",
     "test_connected_payment.mjs": "9786f9321f5a66e2befd74f120a3ccb9817c5690cc128240c1658de486a10082",
-    "test_entry.py": "912dafc5833c08de09a76147e0058d7c68847cfd23111150976c53906a226619",
+    "test_entry.py": "7163c5d029c87e29a7cd69326d02639e9a27014430295028e77b191571eabbf0",
     "test_key_lifecycle.py": "875fe1b8b1a34374118ac904255e3c116e9524308c3348d77d1b67b36b9ccfd6",
     "test_native_postgres.py": "4abdd64770526ecd81d99d700c5ab1d36e1f67f18265eb38cf79274abb3a7896",
     "test_private_inventory_cc1.py": "ff50193e6f48428a77a3a0068e71c9afec698b75b05e03a10584bd554cf7cd3f",
     "test_transports.mjs": "416274dad4b88fff9f1a375109566dd7c5c910e3ab9577a64714143b5ff51d14"
   },
-  "runtimeManifestSha256": "9ad5fea47a6657ece084377ca307f10551cc25e9d7992fa834d262a63f233cfe",
+  "runtimeManifestSha256": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }

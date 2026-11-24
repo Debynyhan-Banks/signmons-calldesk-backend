@@ -1,10 +1,10 @@
 {
   "status": "DISABLED_LOCAL_ONLY",
   "files": {
-    "authority.mjs": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
-    "client.mjs": "e8b3d5987dc4701a9869233cb932de891ecacdbbc342bf5a2d7dc4d70b2ac2b4",
+    "authority.mjs": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c",
+    "client.mjs": "0a895a35ba29fe4b6968be842be220e0d8f4b08ffeb7fc634e0462ca3e9b0939",
     "sequence.mjs": "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c",
-    "test_client.mjs": "c24cac09b10782726361f3ec739e5f8648391a23c94987f83e18b60f935d46b2"
+    "test_client.mjs": "d503ad264f80fe04a1df1b10743d2d66c117ab04ffb3ab4cdfbba93781af3bd3"
   },
   "historicalAuthAdaptersSha256": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
   "coordinatorSha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"

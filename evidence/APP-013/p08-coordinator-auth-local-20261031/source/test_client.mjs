@@ -166,7 +166,7 @@ test('injected Firebase and signing/exchange keep exact identity and one issuanc
       value = {localId: TARGET.id};
     } else if (url.includes(':signBlob')) value = {signedBlob: Buffer.from('synthetic-signature').toString('base64')};
     else if (url.endsWith('/keyString')) value = {keyString: 'synthetic-key'};
-    else if (url.includes('signInWithCustomToken')) value = {localId: TARGET.id, idToken};
+    else if (url.includes('signInWithCustomToken')) value = {idToken, refreshToken: 'SYNTHETIC_REFRESH_SENTINEL', expiresIn: '3600', isNewUser: false};
     else if (url === `${bridgePlan.origin}/jobs/dispatch-board/${bridgePlan.jobId}`) value = {jobId: bridgePlan.jobId};
     else throw Error('UNLISTED_URL');
     return {ok: true, text: async () => JSON.stringify(value)};
@@ -458,4 +458,128 @@ test('RV1 never carries a passed key predicate into exchange URL construction', 
   assert.equal(calls, 2);
   await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
   api.clear(); close(c);
+});
+
+// EC1 drives documented exchange responses through actual authentication and cleanup.
+async function ec1Authentication(t, scenario = {}) {
+  const f = fixture(t);
+  f.clock.value = Math.floor(f.clock.value / 1000) * 1000;
+  const c = cap(f), {clients, state} = fakeSequenceClients(f);
+  const claims = {sub: TARGET.id, tenantId: TARGET.tenantId, role: 'admin', testOnly: true,
+    iss: 'https://securetoken.google.com/signmons', aud: 'signmons',
+    exp: f.now() / 1000 + 300, iat: f.now() / 1000};
+  scenario.claims?.(claims);
+  const token = 'header.' + Buffer.from(JSON.stringify(claims)).toString('base64url') + '.signature';
+  const exchange = {idToken: token, refreshToken: 'EC1_PRIVATE_REFRESH_SENTINEL',
+    expiresIn: '3600', isNewUser: false};
+  scenario.exchange?.(exchange);
+  const calls = {sign: 0, key: 0, exchange: 0, job: 0};
+  const api = adapters(c, {accessToken: 'EC1_PRIVATE_ACCESS_SENTINEL', now: f.now,
+    fetcher: async (url, options) => {
+      const body = options.body ? JSON.parse(options.body) : null;
+      let value;
+      if (url.endsWith('/accounts:lookup')) value = {users: [{localId: TARGET.id,
+        email: TARGET.email, displayName: TARGET.fullName, disabled: state.user.disabled,
+        emailVerified: false, customAttributes: JSON.stringify(state.user.customClaims),
+        validSince: String(Date.parse(state.user.tokensValidAfterTime) / 1000)}]};
+      else if (url.endsWith('/accounts:update')) {
+        if ('disableUser' in body) state.user.disabled = body.disableUser;
+        if ('validSince' in body) state.user.tokensValidAfterTime = new Date(body.validSince * 1000).toISOString();
+        value = {localId: TARGET.id};
+      } else if (url.includes(':signBlob')) {calls.sign++; value = {signedBlob: 'c2ln'};}
+      else if (url.endsWith('/keyString')) {calls.key++; value = {keyString: 'synthetic-key'};}
+      else if (url.includes('signInWithCustomToken')) {calls.exchange++; value = exchange;}
+      else if (url === `${bridgePlan.origin}/jobs/dispatch-board/${bridgePlan.jobId}`) {
+        calls.job++;
+        assert.equal(options.method, 'GET');
+        assert.equal(options.headers.Authorization, 'Bearer ' + token);
+        if (scenario.runtimeStatus) return {ok: false, status: scenario.runtimeStatus,
+          text: async () => {throw Error('REFUSED_RUNTIME_BODY_MUST_NOT_BE_READ');}};
+        value = {jobId: scenario.wrongJob ? randomUUID() : bridgePlan.jobId};
+      } else throw Error('UNLISTED_EC1_TRANSPORT');
+      return {ok: true, status: 200, text: async () => JSON.stringify(value)};
+    }});
+  const clear = clients.clear;
+  clients.fb = api.fb;
+  clients.issue = () => api.issue();
+  clients.authenticate = value => api.authenticate(value);
+  clients.dropToken = () => api.dropToken();
+  clients.clear = () => {api.clear(); clear();};
+  const result = await new RecoverySequence(c, clients).run();
+  const raw = readFileSync(f.journalPath, 'utf8'), journal = JSON.parse(raw);
+  assert.equal(result.sessionClosed, true); assert.deepEqual(result.residuals, []);
+  assert.equal(state.row.status, 'DISABLED'); assert.equal(state.user.disabled, true);
+  assert.ok(state.closed && state.cleared);
+  assert.equal(journal.authProofAccepted, false); // This local client cannot mint parent authority.
+  assert.equal('childResultSha256' in journal, false);
+  assert.ok(!raw.includes('EC1_PRIVATE_')); assert.ok(!raw.includes(token));
+  assert.equal(calls.sign, 1); assert.equal(calls.key, 1); assert.equal(calls.exchange, 1);
+  const before = {...calls};
+  await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
+  assert.deepEqual(calls, before);
+  close(c);
+  return {result, journal, calls};
+}
+
+for (const optionalId of [false, true]) test(`EC1 documented response authenticates, optional localId=${optionalId}`, async t => {
+  const {result, journal, calls} = await ec1Authentication(t, {
+    exchange: value => {if (optionalId) value.localId = TARGET.id;},
+  });
+  assert.equal(result.status, 'P08_COORDINATOR_AUTHENTICATED_AND_CLOSED');
+  assert.equal(result.authenticated, true); assert.equal(calls.job, 1);
+  assert.equal(journal.authClient.authenticated, true);
+  assert.equal('responseValidationCode' in journal.authClient, false);
+});
+
+const ec1ExchangeRefusals = [
+  ['foreign localId', v => {v.localId = randomUUID();}],
+  ['null localId', v => {v.localId = null;}],
+  ['numeric localId', v => {v.localId = 7;}],
+  ['missing token', v => {delete v.idToken;}],
+  ['null token', v => {v.idToken = null;}],
+  ['numeric token', v => {v.idToken = 7;}],
+  ['empty token', v => {v.idToken = '';}],
+];
+for (const [name, exchange] of ec1ExchangeRefusals) test('EC1 exchange refuses ' + name, async t => {
+  const {result, journal, calls} = await ec1Authentication(t, {exchange});
+  assert.equal(result.authenticated, false); assert.equal(calls.job, 0);
+  assert.equal(journal.authClient.failureCode, 'SIGN_EXCHANGE_REFUSED');
+  assert.equal(journal.authClient.authStage, 'EXCHANGE');
+  assert.equal(journal.authClient.failureCategory, 'RESPONSE_VALIDATION');
+  assert.equal(journal.authClient.responseValidationCode, 'EXCHANGE_RESPONSE_MISMATCH');
+});
+
+const ec1ClaimRefusals = [
+  ['sub', c => {c.sub = randomUUID();}],
+  ['tenant', c => {c.tenantId = randomUUID();}],
+  ['role', c => {c.role = 'user';}],
+  ['testOnly', c => {c.testOnly = false;}],
+  ['issuer', c => {c.iss = 'https://securetoken.google.com/foreign';}],
+  ['audience', c => {c.aud = 'foreign';}],
+  ['expired', c => {c.exp = c.iat - 1;}],
+  ['future iat', c => {c.iat += 2;}],
+];
+for (const [name, claims] of ec1ClaimRefusals) test('EC1 issued token cannot authenticate with wrong ' + name, async t => {
+  // A matching optional response field must not rescue an invalid token identity.
+  const {result, journal, calls} = await ec1Authentication(t, {claims,
+    exchange: v => {v.localId = TARGET.id;}});
+  assert.equal(result.authenticated, false); assert.equal(calls.job, 0);
+  assert.equal(journal.authClient.authenticated, false);
+  assert.equal('responseValidationCode' in journal.authClient, false);
+});
+
+for (const runtimeStatus of [401, 403]) test('EC1 decoded claims do not replace runtime verification: ' + runtimeStatus, async t => {
+  const {result, journal, calls} = await ec1Authentication(t, {runtimeStatus});
+  assert.equal(result.authenticated, false); assert.equal(calls.job, 1);
+  assert.equal(journal.authClient.authenticated, false);
+});
+
+test('EC1 exact job readback is still required after a successful runtime response', async t => {
+  const {result, calls} = await ec1Authentication(t, {wrongJob: true});
+  assert.equal(result.authenticated, false); assert.equal(calls.job, 1);
+});
+
+test('EC1 a nonempty malformed token cannot reach the runtime', async t => {
+  const {result, calls} = await ec1Authentication(t, {exchange: v => {v.idToken = 'EC1_PRIVATE_MALFORMED_TOKEN';}});
+  assert.equal(result.authenticated, false); assert.equal(calls.job, 0);
 });

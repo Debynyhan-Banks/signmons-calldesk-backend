@@ -1,0 +1,2808 @@
+{
+  "status": "LOCAL_HASH_GRAPH_VERIFIED",
+  "baseCommit": "f675067cf976ff624393453f7af125545793247a",
+  "files": {
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/client.mjs": "0a895a35ba29fe4b6968be842be220e0d8f4b08ffeb7fc634e0462ca3e9b0939",
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c",
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/test_client.mjs": "d503ad264f80fe04a1df1b10743d2d66c117ab04ffb3ab4cdfbba93781af3bd3",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-child.mjs": "7f452f72018dffef175d14d736d25baf72d4be5b6c6d21e126ef88aedb9d5d5e",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_ports.mjs": "1a0f46a688c4090bcd7ab2a704a5ae59f7ec71bba89b04b4bbc9b950c9119c4d",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py": "7163c5d029c87e29a7cd69326d02639e9a27014430295028e77b191571eabbf0",
+    "evidence/APP-013/p08-serialized-handoff-local-20261031/source/handoff.py": "ee2d6197c98b8db403315510a98303e0e93581b4126ce19847c4cd3fddc2e526",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f",
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/source-manifest.json": "32f3db9da92377999b42cc80cb44e48cec78f2faa6d6426b486484d61958d077",
+    "evidence/APP-013/p08-serialized-handoff-local-20261031/source/source-manifest.json": "9ef5e75e28f3644626dd465f2308a3184dae5954e84e5e816b8f7cc9e4029e0b",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json": "0ba215a770b556c67c8d1f55541c98a3e0c37c0f9c3822137ccd788064515ab1",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json": "b7b22dbf872d12df1cb28566d21f919e59762c132d93ac9f405989b9b04545d4",
+    "evidence/APP-013/p08-key-correction-20261110/source-manifest.json": "d82c0c0fb95f6358fb7d4eebc919e50c0ae751c1ae98cbda0e6006b0aa757dc5",
+    "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json": "916e5d1220fa82346905fc71d9453579a3638a07a97b0a8d693910c0c34a923b",
+    "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json": "5f168012a754e60b75f251659939b461c44acaee719aa5fc3457351108946f59",
+    "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json": "5795951b6456776dd0f8bbb7b7a10d053c086818b2e2e472b8e64d902cf3bd03",
+    "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json": "f7fecf49da23d370b8707e521c5362871abcd59071b3a057c23a1aa179ec00de"
+  },
+  "manifestHashOnlyChanges": [
+    {
+      "manifest": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/source-manifest.json",
+      "field": "/files/authority.mjs",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/source-manifest.json",
+      "field": "/files/client.mjs",
+      "before": "e8b3d5987dc4701a9869233cb932de891ecacdbbc342bf5a2d7dc4d70b2ac2b4",
+      "after": "0a895a35ba29fe4b6968be842be220e0d8f4b08ffeb7fc634e0462ca3e9b0939"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/source-manifest.json",
+      "field": "/files/test_client.mjs",
+      "before": "c24cac09b10782726361f3ec739e5f8648391a23c94987f83e18b60f935d46b2",
+      "after": "d503ad264f80fe04a1df1b10743d2d66c117ab04ffb3ab4cdfbba93781af3bd3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/source-manifest.json",
+      "field": "/files/handoff.py",
+      "before": "55ebb37bc2dbaf984908ce904caea1e12662cb1f584490a1df459fc6ae9080bb",
+      "after": "ee2d6197c98b8db403315510a98303e0e93581b4126ce19847c4cd3fddc2e526"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/source-manifest.json",
+      "field": "/sourceLocks/authority",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/source-manifest.json",
+      "field": "/sourceLocks/client",
+      "before": "e8b3d5987dc4701a9869233cb932de891ecacdbbc342bf5a2d7dc4d70b2ac2b4",
+      "after": "0a895a35ba29fe4b6968be842be220e0d8f4b08ffeb7fc634e0462ca3e9b0939"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "/files/bound-child.mjs",
+      "before": "8d817ef9a473e9712ae59f3ebdb8a9c863cd4c166d0b3f5c3497f042b2f6062f",
+      "after": "7f452f72018dffef175d14d736d25baf72d4be5b6c6d21e126ef88aedb9d5d5e"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "/files/bound_handoff.py",
+      "before": "2db219e6b3ccceac4cf3e65a7eb2b98b727553250cc4b2cb5770039deeddf887",
+      "after": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "/sourceLocks/authority",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "/sourceLocks/client",
+      "before": "e8b3d5987dc4701a9869233cb932de891ecacdbbc342bf5a2d7dc4d70b2ac2b4",
+      "after": "0a895a35ba29fe4b6968be842be220e0d8f4b08ffeb7fc634e0462ca3e9b0939"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "/sourceLocks/serialized_handoff",
+      "before": "55ebb37bc2dbaf984908ce904caea1e12662cb1f584490a1df459fc6ae9080bb",
+      "after": "ee2d6197c98b8db403315510a98303e0e93581b4126ce19847c4cd3fddc2e526"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "/lockedSources/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "/lockedSources/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "before": "2db219e6b3ccceac4cf3e65a7eb2b98b727553250cc4b2cb5770039deeddf887",
+      "after": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "/files/fixture_ports.mjs",
+      "before": "997f1ec95806ee98434b091dc9714274d1dae61c2d64bf83690aa1b68efbb2c6",
+      "after": "1a0f46a688c4090bcd7ab2a704a5ae59f7ec71bba89b04b4bbc9b950c9119c4d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "/files/test_entry.py",
+      "before": "912dafc5833c08de09a76147e0058d7c68847cfd23111150976c53906a226619",
+      "after": "7163c5d029c87e29a7cd69326d02639e9a27014430295028e77b191571eabbf0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "/runtimeManifestSha256",
+      "before": "9ad5fea47a6657ece084377ca307f10551cc25e9d7992fa834d262a63f233cfe",
+      "after": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-native-entry-local-20261101/source/fixture_ports.mjs",
+      "before": "997f1ec95806ee98434b091dc9714274d1dae61c2d64bf83690aa1b68efbb2c6",
+      "after": "1a0f46a688c4090bcd7ab2a704a5ae59f7ec71bba89b04b4bbc9b950c9119c4d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "before": "9ad5fea47a6657ece084377ca307f10551cc25e9d7992fa834d262a63f233cfe",
+      "after": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "before": "f0b1e2f73d0b3aea34299f84aa60870d34ac7196266140515e50fa851c4ed847",
+      "after": "b7b22dbf872d12df1cb28566d21f919e59762c132d93ac9f405989b9b04545d4"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py",
+      "before": "912dafc5833c08de09a76147e0058d7c68847cfd23111150976c53906a226619",
+      "after": "7163c5d029c87e29a7cd69326d02639e9a27014430295028e77b191571eabbf0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "before": "2db219e6b3ccceac4cf3e65a7eb2b98b727553250cc4b2cb5770039deeddf887",
+      "after": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "before": "9ad5fea47a6657ece084377ca307f10551cc25e9d7992fa834d262a63f233cfe",
+      "after": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "before": "2db219e6b3ccceac4cf3e65a7eb2b98b727553250cc4b2cb5770039deeddf887",
+      "after": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "before": "0a14775009e0f0937979b5b975905b8fee4d173d40a7261ccd9ccdf1d4610f8e",
+      "after": "916e5d1220fa82346905fc71d9453579a3638a07a97b0a8d693910c0c34a923b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "before": "9ad5fea47a6657ece084377ca307f10551cc25e9d7992fa834d262a63f233cfe",
+      "after": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "before": "2db219e6b3ccceac4cf3e65a7eb2b98b727553250cc4b2cb5770039deeddf887",
+      "after": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "before": "0a14775009e0f0937979b5b975905b8fee4d173d40a7261ccd9ccdf1d4610f8e",
+      "after": "916e5d1220fa82346905fc71d9453579a3638a07a97b0a8d693910c0c34a923b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "before": "9ad5fea47a6657ece084377ca307f10551cc25e9d7992fa834d262a63f233cfe",
+      "after": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "before": "2db219e6b3ccceac4cf3e65a7eb2b98b727553250cc4b2cb5770039deeddf887",
+      "after": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "before": "f60f4da766c1bb8ff50d73b0761866a053eecb677064b4dfd7c41493479067c9",
+      "after": "5795951b6456776dd0f8bbb7b7a10d053c086818b2e2e472b8e64d902cf3bd03"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "before": "0a14775009e0f0937979b5b975905b8fee4d173d40a7261ccd9ccdf1d4610f8e",
+      "after": "916e5d1220fa82346905fc71d9453579a3638a07a97b0a8d693910c0c34a923b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "before": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+      "after": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "before": "95ebe94ec964e3b01682b15c9fde2495079e633a9e1db2006e5bb04c5eae0f67",
+      "after": "d82c0c0fb95f6358fb7d4eebc919e50c0ae751c1ae98cbda0e6006b0aa757dc5"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "before": "9ad5fea47a6657ece084377ca307f10551cc25e9d7992fa834d262a63f233cfe",
+      "after": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "/files/evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "before": "2db219e6b3ccceac4cf3e65a7eb2b98b727553250cc4b2cb5770039deeddf887",
+      "after": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    }
+  ],
+  "verifiedFileReferences": [
+    {
+      "manifest": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "sha256": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/client.mjs",
+      "sha256": "0a895a35ba29fe4b6968be842be220e0d8f4b08ffeb7fc634e0462ca3e9b0939"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/sequence.mjs",
+      "sha256": "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/test_client.mjs",
+      "sha256": "d503ad264f80fe04a1df1b10743d2d66c117ab04ffb3ab4cdfbba93781af3bd3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/child.mjs",
+      "sha256": "0cc64f264663eb9a8a9d21617ff98974643ceb2b2b2b4e5f5d1548691cb84186"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/handoff.py",
+      "sha256": "ee2d6197c98b8db403315510a98303e0e93581b4126ce19847c4cd3fddc2e526"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-serialized-handoff-local-20261031/source/test_handoff.py",
+      "sha256": "e4d79266e80a902a196f9008bbb2082d9c42871873a3d92e634822f0aca054a2"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-child.mjs",
+      "sha256": "7f452f72018dffef175d14d736d25baf72d4be5b6c6d21e126ef88aedb9d5d5e"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-clients.mjs",
+      "sha256": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "sha256": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+      "sha256": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/test_bound.mjs",
+      "sha256": "85d4104f44c53f2476cf5ff0ebfbd417b6dff92e1b73843d5fe8cbc54972d5b2"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-real-client-binding-local-20261031/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/test_bound.py",
+      "sha256": "3186f8f7cc898307379eaf3ac4388845e0b1f61400640878cd546012dcba3380"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py",
+      "sha256": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority_bridge.mjs",
+      "sha256": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs",
+      "sha256": "c6f11db3b9eb833bc742d1afed694f4ef2ce4414ff831264f77d84cc0b9a90d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py",
+      "sha256": "89f9c917012f9867f135d05d075608da3cb3a23f010cf73ac675f4cdc29ba7a0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py",
+      "sha256": "7e90e1a8b801412de66f8fc27d04ee3e48a2b81cd0f3011d36f14ccce1b2ca19"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs",
+      "sha256": "0d1241a397de199a3ee5783a81c5c752c473e7e47f84f5cbfc13870a10851e6c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py",
+      "sha256": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/operator_bridge.mjs",
+      "sha256": "d692b9a2e2fca5f63c4c0a9806a52d9ad49175c68c6b89fdb1c45081b155bb41"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/private_inventory.py",
+      "sha256": "97d2f27b6c4047420ff97f3a08e42bcc718d2577adecea3aaebaf98a99e446d0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/transports.mjs",
+      "sha256": "ff9ed3b2d51b69d43457bbe414f7209b32ceac517ea46fefcf9355bfd10cf584"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs",
+      "sha256": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py",
+      "sha256": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "sha256": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py",
+      "sha256": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json",
+      "sha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-key-correction-20261110/binding.py",
+      "sha256": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-key-correction-20261110/candidate.json",
+      "sha256": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+      "sha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs",
+      "sha256": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/plan.json",
+      "sha256": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py",
+      "sha256": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+      "sha256": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-native-closeout-local-20261031/source/adapter.py",
+      "sha256": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-clients.mjs",
+      "sha256": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "sha256": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+      "sha256": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",
+      "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "field": "lockedSources",
+      "path": "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py",
+      "sha256": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment_browser.mjs",
+      "sha256": "dc00cf2e740335e86c702d8e5bf09318d21293ecd1ea5175a768edbd08ce387a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_child.mjs",
+      "sha256": "4a139e2e3b2500b885ed9c3ebfa5602f98422e77cf66b4c6e6838832ccefb34f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_connected.mjs",
+      "sha256": "5dfcface93c5029f6f3c42fdb1a715ce27e8817fa16edaacc3554602c3a3affd"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_envelope.py",
+      "sha256": "3495b9fa9a5822029c26ad10854c044477232067b75f0b51fb12066c0e541742"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_ports.mjs",
+      "sha256": "1a0f46a688c4090bcd7ab2a704a5ae59f7ec71bba89b04b4bbc9b950c9119c4d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/postgres_driver.mjs",
+      "sha256": "3ff902f711a7ccfc97a84df798fddf2bfe0c3fc46dc3ecc7b3acb9240061b034"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_child_cleanup.py",
+      "sha256": "47b789abb53393218993ec1dde58593101087eb52772b24ae146a34987643b7d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs",
+      "sha256": "9786f9321f5a66e2befd74f120a3ccb9817c5690cc128240c1658de486a10082"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py",
+      "sha256": "7163c5d029c87e29a7cd69326d02639e9a27014430295028e77b191571eabbf0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_key_lifecycle.py",
+      "sha256": "875fe1b8b1a34374118ac904255e3c116e9524308c3348d77d1b67b36b9ccfd6"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_native_postgres.py",
+      "sha256": "4abdd64770526ecd81d99d700c5ab1d36e1f67f18265eb38cf79274abb3a7896"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_private_inventory_cc1.py",
+      "sha256": "ff50193e6f48428a77a3a0068e71c9afec698b75b05e03a10584bd554cf7cd3f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_transports.mjs",
+      "sha256": "416274dad4b88fff9f1a375109566dd7c5c910e3ab9577a64714143b5ff51d14"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs",
+      "sha256": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/bootstrap_browser_fixture.mjs",
+      "sha256": "171e47e93eecba99868258a0ea6815cfc3b0cfc2c606b748a53672ec8442d367"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py",
+      "sha256": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/packet.py",
+      "sha256": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_bootstrap_open.py",
+      "sha256": "35a3cbd75db2147c8060072bcf0a4d6f19e09b29fde0169a09c9a3fb067d09a0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "sha256": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/composed_qualification.py",
+      "sha256": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py",
+      "sha256": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json",
+      "sha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/test_composed_qualification.py",
+      "sha256": "6a057d5ad5d704b3a6e090b304dd39c89d1d18b831e52ff9056154316d5b0518"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/test_qualification_launch.py",
+      "sha256": "efd3198e0a221be782e5c5f783fd6dbb83ba6ae2334c7b995d10952f59430599"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/test_qualification_launch_postgres.py",
+      "sha256": "b1008cbabeeb0f9dacc703b8f38d506592d8d658d37a158de5026b5c01cccb18"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/adoption-evidence-20261111.json",
+      "sha256": "2b9f1c11cda3632ccf30bab106d73166f7a15799f3163a1ec808604b1953cd34"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/binding.py",
+      "sha256": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/candidate.json",
+      "sha256": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/correction.py",
+      "sha256": "f700e548bb517aeeda76badfcd4f18b08ed68b3db5f49031d9efb2b0ad941003"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/kc1-result.json",
+      "sha256": "9a2066e1c99ec6e50262a3ad0f05a489ac275ebf49b63e8044189e96160464d2"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/key_check.mjs",
+      "sha256": "4553225c8ef3b70512b91ee7a8cb2b60ac631d98f63091e8a709d197203543fe"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/launch.py",
+      "sha256": "c603f65bfe6f2969e5c24fbed856bf4bbb54faedd0432d96d36243f35cae7ae6"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/ports.py",
+      "sha256": "8f2f063194ed4de30abf2ccaaf0fc7c59f79d37982d33f35dd23b45ca475f98e"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/refresh_manifest.py",
+      "sha256": "f0ad13dbbaaf1e6efdad1f42eb53aa0bdd0f525cbf1a7adc7cfbfc5e4c3a803a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/test_correction.py",
+      "sha256": "7f1200d63d17a889ab11b11c54c6b0857fed8b3b5f5408e67259f7fbc30823ee"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/test_key_check.mjs",
+      "sha256": "d2b6c34cab0c0960bac10785049732f1eb2872cb47c4144cda720792c22f7d87"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/test_launch.py",
+      "sha256": "44fef2d6e342727210903ac417388d5a2ce45b0767dfe73a00fd33e848697bc5"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/test_ports.py",
+      "sha256": "723fac74dc5fd8a7c8dc88fed49f8d97bad392075412ead1c43850f7750fad5c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+      "sha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs",
+      "sha256": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/plan.json",
+      "sha256": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py",
+      "sha256": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+      "sha256": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-closeout-local-20261031/source/adapter.py",
+      "sha256": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py",
+      "sha256": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority_bridge.mjs",
+      "sha256": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs",
+      "sha256": "c6f11db3b9eb833bc742d1afed694f4ef2ce4414ff831264f77d84cc0b9a90d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment_browser.mjs",
+      "sha256": "dc00cf2e740335e86c702d8e5bf09318d21293ecd1ea5175a768edbd08ce387a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py",
+      "sha256": "89f9c917012f9867f135d05d075608da3cb3a23f010cf73ac675f4cdc29ba7a0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_child.mjs",
+      "sha256": "4a139e2e3b2500b885ed9c3ebfa5602f98422e77cf66b4c6e6838832ccefb34f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_connected.mjs",
+      "sha256": "5dfcface93c5029f6f3c42fdb1a715ce27e8817fa16edaacc3554602c3a3affd"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_envelope.py",
+      "sha256": "3495b9fa9a5822029c26ad10854c044477232067b75f0b51fb12066c0e541742"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_ports.mjs",
+      "sha256": "1a0f46a688c4090bcd7ab2a704a5ae59f7ec71bba89b04b4bbc9b950c9119c4d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py",
+      "sha256": "7e90e1a8b801412de66f8fc27d04ee3e48a2b81cd0f3011d36f14ccce1b2ca19"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs",
+      "sha256": "0d1241a397de199a3ee5783a81c5c752c473e7e47f84f5cbfc13870a10851e6c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py",
+      "sha256": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/operator_bridge.mjs",
+      "sha256": "d692b9a2e2fca5f63c4c0a9806a52d9ad49175c68c6b89fdb1c45081b155bb41"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/postgres_driver.mjs",
+      "sha256": "3ff902f711a7ccfc97a84df798fddf2bfe0c3fc46dc3ecc7b3acb9240061b034"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/private_inventory.py",
+      "sha256": "97d2f27b6c4047420ff97f3a08e42bcc718d2577adecea3aaebaf98a99e446d0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "sha256": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+      "sha256": "b7b22dbf872d12df1cb28566d21f919e59762c132d93ac9f405989b9b04545d4"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_child_cleanup.py",
+      "sha256": "47b789abb53393218993ec1dde58593101087eb52772b24ae146a34987643b7d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_connected_payment.mjs",
+      "sha256": "9786f9321f5a66e2befd74f120a3ccb9817c5690cc128240c1658de486a10082"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py",
+      "sha256": "7163c5d029c87e29a7cd69326d02639e9a27014430295028e77b191571eabbf0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_key_lifecycle.py",
+      "sha256": "875fe1b8b1a34374118ac904255e3c116e9524308c3348d77d1b67b36b9ccfd6"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_native_postgres.py",
+      "sha256": "4abdd64770526ecd81d99d700c5ab1d36e1f67f18265eb38cf79274abb3a7896"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_private_inventory_cc1.py",
+      "sha256": "ff50193e6f48428a77a3a0068e71c9afec698b75b05e03a10584bd554cf7cd3f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test_transports.mjs",
+      "sha256": "416274dad4b88fff9f1a375109566dd7c5c910e3ab9577a64714143b5ff51d14"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/transports.mjs",
+      "sha256": "ff9ed3b2d51b69d43457bbe414f7209b32ceac517ea46fefcf9355bfd10cf584"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-clients.mjs",
+      "sha256": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "sha256": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+      "sha256": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/auth/reuse/controller.py",
+      "sha256": "3adb1804c8ce57017835efae51b79bd23b204062ad04ff87bfffcf1ee73347ca"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",
+      "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py",
+      "sha256": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-same-day-renewal-filename-local-20261028/source/launch_binding.py",
+      "sha256": "baa0fea1ac8011c2c167634375647e636db49deaa624d9d3760a6eab03297296"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs",
+      "sha256": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py",
+      "sha256": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py",
+      "sha256": "c0a25ce0f584b12921201effc19b0f36e8cb5f3680bad3c6c03230f3ce9fa146"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/iq1_identity_boundary.py",
+      "sha256": "676f9236b68efe2d076d466ec85df88c1a4547a8ff21461cd28d143deef90bd3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/packet.py",
+      "sha256": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_identity_sdk_observation.py",
+      "sha256": "1488f8e296420300a5399565aadc02bae5714ee1cdccdbb2d8e27b8dbcc7f26b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_iq1_identity_boundary.py",
+      "sha256": "1988269f4683cd4644422c5bf84cd097d5659a0831be15fbdd981ea6ad03cf5f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "sha256": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/composed_qualification.py",
+      "sha256": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py",
+      "sha256": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json",
+      "sha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/binding.py",
+      "sha256": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/candidate.json",
+      "sha256": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+      "sha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs",
+      "sha256": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/plan.json",
+      "sha256": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py",
+      "sha256": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+      "sha256": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-closeout-local-20261031/source/adapter.py",
+      "sha256": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py",
+      "sha256": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority_bridge.mjs",
+      "sha256": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs",
+      "sha256": "c6f11db3b9eb833bc742d1afed694f4ef2ce4414ff831264f77d84cc0b9a90d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py",
+      "sha256": "89f9c917012f9867f135d05d075608da3cb3a23f010cf73ac675f4cdc29ba7a0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py",
+      "sha256": "7e90e1a8b801412de66f8fc27d04ee3e48a2b81cd0f3011d36f14ccce1b2ca19"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs",
+      "sha256": "0d1241a397de199a3ee5783a81c5c752c473e7e47f84f5cbfc13870a10851e6c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py",
+      "sha256": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/operator_bridge.mjs",
+      "sha256": "d692b9a2e2fca5f63c4c0a9806a52d9ad49175c68c6b89fdb1c45081b155bb41"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/private_inventory.py",
+      "sha256": "97d2f27b6c4047420ff97f3a08e42bcc718d2577adecea3aaebaf98a99e446d0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "sha256": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/transports.mjs",
+      "sha256": "ff9ed3b2d51b69d43457bbe414f7209b32ceac517ea46fefcf9355bfd10cf584"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-clients.mjs",
+      "sha256": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "sha256": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+      "sha256": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",
+      "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py",
+      "sha256": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/bin/gcloud",
+      "sha256": "8628b9f971d07c5e52fd2c6d469ee4a0940c75eb51820d628c3dd068981bd260"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/billing/billing_client.py",
+      "sha256": "1ebf0662c545c9365d0ca51430de0ea8f3887b73f2db750a7c55ca729b6a8f54"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/billing/utils.py",
+      "sha256": "ac438b4b9d1618bce82229de60b17c7995049b08e04ffe9a150374cac7f6def4"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/cloudresourcemanager/projects_api.py",
+      "sha256": "e08ed37b822d57201fab09c7d117e31fa5ab2fbb840f600cbdf87402e6370823"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/secrets/api.py",
+      "sha256": "44f4c1dd801fc060d93b5f150908af0d19ed52bc89ce52abbb7a922818ab3cd8"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/api_enablement.py",
+      "sha256": "771dd7387c07e5bb52a30e242207f52048bb0ddc06e72ec377d5d79ff0b7add2"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/apis.py",
+      "sha256": "0110f091c7c86a18ce4e917c66cb0134c6a62a3cfc44c868bb6606c971f055fa"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/apis_internal.py",
+      "sha256": "26a4abfb4c327e8c38b376e30bec4c9eb0398f6dc25f86ab578852dc6a7a6e37"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/exceptions.py",
+      "sha256": "a1c6b6d13f7e0a4501a1163a744e0ab5fe696a223059af6a4015c65026519d06"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/calliope/exceptions.py",
+      "sha256": "5e6ed013f00dac280a379e5ee99adc2b02ba2b0ff3dd7c98073b603378113673"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/auth/auth_util.py",
+      "sha256": "f9991b16c3207c4765f3cac9bd4dfbccb743820e793f53b68bc14fe74cbf7418"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/run/connection_context.py",
+      "sha256": "84cb229a9db64ed61e67c709c512482a244ed858fd064661fa4fad0e3675348f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/run/serverless_operations.py",
+      "sha256": "b7ca29dcc6eb77739965267323e842da3d55c76f28b65cf4f9baefc1d02ada02"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/config.py",
+      "sha256": "fc06f07045d0a8054355f904fa4aac12151a1d1e08c6c366620b405c4ee98f52"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/console/console_io.py",
+      "sha256": "29250aaf0ab0a605140ad42a49d678c8be6d07dbeda40ac0f5faecd87a6f47f9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/creds.py",
+      "sha256": "f16148370c895672dcbacaeedd8ce14cedc9019ac665ca7019771a7a1b8021a9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/store.py",
+      "sha256": "1fcb3b856eb1584491d6f6160983808ca1f3574e44de86f53ac8d86f882e2a6f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/transport.py",
+      "sha256": "c3852175a2fe84eed488179a0ec91cd1d92776f089d42ab203874064397f00a9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/transports.py",
+      "sha256": "78eff63f3201c88cc5bf9080a78a6f14d4d5dac03f5ffbf646be47a7d5638c2d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/log.py",
+      "sha256": "b503b94fbc53943de0ec4a7ca93bc02fa764d35553f658a92e93a38fd4427b3e"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/properties.py",
+      "sha256": "840eb7f6f5adcb68d94c5ca3607e0436d40e9d26e09c9338e83307af36c974ba"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/requests.py",
+      "sha256": "bc7877f53c5795ecb5cc9658f59704c5e8118740a737a65a4c9a4700362168b8"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/transport.py",
+      "sha256": "c8b699f047f31c78d245fea040aa4e18dbec18802edce03b64ffc6be720d6d65"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis/cloudbilling/v1/cloudbilling_v1_client.py",
+      "sha256": "e83788966dd73e85e772ab35e80de675954ace72bf5c13ea143c9c203f4c3129"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/auth/list.py",
+      "sha256": "5e6effb9cd500b77f157ca4ee2480ac2dbaa6a03a89a56c1bb9b8fd8c08f2c9f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/auth/print_access_token.py",
+      "sha256": "9cbe0e02400cc72bfe14aa75638f831b44585e7e9b957b53725ae094107b3cf4"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/billing/accounts/describe.py",
+      "sha256": "b70d7c049d9323ba92c75fed147dbcbcd2ba9ea503300b0b4d8f456b9cb3f03f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/billing/projects/describe.py",
+      "sha256": "c153cc30fcdc331ecc1e7ee978f1a40384fe3fac8b4254d556ba20f39bed65d0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/config/list.py",
+      "sha256": "2d357f67bc0dd418768442652adc7257fc1aa923d3a8e0b7795930bbc9427e3c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/roles/describe.py",
+      "sha256": "cd591253cbe70fcf12f3145cca2667203fa606b9842afa344de24c6c2eac3739"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/service_accounts/describe.py",
+      "sha256": "e44a2fa74029ddf2205212c4ae5242abb396926389d01e7df0b7dc84c2ad9e97"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/service_accounts/get_iam_policy.py",
+      "sha256": "d462fb1e622d70dc1396b9834a3e73cfd42253939fc8d38f018a0a2b368493cb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/projects/describe.py",
+      "sha256": "2a52b106094f65f096b7f0a971583483ef3186c8768f3bdd5c076836acb4787b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/projects/get_iam_policy.py",
+      "sha256": "8c4b508f7d8edb65469e8379960af9fab9ad111b56b9867a4c1657598fa3b5b5"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/run/revisions/describe.py",
+      "sha256": "8359ec90fc94143ce1a38ca96643dc80ffaa9a47c44cb1bc09e177129a65d390"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/run/services/describe.py",
+      "sha256": "a845123bfef78944a64225b6cbf04d7334792241e817166e9be32f07dbc4b89c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/secrets/get_iam_policy.py",
+      "sha256": "8abd46e74184b8f105eac05123f1236987f3e617bf86e425d18e4009b214bb5f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/secrets/versions/describe.py",
+      "sha256": "c794b72f40428065a27c141830fdfa8df2eff2096dffe6497e7cfd02c657eddf"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/third_party/apitools/base/py/base_api.py",
+      "sha256": "5e2ad1e9565f101fe347302a4085494079dfa6ceead73c2240e2a15f8318733c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/third_party/apitools/base/py/http_wrapper.py",
+      "sha256": "7d87e9abe3cb3813b22b34d640bf21d8c3572e7efeb04e3543a24495f749e1f0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "2cbb3ee843d8abcf93ed35bb9102391f18eefccb03d47908547bd8db67bc395c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/bin/gcloud",
+      "sha256": "8628b9f971d07c5e52fd2c6d469ee4a0940c75eb51820d628c3dd068981bd260"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/opt/postgresql@16/bin/psql",
+      "sha256": "e67224e11a8d29541c02528b814b17c0757da7d961f16c58003561e20263528d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py",
+      "sha256": "d223bce54ff2e1441268e73b06eec4830032dd7b4b17b8fa9e2638d4f6d8d39d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/command_lib/iam/hooks.py",
+      "sha256": "5fa1e6d47febf2a6eaa75f4db9aaf610040d591f92fdd7ea51bf34b54e009340"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/command_lib/iam/iam_util.py",
+      "sha256": "eea6f9241e9ba05260e9ea1c7d62ef1b26e4f854179e9348945f0088c91ab30c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/command_lib/iam/resources.yaml",
+      "sha256": "4f98b44238a7f137be027c6338283a5e4ce7e402fb2270e718c1a0ccce692ee8"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/metrics.py",
+      "sha256": "045019bf8cd4739e12f106529e87760a2a4d192920b1331ba968db00e8448724"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/resource/json_printer.py",
+      "sha256": "42ab2c2f08b1303f3f0c6efb096f82fe454420685286dfeb578a870889ea9c28"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/resource/resource_projector.py",
+      "sha256": "27fe2f3a5ce0b1f16adbd57ce82e9beda26b9da56aa34f62a39c0bd4a3da6e21"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/util/platforms.py",
+      "sha256": "97f0c82d1fe8df84ade4e53ff601dd17ac584095f652d8a692f7f2048e4fa0c2"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_client.py",
+      "sha256": "304f81531be1e0f8bb05c726aec9a6053f80a11cec1867245231f6276ad0ebcf"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_messages.py",
+      "sha256": "5afc8f08c9a04eb4f956a7ca6771cd657f708f474255e5ca0d98d6dc367b8f85"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/surface/iam/service_accounts/describe.py",
+      "sha256": "e44a2fa74029ddf2205212c4ae5242abb396926389d01e7df0b7dc84c2ad9e97"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/surface/iam/service_accounts/disable.yaml",
+      "sha256": "6460c4d148f6d4904d66e873760e732301dc6337be57ef0b6576b9108812ba2b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/surface/iam/service_accounts/enable.yaml",
+      "sha256": "cbb6c09e67deca5ebc24e3ef88bbb2739145815a45500dcc46c657e8c05f02cd"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/third_party/apitools/base/py/base_api.py",
+      "sha256": "5e2ad1e9565f101fe347302a4085494079dfa6ceead73c2240e2a15f8318733c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/third_party/apitools/base/py/encoding.py",
+      "sha256": "463c35d071e2325a603f01880e1192cb2d18fe056f6718ced9f22144a00dd955"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/usr/bin/sandbox-exec",
+      "sha256": "e7e596515c7357d2e50a182f7db5fef2b71762d85efaac9594599ccb6e0a73d5"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-access-resolution-local-20261028/source/access_readiness.py",
+      "sha256": "d54334352529e3aa4d3717be6b1c6f840ec284d3b83a9a3aaeb5053fa7547576"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-access-resolution-local-20261028/source/reuse/restore.py",
+      "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-access-sequence-local-20261028/source/diagnostics_stage.py",
+      "sha256": "483b27f06ce844632e7bd2b43198920e88307c52d18f94b1b2b6d8ee979526d3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-access-sequence-local-20261028/source/source-manifest.json",
+      "sha256": "d8f55698963550837a3db32d132480ad84547cb9f25d26cb41aa5b6d52603ded"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-access-sequence-local-20261028/source/test_diagnostics_stage.py",
+      "sha256": "0964fbe296b4fbd2ba334d81d17cee9d34afda6df81ee8d4556b8e5937bb03e6"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-authentication-local-20261026/source/auth-adapters.mjs",
+      "sha256": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-authentication-local-20261026/source/auth-controller.mjs",
+      "sha256": "57ab0853630112145e81e10143b05099b2a446f7f450d0eff4598540528ef0c4"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs",
+      "sha256": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py",
+      "sha256": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py",
+      "sha256": "c0a25ce0f584b12921201effc19b0f36e8cb5f3680bad3c6c03230f3ce9fa146"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "sha256": "916e5d1220fa82346905fc71d9453579a3638a07a97b0a8d693910c0c34a923b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/iq1_identity_boundary.py",
+      "sha256": "676f9236b68efe2d076d466ec85df88c1a4547a8ff21461cd28d143deef90bd3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/packet.py",
+      "sha256": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/sq1_signing_boundary.py",
+      "sha256": "1796a00ae12bba47c2b1049bfa8cf78a6065f3782814153112bc621fffe65768"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_identity_sdk_observation.py",
+      "sha256": "1488f8e296420300a5399565aadc02bae5714ee1cdccdbb2d8e27b8dbcc7f26b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_iq1_identity_boundary.py",
+      "sha256": "1988269f4683cd4644422c5bf84cd097d5659a0831be15fbdd981ea6ad03cf5f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_sq1_signing_boundary.py",
+      "sha256": "69ed1556beaea95e446f7a70d834de9b9cb5dc2e49fe30b283d32b371ca20047"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "sha256": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-exact-role-provisioning-local-20261028/source/role_provisioner.py",
+      "sha256": "e1fbc15d95450da7662db684e2cfe6f063c8a60fd7c8243053e5431fc3f973f9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-exact-role-provisioning-local-20261028/source/source-manifest.json",
+      "sha256": "c6c08a92b1a09236f7722f1b14357a527f43cb97cf3c8b15f1f5460a38eebe25"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-exact-role-provisioning-local-20261028/source/test_role_provisioner.py",
+      "sha256": "82e69fd2a774da4771b69d04e50fe7caa9c891497fd5f31cf60d472556a864e6"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/composed_qualification.py",
+      "sha256": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py",
+      "sha256": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json",
+      "sha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-integrated-local-packet-20261029/source/packet.py",
+      "sha256": "ce507681ef2d1a3ce8a2315921b067ba5dfe677165b1c7adbc4c1e37ba4075e3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-integrated-local-packet-20261029/source/source-manifest.json",
+      "sha256": "23931a05f67d4ffb73a481b89ebad6f46feed4c6d5c3268f14630f758748d636"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-integrated-local-packet-20261029/source/test_packet.py",
+      "sha256": "c7bd92b97ac09e06f90027ee1c2a5c4b6f6c86cbd5359694dac7262ace3d16c9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/binding.py",
+      "sha256": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/candidate.json",
+      "sha256": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+      "sha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs",
+      "sha256": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/plan.json",
+      "sha256": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py",
+      "sha256": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+      "sha256": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-closeout-local-20261031/source/adapter.py",
+      "sha256": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py",
+      "sha256": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority_bridge.mjs",
+      "sha256": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs",
+      "sha256": "c6f11db3b9eb833bc742d1afed694f4ef2ce4414ff831264f77d84cc0b9a90d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py",
+      "sha256": "89f9c917012f9867f135d05d075608da3cb3a23f010cf73ac675f4cdc29ba7a0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py",
+      "sha256": "7e90e1a8b801412de66f8fc27d04ee3e48a2b81cd0f3011d36f14ccce1b2ca19"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs",
+      "sha256": "0d1241a397de199a3ee5783a81c5c752c473e7e47f84f5cbfc13870a10851e6c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py",
+      "sha256": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/operator_bridge.mjs",
+      "sha256": "d692b9a2e2fca5f63c4c0a9806a52d9ad49175c68c6b89fdb1c45081b155bb41"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/private_inventory.py",
+      "sha256": "97d2f27b6c4047420ff97f3a08e42bcc718d2577adecea3aaebaf98a99e446d0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "sha256": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/transports.mjs",
+      "sha256": "ff9ed3b2d51b69d43457bbe414f7209b32ceac517ea46fefcf9355bfd10cf584"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-clients.mjs",
+      "sha256": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "sha256": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+      "sha256": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",
+      "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py",
+      "sha256": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/bin/gcloud",
+      "sha256": "8628b9f971d07c5e52fd2c6d469ee4a0940c75eb51820d628c3dd068981bd260"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/billing/billing_client.py",
+      "sha256": "1ebf0662c545c9365d0ca51430de0ea8f3887b73f2db750a7c55ca729b6a8f54"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/billing/utils.py",
+      "sha256": "ac438b4b9d1618bce82229de60b17c7995049b08e04ffe9a150374cac7f6def4"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/cloudresourcemanager/projects_api.py",
+      "sha256": "e08ed37b822d57201fab09c7d117e31fa5ab2fbb840f600cbdf87402e6370823"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/secrets/api.py",
+      "sha256": "44f4c1dd801fc060d93b5f150908af0d19ed52bc89ce52abbb7a922818ab3cd8"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/api_enablement.py",
+      "sha256": "771dd7387c07e5bb52a30e242207f52048bb0ddc06e72ec377d5d79ff0b7add2"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/apis.py",
+      "sha256": "0110f091c7c86a18ce4e917c66cb0134c6a62a3cfc44c868bb6606c971f055fa"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/apis_internal.py",
+      "sha256": "26a4abfb4c327e8c38b376e30bec4c9eb0398f6dc25f86ab578852dc6a7a6e37"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/api_lib/util/exceptions.py",
+      "sha256": "a1c6b6d13f7e0a4501a1163a744e0ab5fe696a223059af6a4015c65026519d06"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/calliope/exceptions.py",
+      "sha256": "5e6ed013f00dac280a379e5ee99adc2b02ba2b0ff3dd7c98073b603378113673"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/auth/auth_util.py",
+      "sha256": "f9991b16c3207c4765f3cac9bd4dfbccb743820e793f53b68bc14fe74cbf7418"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/run/connection_context.py",
+      "sha256": "84cb229a9db64ed61e67c709c512482a244ed858fd064661fa4fad0e3675348f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/command_lib/run/serverless_operations.py",
+      "sha256": "b7ca29dcc6eb77739965267323e842da3d55c76f28b65cf4f9baefc1d02ada02"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/config.py",
+      "sha256": "fc06f07045d0a8054355f904fa4aac12151a1d1e08c6c366620b405c4ee98f52"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/console/console_io.py",
+      "sha256": "29250aaf0ab0a605140ad42a49d678c8be6d07dbeda40ac0f5faecd87a6f47f9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/creds.py",
+      "sha256": "f16148370c895672dcbacaeedd8ce14cedc9019ac665ca7019771a7a1b8021a9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/store.py",
+      "sha256": "1fcb3b856eb1584491d6f6160983808ca1f3574e44de86f53ac8d86f882e2a6f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/transport.py",
+      "sha256": "c3852175a2fe84eed488179a0ec91cd1d92776f089d42ab203874064397f00a9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/credentials/transports.py",
+      "sha256": "78eff63f3201c88cc5bf9080a78a6f14d4d5dac03f5ffbf646be47a7d5638c2d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/log.py",
+      "sha256": "b503b94fbc53943de0ec4a7ca93bc02fa764d35553f658a92e93a38fd4427b3e"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/properties.py",
+      "sha256": "840eb7f6f5adcb68d94c5ca3607e0436d40e9d26e09c9338e83307af36c974ba"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/requests.py",
+      "sha256": "bc7877f53c5795ecb5cc9658f59704c5e8118740a737a65a4c9a4700362168b8"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/core/transport.py",
+      "sha256": "c8b699f047f31c78d245fea040aa4e18dbec18802edce03b64ffc6be720d6d65"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis/cloudbilling/v1/cloudbilling_v1_client.py",
+      "sha256": "e83788966dd73e85e772ab35e80de675954ace72bf5c13ea143c9c203f4c3129"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/auth/list.py",
+      "sha256": "5e6effb9cd500b77f157ca4ee2480ac2dbaa6a03a89a56c1bb9b8fd8c08f2c9f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/auth/print_access_token.py",
+      "sha256": "9cbe0e02400cc72bfe14aa75638f831b44585e7e9b957b53725ae094107b3cf4"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/billing/accounts/describe.py",
+      "sha256": "b70d7c049d9323ba92c75fed147dbcbcd2ba9ea503300b0b4d8f456b9cb3f03f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/billing/projects/describe.py",
+      "sha256": "c153cc30fcdc331ecc1e7ee978f1a40384fe3fac8b4254d556ba20f39bed65d0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/config/list.py",
+      "sha256": "2d357f67bc0dd418768442652adc7257fc1aa923d3a8e0b7795930bbc9427e3c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/roles/describe.py",
+      "sha256": "cd591253cbe70fcf12f3145cca2667203fa606b9842afa344de24c6c2eac3739"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/service_accounts/describe.py",
+      "sha256": "e44a2fa74029ddf2205212c4ae5242abb396926389d01e7df0b7dc84c2ad9e97"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/iam/service_accounts/get_iam_policy.py",
+      "sha256": "d462fb1e622d70dc1396b9834a3e73cfd42253939fc8d38f018a0a2b368493cb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/projects/describe.py",
+      "sha256": "2a52b106094f65f096b7f0a971583483ef3186c8768f3bdd5c076836acb4787b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/projects/get_iam_policy.py",
+      "sha256": "8c4b508f7d8edb65469e8379960af9fab9ad111b56b9867a4c1657598fa3b5b5"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/run/revisions/describe.py",
+      "sha256": "8359ec90fc94143ce1a38ca96643dc80ffaa9a47c44cb1bc09e177129a65d390"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/run/services/describe.py",
+      "sha256": "a845123bfef78944a64225b6cbf04d7334792241e817166e9be32f07dbc4b89c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/secrets/get_iam_policy.py",
+      "sha256": "8abd46e74184b8f105eac05123f1236987f3e617bf86e425d18e4009b214bb5f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/surface/secrets/versions/describe.py",
+      "sha256": "c794b72f40428065a27c141830fdfa8df2eff2096dffe6497e7cfd02c657eddf"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/third_party/apitools/base/py/base_api.py",
+      "sha256": "5e2ad1e9565f101fe347302a4085494079dfa6ceead73c2240e2a15f8318733c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib/third_party/apitools/base/py/http_wrapper.py",
+      "sha256": "7d87e9abe3cb3813b22b34d640bf21d8c3572e7efeb04e3543a24495f749e1f0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "2cbb3ee843d8abcf93ed35bb9102391f18eefccb03d47908547bd8db67bc395c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/bin/gcloud",
+      "sha256": "8628b9f971d07c5e52fd2c6d469ee4a0940c75eb51820d628c3dd068981bd260"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/opt/postgresql@16/bin/psql",
+      "sha256": "e67224e11a8d29541c02528b814b17c0757da7d961f16c58003561e20263528d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/gcloud.py",
+      "sha256": "d223bce54ff2e1441268e73b06eec4830032dd7b4b17b8fa9e2638d4f6d8d39d"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/command_lib/iam/hooks.py",
+      "sha256": "5fa1e6d47febf2a6eaa75f4db9aaf610040d591f92fdd7ea51bf34b54e009340"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/command_lib/iam/iam_util.py",
+      "sha256": "eea6f9241e9ba05260e9ea1c7d62ef1b26e4f854179e9348945f0088c91ab30c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/command_lib/iam/resources.yaml",
+      "sha256": "4f98b44238a7f137be027c6338283a5e4ce7e402fb2270e718c1a0ccce692ee8"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/console/progress_tracker.py",
+      "sha256": "71410cbebff77b71c4635a0a53840600c9f675bfe6374db454e88fabab2ab192"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/metrics.py",
+      "sha256": "045019bf8cd4739e12f106529e87760a2a4d192920b1331ba968db00e8448724"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/resource/json_printer.py",
+      "sha256": "42ab2c2f08b1303f3f0c6efb096f82fe454420685286dfeb578a870889ea9c28"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/resource/resource_projector.py",
+      "sha256": "27fe2f3a5ce0b1f16adbd57ce82e9beda26b9da56aa34f62a39c0bd4a3da6e21"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/core/util/platforms.py",
+      "sha256": "97f0c82d1fe8df84ade4e53ff601dd17ac584095f652d8a692f7f2048e4fa0c2"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_client.py",
+      "sha256": "304f81531be1e0f8bb05c726aec9a6053f80a11cec1867245231f6276ad0ebcf"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/googlecloudsdk/generated_clients/apis/iam/v1/iam_v1_messages.py",
+      "sha256": "5afc8f08c9a04eb4f956a7ca6771cd657f708f474255e5ca0d98d6dc367b8f85"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/surface/config/get_value.py",
+      "sha256": "8fbb3ad816ee1d2d5c890b1f4c8077175bce450e6c3fa9baa055f4860741cf71"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/surface/iam/service_accounts/describe.py",
+      "sha256": "e44a2fa74029ddf2205212c4ae5242abb396926389d01e7df0b7dc84c2ad9e97"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/surface/iam/service_accounts/disable.yaml",
+      "sha256": "6460c4d148f6d4904d66e873760e732301dc6337be57ef0b6576b9108812ba2b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/surface/iam/service_accounts/enable.yaml",
+      "sha256": "cbb6c09e67deca5ebc24e3ef88bbb2739145815a45500dcc46c657e8c05f02cd"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/third_party/apitools/base/py/base_api.py",
+      "sha256": "5e2ad1e9565f101fe347302a4085494079dfa6ceead73c2240e2a15f8318733c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/opt/homebrew/share/google-cloud-sdk/lib/third_party/apitools/base/py/encoding.py",
+      "sha256": "463c35d071e2325a603f01880e1192cb2d18fe056f6718ced9f22144a00dd955"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+      "field": "sdkFiles",
+      "path": "/usr/bin/sandbox-exec",
+      "sha256": "e7e596515c7357d2e50a182f7db5fef2b71762d85efaac9594599ccb6e0a73d5"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs",
+      "sha256": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/account_containment.py",
+      "sha256": "08245efa21f8364751ff316e734f38fb2c96b1e4e633246c0e02dce0b7677b51"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py",
+      "sha256": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py",
+      "sha256": "c0a25ce0f584b12921201effc19b0f36e8cb5f3680bad3c6c03230f3ce9fa146"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "sha256": "916e5d1220fa82346905fc71d9453579a3638a07a97b0a8d693910c0c34a923b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/iq1_identity_boundary.py",
+      "sha256": "676f9236b68efe2d076d466ec85df88c1a4547a8ff21461cd28d143deef90bd3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/packet.py",
+      "sha256": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r47-journal.json",
+      "sha256": "7ea07c21fdc737f671a025de9b44980b2771ddbe9cfdd02cfdb26b9063c5323f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r47-result.json",
+      "sha256": "fcb1eebc0764b9686cf97966cb5f41d535e4386015ec60d71ec10bc39dfab0d1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r51-live-20261115/local-closeout-verification.json",
+      "sha256": "9109229c263c1aa9dcf777aad5f01cece1a60981ead47d6894e49b38ded01d7e"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r51-live-20261115/native-result.json",
+      "sha256": "920b2c641716482ebbc8dffea8a08f9d31e1519b9e99e53e6bd89fdb80cee26c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_account_containment.py",
+      "sha256": "8729deb0946481aa55de4a80e8108d0a016c155996840e67f48f5c6a8aeea1a6"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_identity_sdk_observation.py",
+      "sha256": "1488f8e296420300a5399565aadc02bae5714ee1cdccdbb2d8e27b8dbcc7f26b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_iq1_identity_boundary.py",
+      "sha256": "1988269f4683cd4644422c5bf84cd097d5659a0831be15fbdd981ea6ad03cf5f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "sha256": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/composed_qualification.py",
+      "sha256": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py",
+      "sha256": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json",
+      "sha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/binding.py",
+      "sha256": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/candidate.json",
+      "sha256": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+      "sha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs",
+      "sha256": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/plan.json",
+      "sha256": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py",
+      "sha256": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+      "sha256": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-closeout-local-20261031/source/adapter.py",
+      "sha256": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py",
+      "sha256": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority_bridge.mjs",
+      "sha256": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs",
+      "sha256": "c6f11db3b9eb833bc742d1afed694f4ef2ce4414ff831264f77d84cc0b9a90d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py",
+      "sha256": "89f9c917012f9867f135d05d075608da3cb3a23f010cf73ac675f4cdc29ba7a0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py",
+      "sha256": "7e90e1a8b801412de66f8fc27d04ee3e48a2b81cd0f3011d36f14ccce1b2ca19"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs",
+      "sha256": "0d1241a397de199a3ee5783a81c5c752c473e7e47f84f5cbfc13870a10851e6c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py",
+      "sha256": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/operator_bridge.mjs",
+      "sha256": "d692b9a2e2fca5f63c4c0a9806a52d9ad49175c68c6b89fdb1c45081b155bb41"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/private_inventory.py",
+      "sha256": "97d2f27b6c4047420ff97f3a08e42bcc718d2577adecea3aaebaf98a99e446d0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "sha256": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/transports.mjs",
+      "sha256": "ff9ed3b2d51b69d43457bbe414f7209b32ceac517ea46fefcf9355bfd10cf584"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-clients.mjs",
+      "sha256": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "sha256": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+      "sha256": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",
+      "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py",
+      "sha256": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r54-live-20261117/native-result.json",
+      "sha256": "849697fd584717ebfaf79c14936a53222fc6a5257e95b5aaa9a45c7d45baba24"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r54-live-20261117/local-closeout-verification.json",
+      "sha256": "01a728cdf75149f4ede558bd41bec8413a86ae00d0f6d2a2672b805d06a011e9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs",
+      "sha256": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+      "sha256": "5795951b6456776dd0f8bbb7b7a10d053c086818b2e2e472b8e64d902cf3bd03"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/account_containment.py",
+      "sha256": "08245efa21f8364751ff316e734f38fb2c96b1e4e633246c0e02dce0b7677b51"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/account_containment_read.py",
+      "sha256": "c32dd44342c07c0ff0d30e184f1db4af2d308f44fabc10e0f8737f92d30d65dc"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py",
+      "sha256": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/identity_sdk_observation.py",
+      "sha256": "c0a25ce0f584b12921201effc19b0f36e8cb5f3680bad3c6c03230f3ce9fa146"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+      "sha256": "916e5d1220fa82346905fc71d9453579a3638a07a97b0a8d693910c0c34a923b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/iq1_identity_boundary.py",
+      "sha256": "676f9236b68efe2d076d466ec85df88c1a4547a8ff21461cd28d143deef90bd3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/packet.py",
+      "sha256": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r47-journal.json",
+      "sha256": "7ea07c21fdc737f671a025de9b44980b2771ddbe9cfdd02cfdb26b9063c5323f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r47-result.json",
+      "sha256": "fcb1eebc0764b9686cf97966cb5f41d535e4386015ec60d71ec10bc39dfab0d1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r51-live-20261115/local-closeout-verification.json",
+      "sha256": "9109229c263c1aa9dcf777aad5f01cece1a60981ead47d6894e49b38ded01d7e"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r51-live-20261115/native-result.json",
+      "sha256": "920b2c641716482ebbc8dffea8a08f9d31e1519b9e99e53e6bd89fdb80cee26c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_account_containment.py",
+      "sha256": "8729deb0946481aa55de4a80e8108d0a016c155996840e67f48f5c6a8aeea1a6"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_account_containment_read.py",
+      "sha256": "17b9f99f09cf61d3fc97508eeefc269b69f7fe0751221903d7304709a935fd98"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_identity_sdk_observation.py",
+      "sha256": "1488f8e296420300a5399565aadc02bae5714ee1cdccdbb2d8e27b8dbcc7f26b"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/test_iq1_identity_boundary.py",
+      "sha256": "1988269f4683cd4644422c5bf84cd097d5659a0831be15fbdd981ea6ad03cf5f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs",
+      "sha256": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/composed_qualification.py",
+      "sha256": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py",
+      "sha256": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json",
+      "sha256": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/binding.py",
+      "sha256": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/candidate.json",
+      "sha256": "d384d310122470abe16b4dd034b91e8faa47e5f5db89b2d512534784f474e112"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/key_check.mjs",
+      "sha256": "4553225c8ef3b70512b91ee7a8cb2b60ac631d98f63091e8a709d197203543fe"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+      "sha256": "d82c0c0fb95f6358fb7d4eebc919e50c0ae751c1ae98cbda0e6006b0aa757dc5"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-key-correction-20261110/test_key_check.mjs",
+      "sha256": "d2b6c34cab0c0960bac10785049732f1eb2872cb47c4144cda720792c22f7d87"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-live-binder-local-20261029/source/coordinator.py",
+      "sha256": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/operator-bridge.mjs",
+      "sha256": "080f8a2a4493598d0c15ad5212b55b52604809a76119a7803a2e80016bcde851"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-local-preparation-20261022/plan.json",
+      "sha256": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-narrow-access-check-local-20261101/source/access_check.py",
+      "sha256": "720842849586323e06eef0993578b0a7e10d35bcf6266d68628228242c5be9d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-bridge-local-20261029/source/bridge.py",
+      "sha256": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-closeout-local-20261031/source/adapter.py",
+      "sha256": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority.py",
+      "sha256": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/authority_bridge.mjs",
+      "sha256": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/connected_payment.mjs",
+      "sha256": "c6f11db3b9eb833bc742d1afed694f4ef2ce4414ff831264f77d84cc0b9a90d9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py",
+      "sha256": "89f9c917012f9867f135d05d075608da3cb3a23f010cf73ac675f4cdc29ba7a0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/handoff.py",
+      "sha256": "7e90e1a8b801412de66f8fc27d04ee3e48a2b81cd0f3011d36f14ccce1b2ca19"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs",
+      "sha256": "0d1241a397de199a3ee5783a81c5c752c473e7e47f84f5cbfc13870a10851e6c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py",
+      "sha256": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/operator_bridge.mjs",
+      "sha256": "d692b9a2e2fca5f63c4c0a9806a52d9ad49175c68c6b89fdb1c45081b155bb41"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/private_inventory.py",
+      "sha256": "97d2f27b6c4047420ff97f3a08e42bcc718d2577adecea3aaebaf98a99e446d0"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+      "sha256": "86e85ec13f1647924e12ef724b32b0123a0baaf3f2732d41bd51a59ffcc0c94c"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-native-entry-local-20261101/source/transports.mjs",
+      "sha256": "ff9ed3b2d51b69d43457bbe414f7209b32ceac517ea46fefcf9355bfd10cf584"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-clients.mjs",
+      "sha256": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound_handoff.py",
+      "sha256": "ecb138f5bd1401b7f84661aeab062c9fb0c0d26358d321f74ade93beac5b494f"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs",
+      "sha256": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-restoration-local-20261028/source/restore.py",
+      "sha256": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-role-contract-local-20261029/source/qualification_launch.py",
+      "sha256": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r54-live-20261117/native-result.json",
+      "sha256": "849697fd584717ebfaf79c14936a53222fc6a5257e95b5aaa9a45c7d45baba24"
+    },
+    {
+      "manifest": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+      "field": "files",
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r54-live-20261117/local-closeout-verification.json",
+      "sha256": "01a728cdf75149f4ede558bd41bec8413a86ae00d0f6d2a2672b805d06a011e9"
+    }
+  ],
+  "historicalR56Unchanged": [
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/R56_CHILD_RESULT_LOCAL_DIAGNOSIS_20261118.md",
+      "sha256": "49dd032b698bc4738585792985a30622fd3de4072acc16df7ee516615e1db051"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/child-1.json",
+      "sha256": "030529c5327cb0a5418c85828f13142eb650b901d88e7c7a82c5d8cbb235d755"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/child-2.json",
+      "sha256": "ce0ff150385a675c506eac0484f7bc14b392505d2fea27d2d922bc535f477b8b"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/child-3.json",
+      "sha256": "5e942e340d1fb89b56bf9f4c7da3ddbc0abc7106ef50ef763e34be0353cb2ceb"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/child-4.json",
+      "sha256": "27fbab124fb0f07c1f459e6474e21eb8e5a444999756302dc2d6e354cfab07ba"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/closeout.json",
+      "sha256": "5ea39be59416782ef4bc48b1014eaa9bdb12739bec120b93f520205059f9fa02"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/journal.json",
+      "sha256": "b4fda98764fa570eb46e76fd917777ea1dce4a737745108b4e964f8394a0438d"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/recovery-purge-result.json",
+      "sha256": "3f33145e9d827e76e36698da4b67c90335addb81a53fc868eced5bdca8e90554"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/recovery-resource-closeout.json",
+      "sha256": "cb524bb80fbd3f6723cf552f276e21639827ecf27ef8bc93e8d3102a701c9223"
+    },
+    {
+      "path": "evidence/APP-013/p08-connected-packet-20261110/r56-stop-20261117/result.json",
+      "sha256": "54dbc72a0e634674c9666e50b440a1efd3aae5f4103291dcdf90878c954b9e01"
+    }
+  ],
+  "staleCurrentReferences": [],
+  "externalActions": 0
+}

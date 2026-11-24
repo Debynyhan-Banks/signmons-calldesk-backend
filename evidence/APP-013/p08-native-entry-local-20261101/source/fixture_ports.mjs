@@ -39,7 +39,8 @@ const fetcher=async(url,opts)=>{
     const t=Math.floor(Date.now()/1000);
     const claims={sub:target.id,tenantId:target.tenantId,role:'admin',testOnly:true,
       iss:'https://securetoken.google.com/signmons',aud:'signmons',exp:t+300,iat:t};
-    value={localId:target.id,idToken:'header.'+Buffer.from(JSON.stringify(claims)).toString('base64url')+'.signature'};
+    value={idToken:'header.'+Buffer.from(JSON.stringify(claims)).toString('base64url')+'.signature',
+      refreshToken:'EC1_PRIVATE_SENTINEL_REFRESH',expiresIn:'3600',isNewUser:false};
   }else if(url.endsWith('/jobs/dispatch-board/'+e.plan.jobId))value={jobId:e.plan.jobId};
   else throw Error('UNLISTED_FIXTURE_HTTPS');
   return {ok:true,text:async()=>JSON.stringify(value)};

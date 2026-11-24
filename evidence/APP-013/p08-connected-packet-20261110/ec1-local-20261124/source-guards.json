@@ -1,0 +1,96 @@
+{
+  "status": "EC1_LOCAL_SOURCE_GUARDS_PASS",
+  "checkedAt": "2026-11-24 09:58:44 UTC",
+  "sourceGuards": [
+    {
+      "label": "p08-serialized-handoff-local-20261031/source",
+      "chunk_id": "208154",
+      "wall_time_seconds": 0.217179333,
+      "exit_code": 0,
+      "original_token_count": 5,
+      "output": "source guard PASS\n"
+    },
+    {
+      "label": "p08-real-client-binding-local-20261031/source",
+      "chunk_id": "6a8073",
+      "wall_time_seconds": 0.215706917,
+      "exit_code": 0,
+      "original_token_count": 5,
+      "output": "source guard PASS\n"
+    },
+    {
+      "label": "p08-native-entry-local-20261101/source",
+      "chunk_id": "6a6b6f",
+      "wall_time_seconds": 0.245570125,
+      "exit_code": 0,
+      "original_token_count": 5,
+      "output": "source guard PASS\n"
+    }
+  ],
+  "precommitGates": [
+    {
+      "label": "frozen-baseline",
+      "command": "node scripts/frozen-baseline-check.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "chunk_id": "3cefc9",
+      "wall_time_seconds": 0.470716209,
+      "exit_code": 0,
+      "original_token_count": 8,
+      "output": "frozen-baseline-check passed\n"
+    },
+    {
+      "label": "complete-consistency",
+      "command": "SIGNMONS_BACKEND_REPO='/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery' node scripts/docs-consistency-check.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "chunk_id": "49b9d1",
+      "wall_time_seconds": 0.488609458,
+      "exit_code": 0,
+      "original_token_count": 8,
+      "output": "docs-consistency-check passed\n"
+    },
+    {
+      "label": "backend-baseline",
+      "command": "SIGNMONS_GOVERNANCE_REPO='/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery' node scripts/check-governance-baseline.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "chunk_id": "13a9a0",
+      "wall_time_seconds": 0.4959575,
+      "exit_code": 0,
+      "original_token_count": 8,
+      "output": "docs-consistency-check passed\n"
+    },
+    {
+      "label": "architecture",
+      "command": "node scripts/architecture-check.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "chunk_id": "93bb00",
+      "wall_time_seconds": 0.448117958,
+      "exit_code": 0,
+      "original_token_count": 7,
+      "output": "architecture-check passed\n"
+    },
+    {
+      "label": "backend-whitespace",
+      "command": "git diff --check",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "chunk_id": "effcef",
+      "wall_time_seconds": 0.410897375,
+      "exit_code": 0,
+      "original_token_count": 0,
+      "output": ""
+    },
+    {
+      "label": "governance-whitespace",
+      "command": "git diff --check",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "chunk_id": "3be7f6",
+      "wall_time_seconds": 0.395200833,
+      "exit_code": 0,
+      "original_token_count": 0,
+      "output": ""
+    }
+  ],
+  "exactAuthenticateSourceUnchanged": true,
+  "exactSourceFileCount": 18,
+  "ownerChangesPreserved": true,
+  "externalActions": 0
+}

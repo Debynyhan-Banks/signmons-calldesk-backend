@@ -1,0 +1,31 @@
+......................................................................................E................................................................
+======================================================================
+ERROR: test_ec1_token_identity_time_and_runtime_failures_never_reach_payment (test_entry.JournalContractIntegrationTests.test_ec1_token_identity_time_and_runtime_failures_never_reach_payment) (scenario={'kind': 'claim', 'field': 'testOnly', 'value': False})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1778, in test_ec1_token_identity_time_and_runtime_failures_never_reach_payment
+    self.ec1_completed(scenario)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1698, in ec1_completed
+    fixture, work, final, journal, _ = self.completed('normal', mutate_io=inject)
+                                       ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1486, in completed
+    work = entry.run_entry(fixture.path, io_factory=factory)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/entry.py", line 651, in run_entry
+    cap = Capability(e, path.parent, mode, clock, read_commit)
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/authority.py", line 107, in __init__
+    validate_payment(e, times)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/authority.py", line 187, in validate_payment
+    need(times['start'] < stamp(p['workEnd']) <= times['workEnd'] - 60 and
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         stamp(p['approvedAt']) <= times['start'] and stamp(p['jobUpdatedAt']) <= times['start'], 'PAYMENT_TIMING')
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/private_inventory.py", line 15, in need
+    raise Stop(code)
+private_inventory.Stop: PAYMENT_TIMING
+
+----------------------------------------------------------------------
+Ran 151 tests in 98.775s
+
+FAILED (errors=1)

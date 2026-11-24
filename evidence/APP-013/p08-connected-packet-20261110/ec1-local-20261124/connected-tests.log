@@ -1,0 +1,15 @@
+Explicitly inapplicable database/browser cases:
+test_account_containment_read.CT3DisposableTLS.test_actual_main_and_independent_sql_readonly_tls_and_self_exclusion
+test_account_containment_read.CT3DisposableTLS.test_each_exact_r51_session_blocks_both_descriptors
+test_account_containment_read.CT3DisposableTLS.test_existing_role_and_qualification_predicates_and_unrelated_exclusion
+test_account_containment_read.CT3DisposableTLS.test_independent_sql_detects_account_becoming_active
+test_account_containment_read.CT3DisposableTLS.test_untrusted_tls_and_unlisted_sql_refuse_and_reap_owned_processes
+test_bootstrap_open.BootstrapTests.test_actual_loopback_bridge_and_headless_chrome_handoff
+test_bootstrap_open.BootstrapTests.test_production_jxa_dispatches_loopback_and_closes_only_owned_window
+Applicable local cases: 419
+...................................................................................fatal: not a git repository (or any of the parent directories): .git
+................................................................................................................................................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 419 tests in 40.794s
+
+OK

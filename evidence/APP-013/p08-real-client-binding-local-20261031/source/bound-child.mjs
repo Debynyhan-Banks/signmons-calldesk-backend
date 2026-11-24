@@ -71,7 +71,8 @@ function fixturePorts(v, journal) {
       value = {localId: target.id};
     } else if (url.includes(':signBlob')) value = {signedBlob: Buffer.from('synthetic-signature').toString('base64')};
     else if (url.endsWith('/keyString')) value = {keyString: 'synthetic-only-key'};
-    else if (url.includes('signInWithCustomToken')) value = {localId: target.id, idToken};
+    else if (url.includes('signInWithCustomToken')) value = {idToken,
+      refreshToken: 'EC1_PRIVATE_SENTINEL_REFRESH', expiresIn: '3600', isNewUser: false};
     else if (url === `${v.runtime.origin}/jobs/dispatch-board/${v.plan.jobId}`)
       value = {jobId: v.plan.jobId};
     else throw Error('UNLISTED_URL');

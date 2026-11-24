@@ -838,12 +838,13 @@ class ConnectedEntryTests(EntryTests):
         approved={'draft':draft,'actorId':self.e['target']['id'],'approvedAt':stamp}
         self.e['version']=2
         self.e['limits']['cli']=192
+        # Share the parent fixture's captured clock so setup cannot shorten the payment reserve.
         self.e['payment']={'qualificationId':str(uuid.uuid4()),'endpointId':'we_synthetic','endpointSha256':a.digest(b'we_synthetic'),
             'apiVersion':'2026-03-25.dahlia','url':'https://app013-p07-atomic---signmons-calldesk-staging-p572d6wipq-ul.a.run.app/webhooks/stripe',
             'connectedAccountSha256':a.digest(b'acct_synthetic'),'amountTotalCents':12500,'currency':'usd',
             'approvedAt':stamp,'policyDigest':a.digest(json.dumps(approved,separators=(',',':')).encode()),
             'jobUpdatedAt':stamp,'requestId':str(uuid.uuid4()),
-            'workEnd':datetime.datetime.fromtimestamp(time.time()+(1940 if self.timing_window else 90),datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+            'workEnd':datetime.datetime.fromtimestamp(self.f.now+(1940 if self.timing_window else 90),datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
         self.e['qualification']['scopeSha256']=a.digest({k:self.e[k] for k in ('plan','target','database','resources','limits','payment')})
         self.seal()
 
@@ -1623,6 +1624,159 @@ try {
                 expected = 'TIMEOUT' if fault == 'timeout' else 'EXIT_UNKNOWN' if fault in {'exit', 'interruption'} else 'REFUSED'
                 self.assertEqual(primary['processOutcome'], expected)
                 self.assertEqual(primary['journalMerge'], 'ACCEPTED')
+
+    def ec1_completed(self, scenario, *, success=False):
+        """Exercise the documented exchange through actual authentication and parent merge."""
+        observed = []
+        script = """import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {runChild,childRefusal,readChildRequest,serializeChildResult} from %s;
+import {portsFor,rawFor} from %s;
+try {
+ const request=readChildRequest(),e=JSON.parse(readFileSync(request.envelopePath));
+ const ports=portsFor({r:request,e,raw:rawFor(e)}),fetcher=ports.fetcher,present=ports.present;
+ const scenario=%s,success=%s;
+ const counts={sign:0,key:0,exchange:0,job:0,paymentWrites:0,present:0};
+ ports.fetcher=async(url,options)=>{
+  if(url.includes(':signBlob'))counts.sign++;
+  if(url.endsWith('/keyString'))counts.key++;
+  if(url.includes('/jobs/dispatch-board/')){
+   counts.job++;
+   if(scenario.kind==='runtime')return {ok:false,status:scenario.status,text:async()=>'PRIVATE_SENTINEL'};
+   if(scenario.kind==='job')return {ok:true,status:200,text:async()=>JSON.stringify({jobId:'PRIVATE_SENTINEL'})};
+  }
+  if((url.startsWith('https://api.stripe.com/')&&options.method==='POST')||
+     url.endsWith('/job-payment-policy/apply')||url.endsWith('/payment-requests'))counts.paymentWrites++;
+  const response=await fetcher(url,options);
+  if(!url.includes('signInWithCustomToken'))return response;
+  counts.exchange++;
+  const value=JSON.parse(await response.text());
+  assert.deepEqual(Object.keys(value).sort(),['expiresIn','idToken','isNewUser','refreshToken']);
+  if(scenario.kind==='matching'||scenario.matchingLocalId)value.localId=e.target.id;
+  if(scenario.kind==='localId')value.localId=scenario.value;
+  if(scenario.kind==='missing-token')delete value.idToken;
+  if(scenario.kind==='token')value.idToken=scenario.value;
+  if(scenario.kind==='claim'||scenario.kind==='time'){
+   const parts=value.idToken.split('.'),claims=JSON.parse(Buffer.from(parts[1],'base64url').toString());
+   claims[scenario.field]=scenario.kind==='time'?Math.floor(Date.now()/1000)+scenario.offset:scenario.value;
+   value.idToken=parts[0]+'.'+Buffer.from(JSON.stringify(claims)).toString('base64url')+'.'+parts[2];
+  }
+  return {ok:true,status:200,text:async()=>JSON.stringify(value)};
+ };
+ ports.present=async url=>{counts.present++;assert.ok(counts.job>0);return present(url);};
+ const result=await runChild(process.argv[1],structuredClone(request),ports);
+ assert.equal(result.authenticated,success);
+ assert.equal(result.sessionClosed,true);assert.deepEqual(result.residuals,[]);
+ assert.deepEqual([counts.sign,counts.key,counts.exchange],[1,1,1]);
+ if(success){assert.ok(counts.job>0);assert.ok(counts.paymentWrites>0);assert.equal(counts.present,1);}
+ else {
+  assert.equal(counts.job,['runtime','job'].includes(scenario.kind)?1:0);
+  assert.equal(counts.paymentWrites,0);assert.equal(counts.present,0);
+ }
+ const path=request.envelopePath.replace(/envelope\\.json$/,'journal.json');
+ const before=readFileSync(path,'utf8'),countBefore=JSON.stringify(counts);
+ assert.ok(!before.includes('PRIVATE_SENTINEL'));assert.ok(!before.includes('header.'));
+ await assert.rejects(()=>runChild(process.argv[1],structuredClone(request),ports),{code:'EEXIST'});
+ assert.equal(JSON.stringify(counts),countBefore);assert.equal(readFileSync(path,'utf8'),before);
+ process.stdout.write(serializeChildResult(result));
+} catch(error) {process.stdout.write(JSON.stringify(childRefusal(error))+'\\n');process.exitCode=2;}
+""" % (json.dumps((a.HERE/'native_child.mjs').as_uri()),
+       json.dumps((a.HERE/'fixture_connected.mjs').as_uri()), json.dumps(scenario),
+       'true' if success else 'false')
+        def inject(io, cap, fixture):
+            child = io.child
+            def invoke(argv, **kwargs):
+                if argv[2] != '--run':
+                    return child(argv, **kwargs)
+                result = subprocess.run([argv[0], '--input-type=module', '-e', script, '--', argv[2]], **kwargs)
+                observed.append(copy.deepcopy(read(fixture.root/'journal.json').get('authClient')))
+                self.assertEqual(result.returncode, 0, result.stdout)
+                self.assertEqual(result.stderr, '')
+                self.assertNotIn('PRIVATE_SENTINEL', result.stdout)
+                self.assertNotIn('header.', result.stdout)
+                return result
+            io.child = invoke
+        fixture, work, final, journal, _ = self.completed('normal', mutate_io=inject)
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(observed[0]['authenticated'], success)
+        auth = journal['authClient']
+        self.assertEqual(auth['authenticated'], success)
+        self.assertEqual(auth['phase'], 'CLOSEOUT_FINISHED')
+        self.assertEqual(auth['residuals'], [])
+        self.assertTrue(auth['sessionClosed'])
+        self.assertEqual(journal['authProofAccepted'], success)
+        self.assertEqual(final['authenticationObserved'], success)
+        self.assertEqual(final['paymentObserved'], success)
+        self.assertEqual(work['paymentObserved'], success)
+        self.assertFalse(final['authProofReady'] or final['paymentReadyForAcceptance'])
+        self.assertFalse(any(fixture.f.runtime_state.values()))
+        self.assertNotIn('childResultSha256', work)
+        self.assertTrue(journal['payment']['endpointDisabled'])
+        self.assertTrue(journal['payment']['bridgeClosed'])
+        self.assertEqual(journal['payment']['residuals'], [])
+        if success:
+            self.assertEqual(final['status'], 'ENTRY_CLOSED')
+            self.assertEqual(final['residuals'], [])
+            self.assertRegex(final['childResultSha256'], '^[a-f0-9]{64}$')
+            self.assertEqual(journal['payment']['outcome'], 'APPLICATION_SETTLED')
+            self.assertNotIn('failureCode', auth)
+        else:
+            self.assertEqual(final['status'], 'ENTRY_CONTAINMENT_UNCONFIRMED')
+            self.assertEqual(final['residuals'], ['AUTH_OUTCOME_UNKNOWN'])
+            self.assertIsNone(final['childResultSha256'])
+            self.assertFalse(journal['payment']['enableIntent'])
+            self.assertEqual(journal['payment']['outcome'], 'NOT_OBSERVED')
+            if scenario['kind'] in {'localId', 'missing-token', 'token'}:
+                self.assertEqual((auth['failureCode'], auth['authStage'], auth['failureCategory'],
+                                  auth['httpStatus'], auth['responseValidationCode']),
+                                 ('SIGN_EXCHANGE_REFUSED', 'EXCHANGE', 'RESPONSE_VALIDATION', None,
+                                  'EXCHANGE_RESPONSE_MISMATCH'))
+            else:
+                self.assertNotIn('responseValidationCode', auth)
+        observations = journal['nativeEntry']['childObservations']
+        self.assertTrue(all(x['journalMerge'] == 'ACCEPTED' for x in observations))
+        self.assertEqual(sum(x['mode'] == '--run' for x in observations), 1)
+        if success:
+            # The successful sequence already closes authentication. The handoff,
+            # main coordinator closeout and independent closeout each read it back.
+            self.assertEqual([x['mode'] for x in observations],
+                             ['--payment-preflight', '--run', '--readback', '--readback', '--readback'])
+            self.assertTrue(all(x['processOutcome'] == 'RETURNED' and x['code'] == 'NONE'
+                                for x in observations))
+            self.assertTrue(auth['closeoutAttempted'])
+            for name in ('closeout.json', 'independent-closeout.json'):
+                self.assertEqual(read(fixture.root/name), {'operationId': fixture.f.p['operationId']})
+        else:
+            self.assertTrue(any(x['mode'] == '--closeout' for x in observations))
+        for path in fixture.root.iterdir():
+            self.assertNotIn(b'header.', path.read_bytes())
+
+    def test_ec1_documented_response_and_optional_identity_reach_authenticated_payment(self):
+        for kind in ('documented', 'matching'):
+            with self.subTest(kind=kind):
+                self.ec1_completed({'kind': kind}, success=True)
+
+    def test_ec1_invalid_exchange_fields_stop_before_authentication_and_payment(self):
+        cases = ([{'kind': 'localId', 'value': value} for value in ('PRIVATE_SENTINEL', None, 7)] +
+                 [{'kind': 'missing-token'}] +
+                 [{'kind': 'token', 'value': value} for value in (None, 7, '')])
+        for scenario in cases:
+            with self.subTest(scenario=scenario):
+                self.ec1_completed(scenario)
+
+    def test_ec1_token_identity_time_and_runtime_failures_never_reach_payment(self):
+        cases = ([{'kind': 'claim', 'field': field, 'value': value} for field, value in
+                  (('sub', 'PRIVATE_SENTINEL'), ('tenantId', 'PRIVATE_SENTINEL'),
+                   ('role', 'PRIVATE_SENTINEL'), ('testOnly', False),
+                   ('iss', 'PRIVATE_SENTINEL'), ('aud', 'PRIVATE_SENTINEL'))] +
+                 [{'kind': 'time', 'field': 'iat', 'offset': 60},
+                  {'kind': 'time', 'field': 'exp', 'offset': -1},
+                  {'kind': 'claim', 'field': 'sub', 'value': 'PRIVATE_SENTINEL', 'matchingLocalId': True},
+                  {'kind': 'runtime', 'status': 401}, {'kind': 'runtime', 'status': 403},
+                  {'kind': 'job'}])
+        for scenario in cases:
+            with self.subTest(scenario=scenario):
+                self.ec1_completed(scenario)
 
     def test_previous_schema_reproduces_the_observed_evidence_loss(self):
         import handoff

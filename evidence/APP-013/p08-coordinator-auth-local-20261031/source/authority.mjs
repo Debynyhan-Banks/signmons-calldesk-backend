@@ -57,7 +57,11 @@ export function verifySources() {
     .replace("apiKey=key.keyString;need(typeof apiKey==='string'&&hash(apiKey)===p.exchange.keySha256,'EXCHANGE_CONFIG_DRIFT');", "responseValidationCode='KEY_RESPONSE_MISMATCH';apiKey=key.keyString;need(typeof apiKey==='string'&&hash(apiKey)===p.exchange.keySha256,'EXCHANGE_CONFIG_DRIFT');responseValidationCode=null;")
     .replace("need(v.localId===s.id&&typeof v.idToken==='string','EXCHANGE_IDENTITY_DRIFT');", "responseValidationCode='EXCHANGE_RESPONSE_MISMATCH';need(v.localId===s.id&&typeof v.idToken==='string','EXCHANGE_IDENTITY_DRIFT');responseValidationCode=null;")
     .replace("authStage:stage,failureCategory,httpStatus})", "authStage:stage,failureCategory,httpStatus,...(failureCategory==='RESPONSE_VALIDATION'&&responseValidationCode?{responseValidationCode}:{})})");
-  need(readFileSync(resolve(HERE, 'client.mjs'), 'utf8') === instrumented, 'EXTRACTION_DRIFT');
+  // EC1: the documented exchange response omits localId; retain optional consistency.
+  const contractAligned = instrumented.replace(
+    "need(v.localId===s.id&&typeof v.idToken==='string','EXCHANGE_IDENTITY_DRIFT')",
+    "need((v.localId===undefined||v.localId===s.id)&&typeof v.idToken==='string'&&v.idToken.length>0,'EXCHANGE_IDENTITY_DRIFT')");
+  need(readFileSync(resolve(HERE, 'client.mjs'), 'utf8') === contractAligned, 'EXTRACTION_DRIFT');
   return true;
 }
 
