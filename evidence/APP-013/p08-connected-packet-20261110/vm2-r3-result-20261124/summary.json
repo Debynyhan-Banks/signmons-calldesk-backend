@@ -1,0 +1,125 @@
+{
+  "acceptedMilestones": "1A/1B/2A/2B remain4/8; R1 newly closed0/27.",
+  "actualMainExitWitness": {
+    "actualReturnedResultSha256": "35fbae206df686735eb6a5df8bb662bc55db95aee0b57e724777ee2aef494ee5",
+    "exitCode": 0,
+    "provenance": "Actual direct execution exit observed by the executing root agent and relayed to this independent receipt auditor; corroborated by the referenced independent-closeout record. Not reconstructed from result.json."
+  },
+  "approvalCommitPrefix": "9add929",
+  "closeout": {
+    "configurationUnchanged": true,
+    "independentProcessAbsence": true,
+    "onTime": true,
+    "processCleanupVerified": true,
+    "responseClosed": true
+  },
+  "completedAt": "2026-11-24T13:48:28.340184+00:00",
+  "countMeaning": "Logical reservations; SDK-internal authentication/network totals remain UNKNOWN.",
+  "counts": {
+    "cache": 1,
+    "cli": 2,
+    "https": 1
+  },
+  "failure": null,
+  "independentPostExitEvidence": {
+    "actualMainExitCode": 0,
+    "attribution": "Post-exit OS/configuration observations are the executing root agent independent-closeout evidence. This audit performed no process or configuration calls.",
+    "completedAt": "2026-11-24T13:49:15.843917+00:00",
+    "configurationUnchanged": true,
+    "inspectionAncestorsExcluded": true,
+    "matchingProcessCount": 0,
+    "onTime": true,
+    "ownedTemporaryInputs": "NONE_CREATED; direct reviewed command used",
+    "source": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery/APP013_P08_VM2_R3_INDEPENDENT_CLOSEOUT_20261124.json",
+    "sourceSha256": "da3560dae981372371aada0469eef279b8e0d46f8c972fb72915fe55b198f6ec"
+  },
+  "independentReceiptVerification": {
+    "actualFunction": "vm2_metadata_read.read_result",
+    "byteIdenticalCopies": true,
+    "copiedReadback": "PASS",
+    "custodyModesOwnershipRegularSingleLink": "PASS",
+    "expectedCanonicalResultSha256": "35fbae206df686735eb6a5df8bb662bc55db95aee0b57e724777ee2aef494ee5",
+    "originalReadback": "PASS",
+    "receiptInventorySha256": "01416f6c4739c91bfa9ab52652bba676fd79b1084c74c981fdc8f1cf99788e83",
+    "safeReceiptCount": 7,
+    "safeSchemas": "PASS"
+  },
+  "interpretation": "The current exact metadata request received HTTP403/PERMISSION_DENIED with provider-reported BILLING_DISABLED and matched service/consumer flags. Two supplemental UNKNOWN rows preserve overall outcome UNKNOWN. This does not prove a unique underlying billing cause, reconstruct earlier discarded responses, or establish usable secret access/state.",
+  "metadata": {
+    "errorCode": 403,
+    "errorEnvelopeValid": true,
+    "errorInfo": [
+      {
+        "domain": "googleapis.com",
+        "metadataMatches": {
+          "consumer": "MATCH",
+          "permission": "UNKNOWN",
+          "service": "MATCH",
+          "target": "UNKNOWN"
+        },
+        "reason": "BILLING_DISABLED"
+      },
+      {
+        "domain": "UNKNOWN",
+        "metadataMatches": {
+          "consumer": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "service": "UNKNOWN",
+          "target": "UNKNOWN"
+        },
+        "reason": "UNKNOWN"
+      },
+      {
+        "domain": "UNKNOWN",
+        "metadataMatches": {
+          "consumer": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "service": "UNKNOWN",
+          "target": "UNKNOWN"
+        },
+        "reason": "UNKNOWN"
+      }
+    ],
+    "errorStatus": "PERMISSION_DENIED",
+    "failure": null,
+    "failureCategory": "HTTP",
+    "httpStatus": 403,
+    "outcome": "UNKNOWN",
+    "resourceMatched": false,
+    "responseClosed": true,
+    "state": "UNKNOWN"
+  },
+  "operationId": "0d360f5b-2f79-476c-a1d1-0434c7a8a210",
+  "ownerMatched": true,
+  "paymentAttempted": false,
+  "privacy": {
+    "arbitraryMessageMetadataOrSupplementalPayloadRetained": false,
+    "executionOrCloseoutRetried": false,
+    "inputsRecreated": false,
+    "numericProjectOrBillingAccountIdentifierRetained": false,
+    "processQueriesOrSignalsDuringAudit": 0,
+    "providerOrCacheCredentialCallsDuringAudit": 0,
+    "retained": "Only seven safe JSON receipts plus inventory and summary. Original consumed root and markers preserved.",
+    "tokenSecretOrRawResponseRetained": false
+  },
+  "projectMatched": true,
+  "remaining": "Section3A remains open; no automatic diagnosis retry, provider change or payment follows from this receipt.",
+  "residuals": [],
+  "responsibility": {
+    "cloudCredentialCustodian": "Any further external diagnosis or change requires separate bounded approval.",
+    "implementer": "Receipt validation and safe retention complete.",
+    "owner": "No additional authority is inferred."
+  },
+  "scope": "No scope deviation.",
+  "scopeSha256": "b961a79f3ce262f7f6b8de0ecd023485ce447550d3dfbec13085ce8186647b9e",
+  "section": "APP-013 / 3A / P08 / VM2 R3",
+  "sourceCommit": "7dff026642106719ea3990c53f5723f9199e36b0",
+  "status": "METADATA_DIAGNOSED",
+  "unknowns": [
+    "Exact current secret-version state and usable access",
+    "Specific underlying cause beyond the safe provider-reported label",
+    "Historical VM2 R2 and R57 discarded response causes",
+    "Full connected payment readiness"
+  ],
+  "verifiedAt": "2026-11-24T13:51:20.349981+00:00"
+}
