@@ -337,6 +337,88 @@ class SafeProjection(Fixture):
         self.assertEqual(result["errorInfo"][0]["metadataMatches"]["target"], "MISMATCH")
         self.assertEqual(result["errorInfo"][0]["metadataMatches"]["consumer"], "UNKNOWN")
 
+    def test_documented_google_reason_labels_are_retained_without_shared_changes(self):
+        # Public google/api/error_reason.proto snapshot reviewed 2026-11-24.
+        documented = set(('SERVICE_DISABLED BILLING_DISABLED API_KEY_INVALID API_KEY_SERVICE_BLOCKED '
+            'API_KEY_HTTP_REFERRER_BLOCKED API_KEY_IP_ADDRESS_BLOCKED API_KEY_ANDROID_APP_BLOCKED '
+            'API_KEY_IOS_APP_BLOCKED RATE_LIMIT_EXCEEDED RESOURCE_QUOTA_EXCEEDED LOCATION_TAX_POLICY_VIOLATED '
+            'USER_PROJECT_DENIED CONSUMER_SUSPENDED CONSUMER_INVALID SECURITY_POLICY_VIOLATED '
+            'ACCESS_TOKEN_EXPIRED ACCESS_TOKEN_SCOPE_INSUFFICIENT ACCOUNT_STATE_INVALID '
+            'ACCESS_TOKEN_TYPE_UNSUPPORTED CREDENTIALS_MISSING RESOURCE_PROJECT_INVALID SESSION_COOKIE_INVALID '
+            'USER_BLOCKED_BY_ADMIN RESOURCE_USAGE_RESTRICTION_VIOLATED SYSTEM_PARAMETER_UNSUPPORTED '
+            'ORG_RESTRICTION_VIOLATION ORG_RESTRICTION_HEADER_INVALID SERVICE_NOT_VISIBLE GCP_SUSPENDED '
+            'LOCATION_POLICY_VIOLATED MISSING_ORIGIN OVERLOADED_CREDENTIALS LOCATION_ORG_POLICY_VIOLATED '
+            'TLS_ORG_POLICY_VIOLATED EMULATOR_QUOTA_EXCEEDED CREDENTIAL_ANDROID_APP_INVALID '
+            'IAM_PERMISSION_DENIED JWT_TOKEN_INVALID CREDENTIAL_TYPE_UNSUPPORTED ACCOUNT_TYPE_UNSUPPORTED '
+            'ENDPOINT_USAGE_RESTRICTION_VIOLATED TLS_CIPHER_RESTRICTION_VIOLATED MCP_SERVER_DISABLED').split())
+        self.assertEqual(len(documented), 43)
+        self.assertEqual(v.GOOGLE_ERROR_REASONS, documented)
+        reasons, domains = v.sq.REASONS, v.sq.DOMAINS
+        for reason in sorted(documented):
+            with self.subTest(reason=reason):
+                result = self.project(403, denial(reason=reason, domain="googleapis.com"))
+                self.assertEqual(result["outcome"], "REFUSED")
+                self.assertEqual(result["errorInfo"][0]["reason"], reason)
+                self.assertEqual(result["errorInfo"][0]["domain"], "googleapis.com")
+                self.assertTrue(result["errorEnvelopeValid"])
+                self.assertEqual(result["state"], "UNKNOWN")
+                self.assertFalse(result["resourceMatched"])
+        self.assertIs(v.sq.REASONS, reasons)
+        self.assertIs(v.sq.DOMAINS, domains)
+        shared = v.sq.classify_sign_response(403, wire(denial(reason="BILLING_DISABLED", domain="googleapis.com")))
+        self.assertEqual(shared["errorInfo"][0]["reason"], "UNKNOWN")
+
+    def test_added_google_reasons_require_exact_domain_and_default_stays_unknown(self):
+        for reason in sorted(v.GOOGLE_ERROR_REASONS - v.sq.REASONS):
+            for domain in ("iam.googleapis.com", "Googleapis.com", "googleapis.com/policies/endpointUsageRestriction",
+                           "googleapis.com/policies/tlsCipherRestriction", PRIVATE):
+                with self.subTest(reason=reason, domain=domain):
+                    result = self.project(403, denial(reason=reason, domain=domain))
+                    self.assertEqual(result["outcome"], "UNKNOWN")
+                    self.assertEqual(result["errorInfo"][0]["reason"], "UNKNOWN")
+        for reason in ("ERROR_REASON_UNSPECIFIED", "BILLING_DISABLED_PRIVATE", "billing_disabled", PRIVATE):
+            result = self.project(403, denial(reason=reason, domain="googleapis.com"))
+            self.assertEqual(result["outcome"], "UNKNOWN")
+            self.assertEqual(result["errorInfo"][0]["reason"], "UNKNOWN")
+
+    def test_new_reason_with_supplemental_or_unknown_details_stays_unknown(self):
+        for extra in ({"@type": "type.googleapis.com/google.rpc.Help", "links": [{"url": PRIVATE}]},
+                      {"@type": "type.googleapis.com/google.rpc.LocalizedMessage", "message": PRIVATE},
+                      denial(reason=PRIVATE, domain="googleapis.com")["error"]["details"][0]):
+            body = denial(reason="BILLING_DISABLED", domain="googleapis.com")
+            body["error"]["details"].append(extra)
+            result = self.project(403, body)
+            self.assertEqual(result["outcome"], "UNKNOWN")
+            self.assertEqual([row["reason"] for row in result["errorInfo"]], ["BILLING_DISABLED", "UNKNOWN"])
+
+    def test_new_old_and_already_collapsed_conflicts_cannot_be_remapped(self):
+        cases = (("BILLING_DISABLED", "USER_PROJECT_DENIED"),
+                 ("BILLING_DISABLED", "IAM_PERMISSION_DENIED"),
+                 ("IAM_PERMISSION_DENIED", "SERVICE_DISABLED", "BILLING_DISABLED"))
+        for reasons in cases:
+            for order in (reasons, tuple(reversed(reasons))):
+                with self.subTest(reasons=order):
+                    body = denial(reason=order[0], domain="googleapis.com")
+                    for reason in order[1:]:
+                        body["error"]["details"] += denial(reason=reason, domain="googleapis.com")["error"]["details"]
+                    result = self.project(403, body)
+                    self.assertEqual(result["outcome"], "UNKNOWN")
+                    self.assertEqual(result["errorInfo"], [{"reason": "UNKNOWN", "domain": "UNKNOWN",
+                        "metadataMatches": {key: "UNKNOWN" for key in ("permission", "service", "consumer", "target")}}])
+
+    def test_matching_new_reasons_preserve_row_metadata_flags(self):
+        body = denial(reason="BILLING_DISABLED", domain="googleapis.com")
+        second = copy.deepcopy(body["error"]["details"][0])
+        second["metadata"]["target"] = PRIVATE
+        second["metadata"].pop("consumer")
+        body["error"]["details"].append(second)
+        result = self.project(403, body)
+        self.assertEqual(result["outcome"], "REFUSED")
+        self.assertEqual([row["reason"] for row in result["errorInfo"]], ["BILLING_DISABLED"] * 2)
+        self.assertEqual(result["errorInfo"][0]["metadataMatches"]["target"], "MATCH")
+        self.assertEqual(result["errorInfo"][1]["metadataMatches"]["target"], "MISMATCH")
+        self.assertEqual(result["errorInfo"][1]["metadataMatches"]["consumer"], "UNKNOWN")
+
     def test_unknown_or_conflicting_error_reasons_cannot_become_precise_diagnosis(self):
         conflicting = denial()
         conflicting["error"]["details"] += denial(reason="SERVICE_DISABLED")["error"]["details"]
@@ -427,6 +509,19 @@ class BoundedTransport(Fixture):
         self.assertTrue(response.closed)
         self.assertTrue(result["responseClosed"])
 
+    def test_new_google_reason_through_actual_http_error_transport(self):
+        for reason in ("BILLING_DISABLED", "USER_PROJECT_DENIED"):
+            response = Response(denial(reason=reason, domain="googleapis.com"), status=403, chunk_size=7)
+            opener = Opener(response, http_error=True)
+            result = self.request(opener)
+            self.assertEqual(result["errorInfo"][0]["reason"], reason)
+            self.assertEqual(result["outcome"], "REFUSED")
+            self.assertEqual(result["errorStatus"], "PERMISSION_DENIED")
+            self.assertIsNone(result["failure"])
+            self.assertTrue(result["responseClosed"])
+            self.assertEqual(response.close_count, 1)
+            self.assertEqual(len(opener.calls), 1)
+
     def test_unsafe_tokens_and_foreign_project_refuse_before_open(self):
         for token in (None, "", "short", TOKEN + "\n", TOKEN + " ", TOKEN + "\x00", TOKEN + "é"):
             opener = Opener()
@@ -509,6 +604,36 @@ class Orchestration(Fixture):
         self.assertEqual(result["metadata"]["errorStatus"], "NOT_FOUND")
         self.assertFalse(result["metadata"]["resourceMatched"])
         self.assertEqual(result["metadata"]["state"], "UNKNOWN")
+
+    def test_new_reason_http_error_receipts_readback_and_independent_closeout(self):
+        for index, supplemental in enumerate((False, True)):
+            self.root = Path(self.tmp.name) / str(index)
+            self.hooks = Harness(self.clock)
+            body = denial(reason="BILLING_DISABLED", domain="googleapis.com")
+            if supplemental:
+                body["error"]["details"].append({"@type": "type.googleapis.com/google.rpc.Help",
+                                                 "links": [{"description": PRIVATE, "url": PRIVATE}]})
+            response = Response(body, status=403)
+            self.hooks.opener = Opener(response, http_error=True)
+            result = self.run_operation()
+            self.assertEqual(result["status"], "METADATA_DIAGNOSED")
+            self.assertEqual(result["metadata"]["errorInfo"][0]["reason"], "BILLING_DISABLED")
+            self.assertEqual(result["metadata"]["outcome"], "UNKNOWN" if supplemental else "REFUSED")
+            self.assertEqual(result["metadata"]["state"], "UNKNOWN")
+            self.assertFalse(result["metadata"]["resourceMatched"])
+            self.assertEqual(result["counts"], {"cli": 2, "cache": 1, "https": 1})
+            self.assertEqual(self.hooks.io.commands, ["owner", "project"])
+            self.assertEqual(len(self.hooks.cache_calls), 1)
+            self.assertEqual(len(self.hooks.opener.calls), 1)
+            self.assertEqual(response.close_count, 1)
+            self.assertEqual(len(self.hooks.io.close_calls), 1)
+            self.assertEqual(len(self.hooks.io.absence_calls), 1)
+            self.assertTrue(all(result["closeout"].values()))
+            self.assertEqual(result["residuals"], [])
+            retained = v.read_result(self.root, result["resultSha256"])
+            self.assertEqual(retained, result)
+            self.assert_private_absent(retained)
+            self.assertFalse(retained["paymentAttempted"])
 
     def test_invalid_error_envelope_never_reports_diagnosed(self):
         for index, details in enumerate((PRIVATE, [None], [{"@type": ERROR_TYPE,

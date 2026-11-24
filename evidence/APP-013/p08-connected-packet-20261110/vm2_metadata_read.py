@@ -30,6 +30,22 @@ SDK_EXCEPTION = 'SDK_EXISTING_OWNER_REFRESH_CACHE_INTERNAL_RETRIES_NO_TOKEN_EXPO
 SECRET = 'signmons-staging-p07-payment-database-url'
 LIMITS = {'cli': 2, 'cache': 1, 'https': 1, 'sql': 0, 'mutations': 0}
 MAX_OUTPUT = 65536
+# Fixed non-default google.api.ErrorReason labels, reviewed 2026-11-24:
+# https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/error_reason.proto
+# These labels supplement SQ1 only for the exact googleapis.com domain.
+GOOGLE_ERROR_REASONS = frozenset(('SERVICE_DISABLED BILLING_DISABLED API_KEY_INVALID '
+    'API_KEY_SERVICE_BLOCKED API_KEY_HTTP_REFERRER_BLOCKED API_KEY_IP_ADDRESS_BLOCKED '
+    'API_KEY_ANDROID_APP_BLOCKED API_KEY_IOS_APP_BLOCKED RATE_LIMIT_EXCEEDED '
+    'RESOURCE_QUOTA_EXCEEDED LOCATION_TAX_POLICY_VIOLATED USER_PROJECT_DENIED '
+    'CONSUMER_SUSPENDED CONSUMER_INVALID SECURITY_POLICY_VIOLATED ACCESS_TOKEN_EXPIRED '
+    'ACCESS_TOKEN_SCOPE_INSUFFICIENT ACCOUNT_STATE_INVALID ACCESS_TOKEN_TYPE_UNSUPPORTED '
+    'CREDENTIALS_MISSING RESOURCE_PROJECT_INVALID SESSION_COOKIE_INVALID USER_BLOCKED_BY_ADMIN '
+    'RESOURCE_USAGE_RESTRICTION_VIOLATED SYSTEM_PARAMETER_UNSUPPORTED ORG_RESTRICTION_VIOLATION '
+    'ORG_RESTRICTION_HEADER_INVALID SERVICE_NOT_VISIBLE GCP_SUSPENDED LOCATION_POLICY_VIOLATED '
+    'MISSING_ORIGIN OVERLOADED_CREDENTIALS LOCATION_ORG_POLICY_VIOLATED TLS_ORG_POLICY_VIOLATED '
+    'EMULATOR_QUOTA_EXCEEDED CREDENTIAL_ANDROID_APP_INVALID IAM_PERMISSION_DENIED '
+    'JWT_TOKEN_INVALID CREDENTIAL_TYPE_UNSUPPORTED ACCOUNT_TYPE_UNSUPPORTED '
+    'ENDPOINT_USAGE_RESTRICTION_VIOLATED TLS_CIPHER_RESTRICTION_VIOLATED MCP_SERVER_DISABLED').split())
 INTERRUPTED = contextvars.ContextVar('vm2_interrupted', default=False)
 CODES = frozenset({'VM2_SCOPE', 'VM2_SOURCE', 'VM2_AUTHORITY', 'VM2_WINDOW', 'VM2_CUTOFF',
     'VM2_DEADLINE', 'VM2_CONFIG', 'VM2_CUSTODY', 'VM2_LIMIT', 'VM2_DESCRIPTOR',
@@ -188,6 +204,24 @@ def classify_metadata(status, raw, number):
             safe = sq.classify_sign_response(observed, raw, expected={
                 'permission': 'secretmanager.versions.get', 'service': 'secretmanager.googleapis.com',
                 'consumer': 'projects/' + number, 'target': name})
+            # SQ1 collapses conflicting known reasons to one UNKNOWN row. Never
+            # remap that row onto a raw detail; extend only its one-to-one result.
+            if len(safe['errorInfo']) == len(details):
+                for detail, row in zip(details, safe['errorInfo']):
+                    if (detail.get('@type') == 'type.googleapis.com/google.rpc.ErrorInfo' and
+                            detail.get('domain') == 'googleapis.com' and
+                            detail.get('reason') in GOOGLE_ERROR_REASONS):
+                        row['reason'] = detail['reason']
+                known = {(row['reason'], row['domain']) for row in safe['errorInfo']
+                         if row['reason'] != 'UNKNOWN' and row['domain'] != 'UNKNOWN'}
+                if len(known) > 1:
+                    safe.update(outcome='UNKNOWN', errorInfo=[{
+                        'reason': 'UNKNOWN', 'domain': 'UNKNOWN',
+                        'metadataMatches': {key: 'UNKNOWN' for key in
+                                            ('permission', 'service', 'consumer', 'target')}}])
+                elif len(known) == 1 and all(row['reason'] != 'UNKNOWN' and row['domain'] != 'UNKNOWN'
+                                            for row in safe['errorInfo']):
+                    safe['outcome'] = 'REFUSED'
             need(not INTERRUPTED.get(), 'VM2_INTERRUPTED')
             for key in ('outcome', 'failureCategory', 'errorStatus', 'errorCode', 'errorInfo'):
                 result[key] = safe[key]
