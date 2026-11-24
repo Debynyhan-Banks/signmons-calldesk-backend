@@ -1,0 +1,61 @@
+{
+  "status": "EC1_REVIEW_CHECKS_PASS",
+  "sourceCommit": "9f5f5bfb3379343b1a9ff20480371fe6fd1582d9",
+  "checkedAt": "2026-11-24 09:40:12 UTC",
+  "localProbeCases": 2,
+  "governanceTests": 25,
+  "installedSourceChanged": false,
+  "providerAccountApiCalls": 0,
+  "credentialReads": 0,
+  "checks": [
+    {
+      "name": "frozen-baseline",
+      "command": "node scripts/frozen-baseline-check.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "exitCode": 0,
+      "output": "frozen-baseline-check passed\n"
+    },
+    {
+      "name": "complete-consistency",
+      "command": "SIGNMONS_BACKEND_REPO='/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery' node scripts/docs-consistency-check.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "exitCode": 0,
+      "output": "docs-consistency-check passed\n"
+    },
+    {
+      "name": "governance-tests",
+      "command": "node --test scripts/frozen-baseline-check.test.mjs scripts/execution-placement.test.mjs scripts/intelligence-alignment-check.test.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "exitCode": 0,
+      "output": "✔ current pointer and handoff have properly placed status and ordered steps (3.168417ms)\n✔ prior swapped-row/step failure is rejected without touching repository files (3.916042ms)\n✔ missing or duplicated backend rows fail (4.431916ms)\n✔ missing or nonsequential next actions fail (4.231ms)\n✔ current checkout passes pinned baseline (31.568875ms)\n✔ automatic-admission amendment changes exactly two frozen sections and leaves ticket intact (1.705917ms)\n✔ old operator requirement cannot replace adopted automatic admission (0.823208ms)\n✔ core-release amendment changes exactly the approved two frozen sections (7.40175ms)\n✔ core-release proposal refuses malformed data and missing or duplicated targets (3.913416ms)\n✔ core-release amendment retains consent, delivery, privacy, audit and downstream safeguards (8.532958ms)\n✔ amendment does not permit weakening service or downstream authority (2.877916ms)\n✔ malformed amendment and missing or duplicate targets fail closed (0.17075ms)\n✔ changing acceptance text is rejected without editing repositories (0.858291ms)\n✔ changing section dependency is rejected (0.865125ms)\n✔ new section cannot silently increase denominator (0.824833ms)\n✔ reordering or renaming section is rejected (0.7195ms)\n✔ missing and duplicate protected section refuse (1.359042ms)\n✔ ticket criterion mutation is rejected, checkbox evidence change permitted (1.966041ms)\n✔ status/evidence outside frozen requirements can be updated (0.772791ms)\n✔ missing pinned history fails closed (0.094666ms)\n✔ missing immutable core-release proposal fails closed even when older pins are available (41.12575ms)\n✔ current synchronized dependency order passes (1.989833ms)\n✔ blank Next and stale backend fail (0.30925ms)\n✔ out-of-order queue and pointer fail (0.237ms)\n✔ full acceptance promotion can advance to the remaining suffix (0.132ms)\nℹ tests 25\nℹ suites 0\nℹ pass 25\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 219.168333\n"
+    },
+    {
+      "name": "backend-baseline",
+      "command": "SIGNMONS_GOVERNANCE_REPO='/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery' node scripts/check-governance-baseline.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "exitCode": 0,
+      "output": "docs-consistency-check passed\n"
+    },
+    {
+      "name": "architecture",
+      "command": "node scripts/architecture-check.mjs",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "exitCode": 0,
+      "output": "architecture-check passed\n"
+    },
+    {
+      "name": "backend-whitespace",
+      "command": "git diff --check",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "name": "governance-whitespace",
+      "command": "git diff --check",
+      "workdir": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery",
+      "exitCode": 0,
+      "output": ""
+    }
+  ]
+}

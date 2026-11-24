@@ -1,0 +1,37 @@
+{
+  "status": "DOCUMENTED_RESPONSE_CONTRACT_MISMATCH_REPRODUCED",
+  "cases": [
+    {
+      "inputShape": "EXISTING_FIXTURE_WITH_LOCAL_ID",
+      "status": "P08_COORDINATOR_AUTHENTICATED_AND_CLOSED",
+      "authenticated": true,
+      "authStage": null,
+      "failureCategory": null,
+      "responseValidationCode": null,
+      "exchangeCalls": 1,
+      "authenticatedJobReads": 1,
+      "sessionClosed": true,
+      "residuals": [],
+      "secondAttemptRefused": true,
+      "privateSentinelsAbsent": true,
+      "externalProviderCalls": 0,
+      "fixtureInputsAbsent": true
+    },
+    {
+      "inputShape": "DOCUMENTED_WITHOUT_LOCAL_ID",
+      "status": "P08_COORDINATOR_AUTH_STOPPED_AND_CLOSED",
+      "authenticated": false,
+      "authStage": "EXCHANGE",
+      "failureCategory": "RESPONSE_VALIDATION",
+      "responseValidationCode": "EXCHANGE_RESPONSE_MISMATCH",
+      "exchangeCalls": 1,
+      "authenticatedJobReads": 0,
+      "sessionClosed": true,
+      "residuals": [],
+      "secondAttemptRefused": true,
+      "privateSentinelsAbsent": true,
+      "externalProviderCalls": 0,
+      "fixtureInputsAbsent": true
+    }
+  ]
+}

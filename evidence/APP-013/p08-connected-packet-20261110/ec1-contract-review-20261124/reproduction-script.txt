@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {readFileSync,rmSync,existsSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
+const root='/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/';
+const {runChild}=await import(pathToFileURL(root+'native_child.mjs'));
+const {fixturePorts}=await import(pathToFileURL(root+'fixture_ports.mjs'));
+const outputs=[];
+for(const documented of [false,true]) {
+ const f=JSON.parse(execFileSync('/opt/homebrew/bin/python3',['-B',root+'fixture_envelope.py'],{encoding:'utf8'}));
+ let output;
+ try {
+  const request=f.request,base=fixturePorts(request);let exchanges=0,jobReads=0;
+  const injected={...base,fetcher:async(url,options)=>{
+   if(url.includes('/jobs/dispatch-board/'))jobReads++;
+   const response=await base.fetcher(url,options);
+   if(!url.includes('signInWithCustomToken'))return response;
+   exchanges++;const payload=JSON.parse(await response.text());
+   if(documented){delete payload.localId;Object.assign(payload,{refreshToken:'SYNTHETIC_REFRESH_SENTINEL',expiresIn:'3600',isNewUser:false});}
+   return {ok:true,status:200,text:async()=>JSON.stringify(payload)};
+  }};
+  const result=await runChild('--run',structuredClone(request),injected);
+  const raw=readFileSync(request.envelopePath.replace(/envelope\.json$/,'journal.json'),'utf8'),j=JSON.parse(raw),a=j.authClient;
+  assert.equal(exchanges,1);assert.equal(result.sessionClosed,true);assert.deepEqual(result.residuals,[]);
+  assert.ok(!raw.includes('SYNTHETIC_REFRESH_SENTINEL'));
+  assert.ok(!raw.includes('header.'));assert.ok(!raw.includes('SYNTHETIC_OWNER_OAUTH_TOKEN'));
+  assert.equal(result.authenticated,!documented);assert.equal(jobReads,documented?0:1);
+  if(documented){assert.equal(a.failureCode,'SIGN_EXCHANGE_REFUSED');assert.equal(a.authStage,'EXCHANGE');assert.equal(a.failureCategory,'RESPONSE_VALIDATION');assert.equal(a.responseValidationCode,'EXCHANGE_RESPONSE_MISMATCH');assert.equal(j.authProofAccepted,false);assert.equal('childResultSha256' in j,false);}
+  await assert.rejects(()=>runChild('--run',structuredClone(request),injected),{code:'EEXIST'});
+  assert.equal(exchanges,1);
+  output={inputShape:documented?'DOCUMENTED_WITHOUT_LOCAL_ID':'EXISTING_FIXTURE_WITH_LOCAL_ID',status:result.status,authenticated:result.authenticated,authStage:a.authStage??null,failureCategory:a.failureCategory??null,responseValidationCode:a.responseValidationCode??null,exchangeCalls:exchanges,authenticatedJobReads:jobReads,sessionClosed:result.sessionClosed,residuals:result.residuals,secondAttemptRefused:true,privateSentinelsAbsent:true,externalProviderCalls:0};
+ } finally {
+  for(const owned of f.cleanup){assert.match(owned,/^\/private\/tmp\/p08-coordinator-(?:private-)?[a-f0-9-]{36}$/);rmSync(owned,{recursive:true,force:true});assert.equal(existsSync(owned),false);}
+ }
+ output.fixtureInputsAbsent=true;outputs.push(output);
+}
+console.log(JSON.stringify({status:'DOCUMENTED_RESPONSE_CONTRACT_MISMATCH_REPRODUCED',cases:outputs},null,2));

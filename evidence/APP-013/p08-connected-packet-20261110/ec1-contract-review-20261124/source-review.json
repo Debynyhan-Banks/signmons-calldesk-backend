@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "9f5f5bfb3379343b1a9ff20480371fe6fd1582d9",
+  "reviewDate": "2026-11-24",
+  "status": "LOCAL_CONTRACT_GAP_REPRODUCED_NO_CORRECTION_IMPLEMENTED",
+  "sourceHashes": {
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/client.mjs": "e8b3d5987dc4701a9869233cb932de891ecacdbbc342bf5a2d7dc4d70b2ac2b4",
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
+    "evidence/APP-013/p08-coordinator-auth-local-20261031/source/test_client.mjs": "c24cac09b10782726361f3ec739e5f8648391a23c94987f83e18b60f935d46b2",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/bound-child.mjs": "8d817ef9a473e9712ae59f3ebdb8a9c863cd4c166d0b3f5c3497f042b2f6062f",
+    "evidence/APP-013/p08-real-client-binding-local-20261031/source/recovery-sequence.mjs": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/fixture_ports.mjs": "997f1ec95806ee98434b091dc9714274d1dae61c2d64bf83690aa1b68efbb2c6",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/native_child.mjs": "0d1241a397de199a3ee5783a81c5c752c473e7e47f84f5cbfc13870a10851e6c",
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py": "912dafc5833c08de09a76147e0058d7c68847cfd23111150976c53906a226619",
+    "evidence/APP-013/p08-authentication-local-20261026/source/reuse/operator-bridge.mjs": "ab76b595592ea1e5a3c73ebe7ce0320faf2e388db40d4354216d9892a8120e71",
+    "src/auth/request-auth.guard.ts": "c73758c437dffdf556f08fec9c880a196eb1d50666c0780de12e057fe5f588c9",
+    "src/jobs/jobs.controller.ts": "bc641324094ddfd96c04c75758e2dfed7d144c9ea81bca76f4fb417c04b763ad"
+  },
+  "sourcesUnchanged": true,
+  "publicDocumentation": [
+    "https://docs.cloud.google.com/identity-platform/docs/reference/rest/v1/accounts/signInWithCustomToken",
+    "https://firebase.google.com/docs/reference/rest/auth#section-sign-in-with-custom-token"
+  ],
+  "documentedResponseFields": [
+    "kind",
+    "idToken",
+    "refreshToken",
+    "expiresIn",
+    "isNewUser"
+  ],
+  "requiredLocalIdDocumented": false,
+  "publicDocumentationRead": true,
+  "providerAccountApiCalls": 0,
+  "credentialReads": 0
+}
