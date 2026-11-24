@@ -1,0 +1,107 @@
+{
+  "section": "APP-013 / 3A / P08",
+  "operation": "R57",
+  "status": "QUALIFICATION_STOPPED_CLOSED_PRIVATE_INPUTS_ABSENT",
+  "recordedAt": "2026-11-24T10:46:26.252722+00:00",
+  "sourceCommit": "6df778d9858ff728d10e02f2b69084886a7cb102",
+  "recoveryId": "148b3f75-a454-40e5-adc5-9cb661bdf6ae",
+  "qualificationId": "bffc711e-9c68-444a-9c40-97f8c6200798",
+  "prospectiveNativeOperationId": "e382f9b5-f19a-458d-af7b-5ea9ba6a9957",
+  "qualificationStatus": "CURRENT_EVIDENCE_UNQUALIFIED",
+  "failureStage": "cloud",
+  "failure": {
+    "descriptorId": "secret_state_0",
+    "ordinal": 9,
+    "code": "PROCESS_REFUSED",
+    "elapsedMilliseconds": 488,
+    "exactArgv": [
+      "/opt/homebrew/bin/gcloud",
+      "secrets",
+      "versions",
+      "describe",
+      "1",
+      "--secret",
+      "signmons-staging-p07-payment-database-url",
+      "--project",
+      "signmons",
+      "--format=json(name,state)"
+    ],
+    "bindingMethod": "Actual cli_contract descriptor; current source bytes equal operation source commit",
+    "sourcePath": "evidence/APP-013/p08-https-output-category-local-20261029/source/qualification_launch.py",
+    "sourceSha256": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda",
+    "providerCause": "UNKNOWN",
+    "stderrRetention": "Discarded by existing non-diagnostic subprocess stderr=DEVNULL; no raw stderr was retained or recovered",
+    "exactExitCode": "NOT_RETAINED"
+  },
+  "priorCliReturned": 8,
+  "transportReservations": {
+    "cache": 0,
+    "cli": 9,
+    "https": 0,
+    "sql": 2
+  },
+  "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+  "sdkInternalRequests": "UNKNOWN_NOT_COUNTED_AS_DIRECT_RESERVATIONS",
+  "nativeAttempted": false,
+  "authenticationAttempted": false,
+  "paymentAttempted": false,
+  "paymentReadyForAcceptance": false,
+  "qualificationResiduals": [],
+  "qualificationCloseoutEvidence": "Independent reservation plus completed result with no residuals; existing source requires main and fresh independent sessionsAbsent and owned-child closeout",
+  "recoveryResourceCloseout": {
+    "residuals": [],
+    "verified": true
+  },
+  "recoveryPurge": {
+    "completedAt": 1795516775.1716201,
+    "onTime": true,
+    "operationId": "148b3f75-a454-40e5-adc5-9cb661bdf6ae",
+    "rawFilesAbsent": true,
+    "residuals": [],
+    "status": "PRIVATE_PURGE_VERIFIED"
+  },
+  "independentLocalObservation": {
+    "observedAt": "2026-11-24T10:45:11.486587+00:00",
+    "observation": "LOCAL_PROCESS_AND_PATH_METADATA_ONLY",
+    "providerCalls": 0,
+    "credentialReads": 0,
+    "processSnapshotSucceeded": true,
+    "observationProcessAndAncestorsExcluded": true,
+    "matchingOperationProcesses": [],
+    "guardPidPresent": false,
+    "guardProcessGroupMembers": [],
+    "absence": {
+      "recoveryRequestRoot": true,
+      "recoveredInputs": true,
+      "qualificationInputEnvelope": true,
+      "nativeRoot": true,
+      "nativeInputEnvelope": true
+    },
+    "privatePathNamesOnlyNoContentsRead": true,
+    "receiptRoots": {
+      "qualification": {
+        "mode": "0o700",
+        "ownerMatched": true,
+        "symlink": false
+      },
+      "recovery": {
+        "mode": "0o700",
+        "ownerMatched": true,
+        "symlink": false
+      }
+    }
+  },
+  "receiptInventorySha256": "3f376aea68b40d7d2d93f7e04cc94778c2c4c614bb5c93067b6309d5ebc4738a",
+  "copiedReceiptCount": 25,
+  "newExternalActionsDuringEvidenceRetention": 0,
+  "credentialReadsDuringEvidenceRetention": 0,
+  "historicalR56AuthOutcome": "UNKNOWN_UNCHANGED",
+  "acceptedWalkthrough": "1A/1B/2A/2B accepted 4/8; 3A OPEN",
+  "scopeDeviation": "None",
+  "nextObservableResult": "Owner decision on a separately bounded metadata-only diagnosis of the exact refused secret-version descriptor; no retry or new native operation inferred",
+  "responsibleRoles": [
+    "implementer",
+    "owner",
+    "cloud custodian"
+  ]
+}

@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "status": "ALLOWLISTED_SAFE_RECEIPTS_RETAINED",
+  "operation": "R57",
+  "receiptCount": 25,
+  "receipts": [
+    {
+      "file": "qualification-attempt.json",
+      "sourceFile": "attempt.json",
+      "sourceRoot": "qualification",
+      "bytes": 228,
+      "sha256": "2446d70bc885b06846b8af036c560ca3623f6be958e21a2b225472fc0e361151",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-01.json",
+      "sourceFile": "cli-attempt-01.json",
+      "sourceRoot": "qualification",
+      "bytes": 247,
+      "sha256": "5fdf9a3d73c60cbcfcda30915037cafde18fa2637de3c76c21d15473e804c5af",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-01.json",
+      "sourceFile": "cli-result-01.json",
+      "sourceRoot": "qualification",
+      "bytes": 255,
+      "sha256": "5a582e0d25871d65663add396b4d04d8c62cefbfb756f686305062ea04967e50",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-02.json",
+      "sourceFile": "cli-attempt-02.json",
+      "sourceRoot": "qualification",
+      "bytes": 248,
+      "sha256": "b4e94d65ee9534325837f5870f5b2d0ff6ad5e804a3b235b4b84d515fe964386",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-02.json",
+      "sourceFile": "cli-result-02.json",
+      "sourceRoot": "qualification",
+      "bytes": 256,
+      "sha256": "c294f4081f1763f57ee789c3a86d480d969fbba39bbc3d7da562e7edccbaa4ec",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-03.json",
+      "sourceFile": "cli-attempt-03.json",
+      "sourceRoot": "qualification",
+      "bytes": 249,
+      "sha256": "8ac76f0ec1242ada82f0740b781da3f54fe9d3910442bf86791df20e951af248",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-03.json",
+      "sourceFile": "cli-result-03.json",
+      "sourceRoot": "qualification",
+      "bytes": 257,
+      "sha256": "b045b35f5e5fd3bbd0b13808c660124e491ced02651bf53aace272bd4cc8096e",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-04.json",
+      "sourceFile": "cli-attempt-04.json",
+      "sourceRoot": "qualification",
+      "bytes": 257,
+      "sha256": "4fa19800dccd1cadc8b81f78d585300857f637b6c28afe56e94bf6acf36f7e7c",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-04.json",
+      "sourceFile": "cli-result-04.json",
+      "sourceRoot": "qualification",
+      "bytes": 265,
+      "sha256": "8bce58cb5e5bf4b584d8cf298761400dbe0725f5eb3287f7b066fb4dce4b33a8",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-05.json",
+      "sourceFile": "cli-attempt-05.json",
+      "sourceRoot": "qualification",
+      "bytes": 257,
+      "sha256": "8ecb5295c51821bf8965aaf287653276173ce374d6cf4ab15b4dc8952ce45b1a",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-05.json",
+      "sourceFile": "cli-result-05.json",
+      "sourceRoot": "qualification",
+      "bytes": 265,
+      "sha256": "8ea18bc24e614d2d25ffdfc85fbf3a14a1ef9f0da301170d39516289b48346a9",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-06.json",
+      "sourceFile": "cli-attempt-06.json",
+      "sourceRoot": "qualification",
+      "bytes": 249,
+      "sha256": "f547fac4538f1f145f0339854637f443c76f48f764d2dd7054869f8d9e22f864",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-06.json",
+      "sourceFile": "cli-result-06.json",
+      "sourceRoot": "qualification",
+      "bytes": 257,
+      "sha256": "d68cbc24d6c26b3b044e4c4b574b0b2a19e6a712c31357e2be0a185d1294a7f4",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-07.json",
+      "sourceFile": "cli-attempt-07.json",
+      "sourceRoot": "qualification",
+      "bytes": 250,
+      "sha256": "6c2534d3cf0ab1f10a042ea0593e1bc8a4fe56bfb2d2e629ca76e097c42decd5",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-07.json",
+      "sourceFile": "cli-result-07.json",
+      "sourceRoot": "qualification",
+      "bytes": 258,
+      "sha256": "2e06a625074db321ab6d5af04cef5f3d11ea67ef716ace9b183a4144f465bfaf",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-08.json",
+      "sourceFile": "cli-attempt-08.json",
+      "sourceRoot": "qualification",
+      "bytes": 250,
+      "sha256": "7b7ba22273641a4e024a61de10934928044bb1b1a659a25a1df696cb3701d0c3",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-08.json",
+      "sourceFile": "cli-result-08.json",
+      "sourceRoot": "qualification",
+      "bytes": 258,
+      "sha256": "1466305dec6352da421d672e8a1689a7fcdf56119a4fe93bf1c8f4d37add4af9",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-attempt-09.json",
+      "sourceFile": "cli-attempt-09.json",
+      "sourceRoot": "qualification",
+      "bytes": 256,
+      "sha256": "59e4288677483255b92243e1edfdc051a4f37e558214f1474e32313c1a9f7f53",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-cli-result-09.json",
+      "sourceFile": "cli-result-09.json",
+      "sourceRoot": "qualification",
+      "bytes": 275,
+      "sha256": "2525094cefe370f603f1ebfb46aaaecf470aaac50e668a8c0a74cde95e56c6e6",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-result.json",
+      "sourceFile": "result.json",
+      "sourceRoot": "qualification",
+      "bytes": 382,
+      "sha256": "c3c06363d47419fb749e775331082969c92733c5e977349a2eb851f301db0324",
+      "byteIdentical": true
+    },
+    {
+      "file": "qualification-independent-closeout.json",
+      "sourceFile": "independent-closeout.json",
+      "sourceRoot": "qualification",
+      "bytes": 55,
+      "sha256": "e36344d9ae921be6b850edd197e2820f531bd06181e4e8f310f1cad1b468e1c5",
+      "byteIdentical": true
+    },
+    {
+      "file": "recovery-attempt.json",
+      "sourceFile": "attempt.json",
+      "sourceRoot": "recovery",
+      "bytes": 176,
+      "sha256": "a63a4155bb48f3de936459191bc1f64ac88f719f3e94fdf13caa9e1e8605b614",
+      "byteIdentical": true
+    },
+    {
+      "file": "recovery-result.json",
+      "sourceFile": "recovery-result.json",
+      "sourceRoot": "recovery",
+      "bytes": 201,
+      "sha256": "251b942a0dd09b9ab7336e397d8c70cff54978a56b970c67967bb414d5203cba",
+      "byteIdentical": true
+    },
+    {
+      "file": "recovery-resource-closeout.json",
+      "sourceFile": "resource-closeout.json",
+      "sourceRoot": "recovery",
+      "bytes": 35,
+      "sha256": "cb524bb80fbd3f6723cf552f276e21639827ecf27ef8bc93e8d3102a701c9223",
+      "byteIdentical": true
+    },
+    {
+      "file": "recovery-purge-result.json",
+      "sourceFile": "purge-result.json",
+      "sourceRoot": "recovery",
+      "bytes": 183,
+      "sha256": "e4bfa6494f3f1b227e36528754e578f1aa5ac69387418d3e786eccac81f37e98",
+      "byteIdentical": true
+    }
+  ],
+  "excluded": [
+    "raw provider output",
+    "stderr",
+    "envelopes",
+    "recovered inputs",
+    "owned-files registry",
+    "passwords",
+    "tokens",
+    "endpoint identifier",
+    "private payloads"
+  ]
+}

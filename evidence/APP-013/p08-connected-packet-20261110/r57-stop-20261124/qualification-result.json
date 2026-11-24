@@ -1,0 +1,1 @@
+{"candidate": null, "databaseFailedChecks": [], "execution": "EXTERNAL_READ_ONLY", "executionReady": false, "failure": "PROCESS_REFUSED", "failureStage": "cloud", "liveObserved": true, "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS", "residuals": [], "status": "CURRENT_EVIDENCE_UNQUALIFIED", "transportReservations": {"cache": 0, "cli": 9, "https": 0, "sql": 2}}
