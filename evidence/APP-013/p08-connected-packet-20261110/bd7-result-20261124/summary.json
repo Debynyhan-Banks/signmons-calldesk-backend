@@ -1,0 +1,97 @@
+{
+  "acceptedMilestones": "1A/1B/2A/2B remain 4/8; R1 newly closed 0/27.",
+  "approvalCommit": "5485014c0a8e205388a6719edd90682f3d7d7bba",
+  "candidate": null,
+  "cliReservations": 3,
+  "closeout": {
+    "candidate": null,
+    "executionReady": false,
+    "interrupted": false,
+    "operationId": "62f62363-56b5-4268-b346-410d1a52a7e5",
+    "processAbsenceVerified": true,
+    "processCleanupVerified": true,
+    "residuals": [],
+    "scopeSha256": "2d5dd83d2eec365d5ba2cb9b67c2470a469daf8d9600aabbf0aa7d22211b895a"
+  },
+  "commandDescriptorIds": [
+    "owner",
+    "project",
+    "billing_project"
+  ],
+  "completion": {
+    "interrupted": false,
+    "operationId": "62f62363-56b5-4268-b346-410d1a52a7e5",
+    "resultSha256": "513ea3c3a6e6cc561c0922a4db7a45285b4cd1cb5e34791f4395f0a4205f3502",
+    "scopeSha256": "2d5dd83d2eec365d5ba2cb9b67c2470a469daf8d9600aabbf0aa7d22211b895a"
+  },
+  "executionReady": false,
+  "failure": null,
+  "independentCloseoutEvidence": {
+    "attribution": "Process/configuration/input-absence observations come from the retained executing-agent independent-closeout record. This receipt-only audit did not repeat those observations.",
+    "configurationUnchanged": true,
+    "independentCloseoutExitCode": 0,
+    "mainExitCode": 0,
+    "onTime": true,
+    "processSnapshotMatches": 0,
+    "requestInputsAbsent": true,
+    "residuals": [],
+    "source": "/Users/debynyhanbanks/Web Projects/signmons-governance-r08-recovery/APP013_P08_BD7_INDEPENDENT_CLOSEOUT_20261124.json",
+    "sourceSha256": "efce92d1c127935c5704548e98b90200ee3258dc06444106b356da5a35e9d9b8",
+    "verifiedAt": "2026-11-24T13:19:04.862528+00:00"
+  },
+  "observation": {
+    "billingAccountMatched": true,
+    "billingEnabled": true,
+    "ownerMatched": true,
+    "projectMatched": true
+  },
+  "operationId": "62f62363-56b5-4268-b346-410d1a52a7e5",
+  "privacy": {
+    "cacheOrCredentialReadsDuringThisAudit": 0,
+    "executionOrCloseoutRetried": false,
+    "inputsRecreated": false,
+    "processReadsOrSignalsDuringThisAudit": 0,
+    "providerCallsDuringThisAudit": 0,
+    "rawBillingAccountOrProjectNumberRetained": false,
+    "rawProviderOutputOrCredentialsRetained": false,
+    "retained": "Eleven safe JSON receipts plus inventory and summary; entry.lock excluded and original root untouched."
+  },
+  "receiptVerification": {
+    "byteIdenticalCopies": true,
+    "codeAndRuntimeChanged": false,
+    "completionRequired": true,
+    "custodyModesOwnershipRegularSingleLink": "PASS",
+    "expectedCanonicalResultSha256": "513ea3c3a6e6cc561c0922a4db7a45285b4cd1cb5e34791f4395f0a4205f3502",
+    "function": "qualification_launch.read_billing_result",
+    "interruptionMarkerPresent": false,
+    "inventorySha256": "ac1a77da3c62c68a6686552488c3613b9cd4100bfd60ece53a77cd835b1da56d",
+    "result": "PASS",
+    "retainedJsonCount": 11,
+    "safeSchemas": "PASS"
+  },
+  "remaining": "Section 3A remains open; this prerequisite observation does not authorize native authentication, payment, provider changes or another qualification.",
+  "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+  "responsibility": {
+    "cloudBillingCustodian": "External state and any separately approved follow-up.",
+    "implementer": "Safe evidence retention and receipt validation complete.",
+    "owner": "No further decision is inferred from this observation."
+  },
+  "scope": "No scope deviation.",
+  "scopeSha256": "2d5dd83d2eec365d5ba2cb9b67c2470a469daf8d9600aabbf0aa7d22211b895a",
+  "sdkInternalNetworkTraffic": "UNKNOWN",
+  "section": "APP-013 / 3A / P08 / BD7",
+  "separateReadLimits": {
+    "cache": 0,
+    "https": 0,
+    "sql": 0
+  },
+  "sourceCommit": "1e21bb87a3640ef5f5ceb3f76fe569ca6ea4a612",
+  "status": "BILLING_METADATA_OBSERVED",
+  "unknowns": [
+    "VM2 HTTP403 underlying reason",
+    "Usable secret-version metadata permission",
+    "Secret-version state",
+    "Full connected payment readiness"
+  ],
+  "verifiedAt": "2026-11-24T13:23:44.887096+00:00"
+}

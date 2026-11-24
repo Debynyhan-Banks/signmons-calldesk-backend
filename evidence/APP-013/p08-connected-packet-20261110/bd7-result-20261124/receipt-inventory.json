@@ -1,0 +1,163 @@
+{
+  "canonicalDigestIsNotFileByteSha256": true,
+  "canonicalResultSha256": "513ea3c3a6e6cc561c0922a4db7a45285b4cd1cb5e34791f4395f0a4205f3502",
+  "exactSourceInventory": [
+    "attempt.json",
+    "closeout.json",
+    "command-attempt-billing_project.json",
+    "command-attempt-owner.json",
+    "command-attempt-project.json",
+    "command-result-billing_project.json",
+    "command-result-owner.json",
+    "command-result-project.json",
+    "completion.json",
+    "entry.lock",
+    "envelope.json",
+    "result.json"
+  ],
+  "excludedFromCopy": [
+    "entry.lock"
+  ],
+  "operationId": "62f62363-56b5-4268-b346-410d1a52a7e5",
+  "originalAttemptMarkersRetained": true,
+  "receipts": [
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 138,
+      "name": "attempt.json",
+      "safeSchemaVerified": true,
+      "sha256": "24fdcf1777303385e71d0418a7212d4bb374d2440b8e3219a6b3197a8e1f935a",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/attempt.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 285,
+      "name": "closeout.json",
+      "safeSchemaVerified": true,
+      "sha256": "09305c7e96a54a3457d31aca5f74c7c0207084a77efcc6188b79619d7eceae16",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/closeout.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 195,
+      "name": "command-attempt-billing_project.json",
+      "safeSchemaVerified": true,
+      "sha256": "ab9187920d95d1a4afda2cb7ee65a4eda8f4a2728908c5042ed462cd228533a4",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/command-attempt-billing_project.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 185,
+      "name": "command-attempt-owner.json",
+      "safeSchemaVerified": true,
+      "sha256": "2728644ee5436226549b39c4a2b201a15659e8affe5e957c59815b16ba21e82b",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/command-attempt-owner.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 187,
+      "name": "command-attempt-project.json",
+      "safeSchemaVerified": true,
+      "sha256": "72f0f3566398821ad9597302d0003d365bf8736cb988fc8d2485226496e70402",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/command-attempt-project.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 239,
+      "name": "command-result-billing_project.json",
+      "safeSchemaVerified": true,
+      "sha256": "3d0971ba186dd74a5d49e6fc37f4bd161e2f224f7144066fee673249094d1f8d",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/command-result-billing_project.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 229,
+      "name": "command-result-owner.json",
+      "safeSchemaVerified": true,
+      "sha256": "dda5ff4cb6717e2a7545893050f1942198d97ea2ea2b2a15b51aff9e2cbd5fa4",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/command-result-owner.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 231,
+      "name": "command-result-project.json",
+      "safeSchemaVerified": true,
+      "sha256": "af60006c6a2270298fac934c45d3382136d8c3ee7047af177b020373fc3533f7",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/command-result-project.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 244,
+      "name": "completion.json",
+      "safeSchemaVerified": true,
+      "sha256": "54bd1e7ddbe67a15138e0c5346dba06b8ecf24d8a5be0e06ee9ac23ea6c57b8d",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/completion.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 990,
+      "name": "envelope.json",
+      "safeSchemaVerified": true,
+      "sha256": "d367f5aeab1fa2e4b8dc44c2d630a4c44c34a0f953567665983f8f1b6d0c1eb6",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/envelope.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 592,
+      "name": "result.json",
+      "safeSchemaVerified": true,
+      "sha256": "8fd478532e0fe778fc8dd05f5b51745e4ae41417e079c7946a789c0a80b8bf94",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5/result.json",
+      "sourceRegularFile": true
+    }
+  ],
+  "retainedJsonCount": 11,
+  "sourceRoot": "/private/tmp/p08-billing-diagnostic-62f62363-56b5-4268-b346-410d1a52a7e5",
+  "sourceRootMode": "0700",
+  "sourceRootOwnerMatched": true,
+  "verifiedAt": "2026-11-24T13:23:44.887096+00:00",
+  "version": 1
+}
