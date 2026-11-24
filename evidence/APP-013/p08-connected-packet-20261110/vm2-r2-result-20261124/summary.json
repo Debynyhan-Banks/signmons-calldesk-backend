@@ -1,0 +1,122 @@
+{
+  "acceptedMilestones": "4/8 unchanged; R1 newly closed 0/27.",
+  "approvalCommit": "7074ee541b748a275ddaa0b1daeb5501ad44a168",
+  "classificationMeaning": "Current metadata request observation only; not usable metadata access, payment readiness, or a reconstructed historical cause.",
+  "closeout": {
+    "configurationUnchanged": true,
+    "independentProcessAbsence": true,
+    "onTime": true,
+    "processCleanupVerified": true,
+    "responseClosed": true
+  },
+  "completedAt": "2026-11-24T11:42:08.363408+00:00",
+  "countMeaning": "Logical reserved CLI/cache/HTTPS operations; SDK-internal network traffic remains UNKNOWN.",
+  "counts": {
+    "cache": 1,
+    "cli": 2,
+    "https": 1
+  },
+  "failure": null,
+  "historicalR57Cause": "UNKNOWN; discarded stderr is not reconstructed by this current HTTP 403 observation.",
+  "independentVerification": {
+    "actualReadbackFunction": "vm2_metadata_read.read_result",
+    "byteIdenticalCopies": true,
+    "canonicalResultSha256": "0da718d515253823d5b834f85a093e4e83cbf7601b3b987a2c34f79545e1af91",
+    "committedApprovalAndScopeMatch": true,
+    "committedSourceAndManifestByteMatch": true,
+    "digestReadback": "PASS",
+    "interruptionMarkerPresent": false,
+    "localClosureObservation": {
+      "check": "READ_ONLY_LOCAL_PROCESS_AND_PATH_METADATA",
+      "credentialStoresRead": false,
+      "exactSafeRootInventory": true,
+      "matchingOperationProcesses": [],
+      "noExternalCalls": true,
+      "observationProcessAndAncestorsExcluded": true,
+      "observedAt": "2026-11-24T11:44:33.331202+00:00",
+      "persistentIdentityLease": "NOT_MODIFIED",
+      "pidAdoptionOrSignalsPerformed": false,
+      "processSnapshotSucceeded": true,
+      "rawEnvelopeRequestFilesInRoot": false,
+      "wrapperInputs": "No temporary launcher or input files were created by this attempt, per executing agent exact-command record; no historical wrapper absence inferred."
+    },
+    "observationFileSha256": "ad9b305a5203fab0dfe778d308dc260171b5fba4fe3b957c16ce092e148d4e25",
+    "processObservationLimit": "Read-only process snapshot matched exact operation/scope/approval references, excluding the observer and its ancestors. Owned child closure is also recorded by the executor closeout receipt; no disk PID was adopted.",
+    "receiptInventorySha256": "ad1c60771edfb80becd6dc85c9e06f656d513756eb39cb1f1a9bc3425b377bb6",
+    "safeReceiptCount": 7
+  },
+  "metadata": {
+    "errorCode": 403,
+    "errorEnvelopeValid": true,
+    "errorInfo": [
+      {
+        "domain": "googleapis.com",
+        "metadataMatches": {
+          "consumer": "MATCH",
+          "permission": "UNKNOWN",
+          "service": "MATCH",
+          "target": "UNKNOWN"
+        },
+        "reason": "UNKNOWN"
+      },
+      {
+        "domain": "UNKNOWN",
+        "metadataMatches": {
+          "consumer": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "service": "UNKNOWN",
+          "target": "UNKNOWN"
+        },
+        "reason": "UNKNOWN"
+      },
+      {
+        "domain": "UNKNOWN",
+        "metadataMatches": {
+          "consumer": "UNKNOWN",
+          "permission": "UNKNOWN",
+          "service": "UNKNOWN",
+          "target": "UNKNOWN"
+        },
+        "reason": "UNKNOWN"
+      }
+    ],
+    "errorStatus": "PERMISSION_DENIED",
+    "failure": null,
+    "failureCategory": "HTTP",
+    "httpStatus": 403,
+    "outcome": "UNKNOWN",
+    "resourceMatched": false,
+    "responseClosed": true,
+    "state": "UNKNOWN"
+  },
+  "observedAt": "2026-11-24T11:47:27.513793+00:00",
+  "operationId": "e086e085-aa20-45af-aace-d6fa290e8d0a",
+  "ownerMatched": true,
+  "paymentAttempted": false,
+  "privacy": {
+    "credentialTokenOrNumericProjectIdentifierRetained": false,
+    "newProviderOrCacheReadsDuringVerification": 0,
+    "persistentIdentityLease": "Existing lease inode left unchanged.",
+    "rawResponseOrMessageRetained": false,
+    "retained": "Seven safe JSON receipts plus inventory and summary only.",
+    "wrapperInputs": "No temporary launcher or input files were created by this attempt, per executing agent exact-command record. The approved pinned Python -I -B -c runpy bootstrap ran directly and exited 0. No broader historical wrapper absence is inferred."
+  },
+  "projectMatched": true,
+  "remaining": {
+    "connectedCustomerWorkflow": "3A OPEN; no native/authentication/payment execution follows from this receipt.",
+    "metadataUsableAccess": "UNKNOWN",
+    "metadataVersionState": "UNKNOWN",
+    "providerUnderlyingReason": "UNKNOWN"
+  },
+  "residuals": [],
+  "responsibility": {
+    "cloudCredentialCustodian": "Any further external diagnosis or state change requires its own explicit bounded approval.",
+    "implementer": "Safe evidence retention and independent local closeout verification complete.",
+    "owner": "No new decision is inferred from this result."
+  },
+  "scope": "No scope deviation beyond approved VM2.",
+  "scopeSha256": "c99a6688f97eb5c8969aef906a60242a727b76d65d622f958ab21c79b5f639a1",
+  "section": "APP-013 / 3A / P08 / VM2 R2",
+  "sourceCommit": "c1ee4b0ec834505936c1de66cb965b42f697f8e4",
+  "status": "METADATA_DIAGNOSED"
+}

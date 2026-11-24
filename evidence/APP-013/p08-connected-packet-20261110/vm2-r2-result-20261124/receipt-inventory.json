@@ -1,0 +1,91 @@
+{
+  "canonicalDigestIsNotFileByteSha256": true,
+  "canonicalResultSha256": "0da718d515253823d5b834f85a093e4e83cbf7601b3b987a2c34f79545e1af91",
+  "exactAllowlistedReceiptCount": 7,
+  "observedAt": "2026-11-24T11:47:27.513793+00:00",
+  "operationId": "e086e085-aa20-45af-aace-d6fa290e8d0a",
+  "receipts": [
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 198,
+      "name": "attempt.json",
+      "sha256": "a65253c6f055ccd9c8efbad2e0a73beae9943b03b94a3bfb023c0a0d818588d5",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-vm2-e086e085-aa20-45af-aace-d6fa290e8d0a/attempt.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 18,
+      "name": "cache.json",
+      "sha256": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-vm2-e086e085-aa20-45af-aace-d6fa290e8d0a/cache.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 139,
+      "name": "closeout.json",
+      "sha256": "790cc78abcb8ffb0ae05be056d7368773ab3e9a40f88eea75832bee693be71f3",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-vm2-e086e085-aa20-45af-aace-d6fa290e8d0a/closeout.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 18,
+      "name": "metadata.json",
+      "sha256": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-vm2-e086e085-aa20-45af-aace-d6fa290e8d0a/metadata.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 18,
+      "name": "owner.json",
+      "sha256": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-vm2-e086e085-aa20-45af-aace-d6fa290e8d0a/owner.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 18,
+      "name": "project.json",
+      "sha256": "dec38fd20b66d52e7720eb45319ba68f6c6501a20a2ae090d8edfa384f2b4a26",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-vm2-e086e085-aa20-45af-aace-d6fa290e8d0a/project.json",
+      "sourceRegularFile": true
+    },
+    {
+      "byteIdenticalCopy": true,
+      "bytes": 1126,
+      "name": "result.json",
+      "sha256": "05cfdbe634b09a847fa179c353703c2d0d858ddfc238e7479f2fc3e183fd18b1",
+      "sourceLinkCount": 1,
+      "sourceMode": "0600",
+      "sourceOwnerMatched": true,
+      "sourcePath": "/private/tmp/p08-vm2-e086e085-aa20-45af-aace-d6fa290e8d0a/result.json",
+      "sourceRegularFile": true
+    }
+  ],
+  "sourceRoot": "/private/tmp/p08-vm2-e086e085-aa20-45af-aace-d6fa290e8d0a",
+  "sourceRootMode": "0700",
+  "sourceRootOwnerMatched": true,
+  "sourceRootSymlink": false,
+  "version": 1
+}
