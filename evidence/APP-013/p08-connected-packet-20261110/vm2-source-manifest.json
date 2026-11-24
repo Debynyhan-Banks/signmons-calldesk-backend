@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": {
+    "evidence/APP-013/p08-connected-packet-20261110/vm2_metadata_read.py": "3ee60ecce214dee90487638d717281c0aeb55e1f1a53a595488f967a7754da6e",
+    "evidence/APP-013/p08-connected-packet-20261110/test_vm2_metadata_read.py": "e835200dabfeb67e30bda0c9acee9ed40df181b439336ba4a03b3b19c46c0a75"
+  },
+  "dependencies": {
+    "sq1ManifestSha256": "5f168012a754e60b75f251659939b461c44acaee719aa5fc3457351108946f59",
+    "iq1ManifestSha256": "916e5d1220fa82346905fc71d9453579a3638a07a97b0a8d693910c0c34a923b"
+  }
+}
