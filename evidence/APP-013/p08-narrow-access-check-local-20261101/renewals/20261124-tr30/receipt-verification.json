@@ -1,0 +1,23 @@
+{
+  "status": "TR30_INDEPENDENT_LOCAL_CLOSEOUT_VERIFIED",
+  "verifiedAt": "2026-11-24T10:30:55.517645+00:00",
+  "sourceCommit": "6df778d9858ff728d10e02f2b69084886a7cb102",
+  "decisionCommit": "e38bb7faaf04e5dcd3288ca1a180a3cebf27e028",
+  "leaderAbsent": true,
+  "groupAbsent": true,
+  "configurationUnchangedByExactExecutor": true,
+  "executorAndTemplateRemoved": [
+    "/private/tmp/signmons-tr30-owner-signin.py",
+    "/private/tmp/ec1-tr21-reviewed-template.py"
+  ],
+  "credentialCacheDisposition": "RETAINED_UNDER_EXPLICIT_SDK_EXCEPTION",
+  "safeReceiptHashes": {
+    "cache-reservation.json": "9a78e79e712e79f5359a016494a996f2c045161f5b28116feb4cc121ae07123f",
+    "result.json": "673cc7bf6822e3c0943e5b7eb3627fdcd92b55896fef3b1d3608cbe6f4828cdf",
+    "attempt.json": "8449ab18746eb3242acf0c1304fb17dc191f0999940184916c6f6d0b3737aad2",
+    "entry.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "additionalCredentialReads": 0,
+  "additionalProviderCalls": 0,
+  "residuals": []
+}
