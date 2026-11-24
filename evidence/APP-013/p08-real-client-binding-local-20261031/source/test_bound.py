@@ -83,6 +83,47 @@ class ChildJournalMergeTests(unittest.TestCase):
                 else:
                     child['failureCode'] = code
                 self.assertEqual(self.merge(child), child)
+                self.assertNotIn('responseValidationCode', self.h.coordinator.j['authClient'])
+
+    def test_response_validation_codes_require_their_exact_stage_and_diagnostic_group(self):
+        specific = {'SIGN': 'SIGN_RESPONSE_SHAPE', 'KEY_READ': 'KEY_RESPONSE_MISMATCH',
+                    'EXCHANGE': 'EXCHANGE_RESPONSE_MISMATCH'}
+        common = ('BODY_BOUND', 'JSON_PARSE', 'RESPONSE_SHAPE', 'PROVIDER_ERROR')
+        for stage, selected in specific.items():
+            for code in (*common, selected):
+                with self.subTest(stage=stage, code=code):
+                    child = {**self.child, 'authStage': stage, 'failureCategory': 'RESPONSE_VALIDATION',
+                             'httpStatus': None, 'responseValidationCode': code}
+                    self.assertEqual(self.merge(child), child)
+                    self.assertEqual(json.loads(json.dumps(self.h.coordinator.j))['authClient'], child)
+            for code in set(specific.values()) - {selected}:
+                with self.subTest(stage=stage, mismatch=code):
+                    self.assert_refused({**self.child, 'authStage': stage,
+                                        'failureCategory': 'RESPONSE_VALIDATION', 'httpStatus': None,
+                                        'responseValidationCode': code})
+
+    def test_response_validation_code_rejects_partial_wrong_or_private_diagnostics(self):
+        valid = {**self.child, 'authStage': 'EXCHANGE', 'failureCategory': 'RESPONSE_VALIDATION',
+                 'httpStatus': None, 'responseValidationCode': 'EXCHANGE_RESPONSE_MISMATCH'}
+        for mask in range(7):
+            child = {k: v for k, v in valid.items() if k not in h.AUTH_DIAGNOSTIC_FIELDS}
+            child.update({key: valid[key] for i, key in enumerate(sorted(h.AUTH_DIAGNOSTIC_FIELDS))
+                          if mask & (1 << i)})
+            with self.subTest(partial=mask):
+                self.assert_refused(child)
+        for code in (None, False, 1, [], {}, 'PRIVATE_DIAGNOSTIC_SENTINEL', 'json_parse'):
+            with self.subTest(code=code):
+                self.assert_refused({**valid, 'responseValidationCode': code})
+        for field, values in {'authStage': ('UNKNOWN', 'SIGN', 'KEY_READ'),
+                              'failureCategory': ('TRANSPORT', 'HTTP', 'UNKNOWN'),
+                              'failureCode': ('ADAPTER_REFUSED_OR_UNKNOWN', None),
+                              'httpStatus': (403, True)}.items():
+            for value in values:
+                with self.subTest(field=field, value=value):
+                    self.assert_refused({**valid, field: value})
+        for field in ('message', 'stack', 'body', 'url', 'accessToken', 'password'):
+            with self.subTest(private_field=field):
+                self.assert_refused({**valid, field: 'PRIVATE_DIAGNOSTIC_SENTINEL'})
 
     def test_partial_diagnostics_and_wrong_failure_code_refused(self):
         values = {'authStage': 'SIGN', 'failureCategory': 'HTTP', 'httpStatus': 403}
@@ -115,7 +156,8 @@ class ChildJournalMergeTests(unittest.TestCase):
                 self.assert_refused({**valid, field: 'PRIVATE_DIAGNOSTIC_SENTINEL'})
 
     def test_diagnostics_do_not_bypass_identity_version_parent_or_temp_guards(self):
-        child = {**self.child, 'authStage': 'EXCHANGE', 'failureCategory': 'HTTP', 'httpStatus': 403}
+        child = {**self.child, 'authStage': 'EXCHANGE', 'failureCategory': 'RESPONSE_VALIDATION',
+                 'httpStatus': None, 'responseValidationCode': 'EXCHANGE_RESPONSE_MISMATCH'}
         self.assert_refused({**child, 'operationId': str(uuid.uuid4())}, 'CHILD_JOURNAL_ABSENT')
         previous = {**self.before, 'authClient': {**child, 'version': 8}}
         self.assert_refused(child, 'CHILD_JOURNAL_VERSION', before=previous)

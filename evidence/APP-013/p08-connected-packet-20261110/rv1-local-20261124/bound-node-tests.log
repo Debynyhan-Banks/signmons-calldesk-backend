@@ -1,0 +1,18 @@
+✔ private binding, owner, TLS, database preflight and session probe are required (3.217ms)
+✔ wrong binding, missing transports and credentials refuse before owner or database call (1.205083ms)
+✔ owner override, TLS, tenant and session disagreements fail closed (1.492042ms)
+✔ interrupted closeout intent reconciles current state without reissuing a token (3.809125ms)
+✔ unknown activation version and late cleanup refuse success (1.616708ms)
+✔ foreign Firebase identity never receives cleanup mutation (1.402375ms)
+✔ independent closeout resumes after start cutoff under the same journal (1.890375ms)
+✔ response validation projection retains only literal codes for the exact stage (68.776667ms)
+✔ foreign, partial and non-response diagnostics never acquire a validation code (60.259708ms)
+✔ validation code is read once and throwing diagnostics cannot interrupt closeout (6.866333ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 294.909

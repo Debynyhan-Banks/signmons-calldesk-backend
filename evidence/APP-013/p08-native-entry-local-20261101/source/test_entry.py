@@ -1511,6 +1511,7 @@ class JournalContractIntegrationTests(unittest.TestCase):
                 auth=journal['authClient']
                 self.assertEqual((auth['authStage'],auth['failureCategory'],auth['httpStatus']),
                                  (stage,'HTTP',403))
+                self.assertNotIn('responseValidationCode', auth)
                 self.assertEqual(auth['phase'],'CLOSEOUT_FINISHED')
                 self.assertEqual(auth['residuals'],[])
                 self.assertTrue(auth['sessionClosed'])
@@ -1518,6 +1519,110 @@ class JournalContractIntegrationTests(unittest.TestCase):
                 self.assertFalse(final['authenticationObserved']);self.assertFalse(final['paymentObserved'])
                 self.assertFalse(work['paymentObserved'])
                 self.assertTrue(all(x['journalMerge']=='ACCEPTED' for x in journal['nativeEntry']['childObservations']))
+
+    def rv1_completed(self, stage, code, process_fault=None):
+        """Reuse actual native/client/sequence/merge boundaries; inject only inert I/O."""
+        observed = []
+        script = """import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {runChild,childRefusal,readChildRequest,serializeChildResult} from %s;
+import {portsFor,rawFor} from %s;
+try {
+ const request=readChildRequest(),e=JSON.parse(readFileSync(request.envelopePath));
+ const ports=portsFor({r:request,e,raw:rawFor(e)}),fetcher=ports.fetcher;
+ const selected=%s,code=%s,stages=['SIGN','KEY_READ','EXCHANGE'];let requests=0;
+ ports.fetcher=async(url,options)=>{
+  const stage=url.includes(':signBlob')?'SIGN':url.endsWith('/keyString')?'KEY_READ':
+    url.includes('signInWithCustomToken')?'EXCHANGE':null;
+  if(stage)requests++;
+  if(stage!==selected)return fetcher(url,options);
+  const privateValue='PRIVATE_SENTINEL';
+  const text=code==='BODY_BOUND'?privateValue.repeat(6000):
+    code==='JSON_PARSE'?'{'+privateValue:code==='RESPONSE_SHAPE'?'null':
+    JSON.stringify(code==='PROVIDER_ERROR'?{error:{message:privateValue}}:
+      code==='SIGN_RESPONSE_SHAPE'?{signedBlob:1,body:privateValue}:
+      code==='KEY_RESPONSE_MISMATCH'?{keyString:privateValue}:
+      {localId:privateValue,idToken:privateValue});
+  return {ok:true,status:200,text:async()=>text};
+ };
+ const result=await runChild(process.argv[1],request,ports);
+ assert.equal(requests,stages.indexOf(selected)+1);
+ assert.equal(result.authenticated,false);
+ process.stdout.write(serializeChildResult(result));
+} catch(error) {process.stdout.write(JSON.stringify(childRefusal(error))+'\\n');process.exitCode=2;}
+""" % (json.dumps((a.HERE/'native_child.mjs').as_uri()),
+       json.dumps((a.HERE/'fixture_connected.mjs').as_uri()), json.dumps(stage), json.dumps(code))
+        def inject(io, cap, fixture):
+            child = io.child
+            def invoke(argv, **kwargs):
+                if argv[2] != '--run':
+                    return child(argv, **kwargs)
+                result = subprocess.run([argv[0], '--input-type=module', '-e', script, '--', argv[2]], **kwargs)
+                observed.append(copy.deepcopy(read(fixture.root/'journal.json').get('authClient')))
+                self.assertEqual(result.returncode, 0, result.stdout)
+                self.assertEqual(result.stderr, '')
+                self.assertNotIn('PRIVATE_SENTINEL', result.stdout)
+                if process_fault == 'timeout':
+                    raise subprocess.TimeoutExpired(argv, 1, output=self.PRIVATE)
+                if process_fault == 'interruption':
+                    raise KeyboardInterrupt(self.PRIVATE)
+                if process_fault == 'exit':
+                    raise RuntimeError(self.PRIVATE)
+                outputs = {'lost': '', 'oversize': 'x' * 8193,
+                           'duplicate': '{"status":"PRIVATE_SENTINEL","status":"duplicate"}'}
+                if process_fault in outputs:
+                    return subprocess.CompletedProcess(argv, 2, outputs[process_fault], '')
+                return result
+            io.child = invoke
+        fixture, work, final, journal, _ = self.completed('normal', mutate_io=inject)
+        self.assertEqual(len(observed), 1)
+        # Native transports.mjs rejects oversized text before the client's own
+        # body predicate. Keep that established TRANSPORT classification; the
+        # direct injected-client suite separately exercises BODY_BOUND.
+        category = 'TRANSPORT' if code == 'BODY_BOUND' else 'RESPONSE_VALIDATION'
+        if code == 'BODY_BOUND':
+            self.assertNotIn('responseValidationCode', observed[0])
+        else:
+            self.assertEqual(observed[0]['responseValidationCode'], code)
+        auth = journal['authClient']
+        self.assertEqual((auth['failureCode'], auth['authStage'], auth['failureCategory'],
+                          auth['httpStatus']), ('SIGN_EXCHANGE_REFUSED', stage, category, None))
+        if code == 'BODY_BOUND':
+            self.assertNotIn('responseValidationCode', auth)
+        else:
+            self.assertEqual(auth['responseValidationCode'], code)
+        self.assertEqual(auth['phase'], 'CLOSEOUT_FINISHED')
+        self.assertEqual(auth['residuals'], [])
+        self.assertTrue(auth['sessionClosed'])
+        self.assertFalse(auth['authenticated'])
+        self.assertEqual(final['residuals'], ['AUTH_OUTCOME_UNKNOWN'])
+        self.assertFalse(final['authenticationObserved'] or final['paymentObserved'] or final['authProofReady'])
+        self.assertFalse(work['paymentObserved'])
+        self.assertIsNone(final['childResultSha256'])
+        self.assertNotIn('childResultSha256', work)
+        self.assertFalse(any(fixture.f.runtime_state.values()))
+        observations = journal['nativeEntry']['childObservations']
+        self.assertTrue(all(x['journalMerge'] == 'ACCEPTED' for x in observations))
+        self.assertEqual(sum(x['mode'] == '--run' for x in observations), 1)
+        self.assertTrue(any(x['mode'] == '--closeout' for x in observations))
+        return journal
+
+    def test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup(self):
+        specific = {'SIGN': 'SIGN_RESPONSE_SHAPE', 'KEY_READ': 'KEY_RESPONSE_MISMATCH',
+                    'EXCHANGE': 'EXCHANGE_RESPONSE_MISMATCH'}
+        for stage, selected in specific.items():
+            for code in ('BODY_BOUND', 'JSON_PARSE', 'RESPONSE_SHAPE', 'PROVIDER_ERROR', selected):
+                with self.subTest(stage=stage, code=code):
+                    self.rv1_completed(stage, code)
+
+    def test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption(self):
+        for fault in ('lost', 'duplicate', 'oversize', 'timeout', 'exit', 'interruption'):
+            with self.subTest(fault=fault):
+                journal = self.rv1_completed('EXCHANGE', 'EXCHANGE_RESPONSE_MISMATCH', fault)
+                primary = next(x for x in journal['nativeEntry']['childObservations'] if x['mode'] == '--run')
+                expected = 'TIMEOUT' if fault == 'timeout' else 'EXIT_UNKNOWN' if fault in {'exit', 'interruption'} else 'REFUSED'
+                self.assertEqual(primary['processOutcome'], expected)
+                self.assertEqual(primary['journalMerge'], 'ACCEPTED')
 
     def test_previous_schema_reproduces_the_observed_evidence_loss(self):
         import handoff

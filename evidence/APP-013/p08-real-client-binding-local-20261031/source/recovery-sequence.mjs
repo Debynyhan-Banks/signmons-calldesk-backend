@@ -81,12 +81,21 @@ export class CoordinatorAuthSequence {
       await this.step(() => this.clients.authenticate(token));
       this.save({phase: 'AUTHENTICATED', authenticated: true});
     } catch (error) {
+      let responseValidationCode;
+      try { responseValidationCode = error?.responseValidationCode; } catch {}
       this.save({phase: 'STOPPED', failureStage: this.state.phase, failureCode: safeCode(error),
         ...(error?.code === 'SIGN_EXCHANGE_REFUSED' ? {
           authStage: ['SIGN', 'KEY_READ', 'EXCHANGE'].includes(error.authStage) ? error.authStage : 'UNKNOWN',
           failureCategory: ['TRANSPORT', 'HTTP', 'RESPONSE_VALIDATION'].includes(error.failureCategory) ? error.failureCategory : 'UNKNOWN',
           httpStatus: error.failureCategory === 'HTTP' && Number.isInteger(error.httpStatus) &&
             error.httpStatus >= 100 && error.httpStatus <= 599 ? error.httpStatus : null,
+          ...(error.failureCategory === 'RESPONSE_VALIDATION' &&
+            ['SIGN', 'KEY_READ', 'EXCHANGE'].includes(error.authStage) &&
+            (['BODY_BOUND', 'JSON_PARSE', 'RESPONSE_SHAPE', 'PROVIDER_ERROR'].includes(responseValidationCode) ||
+              (error.authStage === 'SIGN' && responseValidationCode === 'SIGN_RESPONSE_SHAPE') ||
+              (error.authStage === 'KEY_READ' && responseValidationCode === 'KEY_RESPONSE_MISMATCH') ||
+              (error.authStage === 'EXCHANGE' && responseValidationCode === 'EXCHANGE_RESPONSE_MISMATCH'))
+            ? {responseValidationCode} : {}),
         } : {})});
     } finally {
       token = '';

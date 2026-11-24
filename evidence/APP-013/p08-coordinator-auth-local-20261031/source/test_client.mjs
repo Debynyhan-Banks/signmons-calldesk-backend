@@ -309,6 +309,8 @@ for (const stage of ['SIGN', 'KEY_READ', 'EXCHANGE']) {
       const j = JSON.parse(readFileSync(f.journalPath)).authClient;
       assert.equal(j.authStage, stage); assert.equal(j.failureCategory, category);
       assert.equal(j.httpStatus, category === 'HTTP' ? 403 : null);
+      assert.equal(Object.hasOwn(j, 'responseValidationCode'), category === 'RESPONSE_VALIDATION');
+      if (category === 'RESPONSE_VALIDATION') assert.equal(j.responseValidationCode, 'JSON_PARSE');
       assert.equal(j.failureStage, 'TOKEN_INTENT');
       assert.equal(result.authenticated, false); assert.deepEqual(result.residuals, []);
       assert.equal(state.row.status, 'DISABLED'); assert.equal(state.user.disabled, true);
@@ -341,4 +343,119 @@ test('issuance interruption is UNKNOWN with no transport or retry', async t => {
   await assert.rejects(() => api.issue(), {code: 'SIGN_EXCHANGE_REFUSED', authStage: 'SIGN', failureCategory: 'UNKNOWN', httpStatus: null});
   await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
   assert.equal(calls, 0); api.clear(); close(c);
+});
+
+// RV1 exercises rejected provider responses through the actual client and safe journal.
+const responseCases = [
+  ...['SIGN', 'KEY_READ', 'EXCHANGE'].flatMap(stage => [
+    {stage, code: 'BODY_BOUND', body: 'x'.repeat(65537)},
+    {stage, code: 'JSON_PARSE', body: '{PRIVATE_RESPONSE_SENTINEL'},
+    {stage, code: 'RESPONSE_SHAPE', body: 'null'},
+    {stage, code: 'PROVIDER_ERROR', body: '{"error":{"message":"PRIVATE_RESPONSE_SENTINEL"}}'},
+  ]),
+  {stage: 'SIGN', code: 'SIGN_RESPONSE_SHAPE', body: '{}'},
+  {stage: 'KEY_READ', code: 'KEY_RESPONSE_MISMATCH', body: '{}'},
+  {stage: 'KEY_READ', code: 'KEY_RESPONSE_MISMATCH', body: '{"keyString":"PRIVATE_RESPONSE_SENTINEL"}'},
+  {stage: 'EXCHANGE', code: 'EXCHANGE_RESPONSE_MISMATCH', body: '{"localId":"PRIVATE_RESPONSE_SENTINEL","idToken":"PRIVATE_TOKEN_SENTINEL"}'},
+  {stage: 'EXCHANGE', code: 'EXCHANGE_RESPONSE_MISMATCH', body: JSON.stringify({localId: TARGET.id, idToken: null})},
+];
+for (const [index, scenario] of responseCases.entries()) {
+  test(`RV1 safe response code ${index}: ${scenario.stage}/${scenario.code}`, async t => {
+    const f = fixture(t), c = cap(f), {clients, state} = fakeSequenceClients(f);
+    const stages = ['SIGN', 'KEY_READ', 'EXCHANGE'];
+    let calls = 0;
+    const api = adapters(c, {accessToken: 'PRIVATE_ACCESS_SENTINEL', now: f.now,
+      fetcher: async () => {
+        const stage = stages[calls++];
+        return {ok: true, text: async () => stage === scenario.stage ? scenario.body :
+          JSON.stringify(stage === 'SIGN' ? {signedBlob: 'c2ln'} : {keyString: 'synthetic-key'})};
+      }});
+    clients.fb.revoke = async () => {
+      state.user.tokensValidAfterTime = JSON.parse(readFileSync(f.journalPath)).authClient.revocationIntentAt;
+    };
+    clients.issue = () => api.issue();
+    const result = await new RecoverySequence(c, clients).run();
+    const journal = JSON.parse(readFileSync(f.journalPath));
+    assert.equal(journal.authClient.responseValidationCode, scenario.code);
+    assert.equal(journal.authClient.authStage, scenario.stage);
+    assert.equal(journal.authClient.failureCategory, 'RESPONSE_VALIDATION');
+    assert.equal(journal.authClient.failureCode, 'SIGN_EXCHANGE_REFUSED');
+    assert.equal(journal.authClient.httpStatus, null);
+    assert.equal(result.authenticated, false);
+    assert.equal(result.sessionClosed, true);
+    assert.deepEqual(result.residuals, []);
+    assert.equal(journal.authProofAccepted, false);
+    assert.equal(journal.childResultSha256, undefined);
+    assert.equal(state.row.status, 'DISABLED');
+    assert.equal(state.user.disabled, true);
+    assert.ok(!JSON.stringify(journal).includes('PRIVATE_'));
+    await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
+    assert.equal(calls, stages.indexOf(scenario.stage) + 1);
+    api.clear(); close(c);
+  });
+}
+
+for (const kind of ['deadline', 'closed']) {
+  test(`RV1 preserves UNKNOWN after response ${kind}`, async t => {
+    const f = fixture(t), c = cap(f); let calls = 0, api;
+    api = adapters(c, {accessToken: 'PRIVATE_ACCESS_SENTINEL', now: f.now,
+      fetcher: async () => {
+        const ordinal = ++calls;
+        return {ok: true, text: async () => {
+          if (ordinal === 3) {
+            if (kind === 'deadline') f.clock.value = Date.parse(f.plan.window.workEnd);
+            else api.clear();
+          }
+          return JSON.stringify(ordinal === 1 ? {signedBlob: 'c2ln'} : ordinal === 2 ?
+            {keyString: 'synthetic-key'} : {localId: TARGET.id, idToken: 'PRIVATE_TOKEN_SENTINEL'});
+        }};
+      }});
+    await assert.rejects(() => api.issue(), error => {
+      assert.equal(error.code, 'SIGN_EXCHANGE_REFUSED');
+      assert.equal(error.authStage, 'EXCHANGE');
+      assert.equal(error.failureCategory, 'UNKNOWN');
+      assert.equal(error.httpStatus, null);
+      assert.equal(Object.hasOwn(error, 'responseValidationCode'), false);
+      return true;
+    });
+    await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
+    assert.equal(calls, 3); api.clear(); close(c);
+  });
+}
+
+test('RV1 leaves provider JSON truthiness and duplicate parsing unchanged', async t => {
+  const f = fixture(t), c = cap(f); let calls = 0;
+  const api = adapters(c, {accessToken: 'synthetic', now: f.now, fetcher: async () => {
+    const bodies = [
+      '{"error":null,"signedBlob":"c2ln"}',
+      '{"error":false,"keyString":"synthetic-key"}',
+      JSON.stringify({localId: 'earlier-value'}).slice(0, -1) + ',"localId":' +
+        JSON.stringify(TARGET.id) + ',"idToken":"synthetic-token","error":0}',
+    ];
+    return {ok: true, text: async () => bodies[calls++]};
+  }});
+  assert.equal(await api.issue(), 'synthetic-token');
+  assert.equal(calls, 3);
+  await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
+  api.clear(); close(c);
+});
+
+test('RV1 never carries a passed key predicate into exchange URL construction', async t => {
+  const f = fixture(t), key = '\ud800';
+  f.receipt.keyStringSha256 = hash(key);
+  const c = cap(f); let calls = 0;
+  const api = adapters(c, {accessToken: 'synthetic', now: f.now, fetcher: async () => {
+    const body = ++calls === 1 ? {signedBlob: 'c2ln'} : {keyString: key};
+    return {ok: true, text: async () => JSON.stringify(body)};
+  }});
+  await assert.rejects(() => api.issue(), error => {
+    assert.equal(error.code, 'SIGN_EXCHANGE_REFUSED');
+    assert.equal(error.authStage, 'EXCHANGE');
+    assert.equal(error.failureCategory, 'RESPONSE_VALIDATION');
+    assert.equal(Object.hasOwn(error, 'responseValidationCode'), false);
+    return true;
+  });
+  assert.equal(calls, 2);
+  await assert.rejects(() => api.issue(), {code: 'TOKEN_ISSUANCE_ALREADY_ATTEMPTED'});
+  api.clear(); close(c);
 });

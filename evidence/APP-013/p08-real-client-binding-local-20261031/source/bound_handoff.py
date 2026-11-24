@@ -16,13 +16,13 @@ APP = HERE.parent.parent
 LOCKS = {
     "historical_launch": (APP / "p08-authentication-local-20261026/source/auth-launch.mjs", "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a"),
     "historical_adapters": (APP / "p08-authentication-local-20261026/source/auth-adapters.mjs", "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a"),
-    "serialized_handoff": (APP / "p08-serialized-handoff-local-20261031/source/handoff.py", "f6cb16d0f8c399ab11b699ecc583ec56cb0d403fae0653758ac2951413fd811f"),
+    "serialized_handoff": (APP / "p08-serialized-handoff-local-20261031/source/handoff.py", "55ebb37bc2dbaf984908ce904caea1e12662cb1f584490a1df459fc6ae9080bb"),
     "coordinator": (APP / "p08-live-binder-local-20261029/source/coordinator.py", "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"),
     "bridge": (APP / "p08-native-bridge-local-20261029/source/bridge.py", "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"),
     "adapter": (APP / "p08-native-closeout-local-20261031/source/adapter.py", "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"),
-    "authority": (APP / "p08-coordinator-auth-local-20261031/source/authority.mjs", "074a0f6f2ca41bb3cc4b691eda3e44d870234579a3e7c3cd476041a1dd979c39"),
+    "authority": (APP / "p08-coordinator-auth-local-20261031/source/authority.mjs", "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9"),
     "sequence": (APP / "p08-coordinator-auth-local-20261031/source/sequence.mjs", "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c"),
-    "client": (APP / "p08-coordinator-auth-local-20261031/source/client.mjs", "4dd54eb7caaea2d334c3a4c82ef49a6d914dc0feb58a7e089a280656f53d4dec"),
+    "client": (APP / "p08-coordinator-auth-local-20261031/source/client.mjs", "e8b3d5987dc4701a9869233cb932de891ecacdbbc342bf5a2d7dc4d70b2ac2b4"),
     "bridge_plan": (APP / "p08-authentication-local-20261026/source/reuse/plan.json", "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"),
 }
 OWNED_RECEIPT = "owned-receipt.json"
@@ -31,7 +31,7 @@ AUTH_DIAGNOSTIC_FIELDS = {"authStage", "failureCategory", "httpStatus"}
 AUTH_FIELDS = {"operationId", "version", "phase", "activationIntent", "firebaseEnableIntent",
                "tokenIssueIntent", "authenticated", "closeoutAttempted", "activatedVersion",
                "disabledVersion", "residuals", "failureStage", "failureCode", "status",
-               "sessionClosed", "revocationIntentAt"} | AUTH_DIAGNOSTIC_FIELDS
+               "sessionClosed", "revocationIntentAt", "responseValidationCode"} | AUTH_DIAGNOSTIC_FIELDS
 
 
 class Stop(Exception):
@@ -150,6 +150,17 @@ class Handoff:
         need((previous is None and child["version"] >= 1) or
              (isinstance(previous, dict) and child["version"] >= previous.get("version", 0) and
               child["operationId"] == previous.get("operationId")), "CHILD_JOURNAL_VERSION")
+        if "responseValidationCode" in child:
+            need(diagnostics == AUTH_DIAGNOSTIC_FIELDS and
+                 child.get("failureCode") == "SIGN_EXCHANGE_REFUSED" and
+                 child.get("failureCategory") == "RESPONSE_VALIDATION" and
+                 child.get("authStage") in {"SIGN", "KEY_READ", "EXCHANGE"} and
+                 type(child["responseValidationCode"]) is str and
+                 (child["responseValidationCode"] in {"BODY_BOUND", "JSON_PARSE", "RESPONSE_SHAPE", "PROVIDER_ERROR"} or
+                  (child["authStage"] == "SIGN" and child["responseValidationCode"] == "SIGN_RESPONSE_SHAPE") or
+                  (child["authStage"] == "KEY_READ" and child["responseValidationCode"] == "KEY_RESPONSE_MISMATCH") or
+                  (child["authStage"] == "EXCHANGE" and child["responseValidationCode"] == "EXCHANGE_RESPONSE_MISMATCH")),
+                 "CHILD_JOURNAL_SHAPE")
         self.coordinator.j["authClient"] = child
         return child
 

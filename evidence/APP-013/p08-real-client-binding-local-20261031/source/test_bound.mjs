@@ -196,3 +196,96 @@ test('independent closeout resumes after start cutoff under the same journal',as
   assert.deepEqual(result.residuals,[]);
   assert.equal(p.state.probe,1);
 });
+
+async function journalForRefusal(t, diagnostics) {
+  const f = fixture(t);
+  let row = {...TARGET, status: 'DISABLED', updatedAt: '2026-01-01T00:00:00.000Z'};
+  let user = {uid: TARGET.id, email: TARGET.email, displayName: TARGET.fullName,
+    disabled: true, emailVerified: false,
+    customClaims: {tenantId: TARGET.tenantId, role: 'admin', testOnly: true},
+    tokensValidAfterTime: new Date(0).toISOString()};
+  let issued = 0, closed = 0, cleared = 0, dropped = 0;
+  const clients = {
+    db: {get: async () => ({...row}), activate: async () => {
+      row = {...row, status: 'ACTIVE', updatedAt: '2026-01-01T00:00:01.000Z'};
+      return {...row};
+    }, disable: async () => {
+      row = {...row, status: 'DISABLED', updatedAt: '2026-01-01T00:00:02.000Z'};
+      return {...row};
+    }},
+    fb: {get: async () => structuredClone(user), enable: async () => {user.disabled = false;},
+      disable: async () => {user.disabled = true;},
+      revoke: async () => {user.tokensValidAfterTime = iso(f.clock.value);}},
+    issue: async () => {issued++; throw Object.defineProperties(Object.assign(Error('PRIVATE_DIAGNOSTIC_SENTINEL'), {
+      message: 'PRIVATE_DIAGNOSTIC_SENTINEL', body: 'PRIVATE_DIAGNOSTIC_SENTINEL',
+      url: 'PRIVATE_DIAGNOSTIC_SENTINEL', accessToken: 'PRIVATE_DIAGNOSTIC_SENTINEL'}),
+      Object.getOwnPropertyDescriptors(diagnostics));},
+    authenticate: async () => {throw Error('AUTHENTICATION_MUST_NOT_RUN');},
+    dropToken() {dropped++;}, clear() {cleared++;}, async close() {closed++;},
+  };
+  const result = await new CoordinatorAuthSequence(f.cap, clients).run();
+  assert.equal(result.status, 'P08_COORDINATOR_AUTH_STOPPED_AND_CLOSED');
+  assert.equal(result.authenticated, false); assert.deepEqual(result.residuals, []);
+  assert.equal(result.sessionClosed, true); assert.equal(result.authProofReady, false);
+  assert.equal(row.status, 'DISABLED'); assert.equal(user.disabled, true);
+  assert.deepEqual([issued, closed, cleared, dropped], [1, 1, 1, 1]);
+  const text = readFileSync(f.journalPath, 'utf8');
+  assert.ok(!text.includes('PRIVATE_DIAGNOSTIC_SENTINEL'));
+  const journal = JSON.parse(text);
+  assert.equal(journal.authProofAccepted, false);
+  assert.equal('childResultSha256' in journal, false);
+  return journal.authClient;
+}
+
+test('response validation projection retains only literal codes for the exact stage', async t => {
+  const specific = {SIGN: 'SIGN_RESPONSE_SHAPE', KEY_READ: 'KEY_RESPONSE_MISMATCH',
+    EXCHANGE: 'EXCHANGE_RESPONSE_MISMATCH'};
+  for (const [stage, selected] of Object.entries(specific)) {
+    for (const code of ['BODY_BOUND', 'JSON_PARSE', 'RESPONSE_SHAPE', 'PROVIDER_ERROR', selected]) {
+      const journal = await journalForRefusal(t, {code: 'SIGN_EXCHANGE_REFUSED', authStage: stage,
+        failureCategory: 'RESPONSE_VALIDATION', httpStatus: null, responseValidationCode: code});
+      assert.equal(journal.authStage, stage); assert.equal(journal.failureCategory, 'RESPONSE_VALIDATION');
+      assert.equal(journal.responseValidationCode, code); assert.equal(journal.httpStatus, null);
+    }
+    for (const code of Object.values(specific).filter(code => code !== selected)) {
+      const journal = await journalForRefusal(t, {code: 'SIGN_EXCHANGE_REFUSED', authStage: stage,
+        failureCategory: 'RESPONSE_VALIDATION', responseValidationCode: code});
+      assert.equal('responseValidationCode' in journal, false);
+    }
+  }
+});
+
+test('foreign, partial and non-response diagnostics never acquire a validation code', async t => {
+  const valid = {code: 'SIGN_EXCHANGE_REFUSED', authStage: 'EXCHANGE',
+    failureCategory: 'RESPONSE_VALIDATION', httpStatus: null,
+    responseValidationCode: 'EXCHANGE_RESPONSE_MISMATCH'};
+  const invalid = [
+    ...[undefined, null, false, 1, [], {}, 'PRIVATE_DIAGNOSTIC_SENTINEL', 'json_parse']
+      .map(responseValidationCode => ({...valid, responseValidationCode})),
+    ...[undefined, 'UNKNOWN', 'PRIVATE_DIAGNOSTIC_SENTINEL'].map(authStage => ({...valid, authStage})),
+    ...[undefined, 'TRANSPORT', 'HTTP', 'UNKNOWN', 'PRIVATE_DIAGNOSTIC_SENTINEL']
+      .map(failureCategory => ({...valid, failureCategory, httpStatus: 403})),
+    {...valid, code: 'PRIVATE_DIAGNOSTIC_SENTINEL'},
+  ];
+  for (const diagnostics of invalid) {
+    const journal = await journalForRefusal(t, diagnostics);
+    assert.equal('responseValidationCode' in journal, false);
+  }
+});
+
+test('validation code is read once and throwing diagnostics cannot interrupt closeout', async t => {
+  for (const throws of [false, true]) {
+    let reads = 0;
+    const diagnostics = {code: 'SIGN_EXCHANGE_REFUSED', authStage: 'EXCHANGE',
+      failureCategory: 'RESPONSE_VALIDATION', httpStatus: null};
+    Object.defineProperty(diagnostics, 'responseValidationCode', {enumerable: true, get() {
+      reads++;
+      if (throws) throw Error('PRIVATE_DIAGNOSTIC_SENTINEL');
+      return reads === 1 ? 'EXCHANGE_RESPONSE_MISMATCH' : 'PRIVATE_DIAGNOSTIC_SENTINEL';
+    }});
+    const journal = await journalForRefusal(t, diagnostics);
+    assert.equal(reads, 1);
+    if (throws) assert.equal('responseValidationCode' in journal, false);
+    else assert.equal(journal.responseValidationCode, 'EXCHANGE_RESPONSE_MISMATCH');
+  }
+});

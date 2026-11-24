@@ -14,7 +14,7 @@
   "lockedSources": {
     "p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "p08-connected-packet-20261110/bootstrap_open.py": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb",
-    "p08-coordinator-auth-local-20261031/source/authority.mjs": "074a0f6f2ca41bb3cc4b691eda3e44d870234579a3e7c3cd476041a1dd979c39",
+    "p08-coordinator-auth-local-20261031/source/authority.mjs": "12027fff16bd534dc483ba5de232e544af3a0961aee4143aeff3c05d83a893d9",
     "p08-https-output-category-local-20261029/source/qualification_launch.py": "d86a6c51a25d9caf10bf6f096249f79b7ae730e19424a8b36bce5c186f2b4dda",
     "p08-https-output-category-local-20261029/source/source-manifest.json": "320c8894217e460bc527aac5150c06a9b4d1d60410d3d4692685c601633be499",
     "p08-key-correction-20261110/binding.py": "02c8ba41a789fc92090dcf04130360dd7a35ca77a407117e7852ae3a47209cbb",
@@ -26,8 +26,8 @@
     "p08-native-bridge-local-20261029/source/bridge.py": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce",
     "p08-native-closeout-local-20261031/source/adapter.py": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c",
     "p08-real-client-binding-local-20261031/source/bound-clients.mjs": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1",
-    "p08-real-client-binding-local-20261031/source/bound_handoff.py": "3eb45ee12617718fe6c375041d4e86e6babceb9da6145fc880d1b2c01e0672e0",
-    "p08-real-client-binding-local-20261031/source/recovery-sequence.mjs": "1db2f7575dd7e4d7791a35263eb5876a88c405287e37dd05ab118132d136f76a",
+    "p08-real-client-binding-local-20261031/source/bound_handoff.py": "2db219e6b3ccceac4cf3e65a7eb2b98b727553250cc4b2cb5770039deeddf887",
+    "p08-real-client-binding-local-20261031/source/recovery-sequence.mjs": "dce019ea7fd95af03d7ea59dbedea8a26b6634c29abdacac60a16928bea3deab",
     "p08-restoration-local-20261028/source/restore.py": "a0bf4bc90cca0bd52935915d710ccb44e065dd3deed841a12ab49cb3ac4a1cb9",
     "p08-role-contract-local-20261029/source/qualification_launch.py": "76722d3265cda655b6b2433bc83d3bbcee06c12c6d0f66c07cad9fe2ae2e7e18"
   },

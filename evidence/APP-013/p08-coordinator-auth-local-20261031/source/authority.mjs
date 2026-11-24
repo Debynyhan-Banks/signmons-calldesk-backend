@@ -37,7 +37,7 @@ export function verifySources() {
     .replace('fetcher=fetch,now=Date.now', 'fetcher,now=Date.now')
     .replace('const {p}=gate(cap,true),s=p.target;let idToken=', "const {p}=gate(cap,true),s=p.target;need(typeof fetcher==='function','INJECTED_TRANSPORT_REQUIRED');let idToken=");
   // AD2: exact diagnostic-only extraction; historical source and full equality remain guarded.
-  const instrumented = extracted
+  const diagnosticBase = extracted
     .replace(" async function call(url", " let failureCategory='UNKNOWN',httpStatus=null;\n async function call(url")
     .replace("{gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');const end", "{failureCategory='UNKNOWN';httpStatus=null;gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');const end")
     .replace("const r=await fetcher(url", "failureCategory='TRANSPORT';const r=await fetcher(url")
@@ -47,6 +47,16 @@ export function verifySources() {
     .replace("const v=await call('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken", "stage='EXCHANGE';const v=await call('https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken")
     .replace("authStage:stage})", "authStage:stage,failureCategory,httpStatus})")
     .replace("gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');return v", "failureCategory='UNKNOWN';gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');failureCategory='RESPONSE_VALIDATION';return v");
+  // RV1: literal predicate codes only; historical locks and exact equality stay intact.
+  const instrumented = diagnosticBase
+    .replace("let failureCategory='UNKNOWN',httpStatus=null;", "let failureCategory='UNKNOWN',httpStatus=null,responseValidationCode=null;")
+    .replaceAll("failureCategory='UNKNOWN';httpStatus=null;", "failureCategory='UNKNOWN';httpStatus=null;responseValidationCode=null;")
+    .replace("need(Buffer.byteLength(text)<=65536,'PROVIDER_BODY_LIMIT');const v=JSON.parse(text);need(!v.error,'PROVIDER_REQUEST_REFUSED');", "responseValidationCode='BODY_BOUND';need(Buffer.byteLength(text)<=65536,'PROVIDER_BODY_LIMIT');responseValidationCode='JSON_PARSE';const v=JSON.parse(text);responseValidationCode='RESPONSE_SHAPE';const providerError=v.error;responseValidationCode='PROVIDER_ERROR';need(!providerError,'PROVIDER_REQUEST_REFUSED');")
+    .replace("failureCategory='UNKNOWN';gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');failureCategory='RESPONSE_VALIDATION';return v", "failureCategory='UNKNOWN';responseValidationCode=null;gate(cap,cleanup);need(!closed,'CLIENT_CLOSED');failureCategory='RESPONSE_VALIDATION';return v")
+    .replace("need(typeof signed.signedBlob==='string','SIGN_RESPONSE');", "responseValidationCode='SIGN_RESPONSE_SHAPE';need(typeof signed.signedBlob==='string','SIGN_RESPONSE');responseValidationCode=null;")
+    .replace("apiKey=key.keyString;need(typeof apiKey==='string'&&hash(apiKey)===p.exchange.keySha256,'EXCHANGE_CONFIG_DRIFT');", "responseValidationCode='KEY_RESPONSE_MISMATCH';apiKey=key.keyString;need(typeof apiKey==='string'&&hash(apiKey)===p.exchange.keySha256,'EXCHANGE_CONFIG_DRIFT');responseValidationCode=null;")
+    .replace("need(v.localId===s.id&&typeof v.idToken==='string','EXCHANGE_IDENTITY_DRIFT');", "responseValidationCode='EXCHANGE_RESPONSE_MISMATCH';need(v.localId===s.id&&typeof v.idToken==='string','EXCHANGE_IDENTITY_DRIFT');responseValidationCode=null;")
+    .replace("authStage:stage,failureCategory,httpStatus})", "authStage:stage,failureCategory,httpStatus,...(failureCategory==='RESPONSE_VALIDATION'&&responseValidationCode?{responseValidationCode}:{})})");
   need(readFileSync(resolve(HERE, 'client.mjs'), 'utf8') === instrumented, 'EXTRACTION_DRIFT');
   return true;
 }

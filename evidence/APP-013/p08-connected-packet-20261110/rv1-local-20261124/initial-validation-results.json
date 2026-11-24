@@ -1,0 +1,129 @@
+[
+  {
+    "temporaryLog": "/private/tmp/rv1-native-node-20261124.log",
+    "sha256": "9d31ac2c7b9059461c7a6c0549c04c241a5792d72b7d5e5f491a306d0fb192eb",
+    "failures": [
+      "\u2139 tests 57",
+      "\u2139 pass 53",
+      "\u2139 fail 4"
+    ]
+  },
+  {
+    "temporaryLog": "/private/tmp/rv1-native-python-20261124.log",
+    "sha256": "9974e7d7965877bd1731ce5cd35ae416f84cbffcef72ade350a5a536f463c68d",
+    "failures": [
+      "ERROR: test_killed_native_worker_during_wait_allows_independent_closeout (test_entry.CT4TimingTests.test_killed_native_worker_during_wait_allows_independent_closeout)",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='JSON_PARSE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='RESPONSE_SHAPE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='PROVIDER_ERROR')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='SIGN_RESPONSE_SHAPE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='JSON_PARSE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='RESPONSE_SHAPE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='PROVIDER_ERROR')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='KEY_RESPONSE_MISMATCH')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='JSON_PARSE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='RESPONSE_SHAPE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='PROVIDER_ERROR')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='EXCHANGE_RESPONSE_MISMATCH')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='lost')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='duplicate')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='oversize')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='timeout')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='exit')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='interruption')",
+      "FAIL: test_late_child_return_preserves_payment_intent_for_cleanup (test_entry.ConnectedEntryTests.test_late_child_return_preserves_payment_intent_for_cleanup)",
+      "FAIL: test_payment_parent_retains_then_independently_purges (test_entry.ConnectedEntryTests.test_payment_parent_retains_then_independently_purges)",
+      "Ran 148 tests in 87.276s",
+      "FAILED (failures=2, errors=22)"
+    ]
+  },
+  {
+    "temporaryLog": "/private/tmp/rv1-packet-20261124.log",
+    "sha256": "1690dbaf558f2579b7d6a4373e2334e0a5cdd1462f47c2920db4852ed482848d",
+    "failures": [
+      "ERROR: setUpClass (test_account_containment_read.CT3DisposableTLS)",
+      "ERROR: test_production_jxa_dispatches_loopback_and_closes_only_owned_window (test_bootstrap_open.BootstrapTests.test_production_jxa_dispatches_loopback_and_closes_only_owned_window)",
+      "ERROR: test_actual_sandbox_fork_and_spawn_denied (test_iq1_identity_boundary.ProcessTests.test_actual_sandbox_fork_and_spawn_denied)",
+      "ERROR: test_actual_support_probe (test_iq1_identity_boundary.ProcessTests.test_actual_support_probe)",
+      "ERROR: test_actual_wrapped_transport_with_disposable_script (test_iq1_identity_boundary.ProcessTests.test_actual_wrapped_transport_with_disposable_script)",
+      "ERROR: test_actual_worker_execs_fresh_cleanup_with_same_owned_lease (test_sq1_signing_boundary.ActualProcessBoundaries.test_actual_worker_execs_fresh_cleanup_with_same_owned_lease)",
+      "ERROR: test_cleanup_sigterm_does_not_skip_authorized_restoration (test_sq1_signing_boundary.ActualProcessBoundaries.test_cleanup_sigterm_does_not_skip_authorized_restoration)",
+      "ERROR: test_main_sigint_stops_following_main_dispatch_and_restores (test_sq1_signing_boundary.ActualProcessBoundaries.test_main_sigint_stops_following_main_dispatch_and_restores)",
+      "ERROR: test_main_sigterm_stops_following_main_dispatch_and_restores (test_sq1_signing_boundary.ActualProcessBoundaries.test_main_sigterm_stops_following_main_dispatch_and_restores)",
+      "ERROR: test_sigint_during_settling_wait_restores_without_sign (test_sq1_signing_boundary.ActualProcessBoundaries.test_sigint_during_settling_wait_restores_without_sign)",
+      "ERROR: test_sigterm_during_settling_wait_restores_without_sign (test_sq1_signing_boundary.ActualProcessBoundaries.test_sigterm_during_settling_wait_restores_without_sign)",
+      "ERROR: test_supervisor_kill_during_wait_preserves_worker_cleanup (test_sq1_signing_boundary.ActualProcessBoundaries.test_supervisor_kill_during_wait_preserves_worker_cleanup)",
+      "ERROR: test_supervisor_sigkill_leaves_worker_exec_cleanup_route (test_sq1_signing_boundary.ActualProcessBoundaries.test_supervisor_sigkill_leaves_worker_exec_cleanup_route)",
+      "ERROR: test_worker_kill_during_wait_uses_independent_supervisor_cleanup (test_sq1_signing_boundary.ActualProcessBoundaries.test_worker_kill_during_wait_uses_independent_supervisor_cleanup)",
+      "ERROR: test_worker_sigkill_leaves_supervisor_owned_independent_cleanup (test_sq1_signing_boundary.ActualProcessBoundaries.test_worker_sigkill_leaves_supervisor_owned_independent_cleanup)",
+      "ERROR: test_real_delayed_body_preserves_received403 (test_sq1_signing_boundary.LocalHttpBoundary.test_real_delayed_body_preserves_received403)",
+      "ERROR: test_real_delayed_headers_are_unknown_without_retry (test_sq1_signing_boundary.LocalHttpBoundary.test_real_delayed_headers_are_unknown_without_retry)",
+      "ERROR: test_real_http403_stream_is_projected_without_raw_denial_retention (test_sq1_signing_boundary.LocalHttpBoundary.test_real_http403_stream_is_projected_without_raw_denial_retention)",
+      "ERROR: test_real_redirect_is_not_followed_or_retried (test_sq1_signing_boundary.LocalHttpBoundary.test_real_redirect_is_not_followed_or_retried)",
+      "ERROR: test_real_streaming_output_limit_keeps_observed403 (test_sq1_signing_boundary.LocalHttpBoundary.test_real_streaming_output_limit_keeps_observed403)",
+      "FAIL: test_real_fixed_coordinator_compatible (test_account_containment_read.CT3Composition.test_real_fixed_coordinator_compatible)",
+      "FAIL: test_real_coordinator_process (test_account_containment_read.Composition.test_real_coordinator_process)",
+      "FAIL: test_actual_loopback_bridge_and_headless_chrome_handoff (test_bootstrap_open.BootstrapTests.test_actual_loopback_bridge_and_headless_chrome_handoff)",
+      "FAIL: test_actual_coordinator_and_cleanup (test_iq1_identity_boundary.ProcessTests.test_actual_coordinator_and_cleanup)",
+      "FAIL: test_main_sigkill_still_runs_independent_cleanup (test_iq1_identity_boundary.ProcessTests.test_main_sigkill_still_runs_independent_cleanup)",
+      "FAIL: test_same_process_watchdog_survives_sdk_sigalarm_replacement (test_sq1_signing_boundary.SdkWatchdog.test_same_process_watchdog_survives_sdk_sigalarm_replacement)",
+      "FAIL: test_sdk_watchdog_expires_after_owning_parent_is_sigkilled (test_sq1_signing_boundary.SdkWatchdog.test_sdk_watchdog_expires_after_owning_parent_is_sigkilled)",
+      "Ran 421 tests in 47.131s",
+      "FAILED (failures=7, errors=20)"
+    ]
+  },
+  {
+    "temporaryLog": "/private/tmp/rv1-native-journal.log",
+    "sha256": "aa5d86855a314618e89d1f3e6b2119ebe83c4b98a5122308157616b4289094a3",
+    "failures": [
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='JSON_PARSE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='RESPONSE_SHAPE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='PROVIDER_ERROR')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='SIGN_RESPONSE_SHAPE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='JSON_PARSE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='RESPONSE_SHAPE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='PROVIDER_ERROR')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='KEY_RESPONSE_MISMATCH')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='JSON_PARSE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='RESPONSE_SHAPE')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='PROVIDER_ERROR')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='EXCHANGE_RESPONSE_MISMATCH')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='lost')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='duplicate')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='oversize')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='timeout')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='exit')",
+      "ERROR: test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) (fault='interruption')",
+      "Ran 11 tests in 59.032s",
+      "FAILED (errors=21)"
+    ]
+  },
+  {
+    "temporaryLog": "/private/tmp/rv1-native-journal-final.log",
+    "sha256": "05f70ffa977299f375c5bdb5dd1f91b598bd7b5a2ed8425d41104631d7a08e6e",
+    "failures": [
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='BODY_BOUND')",
+      "Ran 11 tests in 50.405s",
+      "FAILED (errors=3)"
+    ]
+  },
+  {
+    "temporaryLog": "/private/tmp/rv1-native-python-host-20261124.log",
+    "sha256": "38b582891d6ef758c33ffc38bab9d828f0d836b0badf627fe74531bf54986e1a",
+    "failures": [
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='SIGN', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='KEY_READ', code='BODY_BOUND')",
+      "ERROR: test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) (stage='EXCHANGE', code='BODY_BOUND')",
+      "Ran 148 tests in 76.343s",
+      "FAILED (errors=3)"
+    ]
+  }
+]
