@@ -1,0 +1,47 @@
+[
+  {
+    "path": "evidence/APP-013/p08-https-output-category-local-20261029/source/source-manifest.json",
+    "sha256": "6665c7e5fe9fa4f78af777b725417f2b77ac60616c37b68d0a77b96ca7c17ecf",
+    "fileReferencesVerified": 13
+  },
+  {
+    "path": "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json",
+    "sha256": "2bef573fc894a0c9bc3213a22ada602b0d58e83a33862a440f0462f457b3ed08",
+    "fileReferencesVerified": 28
+  },
+  {
+    "path": "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json",
+    "sha256": "4c5300b53e32d786c1968680ab1a45fdfa22d1813f273e27a2ab8dc1be3c4c94",
+    "fileReferencesVerified": 13
+  },
+  {
+    "path": "evidence/APP-013/p08-key-correction-20261110/source-manifest.json",
+    "sha256": "d6cc32f6adc27f0a849809ecf8d1dd582d33c4add7f4b2c5e90e1a7278053fb9",
+    "fileReferencesVerified": 63
+  },
+  {
+    "path": "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json",
+    "sha256": "1d1a91c513b6d72087ceff3012a4c37bfb4e5d4fa4eafaf89170e2a42779d781",
+    "fileReferencesVerified": 35
+  },
+  {
+    "path": "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json",
+    "sha256": "a5d38ecfc03ec1de905daaea1ddd35cc0cf060a0aa46f91cb2c4955df2f9834b",
+    "fileReferencesVerified": 44
+  },
+  {
+    "path": "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json",
+    "sha256": "f33b59f4f2b262e8219d273b18c222f8b74ff8d31d01ca03b3119b11a3babb1b",
+    "fileReferencesVerified": 50
+  },
+  {
+    "path": "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json",
+    "sha256": "e9dba25595db7e9a524ba25a44506c5cedea13b16686d600821d905469143cd6",
+    "fileReferencesVerified": 51
+  },
+  {
+    "path": "evidence/APP-013/p08-connected-packet-20261110/vm2-source-manifest.json",
+    "sha256": "0140b9507ef02107965ec12a3642b10b0eb1aeec5122395021e84a0fb8b91df5",
+    "fileReferencesVerified": 2
+  }
+]

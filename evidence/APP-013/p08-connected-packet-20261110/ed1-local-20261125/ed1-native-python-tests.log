@@ -1,0 +1,50 @@
+.......................F.F..........................................................FF..................................................................
+======================================================================
+FAIL: test_late_child_return_preserves_payment_intent_for_cleanup (test_entry.ConnectedEntryTests.test_late_child_return_preserves_payment_intent_for_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 914, in test_late_child_return_preserves_payment_intent_for_cleanup
+    self.assertEqual(j['payment']['outcome'],'APPLICATION_SETTLED')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'NOT_OBSERVED' != 'APPLICATION_SETTLED'
+- NOT_OBSERVED
++ APPLICATION_SETTLED
+
+
+======================================================================
+FAIL: test_payment_parent_retains_then_independently_purges (test_entry.ConnectedEntryTests.test_payment_parent_retains_then_independently_purges)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 926, in test_payment_parent_retains_then_independently_purges
+    self.assertTrue(r['paymentObserved'],read(self.root/'journal.json'))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : {'authAttempted': True, 'authClient': {'activatedVersion': '2026-01-01T00:00:01.000Z', 'activationIntent': True, 'authenticated': True, 'closeoutAttempted': True, 'disabledVersion': '2026-01-01T00:00:02.000Z', 'firebaseEnableIntent': True, 'operationId': '4da6e808-0ea0-48fc-9815-a168afa7f547', 'phase': 'CLOSEOUT_FINISHED', 'residuals': [], 'revocationIntentAt': '2026-11-25T13:18:10.000Z', 'sessionClosed': True, 'status': 'P08_COORDINATOR_AUTHENTICATED_AND_CLOSED', 'tokenIssueIntent': True, 'version': 9}, 'authProofAccepted': True, 'childResultSha256': '89803870ecf40a4ed42fb2e3c39c65517ec080730c7ebd2d89a00cf1728e440b', 'failure': None, 'iamAttempted': ['lookup', 'signing'], 'iamCleanupAttempted': ['signing', 'lookup'], 'iamOwned': ['lookup', 'signing'], 'keyCreateAttempted': True, 'keyDeleteAttempted': True, 'keyUidSha256': 'c5fb987651cc20dd01f26c0389d54cf83e7b3838aa1013a25d0f375da9fb7f99', 'nativeEntry': {'calls': {'child': 4, 'cli': 135, 'https': 15, 'sql': 7}, 'childObservations': [{'childCall': 1, 'code': 'NONE', 'journalMerge': 'ACCEPTED', 'mode': '--payment-preflight', 'processOutcome': 'RETURNED', 'stage': 'RESULT'}, {'childCall': 2, 'code': 'NONE', 'journalMerge': 'ACCEPTED', 'mode': '--run', 'processOutcome': 'RETURNED', 'stage': 'RESULT'}, {'childCall': 3, 'code': 'NONE', 'journalMerge': 'ACCEPTED', 'mode': '--readback', 'processOutcome': 'RETURNED', 'stage': 'RESULT'}, {'childCall': 4, 'code': 'NONE', 'journalMerge': 'ACCEPTED', 'mode': '--readback', 'processOutcome': 'RETURNED', 'stage': 'RESULT'}], 'envelopeSha256': 'd956f330b0b9f85f8174c00cea6c0dffd3a5d85c47ba923449e074c2f47a8931'}, 'operationId': '4da6e808-0ea0-48fc-9815-a168afa7f547', 'payment': {'bridgeClosed': True, 'enableIntent': True, 'endpointCalls': 8, 'endpointDisabled': True, 'failureCode': 'PAYMENT_ADAPTER_UNKNOWN', 'operationId': '4da6e808-0ea0-48fc-9815-a168afa7f547', 'outcome': 'NOT_OBSERVED', 'phase': 'CLOSED', 'residuals': [], 'revision': 19, 'scopeSha256': '9d6fe63330f2453693b534f04abb7f6e1ec7debdb8a0bc6cb80c9fb0d0914e60', 'secretReads': 4}, 'phase': 'CLOSED', 'planSha256': 'aea684eb7dd27cfc33ed2e8b07ae1713dc0faec184c1bcbcda41f34350aac012', 'preflightStage': 'ACCESS_PREFLIGHT', 'residuals': [], 'runtimeAttempted': [['version', 'signmons-staging-stripe-secret-key'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['tag', 'app013-p07-atomic'], ['role', 'p07_payment_runtime']], 'runtimeCleanupAttempted': [['role', 'p07_payment_runtime'], ['tag', 'app013-p07-atomic'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-technician-link-key'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-payment-database-url'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-stripe-secret-key']], 'runtimeOwned': [['version', 'signmons-staging-stripe-secret-key'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['tag', 'app013-p07-atomic'], ['role', 'p07_payment_runtime']], 'serviceEnableAttempted': False, 'unknown': []}
+
+======================================================================
+FAIL: test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) (kind='documented')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1757, in test_ec1_documented_response_and_optional_identity_reach_authenticated_payment
+    self.ec1_completed({'kind': kind}, success=True)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1707, in ec1_completed
+    self.assertEqual(journal['authProofAccepted'], success)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+======================================================================
+FAIL: test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) (kind='matching')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1757, in test_ec1_documented_response_and_optional_identity_reach_authenticated_payment
+    self.ec1_completed({'kind': kind}, success=True)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 1707, in ec1_completed
+    self.assertEqual(journal['authProofAccepted'], success)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+----------------------------------------------------------------------
+Ran 151 tests in 101.932s
+
+FAILED (failures=4)

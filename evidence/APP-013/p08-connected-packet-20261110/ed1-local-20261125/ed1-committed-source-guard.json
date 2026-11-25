@@ -1,0 +1,10 @@
+{
+  "checkedAt": "2026-11-25T13:23:58.495990+00:00",
+  "sourceCommit": "5ea6fcb3bc897c195fb2311af9d5ddb75c958e13",
+  "guard": "vm2.source_guard -> SQ1 -> IQ1 -> qualification/native historical source guards",
+  "status": "PASS",
+  "providerCalls": 0,
+  "credentialCacheReads": 0,
+  "sdkCommands": 0,
+  "manifestSha256": "0140b9507ef02107965ec12a3642b10b0eb1aeec5122395021e84a0fb8b91df5"
+}

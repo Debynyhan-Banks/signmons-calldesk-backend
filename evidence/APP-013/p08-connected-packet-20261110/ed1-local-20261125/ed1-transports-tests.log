@@ -1,0 +1,29 @@
+✔ native defaults reject a local proof capability before any owner/DB/fetch (190.099666ms)
+✔ actual child entry runs with injected ports and rejects reuse of one reserved call (262.586792ms)
+✔ outer capability cannot be forged for native ports (0.1175ms)
+✔ serialized oversized provider body fails before authentication (179.476791ms)
+✔ unapproved HTTPS host refuses before injected transport (177.026167ms)
+✔ child budget is finite and cleanup capability cannot run activation path (176.686084ms)
+✔ native clients scope UTC timestamp parsing and delegate other OIDs/formats (175.885917ms)
+✔ native timestamp versions reject malformed calendars and excess precision without rounding (177.956167ms)
+✔ actual native child retains bounded HTTP failure status without response body (183.183958ms)
+✔ refusal contract is finite and ignores provider stage, messages and accessors (0.176541ms)
+✔ shared result serializer fixes the RESULT boundary without exposing thrown contents (0.097833ms)
+✔ real process and fixture share bounded INPUT refusal serialization (469.373666ms)
+✔ actual child labels input, authority and reservation independently (351.902541ms)
+✔ actual child startup failure retains CLIENT_BINDING: owner (175.888416ms)
+✔ actual child startup failure retains CLIENT_BINDING: connect (180.212625ms)
+✔ actual child startup failure retains CLIENT_BINDING: tls (180.671083ms)
+✔ actual child startup failure retains CLIENT_BINDING: preflight (178.365583ms)
+✔ sequence initialization refusal retains its boundary (182.242084ms)
+✔ primary readback refusal survives a failing independent session close (180.114959ms)
+✔ session end failure still refuses successful containment (168.837833ms)
+✔ session probe failure still refuses successful containment (166.95275ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3853.605667

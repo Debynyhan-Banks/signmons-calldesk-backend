@@ -1,0 +1,83 @@
+{
+  "change": "ED1",
+  "credentialCacheReads": 0,
+  "currentManifests": 9,
+  "externalRequests": 0,
+  "fileReferencesVerified": 299,
+  "historicalR58InventoryVerified": true,
+  "independentReview": "No blocking findings; nine synthetic legacy CLI-to-CT3 result cases preserve the seven-key schema; new fields rejected by old consumer as expected. Opt-in isolates the diagnostic.",
+  "liveMismatchField": "UNKNOWN",
+  "manifestDigestReferencesVerified": 3,
+  "paymentAttempts": 0,
+  "predicateEquivalence": "Same acceptance/refusal set for decoded provider JSON and validated pins; malformed event objects no longer trigger conversion TypeError and remain refused as PAYMENT_ENDPOINT_DRIFT.",
+  "restrictedFixtureFailures": "Initial local loopback/process/TLS fixture failures preserved; identical suites passed with approved local fixture permissions. No test expectation or code was changed to obtain the passing reruns.",
+  "retainedFiles": [
+    {
+      "path": "ed1-focused-tests.log",
+      "sha256": "facbe3afcd72e2fbce42c25f3bc6bfe6c04f0417b5737924521efa569c464cbf"
+    },
+    {
+      "path": "ed1-focused-unrestricted-tests.log",
+      "sha256": "74287ca9bbc7c39e714e9a028f720ed56d48fc866bc8f156113adfa628b604a3"
+    },
+    {
+      "path": "ed1-key-python-tests.log",
+      "sha256": "dc5d5f82e4a2cdbf3b0e002fc7c4f926b9118d8d5f1eb0162675cd4b0139f687"
+    },
+    {
+      "path": "ed1-native-python-tests.log",
+      "sha256": "d2bc2a8dfa3aef59c31a3ef89f535316888166cbdf3dd376119d74a6c51322b3"
+    },
+    {
+      "path": "ed1-native-unrestricted-tests.log",
+      "sha256": "b21ab1fd73d8fa63858de0ae2eb4317b357d321ac76830b44f5de952705c9210"
+    },
+    {
+      "path": "ed1-containment-tests.log",
+      "sha256": "a22e188a6ea64834b2b17d3e123e11ce29cc05995dd98781d3e7d1bc535d2cdd"
+    },
+    {
+      "path": "ed1-containment-unrestricted-tests.log",
+      "sha256": "bb7d8581b3abe5867afc8b030c499845649005ba86b751ecf873687aabb5e848"
+    },
+    {
+      "path": "ed1-transports-tests.log",
+      "sha256": "5a8946a71f0a066df2d5f6898494e75c3d53ff212bbe828d933751b8a9efb4a7"
+    },
+    {
+      "path": "ed1-governance-tests.log",
+      "sha256": "cf461cb6243963c4ccb5ef33d9ca04ed42c7e71d1216fb4f1a37e15f4cece364"
+    },
+    {
+      "path": "ed1-current-manifests.json",
+      "sha256": "331013a96a5e4588108c33aa67f42aba2c05c181db1eb2c7e77cafce9f590338"
+    },
+    {
+      "path": "ed1-committed-source-guard.json",
+      "sha256": "1602f3710d005c0d662a12499af297400ff06fcf618023b220e8d56ec351fd0f"
+    }
+  ],
+  "scope": "Prepared ED1 local correction only; no additional deviation",
+  "section": "APP-013/3A/P08",
+  "signIns": 0,
+  "sourceCommit": "5ea6fcb3bc897c195fb2311af9d5ddb75c958e13",
+  "sourceFiles": 4,
+  "startingSourceCommit": "badc26fbe79ed87523a944d813db1bee856f6caf",
+  "status": "LOCAL_CORRECTION_VERIFIED_NO_EXTERNAL_ACTION",
+  "validation": {
+    "affectedTotal": 415,
+    "architecture": "PASS",
+    "backendGovernanceWrapper": "PASS",
+    "committedSourceGuards": "PASS",
+    "containmentPython": 59,
+    "crossRepositoryConsistency": "PASS",
+    "focusedNode": 132,
+    "frozenBaseline": "PASS",
+    "governanceTests": 25,
+    "keyCorrectionPython": 52,
+    "nativePython": 151,
+    "nativeTransportsNode": 21,
+    "whitespace": "PASS"
+  },
+  "verifiedAt": "2026-11-25T13:25:11.398199+00:00"
+}
