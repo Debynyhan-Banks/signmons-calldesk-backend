@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync,unlinkSync,chmodSync,linkSync} from 'node:fs'
 import {randomUUID} from 'node:crypto';
 import {hash,authorizeChild} from './authority_bridge.mjs';
 import {runChild} from './native_child.mjs';
-import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,stripeSecretName,completedPaymentCloseout} from './connected_payment.mjs';
+import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,endpointComparison,stripeSecretName,completedPaymentCloseout} from './connected_payment.mjs';
 import {SQL} from '../../p08-coordinator-auth-local-20261031/source/client.mjs';
 import {fixture,portsFor,runConnected} from './fixture_connected.mjs';
 for(const scenario of ['normal','unpaid','lost_create','lost_enable','foreign_endpoint','disable_failed'])test('actual native child payment and cleanup: '+scenario,async t=>{
@@ -31,6 +31,66 @@ test('current payment context refuses foreign, stale, incomplete and preexisting
 test('endpoint missing/null/live/version/event drift fails closed',t=>{
  const f=fixture(t),v={id:f.e.payment.endpointId,object:'webhook_endpoint',livemode:false,url:f.e.payment.url,api_version:f.e.payment.apiVersion,enabled_events:EVENTS,status:'disabled'};
  for(const change of [{livemode:true},{api_version:null},{url:'https://foreign.invalid'},{enabled_events:['*']},{status:null},{id:'we_foreign'}])assert.throws(()=>endpoint({...v,...change},f.e.payment));
+});
+
+// Frozen pre-ED1 predicate: an independent pass/fail oracle, including its
+// historical TypeError for non-sortable JSON event members. Pins are the
+// validated production types, while provider fields range over decoded JSON.
+function legacyEndpointAccepts(value,p,status) {
+ try{return Boolean(value && value.object==='webhook_endpoint' && value.id===p.endpointId &&
+  hash(value.id)===p.endpointSha256 && value.livemode===false && value.url===p.url &&
+  value.api_version===p.apiVersion && Array.isArray(value.enabled_events) &&
+  JSON.stringify([...value.enabled_events].sort())===JSON.stringify(EVENTS) &&
+  ['enabled','disabled'].includes(value.status) && (!status||value.status===status));}
+ catch{return false;}
+}
+const comparisonFields=['objectType','endpointIdentity','sandboxMode','url','apiVersion','enabledEvents','recognizedStatus','disabledStatus'];
+function comparisonFixture() {
+ const p={endpointId:'we_ED1_fixture',endpointSha256:hash('we_ED1_fixture'),url:'https://fixture.invalid/webhooks/stripe',apiVersion:'2026-03-25.dahlia'};
+ return {p,row:{object:'webhook_endpoint',id:p.endpointId,livemode:false,url:p.url,
+  api_version:p.apiVersion,enabled_events:[...EVENTS],status:'disabled'}};
+}
+test('ED1 native acceptance matches the frozen predicate across JSON field and status cases',()=>{
+ const {p,row}=comparisonFixture(),values=[null,[],{},true,false,0,1,'','PRIVATE_SENTINEL'];
+ for(const key of Object.keys(row))for(const value of [undefined,null,[],{},true,false,0,1,'','PRIVATE_SENTINEL']) {
+  const changed={...row};if(value===undefined)delete changed[key];else changed[key]=value;values.push(changed);
+ }
+ values.push(row,{...row,status:'enabled'},{...row,enabled_events:[...EVENTS].reverse()},
+  {...row,enabled_events:[...EVENTS,EVENTS[0]]},{...row,enabled_events:EVENTS.slice(1)},
+  {...row,enabled_events:[...EVENTS,{toString:'PRIVATE_SENTINEL'}]},
+  {...row,id:'we_foreign',url:'https://PRIVATE_SENTINEL.invalid',livemode:true});
+ for(const value of values)for(const required of [undefined,null,false,0,'','enabled','disabled',true,'unknown']) {
+  const expected=legacyEndpointAccepts(value,p,required);
+  if(expected)assert.equal(endpoint(value,p,required),value);
+  else assert.throws(()=>endpoint(value,p,required),{code:'PAYMENT_ENDPOINT_DRIFT'});
+ }
+ assert.throws(()=>endpoint(row,{...p,endpointSha256:'0'.repeat(64)}),{code:'PAYMENT_ENDPOINT_DRIFT'});
+ assert.equal(endpointComparison(row,{...p,endpointSha256:'0'.repeat(64)}).endpointIdentity,'MISMATCH');
+});
+test('ED1 reports each failed comparison without retaining values or changing the input',()=>{
+ const {p,row}=comparisonFixture(),match=Object.fromEntries(comparisonFields.map(k=>[k,'MATCH']));
+ assert.deepEqual(endpointComparison(row,p),match);
+ const cases=[['object','objectType','PRIVATE_SENTINEL'],['id','endpointIdentity','we_PRIVATE_SENTINEL'],
+  ['livemode','sandboxMode',true],['url','url','https://PRIVATE_SENTINEL.invalid'],
+  ['api_version','apiVersion','PRIVATE_SENTINEL'],['enabled_events','enabledEvents',['PRIVATE_SENTINEL']],
+  ['status','recognizedStatus','PRIVATE_SENTINEL'],['status','disabledStatus','enabled']];
+ for(const [key,field,value] of cases) {
+  const changed={...row,[key]:value},before=JSON.stringify(changed),report=endpointComparison(changed,p);
+  assert.equal(report[field],'MISMATCH');assert.deepEqual(Object.keys(report),comparisonFields);
+  assert.equal(JSON.stringify(changed),before);assert.doesNotMatch(JSON.stringify(report),/PRIVATE_SENTINEL|we_|https:|dahlia/);
+  for(const invalid of [undefined,null,[],{},0]) {
+   const malformed={...row};if(invalid===undefined)delete malformed[key];else malformed[key]=invalid;
+   // An empty array is a valid event-list type, but it is a mismatched list.
+   assert.equal(endpointComparison(malformed,p)[field],key==='enabled_events'&&Array.isArray(invalid)?'MISMATCH':'TYPE_INVALID');
+  }
+ }
+ const both=endpointComparison({...row,livemode:true,api_version:null,url:'PRIVATE_SENTINEL'},p);
+ assert.equal(both.sandboxMode,'MISMATCH');assert.equal(both.apiVersion,'TYPE_INVALID');assert.equal(both.url,'MISMATCH');
+ const reversed={...row,enabled_events:Object.freeze([...EVENTS].reverse())};
+ assert.equal(endpointComparison(Object.freeze(reversed),p).enabledEvents,'MATCH');
+ for(const events of [[...EVENTS,EVENTS[0]],[...EVENTS,'*']])assert.equal(endpointComparison({...row,enabled_events:events},p).enabledEvents,'MISMATCH');
+ for(const events of [[null],[{}],[true],[1],[['checkout.session.completed']]])assert.equal(endpointComparison({...row,enabled_events:events},p).enabledEvents,'TYPE_INVALID');
+ for(const value of [null,[],true,1,'PRIVATE_SENTINEL'])assert.ok(Object.values(endpointComparison(value,p)).every(x=>x==='TYPE_INVALID'));
 });
 
 test('version1 cannot accept payment and scope cannot omit payment',t=>{

@@ -54,12 +54,32 @@ export function paymentContext(v,e,now=Date.now()) {
   return {status:'QUALIFIED_DATABASE',actorId:v.actor.id,actorRole:'admin',tenantId:v.tenant.id,jobId:v.job.id,...binding};
 }
 
+// Finite labels only: never retain a provider value or a digest of one.
+// The wire input is decoded JSON; invalid/missing field types remain distinct
+// from well-typed mismatches. Duplicate events are not normalized away.
+export function endpointComparison(value,p) {
+  const row=value!==null && typeof value==='object' && !Array.isArray(value)?value:{};
+  const label=(valid,match)=>!valid?'TYPE_INVALID':match?'MATCH':'MISMATCH';
+  const string=(value,expected)=>label(typeof value==='string',value===expected);
+  const idValid=typeof row.id==='string';
+  const eventsValid=Array.isArray(row.enabled_events) && row.enabled_events.every(x=>typeof x==='string');
+  return {
+    objectType:string(row.object,'webhook_endpoint'),
+    endpointIdentity:label(idValid,idValid && row.id===p.endpointId && hash(row.id)===p.endpointSha256),
+    sandboxMode:label(typeof row.livemode==='boolean',row.livemode===false),
+    url:string(row.url,p.url),
+    apiVersion:string(row.api_version,p.apiVersion),
+    enabledEvents:label(eventsValid,eventsValid &&
+      JSON.stringify([...row.enabled_events].sort())===JSON.stringify(EVENTS)),
+    recognizedStatus:label(typeof row.status==='string',['enabled','disabled'].includes(row.status)),
+    disabledStatus:string(row.status,'disabled')
+  };
+}
+
 export function endpoint(value,p,status) {
-  need(value && value.object==='webhook_endpoint' && value.id===p.endpointId &&
-    hash(value.id)===p.endpointSha256 && value.livemode===false && value.url===p.url &&
-    value.api_version===p.apiVersion && Array.isArray(value.enabled_events) &&
-    JSON.stringify([...value.enabled_events].sort())===JSON.stringify(EVENTS) &&
-    ['enabled','disabled'].includes(value.status) && (!status||value.status===status),'PAYMENT_ENDPOINT_DRIFT');
+  const fields=endpointComparison(value,p);
+  need(Object.entries(fields).every(([name,result])=>name==='disabledStatus'||result==='MATCH') &&
+    (!status||value.status===status),'PAYMENT_ENDPOINT_DRIFT');
   return value;
 }
 

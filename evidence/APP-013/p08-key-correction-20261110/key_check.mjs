@@ -1,6 +1,6 @@
 import {readFileSync,readSync} from 'node:fs';import {pathToFileURL} from 'node:url';
 import {hash,need} from '../p08-native-entry-local-20261101/source/authority_bridge.mjs';
-import {boundedPaymentResponse,decodeStripeTestSecret,endpoint} from '../p08-native-entry-local-20261101/source/connected_payment.mjs';
+import {boundedPaymentResponse,decodeStripeTestSecret,endpoint,endpointComparison} from '../p08-native-entry-local-20261101/source/connected_payment.mjs';
 const ACCOUNT='a008b806d6ea2cbe47eda0e27bfc855f1d8a376752c434c5efc36c571ece0248';
 export const ENDPOINT='dbaae6448069a186dc4b9e2fc6182707dda7b61218376e9e97cd21b20b4bfeae';
 export const ENDPOINT_PHASES=Object.freeze(['OBSERVE','DISABLE','VERIFY']);
@@ -20,13 +20,14 @@ function clearInput(input){
 // owns approval, conditional eligibility, immutable reservations and final reads.
 // Provider JSON keeps the existing JSON.parse semantics (including last member
 // wins for duplicate names); exact endpoint pins are validated after decoding.
-export async function endpointOnce(input,send=fetch,pin=ENDPOINT,now=Date.now){
+export async function endpointOnce(input,send=fetch,pin=ENDPOINT,now=Date.now,reportFields=false){
  const result=endpointResult(ENDPOINT_PHASES.includes(input?.phase)?input.phase:'UNKNOWN');
  let key='',body='',value=null,options=null,keyBytes=null,last=now(),hardEnd=0;
  try{
   need(input!==null&&typeof input==='object'&&!Array.isArray(input)&&
    Object.keys(input).sort().join(',')==='deadline,endpointId,key,phase','ENDPOINT_INPUT');
   need(ENDPOINT_PHASES.includes(input.phase),'ENDPOINT_PHASE');
+  need(typeof reportFields==='boolean' && (!reportFields||input.phase==='OBSERVE'),'ENDPOINT_PHASE');
   need(Number.isSafeInteger(input.deadline)&&Number.isFinite(last)&&input.deadline>last&&
    input.deadline-last<=60000,'KEY_CHECK_DEADLINE');
   hardEnd=performance.now()+input.deadline-last;
@@ -51,6 +52,7 @@ export async function endpointOnce(input,send=fetch,pin=ENDPOINT,now=Date.now){
   need(response.ok===true&&result.httpStatus===200,'KEY_CHECK_HTTP');
   body=await response.text();
   try{value=JSON.parse(body);}catch{need(false,'ENDPOINT_JSON');}
+  if(reportFields)result.fields=endpointComparison(value,p);
   try{endpoint(value,p);}catch{result.scope='DRIFT';need(false,'PAYMENT_ENDPOINT_DRIFT');}
   result.scope='MATCH';result.state=value.status.toUpperCase();
   need(input.phase!=='DISABLE'||result.state==='DISABLED','ENDPOINT_NOT_DISABLED');
@@ -76,9 +78,9 @@ export function readKeyInput(fd=0){
   catch{need(false,'ENDPOINT_INPUT');}
  }finally{bytes.fill(0);}
 }
-export async function endpointCli({read=readKeyInput,write=text=>process.stdout.write(text),send=fetch,pin=ENDPOINT,now=Date.now}={}){
+export async function endpointCli({read=readKeyInput,write=text=>process.stdout.write(text),send=fetch,pin=ENDPOINT,now=Date.now,reportFields=false}={}){
  let input=null,result;
- try{input=read();result=await endpointOnce(input,send,pin,now);}
+ try{input=read();result=await endpointOnce(input,send,pin,now,reportFields);}
  catch(error){result=endpointResult();result.code=ENDPOINT_CODES.includes(error?.code)?error.code:'ENDPOINT_INPUT';}
  finally{clearInput(input);}
  write(JSON.stringify(result)+'\n');
@@ -113,7 +115,9 @@ export async function checkKey(input,send=fetch,pins={account:ACCOUNT,endpoint:E
  }finally{key='';input.key='';input.endpointId='';}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
- if(process.argv.length===3&&process.argv[2]==='--endpoint-once')process.exitCode=await endpointCli();
+ if(process.argv[2]==='--endpoint-once' && (process.argv.length===3 ||
+   (process.argv.length===4&&process.argv[3]==='--field-report')))
+  process.exitCode=await endpointCli({reportFields:process.argv.length===4});
  else try{const input=readKeyInput();need(process.argv.length===2||(process.argv.length===3&&process.argv[2]==='--inspect-endpoint-local'),'KEY_INPUT_MODE');
   const result=process.argv[2]==='--inspect-endpoint-local'?endpointInputStatus(input.endpointId):await checkKey(input);
   input.endpointId='';input.key='';process.stdout.write(JSON.stringify(result)+'\n');}

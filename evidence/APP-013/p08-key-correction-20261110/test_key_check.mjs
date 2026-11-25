@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {checkKey,endpointInputStatus,endpointOnce,ENDPOINT,ENDPOINT_CODES,ENDPOINT_PHASES} from './key_check.mjs';
+import {checkKey,endpointInputStatus,endpointOnce,endpointCli,ENDPOINT,ENDPOINT_CODES,ENDPOINT_PHASES} from './key_check.mjs';
 import {hash} from '../p08-native-entry-local-20261101/source/authority_bridge.mjs';
 import {EVENTS,stripeSecretName} from '../p08-native-entry-local-20261101/source/connected_payment.mjs';
 import {readFileSync} from 'node:fs';
@@ -123,6 +123,66 @@ for(const [name,change] of Object.entries({foreignId:r=>r.id='we_foreign',wrongO
  const f=endpointFixture('OBSERVE',change);const r=await endpointOnce(f.input,f.send,pins.endpoint);safeEndpoint(r,f.input);
  assert.equal(r.status,'ENDPOINT_REFUSED');assert.equal(r.scope,'DRIFT');assert.equal(r.state,'UNKNOWN');
  assert.equal(r.code,'PAYMENT_ENDPOINT_DRIFT');assert.equal(f.calls.length,1);
+});
+
+const fieldNames=['objectType','endpointIdentity','sandboxMode','url','apiVersion','enabledEvents','recognizedStatus','disabledStatus'];
+function safeFields(result,input) {
+ assert.deepEqual(Object.keys(result).sort(),[...endpointKeys,'fields'].sort());
+ const {fields,...legacy}=result;safeEndpoint(legacy,input);
+ assert.deepEqual(Object.keys(fields),fieldNames);
+ assert.ok(Object.values(fields).every(v=>['MATCH','MISMATCH','TYPE_INVALID'].includes(v)));
+ assert.doesNotMatch(JSON.stringify(fields),/PRIVATE_SENTINEL|sk_test_|we_|https:|dahlia/);
+}
+for(const [field,change,expected] of [
+ ['objectType',r=>r.object='PRIVATE_SENTINEL','MISMATCH'],
+ ['endpointIdentity',r=>r.id='we_PRIVATE_SENTINEL','MISMATCH'],
+ ['sandboxMode',r=>r.livemode=true,'MISMATCH'],
+ ['url',r=>r.url='https://PRIVATE_SENTINEL.invalid','MISMATCH'],
+ ['apiVersion',r=>r.api_version='PRIVATE_SENTINEL','MISMATCH'],
+ ['enabledEvents',r=>r.enabled_events.push('PRIVATE_SENTINEL'),'MISMATCH'],
+ ['recognizedStatus',r=>r.status='PRIVATE_SENTINEL','MISMATCH'],
+ ['disabledStatus',r=>r.status='enabled','MISMATCH'],
+ ['apiVersion',r=>r.api_version=null,'TYPE_INVALID'],
+ ['enabledEvents',r=>r.enabled_events=[...EVENTS,{toString:'PRIVATE_SENTINEL'}],'TYPE_INVALID'],
+])test('ED1 opt-in OBSERVE identifies '+field+' '+expected,async()=>{
+ const f=endpointFixture('OBSERVE',change),result=await endpointOnce(f.input,f.send,pins.endpoint,Date.now,true);
+ safeFields(result,f.input);assert.equal(result.fields[field],expected);assert.equal(f.calls.length,1);
+ if(field==='disabledStatus'){assert.equal(result.scope,'MATCH');assert.equal(result.state,'ENABLED');}
+ else {assert.equal(result.scope,'DRIFT');assert.equal(result.code,'PAYMENT_ENDPOINT_DRIFT');assert.equal(result.state,'UNKNOWN');}
+});
+test('ED1 CLI boundary emits only finite fields for simultaneous mismatches and clears inputs',async()=>{
+ const f=endpointFixture('OBSERVE',r=>{r.livemode=true;delete r.api_version;r.status=null;});let output='';
+ const exit=await endpointCli({read:()=>f.input,write:s=>output+=s,send:f.send,pin:pins.endpoint,reportFields:true});
+ assert.equal(exit,2);const result=JSON.parse(output);safeFields(result,f.input);
+ assert.equal(result.fields.sandboxMode,'MISMATCH');assert.equal(result.fields.apiVersion,'TYPE_INVALID');
+ assert.equal(result.fields.recognizedStatus,'TYPE_INVALID');assert.equal(result.fields.disabledStatus,'TYPE_INVALID');
+ assert.equal(f.calls.length,1);
+});
+test('ED1 default CLI boundary retains the exact legacy seven-key OBSERVE result',async()=>{
+ const f=endpointFixture();let output='';
+ assert.equal(await endpointCli({read:()=>f.input,write:s=>output+=s,send:f.send,pin:pins.endpoint}),0);
+ safeEndpoint(JSON.parse(output),f.input);assert.equal(f.calls.length,1);
+});
+test('ED1 actual CLI field option refuses mutation and verification phases before credentials or requests',async()=>{
+ const {spawnSync}=await import('node:child_process');const {fileURLToPath}=await import('node:url');
+ for(const phase of ['DISABLE','VERIFY']) {
+  const input={phase,endpointId:'we_PRIVATE_SENTINEL',key:'PRIVATE_SECRET_SENTINEL',deadline:Date.now()+50000};
+  const child=spawnSync(process.execPath,[fileURLToPath(new URL('./key_check.mjs',import.meta.url)),'--endpoint-once','--field-report'],
+   {input:JSON.stringify(input),encoding:'utf8',timeout:5000});
+  assert.equal(child.status,2);const result=JSON.parse(child.stdout);
+  assert.equal(result.code,'ENDPOINT_PHASE');assert.equal(result.requests,0);assert.deepEqual(Object.keys(result).sort(),endpointKeys);
+  assert.doesNotMatch(child.stdout,/PRIVATE_SENTINEL|PRIVATE_SECRET_SENTINEL/);assert.equal(child.stderr,'');
+ }
+});
+for(const kind of ['http','json','transport','expired'])test('ED1 '+kind+' refusal has no invented field evidence or retry',async()=>{
+ const f=endpointFixture();let calls=0;
+ if(kind==='expired')f.input.deadline=Date.now()-1;
+ const result=await endpointOnce(f.input,async()=>{calls++;
+  if(kind==='transport')throw Error('PRIVATE_SENTINEL');
+  return new Response('PRIVATE_SENTINEL',{status:kind==='http'?403:200});
+ },pins.endpoint,Date.now,true);
+ safeEndpoint(result,f.input);assert.equal(calls,kind==='expired'?0:1);assert.equal(result.status,'ENDPOINT_REFUSED');
+ assert.equal('fields' in result,false);
 });
 for(const status of [201,202,206,299,403,404,429,500,503])test('endpoint HTTP '+status+' is safe and never retries',async()=>{
  const f=endpointFixture('DISABLE');let calls=0;
