@@ -13,8 +13,10 @@
   "restrictedFixtureFailures": "Initial local loopback/process/TLS fixture failures preserved; identical suites passed with approved local fixture permissions. No test expectation or code was changed to obtain the passing reruns.",
   "retainedFiles": [
     {
+      "normalization": "Trailing spaces removed from eight blank log lines; test output content unchanged.",
       "path": "ed1-focused-tests.log",
-      "sha256": "facbe3afcd72e2fbce42c25f3bc6bfe6c04f0417b5737924521efa569c464cbf"
+      "rawOutputSha256": "facbe3afcd72e2fbce42c25f3bc6bfe6c04f0417b5737924521efa569c464cbf",
+      "sha256": "45209fb78832cfa6c735513e33fee1068d788b42f2b1ca3b6628f45e5f4b3e69"
     },
     {
       "path": "ed1-focused-unrestricted-tests.log",
