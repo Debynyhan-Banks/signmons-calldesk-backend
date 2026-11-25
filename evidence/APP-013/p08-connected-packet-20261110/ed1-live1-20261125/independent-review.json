@@ -1,0 +1,17 @@
+{
+  "observedAt": "2026-11-25T14:20:11Z",
+  "reviewer": "independent agent rv1_journal",
+  "receiptAuthoritySourceReview": "PASS",
+  "resultSha256": "2f7cb3bfee655a0b65295e30f4c795c6bfc103ab0526e45ebc139e64e443f729",
+  "currentState": "ENABLED",
+  "disabledEntryPrerequisite": "NOT_MET",
+  "historicalR58FailedField": "UNKNOWN",
+  "independentProcessSnapshot": "SANDBOX_DENIED_NOT_ASSERTED",
+  "rootProcessSnapshotEvidence": "local-closeout-verification.json",
+  "mainExitCode": "NOT_CAPTURED",
+  "liveActionsPerformedByReviewer": 0,
+  "limitations": [
+    "Observation is timestamped; future entry requires current evidence.",
+    "Successful VERIFY observation must also have state DISABLED to satisfy correction."
+  ]
+}
