@@ -1,0 +1,53 @@
+{
+  "authAttempted": false,
+  "authProofAccepted": false,
+  "childResultSha256": null,
+  "failure": "PAYMENT_PREFLIGHT_STOP",
+  "iamAttempted": [],
+  "iamCleanupAttempted": [],
+  "iamOwned": [],
+  "keyCreateAttempted": false,
+  "keyDeleteAttempted": false,
+  "nativeReservationLedger": {
+    "child": 1,
+    "cli": 104,
+    "https": 1,
+    "sql": 5
+  },
+  "operationId": "46930f3d-edaf-48c0-a633-66b24b2af018",
+  "payment": {
+    "bridgeClosed": true,
+    "enableIntent": false,
+    "endpointCalls": 1,
+    "endpointDisabled": false,
+    "failureCode": "PAYMENT_ENDPOINT_DRIFT",
+    "operationId": "46930f3d-edaf-48c0-a633-66b24b2af018",
+    "outcome": "NOT_OBSERVED",
+    "phase": "STOPPED",
+    "residuals": [],
+    "revision": 4,
+    "scopeSha256": "b60ea2be9fda99842ad242cb352e46c1e64b3e11c14ac82493c0a1c9c1a0bc5c",
+    "secretReads": 1
+  },
+  "phase": "CLOSED",
+  "preflightStage": "ACCESS_PREFLIGHT",
+  "projectionOnly": true,
+  "reservationSemantics": "RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS",
+  "residuals": [],
+  "runtimeAttempted": [
+    [
+      "version",
+      "signmons-staging-stripe-secret-key"
+    ]
+  ],
+  "runtimeCleanupAttempted": [
+    [
+      "version",
+      "signmons-staging-stripe-secret-key"
+    ]
+  ],
+  "runtimeOwned": [],
+  "serviceEnableAttempted": false,
+  "sourceJournalSha256": "119f933b4a93a55d93c430f7e753ba8f6f41b476ab03e1c6bf074af08a240180",
+  "unknown": []
+}

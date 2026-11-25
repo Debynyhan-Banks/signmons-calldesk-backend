@@ -1,0 +1,95 @@
+{
+  "excluded": [
+    "private envelopes",
+    "guard envelope",
+    "recovered inputs",
+    "credentials",
+    "raw provider responses",
+    "raw journal",
+    "process command text"
+  ],
+  "files": [
+    {
+      "file": "native-attempt.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "88aa0eecc269112450d531c78a78c7bb30aaf41192f09c6bc5d6e389458ee9e2",
+      "sourcePath": "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/attempt.json"
+    },
+    {
+      "file": "native-result.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "631bb5dcbf80a282b800909584d7a5ceb4491fe42764b3a13c41847f95f70b0c",
+      "sourcePath": "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/result.json"
+    },
+    {
+      "file": "native-work-result.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "bfec5909e16eac2ff8df75353a50602664c09fbdf3bb91087336436eccee7c57",
+      "sourcePath": "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/work-result.json"
+    },
+    {
+      "file": "native-independent-closeout.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "0141e8ce77e76a4cc86d39196ccb3781fec505719c9a4b15e0e5b763ae171d6d",
+      "sourcePath": "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/independent-closeout.json"
+    },
+    {
+      "file": "native-closeout.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "0141e8ce77e76a4cc86d39196ccb3781fec505719c9a4b15e0e5b763ae171d6d",
+      "sourcePath": "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/closeout.json"
+    },
+    {
+      "file": "native-child-1.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "d9f8a14965aac08900ad5bc8a09f027eb482ad81a035ebd5d5d5199de73dc5b4",
+      "sourcePath": "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/child-1.json"
+    },
+    {
+      "file": "qualification-result.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "0ffa250e0acb2e3321a7818622d1d64823048d3e9b85bbe7ac68fc0031ec1494",
+      "sourcePath": "/private/tmp/p08-current-external-9c2e74f5-777d-45de-b7b8-c9ea44a413f7/result.json"
+    },
+    {
+      "file": "recovery-recovery-result.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "7dcff3912a74e2e1c96c0e546d5293fa263d185c9b28b833a8280877254f4467",
+      "sourcePath": "/private/tmp/p08-binding-recovery-240dcb4d-82df-445d-9565-6d4178ac6108/recovery-result.json"
+    },
+    {
+      "file": "recovery-purge-result.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "8a31d665336fe5c6d19b9beb99257d4df1487040f6d9f5b787bdc81d631d2bf3",
+      "sourcePath": "/private/tmp/p08-binding-recovery-240dcb4d-82df-445d-9565-6d4178ac6108/purge-result.json"
+    },
+    {
+      "file": "recovery-resource-closeout.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "cb524bb80fbd3f6723cf552f276e21639827ecf27ef8bc93e8d3102a701c9223",
+      "sourcePath": "/private/tmp/p08-binding-recovery-240dcb4d-82df-445d-9565-6d4178ac6108/resource-closeout.json"
+    },
+    {
+      "file": "public-result.json",
+      "kind": "exact-safe-receipt-copy",
+      "sha256": "1b8047adce8c5e012c833a1e9cff5ab63c3c8e5e7a6c1cae6ccf86acb808a0c4",
+      "sourcePath": "/private/tmp/p08-public-review-240dcb4d-82df-445d-9565-6d4178ac6108/result.json"
+    },
+    {
+      "file": "journal-safe-projection.json",
+      "kind": "safe-projection-not-original-journal",
+      "sha256": "25f1a4c0d810f55abfd2b230d9329c30ed0713f7eb1101b97d56f2ebe4de9caf"
+    },
+    {
+      "file": "r58-independent-local-closeout.json",
+      "kind": "root-independent-local-closeout",
+      "sha256": "ab06f21754b6038c859ade3d6f48611b7f2c99394f6c5dada7d4e0feb0c8c1d1",
+      "sourcePath": "/private/tmp/r58-independent-local-closeout.json"
+    }
+  ],
+  "nativeApprovalCommit": "5cf98f6",
+  "operationId": "46930f3d-edaf-48c0-a633-66b24b2af018",
+  "rawPrivateInputsRetained": false,
+  "retainedAt": "2026-11-25T03:11:08.954965+00:00",
+  "sourceSha": "2f13f90ae4cda3a61e719308d54cc19c1dd3c0d1"
+}

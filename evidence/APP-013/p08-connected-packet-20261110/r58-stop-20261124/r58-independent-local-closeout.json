@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-11-25T03:09:44.307127+00:00",
+  "credentialCacheReads": 0,
+  "operationId": "46930f3d-edaf-48c0-a633-66b24b2af018",
+  "ownedDispatcherRemoved": true,
+  "ownedDispatcherSha256": "3a85a37745b13603bace5aa7389fc3457e735f11985a2352ce82ee0b7f7e0e65",
+  "privateAndBrowserPathsAbsent": {
+    "/private/tmp/p08-binding-recovery-240dcb4d-82df-445d-9565-6d4178ac6108/recovered-inputs.json": true,
+    "/private/tmp/p08-binding-request-240dcb4d-82df-445d-9565-6d4178ac6108": true,
+    "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/envelope.json": true,
+    "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/payment-bootstrap-open-attempt.json": true,
+    "/private/tmp/p08-coordinator-46930f3d-edaf-48c0-a633-66b24b2af018/payment-bootstrap.json": true
+  },
+  "processCommandTextRetained": false,
+  "providerCalls": 0,
+  "relatedProcessCount": 0,
+  "residuals": []
+}
