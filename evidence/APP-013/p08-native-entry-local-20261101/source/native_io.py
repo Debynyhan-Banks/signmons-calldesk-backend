@@ -53,13 +53,20 @@ class NativeIO:
     def _run(self, argv, kind, input_bytes=None, extra=None):
         deadline = self.cap.spend(kind, self.cleanup)
         env = self.env(); env.update(extra or {})
+        forward_tag = (kind == 'cli' and self.cleanup is False and type(argv) is list and
+                       argv[:4] == ['/opt/homebrew/bin/gcloud', 'run', 'services', 'update-traffic'] and
+                       argv == ['/opt/homebrew/bin/gcloud', *self.restore.command(
+                           {**self.cap.plan, 'iam': self.cap.plan.get('iam', [])},
+                           'tag', self.restore.TAG, True), '--format=json'])
         try:
             r = subprocess.run(argv, input=input_bytes, capture_output=True, env=env,
                                timeout=max(.01, min(8, deadline - self.cap.clock())))
         except subprocess.TimeoutExpired:
-            raise __import__('private_inventory').Stop('DATABASE_PROCESS_TIMEOUT' if kind == 'sql' else 'NATIVE_COMMAND_UNCONFIRMED') from None
+            raise __import__('private_inventory').Stop('DATABASE_PROCESS_TIMEOUT' if kind == 'sql' else
+                'RUNTIME_TAG_COMMAND_TIMEOUT' if forward_tag else 'NATIVE_COMMAND_UNCONFIRMED') from None
         except OSError:
-            raise __import__('private_inventory').Stop('DATABASE_PROCESS_UNAVAILABLE' if kind == 'sql' else 'NATIVE_COMMAND_UNCONFIRMED') from None
+            raise __import__('private_inventory').Stop('DATABASE_PROCESS_UNAVAILABLE' if kind == 'sql' else
+                'RUNTIME_TAG_COMMAND_UNAVAILABLE' if forward_tag else 'NATIVE_COMMAND_UNCONFIRMED') from None
         finally:
             if 'PGPASSWORD' in env: env['PGPASSWORD'] = ''
         try:
@@ -75,12 +82,16 @@ class NativeIO:
                                'DATABASE_ERROR_OUTPUT_LIMIT', 'DATABASE_STATEMENT_TIMEOUT'}
                     raise __import__('private_inventory').Stop(code if code in allowed else 'DATABASE_COMMAND_FAILED')
                 need(len(r.stdout) <= 65536, 'DATABASE_OUTPUT_LIMIT')
+            elif forward_tag:
+                need(r.returncode == 0, 'RUNTIME_TAG_COMMAND_REFUSED')
+                need(len(r.stdout) <= 65536, 'RUNTIME_TAG_OUTPUT_LIMIT')
             else: need(r.returncode == 0 and len(r.stdout) <= 65536, 'NATIVE_COMMAND_REFUSED')
             try: return r.stdout.decode('utf-8', 'strict').strip()
             except UnicodeError:
-                raise __import__('private_inventory').Stop('DATABASE_OUTPUT_ENCODING' if kind == 'sql' else 'NATIVE_OUTPUT_ENCODING') from None
+                raise __import__('private_inventory').Stop('DATABASE_OUTPUT_ENCODING' if kind == 'sql' else
+                    'RUNTIME_TAG_OUTPUT_ENCODING' if forward_tag else 'NATIVE_OUTPUT_ENCODING') from None
         finally:
-            if kind == 'sql': r.stdout = b''; r.stderr = b''
+            if kind == 'sql' or forward_tag: r.stdout = b''; r.stderr = b''
 
     def ensure_owner(self):
         if self.token: return
@@ -118,11 +129,15 @@ class NativeIO:
                      for kind, name in self.restore.operations(plan) if kind != 'role'
                      for enabled in (True, False)}
         kind = mutations.get(tuple(vector))
+        forward_tag = (kind == 'tag' and self.cleanup is False and
+                       vector == self.restore.command(plan, 'tag', self.restore.TAG, True))
         raw = self.cli([*vector, '--format=json'] if kind is not None else vector)
         if vector[:2] == ['auth', 'list']: return raw
         if raw == '' and kind in ('identity', 'version'): return {}
         try: value = json.loads(raw)
-        except (ValueError, TypeError): raise __import__('private_inventory').Stop('NATIVE_OUTPUT_SHAPE') from None
+        except (ValueError, TypeError):
+            raise __import__('private_inventory').Stop(
+                'RUNTIME_TAG_JSON_PARSE' if forward_tag else 'NATIVE_OUTPUT_SHAPE') from None
         # Installed IAM enable/disable hooks return None, serialized as [] by JSON.
         # This acknowledges only the exact mutation; authoritative readback is unchanged.
         if kind == 'identity' and value == []: return {}
@@ -141,9 +156,10 @@ class NativeIO:
                      type(tag.get('inSpec')) is bool and type(tag.get('inStatus')) is bool
                      for tag in row['tags']) and
                  isinstance(row.get('urls'), list) and all(isinstance(url, str) for url in row['urls'])
-                 for row in value), 'NATIVE_OUTPUT_SHAPE')
+                 for row in value), 'RUNTIME_TAG_ACK_SHAPE' if forward_tag else 'NATIVE_OUTPUT_SHAPE')
             return {}
-        if kind is not None: need(isinstance(value, dict), 'NATIVE_OUTPUT_SHAPE')
+        if kind is not None:
+            need(isinstance(value, dict), 'RUNTIME_TAG_ACK_SHAPE' if forward_tag else 'NATIVE_OUTPUT_SHAPE')
         return value
 
     def sql(self, query, deadline):

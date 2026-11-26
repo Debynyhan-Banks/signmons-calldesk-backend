@@ -1,5 +1,6 @@
 """Assembled-entry proofs: injected providers and actual Python/Node child boundary."""
 import copy
+import ast
 import datetime
 import fcntl
 import hashlib
@@ -749,13 +750,13 @@ print(json.dumps(outputs))
                 rows=copy.deepcopy(outputs[0]);rows[0][key]=val;bad.append(rows)
             for value in bad:
                 with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,json.dumps(value).encode(),b'')):
-                    with self.assertRaisesRegex(Stop,'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
+                    with self.assertRaisesRegex(Stop,'RUNTIME_TAG_ACK_SHAPE' if enabled else 'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
             with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],0,b'bad-json',b'')):
-                with self.assertRaisesRegex(Stop,'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
+                with self.assertRaisesRegex(Stop,'RUNTIME_TAG_JSON_PARSE' if enabled else 'NATIVE_OUTPUT_SHAPE'):io.cloud(vector,0)
             with patch('native_io.subprocess.run',return_value=subprocess.CompletedProcess([],1,json.dumps(outputs[0]).encode(),b'')):
-                with self.assertRaisesRegex(Stop,'NATIVE_COMMAND_REFUSED'):io.cloud(vector,0)
+                with self.assertRaisesRegex(Stop,'RUNTIME_TAG_COMMAND_REFUSED' if enabled else 'NATIVE_COMMAND_REFUSED'):io.cloud(vector,0)
             with patch('native_io.subprocess.run',side_effect=subprocess.TimeoutExpired('synthetic',1)):
-                with self.assertRaisesRegex(Stop,'NATIVE_COMMAND_UNCONFIRMED'):io.cloud(vector,0)
+                with self.assertRaisesRegex(Stop,'RUNTIME_TAG_COMMAND_TIMEOUT' if enabled else 'NATIVE_COMMAND_UNCONFIRMED'):io.cloud(vector,0)
         # Other mutation families cannot use the tag response exception.
         for kind,name in [('identity',r.IDENTITY),('version',r.SECRETS[0]),('secretBinding',r.POLICIES[0])]:
             with patch.object(io,'cli',return_value=json.dumps(outputs[0])):
@@ -1395,6 +1396,392 @@ print(json.dumps(rows))
             self.assertFalse((fixture.root/'attempt.json').exists())
         finally:
             os.close(fd)
+
+
+class TagMutationDiagnosticTests(unittest.TestCase):
+    PRIVATE = 'synthetic-private-tag-diagnostic-canary'
+    BASELINE = 'b72ecb89f1907a25c988bbe3f33388bfdab77976'
+    CODES = ('COMMAND_TIMEOUT', 'COMMAND_UNAVAILABLE', 'COMMAND_REFUSED',
+             'OUTPUT_LIMIT', 'OUTPUT_ENCODING', 'JSON_PARSE', 'ACK_SHAPE')
+
+    def fixture(self, connected=False):
+        fixture = ConnectedEntryTests() if connected else EntryTests()
+        fixture.setUp(timing=True)
+        self.addCleanup(fixture.doCleanups)
+        return fixture
+
+    def native(self):
+        fixture = self.fixture()
+        cap, io = fixture.native_fixture()
+        io.token = 'SYNTHETIC_TOKEN'
+        plan = {**cap.plan, 'iam': []}
+        vector = io.restore.command(plan, 'tag', io.restore.TAG, True)
+        self.assertIn('--update-tags=' + io.restore.TAG + '=' + cap.e['resources']['candidate'], vector)
+        return fixture, cap, io, vector
+
+    def response(self, code):
+        private = self.PRIVATE.encode()
+        if code == 'COMMAND_TIMEOUT':
+            return subprocess.TimeoutExpired(self.PRIVATE, 8, output=private, stderr=private)
+        if code == 'COMMAND_UNAVAILABLE':
+            return OSError(self.PRIVATE)
+        status, raw = {
+            'COMMAND_REFUSED': (7, private),
+            'OUTPUT_LIMIT': (0, private + b'x' * 65537),
+            'OUTPUT_ENCODING': (0, b'\xff' + private),
+            'JSON_PARSE': (0, b'{' + private),
+            'ACK_SHAPE': (0, json.dumps([{'private': self.PRIVATE}]).encode()),
+        }[code]
+        return subprocess.CompletedProcess([], status, raw, private)
+
+    def process_patch(self, response):
+        return patch('native_io.subprocess.run', **(
+            {'side_effect': response} if isinstance(response, BaseException)
+            else {'return_value': response}))
+
+    def original_method(self, file, owner, name):
+        # The exact approved pre-change source is the compatibility oracle.
+        relative = 'evidence/APP-013/p08-native-entry-local-20261101/source/' + file
+        raw = subprocess.check_output(['/usr/bin/git', '-C', str(a.BACKEND),
+                                       'show', self.BASELINE + ':' + relative])
+        expected = {'native_io.py': 'b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c',
+                    'entry.py': '89f9c917012f9867f135d05d075608da3cb3a23f010cf73ac675f4cdc29ba7a0'}
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), expected[file])
+        tree = ast.parse(raw)
+        cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == owner)
+        method = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == name)
+        module = sys.modules['native_io'] if file == 'native_io.py' else entry
+        namespace = dict(vars(module))
+        if file == 'entry.py':
+            # A method compiled outside its class has no implicit __class__ cell.
+            # Bind the original class in the test namespace, preserving super order.
+            class ExplicitSuper(ast.NodeTransformer):
+                def visit_Call(self, node):
+                    self.generic_visit(node)
+                    if isinstance(node.func, ast.Name) and node.func.id == 'super' and not node.args:
+                        node.args = [ast.Name(id='Coordinator', ctx=ast.Load()),
+                                     ast.Name(id='self', ctx=ast.Load())]
+                    return node
+            method = ExplicitSuper().visit(method)
+        isolated = ast.fix_missing_locations(ast.Module(body=[method], type_ignores=[]))
+        exec(compile(isolated, '<exact-tg1-baseline-method>', 'exec'), namespace)
+        return namespace[name]
+
+    def test_all_seven_codes_use_one_exact_native_command_and_safe_literal(self):
+        _, cap, io, vector = self.native()
+        for code in self.CODES:
+            with self.subTest(code=code):
+                response = self.response(code)
+                before = cap.coordinator.j['nativeEntry']['calls']['cli']
+                with self.process_patch(response) as run:
+                    with self.assertRaises(Stop) as raised:
+                        io.cloud(vector, cap.times['workEnd'])
+                self.assertEqual(raised.exception.args, ('RUNTIME_TAG_' + code,))
+                self.assertNotIn(self.PRIVATE, str(raised.exception))
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(run.call_args.args[0], ['/opt/homebrew/bin/gcloud', *vector, '--format=json'])
+                self.assertEqual(run.call_args.kwargs['timeout'], 8)
+                self.assertEqual(cap.coordinator.j['nativeEntry']['calls']['cli'] - before, 1)
+                if isinstance(response, subprocess.CompletedProcess):
+                    self.assertEqual((response.stdout, response.stderr), (b'', b''))
+
+    def test_nonzero_output_limit_encoding_and_json_precedence(self):
+        _, _, io, vector = self.native()
+        cases = [(3, b'\xff' * 65537, 'COMMAND_REFUSED'),
+                 (0, b'\xff' * 65537, 'OUTPUT_LIMIT'),
+                 (0, b'\xff{', 'OUTPUT_ENCODING'),
+                 (0, b'', 'JSON_PARSE'), (0, b'{', 'JSON_PARSE')]
+        for status, raw, code in cases:
+            with self.subTest(code=code):
+                with self.process_patch(subprocess.CompletedProcess([], status, raw, self.PRIVATE.encode())):
+                    with self.assertRaises(Stop) as raised: io.cloud(vector, 0)
+                self.assertEqual(raised.exception.args, ('RUNTIME_TAG_' + code,))
+
+    def test_exact_output_bound_is_unchanged(self):
+        _, _, io, vector = self.native()
+        for size in (65536, 65537):
+            response = subprocess.CompletedProcess([], 0, b'{}' + b' ' * (size - 2), b'')
+            with self.process_patch(response):
+                if size == 65536: self.assertEqual(io.cloud(vector, 0), {})
+                else:
+                    with self.assertRaisesRegex(Stop, '^RUNTIME_TAG_OUTPUT_LIMIT$'): io.cloud(vector, 0)
+
+    def test_installed_sdk_and_dictionary_predicates_match_exact_baseline(self):
+        _, _, io, vector = self.native()
+        baseline = self.original_method('native_io.py', 'NativeIO', 'cloud')
+        sdk = '/opt/homebrew/Caskroom/gcloud-cli/583.0.0/google-cloud-sdk/lib'
+        code = """import sys,io,json
+from types import SimpleNamespace
+sys.path[:0]=[sys.argv[1],sys.argv[1]+'/third_party']
+from googlecloudsdk.api_lib.run import traffic_pair
+from googlecloudsdk.core.resource import resource_printer
+normal=SimpleNamespace(percent=100,tag=None,url='',revisionName='synthetic-normal',latestRevision=False)
+tag=SimpleNamespace(percent=None,tag='synthetic-tag',url='https://synthetic.invalid',revisionName='synthetic-candidate',latestRevision=False)
+pair=lambda targets,name:traffic_pair.TrafficTargetPair(targets,targets,name,False,None)
+outputs=[]
+for rows in ([pair([normal],'synthetic-normal')],[pair([normal],'synthetic-normal'),pair([tag],'synthetic-candidate')],[pair([],'synthetic-pending')]):
+ out=io.StringIO();resource_printer.Print(rows,'json',out=out);outputs.append(json.loads(out.getvalue()))
+print(json.dumps(outputs))
+"""
+        outputs = json.loads(subprocess.check_output([sys.executable, '-B', '-c', code, sdk]))
+        values = [*outputs, {}, {'private': self.PRIVATE}, None, False, 0, 'text', [], [{}], [None]]
+        for key, value in [('revisionName', ''), ('latestRevision', 1), ('specPercent', 0),
+                           ('statusPercent', '101'), ('tags', [{}]), ('urls', [1])]:
+            row = copy.deepcopy(outputs[0]); row[0][key] = value; values.append(row)
+        for value in values:
+            with self.subTest(shape=type(value).__name__):
+                raw = json.dumps(value).encode()
+                with self.process_patch(subprocess.CompletedProcess([], 0, raw, b'')):
+                    try: expected = ('accepted', baseline(io, vector, 0))
+                    except Stop: expected = ('rejected', None)
+                with self.process_patch(subprocess.CompletedProcess([], 0, raw, b'')):
+                    if expected[0] == 'accepted': self.assertEqual(io.cloud(vector, 0), expected[1])
+                    else:
+                        with self.assertRaisesRegex(Stop, '^RUNTIME_TAG_ACK_SHAPE$'): io.cloud(vector, 0)
+
+    def test_success_acknowledgment_never_replaces_authoritative_traffic(self):
+        _, cap, io, vector = self.native()
+        with self.process_patch(subprocess.CompletedProcess([], 0, b'{}', b'')):
+            self.assertEqual(io.cloud(vector, 0), {})
+        r = io.restore
+        normal = {'revisionName': r.NORMAL, 'percent': 100}
+        tag = {'revisionName': r.CANDIDATE, 'tag': r.TAG}
+        cases = [([normal, tag], True), ([normal, {**tag, 'percent': 0}], True),
+                 ([normal], False), ([normal, {**tag, 'revisionName': 'foreign'}], False),
+                 ([normal, {**tag, 'percent': 1}], 'NORMAL_TRAFFIC'),
+                 ([{**normal, 'percent': 99}, tag], 'NORMAL_TRAFFIC'), ([], 'TRAFFIC_SHAPE')]
+        for rows, expected in cases:
+            adapter = SimpleNamespace(cloud=lambda *args, rows=rows: {'status': {'traffic': rows}})
+            if isinstance(expected, str):
+                with self.assertRaisesRegex(r.Stop, '^' + expected + '$'):
+                    r.NativeAdapter.traffic(adapter, cap.plan, 0, True)
+            else: self.assertIs(r.NativeAdapter.traffic(adapter, cap.plan, 0, True), expected)
+
+    def test_cleanup_non_tag_and_foreign_vectors_keep_original_process_codes(self):
+        _, cap, io, vector = self.native()
+        r = io.restore; plan = {**cap.plan, 'iam': []}
+        exact = ['/opt/homebrew/bin/gcloud', *vector, '--format=json']
+        vectors = [('/wrong/gcloud', *exact[1:]), tuple(exact), exact[:-1], [*exact, '--foreign'],
+                   [v.replace(r.CANDIDATE, 'foreign-candidate') for v in exact],
+                   ['/opt/homebrew/bin/gcloud', *r.command(plan, 'tag', r.TAG, False), '--format=json'],
+                   ['/opt/homebrew/bin/gcloud', *r.command(plan, 'identity', r.IDENTITY, True), '--format=json']]
+        for argv in vectors:
+            for code, old in [('COMMAND_TIMEOUT', 'NATIVE_COMMAND_UNCONFIRMED'),
+                              ('COMMAND_UNAVAILABLE', 'NATIVE_COMMAND_UNCONFIRMED'),
+                              ('COMMAND_REFUSED', 'NATIVE_COMMAND_REFUSED'),
+                              ('OUTPUT_LIMIT', 'NATIVE_COMMAND_REFUSED'),
+                              ('OUTPUT_ENCODING', 'NATIVE_OUTPUT_ENCODING')]:
+                with self.subTest(argv=type(argv).__name__, code=code):
+                    with self.process_patch(self.response(code)):
+                        with self.assertRaises(Stop) as raised: io._run(argv, 'cli')
+                    self.assertEqual(raised.exception.args, (old,))
+        io.cleanup = True
+        with self.process_patch(self.response('COMMAND_TIMEOUT')):
+            with self.assertRaisesRegex(Stop, '^NATIVE_COMMAND_UNCONFIRMED$'): io._run(exact, 'cli')
+
+    def test_cleanup_and_other_mutations_keep_original_parse_codes(self):
+        _, cap, io, vector = self.native()
+        r = io.restore; plan = {**cap.plan, 'iam': []}
+        vectors = [r.command(plan, 'tag', r.TAG, False),
+                   r.command(plan, 'secretBinding', r.POLICIES[0], True)]
+        for target in vectors:
+            for raw in (b'{', b'null', b'[]'):
+                with self.process_patch(subprocess.CompletedProcess([], 0, raw, b'')):
+                    with self.assertRaisesRegex(Stop, '^NATIVE_OUTPUT_SHAPE$'): io.cloud(target, 0)
+        io.cleanup = True
+        for raw in (b'{', b'null'):
+            with self.process_patch(subprocess.CompletedProcess([], 0, raw, b'')):
+                with self.assertRaisesRegex(Stop, '^NATIVE_OUTPUT_SHAPE$'): io.cloud(vector, 0)
+
+    def stopped_run(self, response, expected, *, cleanup_mismatch=False, after_process=None,
+                    injected_error=None, baseline=False):
+        fixture = self.fixture(connected=True)
+        trace = []; process_calls = []; spends = []
+        tag_item = ['tag', entry.restore.TAG]
+        def factory(cap):
+            io = fixture.factory(cap); original = io.cloud
+            forward = entry.restore.command({**cap.plan, 'iam': []}, 'tag', entry.restore.TAG, True)
+            def cloud(vector, deadline):
+                trace.append((cap.mode, io.cleanup, list(vector)))
+                if not io.cleanup and vector == forward:
+                    fixture.f.runtime_state[tuple(tag_item)] = True
+                    if injected_error is not None: raise injected_error
+                    native = object.__new__(entry.NativeIO)
+                    native.cap, native.cleanup, native.restore = cap, False, cap.modules['restore']
+                    native.token = 'SYNTHETIC_TOKEN'
+                    before = cap.coordinator.j['nativeEntry']['calls']['cli']
+                    def process(*args, **kwargs):
+                        process_calls.append((args, kwargs))
+                        if after_process == 'interrupt': cap.coordinator.abort = True
+                        if after_process == 'deadline': cap.clock = lambda: cap.times['workEnd'] + 1
+                        if isinstance(response, BaseException): raise response
+                        return copy.deepcopy(response)
+                    with patch('native_io.subprocess.run', side_effect=process):
+                        try: return native.cloud(vector, deadline)
+                        finally:
+                            spends.append(cap.coordinator.j['nativeEntry']['calls']['cli'] - before)
+                value = original(vector, deadline)
+                if cleanup_mismatch and io.cleanup and vector[:3] == ['run', 'services', 'describe']:
+                    return {'status': {'traffic': [{'revisionName': entry.restore.NORMAL, 'percent': 100},
+                        {'revisionName': entry.restore.CANDIDATE, 'tag': entry.restore.TAG}]}}
+                return value
+            io.cloud = cloud
+            return io
+        if baseline:
+            old_run = self.original_method('native_io.py', 'NativeIO', '_run')
+            old_cloud = self.original_method('native_io.py', 'NativeIO', 'cloud')
+            old_invoke = self.original_method('entry.py', 'Coordinator', 'invoke')
+            with patch.object(entry.NativeIO, '_run', old_run), patch.object(entry.NativeIO, 'cloud', old_cloud), \
+                    patch.object(entry.Coordinator, 'invoke', old_invoke):
+                work = entry.run_entry(fixture.path, io_factory=factory)
+                final = entry.run_entry(fixture.path, 'closeout', io_factory=factory)
+        else:
+            work = entry.run_entry(fixture.path, io_factory=factory)
+            final = entry.run_entry(fixture.path, 'closeout', io_factory=factory)
+        journal = read(fixture.root / 'journal.json')
+        self.assertEqual(journal['failure'], expected)
+        self.assertEqual(work['status'], 'ENTRY_AWAITING_INDEPENDENT_CLOSEOUT')
+        self.assertEqual(final['status'], 'ENTRY_CONTAINMENT_UNCONFIRMED')
+        self.assertEqual(journal['runtimeAttempted'][-1], tag_item)
+        self.assertNotIn(tag_item, journal['runtimeOwned'])
+        self.assertIn(tag_item, journal['runtimeCleanupAttempted'])
+        self.assertEqual(journal['iamAttempted'], []); self.assertEqual(journal['iamOwned'], [])
+        self.assertFalse(journal['keyCreateAttempted']); self.assertFalse(journal['authAttempted'])
+        self.assertFalse(final['authenticationObserved']); self.assertFalse(final['paymentObserved'])
+        self.assertFalse(work['paymentObserved']); self.assertFalse(journal['payment']['enableIntent'])
+        self.assertTrue(journal['payment']['endpointDisabled']); self.assertTrue(journal['payment']['bridgeClosed'])
+        self.assertEqual(journal['nativeEntry']['calls']['child'], 1)
+        self.assertTrue(final['privateInputsAbsent']); self.assertFalse(fixture.path.exists())
+        self.assertFalse((fixture.root / 'payment-bootstrap-open-attempt.json').exists())
+        self.assertFalse(any(fixture.f.runtime_state.values()))
+        label = 'RUNTIME:tag:' + entry.restore.TAG
+        self.assertEqual(journal['unknown'], [label])
+        self.assertIn(label, work['residuals']); self.assertIn(label, final['residuals'])
+        if cleanup_mismatch:
+            self.assertIn('RUNTIME_tag:' + entry.restore.TAG, final['residuals'])
+            self.assertIn('RUNTIME_FINAL', final['residuals'])
+        else: self.assertEqual(final['residuals'], [label])
+        if injected_error is None:
+            self.assertEqual(len(process_calls), 1); self.assertEqual(spends, [1])
+            argv = process_calls[0][0][0]
+            forward = entry.restore.command({**fixture.f.p, 'iam': []}, 'tag', entry.restore.TAG, True)
+            self.assertEqual(argv, ['/opt/homebrew/bin/gcloud', *forward, '--format=json'])
+            self.assertEqual(process_calls[0][1]['timeout'], 8)
+        for enabled in (True, False):
+            vector = entry.restore.command({**fixture.f.p, 'iam': []}, 'tag', entry.restore.TAG, enabled)
+            self.assertEqual(sum(v == vector for _, _, v in trace), 1)
+        self.assertTrue(any(mode == 'closeout' and v[:3] == ['run', 'services', 'describe']
+                            for mode, _, v in trace))
+        for path in fixture.root.iterdir():
+            self.assertNotIn(self.PRIVATE.encode(), path.read_bytes())
+        return journal
+
+    def test_exact_baseline_collapses_failures_through_assembled_parent(self):
+        for code in ('COMMAND_TIMEOUT', 'JSON_PARSE', 'ACK_SHAPE'):
+            with self.subTest(code=code):
+                self.stopped_run(self.response(code), 'LOCAL_ADAPTER_OR_SOURCE_STOP', baseline=True)
+
+    def test_all_seven_survive_main_and_independent_closeout_without_replay(self):
+        for code in self.CODES:
+            with self.subTest(code=code):
+                self.stopped_run(self.response(code), 'RUNTIME_TAG_' + code)
+
+    def test_failed_cleanup_keeps_separate_residual_and_forward_code(self):
+        self.stopped_run(self.response('ACK_SHAPE'), 'RUNTIME_TAG_ACK_SHAPE', cleanup_mismatch=True)
+
+    def test_unknown_and_untrusted_errors_remain_generic_and_private(self):
+        class DerivedStop(Stop): pass
+        class DerivedString(str): pass
+        class HostileStop(Stop):
+            @property
+            def args(self): raise AssertionError('untrusted exception args inspected')
+        errors = [DerivedStop('RUNTIME_TAG_ACK_SHAPE'), Stop(DerivedString('RUNTIME_TAG_ACK_SHAPE')),
+                  Stop('RUNTIME_TAG_ACK_SHAPE', self.PRIVATE), Stop(self.PRIVATE),
+                  RuntimeError('RUNTIME_TAG_ACK_SHAPE'), ValueError(self.PRIVATE),
+                  HostileStop(self.PRIVATE), KeyboardInterrupt()]
+        for error in errors:
+            with self.subTest(error=type(error).__name__):
+                self.stopped_run(None, 'LOCAL_ADAPTER_OR_SOURCE_STOP', injected_error=error)
+
+    def test_coordinator_promotion_requires_exact_method_owner_tag_flag_and_plan(self):
+        fixture = self.fixture()
+        cap = a.Capability(fixture.e, fixture.root)
+        io = fixture.factory(cap); runtime = entry.RuntimeAdapter(cap, io)
+        ports = entry.Ports(cap, io, None, runtime)
+        controller = entry.Coordinator(cap, io, runtime, ports)
+        controller.mutation_admitted = True
+        plan = controller.runtime_plan()
+        error = Stop('RUNTIME_TAG_ACK_SHAPE')
+        runtime.change = lambda *args, **kwargs: (_ for _ in ()).throw(error)
+        runtime.readback = runtime.change
+        foreign = SimpleNamespace(change=runtime.change)
+        cases = [('readback', ('tag', entry.restore.TAG, True, plan), runtime, False),
+                 ('change', ('tag', 'foreign-tag', True, plan), runtime, False),
+                 ('change', ('identity', entry.restore.TAG, True, plan), runtime, False),
+                 ('change', ('tag', entry.restore.TAG, 1, plan), runtime, False),
+                 ('change', ('tag', entry.restore.TAG, False, plan), runtime, False),
+                 ('change', ('tag', entry.restore.TAG, True, {**plan, 'operationId': 'foreign'}), runtime, False),
+                 ('change', ('tag', entry.restore.TAG, True, plan), foreign, False),
+                 ('change', ('tag', entry.restore.TAG, True, plan), runtime, True)]
+        for method, args, owner, cleanup in cases:
+            with self.subTest(method=method, owner=owner is runtime, cleanup=cleanup):
+                with self.assertRaises(Stop) as raised:
+                    controller.invoke(method, *args, owner=owner, cleanup=cleanup)
+                self.assertIs(raised.exception, error)
+
+    def test_postprocess_interrupt_and_deadline_precede_tag_classification(self):
+        for boundary in ('interrupt', 'deadline'):
+            # Capability guard Stop was historically generic at this non-preflight
+            # parent boundary; compare the exact old code instead of relabeling it.
+            for baseline in (True, False):
+                with self.subTest(boundary=boundary, baseline=baseline):
+                    self.stopped_run(self.response('COMMAND_REFUSED'), 'LOCAL_ADAPTER_OR_SOURCE_STOP',
+                                     after_process=boundary, baseline=baseline)
+
+    def test_postprocess_guard_code_is_not_mislabeled_as_command_refusal(self):
+        _, cap, io, vector = self.native()
+        def interrupted(*args, **kwargs):
+            cap.coordinator.abort = True
+            return subprocess.CompletedProcess([], 7, self.PRIVATE.encode(), self.PRIVATE.encode())
+        with patch('native_io.subprocess.run', side_effect=interrupted) as run:
+            with self.assertRaises(Stop) as raised: io.cloud(vector, 0)
+        self.assertEqual(raised.exception.args, ('INTERRUPTED',))
+        self.assertEqual(run.call_count, 1)
+
+    def test_predispatch_guard_refuses_before_reservation_or_process(self):
+        _, cap, io, vector = self.native()
+        before = copy.deepcopy(cap.coordinator.j['nativeEntry']['calls'])
+        cap.coordinator.abort = True
+        with patch('native_io.subprocess.run', side_effect=AssertionError('process must not run')) as run:
+            with self.assertRaisesRegex(Stop, '^INTERRUPTED$'): io.cloud(vector, 0)
+        run.assert_not_called()
+        self.assertEqual(cap.coordinator.j['nativeEntry']['calls'], before)
+
+    def test_real_inert_process_results_use_the_existing_run_boundary(self):
+        _, _, io, vector = self.native()
+        original = subprocess.run
+        programs = [('import sys;sys.stderr.write("' + self.PRIVATE + '");sys.exit(7)', 'COMMAND_REFUSED'),
+                    ('import os;os.write(1,b"\\xff")', 'OUTPUT_ENCODING'),
+                    ('import os;os.write(1,b"x"*65537)', 'OUTPUT_LIMIT')]
+        for program, code in programs:
+            observed = []
+            def inert(argv, **kwargs):
+                observed.append(argv)
+                return original([sys.executable, '-I', '-B', '-c', program], **kwargs)
+            with patch('native_io.subprocess.run', side_effect=inert):
+                with self.assertRaisesRegex(Stop, '^RUNTIME_TAG_' + code + '$'): io.cloud(vector, 0)
+            self.assertEqual(observed, [['/opt/homebrew/bin/gcloud', *vector, '--format=json']])
+
+    def test_concurrent_entry_refuses_before_any_tag_dispatch(self):
+        fixture = self.fixture(connected=True)
+        fd = os.open(fixture.root / 'entry.lock', os.O_CREAT | os.O_WRONLY, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with patch.object(entry.RuntimeAdapter, 'change', side_effect=AssertionError('mutation forbidden')) as change:
+                with self.assertRaisesRegex(Stop, '^ENTRY_ALREADY_RUNNING$'): fixture.run_entry()
+            change.assert_not_called()
+            self.assertEqual(fixture.calls, 0); self.assertFalse((fixture.root / 'attempt.json').exists())
+        finally: os.close(fd)
 
 
 for _name in EntryTests.__dict__:

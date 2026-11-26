@@ -48,6 +48,12 @@ PREFLIGHT_CODES = frozenset({
     'RUNTIME_IDENTITY_DISABLED_INVALID', 'RUNTIME_IDENTITY_STATE_MISMATCH',
 })
 
+TAG_FAILURE_CODES = frozenset({
+    'RUNTIME_TAG_COMMAND_TIMEOUT', 'RUNTIME_TAG_COMMAND_UNAVAILABLE',
+    'RUNTIME_TAG_COMMAND_REFUSED', 'RUNTIME_TAG_OUTPUT_LIMIT',
+    'RUNTIME_TAG_OUTPUT_ENCODING', 'RUNTIME_TAG_JSON_PARSE', 'RUNTIME_TAG_ACK_SHAPE',
+})
+
 
 class RuntimeAdapter(restore.NativeAdapter):
     """Full ACL validation at each inherited phase readback, including independent closure."""
@@ -514,7 +520,20 @@ class Coordinator(c.Coordinator):
             if method == 'stage_a' and owner is self.access:
                 self.settle_bindings()
         if method != 'preflight' or cleanup:
-            return super().invoke(method, *args, owner=owner, cleanup=cleanup)
+            try:
+                return super().invoke(method, *args, owner=owner, cleanup=cleanup)
+            except Stop as error:
+                # Only the exact forward tag mutation can retain a fixed native
+                # diagnostic; all other errors keep the inherited behavior.
+                if (cleanup is False and type(method) is str and method == 'change' and
+                        owner is self.runtime and len(args) == 4 and
+                        type(args[0]) is str and args[0] == 'tag' and
+                        type(args[1]) is str and args[1] == self.modules['restore'].TAG and
+                        args[2] is True and type(args[3]) is dict and args[3] == self.runtime_plan() and
+                        type(error) is Stop and len(error.args) == 1 and
+                        type(error.args[0]) is str and error.args[0] in TAG_FAILURE_CODES):
+                    raise c.Stop(error.args[0]) from None
+                raise
         self.j['preflightStage'] = ('RUNTIME_PREFLIGHT' if owner is self.runtime
                                     else 'ACCESS_PREFLIGHT')
         self.save()
