@@ -144,9 +144,12 @@
       "writtenAt": "2026-11-26T18:41:00.122925+00:00"
     },
     "native-regression.log": {
-      "bytes": 36760,
-      "sha256": "49f232319a5982ee190a320b4824e3565ac2f84157bbfaf096027e5f77a92aab",
-      "writtenAt": "2026-11-26T18:39:15.055610+00:00"
+      "bytes": 36759,
+      "normalization": "Removed one trailing space from a unittest status line; all test evidence and failure content unchanged",
+      "originalRawCommit": "23a106bac9af404f36aff7e2f8557bd7a91d9a65",
+      "originalRawSha256": "49f232319a5982ee190a320b4824e3565ac2f84157bbfaf096027e5f77a92aab",
+      "sha256": "a5ff98c4990347dd8ba19801b9941fcec3e0dad93170f18d226b044737cca5e9",
+      "writtenAt": "2026-11-26T18:47:00.795710+00:00"
     },
     "packet-regression.log": {
       "bytes": 8146,
@@ -232,6 +235,7 @@
   "verificationNotes": [
     "Two initial TG1 fixture errors corrected: real access port supplied and unintended synthetic clock rollback removed; initial failure log retained.",
     "Rerun selector first refused an empty selection, then produced loader-only errors from duplicated method names; corrected exact method selection ran only original failed methods. Loader-error logs retained.",
-    "The supplemental file-map checker initially incorrectly rejected the expected gcloud executable symlink. Existing SDK source guards already passed; checker aligned with their unchanged sdkFiles contract, then all eight maps passed."
+    "The supplemental file-map checker initially incorrectly rejected the expected gcloud executable symlink. Existing SDK source guards already passed; checker aligned with their unchanged sdkFiles contract, then all eight maps passed.",
+    "Staged evidence whitespace check identified one unittest status-line trailing space; shell sequencing did not stop the first evidence commit. Normalized that display-only whitespace and retained the exact original raw hash and commit; final complete-diff whitespace check rerun."
   ]
 }
