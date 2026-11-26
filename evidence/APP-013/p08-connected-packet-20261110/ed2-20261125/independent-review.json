@@ -1,0 +1,24 @@
+{
+  "reviewedAt": "2026-11-26T03:21:02.982852Z",
+  "reviewer": "independent agent rv1_journal",
+  "result": "PASS",
+  "exactSafeReceiptCount": 6,
+  "authoritySourceInterpreterResourceGuards": "PASS",
+  "phaseReservationSequence": [
+    "OBSERVE",
+    "DISABLE",
+    "VERIFY"
+  ],
+  "resultSha256": "71c9476741abde710bf9aa8899cdc5df19d81544c6a9066d8b870d7368d3deae",
+  "noInterruptionVeto": true,
+  "initialState": "ENABLED",
+  "disableAcknowledged": true,
+  "finalState": "DISABLED",
+  "closureFlags": true,
+  "failures": [],
+  "residuals": [],
+  "mainExitCode": "NOT_CAPTURED",
+  "processSnapshotPerformedByReviewer": false,
+  "rootProcessSnapshot": "local-closeout-verification.json",
+  "externalCalls": 0
+}

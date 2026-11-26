@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-11-26T03:22:27.596441+00:00",
+  "changeType": "ED2 live safe evidence and governed closeout documentation",
+  "frozenBaseline": "PASS",
+  "fullCrossRepositoryConsistency": "PASS",
+  "backendGovernanceWrapper": "PASS",
+  "architecture": "PASS",
+  "bothRepositoryWhitespace": "PASS",
+  "governanceTests": {
+    "passed": 25,
+    "failed": 0
+  },
+  "runtimeTestsRerunAtCloseout": false,
+  "preparationCompositionTestsPassed": 21,
+  "preparationFinalSourceBindingTestPassed": 1,
+  "externalCallsAfterOperation": 0
+}

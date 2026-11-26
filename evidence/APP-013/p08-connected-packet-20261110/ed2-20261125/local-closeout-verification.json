@@ -1,0 +1,27 @@
+{
+  "observedAt": "2026-11-26T03:20:55.185617+00:00",
+  "operationId": "195cb801-cacb-4552-9265-08614c0c0e28",
+  "sourceCommit": "afe3afe5d6c292fa8c721683ac521b615c4b7784",
+  "approvalCommit": "e17766348b11f6bda44f5501b08bec190881cf62",
+  "resultSha256": "71c9476741abde710bf9aa8899cdc5df19d81544c6a9066d8b870d7368d3deae",
+  "authoritativeReadback": true,
+  "interruptionMarkerAbsent": true,
+  "safeReceiptSetExact": true,
+  "privateFilesAbsent": true,
+  "matchingMainOrWorkerProcesses": 0,
+  "processSnapshotSucceeded": true,
+  "mainExitCode": "NOT_CAPTURED",
+  "providerRequests": 3,
+  "providerMutations": 1,
+  "finalState": "DISABLED",
+  "credentialsOrIdentifiersRetained": false,
+  "rootAndLeaseRetainedConsumed": true,
+  "inventory": {
+    "attempt.json": "308acacc2f5b1d274e84f802ea3296c3a9577634587b1fac03ef8fb4a41a2891",
+    "closeout.json": "77be19f904c4017890934fb3144e7c5efc469ca995b4a9f3ed5f447384564384",
+    "disable.json": "cc88fceea7db4cebb5901a94a49c7be0298d53bc7b3c20b1cabc592ad7113942",
+    "observe.json": "311c574115c103eb71ce03872cfaeb209aaf1b36720d47051172e0d6b4253cf6",
+    "result.json": "b8dddab732791feb330d7934cefc125ba5f01a617e3c0d971348232452b0a155",
+    "verify.json": "b466d11ef5c5d5cb754d6141ba88b8445e41a6bc9f9009426639303d80c07d43"
+  }
+}
