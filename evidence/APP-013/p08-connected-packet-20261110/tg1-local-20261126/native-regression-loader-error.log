@@ -1,0 +1,23 @@
+test_late_child_return_preserves_payment_intent_for_cleanup (unittest.loader._FailedTest.test_late_child_return_preserves_payment_intent_for_cleanup) ... ERROR
+test_payment_parent_retains_then_independently_purges (unittest.loader._FailedTest.test_payment_parent_retains_then_independently_purges) ... ERROR
+test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (unittest.loader._FailedTest.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) ... ERROR
+
+======================================================================
+ERROR: test_late_child_return_preserves_payment_intent_for_cleanup (unittest.loader._FailedTest.test_late_child_return_preserves_payment_intent_for_cleanup)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_late_child_return_preserves_payment_intent_for_cleanup'
+
+======================================================================
+ERROR: test_payment_parent_retains_then_independently_purges (unittest.loader._FailedTest.test_payment_parent_retains_then_independently_purges)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_payment_parent_retains_then_independently_purges'
+
+======================================================================
+ERROR: test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (unittest.loader._FailedTest.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_ec1_documented_response_and_optional_identity_reach_authenticated_payment'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+FAILED (errors=3)

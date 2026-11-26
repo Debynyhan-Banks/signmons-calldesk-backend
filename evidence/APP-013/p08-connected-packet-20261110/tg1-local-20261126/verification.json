@@ -1,0 +1,237 @@
+{
+  "acceptance": {
+    "R1NewlyClosed": 0,
+    "R1Total": 27,
+    "acceptedMilestones": 4,
+    "section3A": "OPEN",
+    "totalMilestones": 8
+  },
+  "baselineCommit": "b72ecb89f1907a25c988bbe3f33388bfdab77976",
+  "codes": [
+    "RUNTIME_TAG_COMMAND_TIMEOUT",
+    "RUNTIME_TAG_COMMAND_UNAVAILABLE",
+    "RUNTIME_TAG_COMMAND_REFUSED",
+    "RUNTIME_TAG_OUTPUT_LIMIT",
+    "RUNTIME_TAG_OUTPUT_ENCODING",
+    "RUNTIME_TAG_JSON_PARSE",
+    "RUNTIME_TAG_ACK_SHAPE"
+  ],
+  "externalActions": {
+    "browserActions": 0,
+    "credentialReads": 0,
+    "payments": 0,
+    "providerCalls": 0,
+    "signins": 0
+  },
+  "files": {
+    "evidence/APP-013/p08-connected-packet-20261110/account-containment-read-source-manifest.json": {
+      "afterSha256": "2f96833fda03d43adb5db5b333235c0365705bd853c13321aa5a634f91ecaf9b",
+      "beforeSha256": "f33b59f4f2b262e8219d273b18c222f8b74ff8d31d01ca03b3119b11a3babb1b"
+    },
+    "evidence/APP-013/p08-connected-packet-20261110/account-containment-source-manifest.json": {
+      "afterSha256": "7174f8482b1e7c72d2e67f5c0194877881812c445c866e0c44c3b7d9a60daae9",
+      "beforeSha256": "a5d38ecfc03ec1de905daaea1ddd35cc0cf060a0aa46f91cb2c4955df2f9834b"
+    },
+    "evidence/APP-013/p08-connected-packet-20261110/iq1-source-manifest.json": {
+      "afterSha256": "a44b78a44a80f705e33fa391616250fb74611a833fe9fc0f71977e379775bcce",
+      "beforeSha256": "1d1a91c513b6d72087ceff3012a4c37bfb4e5d4fa4eafaf89170e2a42779d781"
+    },
+    "evidence/APP-013/p08-connected-packet-20261110/sq1-source-manifest.json": {
+      "afterSha256": "2463641936c58442b404f0e08b0d852eeb47214d0da0c61c3c19ac9c4632a88c",
+      "beforeSha256": "e9dba25595db7e9a524ba25a44506c5cedea13b16686d600821d905469143cd6"
+    },
+    "evidence/APP-013/p08-connected-packet-20261110/vm2-source-manifest.json": {
+      "afterSha256": "dc3ce259b837d7539cd5f6437aa1426b88d8fd2fe8da2e121df57d1d10c42961",
+      "beforeSha256": "0140b9507ef02107965ec12a3642b10b0eb1aeec5122395021e84a0fb8b91df5"
+    },
+    "evidence/APP-013/p08-key-correction-20261110/source-manifest.json": {
+      "afterSha256": "33619b386626de7f8deba2f7d6eab01bc3eff29dcf68f3ab903870c23a39a3b1",
+      "beforeSha256": "d6cc32f6adc27f0a849809ecf8d1dd582d33c4add7f4b2c5e90e1a7278053fb9"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/entry.py": {
+      "afterSha256": "6585e24df411dfc12b012797bb84156fca0cc27fed66e0f4475976e7ac3919cd",
+      "beforeSha256": "89f9c917012f9867f135d05d075608da3cb3a23f010cf73ac675f4cdc29ba7a0"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/native_io.py": {
+      "afterSha256": "2a6426ecf0dbbc1e19ad2391a296b781cc04fdd1e53ee83123a332101aea6e43",
+      "beforeSha256": "b05001e4fcf462c1727ae58b649fe35b110444da3c43941622213d456004119c"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/source-manifest.json": {
+      "afterSha256": "c7314cb29c41554fdfa22313f528aa2211b0fc8eafb509e20071fa7c5042971c",
+      "beforeSha256": "2bef573fc894a0c9bc3213a22ada602b0d58e83a33862a440f0462f457b3ed08"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test-manifest.json": {
+      "afterSha256": "88f44fd4ed923d9228f3f67accc0b247a82059de3dcb75ade742cc0fedc492b2",
+      "beforeSha256": "4c5300b53e32d786c1968680ab1a45fdfa22d1813f273e27a2ab8dc1be3c4c94"
+    },
+    "evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py": {
+      "afterSha256": "261ad6b0c89f23bac70ca2d218355f116b24e6e61c11d3570836f6926d71cd9f",
+      "beforeSha256": "7163c5d029c87e29a7cd69326d02639e9a27014430295028e77b191571eabbf0"
+    }
+  },
+  "focused": {
+    "baselineControl": "All seven failures reproduced through exact baseline _run/cloud and assembled main/independent closeout as LOCAL_ADAPTER_OR_SOURCE_STOP",
+    "cases": 17,
+    "durationSeconds": 7.617,
+    "result": "PASS"
+  },
+  "guards": {
+    "allEightCurrentMapsAndCommittedBytes": "PASS",
+    "architecture": "PASS",
+    "backendGovernanceWrapper": "PASS",
+    "completeConsistency": "PASS",
+    "containmentRead": "PASS",
+    "frozenBaseline": "PASS",
+    "iq1": "PASS",
+    "native": "PASS",
+    "qualificationManifestUnchanged": true,
+    "sq1": "PASS",
+    "vm2": "PASS",
+    "whitespace": "PASS"
+  },
+  "historicalEvidenceUnchanged": {
+    "APP013_P08_R62_CLOSEOUT_REVIEW_20261126.json": "bc033fe2b7fcf0d48ce31e70369ce52de1b1c6c86cf25592d05a8107ea9338cb",
+    "APP013_P08_R62_RESULT_REVIEW_20261126.json": "7d9ee243dd1d7b2d8c503cf4dd6b3ba6f6d0671379013dec374f37986968e871",
+    "APP013_P08_TG1_TAG_FAILURE_DIAGNOSTIC_LOCAL_PROPOSAL_20261126.md": "d36c971d11339f0fea6bd5b35a9c465be7e0c7c05cb759c3caeee0fe32f93109"
+  },
+  "implementationCommit": "6eed73b53f660f9e2bd39f78224792c0085e9323",
+  "independentReview": {
+    "fixtureCorrections": "PASS; no weakened assertions",
+    "incidentTraceAndCleanup": "PASS; source-based interpretation",
+    "rerunMethodSets": "Exact original 3 native and 24 dependency failures; all passed",
+    "reviewer": "key_boundary_review",
+    "sourceAndTests": "PASS"
+  },
+  "logs": {
+    "correction-regression.log": {
+      "bytes": 3601,
+      "sha256": "ca49e7c42d2cc181c83ec02ef8c990b547c7d3f40eafde8d72d8df643dbb9bbf",
+      "writtenAt": "2026-11-26T18:37:19.132908+00:00"
+    },
+    "dependency-regression-loader-error.log": {
+      "bytes": 12922,
+      "sha256": "2b073de0f5703672771f59bcf75ffb08dc440b3649cacf5ae197960e7242ce6f",
+      "writtenAt": "2026-11-26T18:40:35.119787+00:00"
+    },
+    "dependency-regression-permitted-rerun.log": {
+      "bytes": 3900,
+      "sha256": "d61700fe237efdf89cff83ba2fc1417d8a34c12c003b0db620e3bf1480d91800",
+      "writtenAt": "2026-11-26T18:41:05.182464+00:00"
+    },
+    "dependency-regression.log": {
+      "bytes": 90615,
+      "sha256": "761cea71bbb0747cee658a1f0d425c6a9b584fc80c3e089f5e4c718519943175",
+      "writtenAt": "2026-11-26T18:37:45.452147+00:00"
+    },
+    "focused-tests-initial.log": {
+      "bytes": 6636,
+      "sha256": "93c586906a00902b4c5d0d14a6139fda7dfb23de5e8be8445c15e228c714cb8a",
+      "writtenAt": "2026-11-26T18:35:04.518384+00:00"
+    },
+    "focused-tests.log": {
+      "bytes": 3006,
+      "sha256": "f7639e57ea9704d341b163727f0b031bb1a55cf7ebdb7ecf2ea1b36c8267a505",
+      "writtenAt": "2026-11-26T18:36:54.383267+00:00"
+    },
+    "native-regression-loader-error.log": {
+      "bytes": 1897,
+      "sha256": "a3858d3e74da0afdc8e5a08105a4bb819ba0dd7722df8629e9dd7cea5d79c4bb",
+      "writtenAt": "2026-11-26T18:40:34.348688+00:00"
+    },
+    "native-regression-permitted-rerun.log": {
+      "bytes": 616,
+      "sha256": "81e1e5b26f53b54d39882027678352b48346aa0f9902dcaa6d4f3f09707b0426",
+      "writtenAt": "2026-11-26T18:41:00.122925+00:00"
+    },
+    "native-regression.log": {
+      "bytes": 36760,
+      "sha256": "49f232319a5982ee190a320b4824e3565ac2f84157bbfaf096027e5f77a92aab",
+      "writtenAt": "2026-11-26T18:39:15.055610+00:00"
+    },
+    "packet-regression.log": {
+      "bytes": 8146,
+      "sha256": "a7ca0f6fece0cf239190538b047dcf0abf3bdbc38d81fee9ab3a6cf3b96e3b63",
+      "writtenAt": "2026-11-26T18:37:23.706635+00:00"
+    },
+    "source-guards.log": {
+      "bytes": 409,
+      "sha256": "4e38c93cff596ae68e94636f3645deeb9b868634c3a4c270185aa09d669946a7",
+      "writtenAt": "2026-11-26T18:43:54.442000+00:00"
+    }
+  },
+  "ownerDecision": {
+    "commit": "2b6f93a491be21d347c705d5ac4a81fd302f003d",
+    "path": "APP013_P08_TG1_OWNER_DECISION_20261126.json",
+    "proposalCommit": "eeadceb",
+    "proposalSha256": "d36c971d11339f0fea6bd5b35a9c465be7e0c7c05cb759c3caeee0fe32f93109",
+    "statement": "Approve TG1 local diagnostics and tests"
+  },
+  "preserved": [
+    "exact dynamically bound forward-tag command",
+    "8-second process timeout",
+    "65536-byte output limit",
+    "command reservations and counts",
+    "no retries",
+    "JSON and installed SDK acknowledgment acceptance",
+    "mandatory authoritative readbacks",
+    "interruption/deadline precedence",
+    "historical unknown latch and independent cleanup",
+    "acceptance criteria"
+  ],
+  "recordedAt": "2026-11-26T18:45:00.360926+00:00",
+  "regressions": [
+    {
+      "assertionsChanged": false,
+      "casesExecuted": 168,
+      "initial": "Three methods failed under restricted local permissions; one contains two failing subtests",
+      "rerunMethods": 3,
+      "rerunResult": "PASS",
+      "suite": "native"
+    },
+    {
+      "cases": 50,
+      "result": "PASS",
+      "suite": "connected packet and renewal preflight"
+    },
+    {
+      "assertionsChanged": false,
+      "casesExecuted": 345,
+      "databaseFixturesExcludedFromRerun": true,
+      "initial": "24 methods blocked by local process/loopback restrictions; separate out-of-scope database fixture setup failed",
+      "rerunMethods": 24,
+      "rerunResult": "PASS",
+      "suite": "dependency synthetic and process checks"
+    },
+    {
+      "cases": 24,
+      "result": "PASS",
+      "suite": "key correction launch and ports"
+    },
+    {
+      "cases": 25,
+      "result": "PASS",
+      "suite": "governance safeguard tests"
+    }
+  ],
+  "remaining": "Fresh source-bound live readiness review and exact owner authority before any new attempt; same-job Sandbox payment, matching event, cleared application gate, independent cleanup and owner acceptance still required",
+  "rollback": "Revert TG1 source and eight derived manifests before another execution; consumed operations remain consumed",
+  "scopeIncident": {
+    "action": "Broad dependency test selection accidentally invoked CT3DisposableTLS initdb despite explicit PostgreSQL exclusion",
+    "cleanupEvidence": "Base temporary-directory cleanup and absence assertion returned before derived missing-server error; supported by traceback and source",
+    "disclosed": true,
+    "followed": "No PostgreSQL fixture rerun; exact failed synthetic/process methods only; no runtime or assertion changes",
+    "ownerDirection": "Finish approved checks only",
+    "result": "initdb failed; fixture server-launch line and SQL readiness were not reached"
+  },
+  "section": "APP-013 / 3A / P08 / TG1",
+  "status": "IMPLEMENTED_AND_LOCALLY_VERIFIED",
+  "unknowns": [
+    "Original R62 tag-mutation cause remains UNKNOWN",
+    "Current live provider access, authentication and payment remain unqualified by TG1"
+  ],
+  "verificationNotes": [
+    "Two initial TG1 fixture errors corrected: real access port supplied and unintended synthetic clock rollback removed; initial failure log retained.",
+    "Rerun selector first refused an empty selection, then produced loader-only errors from duplicated method names; corrected exact method selection ran only original failed methods. Loader-error logs retained.",
+    "The supplemental file-map checker initially incorrectly rejected the expected gcloud executable symlink. Existing SDK source guards already passed; checker aligned with their unchanged sdkFiles contract, then all eight maps passed."
+  ]
+}

@@ -1,0 +1,149 @@
+test_real_fixed_coordinator_compatible (unittest.loader._FailedTest.test_real_fixed_coordinator_compatible) ... ERROR
+test_real_coordinator_process (unittest.loader._FailedTest.test_real_coordinator_process) ... ERROR
+test_actual_coordinator_and_cleanup (unittest.loader._FailedTest.test_actual_coordinator_and_cleanup) ... ERROR
+test_actual_sandbox_fork_and_spawn_denied (unittest.loader._FailedTest.test_actual_sandbox_fork_and_spawn_denied) ... ERROR
+test_actual_support_probe (unittest.loader._FailedTest.test_actual_support_probe) ... ERROR
+test_actual_wrapped_transport_with_disposable_script (unittest.loader._FailedTest.test_actual_wrapped_transport_with_disposable_script) ... ERROR
+test_main_sigkill_still_runs_independent_cleanup (unittest.loader._FailedTest.test_main_sigkill_still_runs_independent_cleanup) ... ERROR
+test_actual_worker_execs_fresh_cleanup_with_same_owned_lease (unittest.loader._FailedTest.test_actual_worker_execs_fresh_cleanup_with_same_owned_lease) ... ERROR
+test_cleanup_sigterm_does_not_skip_authorized_restoration (unittest.loader._FailedTest.test_cleanup_sigterm_does_not_skip_authorized_restoration) ... ERROR
+test_main_sigint_stops_following_main_dispatch_and_restores (unittest.loader._FailedTest.test_main_sigint_stops_following_main_dispatch_and_restores) ... ERROR
+test_main_sigterm_stops_following_main_dispatch_and_restores (unittest.loader._FailedTest.test_main_sigterm_stops_following_main_dispatch_and_restores) ... ERROR
+test_sigint_during_settling_wait_restores_without_sign (unittest.loader._FailedTest.test_sigint_during_settling_wait_restores_without_sign) ... ERROR
+test_sigterm_during_settling_wait_restores_without_sign (unittest.loader._FailedTest.test_sigterm_during_settling_wait_restores_without_sign) ... ERROR
+test_supervisor_kill_during_wait_preserves_worker_cleanup (unittest.loader._FailedTest.test_supervisor_kill_during_wait_preserves_worker_cleanup) ... ERROR
+test_supervisor_sigkill_leaves_worker_exec_cleanup_route (unittest.loader._FailedTest.test_supervisor_sigkill_leaves_worker_exec_cleanup_route) ... ERROR
+test_worker_kill_during_wait_uses_independent_supervisor_cleanup (unittest.loader._FailedTest.test_worker_kill_during_wait_uses_independent_supervisor_cleanup) ... ERROR
+test_worker_sigkill_leaves_supervisor_owned_independent_cleanup (unittest.loader._FailedTest.test_worker_sigkill_leaves_supervisor_owned_independent_cleanup) ... ERROR
+test_real_delayed_body_preserves_received403 (unittest.loader._FailedTest.test_real_delayed_body_preserves_received403) ... ERROR
+test_real_delayed_headers_are_unknown_without_retry (unittest.loader._FailedTest.test_real_delayed_headers_are_unknown_without_retry) ... ERROR
+test_real_http403_stream_is_projected_without_raw_denial_retention (unittest.loader._FailedTest.test_real_http403_stream_is_projected_without_raw_denial_retention) ... ERROR
+test_real_redirect_is_not_followed_or_retried (unittest.loader._FailedTest.test_real_redirect_is_not_followed_or_retried) ... ERROR
+test_real_streaming_output_limit_keeps_observed403 (unittest.loader._FailedTest.test_real_streaming_output_limit_keeps_observed403) ... ERROR
+test_same_process_watchdog_survives_sdk_sigalarm_replacement (unittest.loader._FailedTest.test_same_process_watchdog_survives_sdk_sigalarm_replacement) ... ERROR
+test_sdk_watchdog_expires_after_owning_parent_is_sigkilled (unittest.loader._FailedTest.test_sdk_watchdog_expires_after_owning_parent_is_sigkilled) ... ERROR
+
+======================================================================
+ERROR: test_real_fixed_coordinator_compatible (unittest.loader._FailedTest.test_real_fixed_coordinator_compatible)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_real_fixed_coordinator_compatible'
+
+======================================================================
+ERROR: test_real_coordinator_process (unittest.loader._FailedTest.test_real_coordinator_process)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_real_coordinator_process'
+
+======================================================================
+ERROR: test_actual_coordinator_and_cleanup (unittest.loader._FailedTest.test_actual_coordinator_and_cleanup)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_actual_coordinator_and_cleanup'
+
+======================================================================
+ERROR: test_actual_sandbox_fork_and_spawn_denied (unittest.loader._FailedTest.test_actual_sandbox_fork_and_spawn_denied)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_actual_sandbox_fork_and_spawn_denied'
+
+======================================================================
+ERROR: test_actual_support_probe (unittest.loader._FailedTest.test_actual_support_probe)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_actual_support_probe'
+
+======================================================================
+ERROR: test_actual_wrapped_transport_with_disposable_script (unittest.loader._FailedTest.test_actual_wrapped_transport_with_disposable_script)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_actual_wrapped_transport_with_disposable_script'
+
+======================================================================
+ERROR: test_main_sigkill_still_runs_independent_cleanup (unittest.loader._FailedTest.test_main_sigkill_still_runs_independent_cleanup)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_main_sigkill_still_runs_independent_cleanup'
+
+======================================================================
+ERROR: test_actual_worker_execs_fresh_cleanup_with_same_owned_lease (unittest.loader._FailedTest.test_actual_worker_execs_fresh_cleanup_with_same_owned_lease)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_actual_worker_execs_fresh_cleanup_with_same_owned_lease'
+
+======================================================================
+ERROR: test_cleanup_sigterm_does_not_skip_authorized_restoration (unittest.loader._FailedTest.test_cleanup_sigterm_does_not_skip_authorized_restoration)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_cleanup_sigterm_does_not_skip_authorized_restoration'
+
+======================================================================
+ERROR: test_main_sigint_stops_following_main_dispatch_and_restores (unittest.loader._FailedTest.test_main_sigint_stops_following_main_dispatch_and_restores)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_main_sigint_stops_following_main_dispatch_and_restores'
+
+======================================================================
+ERROR: test_main_sigterm_stops_following_main_dispatch_and_restores (unittest.loader._FailedTest.test_main_sigterm_stops_following_main_dispatch_and_restores)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_main_sigterm_stops_following_main_dispatch_and_restores'
+
+======================================================================
+ERROR: test_sigint_during_settling_wait_restores_without_sign (unittest.loader._FailedTest.test_sigint_during_settling_wait_restores_without_sign)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_sigint_during_settling_wait_restores_without_sign'
+
+======================================================================
+ERROR: test_sigterm_during_settling_wait_restores_without_sign (unittest.loader._FailedTest.test_sigterm_during_settling_wait_restores_without_sign)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_sigterm_during_settling_wait_restores_without_sign'
+
+======================================================================
+ERROR: test_supervisor_kill_during_wait_preserves_worker_cleanup (unittest.loader._FailedTest.test_supervisor_kill_during_wait_preserves_worker_cleanup)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_supervisor_kill_during_wait_preserves_worker_cleanup'
+
+======================================================================
+ERROR: test_supervisor_sigkill_leaves_worker_exec_cleanup_route (unittest.loader._FailedTest.test_supervisor_sigkill_leaves_worker_exec_cleanup_route)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_supervisor_sigkill_leaves_worker_exec_cleanup_route'
+
+======================================================================
+ERROR: test_worker_kill_during_wait_uses_independent_supervisor_cleanup (unittest.loader._FailedTest.test_worker_kill_during_wait_uses_independent_supervisor_cleanup)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_worker_kill_during_wait_uses_independent_supervisor_cleanup'
+
+======================================================================
+ERROR: test_worker_sigkill_leaves_supervisor_owned_independent_cleanup (unittest.loader._FailedTest.test_worker_sigkill_leaves_supervisor_owned_independent_cleanup)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_worker_sigkill_leaves_supervisor_owned_independent_cleanup'
+
+======================================================================
+ERROR: test_real_delayed_body_preserves_received403 (unittest.loader._FailedTest.test_real_delayed_body_preserves_received403)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_real_delayed_body_preserves_received403'
+
+======================================================================
+ERROR: test_real_delayed_headers_are_unknown_without_retry (unittest.loader._FailedTest.test_real_delayed_headers_are_unknown_without_retry)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_real_delayed_headers_are_unknown_without_retry'
+
+======================================================================
+ERROR: test_real_http403_stream_is_projected_without_raw_denial_retention (unittest.loader._FailedTest.test_real_http403_stream_is_projected_without_raw_denial_retention)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_real_http403_stream_is_projected_without_raw_denial_retention'
+
+======================================================================
+ERROR: test_real_redirect_is_not_followed_or_retried (unittest.loader._FailedTest.test_real_redirect_is_not_followed_or_retried)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_real_redirect_is_not_followed_or_retried'
+
+======================================================================
+ERROR: test_real_streaming_output_limit_keeps_observed403 (unittest.loader._FailedTest.test_real_streaming_output_limit_keeps_observed403)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_real_streaming_output_limit_keeps_observed403'
+
+======================================================================
+ERROR: test_same_process_watchdog_survives_sdk_sigalarm_replacement (unittest.loader._FailedTest.test_same_process_watchdog_survives_sdk_sigalarm_replacement)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_same_process_watchdog_survives_sdk_sigalarm_replacement'
+
+======================================================================
+ERROR: test_sdk_watchdog_expires_after_owning_parent_is_sigkilled (unittest.loader._FailedTest.test_sdk_watchdog_expires_after_owning_parent_is_sigkilled)
+----------------------------------------------------------------------
+AttributeError: 'function' object has no attribute 'test_sdk_watchdog_expires_after_owning_parent_is_sigkilled'
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.001s
+
+FAILED (errors=24)

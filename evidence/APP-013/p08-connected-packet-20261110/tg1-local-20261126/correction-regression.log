@@ -1,0 +1,29 @@
+test_cutoff_and_mutation_authority_not_inferred (test_launch.AuthorityTests.test_cutoff_and_mutation_authority_not_inferred) ... ok
+test_exact_qualification_is_read_only (test_launch.AuthorityTests.test_exact_qualification_is_read_only) ... ok
+test_generic_approval_cannot_authorize_external_action (test_launch.AuthorityTests.test_generic_approval_cannot_authorize_external_action) ... ok
+test_malformed_window_refused_before_source_or_input (test_launch.AuthorityTests.test_malformed_window_refused_before_source_or_input) ... ok
+test_qualified_metadata_is_exact_and_stale_source_refused (test_launch.AuthorityTests.test_qualified_metadata_is_exact_and_stale_source_refused) ... ok
+test_reuse_is_bound_to_committed_receipt_and_exact_scope (test_launch.AuthorityTests.test_reuse_is_bound_to_committed_receipt_and_exact_scope) ... ok
+test_reuse_qualification_mode_refused (test_launch.AuthorityTests.test_reuse_qualification_mode_refused) ... ok
+test_real_timed_getpass_three_prompts_preserve_values_in_actual_launcher (test_launch.CombinedInputPtyTests.test_real_timed_getpass_three_prompts_preserve_values_in_actual_launcher) ... ok
+test_endpoint_refusal_precedes_cloud_sql_and_always_clears (test_launch.QualificationOrderTests.test_endpoint_refusal_precedes_cloud_sql_and_always_clears) ... ok
+test_actual_child_refusal_transfers_safe_shape_before_cloud_sql (test_ports.NativeSeamTests.test_actual_child_refusal_transfers_safe_shape_before_cloud_sql) ... ok
+test_actual_lifecycle_new_version_enable_disable_and_role_acl (test_ports.NativeSeamTests.test_actual_lifecycle_new_version_enable_disable_and_role_acl) ... ok
+test_actual_reuse_lifecycle_pins_two_and_retires_every_resource (test_ports.NativeSeamTests.test_actual_reuse_lifecycle_pins_two_and_retires_every_resource) ... ok
+test_adopted_binding_refuses_correction_before_provider_calls (test_ports.NativeSeamTests.test_adopted_binding_refuses_correction_before_provider_calls) ... ok
+test_binding_malformed_output_has_safe_code_and_no_retry (test_ports.NativeSeamTests.test_binding_malformed_output_has_safe_code_and_no_retry) ... ok
+test_binding_output_is_explicit_json_for_add_and_remove (test_ports.NativeSeamTests.test_binding_output_is_explicit_json_for_add_and_remove) ... ok
+test_corrected_native_preflight_runs_after_owned_version_enable (test_ports.NativeSeamTests.test_corrected_native_preflight_runs_after_owned_version_enable) ... ok
+test_current_preflight_full_role_and_permissions (test_ports.NativeSeamTests.test_current_preflight_full_role_and_permissions) ... ok
+test_qualification_binding_mutation_refused_before_dispatch (test_ports.NativeSeamTests.test_qualification_binding_mutation_refused_before_dispatch) ... ok
+test_qualification_ports_refuse_mutations_before_dispatch (test_ports.NativeSeamTests.test_qualification_ports_refuse_mutations_before_dispatch) ... ok
+test_reuse_ports_refuse_create_before_network (test_ports.NativeSeamTests.test_reuse_ports_refuse_create_before_network) ... ok
+test_reuse_preflight_does_not_request_create_permission (test_ports.NativeSeamTests.test_reuse_preflight_does_not_request_create_permission) ... ok
+test_reuse_requires_exact_disabled_numeric_version (test_ports.NativeSeamTests.test_reuse_requires_exact_disabled_numeric_version) ... ok
+test_work_budget_reserves_cleanup (test_ports.NativeSeamTests.test_work_budget_reserves_cleanup) ... ok
+test_wrong_environment_stops_before_any_mutation (test_ports.NativeSeamTests.test_wrong_environment_stops_before_any_mutation) ... ok
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.331s
+
+OK

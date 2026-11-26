@@ -1,0 +1,220 @@
+test_authenticate_preserves_success_and_only_translates_exact_safe_codes (test_entry.AuthenticationDiagnosticTests.test_authenticate_preserves_success_and_only_translates_exact_safe_codes) ... ok
+test_authenticate_preserves_unknown_exception_identity (test_entry.AuthenticationDiagnosticTests.test_authenticate_preserves_unknown_exception_identity) ... ok
+test_distinct_owned_versions_reach_real_handoff_and_conditional_cleanup (test_entry.AuthenticationDiagnosticTests.test_distinct_owned_versions_reach_real_handoff_and_conditional_cleanup) ... ok
+test_keystring_failure_remains_classified_and_changed_cleanup_version_is_contained (test_entry.AuthenticationDiagnosticTests.test_keystring_failure_remains_classified_and_changed_cleanup_version_is_contained) ... ok
+test_safe_scope_and_rejected_errors_through_actual_entry_and_closeout (test_entry.AuthenticationDiagnosticTests.test_safe_scope_and_rejected_errors_through_actual_entry_and_closeout) ... ok
+test_actual_connected_interruption_closes_without_auth_or_browser (test_entry.CT4TimingTests.test_actual_connected_interruption_closes_without_auth_or_browser) ... ok
+test_actual_invoke_waits_before_prediction_once (test_entry.CT4TimingTests.test_actual_invoke_waits_before_prediction_once) ... ok
+test_actual_payment_deadline_refuses_before_first_mutation (test_entry.CT4TimingTests.test_actual_payment_deadline_refuses_before_first_mutation) ... ok
+test_admission_before_mutation_and_before_wait (test_entry.CT4TimingTests.test_admission_before_mutation_and_before_wait) ... ok
+test_early_wakeup_does_not_shorten_wait (test_entry.CT4TimingTests.test_early_wakeup_does_not_shorten_wait) ... ok
+test_exact_boundary_and_owned_bindings (test_entry.CT4TimingTests.test_exact_boundary_and_owned_bindings) ... ok
+test_freeze_rollback_nonfinite_and_interruption (test_entry.CT4TimingTests.test_freeze_rollback_nonfinite_and_interruption) ... ok
+test_killed_native_worker_during_wait_allows_independent_closeout (test_entry.CT4TimingTests.test_killed_native_worker_during_wait_allows_independent_closeout) ... ok
+test_wall_and_monotonic_horizons_both_enforced (test_entry.CT4TimingTests.test_wall_and_monotonic_horizons_both_enforced) ... ok
+test_actual_node_authority_after_parent_wait_and_delayed_child (test_entry.CT5DeadlineTests.test_actual_node_authority_after_parent_wait_and_delayed_child) ... ok
+test_child_cutoff_refuses_before_mutation_and_cleanup_remains_available (test_entry.CT5DeadlineTests.test_child_cutoff_refuses_before_mutation_and_cleanup_remains_available) ... ok
+test_child_horizon_rechecked_before_and_after_wait (test_entry.CT5DeadlineTests.test_child_horizon_rechecked_before_and_after_wait) ... ok
+test_r54_schedule_refused_before_any_forward_intent (test_entry.CT5DeadlineTests.test_r54_schedule_refused_before_any_forward_intent) ... ok
+test_diagnostic_recording_failure_cannot_replace_primary_or_create_success (test_entry.ChildOutputContractTests.test_diagnostic_recording_failure_cannot_replace_primary_or_create_success) ... ok
+test_python_and_node_literal_failure_contracts_match (test_entry.ChildOutputContractTests.test_python_and_node_literal_failure_contracts_match) ... ok
+test_strict_bounded_process_frame_rejects_private_or_ambiguous_output (test_entry.ChildOutputContractTests.test_strict_bounded_process_frame_rejects_private_or_ambiguous_output) ... ok
+test_failed_tag_before_auth_has_independent_final_receipt (test_entry.ConnectedEntryTests.test_failed_tag_before_auth_has_independent_final_receipt) ... ok
+test_full_parent_failed_readbacks_have_finite_cleanup_budget (test_entry.ConnectedEntryTests.test_full_parent_failed_readbacks_have_finite_cleanup_budget) ... ok
+test_late_child_return_preserves_payment_intent_for_cleanup (test_entry.ConnectedEntryTests.test_late_child_return_preserves_payment_intent_for_cleanup) ... FAIL
+test_payment_external_foreign_endpoint_refuses_before_io (test_entry.ConnectedEntryTests.test_payment_external_foreign_endpoint_refuses_before_io) ... ok
+test_payment_parent_retains_then_independently_purges (test_entry.ConnectedEntryTests.test_payment_parent_retains_then_independently_purges) ... FAIL
+test_payment_requires_matching_current_qualification_receipt (test_entry.ConnectedEntryTests.test_payment_requires_matching_current_qualification_receipt) ... ok
+test_preflight_refusal_never_activates_runtime (test_entry.ConnectedEntryTests.test_preflight_refusal_never_activates_runtime) ... ok
+test_preflight_transport_failure_before_payment_journal_preserves_closeout (test_entry.ConnectedEntryTests.test_preflight_transport_failure_before_payment_journal_preserves_closeout) ... ok
+test_actual_lifecycle_mutations_select_json_and_reject_missing_structured_output (test_entry.EntryTests.test_actual_lifecycle_mutations_select_json_and_reject_missing_structured_output) ... ok
+test_actual_native_owner_boundary_refuses_drift_before_token_or_password (test_entry.EntryTests.test_actual_native_owner_boundary_refuses_drift_before_token_or_password) ... ok
+test_actual_native_sql_serializer_uses_pinned_tls_and_safe_errors (test_entry.EntryTests.test_actual_native_sql_serializer_uses_pinned_tls_and_safe_errors) ... ok
+test_approval_and_qualification_and_resource_drift_before_io (test_entry.EntryTests.test_approval_and_qualification_and_resource_drift_before_io) ... ok
+test_assembled_positive_authoritative_readback_and_private_purge (test_entry.EntryTests.test_assembled_positive_authoritative_readback_and_private_purge) ... ok
+test_child_timeout_retains_residual_and_retires_runtime (test_entry.EntryTests.test_child_timeout_retains_residual_and_retires_runtime) ... ok
+test_concurrent_entry_refuses_before_io (test_entry.EntryTests.test_concurrent_entry_refuses_before_io) ... ok
+test_duplicate_attempt_never_replays (test_entry.EntryTests.test_duplicate_attempt_never_replays) ... ok
+test_exact_admin_membership_active_retired_and_independent_readback (test_entry.EntryTests.test_exact_admin_membership_active_retired_and_independent_readback) ... ok
+test_exact_committed_authority_validation_without_native_dispatch (test_entry.EntryTests.test_exact_committed_authority_validation_without_native_dispatch) ... ok
+test_exact_dynamic_iam_mutations_request_json_at_native_cli_boundary (test_entry.EntryTests.test_exact_dynamic_iam_mutations_request_json_at_native_cli_boundary) ... ok
+test_expired_start_refuses_before_io (test_entry.EntryTests.test_expired_start_refuses_before_io) ... ok
+test_final_source_gate_and_separate_test_provenance (test_entry.EntryTests.test_final_source_gate_and_separate_test_provenance) ... ok
+test_foreign_file_and_symlink_refuse (test_entry.EntryTests.test_foreign_file_and_symlink_refuse) ... ok
+test_identity_empty_list_ack_is_exact_and_not_state_proof (test_entry.EntryTests.test_identity_empty_list_ack_is_exact_and_not_state_proof) ... ok
+test_independent_closeout_rechecks_full_acl_after_interruption (test_entry.EntryTests.test_independent_closeout_rechecks_full_acl_after_interruption) ... ok
+test_independent_closeout_recovers_interrupted_parent_after_start_cutoff (test_entry.EntryTests.test_independent_closeout_recovers_interrupted_parent_after_start_cutoff) ... ok
+test_late_cleanup_and_clock_rollback_refuse (test_entry.EntryTests.test_late_cleanup_and_clock_rollback_refuse) ... ok
+test_lifecycle_column_drift_at_each_phase_blocks_success (test_entry.EntryTests.test_lifecycle_column_drift_at_each_phase_blocks_success) ... ok
+test_lifecycle_strict_output_and_phase_predicates (test_entry.EntryTests.test_lifecycle_strict_output_and_phase_predicates) ... ok
+test_local_envelope_never_dispatches_native_ports (test_entry.EntryTests.test_local_envelope_never_dispatches_native_ports) ... ok
+test_lost_child_output_is_not_authentication_success (test_entry.EntryTests.test_lost_child_output_is_not_authentication_success) ... ok
+test_malformed_provider_output_cannot_succeed (test_entry.EntryTests.test_malformed_provider_output_cannot_succeed) ... ok
+test_missing_external_decision_refuses (test_entry.EntryTests.test_missing_external_decision_refuses) ... ok
+test_policy_projection_preserves_serialized_binding_checks (test_entry.EntryTests.test_policy_projection_preserves_serialized_binding_checks) ... ok
+test_preflight_actual_parent_death_retains_unknown_and_independently_purges (test_entry.EntryTests.test_preflight_actual_parent_death_retains_unknown_and_independently_purges) ... ok
+test_preflight_actual_read_vectors_match_firewall_and_effective_budget (test_entry.EntryTests.test_preflight_actual_read_vectors_match_firewall_and_effective_budget) ... ok
+test_preflight_diagnostics_through_actual_run_and_cleanup (test_entry.EntryTests.test_preflight_diagnostics_through_actual_run_and_cleanup) ... ok
+test_preflight_external_decision_source_and_mode_are_exact (test_entry.EntryTests.test_preflight_external_decision_source_and_mode_are_exact) ... ok
+test_preflight_only_cross_mode_authority_rejected_before_io (test_entry.EntryTests.test_preflight_only_cross_mode_authority_rejected_before_io) ... ok
+test_preflight_only_lock_and_deadline_refuse_before_io (test_entry.EntryTests.test_preflight_only_lock_and_deadline_refuse_before_io) ... ok
+test_preflight_only_refusal_interruption_and_uncertain_cleanup (test_entry.EntryTests.test_preflight_only_refusal_interruption_and_uncertain_cleanup) ... ok
+test_preflight_only_success_and_independent_cleanup (test_entry.EntryTests.test_preflight_only_success_and_independent_cleanup) ... ok
+test_preflight_owned_process_output_timeout_and_cleanup (test_entry.EntryTests.test_preflight_owned_process_output_timeout_and_cleanup) ... ok
+test_preflight_policy_projection_firewall_retains_runtime_reads (test_entry.EntryTests.test_preflight_policy_projection_firewall_retains_runtime_reads) ... ok
+test_preflight_transport_firewall_denies_before_credentials_or_reservation (test_entry.EntryTests.test_preflight_transport_firewall_denies_before_credentials_or_reservation) ... ok
+test_session_disagreement_retains_residual (test_entry.EntryTests.test_session_disagreement_retains_residual) ... ok
+test_sql_failure_categories_use_existing_classifier_and_clear_output (test_entry.EntryTests.test_sql_failure_categories_use_existing_classifier_and_clear_output) ... ok
+test_tag_sdk_lists_are_acknowledgements_only_for_exact_mutations (test_entry.EntryTests.test_tag_sdk_lists_are_acknowledgements_only_for_exact_mutations) ... ok
+test_concurrent_connected_entry_never_reaches_readback (test_entry.IdentityReadbackDiagnosticTests.test_concurrent_connected_entry_never_reaches_readback) ... ok
+test_failed_reads_and_private_errors_remain_unconfirmed_without_retries (test_entry.IdentityReadbackDiagnosticTests.test_failed_reads_and_private_errors_remain_unconfirmed_without_retries) ... ok
+test_installed_sdk_projection_passes_through_actual_native_parser (test_entry.IdentityReadbackDiagnosticTests.test_installed_sdk_projection_passes_through_actual_native_parser) ... ok
+test_interruption_and_cleanup_disagreement_preserve_conservative_outcomes (test_entry.IdentityReadbackDiagnosticTests.test_interruption_and_cleanup_disagreement_preserve_conservative_outcomes) ... ok
+test_legacy_generic_failure_reproduced_through_assembled_parent (test_entry.IdentityReadbackDiagnosticTests.test_legacy_generic_failure_reproduced_through_assembled_parent) ... ok
+test_malformed_json_is_safe_and_other_native_failures_are_not_reclassified (test_entry.IdentityReadbackDiagnosticTests.test_malformed_json_is_safe_and_other_native_failures_are_not_reclassified) ... ok
+test_same_native_read_preserves_legacy_predicate_and_classifies_rejections (test_entry.IdentityReadbackDiagnosticTests.test_same_native_read_preserves_legacy_predicate_and_classifies_rejections) ... ok
+test_specific_failures_survive_main_and_independent_closeout (test_entry.IdentityReadbackDiagnosticTests.test_specific_failures_survive_main_and_independent_closeout) ... ok
+test_failed_main_endpoint_readback_is_preserved_in_work_and_final_results (test_entry.IndependentPaymentProofTests.test_failed_main_endpoint_readback_is_preserved_in_work_and_final_results) ... ok
+test_fresh_independent_child_reads_account_after_secret_retirement (test_entry.IndependentPaymentProofTests.test_fresh_independent_child_reads_account_after_secret_retirement) ... ok
+test_malformed_payment_shape_preserves_uncertainty_and_purge (test_entry.IndependentPaymentProofTests.test_malformed_payment_shape_preserves_uncertainty_and_purge) ... ok
+test_missing_main_receipt_refuses_payment_proof_and_still_closes_accounts (test_entry.IndependentPaymentProofTests.test_missing_main_receipt_refuses_payment_proof_and_still_closes_accounts) ... ok
+test_pending_payment_publish_cannot_hide_payment_failure_when_recording_fails (test_entry.IndependentPaymentProofTests.test_pending_payment_publish_cannot_hide_payment_failure_when_recording_fails) ... ok
+test_ad2_diagnostics_survive_real_subprocess_parent_and_independent_cleanup (test_entry.JournalContractIntegrationTests.test_ad2_diagnostics_survive_real_subprocess_parent_and_independent_cleanup) ... ok
+test_authority_reservation_and_sequence_refusals_survive_parent (test_entry.JournalContractIntegrationTests.test_authority_reservation_and_sequence_refusals_survive_parent) ... ok
+test_early_refusals_retain_stage_and_cleanup_cannot_replace_primary (test_entry.JournalContractIntegrationTests.test_early_refusals_retain_stage_and_cleanup_cannot_replace_primary) ... ok
+test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) ... 
+  test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) (kind='documented') ... FAIL
+  test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) (kind='matching') ... FAIL
+test_ec1_invalid_exchange_fields_stop_before_authentication_and_payment (test_entry.JournalContractIntegrationTests.test_ec1_invalid_exchange_fields_stop_before_authentication_and_payment) ... ok
+test_ec1_token_identity_time_and_runtime_failures_never_reach_payment (test_entry.JournalContractIntegrationTests.test_ec1_token_identity_time_and_runtime_failures_never_reach_payment) ... ok
+test_main_refusal_and_cleanup_failure_keep_distinct_safe_observations (test_entry.JournalContractIntegrationTests.test_main_refusal_and_cleanup_failure_keep_distinct_safe_observations) ... ok
+test_observations_use_actual_approved_child_limit_and_reject_replay (test_entry.JournalContractIntegrationTests.test_observations_use_actual_approved_child_limit_and_reject_replay) ... ok
+test_previous_schema_reproduces_the_observed_evidence_loss (test_entry.JournalContractIntegrationTests.test_previous_schema_reproduces_the_observed_evidence_loss) ... ok
+test_result_serialization_refusal_is_retained_without_runtime_activation (test_entry.JournalContractIntegrationTests.test_result_serialization_refusal_is_retained_without_runtime_activation) ... ok
+test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup (test_entry.JournalContractIntegrationTests.test_rv1_actual_client_codes_survive_child_journal_parent_and_cleanup) ... ok
+test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption (test_entry.JournalContractIntegrationTests.test_rv1_committed_code_survives_untrusted_output_timeout_exit_and_interruption) ... ok
+test_timeout_and_exit_preserve_committed_child_state_without_retry (test_entry.JournalContractIntegrationTests.test_timeout_and_exit_preserve_committed_child_state_without_retry) ... ok
+test_valid_auth_intent_survives_lost_or_untrusted_process_output (test_entry.JournalContractIntegrationTests.test_valid_auth_intent_survives_lost_or_untrusted_process_output) ... ok
+test_all_seven_codes_use_one_exact_native_command_and_safe_literal (test_entry.TagMutationDiagnosticTests.test_all_seven_codes_use_one_exact_native_command_and_safe_literal) ... ok
+test_all_seven_survive_main_and_independent_closeout_without_replay (test_entry.TagMutationDiagnosticTests.test_all_seven_survive_main_and_independent_closeout_without_replay) ... ok
+test_cleanup_and_other_mutations_keep_original_parse_codes (test_entry.TagMutationDiagnosticTests.test_cleanup_and_other_mutations_keep_original_parse_codes) ... ok
+test_cleanup_non_tag_and_foreign_vectors_keep_original_process_codes (test_entry.TagMutationDiagnosticTests.test_cleanup_non_tag_and_foreign_vectors_keep_original_process_codes) ... ok
+test_concurrent_entry_refuses_before_any_tag_dispatch (test_entry.TagMutationDiagnosticTests.test_concurrent_entry_refuses_before_any_tag_dispatch) ... ok
+test_coordinator_promotion_requires_exact_method_owner_tag_flag_and_plan (test_entry.TagMutationDiagnosticTests.test_coordinator_promotion_requires_exact_method_owner_tag_flag_and_plan) ... ok
+test_exact_baseline_collapses_failures_through_assembled_parent (test_entry.TagMutationDiagnosticTests.test_exact_baseline_collapses_failures_through_assembled_parent) ... ok
+test_exact_output_bound_is_unchanged (test_entry.TagMutationDiagnosticTests.test_exact_output_bound_is_unchanged) ... ok
+test_failed_cleanup_keeps_separate_residual_and_forward_code (test_entry.TagMutationDiagnosticTests.test_failed_cleanup_keeps_separate_residual_and_forward_code) ... ok
+test_installed_sdk_and_dictionary_predicates_match_exact_baseline (test_entry.TagMutationDiagnosticTests.test_installed_sdk_and_dictionary_predicates_match_exact_baseline) ... ok
+test_nonzero_output_limit_encoding_and_json_precedence (test_entry.TagMutationDiagnosticTests.test_nonzero_output_limit_encoding_and_json_precedence) ... ok
+test_postprocess_guard_code_is_not_mislabeled_as_command_refusal (test_entry.TagMutationDiagnosticTests.test_postprocess_guard_code_is_not_mislabeled_as_command_refusal) ... ok
+test_postprocess_interrupt_and_deadline_precede_tag_classification (test_entry.TagMutationDiagnosticTests.test_postprocess_interrupt_and_deadline_precede_tag_classification) ... ok
+test_predispatch_guard_refuses_before_reservation_or_process (test_entry.TagMutationDiagnosticTests.test_predispatch_guard_refuses_before_reservation_or_process) ... ok
+test_real_inert_process_results_use_the_existing_run_boundary (test_entry.TagMutationDiagnosticTests.test_real_inert_process_results_use_the_existing_run_boundary) ... ok
+test_success_acknowledgment_never_replaces_authoritative_traffic (test_entry.TagMutationDiagnosticTests.test_success_acknowledgment_never_replaces_authoritative_traffic) ... ok
+test_unknown_and_untrusted_errors_remain_generic_and_private (test_entry.TagMutationDiagnosticTests.test_unknown_and_untrusted_errors_remain_generic_and_private) ... ok
+test_actual_handoff_timeout_merges_journal_after_group_closure (test_child_cleanup.ChildCleanupTests.test_actual_handoff_timeout_merges_journal_after_group_closure) ... ok
+test_coordinator_abort_gate_interrupts_detached_child (test_child_cleanup.ChildCleanupTests.test_coordinator_abort_gate_interrupts_detached_child) ... ok
+test_input_bound_and_cleanup_reserve_refuse_before_spawn (test_child_cleanup.ChildCleanupTests.test_input_bound_and_cleanup_reserve_refuse_before_spawn) ... ok
+test_interruption_closes_actual_child_and_descendant (test_child_cleanup.ChildCleanupTests.test_interruption_closes_actual_child_and_descendant) ... ok
+test_oversized_stdout_and_stderr_close_owned_group (test_child_cleanup.ChildCleanupTests.test_oversized_stdout_and_stderr_close_owned_group) ... ok
+test_selector_setup_failure_still_closes_spawned_group (test_child_cleanup.ChildCleanupTests.test_selector_setup_failure_still_closes_spawned_group) ... ok
+test_success_and_nonzero_reap_descendants_and_keep_protocol (test_child_cleanup.ChildCleanupTests.test_success_and_nonzero_reap_descendants_and_keep_protocol) ... ok
+test_term_ignoring_child_is_killed_within_cleanup_budget (test_child_cleanup.ChildCleanupTests.test_term_ignoring_child_is_killed_within_cleanup_budget) ... ok
+test_timeout_and_descendant_held_pipe_close_owned_group (test_child_cleanup.ChildCleanupTests.test_timeout_and_descendant_held_pipe_close_owned_group) ... ok
+test_unknown_closure_is_sticky_failure (test_child_cleanup.ChildCleanupTests.test_unknown_closure_is_sticky_failure) ... ok
+test_close_failure_is_not_reported_as_success (test_child_cleanup.ResponseCleanupTests.test_close_failure_is_not_reported_as_success) ... ok
+test_http_error_response_is_always_closed (test_child_cleanup.ResponseCleanupTests.test_http_error_response_is_always_closed) ... ok
+test_read_failure_and_interruption_close_response (test_child_cleanup.ResponseCleanupTests.test_read_failure_and_interruption_close_response) ... ok
+test_success_malformed_oversized_and_decode_paths_close (test_child_cleanup.ResponseCleanupTests.test_success_malformed_oversized_and_decode_paths_close) ... ok
+test_atomic_interruption_before_publish_does_not_post (test_key_lifecycle.LifecycleTests.test_atomic_interruption_before_publish_does_not_post) ... ok
+test_combined_slow_create_delete_and_independent_read_budget (test_key_lifecycle.LifecycleTests.test_combined_slow_create_delete_and_independent_read_budget) ... ok
+test_corrupt_or_unfinished_receipt_refuses_recovery (test_key_lifecycle.LifecycleTests.test_corrupt_or_unfinished_receipt_refuses_recovery) ... ok
+test_create_replay_refused (test_key_lifecycle.LifecycleTests.test_create_replay_refused) ... ok
+test_deadline_never_sends_poll_and_budget_stop_is_safe (test_key_lifecycle.LifecycleTests.test_deadline_never_sends_poll_and_budget_stop_is_safe) ... ok
+test_delete_fifth_poll_and_uid_drift (test_key_lifecycle.LifecycleTests.test_delete_fifth_poll_and_uid_drift) ... ok
+test_delete_final_read_after_lost_reply_no_retry (test_key_lifecycle.LifecycleTests.test_delete_final_read_after_lost_reply_no_retry) ... ok
+test_dropped_post_stays_unowned_even_matching_metadata (test_key_lifecycle.LifecycleTests.test_dropped_post_stays_unowned_even_matching_metadata) ... ok
+test_foreign_operation_and_error_do_not_grant_uid (test_key_lifecycle.LifecycleTests.test_foreign_operation_and_error_do_not_grant_uid) ... ok
+test_fresh_process_recovery_uses_private_operation_provenance (test_key_lifecycle.LifecycleTests.test_fresh_process_recovery_uses_private_operation_provenance) ... ok
+test_immediate_done_and_nullable_creation_time (test_key_lifecycle.LifecycleTests.test_immediate_done_and_nullable_creation_time) ... ok
+test_interrupt_after_operation_publish_recovers_only_retained_operation (test_key_lifecycle.LifecycleTests.test_interrupt_after_operation_publish_recovers_only_retained_operation) ... ok
+test_invalid_creation_time_never_persists_uid (test_key_lifecycle.LifecycleTests.test_invalid_creation_time_never_persists_uid) ... ok
+test_lost_delete_active_remains_uncertain_no_retry (test_key_lifecycle.LifecycleTests.test_lost_delete_active_remains_uncertain_no_retry) ... ok
+test_malformed_pending_shapes_and_foreign_poll_refuse (test_key_lifecycle.LifecycleTests.test_malformed_pending_shapes_and_foreign_poll_refuse) ... ok
+test_pending_create_and_absence_remains_unconfirmed (test_key_lifecycle.LifecycleTests.test_pending_create_and_absence_remains_unconfirmed) ... ok
+test_pending_missing_done_first_and_fifth_poll (test_key_lifecycle.LifecycleTests.test_pending_missing_done_first_and_fifth_poll) ... ok
+test_poll_limit_retains_operation_and_recovery_finishes (test_key_lifecycle.LifecycleTests.test_poll_limit_retains_operation_and_recovery_finishes) ... ok
+test_private_uid_survives_public_journal_save_interruption (test_key_lifecycle.LifecycleTests.test_private_uid_survives_public_journal_save_interruption) ... ok
+test_real_capability_budget_refuses_poll_before_http (test_key_lifecycle.LifecycleTests.test_real_capability_budget_refuses_poll_before_http) ... ok
+test_real_capability_clock_rollback_refuses_before_request (test_key_lifecycle.LifecycleTests.test_real_capability_clock_rollback_refuses_before_request) ... ok
+test_retained_journal_and_receipt_exclude_secret_body (test_key_lifecycle.LifecycleTests.test_retained_journal_and_receipt_exclude_secret_body) ... ok
+test_stale_etag_and_foreign_metadata_refuse_mutation_or_success (test_key_lifecycle.LifecycleTests.test_stale_etag_and_foreign_metadata_refuse_mutation_or_success) ... ok
+test_terminal_create_error_not_adopted (test_key_lifecycle.LifecycleTests.test_terminal_create_error_not_adopted) ... ok
+test_absent_original_creation_time_is_not_backfilled (test_key_lifecycle.OwnedVersionTests.test_absent_original_creation_time_is_not_backfilled) ... ok
+test_deleted_and_uncertain_delete_reads_do_not_refresh_or_retry (test_key_lifecycle.OwnedVersionTests.test_deleted_and_uncertain_delete_reads_do_not_refresh_or_retry) ... ok
+test_distinct_versions_preserve_provenance_and_authenticate_then_delete (test_key_lifecycle.OwnedVersionTests.test_distinct_versions_preserve_provenance_and_authenticate_then_delete) ... ok
+test_fresh_process_cleanup_refreshes_before_any_authentication (test_key_lifecycle.OwnedVersionTests.test_fresh_process_cleanup_refreshes_before_any_authentication) ... ok
+test_interrupted_atomic_refresh_leaves_unadopted_version_and_purges (test_key_lifecycle.OwnedVersionTests.test_interrupted_atomic_refresh_leaves_unadopted_version_and_purges) ... ok
+test_invalid_identity_version_or_creation_metadata_never_reaches_keystring (test_key_lifecycle.OwnedVersionTests.test_invalid_identity_version_or_creation_metadata_never_reaches_keystring) ... ok
+test_later_conditional_conflict_is_not_retried_after_refresh (test_key_lifecycle.OwnedVersionTests.test_later_conditional_conflict_is_not_retried_after_refresh) ... ok
+test_missing_foreign_and_unproven_receipt_blocks_even_matching_live_metadata (test_key_lifecycle.OwnedVersionTests.test_missing_foreign_and_unproven_receipt_blocks_even_matching_live_metadata) ... ok
+test_pending_and_deleted_provenance_never_authenticate_at_same_or_changed_etag (test_key_lifecycle.OwnedVersionTests.test_pending_and_deleted_provenance_never_authenticate_at_same_or_changed_etag) ... ok
+test_provider_deleted_key_with_created_receipt_remains_readable_but_cannot_authenticate (test_key_lifecycle.OwnedVersionTests.test_provider_deleted_key_with_created_receipt_remains_readable_but_cannot_authenticate) ... ok
+test_published_refresh_recovers_after_interruption_before_memory_update (test_key_lifecycle.OwnedVersionTests.test_published_refresh_recovers_after_interruption_before_memory_update) ... ok
+test_refresh_persistence_failure_stops_before_sensitive_dispatch (test_key_lifecycle.OwnedVersionTests.test_refresh_persistence_failure_stops_before_sensitive_dispatch) ... ok
+test_same_instant_timestamp_representation_preserves_original_bytes (test_key_lifecycle.OwnedVersionTests.test_same_instant_timestamp_representation_preserves_original_bytes) ... ok
+test_submicrosecond_timestamp_change_refuses_version_refresh (test_key_lifecycle.OwnedVersionTests.test_submicrosecond_timestamp_change_refuses_version_refresh) ... ok
+test_bad_mode_symlink_and_hardlink_refuse_without_touching_target (test_private_inventory_cc1.LifecyclePurge.test_bad_mode_symlink_and_hardlink_refuse_without_touching_target) ... ok
+test_foreign_file_refuses_and_exact_marker_is_allowed (test_private_inventory_cc1.LifecyclePurge.test_foreign_file_refuses_and_exact_marker_is_allowed) ... ok
+test_fresh_process_purges_malformed_and_unfinished_receipts (test_private_inventory_cc1.LifecyclePurge.test_fresh_process_purges_malformed_and_unfinished_receipts) ... ok
+test_historical_uncommitted_intents_still_block_purge (test_private_inventory_cc1.LifecyclePurge.test_historical_uncommitted_intents_still_block_purge) ... ok
+
+======================================================================
+FAIL: test_late_child_return_preserves_payment_intent_for_cleanup (test_entry.ConnectedEntryTests.test_late_child_return_preserves_payment_intent_for_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 915, in test_late_child_return_preserves_payment_intent_for_cleanup
+    self.assertEqual(j['payment']['outcome'],'APPLICATION_SETTLED')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'NOT_OBSERVED' != 'APPLICATION_SETTLED'
+- NOT_OBSERVED
++ APPLICATION_SETTLED
+
+
+======================================================================
+FAIL: test_payment_parent_retains_then_independently_purges (test_entry.ConnectedEntryTests.test_payment_parent_retains_then_independently_purges)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 927, in test_payment_parent_retains_then_independently_purges
+    self.assertTrue(r['paymentObserved'],read(self.root/'journal.json'))
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : {'authAttempted': True, 'authClient': {'activatedVersion': '2026-01-01T00:00:01.000Z', 'activationIntent': True, 'authenticated': True, 'closeoutAttempted': True, 'disabledVersion': '2026-01-01T00:00:02.000Z', 'firebaseEnableIntent': True, 'operationId': 'c21b9abe-b065-42a8-9ff4-e09e718166ea', 'phase': 'CLOSEOUT_FINISHED', 'residuals': [], 'revocationIntentAt': '2026-11-26T18:37:27.000Z', 'sessionClosed': True, 'status': 'P08_COORDINATOR_AUTHENTICATED_AND_CLOSED', 'tokenIssueIntent': True, 'version': 9}, 'authProofAccepted': True, 'childResultSha256': '89803870ecf40a4ed42fb2e3c39c65517ec080730c7ebd2d89a00cf1728e440b', 'failure': None, 'iamAttempted': ['lookup', 'signing'], 'iamCleanupAttempted': ['signing', 'lookup'], 'iamOwned': ['lookup', 'signing'], 'keyCreateAttempted': True, 'keyDeleteAttempted': True, 'keyUidSha256': '2cbaf094d922961fd605afc6d19033ab6ea1502d14662890e3de3450c6183039', 'nativeEntry': {'calls': {'child': 4, 'cli': 135, 'https': 15, 'sql': 7}, 'childObservations': [{'childCall': 1, 'code': 'NONE', 'journalMerge': 'ACCEPTED', 'mode': '--payment-preflight', 'processOutcome': 'RETURNED', 'stage': 'RESULT'}, {'childCall': 2, 'code': 'NONE', 'journalMerge': 'ACCEPTED', 'mode': '--run', 'processOutcome': 'RETURNED', 'stage': 'RESULT'}, {'childCall': 3, 'code': 'NONE', 'journalMerge': 'ACCEPTED', 'mode': '--readback', 'processOutcome': 'RETURNED', 'stage': 'RESULT'}, {'childCall': 4, 'code': 'NONE', 'journalMerge': 'ACCEPTED', 'mode': '--readback', 'processOutcome': 'RETURNED', 'stage': 'RESULT'}], 'envelopeSha256': '495a11b378885fc8bd59749cbb30b89b72ee1724153de23b390bcef271c52816'}, 'operationId': 'c21b9abe-b065-42a8-9ff4-e09e718166ea', 'payment': {'bridgeClosed': True, 'enableIntent': True, 'endpointCalls': 8, 'endpointDisabled': True, 'failureCode': 'PAYMENT_ADAPTER_UNKNOWN', 'operationId': 'c21b9abe-b065-42a8-9ff4-e09e718166ea', 'outcome': 'NOT_OBSERVED', 'phase': 'CLOSED', 'residuals': [], 'revision': 19, 'scopeSha256': '8489ade34541eeed856ff45f65e095cc8afc321a46e26a4f666e7a32c82d60f5', 'secretReads': 4}, 'phase': 'CLOSED', 'planSha256': '5e91e45633cafcd44372c5a7dc4d8d93fdac6fe9c15c0b35be793550c5746e3a', 'preflightStage': 'ACCESS_PREFLIGHT', 'residuals': [], 'runtimeAttempted': [['version', 'signmons-staging-stripe-secret-key'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['tag', 'app013-p07-atomic'], ['role', 'p07_payment_runtime']], 'runtimeCleanupAttempted': [['role', 'p07_payment_runtime'], ['tag', 'app013-p07-atomic'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-technician-link-key'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-payment-database-url'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-stripe-secret-key']], 'runtimeOwned': [['version', 'signmons-staging-stripe-secret-key'], ['identity', 'signmons-calldesk-p07-runtime@signmons.iam.gserviceaccount.com'], ['version', 'signmons-staging-p07-payment-database-url'], ['version', 'signmons-staging-p07-stripe-webhook-secret'], ['version', 'signmons-staging-p07-disabled-openai-key'], ['version', 'signmons-staging-p07-admin-token'], ['version', 'signmons-staging-p07-conversation-key'], ['version', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-p07-payment-database-url'], ['secretBinding', 'signmons-staging-p07-stripe-webhook-secret'], ['secretBinding', 'signmons-staging-p07-disabled-openai-key'], ['secretBinding', 'signmons-staging-p07-admin-token'], ['secretBinding', 'signmons-staging-p07-conversation-key'], ['secretBinding', 'signmons-staging-p07-technician-link-key'], ['secretBinding', 'signmons-staging-stripe-secret-key'], ['tag', 'app013-p07-atomic'], ['role', 'p07_payment_runtime']], 'serviceEnableAttempted': False, 'unknown': []}
+
+======================================================================
+FAIL: test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) (kind='documented')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 2144, in test_ec1_documented_response_and_optional_identity_reach_authenticated_payment
+    self.ec1_completed({'kind': kind}, success=True)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 2094, in ec1_completed
+    self.assertEqual(journal['authProofAccepted'], success)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+======================================================================
+FAIL: test_ec1_documented_response_and_optional_identity_reach_authenticated_payment (test_entry.JournalContractIntegrationTests.test_ec1_documented_response_and_optional_identity_reach_authenticated_payment) (kind='matching')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 2144, in test_ec1_documented_response_and_optional_identity_reach_authenticated_payment
+    self.ec1_completed({'kind': kind}, success=True)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/debynyhanbanks/Web Projects/signmons-backend-r08-recovery/evidence/APP-013/p08-native-entry-local-20261101/source/test_entry.py", line 2094, in ec1_completed
+    self.assertEqual(journal['authProofAccepted'], success)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False != True
+
+----------------------------------------------------------------------
+Ran 168 tests in 116.222s
+
+FAILED (failures=4)
