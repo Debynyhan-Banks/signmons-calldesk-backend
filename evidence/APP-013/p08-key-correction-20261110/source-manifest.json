@@ -3,7 +3,7 @@
     "evidence/APP-013/p08-authentication-local-20261026/source/auth-launch.mjs": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "evidence/APP-013/p08-connected-packet-20261110/bootstrap_browser_fixture.mjs": "171e47e93eecba99868258a0ea6815cfc3b0cfc2c606b748a53672ec8442d367",
     "evidence/APP-013/p08-connected-packet-20261110/bootstrap_open.py": "f0c1959493a8889c169ba9ea968ec1aec0b4f33644946edabbbfeb5607771ebb",
-    "evidence/APP-013/p08-connected-packet-20261110/packet.py": "110c97b6a59aad444aebbb60c45333b12efa931b3360a06a249af73a72d7a9fa",
+    "evidence/APP-013/p08-connected-packet-20261110/packet.py": "fd27a82968b71facec7d0ffd9677e213bad750f2ac77fab37d44cd2d8eed0321",
     "evidence/APP-013/p08-connected-packet-20261110/test_bootstrap_open.py": "585c7a7d14edc8944a38de5e1089a1627ce3d416a75354b55dbe0ee6d9dd71e8",
     "evidence/APP-013/p08-coordinator-auth-local-20261031/source/authority.mjs": "ee11bdf0bcd06beba64c1f9cd0c32b84b56e1b1bac42c68fc9c2f9a9d27aaf27",
     "evidence/APP-013/p08-https-output-category-local-20261029/source/composed_qualification.py": "42c91024ad5fc2aae74a190127aebc4f964fb97b46d5674eab8eaaea602e092a",
