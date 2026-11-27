@@ -838,7 +838,7 @@ class ConnectedEntryTests(EntryTests):
                'paymentGateMode':'fail_closed','webhookValidationRequired':True}
         approved={'draft':draft,'actorId':self.e['target']['id'],'approvedAt':stamp}
         self.e['version']=2
-        self.e['limits']['cli']=192
+        self.e['limits']['cli']=196
         # Share the parent fixture's captured clock so setup cannot shorten the payment reserve.
         self.e['payment']={'qualificationId':str(uuid.uuid4()),'endpointId':'we_synthetic','endpointSha256':a.digest(b'we_synthetic'),
             'apiVersion':'2026-03-25.dahlia','url':'https://app013-p07-atomic---signmons-calldesk-staging-p572d6wipq-ul.a.run.app/webhooks/stripe',
@@ -933,7 +933,7 @@ class ConnectedEntryTests(EntryTests):
         self.assertTrue(r['privateInputsAbsent'])
         self.assertFalse(self.path.exists())
         self.assertEqual(read(self.root/'journal.json')['payment']['endpointCalls'],8)
-        # Corrected Stripe version adds its own activation/retirement readbacks; existing192 cap is unchanged.
+        # Immediate identity matches retain191 calls; BR2's196 cap reserves four extra reads.
         self.assertLessEqual(read(self.root/'journal.json')['nativeEntry']['calls']['cli'],self.e['limits']['cli'])
         self.assertEqual(read(self.root/'journal.json')['nativeEntry']['calls'],{'child':5,'cli':191,'https':16,'sql':10})
 
@@ -1333,7 +1333,10 @@ print(json.dumps(rows))
         self.assertFalse(journal['keyCreateAttempted']); self.assertEqual(journal['iamAttempted'], [])
         self.assertFalse((journal.get('payment') or {}).get('enableIntent', False))
         self.assertEqual(journal['nativeEntry']['calls']['child'], 0 if preflight else 1)
-        self.assertEqual(len(injected), 1)
+        bounded_mismatch = (not baseline and not preflight and not interrupt and
+                            type(value) is dict and value.get('email') == entry.restore.IDENTITY and
+                            value.get('disabled') is True)
+        self.assertEqual(len(injected), 3 if bounded_mismatch else 1)
         self.assertTrue(final['privateInputsAbsent']); self.assertFalse(fixture.path.exists())
         self.assertFalse((fixture.root/'payment-bootstrap-open-attempt.json').exists())
         self.assertFalse(any(fixture.f.runtime_state.values()))
@@ -1396,6 +1399,255 @@ print(json.dumps(rows))
             self.assertFalse((fixture.root/'attempt.json').exists())
         finally:
             os.close(fd)
+
+
+class ConnectedIdentityReconciliationTests(unittest.TestCase):
+    VECTOR = ['iam', 'service-accounts', 'describe', entry.restore.IDENTITY,
+              '--project=signmons', '--format=json(email,disabled)']
+
+    @staticmethod
+    def state(disabled):
+        return {'email': entry.restore.IDENTITY, 'disabled': disabled}
+
+    def harness(self, sequence=(), cleanup=False, legacy=False):
+        f = EntryTests() if legacy else ConnectedEntryTests()
+        f.setUp(timing=True); self.addCleanup(f.doCleanups)
+        cap = a.Capability(f.e, f.root); io = f.factory(cap)
+        pending = list(sequence); trace = []; raw = io.cloud
+        def cloud(vector, deadline):
+            value = raw(vector, deadline); trace.append(list(vector))
+            if vector == self.VECTOR and pending:
+                value = pending.pop(0)
+                if isinstance(value, BaseException): raise value
+                if callable(value): return value()
+                return copy.deepcopy(value)
+            return value
+        io.cloud = cloud
+        runtime = entry.RuntimeAdapter(cap, io); runtime.q = cap.e['qualification']
+        ports = entry.Ports(cap, io, None, runtime)
+        controller = entry.Coordinator(cap, io, runtime, ports)
+        wall, mono = [time.time()], [0.0]
+        controller.clock = cap.clock = lambda: wall[0]
+        controller.last = cap.last = wall[0]
+        controller.monotonic = lambda: mono[0]; controller.last_monotonic = 0.0
+        controller.work_monotonic_end = controller.forward_end - wall[0]
+        controller.child_monotonic_end = controller.times['cutoff'] - wall[0]
+        pauses = []
+        def pause(seconds):
+            pauses.append(seconds); wall[0] += seconds; mono[0] += seconds
+        controller.pause = pause
+        io.cleanup = cleanup
+        io.credentials()  # Synthetic fixture credentials; exercise normal reservations.
+        args = ('identity', entry.restore.IDENTITY, not cleanup, controller.runtime_plan())
+        return SimpleNamespace(f=f,cap=cap,io=io,runtime=runtime,c=controller,args=args,
+                               cleanup=cleanup,trace=trace,wall=wall,mono=mono,pauses=pauses)
+
+    def change(self, h):
+        return h.c.invoke('change', *h.args, owner=h.runtime, cleanup=h.cleanup)
+
+    def readback(self, h):
+        return h.c.invoke('readback', *h.args, owner=h.runtime, cleanup=h.cleanup)
+
+    def test_first_second_and_third_observations_with_one_mutation_each(self):
+        for cleanup in (False, True):
+            for failures in (0, 1, 2):
+                with self.subTest(cleanup=cleanup, failures=failures):
+                    h = self.harness([self.state(not cleanup)] * failures, cleanup)
+                    self.change(h); self.assertIs(self.readback(h), True)
+                    self.assertEqual(h.trace.count(self.VECTOR), failures + 1)
+                    mutation = entry.restore.command(h.args[3], 'identity', entry.restore.IDENTITY, not cleanup)
+                    self.assertEqual(h.trace.count(mutation), 1)
+                    self.assertAlmostEqual(sum(h.pauses), (0, 5, 15)[failures])
+                    records = h.c.j['nativeEntry']['identityReadbacks']
+                    self.assertEqual(len(records), failures + 1)
+                    self.assertEqual(records[-1]['result'], 'MATCH')
+                    self.assertEqual([r['ordinal'] for r in records], list(range(1, failures + 2)))
+
+    def test_exhaustion_does_not_make_fourth_read_or_repeat_mutation(self):
+        h = self.harness([self.state(True)] * 4)
+        self.change(h)
+        with self.assertRaisesRegex(entry.c.Stop, 'RUNTIME_IDENTITY_STATE_MISMATCH'):
+            self.readback(h)
+        self.assertEqual(h.trace.count(self.VECTOR), 3)
+        self.assertEqual(len(h.c.j['nativeEntry']['identityReadbacks']), 3)
+        self.assertIsNone(h.c.identity_pending)
+
+    def test_missing_disabled_reconciles_cleanup_but_preserves_enabled_predicate(self):
+        missing = {'email': entry.restore.IDENTITY}
+        for cleanup, expected in ((True, 2), (False, 1)):
+            h = self.harness([missing], cleanup)
+            self.change(h); self.assertIs(self.readback(h), True)
+            self.assertEqual(h.trace.count(self.VECTOR), expected)
+            self.assertEqual(h.c.j['nativeEntry']['identityReadbacks'][0]['decodedState'], 'MISSING')
+
+    def test_foreign_null_numeric_extra_shape_and_transport_fail_without_extra_read(self):
+        values = [None, {'email':'synthetic-private-foreign','disabled':True}, self.state(None),
+                  self.state(1), self.state(1.0), {**self.state(True),'extra':'private'},
+                  Stop('NATIVE_COMMAND_UNCONFIRMED'), Stop('NATIVE_COMMAND_REFUSED'),
+                  RuntimeError('synthetic-private-error')]
+        for value in values:
+            with self.subTest(value=type(value).__name__):
+                h = self.harness([value]); self.change(h)
+                with self.assertRaises(BaseException): self.readback(h)
+                self.assertEqual(h.trace.count(self.VECTOR), 1)
+                self.assertNotIn('synthetic-private', json.dumps(h.c.j))
+                self.assertNotIn('"extra"', json.dumps(h.c.j))
+
+    def test_direct_legacy_and_final_readbacks_have_no_reconciliation(self):
+        for legacy in (False, True):
+            h = self.harness([self.state(True)], legacy=legacy)
+            if legacy: self.change(h)
+            with self.assertRaisesRegex(entry.c.Stop, 'RUNTIME_IDENTITY_STATE_MISMATCH'):
+                self.readback(h)
+            self.assertEqual(h.trace.count(self.VECTOR), 1)
+            self.assertNotIn('identityReadbacks', h.c.j['nativeEntry'])
+        h = self.harness([self.state(True)]); self.change(h)
+        with self.assertRaisesRegex(entry.c.Stop, 'RUNTIME_IDENTITY_STATE_MISMATCH'):
+            h.runtime.readback(*h.args, deadline=h.c.times['workEnd'])
+        self.assertEqual(h.trace.count(self.VECTOR), 1)
+
+    def test_failed_acknowledgement_and_intervening_call_do_not_grant_allowance(self):
+        h = self.harness([self.state(True)])
+        with patch.object(h.runtime, 'change', side_effect=Stop('NATIVE_COMMAND_UNCONFIRMED')):
+            with self.assertRaises(Stop): self.change(h)
+        with self.assertRaises(entry.c.Stop): self.readback(h)
+        self.assertEqual(h.trace.count(self.VECTOR), 1)
+        h = self.harness([self.state(True)]); self.change(h)
+        h.c.invoke('api_keys_state', owner=h.c.access)
+        with self.assertRaises(entry.c.Stop): self.readback(h)
+        self.assertEqual(h.trace.count(self.VECTOR), 1)
+
+    def test_pending_marker_is_consumed_and_cannot_reset_after_second_change(self):
+        h = self.harness(); self.change(h); self.assertTrue(self.readback(h))
+        # The inherited coordinator never repeats a mutation; the allowance also
+        # refuses to renew if a caller nevertheless invokes the change method twice.
+        self.change(h)
+        with patch.object(h.runtime, 'cloud', return_value=self.state(True)) as cloud:
+            with self.assertRaises(entry.c.Stop): self.readback(h)
+            cloud.assert_called_once()
+
+    def test_interrupt_wall_or_monotonic_rollback_and_stalled_wait_stop_before_next_read(self):
+        for mode in ('interrupt','wall','monotonic','stalled'):
+            h = self.harness([self.state(True)]); self.change(h)
+            original = h.c.pause
+            def pause(seconds):
+                if mode == 'interrupt': h.c.abort = True; original(seconds)
+                elif mode == 'wall': h.wall[0] -= 1; h.mono[0] += seconds
+                elif mode == 'monotonic': h.mono[0] -= 1
+                else: pass
+            h.c.pause = pause
+            with self.subTest(mode=mode), self.assertRaises((Stop, entry.c.Stop)):
+                self.readback(h)
+            self.assertEqual(h.trace.count(self.VECTOR), 1)
+
+    def test_phase_bound_reserves_eight_second_child_before_dispatch(self):
+        h = self.harness()
+        def slow_response():
+            h.wall[0] += 36; h.mono[0] += 36
+            return self.state(True)
+        h.runtime.runner = lambda vector, deadline: slow_response()
+        self.change(h)
+        # Reset the synthetic ack clock; only the read should consume36seconds.
+        h.c.identity_pending = (False, True, h.mono[0])
+        with self.assertRaisesRegex(entry.c.Stop,'IDENTITY_READBACK_DEADLINE'):
+            self.readback(h)
+        self.assertEqual(len(h.c.j['nativeEntry']['identityReadbacks']), 1)
+
+    def test_global_deadline_and_insufficient_main_budget_refuse_before_enable(self):
+        for mode in ('deadline','budget'):
+            h = self.harness(); before = len(h.trace)
+            if mode == 'budget': h.cap.e['limits']['cli'] = h.c.j['nativeEntry']['calls']['cli'] + 7
+            else: h.c.child_monotonic_end = 1424
+            with self.subTest(mode=mode), self.assertRaises((Stop, entry.c.Stop)): self.change(h)
+            self.assertEqual(len(h.trace), before)
+
+    def test_small_cleanup_budget_preserves_original_disable_and_single_read(self):
+        h = self.harness(cleanup=True)
+        h.cap.e['limits']['cli'] = h.c.j['nativeEntry']['calls']['cli'] + 2
+        self.change(h); self.assertIsNone(h.c.identity_pending)
+        self.assertTrue(self.readback(h)); self.assertEqual(h.trace.count(self.VECTOR), 1)
+
+    def test_cleanup_wait_respects_deadline_without_suppressing_disable(self):
+        h = self.harness([self.state(False)], cleanup=True)
+        self.change(h); h.c.times['cleanupEnd'] = h.wall[0] + 10
+        with self.assertRaisesRegex(entry.c.Stop,'IDENTITY_READBACK_DEADLINE'): self.readback(h)
+        self.assertEqual(h.trace.count(self.VECTOR), 1)
+        self.assertEqual(h.trace.count(entry.restore.command(h.args[3],'identity',entry.restore.IDENTITY,False)),1)
+
+    def test_optional_observation_failure_does_not_add_writes_or_block_readback(self):
+        h = self.harness(); self.change(h)
+        class BadRecords:
+            def setdefault(self,*args): raise OSError('synthetic-private-storage')
+        with patch.object(h.c,'identity_record',side_effect=lambda *args: None):
+            self.assertTrue(self.readback(h))
+        # Actual record failure isolation, independent of authoritative journal failure.
+        h.c.j['nativeEntry'] = BadRecords()
+        h.c.identity_record(False,1,True,0,'MATCH')
+        h = self.harness(); self.change(h)
+        with patch.object(h.c,'save',side_effect=OSError('synthetic-private-journal')):
+            with self.assertRaises(OSError): self.readback(h)
+        self.assertEqual(h.trace.count(self.VECTOR),0)
+
+    def assembled(self, main_failures=0, cleanup_failures=0, cap_limit=196):
+        f = ConnectedEntryTests(); f.setUp(timing=True); self.addCleanup(f.doCleanups)
+        if cap_limit != f.e['limits']['cli']:
+            f.e['limits']['cli'] = cap_limit
+            f.e['qualification']['scopeSha256'] = a.digest({k:f.e[k] for k in ('plan','target','database','resources','limits','payment')})
+            f.seal()
+        counts = {'main':0,'cleanup':0}; mutations = {'enable':0,'disable':0}
+        def factory(cap):
+            io=f.factory(cap); original=io.cloud
+            def cloud(vector, deadline):
+                result=original(vector,deadline)
+                if vector[:3]==['iam','service-accounts','enable']: mutations['enable']+=1
+                if vector[:3]==['iam','service-accounts','disable']: mutations['disable']+=1
+                active=f.f.runtime_state[('identity',entry.restore.IDENTITY)]
+                phase='cleanup' if io.cleanup else 'main'
+                if vector==self.VECTOR and ((not io.cleanup and active) or (io.cleanup and cap.mode=='run')):
+                    counts[phase]+=1
+                    if counts[phase] <= (cleanup_failures if io.cleanup else main_failures):
+                        return self.state(not io.cleanup)
+                return result
+            io.cloud=cloud;return io
+        work=entry.run_entry(f.path,io_factory=factory)
+        final=entry.run_entry(f.path,'closeout',io_factory=factory)
+        journal=read(f.root/'journal.json')
+        self.assertEqual(mutations,{'enable':1,'disable':1})
+        self.assertTrue(final['privateInputsAbsent'])
+        self.assertFalse(any(f.f.runtime_state.values()))
+        self.assertLessEqual(journal['nativeEntry']['calls']['cli'],cap_limit)
+        return work,final,journal
+
+    def test_assembled_worst_case_closes_at195_with_maximum_four_extra_reads(self):
+        for failures,expected in ((0,191),(1,193),(2,195)):
+            with self.subTest(failures=failures):
+                work,final,j=self.assembled(failures,failures)
+                self.assertTrue(work['paymentObserved'])
+                self.assertEqual(final['status'],'ENTRY_CLOSED',final)
+                self.assertEqual(final['residuals'],[])
+                self.assertEqual(j['nativeEntry']['calls']['cli'],expected)
+                self.assertEqual(len(j['nativeEntry']['identityReadbacks']),2*(failures+1))
+
+    def test_old192_budget_refuses_remaining_closeout_without_bypassing_accounting(self):
+        _,final,j=self.assembled(2,2,192)
+        self.assertEqual(j['nativeEntry']['calls']['cli'],192)
+        self.assertEqual(final['status'],'ENTRY_CONTAINMENT_UNCONFIRMED')
+        self.assertIn('TRAFFIC_PRIVATE_PLANS',final['residuals'])
+
+    def test_exhausted_forward_observations_do_not_reach_payment_and_cleanup_still_closes(self):
+        work,final,j=self.assembled(9,0)
+        self.assertFalse(work['paymentObserved'])
+        self.assertEqual(final['status'],'ENTRY_CLOSED')
+        self.assertEqual(j['failure'],'RUNTIME_IDENTITY_STATE_MISMATCH')
+        self.assertEqual(len([r for r in j['nativeEntry']['identityReadbacks'] if r['phase']=='MAIN']),3)
+
+    def test_exhausted_cleanup_observations_are_not_reset_by_independent_process(self):
+        _,final,j=self.assembled(0,9)
+        # Independent single read can confirm the later state, but grants no new
+        # transition marker or additional observation sequence from the old journal.
+        self.assertEqual(final['status'],'ENTRY_CLOSED',final)
+        self.assertEqual(len([r for r in j['nativeEntry']['identityReadbacks'] if r['phase']=='CLEANUP']),3)
+        self.assertLessEqual(j['nativeEntry']['calls']['cli'],196)
 
 
 class TagMutationDiagnosticTests(unittest.TestCase):
@@ -2300,9 +2552,12 @@ class CT4TimingTests(unittest.TestCase):
         obj.times={'cutoff':1000.+remaining,'workEnd':1000.+remaining,'cleanupEnd':5000.}
         obj.child_monotonic_end=remaining
         obj.forward_end=obj.times['workEnd'];obj.work_monotonic_end=remaining
-        obj.cap=SimpleNamespace(gate=lambda cleanup=False:None)
+        # This focused harness exercises the original settling policy; full
+        # version2 transition admission is covered by the assembled BR2 tests.
+        obj.cap=SimpleNamespace(e={'version':1},mode='run',gate=lambda cleanup=False:None)
         obj.j={'iamOwned':['lookup','signing'] if owned is None else owned}
         obj.mutation_admitted=False;obj.settling_attempted=False
+        obj.identity_pending=None;obj.identity_transitions_used=set()
         calls=[]
         obj.runtime=SimpleNamespace(change=lambda *a,**kw:calls.append('change'))
         obj.access=SimpleNamespace(stage_a=lambda:calls.append(('stage_a',clock['mono'])))

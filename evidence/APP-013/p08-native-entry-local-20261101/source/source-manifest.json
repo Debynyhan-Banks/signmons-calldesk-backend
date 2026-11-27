@@ -3,7 +3,7 @@
     "authority.py": "ca62510e43a9ee95c7e6bb8b5a21dd827013ef87cd36c7678ae62247ad06f6e3",
     "authority_bridge.mjs": "3508633e7e9a263acd37a6d244333fdf742150dc7be01066d3c04ad44193ac0c",
     "connected_payment.mjs": "82222165db99e1e3a6e84cec2869b1f466e47c9599b7502627b2148cea6a93c9",
-    "entry.py": "6585e24df411dfc12b012797bb84156fca0cc27fed66e0f4475976e7ac3919cd",
+    "entry.py": "239513ab7c2fee5d42175110a6add91bf7e2c929b804148bc11a5986def54eef",
     "handoff.py": "7e90e1a8b801412de66f8fc27d04ee3e48a2b81cd0f3011d36f14ccce1b2ca19",
     "native_child.mjs": "0d1241a397de199a3ee5783a81c5c752c473e7e47f84f5cbfc13870a10851e6c",
     "native_io.py": "2a6426ecf0dbbc1e19ad2391a296b781cc04fdd1e53ee83123a332101aea6e43",

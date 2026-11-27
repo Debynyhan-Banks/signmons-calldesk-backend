@@ -108,6 +108,10 @@ class RuntimeAdapter(restore.NativeAdapter):
 
     def readback(self, kind, name, enabled, p, deadline):
         if kind == 'identity':
+            # Decoded-output labels only. These never grant authority or alter
+            # the inherited predicate, and hold no response or private value.
+            self.identity_observation = {'state': 'UNAVAILABLE', 'identity': 'UNKNOWN',
+                                         'retryable': False}
             try:
                 value = self.cloud(['iam', 'service-accounts', 'describe', restore.IDENTITY,
                                     '--project=signmons', '--format=json(email,disabled)'], deadline)
@@ -118,6 +122,16 @@ class RuntimeAdapter(restore.NativeAdapter):
                 raise
             if not isinstance(value, dict):
                 raise c.Stop('RUNTIME_IDENTITY_OUTPUT_SHAPE') from None
+            state = ('MISSING' if 'disabled' not in value else
+                     'BOOL_TRUE' if value['disabled'] is True else
+                     'BOOL_FALSE' if value['disabled'] is False else
+                     'NULL' if value['disabled'] is None else 'OTHER')
+            exact = value.get('email') == restore.IDENTITY
+            self.identity_observation = {
+                'state': state, 'identity': 'MATCH' if exact else 'MISMATCH',
+                'retryable': (type(value) is dict and exact and
+                              set(value) <= {'email', 'disabled'} and
+                              state in ('MISSING', 'BOOL_TRUE', 'BOOL_FALSE'))}
             # Preserve the inherited predicate, including omitted-field and numeric
             # equality behavior. Classification changes only rejected observations.
             if value.get('email') == restore.IDENTITY and value.get('disabled', False) == (not enabled):
@@ -453,6 +467,8 @@ class Ports(bridge.Ports):
 class Coordinator(c.Coordinator):
     SETTLE_SECONDS = 420
     POST_SETTLE_SECONDS = 960
+    IDENTITY_READBACK_SECONDS = 45
+    IDENTITY_READ_SECONDS = 9  # Existing eight-second child bound plus local margin.
 
     def __init__(self, cap, io, runtime, ports):
         super().__init__(cap.plan, cap.local_approval, cap.e['qualification'], runtime, ports,
@@ -469,6 +485,93 @@ class Coordinator(c.Coordinator):
         self.child_monotonic_end = self.last_monotonic + max(0, self.times['cutoff'] - self.clock())
         self.mutation_admitted = False
         self.settling_attempted = False
+        self.identity_pending = None
+        self.identity_transitions_used = set()
+
+    def identity_scope(self, method, args, owner, cleanup):
+        return (self.cap.e.get('version') == 2 and
+                self.cap.e.get('purpose') != 'NATIVE_PREFLIGHT_ONLY' and
+                self.cap.mode in ('run', 'closeout') and owner is self.runtime and
+                method in ('change', 'readback') and len(args) == 4 and
+                args[0] == 'identity' and args[1] == self.modules['restore'].IDENTITY and
+                type(args[2]) is bool and args[2] is (not cleanup) and
+                type(args[3]) is dict and args[3] == self.runtime_plan())
+
+    def identity_record(self, cleanup, ordinal, enabled, elapsed, result):
+        # Optional labels piggyback on existing authoritative save points.
+        # Never introduce a diagnostic write that could suppress restoration.
+        try:
+            observation = self.runtime.identity_observation
+            states = {'UNAVAILABLE', 'MISSING', 'BOOL_TRUE', 'BOOL_FALSE', 'NULL', 'OTHER'}
+            matches = {'UNKNOWN', 'MATCH', 'MISMATCH'}
+            codes = {'MATCH', 'UNCONFIRMED', 'RUNTIME_READBACK'} | {
+                'RUNTIME_IDENTITY_' + suffix for suffix in ('OUTPUT_SHAPE', 'EMAIL_MISSING',
+                'EMAIL_MISMATCH', 'DISABLED_MISSING', 'DISABLED_INVALID', 'STATE_MISMATCH')}
+            if result not in codes:
+                result = 'UNCONFIRMED'
+            if (type(observation) is not dict or observation.get('state') not in states or
+                    observation.get('identity') not in matches or
+                    not math.isfinite(elapsed) or elapsed < 0):
+                return
+            rows = self.j['nativeEntry'].setdefault('identityReadbacks', [])
+            if type(rows) is list and len(rows) < 6:
+                rows.append({'phase': 'CLEANUP' if cleanup else 'MAIN', 'ordinal': ordinal,
+                             'requestedEnabled': enabled, 'elapsedMs': round(elapsed * 1000, 3),
+                             'decodedState': observation['state'],
+                             'identity': observation['identity'], 'result': result})
+        except Exception:
+            pass
+
+    def reconcile_identity(self, args, owner, cleanup, acknowledged_at):
+        end = acknowledged_at + self.IDENTITY_READBACK_SECONDS
+        last = acknowledged_at
+        def gate(dispatch=False, remaining=0):
+            nonlocal last
+            self.gate(cleanup)
+            now = self.monotonic()
+            c.need(math.isfinite(now) and now >= last, 'CLOCK_ROLLBACK')
+            last = now
+            deadline = self.times['cleanupEnd'] if cleanup else self.forward_end
+            available = min(end - now, deadline - self.clock())
+            c.need(available >= self.IDENTITY_READ_SECONDS if dispatch else available > 0,
+                   'IDENTITY_READBACK_DEADLINE')
+            if dispatch:
+                # Keep a disable plus its three observations available to cleanup.
+                reserve_calls = remaining + (0 if cleanup else 4)
+                c.need(self.cap.e['limits']['cli'] - self.j['nativeEntry']['calls']['cli']
+                       >= reserve_calls, 'IDENTITY_READBACK_BUDGET')
+                if not cleanup:
+                    self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS +
+                                             self.IDENTITY_READ_SECONDS)
+            return now
+        for index, delay in enumerate((0, 5, 10)):
+            until = gate() + delay
+            while True:
+                before = gate()
+                if before >= until:
+                    break
+                self.pause(min(.1, until - before))
+                c.need(self.monotonic() > before, 'CLOCK_ROLLBACK')
+            gate(dispatch=True, remaining=3-index)
+            self.runtime.identity_observation = {'state': 'UNAVAILABLE',
+                                                 'identity': 'UNKNOWN', 'retryable': False}
+            try:
+                value = super().invoke('readback', *args, owner=owner, cleanup=cleanup)
+                c.need(value is True, 'RUNTIME_READBACK')
+                gate()
+            except BaseException as error:
+                reason = (error.args[0] if type(error) is c.Stop and len(error.args) == 1
+                          and type(error.args[0]) is str else 'UNCONFIRMED')
+                self.identity_record(cleanup, index + 1, args[2],
+                                     self.monotonic() - acknowledged_at, reason)
+                if (reason not in ('RUNTIME_IDENTITY_STATE_MISMATCH',
+                                   'RUNTIME_IDENTITY_DISABLED_MISSING') or
+                        self.runtime.identity_observation.get('retryable') is not True or index == 2):
+                    raise
+            else:
+                self.identity_record(cleanup, index + 1, args[2],
+                                     self.monotonic() - acknowledged_at, 'MATCH')
+                return value
 
     def gate(self, cleanup=False):
         super().gate(cleanup)
@@ -509,19 +612,45 @@ class Coordinator(c.Coordinator):
         self.require_child_entry(self.POST_SETTLE_SECONDS)
 
     def invoke(self, method, *args, owner, cleanup=False):
+        identity = self.identity_scope(method, args, owner, cleanup)
+        pending, self.identity_pending = self.identity_pending, None
+        if identity and method == 'readback' and pending is not None:
+            phase, direction, acknowledged_at = pending
+            if phase is cleanup and direction is args[2]:
+                return self.reconcile_identity(args, owner, cleanup, acknowledged_at)
         if not cleanup:
             # Refuse an already-short session before the inherited coordinator
             # records any mutation intent; recheck immediately before dispatch.
             if method == 'preflight' and owner is self.runtime and self.cap.mode == 'run':
-                self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
+                self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS +
+                                         (self.IDENTITY_READBACK_SECONDS if self.cap.e.get('version') == 2 else 0))
             if method == 'change' and owner is self.runtime and not self.mutation_admitted:
-                self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
+                self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS +
+                                         (self.IDENTITY_READBACK_SECONDS if self.cap.e.get('version') == 2 else 0))
                 self.mutation_admitted = True
             if method == 'stage_a' and owner is self.access:
                 self.settle_bindings()
         if method != 'preflight' or cleanup:
+            eligible = identity and method == 'change' and cleanup not in self.identity_transitions_used
+            if eligible:
+                self.identity_transitions_used.add(cleanup)
+                self.gate(cleanup)
+                remaining = self.cap.e['limits']['cli'] - self.j['nativeEntry']['calls']['cli']
+                if cleanup:
+                    # A small remaining budget must never suppress an otherwise
+                    # permitted disable and its original single readback.
+                    eligible = (remaining >= 4 and
+                                self.times['cleanupEnd'] - self.clock() >= 17)
+                else:
+                    c.need(remaining >= 8, 'IDENTITY_READBACK_BUDGET')
+                if not cleanup:
+                    self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS +
+                                             self.IDENTITY_READBACK_SECONDS)
             try:
-                return super().invoke(method, *args, owner=owner, cleanup=cleanup)
+                value = super().invoke(method, *args, owner=owner, cleanup=cleanup)
+                if eligible:
+                    self.identity_pending = (cleanup, args[2], self.monotonic())
+                return value
             except Stop as error:
                 # Only the exact forward tag mutation can retain a fixed native
                 # diagnostic; all other errors keep the inherited behavior.

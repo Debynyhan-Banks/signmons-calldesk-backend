@@ -46,6 +46,15 @@ class PacketTests(unittest.TestCase):
             with self.subTest(key=key),self.assertRaises(Exception):packet.construct_values(spec,self.values,'we_synthetic',self.cap)
         values=copy.deepcopy(self.values);values['paymentBinding']['connectedAccountSha256']='f'*64
         with self.assertRaises(Exception):packet.construct_values(self.spec,values,'we_synthetic',self.cap)
+    def test_br2_requires_exact_new_read_budget_and_rejects_old_or_larger_caps(self):
+        for limit in (192, 195, 197, 512):
+            spec=copy.deepcopy(self.spec);spec['prospectiveLimits']['cli']=limit
+            with self.subTest(limit=limit),self.assertRaisesRegex(Exception,'PACKET_LIMITS'):
+                packet.construct_values(spec,self.values,'we_synthetic',self.cap)
+        e=packet.construct_values(self.spec,self.values,'we_synthetic',self.cap)
+        self.assertEqual(e['nativeScope']['limits'],
+                         {'cli':196,'https':100,'sql':60,'child':6,'childRequests':200})
+
     def test_candidate_must_match_complete_payment_scope(self):
         e=packet.construct_values(self.spec,self.values,'we_synthetic',self.cap)
         with self.assertRaises(Exception):packet.native_envelope(e,{**self.t.e['qualification'],'scopeSha256':'f'*64})
