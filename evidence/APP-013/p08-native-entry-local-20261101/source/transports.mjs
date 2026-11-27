@@ -32,10 +32,11 @@ export function createPorts(cap, credentials, injected = {}) {
   const deadline = cleanup => Date.parse(window[cleanup ? 'cleanupEnd' : 'workEnd']);
   const timeout = cleanup => Math.max(1, Math.min(5000, deadline(cleanup)-Date.now()));
   const spend = () => gate(cap, true, true);
+  const timeoutErrors=new WeakSet(), transportFailures=new WeakMap();
   async function bounded(fn) {
     spend(); let timer;
     try {return await Promise.race([Promise.resolve().then(fn),new Promise((_,reject)=>{
-      timer=setTimeout(()=>reject(Object.assign(Error('NATIVE_IO_TIMEOUT'),{code:'NATIVE_IO_TIMEOUT'})),timeout(true));
+      timer=setTimeout(()=>{const error=Object.assign(Error('NATIVE_IO_TIMEOUT'),{code:'NATIVE_IO_TIMEOUT'});timeoutErrors.add(error);reject(error);},timeout(true));
     })]);} finally {clearTimeout(timer); gate(cap,true);}
   }
   const config = name => ({...cap.e.database, password:credentials.password,
@@ -79,21 +80,43 @@ export function createPorts(cap, credentials, injected = {}) {
   }
   const realFetch=injected.fetcher ?? fetch;
   async function fetcher(url,options) {
-    const u=new URL(url);
-    need(u.protocol==='https:' && !u.username && !u.password && !u.hash &&
-      (['identitytoolkit.googleapis.com','iamcredentials.googleapis.com','apikeys.googleapis.com'].includes(u.hostname) ||
-       url===cap.e.runtimeOrigin+'/jobs/dispatch-board/'+cap.e.plan.jobId), 'AUTH_HOST_SCOPE');
-    const response=await bounded(()=>realFetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(timeout(true))}));
-    // Bound reads before allocating an untrusted response in memory.
-    let text;
-    if (response.body?.getReader) {
-      const reader=response.body.getReader();let size=0;const chunks=[];
-      try {while(true){const r=await bounded(()=>reader.read());if(r.done)break;
-        size+=r.value.byteLength;need(size<=65536,'AUTH_OUTPUT_LIMIT');chunks.push(Buffer.from(r.value));}}
-      finally {await reader.cancel().catch(()=>{});}
-      text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
-    } else {text=await bounded(()=>response.text());need(Buffer.byteLength(text)<=65536,'AUTH_OUTPUT_LIMIT');}
-    return {ok:response.ok,status:Number.isInteger(response.status) && response.status>=100 && response.status<=599 ? response.status : null,text:async()=>text};
+    let phase='GUARD',category='GUARD',validation=null,signal;
+    try {
+      const u=new URL(url);
+      need(u.protocol==='https:' && !u.username && !u.password && !u.hash &&
+        (['identitytoolkit.googleapis.com','iamcredentials.googleapis.com','apikeys.googleapis.com'].includes(u.hostname) ||
+         url===cap.e.runtimeOrigin+'/jobs/dispatch-board/'+cap.e.plan.jobId), 'AUTH_HOST_SCOPE');
+      phase='REQUEST';category='TRANSPORT';
+      const response=await bounded(()=>{signal=AbortSignal.timeout(timeout(true));
+        return realFetch(url,{...options,redirect:'error',signal});});
+      let text;
+      phase='RESPONSE_READ';
+      if (response.body?.getReader) {
+        const reader=response.body.getReader();let size=0;const chunks=[];
+        try {while(true){category='TRANSPORT';validation=null;
+          const r=await bounded(()=>reader.read());if(r.done)break;
+          size+=r.value.byteLength;category='RESPONSE_VALIDATION';validation='BODY_BOUND';
+          need(size<=65536,'AUTH_OUTPUT_LIMIT');chunks.push(Buffer.from(r.value));}}
+        finally {await reader.cancel().catch(()=>{});}
+        phase='TEXT_DECODE';category='RESPONSE_VALIDATION';validation='TEXT_DECODE';
+        text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
+      } else {text=await bounded(()=>response.text());category='RESPONSE_VALIDATION';validation='BODY_BOUND';
+        need(Buffer.byteLength(text)<=65536,'AUTH_OUTPUT_LIMIT');}
+      category='RESPONSE_VALIDATION';validation='RESPONSE_SHAPE';
+      return {ok:response.ok,status:Number.isInteger(response.status) && response.status>=100 && response.status<=599 ? response.status : null,text:async()=>text};
+    } catch(error) {
+      if(error && (typeof error==='object'||typeof error==='function')) {
+        const timedOut=timeoutErrors.has(error)||(signal?.aborted===true && signal.reason===error);
+        transportFailures.set(error,Object.freeze({phase,category:timedOut?'TIMEOUT':category,
+          validation:timedOut?null:validation}));
+      }
+      throw error;
+    }
   }
+  Object.defineProperty(fetcher,'failureDiagnostic',{value:error=>{
+    const value=error && (typeof error==='object'||typeof error==='function')?transportFailures.get(error):null;
+    return value?{...value}:null;
+  }});
+
   return {ownerAuth,dbFactory,sessionProbe,fetcher};
 }

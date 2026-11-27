@@ -1,11 +1,13 @@
 import {readFileSync, writeFileSync, renameSync} from 'node:fs';
 import {gate, need, exactApp, exactIdentity} from '../../p08-coordinator-auth-local-20261031/source/authority.mjs';
 
+import {authenticationDiagnostic} from '../../p08-coordinator-auth-local-20261031/source/client.mjs';
+const dataValue = (e,k) => {try{return e && Object.getOwnPropertyDescriptor(e,k)?.value;}catch{return undefined;}};
 const safeCode = e => ['INTERRUPTED', 'OPERATION_DEADLINE', 'CLOCK_ROLLBACK',
   'APPLICATION_DRIFT', 'IDENTITY_DRIFT', 'CLAIMS_DRIFT', 'ACTIVATION_CONFLICT',
   'SIGN_EXCHANGE_REFUSED', 'EXACT_TOKEN_REQUIRED', 'TOKEN_CLAIMS_DRIFT', 'TOKEN_TIME',
-  'AUTH_RUNTIME_REFUSED', 'EXACT_JOB_READBACK'].includes(e?.code)
-  ? e.code : 'ADAPTER_REFUSED_OR_UNKNOWN';
+  'AUTH_RUNTIME_REFUSED', 'EXACT_JOB_READBACK', ...(authenticationDiagnostic(e)?['AUTHENTICATION_REFUSED']:[])].includes(dataValue(e,'code'))
+  ? dataValue(e,'code') : 'ADAPTER_REFUSED_OR_UNKNOWN';
 
 /** A child operation in the coordinator's existing journal; never starts another journal. */
 export class CoordinatorAuthSequence {
@@ -92,7 +94,8 @@ export class CoordinatorAuthSequence {
       let responseValidationCode;
       try { responseValidationCode = error?.responseValidationCode; } catch {}
       this.save({phase: 'STOPPED', failureStage: this.state.phase, failureCode: safeCode(error),
-        ...(error?.code === 'SIGN_EXCHANGE_REFUSED' ? {
+        ...(authenticationDiagnostic(error) ?? {}),
+        ...(dataValue(error,'code') === 'SIGN_EXCHANGE_REFUSED' ? {
           authStage: ['SIGN', 'KEY_READ', 'EXCHANGE'].includes(error.authStage) ? error.authStage : 'UNKNOWN',
           failureCategory: ['TRANSPORT', 'HTTP', 'RESPONSE_VALIDATION'].includes(error.failureCategory) ? error.failureCategory : 'UNKNOWN',
           httpStatus: error.failureCategory === 'HTTP' && Number.isInteger(error.httpStatus) &&

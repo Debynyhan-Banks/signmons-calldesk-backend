@@ -195,3 +195,30 @@ for(const failure of ['end','probe'])test('session '+failure+' failure still ref
   const result=await runChild('--run',r,ports);
   assert.equal(result.sessionClosed,false);assert.ok(result.residuals.includes('SESSION_CLOSEOUT'));
 });
+
+test('AP2 native transport classifies its own boundaries without trusting exception metadata',async t=>{
+ for(const kind of ['request','read','bytes','decode','forged'])await t.test(kind,async t=>{
+  const r=fixture(t),cap=authorizeChild(r.envelopePath,'--run');let calls=0;
+  const privateError=Object.assign(Error('PRIVATE_SENTINEL'),{code:'NATIVE_IO_TIMEOUT',failureCategory:'HTTP',httpStatus:418});
+  const fetcher=async()=>{calls++;
+   if(['request','forged'].includes(kind))throw privateError;
+   if(kind==='read')return {body:{getReader:()=>({read:async()=>{throw privateError;},cancel:async()=>{}})}};
+   if(kind==='bytes')return {ok:true,status:200,text:async()=>'x'.repeat(65537)};
+   let delivered=false;return {ok:true,status:200,body:{getReader:()=>({read:async()=>delivered?{done:true}:(delivered=true,{done:false,value:new Uint8Array([255])}),cancel:async()=>{}})}};
+  };
+  const ports=createPorts(cap,r.credentials,{...fixturePorts(r),fetcher});let error;
+  await assert.rejects(()=>ports.fetcher('https://identitytoolkit.googleapis.com/v1/projects/signmons/accounts:lookup',{}),e=>{error=e;return true;});
+  const detail=ports.fetcher.failureDiagnostic(error);
+  assert.equal(calls,1);assert.equal(detail.category,['bytes','decode'].includes(kind)?'RESPONSE_VALIDATION':'TRANSPORT');
+  assert.equal(detail.phase,kind==='read'?'RESPONSE_READ':kind==='decode'?'TEXT_DECODE':kind==='bytes'?'RESPONSE_READ':'REQUEST');
+  assert.equal(detail.validation,kind==='bytes'?'BODY_BOUND':kind==='decode'?'TEXT_DECODE':null);
+  assert.equal(ports.fetcher.failureDiagnostic({...error}),null);assert.ok(!JSON.stringify(detail).includes('PRIVATE_SENTINEL'));
+ });
+});
+test('AP2 native bounded timeout remains one request and cannot become HTTP evidence',async t=>{
+ const r=fixture(t),cap=authorizeChild(r.envelopePath,'--run');let calls=0;
+ const ports=createPorts(cap,r.credentials,{...fixturePorts(r),fetcher:()=>{calls++;return new Promise(()=>{});}});
+ let error;await assert.rejects(()=>ports.fetcher('https://identitytoolkit.googleapis.com/v1/projects/signmons/accounts:lookup',{}),e=>{error=e;return true;});
+ assert.deepEqual(ports.fetcher.failureDiagnostic(error),{phase:'REQUEST',category:'TIMEOUT',validation:null});
+ assert.equal(calls,1);
+});

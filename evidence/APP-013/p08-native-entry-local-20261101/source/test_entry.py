@@ -2277,11 +2277,33 @@ try {
  const scenario=%s,success=%s;
  const handoff=scenario.kind==='handoff';
  const counts={sign:0,key:0,exchange:0,job:0,paymentWrites:0,present:0};
+ let injectedOnce=false;
  ports.fetcher=async(url,options)=>{
   if(url.includes(':signBlob'))counts.sign++;
   if(url.endsWith('/keyString'))counts.key++;
+  if(scenario.kind==='ap2' && url.endsWith('/accounts:lookup') && !injectedOnce &&
+    JSON.parse(readFileSync(request.envelopePath.replace(/envelope\\.json$/,'journal.json'))).authClient?.phase==='RUNTIME_AUTH_INTENT' && scenario.fault.startsWith('lookup-')){
+   injectedOnce=true;
+   if(scenario.fault==='lookup-transport')throw {message:'PRIVATE_SENTINEL',authStage:'SIGN',httpStatus:418};
+   if(scenario.fault==='lookup-http')return {ok:false,status:403,text:async()=>'PRIVATE_SENTINEL'};
+   if(scenario.fault==='lookup-json')return {ok:true,status:200,text:async()=>'PRIVATE_SENTINEL'};
+   if(scenario.fault==='lookup-null')return {ok:true,status:200,text:async()=>'null'};
+   const response=await fetcher(url,options),value=JSON.parse(await response.text());
+   if(scenario.fault==='lookup-identity')value.users[0].email='PRIVATE_SENTINEL';
+   if(scenario.fault==='lookup-claims')value.users[0].customAttributes='{';
+   return {ok:true,status:200,text:async()=>JSON.stringify(value)};
+  }
   if(url.includes('/jobs/dispatch-board/')){
    counts.job++;
+   if(scenario.kind==='ap2'){
+    if(scenario.fault==='runtime-timeout')return new Promise(()=>{});
+    if(scenario.fault==='runtime-transport')throw Object.defineProperty({authStage:'SIGN',httpStatus:418},'code',{get(){throw Error('PRIVATE_SENTINEL');}});
+    if(scenario.fault==='runtime-read')return {body:{getReader:()=>({read:async()=>{throw Error('PRIVATE_SENTINEL');},cancel:async()=>{}})}};
+    if(scenario.fault==='runtime-decode'){let used=false;return {ok:true,status:200,body:{getReader:()=>({read:async()=>used?{done:true}:(used=true,{done:false,value:new Uint8Array([255])}),cancel:async()=>{}})}};}
+    if(scenario.fault==='runtime-bytes')return {ok:true,status:200,text:async()=>'x'.repeat(65537)};
+    if(scenario.fault==='runtime-json')return {ok:true,status:200,text:async()=>'PRIVATE_SENTINEL'};
+    if(scenario.fault==='runtime-http')return {ok:false,status:403,text:async()=>'PRIVATE_SENTINEL'};
+   }
    if(handoff){
     const path=request.envelopePath.replace(/envelope\\.json$/,'journal.json');
     const j=JSON.parse(readFileSync(path));j.payment.phase='STOPPED';
@@ -2299,6 +2321,7 @@ try {
   assert.deepEqual(Object.keys(value).sort(),['expiresIn','idToken','isNewUser','refreshToken']);
   if(scenario.kind==='matching'||scenario.matchingLocalId)value.localId=e.target.id;
   if(scenario.kind==='localId')value.localId=scenario.value;
+  if(scenario.kind==='ap2' && scenario.fault==='token-json')value.idToken='header.invalid.signature';
   if(scenario.kind==='missing-token')delete value.idToken;
   if(scenario.kind==='token')value.idToken=scenario.value;
   if(scenario.kind==='claim'||scenario.kind==='time'){
@@ -2315,7 +2338,7 @@ try {
  assert.deepEqual([counts.sign,counts.key,counts.exchange],[1,1,1]);
  if(success){assert.ok(counts.job>0);assert.ok(counts.paymentWrites>0);assert.equal(counts.present,1);}
  else {
-  assert.equal(counts.job,['runtime','job','handoff'].includes(scenario.kind)?1:0);
+  assert.equal(counts.job,(['runtime','job','handoff'].includes(scenario.kind)||(scenario.kind==='ap2'&&scenario.fault.startsWith('runtime-')))?1:0);
   assert.equal(counts.paymentWrites,0);assert.equal(counts.present,0);
  }
  const path=request.envelopePath.replace(/envelope\\.json$/,'journal.json');
@@ -2355,6 +2378,27 @@ try {
             io.child = invoke
         fixture, work, final, journal, _ = self.completed('normal', mutate_io=inject)
         self.assertEqual(len(observed), 1)
+        if scenario['kind'] == 'ap2' and process_fault:
+            diagnostic = observed[0]
+            self.assertEqual(diagnostic['authStage'], scenario['stage'])
+            self.assertEqual(diagnostic['failureCategory'], scenario['category'])
+            self.assertFalse(diagnostic['authenticated'])
+            self.assertFalse(final['authenticationObserved'] or final['paymentObserved'] or final['authProofReady'])
+            self.assertFalse(final['paymentReadyForAcceptance'])
+            self.assertIsNone(final['childResultSha256'])
+            self.assertIn('AUTH_OUTCOME_UNKNOWN', final['residuals'])
+            self.assertFalse(any(fixture.f.runtime_state.values()))
+            primary = [x for x in journal['nativeEntry']['childObservations'] if x['mode']=='--run']
+            self.assertEqual(len(primary), 1)
+            self.assertEqual(primary[0]['journalMerge'], 'REJECTED' if process_fault=='merge' else 'ACCEPTED')
+            if process_fault!='merge':
+                self.assertEqual(journal['authClient']['authStage'], scenario['stage'])
+                self.assertEqual(journal['authClient']['failureCategory'], scenario['category'])
+                self.assertTrue(journal['authClient']['sessionClosed'])
+                self.assertEqual(journal['authClient']['residuals'], [])
+            for path in fixture.root.iterdir():
+                self.assertNotIn(b'PRIVATE_SENTINEL', path.read_bytes())
+            return
         if scenario['kind'] == 'handoff':
             self.assertTrue(observed[0]['authenticated'])
             self.assertEqual(observed[0]['failureStage'], 'PAYMENT_HANDOFF_INTENT')
@@ -2413,11 +2457,20 @@ try {
                                  ('SIGN_EXCHANGE_REFUSED', 'EXCHANGE', 'RESPONSE_VALIDATION', None,
                                   'EXCHANGE_RESPONSE_MISMATCH'))
                 self.assertEqual(auth['failureStage'], 'TOKEN_INTENT')
+            elif scenario['kind'] == 'ap2':
+                self.assertEqual(auth['failureStage'], 'RUNTIME_AUTH_INTENT')
+                self.assertEqual(auth['failureCode'], 'AUTH_RUNTIME_REFUSED' if scenario['fault']=='runtime-http' else 'AUTHENTICATION_REFUSED')
+                self.assertEqual(auth['authStage'], scenario['stage'])
+                self.assertEqual(auth['failureCategory'], scenario['category'])
+                self.assertEqual(auth['httpStatus'], 403 if scenario['category']=='HTTP' else None)
+                self.assertEqual(auth.get('responseValidationCode'), scenario.get('validation'))
             else:
-                self.assertNotIn('responseValidationCode', auth)
                 self.assertEqual(auth['failureStage'], 'RUNTIME_AUTH_INTENT')
                 self.assertEqual(auth['failureCode'], {'claim': 'TOKEN_CLAIMS_DRIFT',
                     'time': 'TOKEN_TIME', 'runtime': 'AUTH_RUNTIME_REFUSED', 'job': 'EXACT_JOB_READBACK'}[scenario['kind']])
+                self.assertEqual(auth['authStage'], 'AUTH_RUNTIME_READ' if scenario['kind'] in {'runtime','job'} else 'AUTH_TOKEN_CHECK')
+                self.assertEqual(auth['failureCategory'], 'HTTP' if scenario['kind']=='runtime' else 'RESPONSE_VALIDATION')
+                self.assertEqual(auth.get('responseValidationCode'), {'claim':'CLAIMS_MISMATCH','time':'TOKEN_TIME','runtime':None,'job':'JOB_MISMATCH'}[scenario['kind']])
         observations = journal['nativeEntry']['childObservations']
         self.assertTrue(all(x['journalMerge'] == 'ACCEPTED' for x in observations))
         self.assertEqual(sum(x['mode'] == '--run' for x in observations), 1)
@@ -2435,6 +2488,34 @@ try {
             self.assertTrue(any(x['mode'] == '--closeout' for x in observations))
         for path in fixture.root.iterdir():
             self.assertNotIn(b'header.', path.read_bytes())
+
+    def test_ap2_actual_transport_client_child_parent_and_cleanup_failure_matrix(self):
+        cases = [
+            ('lookup-transport','AUTH_IDENTITY_READ','TRANSPORT',None),
+            ('lookup-http','AUTH_IDENTITY_READ','HTTP',None),
+            ('lookup-json','AUTH_IDENTITY_READ','RESPONSE_VALIDATION','JSON_PARSE'),
+            ('lookup-null','AUTH_IDENTITY_READ','RESPONSE_VALIDATION','RESPONSE_SHAPE'),
+            ('lookup-identity','AUTH_IDENTITY_CHECK','RESPONSE_VALIDATION','IDENTITY_MISMATCH'),
+            ('lookup-claims','AUTH_IDENTITY_READ','RESPONSE_VALIDATION','JSON_PARSE'),
+            ('token-json','AUTH_TOKEN_DECODE','RESPONSE_VALIDATION','JSON_PARSE'),
+            ('runtime-transport','AUTH_RUNTIME_READ','TRANSPORT',None),
+            ('runtime-timeout','AUTH_RUNTIME_READ','TIMEOUT',None),
+            ('runtime-read','AUTH_RUNTIME_READ','TRANSPORT',None),
+            ('runtime-decode','AUTH_RUNTIME_READ','RESPONSE_VALIDATION','TEXT_DECODE'),
+            ('runtime-bytes','AUTH_RUNTIME_READ','RESPONSE_VALIDATION','BODY_BOUND'),
+            ('runtime-json','AUTH_RUNTIME_READ','RESPONSE_VALIDATION','JSON_PARSE'),
+            ('runtime-http','AUTH_RUNTIME_READ','HTTP',None),
+        ]
+        for fault, stage, category, validation in cases:
+            with self.subTest(fault=fault):
+                self.ec1_completed({'kind':'ap2','fault':fault,'stage':stage,
+                                    'category':category,'validation':validation})
+
+    def test_ap2_runtime_diagnostics_survive_lost_output_but_never_create_proof(self):
+        for fault in ['lost', 'timeout', 'exit', 'interruption', 'merge']:
+            with self.subTest(fault=fault):
+                self.ec1_completed({'kind':'ap2','fault':'runtime-json','stage':'AUTH_RUNTIME_READ',
+                                    'category':'RESPONSE_VALIDATION','validation':'JSON_PARSE'}, process_fault=fault)
 
     def test_ec1_documented_response_and_optional_identity_reach_authenticated_payment(self):
         for kind in ('documented', 'matching'):

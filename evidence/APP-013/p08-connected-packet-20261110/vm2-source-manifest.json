@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "iq1ManifestSha256": "2d0404361ca0e2320bb55019fcf69cbbd4578a6a4db5a154a9a5faba8d5d1f4b",
-    "sq1ManifestSha256": "c0c4e2e984eba3a47dd312003e57b99525850e08e9da5d47e33376d6b2fb8997"
+    "iq1ManifestSha256": "1317c896f5ac2323b984e4b5bd54b69c92c68772339088b086505efea239a20f",
+    "sq1ManifestSha256": "22834df66aa50dc5feed6b640037b5eb14c62a386115f0e3c7187c77cdd2869e"
   },
   "files": {
     "evidence/APP-013/p08-connected-packet-20261110/test_vm2_metadata_read.py": "6944f6a079370c90c3c89819c9cce43ef67623cc4332c13ec66ea3d64749412b",

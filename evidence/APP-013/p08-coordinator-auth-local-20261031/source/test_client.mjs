@@ -565,7 +565,9 @@ for (const [name, claims] of ec1ClaimRefusals) test('EC1 issued token cannot aut
     exchange: v => {v.localId = TARGET.id;}});
   assert.equal(result.authenticated, false); assert.equal(calls.job, 0);
   assert.equal(journal.authClient.authenticated, false);
-  assert.equal('responseValidationCode' in journal.authClient, false);
+  assert.equal(journal.authClient.authStage, 'AUTH_TOKEN_CHECK');
+  assert.equal(journal.authClient.failureCategory, 'RESPONSE_VALIDATION');
+  assert.equal(journal.authClient.responseValidationCode, ['expired','future iat'].includes(name)?'TOKEN_TIME':'CLAIMS_MISMATCH');
 });
 
 for (const runtimeStatus of [401, 403]) test('EC1 decoded claims do not replace runtime verification: ' + runtimeStatus, async t => {
@@ -582,4 +584,75 @@ test('EC1 exact job readback is still required after a successful runtime respon
 test('EC1 a nonempty malformed token cannot reach the runtime', async t => {
   const {result, calls} = await ec1Authentication(t, {exchange: v => {v.idToken = 'EC1_PRIVATE_MALFORMED_TOKEN';}});
   assert.equal(result.authenticated, false); assert.equal(calls.job, 0);
+});
+
+// AP2 uses the actual adapter, with synthetic responses at its existing transport seam.
+test('AP2 authentication failure matrix preserves stage/category without private payloads', async t => {
+ const {authenticationDiagnostic}=await import('./client.mjs');
+ const cases=[
+  ['entry','AUTH_ENTRY','GUARD',null],
+  ['lookup-transport','AUTH_IDENTITY_READ','TRANSPORT',null],
+  ['lookup-http','AUTH_IDENTITY_READ','HTTP',null],
+  ['lookup-json','AUTH_IDENTITY_READ','RESPONSE_VALIDATION','JSON_PARSE'],
+  ['lookup-null','AUTH_IDENTITY_READ','RESPONSE_VALIDATION','RESPONSE_SHAPE'],
+  ['lookup-missing','AUTH_IDENTITY_READ','RESPONSE_VALIDATION','IDENTITY_MISMATCH'],
+  ['lookup-claims-json','AUTH_IDENTITY_READ','RESPONSE_VALIDATION','JSON_PARSE'],
+  ['identity','AUTH_IDENTITY_CHECK','RESPONSE_VALIDATION','IDENTITY_MISMATCH'],
+  ['identity-claims','AUTH_IDENTITY_CHECK','RESPONSE_VALIDATION','CLAIMS_MISMATCH'],
+  ['token-json','AUTH_TOKEN_DECODE','RESPONSE_VALIDATION','JSON_PARSE'],
+  ['token-null','AUTH_TOKEN_CHECK','RESPONSE_VALIDATION','RESPONSE_SHAPE'],
+  ['token-claims','AUTH_TOKEN_CHECK','RESPONSE_VALIDATION','CLAIMS_MISMATCH'],
+  ['token-expired','AUTH_TOKEN_CHECK','RESPONSE_VALIDATION','TOKEN_TIME'],
+  ['token-future','AUTH_TOKEN_CHECK','RESPONSE_VALIDATION','TOKEN_TIME'],
+  ['runtime-transport','AUTH_RUNTIME_READ','TRANSPORT',null],
+  ...[401,403,500].map(n=>['runtime-'+n,'AUTH_RUNTIME_READ','HTTP',null]),
+  ['runtime-json','AUTH_RUNTIME_READ','RESPONSE_VALIDATION','JSON_PARSE'],
+  ['runtime-null','AUTH_RUNTIME_READ','RESPONSE_VALIDATION','JOB_MISMATCH'],
+  ['runtime-job','AUTH_RUNTIME_READ','RESPONSE_VALIDATION','JOB_MISMATCH'],
+  ['runtime-body','AUTH_RUNTIME_READ','RESPONSE_VALIDATION','BODY_BOUND'],
+ ];
+ for(const [kind,authStage,failureCategory,responseValidationCode] of cases)await t.test(kind,async t=>{
+  const f=fixture(t),c=cap(f);let jobCalls=0,lookupCalls=0,signCalls=0;
+  const now=Math.floor(Date.now()/1000),claims={sub:TARGET.id,tenantId:TARGET.tenantId,role:'admin',testOnly:true,
+   iss:'https://securetoken.google.com/signmons',aud:'signmons',exp:now+300,iat:now};
+  if(kind==='token-claims')claims.role='PRIVATE_SENTINEL';
+  if(kind==='token-expired')claims.exp=0;
+  if(kind==='token-future')claims.iat=now+3600;
+  const payload=kind==='token-json'?'PRIVATE_SENTINEL':JSON.stringify(kind==='token-null'?null:claims);
+  const token='header.'+Buffer.from(payload).toString('base64url')+'.signature';
+  const response=(value,status=200)=>({ok:status===200,status,text:async()=>JSON.stringify(value)});
+  const fetcher=async(url)=>{
+   if(url.includes(':signBlob')){signCalls++;return response({signedBlob:Buffer.from('synthetic-signature').toString('base64')});}
+   if(url.endsWith('/keyString'))return response({keyString:'synthetic-key'});
+   if(url.includes('signInWithCustomToken'))return response({idToken:token});
+   if(url.endsWith('/accounts:lookup')){
+    lookupCalls++;
+    if(kind==='lookup-transport')throw Object.defineProperty({authStage:'PRIVATE_SENTINEL',httpStatus:418},'code',{get(){throw Error('PRIVATE_SENTINEL');}});
+    if(kind==='lookup-http')return response({error:'PRIVATE_SENTINEL'},403);
+    if(kind==='lookup-json')return {ok:true,status:200,text:async()=>'PRIVATE_SENTINEL'};
+    if(kind==='lookup-null')return response(null);
+    if(kind==='lookup-missing')return response({});
+    return response({users:[{localId:TARGET.id,email:kind==='identity'?'PRIVATE_SENTINEL':TARGET.email,
+     displayName:TARGET.fullName,disabled:false,emailVerified:false,validSince:'0',
+     customAttributes:kind==='lookup-claims-json'?'PRIVATE_SENTINEL':JSON.stringify({tenantId:TARGET.tenantId,
+      role:kind==='identity-claims'?'PRIVATE_SENTINEL':'admin',testOnly:true})}]});
+   }
+   assert.ok(url.includes('/jobs/dispatch-board/'));jobCalls++;
+   if(kind==='runtime-transport')throw {message:'PRIVATE_SENTINEL',authStage:'SIGN',httpStatus:418};
+   if(/^runtime-\d+$/.test(kind))return response({error:'PRIVATE_SENTINEL'},Number(kind.split('-')[1]));
+   if(kind==='runtime-json')return {ok:true,status:200,text:async()=>'PRIVATE_SENTINEL'};
+   if(kind==='runtime-body')return {ok:true,status:200,text:async()=>'x'.repeat(65537)};
+   return response(kind==='runtime-null'?null:{jobId:'PRIVATE_SENTINEL'});
+  };
+  const api=adapters(c,{accessToken:'synthetic-owner',fetcher});const issued=await api.issue();let caught;
+  await assert.rejects(()=>api.authenticate(kind==='entry'?'foreign':issued),error=>{caught=error;return true;});
+  const diagnostic=authenticationDiagnostic(caught);
+  assert.deepEqual(diagnostic,{authStage,failureCategory,httpStatus:failureCategory==='HTTP'?(kind==='lookup-http'?403:Number(kind.split('-')[1])):null,
+   ...(responseValidationCode?{responseValidationCode}:{})});
+  assert.equal(signCalls,1);assert.equal(lookupCalls,kind==='entry'?0:1);assert.equal(jobCalls,kind.startsWith('runtime-')?1:0);
+  assert.ok(!JSON.stringify(diagnostic).includes('PRIVATE_SENTINEL'));
+  assert.equal(authenticationDiagnostic({...caught,...diagnostic}),null);
+  diagnostic.authStage='PRIVATE_SENTINEL';assert.equal(authenticationDiagnostic(caught).authStage,authStage);
+  api.clear();close(c);
+ });
 });

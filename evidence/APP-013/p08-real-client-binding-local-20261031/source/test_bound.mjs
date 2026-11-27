@@ -395,3 +395,16 @@ test('AP1 concurrent journal drift at runtime or payment boundary cannot overwri
     assert.equal(x.calls.filter(s => s === 'issue').length, 1);
   }
 });
+
+test('AP2 forged authentication diagnostics and throwing getters cannot bypass cleanup',async t=>{
+ for(const error of [Object.assign(Error('PRIVATE_SENTINEL'),{code:'AUTHENTICATION_REFUSED',authStage:'AUTH_RUNTIME_READ',failureCategory:'HTTP',httpStatus:403}),
+  Object.defineProperties({},{code:{get(){throw Error('PRIVATE_SENTINEL');}},authStage:{get(){throw Error('PRIVATE_SENTINEL');}}}),null,'PRIVATE_SENTINEL']){
+  const f=fixture(t),x=boundaryClients(f);x.clients.authenticate=async()=>{throw error;};
+  const result=await new CoordinatorAuthSequence(f.cap,x.clients,{afterAuthentication:x.hook}).run();
+  assert.equal(result.authenticated,false);assert.equal(result.sessionClosed,true);assert.deepEqual(result.residuals,[]);
+  assert.ok(!x.calls.includes('payment'));assert.ok(x.calls.includes('close'));
+  const raw=readFileSync(f.journalPath,'utf8'),auth=JSON.parse(raw).authClient;
+  assert.equal(auth.failureCode,'ADAPTER_REFUSED_OR_UNKNOWN');assert.equal('authStage' in auth,false);
+  assert.ok(!raw.includes('PRIVATE_SENTINEL'));
+ }
+});

@@ -69,6 +69,41 @@ class ChildJournalMergeTests(unittest.TestCase):
                                before={**self.before, 'authClient': {**child, 'version': 8}})
         self.assert_refused({**self.child, 'phase': 'PAYMENT_HANDOFF_PRIVATE_DIAGNOSTIC_SENTINEL'})
 
+    def test_ap2_finite_authentication_diagnostics_survive_only_exact_combinations(self):
+        for stage, values in h.AUTHENTICATION_VALIDATIONS.items():
+            for category, validations in [('GUARD', [None]), ('UNKNOWN', [None]),
+                    ('RESPONSE_VALIDATION', sorted(values))]:
+                for validation in validations:
+                    child = {**self.child, 'failureStage': 'RUNTIME_AUTH_INTENT',
+                             'failureCode': 'AUTHENTICATION_REFUSED', 'authStage': stage,
+                             'failureCategory': category, 'httpStatus': None}
+                    if validation is not None:child['responseValidationCode'] = validation
+                    self.assertEqual(self.merge(child), child)
+                    self.assertNotIn('authProofAccepted', self.h.coordinator.j)
+            for category in ['TIMEOUT', 'TRANSPORT', 'HTTP']:
+                child = {**self.child, 'failureStage': 'RUNTIME_AUTH_INTENT',
+                         'failureCode': 'AUTHENTICATION_REFUSED', 'authStage': stage,
+                         'failureCategory': category, 'httpStatus': 403 if category == 'HTTP' else None}
+                if stage in {'AUTH_IDENTITY_READ', 'AUTH_RUNTIME_READ'}:self.assertEqual(self.merge(child), child)
+                else:self.assert_refused(child)
+
+    def test_ap2_partial_forged_mismatched_or_private_diagnostics_do_not_merge(self):
+        good = {**self.child, 'failureStage': 'RUNTIME_AUTH_INTENT', 'failureCode': 'AUTHENTICATION_REFUSED',
+                'authStage': 'AUTH_RUNTIME_READ', 'failureCategory': 'HTTP', 'httpStatus': 403}
+        for key in ['authStage', 'failureCategory', 'httpStatus']:
+            self.assert_refused({k:v for k,v in good.items() if k != key})
+        for patch in [{'authStage':'SIGN'}, {'failureStage':'TOKEN_INTENT'}, {'failureCode':'SIGN_EXCHANGE_REFUSED'},
+                      {'httpStatus':True}, {'httpStatus':600}, {'httpStatus':'PRIVATE_DIAGNOSTIC_SENTINEL'},
+                      {'failureCategory':'TIMEOUT'}, {'responseValidationCode':'JSON_PARSE'},
+                      {'failureCategory':'RESPONSE_VALIDATION','httpStatus':None},
+                      {'failureCategory':'RESPONSE_VALIDATION','httpStatus':None,'responseValidationCode':'IDENTITY_MISMATCH'},
+                      {'failureCode':'TOKEN_TIME'}, {'failureCode':[]}, {'failureCode':{}}, {'authenticated':True},
+                      {'failureCategory':'PRIVATE_DIAGNOSTIC_SENTINEL'}]:
+            self.assert_refused({**good, **patch})
+        self.assert_refused(good, 'JOURNAL_PARENT_DRIFT', parent_changes={'phase':'FOREIGN'})
+        self.assert_refused({**good,'operationId':str(uuid.uuid4())}, 'CHILD_JOURNAL_ABSENT')
+        self.assert_refused(good, 'CHILD_JOURNAL_VERSION', before={**self.before,'authClient':{**good,'version':8}})
+
     def test_complete_diagnostics_survive_merge_and_parent_save(self):
         for stage in ('SIGN', 'KEY_READ', 'EXCHANGE', 'UNKNOWN'):
             for category, statuses in (('HTTP', (None, 100, 403, 599)),

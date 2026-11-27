@@ -16,13 +16,13 @@ APP = HERE.parent.parent
 LOCKS = {
     "historical_launch": (APP / "p08-authentication-local-20261026/source/auth-launch.mjs", "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a"),
     "historical_adapters": (APP / "p08-authentication-local-20261026/source/auth-adapters.mjs", "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a"),
-    "serialized_handoff": (APP / "p08-serialized-handoff-local-20261031/source/handoff.py", "ee2d6197c98b8db403315510a98303e0e93581b4126ce19847c4cd3fddc2e526"),
+    "serialized_handoff": (APP / "p08-serialized-handoff-local-20261031/source/handoff.py", "845cb9ea0856935c248563468c90546a8c68df15a49bba092ff2c4e09c89934b"),
     "coordinator": (APP / "p08-live-binder-local-20261029/source/coordinator.py", "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"),
     "bridge": (APP / "p08-native-bridge-local-20261029/source/bridge.py", "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"),
     "adapter": (APP / "p08-native-closeout-local-20261031/source/adapter.py", "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"),
-    "authority": (APP / "p08-coordinator-auth-local-20261031/source/authority.mjs", "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c"),
+    "authority": (APP / "p08-coordinator-auth-local-20261031/source/authority.mjs", "ee11bdf0bcd06beba64c1f9cd0c32b84b56e1b1bac42c68fc9c2f9a9d27aaf27"),
     "sequence": (APP / "p08-coordinator-auth-local-20261031/source/sequence.mjs", "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c"),
-    "client": (APP / "p08-coordinator-auth-local-20261031/source/client.mjs", "0a895a35ba29fe4b6968be842be220e0d8f4b08ffeb7fc634e0462ca3e9b0939"),
+    "client": (APP / "p08-coordinator-auth-local-20261031/source/client.mjs", "127a37aa0c1bf3b65b068dc7cebd153a005822a3c015c6635329d957415bfbdd"),
     "bridge_plan": (APP / "p08-authentication-local-20261026/source/reuse/plan.json", "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"),
 }
 OWNED_RECEIPT = "owned-receipt.json"
@@ -32,6 +32,48 @@ AUTH_FIELDS = {"operationId", "version", "phase", "activationIntent", "firebaseE
                "tokenIssueIntent", "authenticated", "closeoutAttempted", "activatedVersion",
                "disabledVersion", "residuals", "failureStage", "failureCode", "status",
                "sessionClosed", "revocationIntentAt", "responseValidationCode"} | AUTH_DIAGNOSTIC_FIELDS
+
+
+AUTHENTICATION_VALIDATIONS = {
+    "AUTH_ENTRY": set(),
+    "AUTH_IDENTITY_READ": {"BODY_BOUND", "TEXT_DECODE", "JSON_PARSE", "RESPONSE_SHAPE", "PROVIDER_ERROR", "IDENTITY_MISMATCH"},
+    "AUTH_IDENTITY_CHECK": {"IDENTITY_MISMATCH", "CLAIMS_MISMATCH"},
+    "AUTH_TOKEN_DECODE": {"JSON_PARSE"},
+    "AUTH_TOKEN_CHECK": {"RESPONSE_SHAPE", "CLAIMS_MISMATCH", "TOKEN_TIME"},
+    "AUTH_RUNTIME_READ": {"BODY_BOUND", "TEXT_DECODE", "JSON_PARSE", "RESPONSE_SHAPE", "JOB_MISMATCH"},
+}
+AUTHENTICATION_CODES = {"AUTHENTICATION_REFUSED", "INTERRUPTED", "OPERATION_DEADLINE",
+    "CLOCK_ROLLBACK", "EXACT_TOKEN_REQUIRED", "TOKEN_CLAIMS_DRIFT", "TOKEN_TIME",
+    "AUTH_RUNTIME_REFUSED", "EXACT_JOB_READBACK"}
+
+
+def authentication_diagnostics(child):
+    stage, category = child.get("authStage"), child.get("failureCategory")
+    status = child.get("httpStatus")
+    if not (type(stage) is str and stage in AUTHENTICATION_VALIDATIONS and
+            child.get("failureStage") == "RUNTIME_AUTH_INTENT" and
+            type(child.get("failureCode")) is str and child["failureCode"] in AUTHENTICATION_CODES and
+            child.get("authenticated") is False and type(category) is str and
+            category in {"TIMEOUT", "TRANSPORT", "HTTP", "RESPONSE_VALIDATION", "GUARD", "UNKNOWN"}):
+        return False
+    if category in {"TIMEOUT", "TRANSPORT", "HTTP"} and stage not in {"AUTH_IDENTITY_READ", "AUTH_RUNTIME_READ"}:
+        return False
+    if status is not None and not (category == "HTTP" and type(status) is int and 100 <= status <= 599):
+        return False
+    if category == "RESPONSE_VALIDATION":
+        value = child.get("responseValidationCode")
+        if type(value) is not str or value not in AUTHENTICATION_VALIDATIONS[stage]:
+            return False
+    elif "responseValidationCode" in child:
+        return False
+    exact = {"EXACT_TOKEN_REQUIRED": ("AUTH_ENTRY", "GUARD", None),
+             "TOKEN_CLAIMS_DRIFT": ("AUTH_TOKEN_CHECK", "RESPONSE_VALIDATION", "CLAIMS_MISMATCH"),
+             "TOKEN_TIME": ("AUTH_TOKEN_CHECK", "RESPONSE_VALIDATION", "TOKEN_TIME"),
+             "AUTH_RUNTIME_REFUSED": ("AUTH_RUNTIME_READ", "HTTP", None),
+             "EXACT_JOB_READBACK": ("AUTH_RUNTIME_READ", "RESPONSE_VALIDATION", "JOB_MISMATCH")}
+    if child.get("failureCode") in exact:
+        return (stage, category, child.get("responseValidationCode")) == exact[child["failureCode"]]
+    return True
 
 
 class Stop(Exception):
@@ -136,7 +178,12 @@ class Handoff:
             all(isinstance(x, str) and re.fullmatch(r"[A-Z_]{2,48}", x) for x in child["residuals"]),
             "CHILD_JOURNAL_SHAPE")
         diagnostics = set(child) & AUTH_DIAGNOSTIC_FIELDS
-        if diagnostics:
+        runtime_diagnostics = child.get("authStage") in AUTHENTICATION_VALIDATIONS if type(child.get("authStage")) is str else False
+        if child.get("failureCode") == "AUTHENTICATION_REFUSED":
+            need(runtime_diagnostics and diagnostics == AUTH_DIAGNOSTIC_FIELDS, "CHILD_JOURNAL_SHAPE")
+        if runtime_diagnostics:
+            need(diagnostics == AUTH_DIAGNOSTIC_FIELDS and authentication_diagnostics(child), "CHILD_JOURNAL_SHAPE")
+        elif diagnostics:
             need(diagnostics == AUTH_DIAGNOSTIC_FIELDS and
                  child.get("failureCode") == "SIGN_EXCHANGE_REFUSED" and
                  type(child.get("authStage")) is str and
@@ -151,7 +198,7 @@ class Handoff:
         need((previous is None and child["version"] >= 1) or
              (isinstance(previous, dict) and child["version"] >= previous.get("version", 0) and
               child["operationId"] == previous.get("operationId")), "CHILD_JOURNAL_VERSION")
-        if "responseValidationCode" in child:
+        if "responseValidationCode" in child and not runtime_diagnostics:
             need(diagnostics == AUTH_DIAGNOSTIC_FIELDS and
                  child.get("failureCode") == "SIGN_EXCHANGE_REFUSED" and
                  child.get("failureCategory") == "RESPONSE_VALIDATION" and

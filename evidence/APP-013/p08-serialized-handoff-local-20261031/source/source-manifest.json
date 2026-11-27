@@ -1,15 +1,15 @@
 {
   "files": {
     "child.mjs": "0cc64f264663eb9a8a9d21617ff98974643ceb2b2b2b4e5f5d1548691cb84186",
-    "handoff.py": "ee2d6197c98b8db403315510a98303e0e93581b4126ce19847c4cd3fddc2e526",
+    "handoff.py": "845cb9ea0856935c248563468c90546a8c68df15a49bba092ff2c4e09c89934b",
     "test_handoff.py": "e4d79266e80a902a196f9008bbb2082d9c42871873a3d92e634822f0aca054a2"
   },
   "sourceLocks": {
     "adapter": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c",
-    "authority": "322f4d0201fe69386fa4de383a365bc08c25dffc65279e8ada976764159aa22c",
+    "authority": "ee11bdf0bcd06beba64c1f9cd0c32b84b56e1b1bac42c68fc9c2f9a9d27aaf27",
     "bridge": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce",
     "bridge_plan": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",
-    "client": "0a895a35ba29fe4b6968be842be220e0d8f4b08ffeb7fc634e0462ca3e9b0939",
+    "client": "127a37aa0c1bf3b65b068dc7cebd153a005822a3c015c6635329d957415bfbdd",
     "coordinator": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
     "sequence": "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c"
   },
