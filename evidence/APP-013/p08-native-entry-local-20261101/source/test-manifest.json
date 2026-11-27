@@ -7,13 +7,13 @@
     "fixture_ports.mjs": "1a0f46a688c4090bcd7ab2a704a5ae59f7ec71bba89b04b4bbc9b950c9119c4d",
     "postgres_driver.mjs": "3ff902f711a7ccfc97a84df798fddf2bfe0c3fc46dc3ecc7b3acb9240061b034",
     "test_child_cleanup.py": "47b789abb53393218993ec1dde58593101087eb52772b24ae146a34987643b7d",
-    "test_connected_payment.mjs": "4eb12fcbf00dd2202791554d936f84eeb9b52fc87cf539a71f93d8e58e6d95a2",
-    "test_entry.py": "0a091819877ec8d9fa65fec3201d054a6c64569c5857dba827a83f113e38e7f0",
+    "test_connected_payment.mjs": "8be1f1a34e793ca45c8d02a94a51b32d3524da810e12df372082a1fcb70f579c",
+    "test_entry.py": "e52fb7426792a653d5edff12c54d99724e090d3b4d9213e95b0913e981b18398",
     "test_key_lifecycle.py": "875fe1b8b1a34374118ac904255e3c116e9524308c3348d77d1b67b36b9ccfd6",
     "test_native_postgres.py": "4abdd64770526ecd81d99d700c5ab1d36e1f67f18265eb38cf79274abb3a7896",
     "test_private_inventory_cc1.py": "ff50193e6f48428a77a3a0068e71c9afec698b75b05e03a10584bd554cf7cd3f",
     "test_transports.mjs": "70a1b90fb91db45f52ed7fa8847a6ead89f10868f0f1c923566005c14f6bf002"
   },
-  "runtimeManifestSha256": "35cb192322134e93745543b0f5a8029b9d27452fec368ad6a88dcaa4792756be",
+  "runtimeManifestSha256": "d897e9a029ca0518f25808abb7b5e29a1ed369b7794d5dde55a5085882785cce",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }

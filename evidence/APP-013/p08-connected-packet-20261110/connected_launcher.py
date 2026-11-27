@@ -28,7 +28,11 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass,session_con
         return p.wait_committed_decision(governance,path,expected,start,cutoff)
 
     cap=None;dispatched=False;stage='PACKET_PREPARATION'
-    diagnostic=spec.get('nativePurpose')=='NATIVE_PREFLIGHT_ONLY'
+    purpose=spec.get('nativePurpose')
+    q.need(purpose in (None,'NATIVE_PREFLIGHT_ONLY','NATIVE_AUTH_QUALIFICATION_ONLY'),'PACKET_NATIVE_PURPOSE')
+    diagnostic=purpose=='NATIVE_PREFLIGHT_ONLY'
+    auth_only=purpose=='NATIVE_AUTH_QUALIFICATION_ONLY'
+    q.need(not auth_only or session_consent is None,'AUTH_QUALIFICATION_REQUIRES_SEPARATE_CHAT_DECISIONS')
     q.need(not diagnostic or session_consent is None,'PREFLIGHT_REQUIRES_SEPARATE_CHAT_DECISIONS')
     try:
         endpoint=read_hidden('Existing Sandbox endpoint ID (hidden, starts we_): ').strip()
@@ -45,14 +49,24 @@ def main(spec,governance=p.G,review=None,read_hidden=getpass.getpass,session_con
             p.capture_attended_confirmation(review,'qualification',spec,decision,e,session_consent,governance,read_line=read_confirmation)
         e['decision']=wait_decision('APP013_P08_CURRENT_QUALIFICATION_20261110.json',decision,q.model.timestamp(spec['window']['start']),q.model.timestamp(spec['window']['cutoff']))
         def approve_native(native):
-            d={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ' if diagnostic else 'APPROVE_EXACT_P08_CONNECTED_PAYMENT',('externalReadAuthorized' if diagnostic else 'externalActionAuthorized'):True,'operationId':spec['prospectiveOperationId'],'scopeSha256':q.model.digest(native),'sourceManifestSha256':native['sourceManifestSha256']}
-            summary={} if diagnostic else {'summary':p.stage_review('native',spec,d,native,{'nativeCost':{'allowanceUsd':0,'hardBillingCap':False,'existingLiabilitiesUnchanged':True}})['summary']}
+            d={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ' if diagnostic else 'APPROVE_EXACT_P08_AUTH_QUALIFICATION' if auth_only else 'APPROVE_EXACT_P08_CONNECTED_PAYMENT',('externalReadAuthorized' if diagnostic else 'externalActionAuthorized'):True,'operationId':spec['prospectiveOperationId'],'scopeSha256':q.model.digest(native),'sourceManifestSha256':native['sourceManifestSha256']}
+            summary={} if diagnostic or auth_only else {'summary':p.stage_review('native',spec,d,native,{'nativeCost':{'allowanceUsd':0,'hardBillingCap':False,'existingLiabilitiesUnchanged':True}})['summary']}
+            if auth_only:
+                q.need(native.get('purpose')==purpose and native.get('version')==2,'PACKET_NATIVE_PURPOSE')
+                summary={'purpose':purpose,'summary':{
+                    'actions':['Retain current qualification and temporary runtime/IAM/key/test-account setup',
+                               'Read exact Sandbox secret/disabled webhook preflight',
+                               'Verify token and protected same-job authentication',
+                               'Mandatory normal and independent cleanup/private purge'],
+                    'paymentAuthorized':False,'webhookEnableAuthorized':False,'browserAuthorized':False,
+                    'limits':spec['prospectiveLimits'],
+                    'cost':{'allowanceUsd':0,'hardBillingCap':False,'existingLiabilitiesUnchanged':True}}}
             publish('native',d,{'operationId':spec['prospectiveOperationId'],'window':spec['prospectiveWindow'],'paymentWorkEnd':spec['paymentWorkEnd'],'qualification':native['qualification'],'limits':spec['prospectiveLimits'],'sourceCommit':spec['sourceCommit'],**summary,**({'purpose':'NATIVE_PREFLIGHT_ONLY','activationAuthorized':False,'effectiveLimits':a.PREFLIGHT_LIMITS} if diagnostic else {})})
             if session_consent is not None:
                 p.capture_attended_confirmation(review,'native',spec,d,native,session_consent,governance,read_line=read_confirmation)
             return wait_decision('APP013_P08_NATIVE_OPERATION_20261110.json',d,q.model.timestamp(spec['prospectiveWindow']['start']),q.model.timestamp(spec['prospectiveWindow']['cutoff']))
         dispatched=True
-        result=p.execute_connected(cap,e,approve_native,native_purpose=spec['nativePurpose']) if diagnostic else p.execute_connected(cap,e,approve_native)
+        result=p.execute_connected(cap,e,approve_native,native_purpose=spec['nativePurpose']) if purpose is not None else p.execute_connected(cap,e,approve_native)
         publish('result',{},result)
         return 0
     except BaseException as error:

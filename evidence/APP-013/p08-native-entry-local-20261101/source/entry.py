@@ -820,6 +820,11 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
         residuals = list(result['residuals'])
         if cap.e['version'] == 2:
             payment = controller.j.get('payment')
+            if cap.e.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY' and isinstance(payment, dict):
+                # Do not erase contradictory evidence or let it become a clean auth proof.
+                if (payment.get('enableIntent') is not False or payment.get('bridgeClosed') is not True or
+                        payment.get('outcome') != 'NOT_OBSERVED'):
+                    residuals.append('AUTH_QUALIFICATION_PAYMENT_DRIFT')
             # Main readback failure must survive into work-result: the independent
             # child may only reuse a completed, successful payment observation.
             if controller.j.get('authAttempted') and (

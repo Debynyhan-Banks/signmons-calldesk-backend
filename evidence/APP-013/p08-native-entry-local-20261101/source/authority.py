@@ -63,10 +63,12 @@ class Capability:
     def __init__(self, envelope, root, mode=None, clock=time.time, read_commit=committed, continuing=False):
         manifest = verify_sources()
         diagnostic = envelope.get('purpose') == 'NATIVE_PREFLIGHT_ONLY'
+        auth_only = envelope.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY'
+        need(not auth_only or envelope.get('version') == 2, 'AUTH_QUALIFICATION_VERSION')
         mode = ('preflight' if diagnostic else 'run') if mode is None else mode
         need((diagnostic and mode in ('preflight', 'close-preflight')) or
-             (not diagnostic and 'purpose' not in envelope and mode in ('run', 'closeout', 'readback')), 'ENTRY_PURPOSE_MODE')
-        need(set(envelope) == ({'purpose'} if diagnostic else set()) | ({'payment'} if envelope.get('version') == 2 else set()) | {'version', 'execution', 'plan', 'target', 'database', 'resources',
+             (not diagnostic and (auth_only or 'purpose' not in envelope) and mode in ('run', 'closeout', 'readback')), 'ENTRY_PURPOSE_MODE')
+        need(set(envelope) == ({'purpose'} if diagnostic or auth_only else set()) | ({'payment'} if envelope.get('version') == 2 else set()) | {'version', 'execution', 'plan', 'target', 'database', 'resources',
                               'qualification', 'limits', 'sourceManifestSha256', 'sourceCommit', 'decision'},
              'ENVELOPE_SHAPE')
         e = json.loads(json.dumps(envelope))
@@ -119,7 +121,7 @@ class Capability:
             verify_payment_qualification(e)
         scope_hash = digest({k: v for k, v in e.items() if k != 'decision'})
         if e['execution'] == 'PROOF_ONLY':
-            need(e['decision'] == {'decision': ('APPROVE_LOCAL_PREFLIGHT_PROOF' if diagnostic else 'APPROVE_LOCAL_NATIVE_ENTRY_PROOF'), 'scopeSha256': scope_hash},
+            need(e['decision'] == {'decision': ('APPROVE_LOCAL_PREFLIGHT_PROOF' if diagnostic else 'APPROVE_LOCAL_AUTH_QUALIFICATION_PROOF' if auth_only else 'APPROVE_LOCAL_NATIVE_ENTRY_PROOF'), 'scopeSha256': scope_hash},
                  'LOCAL_PROOF_BINDING')
         else:
             d = e['decision']
@@ -129,6 +131,7 @@ class Capability:
             need(digest(raw) == d['sha256'], 'DECISION_DIGEST')
             need(json.loads(raw) == {'owner': 'Debynyhan Banks',
                  'decision': ('APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ' if diagnostic else
+                              'APPROVE_EXACT_P08_AUTH_QUALIFICATION' if auth_only else
                               'APPROVE_EXACT_P08_CONNECTED_PAYMENT' if e['version'] == 2 else 'APPROVE_EXACT_P08_NATIVE_ENTRY'),
                  ('externalReadAuthorized' if diagnostic else 'externalActionAuthorized'): True,
                  'operationId': p['operationId'], 'scopeSha256': scope_hash,

@@ -55,6 +55,14 @@ class BootstrapTests(unittest.TestCase):
     def open(self, **kwargs):
         return b.open_bootstrap(self.root, presenter=self.present, **kwargs)
 
+    def test_aq1_cannot_open_browser_even_with_forged_attended_journal(self):
+        self.e['purpose']='NATIVE_AUTH_QUALIFICATION_ONLY';self.t.seal()
+        self.j['nativeEntry']['envelopeSha256']=b.a.digest(self.e)
+        self.write('journal.json',self.j)
+        with self.assertRaisesRegex(Stop,'BOOTSTRAP_PAYMENT_ONLY'):self.open()
+        self.assertEqual(self.calls,[])
+        self.assertFalse((self.root/b.MARKER).exists())
+
     def test_valid_attended_phase_dispatches_once_and_retains_only_safe_marker(self):
         result = self.open()
         self.assertEqual(result, {'status': 'BROWSER_OPEN_DISPATCHED', 'operationId': self.operation})

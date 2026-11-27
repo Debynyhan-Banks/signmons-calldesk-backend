@@ -12,7 +12,7 @@ def construct(spec, endpoint_id):
 
 def construct_values(spec,values,endpoint_id,cap):
     q.need(set(spec)==({'nativePurpose'} if 'nativePurpose' in spec else set()) | {'recoveryId','qualificationId','prospectiveOperationId','sourceCommit','manifestSha256','window','prospectiveWindow','prospectiveLimits','paymentRequestId','paymentWorkEnd'},'PACKET_SPEC_SHAPE')
-    q.need(spec.get('nativePurpose') in (None,'NATIVE_PREFLIGHT_ONLY'),'PACKET_NATIVE_PURPOSE')
+    q.need(spec.get('nativePurpose') in (None,'NATIVE_PREFLIGHT_ONLY','NATIVE_AUTH_QUALIFICATION_ONLY'),'PACKET_NATIVE_PURPOSE')
     q.need(cap.e['version']==2 and set(values)=={'projectNumber','targetId','paymentBinding'},'PACKET_RECOVERY_VERSION')
     q.validate_recovered_payment(values['paymentBinding'],cap)
     a=q.current_module('authority');c=a.load('p08-live-binder-local-20261029/source/coordinator.py','qualification_packet_validator');mods=c.sources();restore=mods['restore'];m=q.model
@@ -36,7 +36,7 @@ def construct_values(spec,values,endpoint_id,cap):
 def native_envelope(qualification_envelope,candidate,purpose=None):
     a=q.current_module('authority');scope=qualification_envelope['nativeScope']
     q.need(candidate.get('operationId')==scope['plan']['operationId'] and candidate.get('scopeSha256')==q.model.digest(scope),'PACKET_QUALIFICATION_BINDING')
-    q.need(purpose in (None,'NATIVE_PREFLIGHT_ONLY'),'PACKET_NATIVE_PURPOSE')
+    q.need(purpose in (None,'NATIVE_PREFLIGHT_ONLY','NATIVE_AUTH_QUALIFICATION_ONLY'),'PACKET_NATIVE_PURPOSE')
     return {**({'purpose':purpose} if purpose else {}),'version':2,'execution':'EXTERNAL',**copy.deepcopy(scope),'qualification':copy.deepcopy(candidate),
         'sourceManifestSha256':a.digest((a.HERE/'source-manifest.json').read_bytes()),'sourceCommit':qualification_envelope['sourceCommit']}
 
@@ -103,7 +103,7 @@ def execute_connected(cap,envelope,approve_native,native_purpose=None):
         stage='NATIVE_HANDOFF'
         q.handoff_qualified_bindings(cap,native)
         stage='NATIVE_RUN_AND_CLOSEOUT'
-        exits=run_native_and_close(cap.native_root,preflight_only=True) if native_purpose else run_native_and_close(cap.native_root)
+        exits=run_native_and_close(cap.native_root,preflight_only=True) if native_purpose=='NATIVE_PREFLIGHT_ONLY' else run_native_and_close(cap.native_root)
         stage='NATIVE_RECEIPT'
         native_result=q.private_json(cap.native_root/'result.json')
     except BaseException as error:

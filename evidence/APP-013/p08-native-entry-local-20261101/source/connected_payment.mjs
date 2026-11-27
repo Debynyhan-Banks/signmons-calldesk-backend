@@ -198,7 +198,7 @@ export async function closePayment(cap,journal,ports) {
 }
 
 export async function runPayment(cap,{db,ports,journal,token,present}) {
-  need(cap.e.version===2 && cap.mode==='--run','PAYMENT_AUTHORITY');gate(cap);
+  need(cap.e.version===2 && cap.mode==='--run' && !('purpose' in cap.e),'PAYMENT_AUTHORITY');gate(cap);
   const p=cap.e.payment,deadline=Date.parse(p.workEnd);
   need(deadline>Date.now() && deadline<=Date.parse(cap.e.plan.window.workEnd)-60000,'PAYMENT_WORK_DEADLINE');
   journal.load();need(journal.state.phase==='QUALIFIED' && journal.state.enableIntent===false,'PAYMENT_PREFLIGHT_REQUIRED');
@@ -258,6 +258,9 @@ export function createPaymentPorts(cap,credentials,journal,injected={}) {
   }
   return {
     async endpoint(method,disabled,cleanup){
+      need(cap.e.purpose!=='NATIVE_AUTH_QUALIFICATION_ONLY' ||
+        (method==='GET'&&disabled===null)||(cleanup===true&&method==='POST'&&disabled===true),
+        'AUTH_QUALIFICATION_PAYMENT_DENIED');
       need((method==='GET'&&disabled===null)||(method==='POST'&&typeof disabled==='boolean'),'PAYMENT_ENDPOINT_METHOD');
       need(cleanup?method==='GET'||disabled===true:(cap.mode==='--run'||(cap.mode==='--payment-preflight'&&method==='GET')),'PAYMENT_CLEANUP_ONLY');
       gate(cap,cleanup);need(journal.state.endpointCalls<14,'PAYMENT_ENDPOINT_BUDGET');
@@ -270,6 +273,7 @@ export function createPaymentPorts(cap,credentials,journal,injected={}) {
       need(r.ok,'PAYMENT_ENDPOINT_REFUSED');return endpoint(JSON.parse(await r.text()),p);
     },
     async application(url,options){
+      need(cap.e.purpose!=='NATIVE_AUTH_QUALIFICATION_ONLY','AUTH_QUALIFICATION_PAYMENT_DENIED');
       gate(cap);need(cap.mode==='--run','PAYMENT_CLEANUP_ONLY');
       const base=cap.e.runtimeOrigin+'/jobs/'+cap.e.plan.jobId;
       const routes=new Map([['GET '+base+'/payment-request','reads'],['GET '+base+'/payment-events','reads'],

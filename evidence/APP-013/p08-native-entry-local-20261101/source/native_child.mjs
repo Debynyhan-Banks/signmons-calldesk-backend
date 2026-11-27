@@ -151,7 +151,7 @@ async function runChildAtBoundary(mode, request, injected, context) {
         residuals:[],sessionClosed:true,liveAuthorization:false,authProofReady:false};
     }
     let afterAuthentication;
-    if(e.version===2 && mode==='--run'){
+    if(e.version===2 && mode==='--run' && e.purpose!=='NATIVE_AUTH_QUALIFICATION_ONLY'){
       afterAuthentication=async token=>{
         const {runPayment}=await import('./connected_payment.mjs');
         const present=injected.present ?? (async bootstrapUrl=>{

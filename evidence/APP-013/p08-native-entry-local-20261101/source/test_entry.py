@@ -82,7 +82,7 @@ class EntryTests(unittest.TestCase):
         self.seal()
 
     def seal(self):
-        self.e['decision']={'decision':'APPROVE_LOCAL_NATIVE_ENTRY_PROOF',
+        self.e['decision']={'decision':('APPROVE_LOCAL_AUTH_QUALIFICATION_PROOF' if self.e.get('purpose')=='NATIVE_AUTH_QUALIFICATION_ONLY' else 'APPROVE_LOCAL_NATIVE_ENTRY_PROOF'),
             'scopeSha256':a.digest({k:v for k,v in self.e.items() if k!='decision'})}
         if self.path.exists():self.path.unlink()
         reserve(self.path,self.e)
@@ -2106,8 +2106,11 @@ class JournalContractIntegrationTests(unittest.TestCase):
         value.scenario = scenario
         return value
 
-    def completed(self, scenario, *, mutate_io=None):
+    def completed(self, scenario, *, mutate_io=None, auth_only=False):
         fixture = self.fixture(scenario)
+        if auth_only:
+            fixture.e['purpose']='NATIVE_AUTH_QUALIFICATION_ONLY'
+            fixture.seal()
         before_merge = []
         original = fixture.factory
         def factory(cap):
@@ -2129,7 +2132,8 @@ class JournalContractIntegrationTests(unittest.TestCase):
         self.assertTrue(final['privateInputsAbsent'])
         self.assertFalse(fixture.path.exists())
         self.assertFalse((fixture.root/'payment-bootstrap-open-attempt.json').exists())
-        self.assertLessEqual(journal['nativeEntry']['calls']['child'], fixture.e['limits']['child'])
+        for kind,count in journal['nativeEntry']['calls'].items():
+            self.assertLessEqual(count, fixture.e['limits'][kind])
         observations = journal['nativeEntry'].get('childObservations', [])
         self.assertEqual([x['childCall'] for x in observations],
                          list(range(1,journal['nativeEntry']['calls']['child']+1)))
@@ -2264,7 +2268,7 @@ try {
                 self.assertEqual(primary['processOutcome'], expected)
                 self.assertEqual(primary['journalMerge'], 'ACCEPTED')
 
-    def ec1_completed(self, scenario, *, success=False, process_fault=None):
+    def ec1_completed(self, scenario, *, success=False, process_fault=None, auth_only=False):
         """Exercise the documented exchange through actual authentication and parent merge."""
         observed = []
         script = """import assert from 'node:assert/strict';
@@ -2336,7 +2340,8 @@ try {
  assert.equal(result.authenticated,success||handoff);
  assert.equal(result.sessionClosed,true);assert.deepEqual(result.residuals,[]);
  assert.deepEqual([counts.sign,counts.key,counts.exchange],[1,1,1]);
- if(success){assert.ok(counts.job>0);assert.ok(counts.paymentWrites>0);assert.equal(counts.present,1);}
+ if(success && e.purpose==='NATIVE_AUTH_QUALIFICATION_ONLY'){assert.equal(counts.job,1);assert.equal(counts.paymentWrites,0);assert.equal(counts.present,0);}
+ else if(success){assert.ok(counts.job>0);assert.ok(counts.paymentWrites>0);assert.equal(counts.present,1);}
  else {
   assert.equal(counts.job,(['runtime','job','handoff'].includes(scenario.kind)||(scenario.kind==='ap2'&&scenario.fault.startsWith('runtime-')))?1:0);
   assert.equal(counts.paymentWrites,0);assert.equal(counts.present,0);
@@ -2376,8 +2381,17 @@ try {
                     (fixture.root/'journal.json').write_text(json.dumps(value))
                 return result
             io.child = invoke
-        fixture, work, final, journal, _ = self.completed('normal', mutate_io=inject)
+        fixture, work, final, journal, _ = self.completed('normal', mutate_io=inject, auth_only=auth_only)
         self.assertEqual(len(observed), 1)
+        if auth_only and success and process_fault:
+            self.assertTrue(observed[0]['authenticated'])
+            self.assertFalse(final['authenticationObserved'] or final['authProofReady'] or final['paymentObserved'])
+            self.assertIsNone(final['childResultSha256'])
+            self.assertIn('AUTH_OUTCOME_UNKNOWN',final['residuals'])
+            self.assertFalse(any(fixture.f.runtime_state.values()))
+            self.assertFalse(journal['payment']['enableIntent'])
+            self.assertTrue(journal['payment']['bridgeClosed'])
+            return
         if scenario['kind'] == 'ap2' and process_fault:
             diagnostic = observed[0]
             self.assertEqual(diagnostic['authStage'], scenario['stage'])
@@ -2431,8 +2445,8 @@ try {
         self.assertTrue(auth['sessionClosed'])
         self.assertEqual(journal['authProofAccepted'], success)
         self.assertEqual(final['authenticationObserved'], success)
-        self.assertEqual(final['paymentObserved'], success)
-        self.assertEqual(work['paymentObserved'], success)
+        self.assertEqual(final['paymentObserved'], success and not auth_only)
+        self.assertEqual(work['paymentObserved'], success and not auth_only)
         self.assertFalse(final['authProofReady'] or final['paymentReadyForAcceptance'])
         self.assertFalse(any(fixture.f.runtime_state.values()))
         self.assertNotIn('childResultSha256', work)
@@ -2443,7 +2457,8 @@ try {
             self.assertEqual(final['status'], 'ENTRY_CLOSED')
             self.assertEqual(final['residuals'], [])
             self.assertRegex(final['childResultSha256'], '^[a-f0-9]{64}$')
-            self.assertEqual(journal['payment']['outcome'], 'APPLICATION_SETTLED')
+            self.assertEqual(journal['payment']['outcome'], 'NOT_OBSERVED' if auth_only else 'APPLICATION_SETTLED')
+            if auth_only:self.assertFalse(journal['payment']['enableIntent'])
             self.assertNotIn('failureCode', auth)
         else:
             self.assertEqual(final['status'], 'ENTRY_CONTAINMENT_UNCONFIRMED')
@@ -2489,7 +2504,22 @@ try {
         for path in fixture.root.iterdir():
             self.assertNotIn(b'header.', path.read_bytes())
 
-    def test_ap2_actual_transport_client_child_parent_and_cleanup_failure_matrix(self):
+    def test_aq1_success_stops_after_authentication_and_closes_independently(self):
+        self.ec1_completed({'kind':'documented'},success=True,auth_only=True)
+
+    def test_aq1_successful_child_lost_output_never_becomes_parent_proof(self):
+        for fault in ('lost','timeout','exit','interruption','merge'):
+            with self.subTest(fault=fault):
+                self.ec1_completed({'kind':'documented'},success=True,auth_only=True,process_fault=fault)
+
+    def test_aq1_diagnostic_failure_and_lost_output_matrix(self):
+        for fault in (None,'lost','timeout','exit','interruption','merge'):
+            with self.subTest(fault=fault):
+                self.ec1_completed({'kind':'ap2','fault':'runtime-json','stage':'AUTH_RUNTIME_READ',
+                                    'category':'RESPONSE_VALIDATION','validation':'JSON_PARSE'},
+                                   auth_only=True,process_fault=fault)
+
+    def test_ap2_actual_transport_client_child_parent_and_cleanup_failure_matrix(self, auth_only=False):
         cases = [
             ('lookup-transport','AUTH_IDENTITY_READ','TRANSPORT',None),
             ('lookup-http','AUTH_IDENTITY_READ','HTTP',None),
@@ -2509,7 +2539,10 @@ try {
         for fault, stage, category, validation in cases:
             with self.subTest(fault=fault):
                 self.ec1_completed({'kind':'ap2','fault':fault,'stage':stage,
-                                    'category':category,'validation':validation})
+                                    'category':category,'validation':validation},auth_only=auth_only)
+
+    def test_aq1_actual_authentication_failure_matrix(self):
+        self.test_ap2_actual_transport_client_child_parent_and_cleanup_failure_matrix(auth_only=True)
 
     def test_ap2_runtime_diagnostics_survive_lost_output_but_never_create_proof(self):
         for fault in ['lost', 'timeout', 'exit', 'interruption', 'merge']:
@@ -2905,3 +2938,82 @@ const cleanup=[];try {
         result=subprocess.run(['/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node','--input-type=module'],input=harness,text=True,cwd=source,capture_output=True)
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn('ACTUAL_CHILD_AFTER_WAIT_PASS',result.stdout)
+
+
+class AQ1AuthorityRecoveryTests(unittest.TestCase):
+    def fixture(self):
+        f=ConnectedEntryTests();f.setUp(timing=True);self.addCleanup(f.doCleanups)
+        f.e['purpose']='NATIVE_AUTH_QUALIFICATION_ONLY';f.seal();return f
+
+    def test_aq1_external_decision_and_committed_source_are_exact(self):
+        f=self.fixture();f.e['execution']='EXTERNAL'
+        scope=a.digest({k:v for k,v in f.e.items() if k!='decision'})
+        decision={'owner':'Debynyhan Banks','decision':'APPROVE_EXACT_P08_AUTH_QUALIFICATION',
+                  'externalActionAuthorized':True,'operationId':f.e['plan']['operationId'],
+                  'scopeSha256':scope,'sourceManifestSha256':f.e['sourceManifestSha256']}
+        raw=json.dumps(decision).encode()
+        f.e['decision']={'commit':'1'*40,'path':'APP013_P08_NATIVE_OPERATION_20261127.json','sha256':a.digest(raw)}
+        reader=lambda repo,c,p:raw if repo==a.GOV else (a.BACKEND/p).read_bytes()
+        # Fictional endpoint pins must first fail the real external validator.
+        with self.assertRaisesRegex(Stop,'PAYMENT_ENDPOINT_PIN'):
+            a.Capability(f.e,f.root,read_commit=reader)
+        validate=a.validate_payment
+        def synthetic_payment(envelope,times):
+            self.assertEqual(envelope['execution'],'EXTERNAL')
+            validate({**envelope,'execution':'PROOF_ONLY'},times)
+        # Isolate exact external decision/source checks without introducing real private pins.
+        # Current qualification receipt binding is exercised separately below.
+        with patch.object(a,'validate_payment',side_effect=synthetic_payment), patch.object(a,'verify_payment_qualification') as qualified:
+            cap=a.Capability(f.e,f.root,read_commit=reader)
+            self.assertTrue(cap.external);self.assertEqual(cap.mode,'run');qualified.assert_called_once()
+            for choice in ('APPROVE_EXACT_P08_CONNECTED_PAYMENT','APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ'):
+                wrong=json.dumps({**decision,'decision':choice}).encode();f.e['decision']['sha256']=a.digest(wrong)
+                with self.assertRaisesRegex(Stop,'EXACT_OWNER_APPROVAL'):
+                    a.Capability(f.e,f.root,read_commit=lambda repo,c,p:wrong if repo==a.GOV else (a.BACKEND/p).read_bytes())
+            f.e['decision']['sha256']=a.digest(raw)
+            with self.assertRaisesRegex(Stop,'COMMITTED_SOURCE_MANIFEST'):
+                a.Capability(f.e,f.root,read_commit=lambda repo,c,p:raw if repo==a.GOV else b'changed')
+        self.assertEqual(f.calls,0)
+
+    def test_aq1_current_qualification_lock_replay_and_drift_checks_remain(self):
+        for method in ('test_payment_requires_matching_current_qualification_receipt',
+                       'test_concurrent_entry_refuses_before_io','test_duplicate_attempt_never_replays',
+                       'test_approval_and_qualification_and_resource_drift_before_io'):
+            with self.subTest(method=method):
+                f=self.fixture()
+                cls=ConnectedEntryTests if method=='test_payment_requires_matching_current_qualification_receipt' else EntryTests
+                getattr(cls,method)(f)
+
+    def test_aq1_partial_setup_interruption_still_closes_independently(self):
+        f=self.fixture();original=entry.Coordinator.settle_bindings
+        def interrupt(controller):
+            def pause(seconds):controller.abort=True;controller.monotonic=lambda:1.
+            controller.pause=pause;return original(controller)
+        with patch.object(entry.Coordinator,'settle_bindings',interrupt):work=f.run_entry()
+        final=f.run_entry('closeout');j=read(f.root/'journal.json')
+        self.assertEqual(j['failure'],'INTERRUPTED');self.assertFalse(j['authAttempted'])
+        self.assertFalse(any(f.f.runtime_state.values()));self.assertFalse(f.f.transport.bindings)
+        self.assertFalse(work['paymentObserved'] or final['authenticationObserved'])
+        self.assertTrue(final['privateInputsAbsent']);self.assertEqual(final['residuals'],[])
+
+    def test_aq1_expired_work_and_insufficient_cleanup_reserve_refuse(self):
+        f=self.fixture()
+        with self.assertRaises(Exception):entry.run_entry(f.path,io_factory=f.factory,clock=lambda:f.f.now+3000)
+        self.assertEqual(f.calls,0)
+        f.e['payment']['workEnd']=datetime.datetime.fromtimestamp(time.time()+1300,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        f.e['qualification']['scopeSha256']=a.digest({k:f.e[k] for k in ('plan','target','database','resources','limits','payment')})
+        f.seal();f.run_entry();j=read(f.root/'journal.json')
+        self.assertEqual(j['failure'],'DEADLINE');self.assertFalse(j['runtimeOwned'])
+        final=f.run_entry('closeout');self.assertTrue(final['privateInputsAbsent']);self.assertEqual(final['residuals'],[])
+
+    def test_aq1_contradictory_payment_records_never_become_clean_authentication_proof(self):
+        for field,value in [('enableIntent',True),('bridgeClosed',False),('outcome','APPLICATION_SETTLED')]:
+            with self.subTest(field=field):
+                f=self.fixture();f.run_entry();j=read(f.root/'journal.json')
+                j['payment'][field]=value;(f.root/'journal.json').write_text(json.dumps(j))
+                final=f.run_entry('closeout')
+                self.assertEqual(final['status'],'ENTRY_CONTAINMENT_UNCONFIRMED')
+                self.assertIn('AUTH_QUALIFICATION_PAYMENT_DRIFT',final['residuals'])
+                self.assertFalse(final['authProofReady'] or final['paymentReadyForAcceptance'])
+                self.assertTrue(final['privateInputsAbsent'])
+                self.assertFalse(any(f.f.runtime_state.values()))

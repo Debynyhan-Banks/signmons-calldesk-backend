@@ -7,7 +7,7 @@ import packet
 import copy,test_packet
 
 class LauncherBoundaryTests(unittest.TestCase):
-    def run_case(self,expire=None,interrupt=False,attended=False,decline=None,diagnostic=False,malformed=None):
+    def run_case(self,expire=None,interrupt=False,attended=False,decline=None,diagnostic=False,malformed=None,auth_only=False):
         with tempfile.TemporaryDirectory(prefix='p08-launch-boundary-',dir='/private/tmp') as tmp:
             root=Path(tmp);repo=root/'gov';repo.mkdir();review=root/'review'
             def git(*args):return subprocess.check_output(['git',*args],cwd=repo,stderr=subprocess.PIPE)
@@ -16,10 +16,12 @@ class LauncherBoundaryTests(unittest.TestCase):
             window={'start':'1970-01-01T00:00:10Z','cutoff':'1970-01-01T00:00:15Z'}
             spec={'recoveryId':'synthetic','qualificationId':'qual','prospectiveOperationId':'native','window':window,'prospectiveWindow':window,'paymentWorkEnd':'synthetic','prospectiveLimits':{},'sourceCommit':'synthetic'}
             if diagnostic:spec['nativePurpose']='NATIVE_PREFLIGHT_ONLY'
+            if auth_only:spec['nativePurpose']='NATIVE_AUTH_QUALIFICATION_ONLY'
             envelope={'nativeScope':{'private':'PRIVATE_SENTINEL'},'plan':{'nativeScopeSha256':'a'*64},'sdkReview':{'limits':{}}}
             fixture=test_packet.PacketTests();fixture.setUp();self.addCleanup(fixture.doCleanups)
             qe=packet.construct_values(fixture.spec,fixture.values,'we_PRIVATESENTINEL',fixture.cap)
             native=packet.native_envelope(qe,{**fixture.t.e['qualification'],'scopeSha256':packet.q.model.digest(qe['nativeScope'])})
+            if auth_only:native['purpose']='NATIVE_AUTH_QUALIFICATION_ONLY'
             if malformed:malformed(native)
             cap=SimpleNamespace(root=root/'guard')
             def wait(gov,path,expected,start,cutoff):
@@ -29,6 +31,9 @@ class LauncherBoundaryTests(unittest.TestCase):
                     self.assertEqual(expected['decision'],'APPROVE_EXACT_P08_NATIVE_PREFLIGHT_READ')
                     self.assertTrue(expected['externalReadAuthorized'])
                     self.assertNotIn('externalActionAuthorized',expected)
+                if auth_only and stage=='native':
+                    self.assertEqual(expected['decision'],'APPROVE_EXACT_P08_AUTH_QUALIFICATION')
+                    self.assertTrue(expected['externalActionAuthorized'])
                 self.assertFalse((repo/path).exists())
                 def advance(_):
                     now[0]+=1
@@ -36,7 +41,12 @@ class LauncherBoundaryTests(unittest.TestCase):
                     self.assertEqual(published['decisionForReview'],expected)
                     self.assertNotIn('PRIVATE_SENTINEL',json.dumps(published))
                     self.assertNotIn('we_PRIVATESENTINEL',json.dumps(published))
-                    if stage=='native' and not diagnostic:
+                    if stage=='native' and auth_only:
+                        self.assertFalse(published['summary']['paymentAuthorized'])
+                        self.assertFalse(published['summary']['browserAuthorized'])
+                        self.assertFalse(published['summary']['webhookEnableAuthorized'])
+                        self.assertEqual(published['purpose'],'NATIVE_AUTH_QUALIFICATION_ONLY')
+                    if stage=='native' and not diagnostic and not auth_only:
                         summary=published['summary']
                         self.assertEqual(summary['amountTotalCents'],native['payment']['amountTotalCents'])
                         self.assertEqual(summary['currency'],native['payment']['currency'])
@@ -53,7 +63,7 @@ class LauncherBoundaryTests(unittest.TestCase):
                 self.assertFalse(any('dispatch' in item for item in sequence) if stage=='qualification' else 'native-dispatch' in sequence)
                 if decline==stage:raise packet.q.model.Stop('ATTENDED_CONFIRMATION_REFUSED')
             def execute(c,e,approve,**kwargs):
-                self.assertEqual(kwargs, {'native_purpose':'NATIVE_PREFLIGHT_ONLY'} if diagnostic else {})
+                self.assertEqual(kwargs, {'native_purpose':spec['nativePurpose']} if diagnostic or auth_only else {})
                 sequence.append('qualification-dispatch')
                 self.assertEqual(e['nativeScope']['private'],'PRIVATE_SENTINEL')
                 try:
@@ -68,6 +78,21 @@ class LauncherBoundaryTests(unittest.TestCase):
             self.assertNotIn('PRIVATE_SENTINEL',output.getvalue())
             if expire=='qualification':self.assertIn('CONNECTED_STAGE_QUALIFICATION_APPROVAL',output.getvalue())
             return code,sequence
+    def test_aq1_exact_review_and_dispatch_preserve_cleanup(self):
+        code,seq=self.run_case(auth_only=True)
+        self.assertEqual(code,0)
+        self.assertEqual(seq,['qualification-wait','qualification-dispatch','native-wait','native-dispatch','connected-cleanup'])
+        for kwargs in ({'expire':'native'},{'interrupt':True}):
+            code,seq=self.run_case(auth_only=True,**kwargs)
+            self.assertEqual(code,2);self.assertEqual(seq[-1],'connected-cleanup')
+            self.assertNotIn('native-dispatch',seq)
+
+    def test_aq1_delegation_and_unknown_purpose_refuse_before_hidden_input(self):
+        for purpose,consent,code in [('NATIVE_AUTH_QUALIFICATION_ONLY',{},'AUTH_QUALIFICATION_REQUIRES_SEPARATE_CHAT_DECISIONS'),('OTHER',None,'PACKET_NATIVE_PURPOSE')]:
+            with self.assertRaisesRegex(Exception,code):
+                launcher.main({'recoveryId':'synthetic','nativePurpose':purpose},session_consent=consent,
+                              read_hidden=lambda _:self.fail('credential prompt'))
+
     def test_actual_wrapper_waits_for_both_initially_absent_committed_decisions(self):
         code,seq=self.run_case();self.assertEqual(code,0)
         self.assertEqual(seq,['qualification-wait','qualification-dispatch','native-wait','native-dispatch','connected-cleanup'])

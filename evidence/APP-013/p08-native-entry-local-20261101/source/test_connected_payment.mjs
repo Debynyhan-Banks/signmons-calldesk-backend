@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync,unlinkSync,chmodSync,linkSync} from 'node:fs'
 import {randomUUID} from 'node:crypto';
 import {hash,authorizeChild} from './authority_bridge.mjs';
 import {runChild} from './native_child.mjs';
-import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,endpointComparison,stripeSecretName,completedPaymentCloseout} from './connected_payment.mjs';
+import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,endpointComparison,stripeSecretName,completedPaymentCloseout,createPaymentPorts,runPayment,PaymentJournal} from './connected_payment.mjs';
 import {SQL} from '../../p08-coordinator-auth-local-20261031/source/client.mjs';
 import {fixture,portsFor,runConnected} from './fixture_connected.mjs';
 for(const scenario of ['normal','unpaid','lost_create','lost_enable','foreign_endpoint','disable_failed'])test('actual native child payment and cleanup: '+scenario,async t=>{
@@ -254,4 +254,41 @@ test('completed payment proof enforces custody and deadline through actual autho
  assert.throws(()=>completedPaymentCloseout(cap,f.r.envelopePath,digest));unlinkSync(linked);
  const now=Date.now;Date.now=()=>Date.parse(f.e.plan.window.cleanupEnd);
  try{assert.throws(()=>verify(),/OUTER_DEADLINE/);}finally{Date.now=now;}
+});
+
+function authQualificationFixture(t){
+ const f=fixture(t);f.e.purpose='NATIVE_AUTH_QUALIFICATION_ONLY';f.seal();
+ f.e.decision={decision:'APPROVE_LOCAL_AUTH_QUALIFICATION_PROOF',scopeSha256:hash(Object.fromEntries(Object.entries(f.e).filter(([k])=>k!=='decision')))};
+ writeReceipt(f,'envelope.json',f.e);
+ const j=readReceipt(f,'journal.json');j.nativeEntry.envelopeSha256=hash(f.e);writeReceipt(f,'journal.json',j);
+ return f;
+}
+test('AQ1 actual child authenticates, refuses payment and independently reads back cleanup',async t=>{
+ const f=authQualificationFixture(t),base=portsFor(f);let presented=0;
+ const ports={...base,present:async()=>{presented++;throw Error('must not open');}};
+ const result=await runConnected(f.r,ports);
+ assert.equal(result.authenticated,true);assert.equal(result.sessionClosed,true);
+ assert.equal(presented,0);assert.equal(base.inspect().creates,0);assert.equal(base.inspect().status,'disabled');
+ assert.equal(base.inspect().calls.filter(x=>x.url.includes('/jobs/dispatch-board/')).length,1);
+ assert.equal(base.inspect().calls.filter(x=>x.url.startsWith('https://api.stripe.com/')&&x.method==='POST').length,0);
+ await nextChild(f,'--readback',ports);await nextChild(f,'--closeout',ports);
+ const j=readReceipt(f,'journal.json');assert.equal(j.payment.enableIntent,false);
+ assert.equal(j.payment.bridgeClosed,true);assert.equal(j.payment.outcome,'NOT_OBSERVED');
+ assert.equal(j.authClient.phase,'CLOSEOUT_FINISHED');assert.deepEqual(j.authClient.residuals,[]);
+});
+test('AQ1 direct payment and route invocations fail before secret access or I/O',async t=>{
+ const f=authQualificationFixture(t),cap=authorizeChild(f.r.envelopePath,'--run');
+ cap.e.runtimeOrigin=f.e.payment.url.replace('/webhooks/stripe','');
+ const journal=new PaymentJournal(cap,receiptPath(f,'journal.json'));
+ journal.save({phase:'QUALIFIED',enableIntent:false,endpointDisabled:true,bridgeClosed:true,outcome:'NOT_OBSERVED',failureCode:null,endpointCalls:0,secretReads:0,residuals:[]});
+ let calls=0;const base=portsFor(f);
+ const ports=createPaymentPorts(cap,structuredClone(f.r.credentials),journal,{fetcher:async(...args)=>{calls++;return base.fetcher(...args);}});
+ await assert.rejects(()=>runPayment(cap,{db:null,ports,journal,token:'PRIVATE_SENTINEL',present:()=>assert.fail()}),{code:'PAYMENT_AUTHORITY'});
+ for(const cleanup of [false,true])await assert.rejects(()=>ports.endpoint('POST',false,cleanup),{code:'AUTH_QUALIFICATION_PAYMENT_DENIED'});
+ await assert.rejects(()=>ports.endpoint('POST',true,false),{code:'AUTH_QUALIFICATION_PAYMENT_DENIED'});
+ for(const [method,path] of [['GET','/jobs/x/payment-request'],['POST','/job-payment-policy/apply'],['POST','/jobs/x/payment-requests'],['POST','/jobs/x/payment-request/recover']])
+  await assert.rejects(()=>ports.application(cap.e.runtimeOrigin+path,{method}),{code:'AUTH_QUALIFICATION_PAYMENT_DENIED'});
+ assert.equal(calls,0);assert.equal(journal.state.secretReads,0);
+ await ports.endpoint('GET',null,false);await ports.endpoint('POST',true,true);
+ assert.equal(calls,3);assert.equal(base.inspect().status,'disabled');ports.clear();
 });

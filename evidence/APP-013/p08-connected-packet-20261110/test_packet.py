@@ -40,6 +40,24 @@ class PacketTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception,'PACKET_NATIVE_PURPOSE'):
             packet.construct_values({**spec,'nativePurpose':'OTHER'},self.values,'we_synthetic',self.cap)
 
+    def test_aq1_purpose_and_decision_cannot_be_swapped_with_payment(self):
+        spec={**self.spec,'nativePurpose':'NATIVE_AUTH_QUALIFICATION_ONLY'}
+        e=packet.construct_values(spec,self.values,'we_synthetic',self.cap)
+        candidate={**self.t.e['qualification'],'scopeSha256':digest(e['nativeScope'])}
+        native=packet.native_envelope(e,candidate,spec['nativePurpose']);native['execution']='PROOF_ONLY'
+        native['decision']={'decision':'APPROVE_LOCAL_AUTH_QUALIFICATION_PROOF','scopeSha256':digest(native)}
+        self.assertEqual(Capability(native,self.t.root).mode,'run')
+        for mode in ('preflight','close-preflight'):
+            with self.assertRaisesRegex(Exception,'ENTRY_PURPOSE_MODE'):Capability(native,self.t.root,mode)
+        for decision in ('APPROVE_LOCAL_NATIVE_ENTRY_PROOF','APPROVE_LOCAL_PREFLIGHT_PROOF'):
+            bad=copy.deepcopy(native);bad['decision']['decision']=decision
+            with self.assertRaisesRegex(Exception,'LOCAL_PROOF_BINDING'):Capability(bad,self.t.root)
+        for mutation,code in [(lambda n:n.update(version=1),'AUTH_QUALIFICATION_VERSION'),
+                              (lambda n:n.pop('purpose'),'LOCAL_PROOF_BINDING'),
+                              (lambda n:n.update(purpose='OTHER'),'ENTRY_PURPOSE_MODE')]:
+            bad=copy.deepcopy(native);mutation(bad)
+            with self.assertRaisesRegex(Exception,code):Capability(bad,self.t.root)
+
     def test_foreign_operation_manifest_account_and_limits_refuse(self):
         for key,value in [('qualificationId',str(uuid.uuid4())),('prospectiveOperationId',str(uuid.uuid4())),('sourceCommit','f'*40),('manifestSha256','f'*64),('prospectiveLimits',{'cli':1})]:
             spec={**self.spec,key:value}
@@ -105,9 +123,11 @@ class CommandLifetimeTests(unittest.TestCase):
 class RetainedScopeTests(PacketTests):
     def test_qualification_input_removal_preserves_in_memory_native_scope(self):
         self.sequence(False)
+    def test_aq1_uses_run_and_independent_closeout_not_preflight_dispatch(self):
+        self.sequence(False,'NATIVE_AUTH_QUALIFICATION_ONLY')
     def test_declined_native_approval_still_purges_without_native_dispatch(self):
         self.sequence(True)
-    def sequence(self,declined):
+    def sequence(self,declined,purpose=None):
         import tempfile
         from unittest.mock import patch
         e=packet.construct_values(self.spec,self.values,'we_synthetic',self.cap)
@@ -135,8 +155,10 @@ class RetainedScopeTests(PacketTests):
                     self.assertEqual(stopped.exception.connected_stage,'NATIVE_APPROVAL')
                     run.assert_not_called();transfer.assert_not_called()
                 else:
-                    result=packet.execute_connected(cap,e,approve);self.assertTrue(result['privateInputsAbsent']);self.assertFalse(result['paymentReadyForAcceptance'])
+                    result=packet.execute_connected(cap,e,approve,native_purpose=purpose);self.assertTrue(result['privateInputsAbsent']);self.assertFalse(result['paymentReadyForAcceptance'])
                     self.assertEqual(transfer.call_args.args[1]['payment'],e['nativeScope']['payment'])
+                    self.assertEqual(transfer.call_args.args[1].get('purpose'),purpose)
+                    run.assert_called_once_with(cap.native_root)
                 purge.assert_called_once()
 
 for name in PacketTests.__dict__:
