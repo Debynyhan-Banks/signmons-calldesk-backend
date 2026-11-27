@@ -1486,7 +1486,7 @@ def restart_child_code(repo,crash=False,pg=None):
         "q.QualificationCapability.prepare=lambda cap:None" if crash else "",
         "q.recovery_password=lambda *args:os.kill(os.getpid(),signal.SIGKILL)" if crash else "q.recovery_password=lambda *args:'synthetic-restart-only'",
         "old_run=q.NativeIO._owned_run",
-        "def cleanup_sql(self,argv,env,deadline):",
+        "def cleanup_sql(self,argv,env,deadline,**kwargs):",
         " assert argv[-1]==q.CLOSEOUT_SQL and env['PGSSLMODE']=='verify-full'",
         " assert env['PGAPPNAME'].startswith('signmons_p08_qualification_')",
         (f" argv=list(argv);argv[argv.index('-h')+1]='127.0.0.1';argv[1:1]=['-p',{str(pg[0])!r}];return old_run(self,argv,{{**env,'PGSSLROOTCERT':{str(pg[1])!r}}},deadline)" if pg else " return b'{\"sessionsAbsent\":true}'"),
@@ -3477,3 +3477,196 @@ class SqlConnectionDiagnosticTests(unittest.TestCase):
             with patch.object(launch,'sql_diagnostic_argv',return_value=command):
                 with self.assertRaisesRegex(model.Stop,expected):io._owned_run(command,{'LC_ALL':'C'},time.time()+seconds,sql_diagnostic=True)
             self.assertFalse(io.children)
+
+
+class QualificationSqlReportingTests(unittest.TestCase):
+    """Actual SQL command/process/reducer paths; substitute only harmless child programs."""
+    setUp=ExternalBindingTests.setUp
+    bind_decision=ExternalBindingTests.bind_decision
+    read_commit=ExternalBindingTests.read_commit
+    cap=ExternalBindingTests.cap
+    seed=QualificationRestartTests.seed
+
+    def transport(self,cap,faults=None):
+        case=self;faults=faults or {};self.clients=[];self.dispatched=[];self.environments=[]
+        class IO(launch.QualificationIO):
+            def __init__(obj,cap,cleanup_only=False):
+                super().__init__(cap,cleanup_only);obj.clock=time.time;case.clients.append(obj)
+            def cli(obj,d,deadline):return case.case.io.cli(d,deadline)
+            def https(obj,d,token,deadline):return case.case.io.https(d,token,deadline)
+            def sql(obj,d,password,deadline):
+                case.active=obj
+                return super().sql(d,password,deadline)
+            def independent(obj):return IO(cap,True)
+        original=subprocess.Popen
+        def child(argv,**kwargs):
+            obj=case.active
+            descriptors=[d for d in launch.current_sql_contract() if launch.qualification_sql_argv(d)==argv]
+            case.assertEqual(len(descriptors),1,'unreviewed subprocess in SQL test');d=descriptors[0]
+            phase='INDEPENDENT_CLOSEOUT' if obj.cleanup_only else 'NORMAL_CLOSEOUT' if d['id']=='closeout' else 'READ'
+            case.dispatched.append((phase,d['id']));env=kwargs['env'];case.environments.append(env)
+            case.assertEqual(env['LC_ALL'],'C');case.assertEqual(env['PGSSLMODE'],'verify-full')
+            case.assertEqual(env['PGPASSWORD'],'SYNTHETIC_QSR_PASSWORD');case.assertIn('statement_timeout=15000',env['PGOPTIONS'])
+            case.assertEqual(kwargs['stderr'],subprocess.PIPE)
+            fault=faults.get(phase)
+            if fault is None:
+                value=case.case.io.sql(d,'synthetic',deadline=case.case.now+1)
+                script='import sys;sys.stdout.write('+repr(json.dumps(value))+')'
+            elif isinstance(fault,dict):script=fault['script']
+            else:script='import sys;sys.stderr.write('+repr(fault)+');sys.exit(1)'
+            return original([launch.sys.executable,'-c',script],**kwargs)
+        return IO(cap,isinstance(cap,launch.QualificationCleanupCapability)),child
+
+    def run_case(self,faults=None):
+        cap=self.cap();transport,child=self.transport(cap,faults)
+        with patch.object(launch,'hidden_password',return_value='SYNTHETIC_QSR_PASSWORD'),patch.object(subprocess,'Popen',side_effect=child):
+            result=launch._produce_current(self.case.p,self.case.scope,transport,lambda:self.case.now,capability=cap)
+        self.assertTrue(all(not c.children and c.closed for c in self.clients))
+        self.assertTrue(all(e['PGPASSWORD']=='' for e in self.environments))
+        retained=''.join(p.read_text() for p in self.root.iterdir())
+        for private in ['SYNTHETIC_QSR_PASSWORD','PRIVATE_QSR_CANARY','FATAL:','ERROR:  ']:self.assertNotIn(private,retained)
+        self.assertEqual(result['sqlFailures'],json.loads((self.root/'result.json').read_text())['sqlFailures'])
+        self.assertLessEqual(len(result['sqlFailures']),4)
+        return result
+
+    def test_success_has_no_failures_and_same_four_queries(self):
+        r=self.run_case();self.assertEqual(r['status'],'CURRENT_EVIDENCE_OBSERVED');self.assertEqual(r['sqlFailures'],[])
+        self.assertEqual(r['residuals'],[]);self.assertEqual(r['transportReservations']['sql'],4)
+        self.assertEqual([x[0] for x in self.dispatched],['READ','READ','NORMAL_CLOSEOUT','INDEPENDENT_CLOSEOUT'])
+        self.assertIsNotNone(r['candidate'])
+
+    def test_authentication_refusal_reaches_result_and_independent_cleanup(self):
+        r=self.run_case({'READ':'FATAL:  28P01'})
+        self.assertEqual(r['failure'],'SQL_AUTHENTICATION_REFUSED');self.assertEqual(r['failureStage'],'database')
+        self.assertEqual(r['sqlFailures'],[{'slot':1,'phase':'READ','query':'qualification','category':'SQL_AUTHENTICATION_REFUSED'}])
+        self.assertIsNone(r['candidate']);self.assertEqual(r['residuals'],[])
+        self.assertEqual([x[0] for x in self.dispatched],['READ','NORMAL_CLOSEOUT','INDEPENDENT_CLOSEOUT'])
+
+    def test_all_three_failures_have_distinct_reserved_phases(self):
+        r=self.run_case({'READ':'FATAL:  28P01','NORMAL_CLOSEOUT':'ERROR:  42501','INDEPENDENT_CLOSEOUT':'PRIVATE_QSR_CANARY'})
+        self.assertEqual([x['slot'] for x in r['sqlFailures']],[1,2,3])
+        self.assertEqual([x['phase'] for x in r['sqlFailures']],['READ','NORMAL_CLOSEOUT','INDEPENDENT_CLOSEOUT'])
+        self.assertEqual([x['category'] for x in r['sqlFailures']],['SQL_AUTHENTICATION_REFUSED','SQL_PERMISSION_REFUSED','SQL_ERROR_UNKNOWN'])
+        self.assertEqual(r['residuals'],['CLOSEOUT_UNCONFIRMED','INDEPENDENT_UNCONFIRMED']);self.assertIsNone(r['candidate'])
+
+    def test_normal_cleanup_failure_does_not_qualify(self):
+        r=self.run_case({'NORMAL_CLOSEOUT':'ERROR:  42501'})
+        self.assertIsNone(r['failure']);self.assertEqual(r['residuals'],['CLOSEOUT_UNCONFIRMED']);self.assertIsNone(r['candidate'])
+        self.assertEqual(r['sqlFailures'],[{'slot':3,'phase':'NORMAL_CLOSEOUT','query':'closeout','category':'SQL_PERMISSION_REFUSED'}])
+
+    def test_independent_failure_does_not_claim_containment(self):
+        r=self.run_case({'INDEPENDENT_CLOSEOUT':'FATAL:  28P01'})
+        self.assertIsNone(r['candidate']);self.assertEqual(r['residuals'],['INDEPENDENT_UNCONFIRMED'])
+        self.assertEqual(r['sqlFailures'][0]['slot'],4);self.assertEqual(r['sqlFailures'][0]['phase'],'INDEPENDENT_CLOSEOUT')
+
+    def test_malformed_json_is_bounded_validation_failure(self):
+        r=self.run_case({'READ':{'script':"print('{invalid PRIVATE_QSR_CANARY')"}})
+        self.assertEqual(r['failure'],'DATABASE_OUTPUT');self.assertEqual(r['sqlFailures'][0]['category'],'DATABASE_OUTPUT')
+        self.assertIsNone(r['candidate'])
+
+    def test_null_response_remains_rejected_by_existing_reducer(self):
+        r=self.run_case({'READ':{'script':"print('null')"}})
+        self.assertEqual(r['failure'],'DATABASE_OUTPUT');self.assertIsNone(r['candidate'])
+
+    def test_missing_response_fields_remain_rejected(self):
+        r=self.run_case({'READ':{'script':"print('{}')"}})
+        self.assertEqual(r['failure'],'DATABASE_OUTPUT');self.assertIsNone(r['candidate'])
+
+    def test_actual_combined_pipe_limit_preserves_cleanup(self):
+        r=self.run_case({'READ':{'script':"import sys;sys.stdout.write('x'*40000);sys.stderr.write('y'*40000)"}})
+        self.assertEqual(r['failure'],'PROCESS_OUTPUT_LIMIT');self.assertEqual(r['sqlFailures'][0]['category'],'PROCESS_OUTPUT_LIMIT')
+        self.assertEqual(r['residuals'],[])
+
+    def test_both_pipes_drained_without_deadlock(self):
+        r=self.run_case({'READ':{'script':"import sys;sys.stdout.write('x'*8000);sys.stderr.write('ERROR:  42501');sys.exit(1)"}})
+        self.assertEqual(r['failure'],'SQL_PERMISSION_REFUSED');self.assertEqual(r['residuals'],[])
+
+    def test_timeout_category_and_independent_cleanup(self):
+        original=launch.NativeIO._owned_run
+        def bounded(obj,argv,env,deadline,**kw):return original(obj,argv,env,min(deadline,time.time()+2.2),**kw)
+        with patch.object(launch.NativeIO,'_owned_run',bounded):
+            r=self.run_case({'READ':{'script':'import time;time.sleep(10)'}})
+        self.assertEqual(r['failure'],'PROCESS_TIMEOUT');self.assertEqual(r['sqlFailures'][0]['category'],'PROCESS_TIMEOUT')
+        self.assertEqual(r['residuals'],[])
+
+    def test_interruption_closes_process_and_keeps_failure(self):
+        import signal
+        original=subprocess.Popen;old=signal.signal(signal.SIGALRM,lambda *_:(_ for _ in ()).throw(KeyboardInterrupt()))
+        def launch_with_alarm(*args,**kwargs):
+            child=original(*args,**kwargs)
+            if 'time.sleep(10)' in str(args):signal.setitimer(signal.ITIMER_REAL,.1)
+            return child
+        try:
+            with patch.object(subprocess,'Popen',side_effect=launch_with_alarm):r=self.run_case({'READ':{'script':'import time;time.sleep(10)'}})
+        finally:signal.setitimer(signal.ITIMER_REAL,0);signal.signal(signal.SIGALRM,old)
+        self.assertEqual(r['failure'],'PROCESS_UNCONFIRMED');self.assertEqual(r['sqlFailures'][0]['category'],'PROCESS_UNCONFIRMED')
+        self.assertEqual(r['residuals'],[])
+
+    def test_wrong_command_capability_or_locale_refused_before_spawn(self):
+        cap=self.cap();io=launch.QualificationIO(cap);argv=launch.qualification_sql_argv(launch.sql_contract()[0])
+        for mutate in [lambda a:a+['extra'],lambda a:['foreign']+a[1:]]:
+            with patch.object(subprocess,'Popen',side_effect=AssertionError('must not spawn')):
+                with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_COMMAND'):io._owned_run(mutate(argv),{'LC_ALL':'C'},io.clock()+5,sql_diagnostic=True)
+        with patch.object(subprocess,'Popen',side_effect=AssertionError('must not spawn')):
+            with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_COMMAND'):io._owned_run(argv,{},io.clock()+5,sql_diagnostic=True)
+            cleanup=launch.QualificationIO(cap,True)
+            with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_COMMAND'):cleanup._owned_run(argv,{'LC_ALL':'C'},io.clock()+5,sql_diagnostic=True)
+            io.capability=object()
+            with self.assertRaisesRegex(model.Stop,'DIAGNOSTIC_COMMAND'):io._owned_run(argv,{'LC_ALL':'C'},io.clock()+5,sql_diagnostic=True)
+
+    def test_pre_reservation_refusal_never_fabricates_sql_failure(self):
+        cap=self.cap();io=launch.QualificationIO(cap,True)
+        with patch.object(subprocess,'Popen',side_effect=AssertionError('must not spawn')):
+            with self.assertRaisesRegex(model.Stop,'CLOSEOUT_ONLY'):io.sql(launch.sql_contract()[0],'synthetic',self.case.now+5)
+        self.assertEqual(cap.sql_failures,[]);self.assertIsNone(cap.sql_slot)
+
+    def test_cleanup_restart_only_records_its_own_attempt(self):
+        cap=self.seed()
+        for _ in range(3):launch.reserve_qualification_sql(self.root,cap.plan['operationId'])
+        transport,child=self.transport(cap,{'INDEPENDENT_CLOSEOUT':'ERROR:  42501'})
+        # The fresh recovery owns a cleanup transport; no old work diagnostic is reconstructed.
+        original_init=launch.QualificationIO.__init__
+        def init(obj,cap,cleanup_only=False):
+            original_init(obj,cap,cleanup_only);obj.clock=time.time;self.active=obj;self.clients.append(obj)
+        with patch.object(launch.QualificationIO,'__init__',init),patch.object(launch,'hidden_password',return_value='SYNTHETIC_QSR_PASSWORD'),patch.object(subprocess,'Popen',side_effect=child):
+            r=launch.recover_current_external(cap)
+        self.assertEqual(r['sqlFailures'],[{'slot':4,'phase':'INDEPENDENT_CLOSEOUT','query':'closeout','category':'SQL_PERMISSION_REFUSED'}])
+        self.assertIn('OWNED_PROCESS_HISTORY_UNKNOWN',r['residuals']);self.assertIn('SESSIONS_UNCONFIRMED',r['residuals']);self.assertIsNone(r['candidate'])
+        self.assertTrue(all(not c.children for c in self.clients))
+        with self.assertRaisesRegex(model.Stop,'INDEPENDENT_CLOSEOUT_CONSUMED'):launch.recover_current_external(cap)
+        self.assertEqual(len(self.dispatched),1)
+
+    def test_safe_projection_rejects_arbitrary_exception_details(self):
+        for error in [ValueError('PRIVATE_QSR_CANARY'),model.Stop('PRIVATE_QSR_CANARY'),model.Stop(None),model.Stop('SQL_AUTHENTICATION_REFUSED','PRIVATE')]:
+            self.assertEqual(launch.qualification_sql_failure(error),'SQL_ERROR_UNKNOWN')
+        self.assertEqual(launch.qualification_sql_failure(model.Stop('PROCESS_TIMEOUT')),'PROCESS_TIMEOUT')
+
+    def test_connection_failure_category_through_actual_sql_process(self):
+        r=self.run_case({'READ':'ERROR:  08006'})
+        self.assertEqual(r['failure'],'SQL_CONNECTION_REFUSED');self.assertEqual(r['residuals'],[])
+
+    def test_tls_failure_category_through_actual_sql_process(self):
+        r=self.run_case({'READ':'psql: error: connection to server at "synthetic", port 5432 failed: SSL error: certificate verify failed: synthetic'})
+        self.assertEqual(r['failure'],'SQL_TLS_REFUSED');self.assertEqual(r['residuals'],[])
+
+    def test_dns_failure_category_through_actual_sql_process(self):
+        r=self.run_case({'READ':'psql: error: could not translate host name "synthetic" to address: nodename unknown'})
+        self.assertEqual(r['failure'],'SQL_NAME_RESOLUTION_REFUSED');self.assertEqual(r['residuals'],[])
+
+    def test_connection_timeout_category_through_actual_sql_process(self):
+        r=self.run_case({'READ':'psql: error: connection to server at "synthetic", port 5432 failed: timeout expired'})
+        self.assertEqual(r['failure'],'SQL_CONNECTION_TIMEOUT');self.assertEqual(r['residuals'],[])
+
+    def test_multiline_error_is_unknown_without_canary_retention(self):
+        r=self.run_case({'READ':'FATAL:  28P01\nPRIVATE_QSR_CANARY'})
+        self.assertEqual(r['failure'],'SQL_ERROR_UNKNOWN');self.assertEqual(r['residuals'],[])
+
+    def test_sessions_present_diagnostic_keeps_cleanup_residual(self):
+        r=self.run_case({'NORMAL_CLOSEOUT':{'script':"print('{\"sessionsAbsent\":false}')"}})
+        self.assertEqual(r['residuals'],['CLOSEOUT_UNCONFIRMED']);self.assertIsNone(r['candidate'])
+        self.assertEqual(r['sqlFailures'][0]['category'],'SQL_SESSIONS_PRESENT')
+
+    def test_invalid_independent_session_shape_is_safe_unknown(self):
+        r=self.run_case({'INDEPENDENT_CLOSEOUT':{'script':"print('{\"sessionsAbsent\":null}')"}})
+        self.assertEqual(r['residuals'],['INDEPENDENT_UNCONFIRMED']);self.assertIsNone(r['candidate'])
+        self.assertEqual(r['sqlFailures'][0]['category'],'SQL_OUTPUT_UNKNOWN')

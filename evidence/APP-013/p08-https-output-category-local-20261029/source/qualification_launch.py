@@ -510,7 +510,12 @@ class NativeIO:
         need(not self.closed and self.clock()+2<deadline,'PROCESS_DEADLINE')
         need(not (billing_diagnostic and sql_diagnostic),'DIAGNOSTIC_COMMAND')
         if sql_diagnostic:
-            need(isinstance(self,RoleDiagnosticIO) and self.cap.sql_diagnostic and argv==sql_diagnostic_argv() and env.get('LC_ALL')=='C','DIAGNOSTIC_COMMAND')
+            role=isinstance(self,RoleDiagnosticIO) and self.cap.sql_diagnostic and argv==sql_diagnostic_argv()
+            qualification=(isinstance(self,QualificationIO) and
+                type(self.capability) in (QualificationCapability,QualificationCleanupCapability) and
+                argv in [qualification_sql_argv(d) for d in
+                    ((sql_contract()[1],) if self.cleanup_only else current_sql_contract())])
+            need((role or qualification) and env.get('LC_ALL')=='C','DIAGNOSTIC_COMMAND')
         if billing_diagnostic:
             need(tuple(argv)==next(d['argv'] for d in cli_contract() if d['id']=='billing_project'),'DIAGNOSTIC_COMMAND')
         process=subprocess.Popen(argv,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
@@ -601,9 +606,10 @@ class NativeIO:
         env.update({"PGPASSWORD": password, "PGSSLMODE": "verify-full", "PGSSLROOTCERT": "/etc/ssl/cert.pem", "PGCONNECT_TIMEOUT": "10", "PGAPPNAME": "signmons_p08_qualification_" + self.binding_operation_id, "PGOPTIONS": "-c statement_timeout=15000 -c lock_timeout=5000"})
         timeout = max(1, min(25, int(deadline - self.clock())))
         try:
-            if isinstance(self,RoleDiagnosticIO) and self.cap.sql_diagnostic:
+            if isinstance(self,QualificationIO) or (isinstance(self,RoleDiagnosticIO) and self.cap.sql_diagnostic):
                 env['LC_ALL']='C'
-                raw=self._owned_run(sql_diagnostic_argv(),env,min(deadline,self.clock()+25),sql_diagnostic=True)
+                argv=qualification_sql_argv(descriptor) if isinstance(self,QualificationIO) else sql_diagnostic_argv()
+                raw=self._owned_run(argv,env,min(deadline,self.clock()+25),sql_diagnostic=True)
             else:
                 raw=self._owned_run([operator.PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',operator.DB_HOST,
                     '-U','neondb_owner','-d','neondb','-c',sql],env,min(deadline,self.clock()+25))
@@ -1083,6 +1089,7 @@ def _produce_current(plan,native_scope,io,clock,capability=None,input_path=None)
                 'execution':'EXTERNAL_READ_ONLY' if capability else 'PROOF_ONLY','liveObserved':bool(capability and capability.observed),'executionReady':False,'failure':failure,
                 'residuals':sorted(set(residuals)),'candidate':candidate,'failureStage':failure_stage,'databaseFailedChecks':database_failed}
         if capability is not None:
+            result['sqlFailures']=copy.deepcopy(capability.sql_failures)
             result['transportReservations']=copy.deepcopy(capability.counts)
             result['reservationSemantics']='RESERVATIONS_NOT_PROVIDER_REQUEST_COUNTS'
         model.reserve(root/'result.json',result);return result
@@ -1119,6 +1126,7 @@ def reserve_qualification_sql(root,operation_id):
     need(names==[f'read-sql-{i}.json' for i in range(1,len(names)+1)] and len(names)<4,'QUALIFIER_SQL_BUDGET')
     for name in names:need(private_json(root/name)=={'operationId':operation_id},'QUALIFIER_SQL_SCOPE')
     model.reserve(root/f'read-sql-{len(names)+1}.json',{'operationId':operation_id})
+    return len(names)+1
 
 
 def purge_qualification_input(scope,decision):
@@ -1166,7 +1174,7 @@ class QualificationCleanupCapability:
         verify_cleanup_root(root,s,d)
         self.root=root;self.clock=clock;self.last=clock();self.times=times;self.cleanup_scope=s
         self.e={'decision':d,'sdkReview':manifest['sdkReview']};self.plan={'operationId':s['operationId']}
-        self.observed=False;self.mode='closeout';self.spent=False
+        self.observed=False;self.mode='closeout';self.spent=False;self.sql_failures=[];self.sql_slot=None
     def gate(self,kind,cleanup=False):
         now=self.clock();need(now>=self.last,'CLOCK_ROLLBACK');self.last=now
         need(kind=='sql' and cleanup,'QUALIFIER_CLOSEOUT_ONLY')
@@ -1175,7 +1183,7 @@ class QualificationCleanupCapability:
         need(private_json(self.root/'independent-closeout.json')=={'operationId':self.plan['operationId']},'CLEANUP_NOT_RESERVED')
         path=_operator_module().PSQL
         need(model.digest(Path(path).read_bytes())==self.e['sdkReview']['files'][path],'SQL_EXECUTABLE_DRIFT')
-        reserve_qualification_sql(self.root,self.plan['operationId']);self.spent=True
+        self.sql_slot=reserve_qualification_sql(self.root,self.plan['operationId']);self.spent=True
         return self.times['closeoutEnd']
 
 
@@ -1254,6 +1262,7 @@ class QualificationCapability:
         self.e=e;self.plan=p;self.scope=scope;self.clock=clock;self.mode=mode;self.last=clock()
         self.root=Path('/private/tmp/p08-current-external-'+p['operationId'])
         self.counts={'cli':0,'https':0,'sql':0,'cache':0};self.hash=model.digest(e);self.observed=False
+        self.sql_failures=[];self.sql_slot=None
         if mode=='qualify':need(not os.path.lexists(self.root),'QUALIFIER_CONSUMED')
 
     def prepare(self):
@@ -1271,7 +1280,7 @@ class QualificationCapability:
             for path,h in self.e['sdkReview']['files'].items():
                 need(model.digest(Path(path).read_bytes())==h,'SDK_REVIEW_DRIFT')
         need(self.counts[kind]<self.e['sdkReview']['limits'][kind],'QUALIFIER_LIMIT')
-        if kind=='sql':reserve_qualification_sql(self.root,self.plan['operationId'])
+        if kind=='sql':self.sql_slot=reserve_qualification_sql(self.root,self.plan['operationId'])
         self.counts[kind]+=1
         return self.times['closeoutEnd' if cleanup else 'readEnd']
 
@@ -1368,7 +1377,19 @@ class QualificationIO(NativeIO):
     def sql(self,d,password,deadline):
         cleanup=d==sql_contract()[1]
         need(not self.cleanup_only or cleanup,'QUALIFIER_CLOSEOUT_ONLY');end=self.capability.gate('sql',cleanup)
-        result=super().sql(d,password,min(deadline,end))
+        cap=self.capability
+        def record(category):
+            # Only finite source-defined labels from an actually reserved attempt survive.
+            if d in current_sql_contract() and type(cap.sql_slot) is int and 1<=cap.sql_slot<=4 and len(cap.sql_failures)<4:
+                cap.sql_failures.append({'slot':cap.sql_slot,
+                    'phase':'INDEPENDENT_CLOSEOUT' if self.cleanup_only else 'NORMAL_CLOSEOUT' if cleanup else 'READ',
+                    'query':d['id'],'category':category})
+        try:result=super().sql(d,password,min(deadline,end))
+        except BaseException as error:
+            record(qualification_sql_failure(error));raise
+        if cleanup and result!={'sessionsAbsent':True}:
+            record('SQL_SESSIONS_PRESENT' if type(result) is dict and set(result)=={'sessionsAbsent'} and
+                   result['sessionsAbsent'] is False else 'SQL_OUTPUT_UNKNOWN')
         self.capability.observed=True;return result
     def independent(self):return QualificationIO(self.capability,True)
 
@@ -1425,7 +1446,7 @@ def recover_current_external(cap):
         inspect_current_root(root,CURRENT_MARKERS)
         result={'status':'CURRENT_EVIDENCE_UNQUALIFIED','execution':'EXTERNAL_READ_ONLY',
             'liveObserved':cap.observed,'executionReady':False,'candidate':None,'residuals':residuals,
-            'privateInputsAbsent':absent}
+            'privateInputsAbsent':absent,'sqlFailures':copy.deepcopy(cap.sql_failures)}
         model.reserve(root/'recovery-result.json',result);return result
     finally:
         if fd is not None:fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
@@ -2776,6 +2797,24 @@ def sql_diagnostic_argv():
     op=_operator_module()
     return [op.PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate','-h',op.DB_HOST,
             '-U','neondb_owner','-d','neondb','-c',sql_session_contract()['sql']]
+
+
+QUALIFICATION_SQL_FAILURES=SQL_DIAGNOSTIC_FAILURES|frozenset({
+    'PROCESS_DEADLINE','PROCESS_TIMEOUT','PROCESS_OUTPUT_LIMIT','PROCESS_REFUSED',
+    'PROCESS_UNCONFIRMED','PROCESS_CLEANUP_UNCONFIRMED','CLOCK_ROLLBACK',
+    'SQL_DEADLINE','SQL_ALLOWLIST','DATABASE_OUTPUT','CLOSEOUT_OUTPUT','CURRENT_OUTPUT'})
+
+
+def qualification_sql_failure(error):
+    code=error.args[0] if isinstance(error,model.Stop) and len(error.args)==1 else None
+    return code if type(code) is str and code in QUALIFICATION_SQL_FAILURES else 'SQL_ERROR_UNKNOWN'
+
+
+def qualification_sql_argv(descriptor):
+    need(descriptor in current_sql_contract(),'SQL_ALLOWLIST')
+    op=_operator_module()
+    return [op.PSQL,'-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate',
+            '-h',op.DB_HOST,'-U','neondb_owner','-d','neondb','-c',descriptor['sql']]
 
 
 def sql_error_category(raw):
