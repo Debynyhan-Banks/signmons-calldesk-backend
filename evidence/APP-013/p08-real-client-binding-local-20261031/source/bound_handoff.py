@@ -128,7 +128,8 @@ class Handoff:
              isinstance(child.get("version"), int) and child["version"] > 0, "CHILD_JOURNAL_ABSENT")
         need(set(child) <= AUTH_FIELDS and child.get("phase") in {
             "START", "ACTIVATE_INTENT", "ACTIVATED", "ENABLE_INTENT", "TOKEN_INTENT",
-            "AUTHENTICATED", "STOPPED", "CLOSEOUT_INTENT", "CLOSEOUT_FINISHED"} and
+            "RUNTIME_AUTH_INTENT", "AUTHENTICATED", "PAYMENT_HANDOFF_INTENT",
+            "STOPPED", "CLOSEOUT_INTENT", "CLOSEOUT_FINISHED"} and
             type(child.get("authenticated")) is bool and
             type(child.get("closeoutAttempted")) is bool and
             isinstance(child.get("residuals"), list) and

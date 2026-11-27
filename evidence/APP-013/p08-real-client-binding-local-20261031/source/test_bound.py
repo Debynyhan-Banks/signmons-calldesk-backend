@@ -57,6 +57,18 @@ class ChildJournalMergeTests(unittest.TestCase):
         self.assertNotIn('PRIVATE_DIAGNOSTIC_SENTINEL', str(caught.exception))
         self.assertNotIn('PRIVATE_DIAGNOSTIC_SENTINEL', json.dumps(self.h.coordinator.j))
 
+    def test_ap1_new_phases_merge_without_synthesizing_proof(self):
+        for phase, authenticated in (('RUNTIME_AUTH_INTENT', False), ('PAYMENT_HANDOFF_INTENT', True)):
+            child = {**self.child, 'phase': phase, 'authenticated': authenticated}
+            self.assertEqual(self.merge(child), child)
+            self.assertNotIn('authProofAccepted', self.h.coordinator.j)
+            self.assertNotIn('childResultSha256', self.h.coordinator.j)
+            self.assert_refused({**child, 'operationId': str(uuid.uuid4())}, 'CHILD_JOURNAL_ABSENT')
+            self.assert_refused(child, 'JOURNAL_PARENT_DRIFT', parent_changes={'phase': 'FOREIGN'})
+            self.assert_refused(child, 'CHILD_JOURNAL_VERSION',
+                               before={**self.before, 'authClient': {**child, 'version': 8}})
+        self.assert_refused({**self.child, 'phase': 'PAYMENT_HANDOFF_PRIVATE_DIAGNOSTIC_SENTINEL'})
+
     def test_complete_diagnostics_survive_merge_and_parent_save(self):
         for stage in ('SIGN', 'KEY_READ', 'EXCHANGE', 'UNKNOWN'):
             for category, statuses in (('HTTP', (None, 100, 403, 599)),

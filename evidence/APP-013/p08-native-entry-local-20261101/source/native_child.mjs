@@ -150,10 +150,9 @@ async function runChildAtBoundary(mode, request, injected, context) {
       return {status:'P08_COORDINATOR_AUTH_CLEANUP_VERIFIED',authenticated:journal.authClient.authenticated,
         residuals:[],sessionClosed:true,liveAuthorization:false,authProofReady:false};
     }
+    let afterAuthentication;
     if(e.version===2 && mode==='--run'){
-      const originalAuthenticate=clients.authenticate.bind(clients);
-      clients.authenticate=async token=>{
-        await originalAuthenticate(token);
+      afterAuthentication=async token=>{
         const {runPayment}=await import('./connected_payment.mjs');
         const present=injected.present ?? (async bootstrapUrl=>{
           need(outer.external,'PAYMENT_PROOF_PRESENTER_REQUIRED');
@@ -164,7 +163,7 @@ async function runChildAtBoundary(mode, request, injected, context) {
       };
     }
     context.stage=mode==='--run'?'AUTH_SEQUENCE':'CLOSEOUT';
-    const sequence=new CoordinatorAuthSequence(cap,clients);
+    const sequence=new CoordinatorAuthSequence(cap,clients,{afterAuthentication});
     return mode==='--run'?await sequence.run():await sequence.closeout(true);
   } catch(error) {
     primary=true;

@@ -2264,23 +2264,29 @@ try {
                 self.assertEqual(primary['processOutcome'], expected)
                 self.assertEqual(primary['journalMerge'], 'ACCEPTED')
 
-    def ec1_completed(self, scenario, *, success=False):
+    def ec1_completed(self, scenario, *, success=False, process_fault=None):
         """Exercise the documented exchange through actual authentication and parent merge."""
         observed = []
         script = """import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync} from 'node:fs';
 import {runChild,childRefusal,readChildRequest,serializeChildResult} from %s;
 import {portsFor,rawFor} from %s;
 try {
  const request=readChildRequest(),e=JSON.parse(readFileSync(request.envelopePath));
  const ports=portsFor({r:request,e,raw:rawFor(e)}),fetcher=ports.fetcher,present=ports.present;
  const scenario=%s,success=%s;
+ const handoff=scenario.kind==='handoff';
  const counts={sign:0,key:0,exchange:0,job:0,paymentWrites:0,present:0};
  ports.fetcher=async(url,options)=>{
   if(url.includes(':signBlob'))counts.sign++;
   if(url.endsWith('/keyString'))counts.key++;
   if(url.includes('/jobs/dispatch-board/')){
    counts.job++;
+   if(handoff){
+    const path=request.envelopePath.replace(/envelope\\.json$/,'journal.json');
+    const j=JSON.parse(readFileSync(path));j.payment.phase='STOPPED';
+    writeFileSync(path,JSON.stringify(j));
+   }
    if(scenario.kind==='runtime')return {ok:false,status:scenario.status,text:async()=>'PRIVATE_SENTINEL'};
    if(scenario.kind==='job')return {ok:true,status:200,text:async()=>JSON.stringify({jobId:'PRIVATE_SENTINEL'})};
   }
@@ -2304,12 +2310,12 @@ try {
  };
  ports.present=async url=>{counts.present++;assert.ok(counts.job>0);return present(url);};
  const result=await runChild(process.argv[1],structuredClone(request),ports);
- assert.equal(result.authenticated,success);
+ assert.equal(result.authenticated,success||handoff);
  assert.equal(result.sessionClosed,true);assert.deepEqual(result.residuals,[]);
  assert.deepEqual([counts.sign,counts.key,counts.exchange],[1,1,1]);
  if(success){assert.ok(counts.job>0);assert.ok(counts.paymentWrites>0);assert.equal(counts.present,1);}
  else {
-  assert.equal(counts.job,['runtime','job'].includes(scenario.kind)?1:0);
+  assert.equal(counts.job,['runtime','job','handoff'].includes(scenario.kind)?1:0);
   assert.equal(counts.paymentWrites,0);assert.equal(counts.present,0);
  }
  const path=request.envelopePath.replace(/envelope\\.json$/,'journal.json');
@@ -2333,10 +2339,46 @@ try {
                 self.assertEqual(result.stderr, '')
                 self.assertNotIn('PRIVATE_SENTINEL', result.stdout)
                 self.assertNotIn('header.', result.stdout)
+                if process_fault == 'timeout':
+                    raise subprocess.TimeoutExpired(argv, 1, output=self.PRIVATE)
+                if process_fault == 'interruption':
+                    raise KeyboardInterrupt(self.PRIVATE)
+                if process_fault == 'exit':
+                    raise RuntimeError(self.PRIVATE)
+                if process_fault == 'lost':
+                    return subprocess.CompletedProcess(argv, 2, '', '')
+                if process_fault == 'merge':
+                    value = read(fixture.root/'journal.json')
+                    value['phase'] = 'FOREIGN'
+                    (fixture.root/'journal.json').write_text(json.dumps(value))
                 return result
             io.child = invoke
         fixture, work, final, journal, _ = self.completed('normal', mutate_io=inject)
         self.assertEqual(len(observed), 1)
+        if scenario['kind'] == 'handoff':
+            self.assertTrue(observed[0]['authenticated'])
+            self.assertEqual(observed[0]['failureStage'], 'PAYMENT_HANDOFF_INTENT')
+            self.assertEqual(observed[0]['failureCode'], 'ADAPTER_REFUSED_OR_UNKNOWN')
+            self.assertFalse(final['paymentObserved'] or final['paymentReadyForAcceptance'] or final['authProofReady'])
+            self.assertFalse(work['paymentObserved'])
+            self.assertFalse(journal.get('payment', {}).get('enableIntent', False))
+            self.assertFalse(any(fixture.f.runtime_state.values()))
+            if process_fault:
+                self.assertFalse(journal['authProofAccepted'])
+                self.assertIsNone(final['childResultSha256'])
+                self.assertIn('AUTH_OUTCOME_UNKNOWN', final['residuals'])
+            else:
+                self.assertTrue(final['authenticationObserved'])
+                self.assertTrue(journal['authProofAccepted'])
+                self.assertRegex(final['childResultSha256'], '^[a-f0-9]{64}$')
+            primary = [x for x in journal['nativeEntry']['childObservations'] if x['mode'] == '--run']
+            self.assertEqual(len(primary), 1)
+            self.assertEqual(primary[0]['journalMerge'], 'REJECTED' if process_fault == 'merge' else 'ACCEPTED')
+            if process_fault != 'merge':
+                self.assertEqual(journal['authClient']['failureStage'], 'PAYMENT_HANDOFF_INTENT')
+                self.assertTrue(journal['authClient']['sessionClosed'])
+                self.assertEqual(journal['authClient']['residuals'], [])
+            return
         self.assertEqual(observed[0]['authenticated'], success)
         auth = journal['authClient']
         self.assertEqual(auth['authenticated'], success)
@@ -2370,8 +2412,12 @@ try {
                                   auth['httpStatus'], auth['responseValidationCode']),
                                  ('SIGN_EXCHANGE_REFUSED', 'EXCHANGE', 'RESPONSE_VALIDATION', None,
                                   'EXCHANGE_RESPONSE_MISMATCH'))
+                self.assertEqual(auth['failureStage'], 'TOKEN_INTENT')
             else:
                 self.assertNotIn('responseValidationCode', auth)
+                self.assertEqual(auth['failureStage'], 'RUNTIME_AUTH_INTENT')
+                self.assertEqual(auth['failureCode'], {'claim': 'TOKEN_CLAIMS_DRIFT',
+                    'time': 'TOKEN_TIME', 'runtime': 'AUTH_RUNTIME_REFUSED', 'job': 'EXACT_JOB_READBACK'}[scenario['kind']])
         observations = journal['nativeEntry']['childObservations']
         self.assertTrue(all(x['journalMerge'] == 'ACCEPTED' for x in observations))
         self.assertEqual(sum(x['mode'] == '--run' for x in observations), 1)
@@ -2416,6 +2462,14 @@ try {
         for scenario in cases:
             with self.subTest(scenario=scenario):
                 self.ec1_completed(scenario)
+
+    def test_ap1_payment_handoff_refusal_preserves_authentication_but_not_payment(self):
+        self.ec1_completed({'kind': 'handoff'})
+
+    def test_ap1_payment_boundary_lost_output_timeout_exit_interruption_merge_fail_closed(self):
+        for fault in ('lost', 'timeout', 'exit', 'interruption', 'merge'):
+            with self.subTest(fault=fault):
+                self.ec1_completed({'kind': 'handoff'}, process_fault=fault)
 
     def test_previous_schema_reproduces_the_observed_evidence_loss(self):
         import handoff

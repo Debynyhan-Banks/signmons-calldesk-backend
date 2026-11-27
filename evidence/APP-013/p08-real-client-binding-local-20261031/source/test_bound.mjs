@@ -289,3 +289,109 @@ test('validation code is read once and throwing diagnostics cannot interrupt clo
     else assert.equal(journal.responseValidationCode, 'EXCHANGE_RESPONSE_MISMATCH');
   }
 });
+
+
+// AP1 uses the actual sequence/journal with inert clients; no provider or database.
+function boundaryClients(f, {failureAt, code, after} = {}) {
+  let row = {...TARGET, status: 'DISABLED', updatedAt: '2026-01-01T00:00:00.000Z'};
+  const user = {uid: TARGET.id, email: TARGET.email, displayName: TARGET.fullName,
+    disabled: true, emailVerified: false,
+    customClaims: {tenantId: TARGET.tenantId, role: 'admin', testOnly: true},
+    tokensValidAfterTime: new Date(0).toISOString()};
+  const calls = [], states = [];
+  const boundary = stage => {
+    calls.push(stage); states.push(JSON.parse(readFileSync(f.journalPath)).authClient);
+    after?.(stage);
+    if (stage === failureAt) throw Object.assign(Error('AP1_PRIVATE_CANARY'), {code});
+  };
+  const clients = {
+    db: {get: async () => ({...row}),
+      activate: async () => ({...row = {...row, status: 'ACTIVE', updatedAt: '2026-01-01T00:00:01.000Z'}}),
+      disable: async () => ({...row = {...row, status: 'DISABLED', updatedAt: '2026-01-01T00:00:02.000Z'}})},
+    fb: {get: async () => structuredClone(user), enable: async () => {user.disabled = false;},
+      disable: async () => {user.disabled = true;},
+      revoke: async () => {user.tokensValidAfterTime = iso(f.clock.value);}},
+    issue: async () => {boundary('issue'); return 'AP1_PRIVATE_TOKEN';},
+    authenticate: async token => {assert.equal(token, 'AP1_PRIVATE_TOKEN'); boundary('authenticate');},
+    dropToken() {calls.push('drop');}, clear() {calls.push('clear');}, async close() {calls.push('close');},
+  };
+  const hook = async token => {assert.equal(token, 'AP1_PRIVATE_TOKEN'); boundary('payment');};
+  return {clients, hook, calls, states};
+}
+
+test('AP1 exact phases and versions separate one issuance, authentication and optional payment', async t => {
+  for (const payment of [false, true]) {
+    const f = fixture(t), x = boundaryClients(f);
+    const r = await new CoordinatorAuthSequence(f.cap, x.clients,
+      payment ? {afterAuthentication: x.hook} : {}).run();
+    assert.equal(r.authenticated, true); assert.deepEqual(r.residuals, []);
+    assert.deepEqual(x.calls, ['issue', 'authenticate', ...(payment ? ['payment'] : []), 'drop', 'close', 'clear']);
+    assert.deepEqual(x.states.map(s => [s.phase, s.version, s.authenticated]),
+      [['TOKEN_INTENT', 5, false], ['RUNTIME_AUTH_INTENT', 6, false],
+        ...(payment ? [['PAYMENT_HANDOFF_INTENT', 8, true]] : [])]);
+    const j = JSON.parse(readFileSync(f.journalPath));
+    assert.equal(j.authClient.version, payment ? 11 : 10);
+    assert.equal(j.authProofAccepted, false); assert.equal('childResultSha256' in j, false);
+    assert.ok(!JSON.stringify(j).includes('AP1_PRIVATE'));
+  }
+});
+
+test('AP1 pre-auth refusals never invoke payment; only four fixed runtime codes survive', async t => {
+  for (const [stage, code] of [['issue', 'SIGN_EXCHANGE_REFUSED'],
+    ...['TOKEN_CLAIMS_DRIFT', 'TOKEN_TIME', 'AUTH_RUNTIME_REFUSED', 'EXACT_JOB_READBACK',
+      'AP1_PRIVATE_CANARY', undefined].map(code => ['authenticate', code])]) {
+    const f = fixture(t), x = boundaryClients(f, {failureAt: stage, code});
+    const r = await new CoordinatorAuthSequence(f.cap, x.clients, {afterAuthentication: x.hook}).run();
+    const j = JSON.parse(readFileSync(f.journalPath));
+    assert.equal(r.authenticated, false); assert.deepEqual(r.residuals, []);
+    assert.equal(j.authClient.failureStage, stage === 'issue' ? 'TOKEN_INTENT' : 'RUNTIME_AUTH_INTENT');
+    assert.equal(j.authClient.failureCode, code?.startsWith('AP1_') || code === undefined ? 'ADAPTER_REFUSED_OR_UNKNOWN' : code);
+    assert.equal(x.calls.filter(s => s === 'issue').length, 1);
+    assert.equal(x.calls.includes('payment'), false); assert.ok(!JSON.stringify(j).includes('AP1_PRIVATE'));
+  }
+});
+
+test('AP1 failed payment hook preserves authentication without creating parent proof', async t => {
+  for (const code of ['INTERRUPTED', 'AP1_PRIVATE_CANARY']) {
+    const f = fixture(t), x = boundaryClients(f, {failureAt: 'payment', code});
+    const r = await new CoordinatorAuthSequence(f.cap, x.clients, {afterAuthentication: x.hook}).run();
+    const j = JSON.parse(readFileSync(f.journalPath));
+    assert.equal(r.authenticated, true); assert.deepEqual(r.residuals, []);
+    assert.equal(j.authClient.failureStage, 'PAYMENT_HANDOFF_INTENT');
+    assert.equal(j.authClient.failureCode, code === 'INTERRUPTED' ? code : 'ADAPTER_REFUSED_OR_UNKNOWN');
+    assert.equal(j.authProofAccepted, false); assert.equal('childResultSha256' in j, false);
+    assert.equal(r.authProofReady, false); assert.equal(x.calls.filter(s => s === 'payment').length, 1);
+    assert.ok(!JSON.stringify(j).includes('AP1_PRIVATE'));
+  }
+});
+
+test('AP1 existing deadline gates prevent payment and preserve independent closeout reserve', async t => {
+  const f = fixture(t), x = boundaryClients(f, {after: stage => {
+    if (stage === 'authenticate') f.clock.value = Date.parse(f.plan.window.workEnd);
+  }});
+  const r = await new CoordinatorAuthSequence(f.cap, x.clients, {afterAuthentication: x.hook}).run();
+  const j = JSON.parse(readFileSync(f.journalPath));
+  assert.equal(r.authenticated, false); assert.deepEqual(r.residuals, []);
+  assert.equal(j.authClient.failureCode, 'OPERATION_DEADLINE');
+  assert.equal(j.authClient.failureStage, 'RUNTIME_AUTH_INTENT');
+  assert.equal(x.calls.includes('payment'), false); assert.equal(r.sessionClosed, true);
+});
+
+test('AP1 concurrent journal drift at runtime or payment boundary cannot overwrite evidence', async t => {
+  for (const stage of ['authenticate', 'payment']) {
+    const f = fixture(t), x = boundaryClients(f, {after: at => {
+      if (at !== stage) return;
+      const j = JSON.parse(readFileSync(f.journalPath)); j.authClient.version++;
+      writeFileSync(f.journalPath, JSON.stringify(j));
+    }});
+    const sequence = new CoordinatorAuthSequence(f.cap, x.clients, {afterAuthentication: x.hook});
+    await assert.rejects(() => sequence.run(), {code: 'JOURNAL_CONCURRENT_DRIFT'});
+    const j = JSON.parse(readFileSync(f.journalPath));
+    assert.equal(j.authClient.phase, stage === 'authenticate' ? 'RUNTIME_AUTH_INTENT' : 'PAYMENT_HANDOFF_INTENT');
+    assert.equal(j.authProofAccepted, false); assert.equal('childResultSha256' in j, false);
+    assert.equal(x.calls.filter(s => s === stage).length, 1);
+    const result = await new CoordinatorAuthSequence(f.cap, x.clients).closeout(true);
+    assert.deepEqual(result.residuals, []); assert.equal(result.sessionClosed, true);
+    assert.equal(x.calls.filter(s => s === 'issue').length, 1);
+  }
+});

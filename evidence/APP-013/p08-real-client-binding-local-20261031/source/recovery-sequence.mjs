@@ -3,17 +3,20 @@ import {gate, need, exactApp, exactIdentity} from '../../p08-coordinator-auth-lo
 
 const safeCode = e => ['INTERRUPTED', 'OPERATION_DEADLINE', 'CLOCK_ROLLBACK',
   'APPLICATION_DRIFT', 'IDENTITY_DRIFT', 'CLAIMS_DRIFT', 'ACTIVATION_CONFLICT',
-  'SIGN_EXCHANGE_REFUSED', 'EXACT_TOKEN_REQUIRED'].includes(e?.code)
+  'SIGN_EXCHANGE_REFUSED', 'EXACT_TOKEN_REQUIRED', 'TOKEN_CLAIMS_DRIFT', 'TOKEN_TIME',
+  'AUTH_RUNTIME_REFUSED', 'EXACT_JOB_READBACK'].includes(e?.code)
   ? e.code : 'ADAPTER_REFUSED_OR_UNKNOWN';
 
 /** A child operation in the coordinator's existing journal; never starts another journal. */
 export class CoordinatorAuthSequence {
-  constructor(cap, clients) {
+  constructor(cap, clients, {afterAuthentication} = {}) {
     const c = gate(cap, true);
     need(clients && ['db', 'fb'].every(k => clients[k]) &&
       ['issue', 'authenticate', 'dropToken', 'clear', 'close'].every(k => typeof clients[k] === 'function') &&
       ['get', 'activate', 'disable'].every(k => typeof clients.db[k] === 'function') &&
       ['get', 'enable', 'disable', 'revoke'].every(k => typeof clients.fb[k] === 'function'), 'CLIENT_CONTRACT');
+    need(afterAuthentication === undefined || typeof afterAuthentication === 'function', 'CLIENT_CONTRACT');
+    this.afterAuthentication = afterAuthentication;
     this.cap = cap;
     this.clients = clients;
     this.path = c.journalPath;
@@ -78,8 +81,13 @@ export class CoordinatorAuthSequence {
       this.save({phase: 'TOKEN_INTENT', tokenIssueIntent: true});
       token = await this.step(() => this.clients.issue());
       need(typeof token === 'string' && token, 'TOKEN_MISSING');
+      this.save({phase: 'RUNTIME_AUTH_INTENT'});
       await this.step(() => this.clients.authenticate(token));
       this.save({phase: 'AUTHENTICATED', authenticated: true});
+      if (this.afterAuthentication) {
+        this.save({phase: 'PAYMENT_HANDOFF_INTENT'});
+        await this.step(() => this.afterAuthentication(token));
+      }
     } catch (error) {
       let responseValidationCode;
       try { responseValidationCode = error?.responseValidationCode; } catch {}
