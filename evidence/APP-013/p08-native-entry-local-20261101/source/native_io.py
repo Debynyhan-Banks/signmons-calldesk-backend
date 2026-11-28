@@ -173,6 +173,10 @@ class NativeIO:
                          'PGOPTIONS': '-c statement_timeout=5000 -c lock_timeout=2000'})
 
     def https(self, descriptor):
+        # Refuse a borrowed alarm before even an owner/credential operation.
+        # The source-pinned context below restores the prior handler on every exit.
+        need(signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), 'HTTPS_UNCONFIRMED')
+        acl = load_acl()
         self.ensure_owner()
         need(set(descriptor) == {'method', 'url', 'body', 'timeoutSeconds', 'redirect'} and
              descriptor['redirect'] == 'error', 'HTTPS_DESCRIPTOR')
@@ -186,24 +190,53 @@ class NativeIO:
                   data=None if body is None else body.encode(), headers={'Authorization': 'Bearer ' + self.token,
                   'Content-Type': 'application/json', 'x-goog-user-project': self.cap.plan['project']})
         response = None
+        failure = None
+        result = None
         try:
-            try:
-                response = urllib.request.build_opener(NoRedirect).open(request,
-                    timeout=max(.01, min(8, deadline - self.cap.clock())))
-                status = response.status
-            except urllib.error.HTTPError as error:
-                response, status = error, error.code
-            raw = response.read(65537)
-            self.cap.gate(self.cleanup)
-            need(len(raw) <= 65536 and not 300 <= status < 400, 'HTTPS_OUTPUT')
-            return {'httpStatus': status, 'body': raw.decode('utf-8', 'strict')}
-        except (OSError, TimeoutError):
-            raise __import__('private_inventory').Stop('HTTPS_UNCONFIRMED') from None
+            remaining = min(8, deadline - self.cap.clock())
+            need(remaining > 0, 'HTTPS_UNCONFIRMED')
+            # A socket inactivity timeout alone does not bound a dripping body.
+            # Keep open, body consumption, validation and normal close in one timer.
+            with acl.http_deadline(remaining):
+                try:
+                    response = urllib.request.build_opener(NoRedirect).open(request, timeout=remaining)
+                    status = response.status
+                except urllib.error.HTTPError as error:
+                    response, status = error, error.code
+                raw = response.read(65537)
+                self.cap.gate(self.cleanup)
+                need(len(raw) <= 65536 and not 300 <= status < 400, 'HTTPS_OUTPUT')
+                result = {'httpStatus': status, 'body': raw.decode('utf-8', 'strict')}
+                try:
+                    response.close()
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except BaseException:
+                    raise __import__('private_inventory').Stop('HTTPS_RESPONSE_CLOSE_UNCONFIRMED') from None
+                response = None
+                self.cap.gate(self.cleanup)
+        except BaseException as error:
+            if isinstance(error, (OSError, TimeoutError)) or (
+                    type(error) is acl.Stop and str(error) in ('HTTP_TIMEOUT', 'HTTP_TIMER_CONFLICT')):
+                failure = __import__('private_inventory').Stop('HTTPS_UNCONFIRMED')
+            else:
+                failure = error
         finally:
             if response is not None:
-                try: response.close()
-                except Exception:
-                    raise __import__('private_inventory').Stop('HTTPS_RESPONSE_CLOSE_UNCONFIRMED') from None
+                # This is local response disposal, never another provider request.
+                # Its separate one-second ceiling also stays inside the phase.
+                try:
+                    remaining = min(1, deadline - self.cap.clock())
+                    need(remaining > 0, 'HTTPS_RESPONSE_CLOSE_UNCONFIRMED')
+                    with acl.http_deadline(remaining):
+                        response.close()
+                except BaseException as error:
+                    if failure is None:
+                        failure = error if isinstance(error, (KeyboardInterrupt, SystemExit)) else \
+                            __import__('private_inventory').Stop('HTTPS_RESPONSE_CLOSE_UNCONFIRMED')
+        if failure is not None:
+            raise failure from None
+        return result
 
     def _child_group_alive(self, process, until):
         # Only directly owned, start_new_session process groups are inspected/signalled.

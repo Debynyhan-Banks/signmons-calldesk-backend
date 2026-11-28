@@ -1,5 +1,6 @@
 """Actual owned local processes and native response closure; no provider or credential I/O."""
 import io
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -177,20 +178,46 @@ class ChildCleanupTests(unittest.TestCase):
 class ResponseCleanupTests(unittest.TestCase):
     def setUp(self):
         self.io = object.__new__(NativeIO)
-        self.io.ensure_owner = lambda: None
+        self.owner_checks = 0
+        def owner(): self.owner_checks += 1
+        self.io.ensure_owner = owner
+        self.deadline = time.time() + 5
+        self.reservations = []
+        self.open_calls = []
+        def spend(*args):
+            self.reservations.append(args)
+            return self.deadline
         self.io.cap = SimpleNamespace(plan={'project':'synthetic'}, clock=time.time,
-            spend=lambda *args:time.time()+5, gate=lambda *args:None)
+            spend=spend, gate=lambda *args:None)
         self.io.cleanup, self.io.token = False, 'synthetic'
         self.descriptor = {'method':'GET','url':'https://apikeys.googleapis.com/v2/synthetic',
             'body':None,'timeoutSeconds':5,'redirect':'error'}
+        self.acl = native_io.load_acl()
+        patched = patch.object(native_io, 'load_acl', return_value=self.acl)
+        patched.start(); self.addCleanup(patched.stop)
 
     def run_response(self, response=None, error=None):
-        opener = SimpleNamespace(open=lambda *args, **kwargs: response)
-        if error is not None:
-            def fail(*args, **kwargs): raise error
-            opener.open = fail
+        def opened(*args, **kwargs):
+            self.open_calls.append((args, kwargs))
+            if error is not None: raise error
+            return response
+        opener = SimpleNamespace(open=opened)
         with patch.object(native_io.urllib.request, 'build_opener', return_value=opener):
             return self.io.https(self.descriptor)
+
+    @contextmanager
+    def accelerated_deadlines(self):
+        # Exercise the real source-pinned SIGALRM context, with short local waits.
+        # Record the production-requested budgets independently of acceleration.
+        original = self.acl.http_deadline
+        requested = []
+        @contextmanager
+        def bounded(seconds):
+            requested.append(seconds)
+            with original(min(seconds, .05)):
+                yield
+        with patch.object(self.acl, 'http_deadline', bounded):
+            yield requested
 
     def test_success_malformed_oversized_and_decode_paths_close(self):
         for body in (b'{}', b'{malformed', b'x'*65537, b'\xff'):
@@ -228,6 +255,143 @@ class ResponseCleanupTests(unittest.TestCase):
             def close(self):raise OSError('synthetic')
         with self.assertRaisesRegex(Stop,'HTTPS_RESPONSE_CLOSE_UNCONFIRMED'):
             self.run_response(Response())
+
+    def test_whole_request_timer_stops_hanging_and_dripping_body(self):
+        for dripping in (False, True):
+            with self.subTest(dripping=dripping):
+                self.open_calls.clear(); self.reservations.clear()
+                self.deadline = time.time() + 20
+                class Response:
+                    status = 200
+                    closed = False
+                    def read(self, size):
+                        if not dripping: time.sleep(5)
+                        while True: time.sleep(.005)  # Repeated progress cannot reset the wall bound.
+                    def close(self): self.closed = True
+                response = Response(); before = time.monotonic()
+                with self.accelerated_deadlines() as budgets:
+                    with self.assertRaisesRegex(Stop, '^HTTPS_UNCONFIRMED$'):
+                        self.run_response(response)
+                self.assertEqual(budgets, [8, 1])
+                self.assertLess(time.monotonic() - before, 1)
+                self.assertTrue(response.closed)
+                self.assertEqual(len(self.open_calls), 1)
+                self.assertEqual(len(self.reservations), 1)
+                self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+
+    def test_whole_request_timer_includes_open_and_has_no_retry(self):
+        self.deadline = time.time() + 20
+        calls = []
+        def hanging(*args, **kwargs):
+            calls.append(kwargs['timeout']); time.sleep(5)
+        with self.accelerated_deadlines() as budgets, patch.object(
+                native_io.urllib.request, 'build_opener', return_value=SimpleNamespace(open=hanging)):
+            with self.assertRaisesRegex(Stop, '^HTTPS_UNCONFIRMED$'):
+                self.io.https(self.descriptor)
+        self.assertEqual(budgets, [8]); self.assertEqual(calls, [8])
+        self.assertEqual(len(self.reservations), 1)
+
+    def test_normal_and_fallback_close_are_bounded_without_success(self):
+        self.deadline = time.time() + 20
+        class Response:
+            status = 200
+            closes = 0
+            def read(self, size): return b'{}'
+            def close(self): self.closes += 1; time.sleep(5)
+        response = Response(); before = time.monotonic()
+        with self.accelerated_deadlines() as budgets:
+            with self.assertRaisesRegex(Stop, '^HTTPS_RESPONSE_CLOSE_UNCONFIRMED$'):
+                self.run_response(response)
+        self.assertEqual(budgets, [8, 1]); self.assertEqual(response.closes, 2)
+        self.assertEqual(len(self.open_calls), 1); self.assertEqual(len(self.reservations), 1)
+        self.assertLess(time.monotonic() - before, 1)
+
+    def test_primary_read_failure_survives_failing_or_hanging_cleanup(self):
+        for primary in (OSError('PRIVATE_PRIMARY'), Stop('HTTPS_OUTPUT'), KeyboardInterrupt(), SystemExit(7)):
+            for hanging in (False, True):
+                with self.subTest(primary=type(primary).__name__, hanging=hanging):
+                    self.deadline = time.time() + 20
+                    class Response:
+                        status = 200
+                        def read(self, size): raise primary
+                        def close(self):
+                            if hanging: time.sleep(5)
+                            raise OSError('PRIVATE_CLEANUP')
+                    with self.accelerated_deadlines():
+                        with self.assertRaises(type(primary) if not isinstance(primary, OSError) else Stop) as caught:
+                            self.run_response(Response())
+                    if isinstance(primary, OSError): self.assertEqual(str(caught.exception), 'HTTPS_UNCONFIRMED')
+                    else: self.assertIs(caught.exception, primary)
+                    self.assertNotIn('PRIVATE_', str(caught.exception))
+
+    def test_http_error_body_timeout_is_bounded_and_response_closed(self):
+        self.deadline = time.time() + 20
+        class Body:
+            closed = False
+            def read(self, size): time.sleep(5)
+            def close(self): self.closed = True
+        body = Body()
+        error = urllib.error.HTTPError(self.descriptor['url'], 404, 'synthetic', {}, body)
+        with self.accelerated_deadlines() as budgets:
+            with self.assertRaisesRegex(Stop, '^HTTPS_UNCONFIRMED$'):
+                self.run_response(error=error)
+        self.assertEqual(budgets, [8, 1]); self.assertTrue(body.closed)
+        self.assertEqual(len(self.open_calls), 1)
+
+    def test_expired_phase_refuses_before_open_and_respects_short_remaining_time(self):
+        self.deadline = time.time() - 1
+        with self.assertRaisesRegex(Stop, '^HTTPS_UNCONFIRMED$'):
+            self.run_response()
+        self.assertEqual(self.open_calls, [])
+        self.deadline = time.time() + .04
+        class Response:
+            status = 200
+            closes = 0
+            def read(self, size): time.sleep(5)
+            def close(self): self.closes += 1
+        response = Response(); before = time.monotonic()
+        with self.assertRaisesRegex(Stop, '^HTTPS_UNCONFIRMED$'):
+            self.run_response(response)
+        self.assertLess(time.monotonic() - before, 1)
+        self.assertEqual(response.closes, 0)  # An expired phase grants no extra close time.
+        self.assertLessEqual(self.open_calls[-1][1]['timeout'], .04)
+
+    def test_active_alarm_is_preserved_and_refused_before_any_io(self):
+        previous = signal.getsignal(signal.SIGALRM)
+        def handler(*args): pass
+        signal.signal(signal.SIGALRM, handler)
+        signal.setitimer(signal.ITIMER_REAL, 20)
+        try:
+            with self.assertRaisesRegex(Stop, '^HTTPS_UNCONFIRMED$'):
+                self.run_response()
+            self.assertIs(signal.getsignal(signal.SIGALRM), handler)
+            remaining, interval = signal.getitimer(signal.ITIMER_REAL)
+            self.assertGreater(remaining, 19); self.assertEqual(interval, 0)
+            self.assertEqual(self.owner_checks, 0)
+            self.assertEqual(self.reservations, []); self.assertEqual(self.open_calls, [])
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0); signal.signal(signal.SIGALRM, previous)
+
+    def test_original_handler_restored_on_success_and_timeout(self):
+        previous = signal.getsignal(signal.SIGALRM)
+        def handler(*args): pass
+        signal.signal(signal.SIGALRM, handler)
+        try:
+            response = io.BytesIO(b'{}'); response.status = 200
+            self.run_response(response)
+            self.assertIs(signal.getsignal(signal.SIGALRM), handler)
+            self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+            class Response:
+                status = 200
+                def read(self, size): time.sleep(5)
+                def close(self): pass
+            with self.accelerated_deadlines():
+                with self.assertRaisesRegex(Stop, '^HTTPS_UNCONFIRMED$'):
+                    self.run_response(Response())
+            self.assertIs(signal.getsignal(signal.SIGALRM), handler)
+            self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0); signal.signal(signal.SIGALRM, previous)
 
 
 if __name__ == '__main__':
