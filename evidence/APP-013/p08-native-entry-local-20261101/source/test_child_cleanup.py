@@ -477,3 +477,172 @@ class TC1OwnershipTests(unittest.TestCase):
         with patch.object(self.io,'_owned_process',side_effect=run):
             with self.assertRaisesRegex(Stop,'RUNTIME_TAG_OUTPUT_LIMIT'):
                 self.io._run(['/opt/homebrew/bin/gcloud',*vector,'--format=json'],'cli')
+
+
+class TC2TagTimingTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture = TC1OwnershipTests()
+        self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.io = self.fixture.io
+        self.io.env = lambda: {'PATH': '/usr/bin:/bin', 'LANG': 'C'}
+        self.io.cap.plan = {'iam': []}
+        restore = native_io.load('p08-restoration-local-20261028/source/restore.py', 'tc2_restore')
+        binding = native_io.load('p08-key-correction-20261110/binding.py', 'tc2_binding')
+        self.io.restore = binding.apply_restore(restore)
+        self.reservations = []
+        self.deadline = time.time() + 45
+        self.io.cap.times['cleanupEnd'] = time.time() + 60
+        def gate(cleanup=False):
+            need(self.io.cap.clock() < self.deadline, 'ENTRY_DEADLINE')
+            return self.deadline
+        def spend(kind, cleanup):
+            self.reservations.append((kind, cleanup))
+            return gate(cleanup)
+        self.io.cap.gate, self.io.cap.spend = gate, spend
+
+    def command(self, enabled):
+        return ['/opt/homebrew/bin/gcloud', *self.io.restore.command(
+            self.io.cap.plan, 'tag', self.io.restore.TAG, enabled), '--format=json']
+
+    def test_exact_dynamic_vectors_select_thirty_seconds_and_total_reap_bound(self):
+        self.io.cap.clock = lambda: 100.
+        self.deadline = 200.
+        for cleanup in (False, True):
+            with self.subTest(cleanup=cleanup):
+                self.io.cleanup = cleanup
+                command = self.command(not cleanup)
+                with patch.object(self.io, '_owned_process', return_value=
+                        subprocess.CompletedProcess(command, 0, b'[]', b'')) as owned:
+                    self.assertEqual(self.io._run(command, 'cli'), '[]')
+                self.assertEqual(owned.call_args.args[3], 30)
+                self.assertIs(owned.call_args.kwargs['total'], True)
+                self.assertEqual(owned.call_count, 1)
+        self.assertEqual(self.reservations, [('cli', False), ('cli', True)])
+        self.assertEqual(native_io.AUTH_TAG_CLEANUP_SECONDS, 38)
+
+    def test_unrelated_foreign_vectors_wrong_direction_and_kind_keep_eight(self):
+        self.io.cap.clock = lambda: 100.
+        self.deadline = 200.
+        forward, removal = self.command(True), self.command(False)
+        foreign_candidate = [x.replace(self.io.restore.CANDIDATE, 'foreign-candidate') for x in forward]
+        foreign_tag = [x.replace(self.io.restore.TAG, 'foreign-tag') for x in removal]
+        foreign_service = [x.replace('signmons-calldesk-staging', 'foreign-service') for x in forward]
+        cases = [(False, forward[:-1], 'cli'), (False, [*forward, '--async'], 'cli'),
+                 (False, foreign_candidate, 'cli'), (True, foreign_tag, 'cli'),
+                 (False, foreign_service, 'cli'), (False, tuple(forward), 'cli'),
+                 (False, removal, 'cli'), (True, forward, 'cli'),
+                 (False, forward, 'sql'), (False, ['/opt/homebrew/bin/psql'], 'sql'),
+                 (False, ['/opt/homebrew/bin/gcloud', 'auth', 'list'], 'cli')]
+        for cleanup, command, kind in cases:
+            with self.subTest(cleanup=cleanup, command=command, kind=kind):
+                self.io.cleanup = cleanup
+                with patch.object(self.io, '_owned_process', return_value=
+                        subprocess.CompletedProcess(command, 0, b'[]', b'')) as owned:
+                    self.io._run(command, kind)
+                self.assertEqual(owned.call_args.args[3], 8)
+                self.assertEqual(owned.call_count, 1)
+
+    def test_ordinary_and_preflight_purposes_keep_original_subprocess_timeout(self):
+        self.io.cap.clock = lambda: 100.
+        self.deadline = 200.
+        for purpose in (None, 'NATIVE_PREFLIGHT_ONLY'):
+            self.io.cap.e['purpose'] = purpose
+            for cleanup in (False, True):
+                with self.subTest(purpose=purpose, cleanup=cleanup):
+                    self.io.cleanup = cleanup
+                    command = self.command(not cleanup)
+                    with patch.object(self.io, '_owned_process', side_effect=AssertionError('AQ1 only')), \
+                         patch.object(native_io.subprocess, 'run', return_value=
+                            subprocess.CompletedProcess(command, 0, b'[]', b'')) as original:
+                        self.io._run(command, 'cli')
+                    self.assertEqual(original.call_args.kwargs['timeout'], 8)
+                    self.assertEqual(original.call_count, 1)
+
+    def local_spawn(self, expected, code):
+        def spawn(command, **kwargs):
+            self.assertEqual(command, expected)
+            # Preserve stdin/stdout/stderr/env/session ownership. Replace only
+            # the exact Popen program with this harmless local Python process.
+            return self.fixture.fixture.owned_spawn([sys.executable, '-c', code], **kwargs)
+        return spawn
+
+    def delayed_success(self, cleanup):
+        self.io.cleanup = cleanup
+        if cleanup:
+            self.io.cap.mode = 'closeout'
+        command = self.command(not cleanup)
+        code = self.fixture.fixture.child_code("time.sleep(10);print('[]',flush=True)")
+        start = time.monotonic()
+        with patch.object(native_io.subprocess, 'Popen', side_effect=self.local_spawn(command, code)) as spawn:
+            self.assertEqual(self.io._run(command, 'cli'), '[]')
+        elapsed = time.monotonic() - start
+        self.assertGreaterEqual(elapsed, 10)
+        self.assertLess(elapsed, native_io.AUTH_TAG_COMMAND_SECONDS)
+        self.assertEqual(spawn.call_count, 1)
+        self.assertEqual(self.reservations, [('cli', cleanup)])
+        self.assertEqual(self.io.cap.dispatch_serial, 1)
+        inventory = 'independentChildren' if cleanup else 'ownedChildren'
+        rows = self.io.cap.coordinator.j['nativeEntry'][inventory]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0]['kind'], rows[0]['state']), ('CLI', 'CLOSED'))
+        self.fixture.fixture.assert_closed()
+
+    def test_actual_forward_tag_ten_second_success_keeps_owned_closure_and_sentinel(self):
+        self.delayed_success(False)
+
+    def test_actual_removal_tag_ten_second_success_keeps_owned_closure_and_sentinel(self):
+        self.delayed_success(True)
+
+    def test_short_work_and_cleanup_phase_clamp_tag_and_reap_held_pipes(self):
+        for cleanup in (False, True):
+            with self.subTest(cleanup=cleanup):
+                self.io.cleanup = cleanup
+                command = self.command(not cleanup)
+                self.deadline = time.time() + 1
+                code = self.fixture.fixture.child_code('sys.exit(0)', held=True)
+                start = time.monotonic()
+                with patch.object(native_io.subprocess, 'Popen', side_effect=self.local_spawn(command, code)) as spawn:
+                    with self.assertRaisesRegex(Stop, 'NATIVE_COMMAND_UNCONFIRMED' if cleanup else 'RUNTIME_TAG_COMMAND_TIMEOUT'):
+                        self.io._run(command, 'cli')
+                self.assertLess(time.monotonic() - start, 1.6)
+                self.assertEqual(spawn.call_count, 1)
+                self.fixture.fixture.assert_closed()
+        self.assertEqual(self.reservations, [('cli', False), ('cli', True)])
+
+    def test_exact_tag_interruption_stops_one_spawn_and_preserves_failure(self):
+        command = self.command(True)
+        code = self.fixture.fixture.child_code('time.sleep(30)')
+        gate = self.io.cap.gate
+        interrupted = [False]
+        def interruptible(cleanup=False):
+            need(not interrupted[0], 'INTERRUPTED')
+            return gate(cleanup)
+        self.io.cap.gate = interruptible
+        timer = threading.Timer(.2, lambda: interrupted.__setitem__(0, True))
+        timer.start()
+        try:
+            with patch.object(native_io.subprocess, 'Popen', side_effect=self.local_spawn(command, code)) as spawn:
+                with self.assertRaisesRegex(Stop, 'INTERRUPTED'):
+                    self.io._run(command, 'cli')
+            self.assertEqual(spawn.call_count, 1)
+        finally:
+            timer.cancel()
+            timer.join()
+        self.fixture.fixture.assert_closed()
+
+    def test_exact_tag_output_and_nonzero_failures_keep_safe_categories(self):
+        for cleanup, action, expected in [
+                (False, "sys.stdout.write('x'*70000)", 'RUNTIME_TAG_OUTPUT_LIMIT'),
+                (True, "sys.stdout.write('x'*70000)", 'NATIVE_COMMAND_REFUSED'),
+                (False, 'sys.exit(3)', 'RUNTIME_TAG_COMMAND_REFUSED'),
+                (True, 'sys.exit(3)', 'NATIVE_COMMAND_REFUSED')]:
+            with self.subTest(cleanup=cleanup, expected=expected):
+                self.io.cleanup = cleanup
+                command = self.command(not cleanup)
+                code = 'import sys;' + action
+                with patch.object(native_io.subprocess, 'Popen', side_effect=self.local_spawn(command, code)) as spawn:
+                    with self.assertRaisesRegex(Stop, expected):
+                        self.io._run(command, 'cli')
+                self.assertEqual(spawn.call_count, 1)
+                self.fixture.fixture.assert_closed()

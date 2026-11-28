@@ -3097,12 +3097,80 @@ class TC1TimingTests(unittest.TestCase):
         cap,t=self.phase_cap();cap.set_phase('MAIN_CLOSEOUT',1100.)
         cap.dispatch_serial=0
         obj=object.__new__(entry.Coordinator);obj.cap=cap;obj.auth_only=True
+        obj.modules={'restore':entry.restore}
         obj.independent_cleanup=False;obj.abort=False;obj.clock=cap.clock;obj.monotonic=cap.monotonic
         cap.e['limits']={'cli':10,'https':10,'sql':10,'child':6}
         item=list(entry.restore.operations({'iam':[]}))[0]
         obj.j={'nativeEntry':{'parent':{'pid':123,'startedAt':1000.},'calls':dict.fromkeys(('cli','https','sql','child'),0),'dispatchSerial':0},
             'runtimeAttempted':[list(item)],'runtimeCleanupAttempted':[]};obj.save=lambda:None
         return obj,t
+
+    def test_tc2_tag_cleanup_reserves_command_and_readback_before_intent(self):
+        for independent in (False, True):
+            for remaining in (37, 38):
+                with self.subTest(independent=independent, remaining=remaining):
+                    obj,t=self.cleanup_controller();events=[]
+                    obj.independent_cleanup=independent
+                    obj.cap.mode='closeout' if independent else 'run'
+                    obj.cap.set_phase('INDEPENDENT_CLOSEOUT' if independent else 'MAIN_CLOSEOUT',1100.)
+                    t['wall']=1100.-remaining;t['mono']=10.+100.-remaining
+                    label='RUNTIME:tag:'+entry.restore.TAG
+                    obj.save=lambda:events.append('save')
+                    with patch.object(a,'inspect'):
+                        if remaining==37:
+                            with self.assertRaisesRegex(entry.c.Stop,'^MAIN_CLOSEOUT_DEFERRED$'):
+                                obj.cleanup_mutation(label,lambda:events.append('intent'),lambda:events.append('action'),16)
+                            self.assertEqual(events,[])
+                        else:
+                            obj.cleanup_mutation(label,lambda:events.append('intent'),lambda:events.append('action'),16)
+                            self.assertEqual(events,['intent','save','action'])
+
+    def test_tc2_tag_cleanup_never_reduces_or_widens_other_reservations(self):
+        tag='RUNTIME:tag:'+entry.restore.TAG
+        cases=[(True,tag,16,38),(True,tag,45,45),(False,tag,16,16),
+            (True,tag+'-foreign',16,16),(True,'RUNTIME:identity:synthetic',53,53),
+            (True,'IAM:signing',16,16),(True,'KEY',122,122)]
+        for auth_only,label,requested,expected in cases:
+            with self.subTest(auth_only=auth_only,label=label,requested=requested):
+                obj,_=self.cleanup_controller();obj.auth_only=auth_only;events=[]
+                obj.cleanup_admit=lambda seconds=0:events.append(('admit',seconds))
+                obj.save=lambda:events.append('save')
+                result=obj.cleanup_mutation(label,lambda:events.append('intent'),lambda:'one action',requested)
+                self.assertEqual(result,'one action')
+                self.assertEqual(events,[('admit',expected),'intent','save',('admit',0)])
+
+    def test_tc2_tag_cleanup_obeys_shorter_monotonic_phase(self):
+        for independent in (False,True):
+            obj,t=self.cleanup_controller();obj.independent_cleanup=independent;events=[]
+            obj.cap.mode='closeout' if independent else 'run'
+            obj.cap.set_phase('INDEPENDENT_CLOSEOUT' if independent else 'MAIN_CLOSEOUT',1100.)
+            t['mono']+=63.  # Wall time still has 100 seconds; monotonic time has only 37.
+            with patch.object(a,'inspect'):
+                with self.assertRaisesRegex(entry.c.Stop,'^MAIN_CLOSEOUT_DEFERRED$'):
+                    obj.cleanup_mutation('RUNTIME:tag:'+entry.restore.TAG,
+                        lambda:events.append('intent'),lambda:events.append('action'),16)
+            self.assertEqual(events,[])
+
+    def test_tc2_tag_cleanup_expiry_preserves_only_undispatched_first_action(self):
+        for dispatched in (False,True):
+            with self.subTest(dispatched=dispatched):
+                obj,t=self.cleanup_controller();item=['tag',entry.restore.TAG]
+                operations=[list(value) for value in entry.restore.operations({'iam':[]})]
+                obj.j['runtimeAttempted']=operations[:operations.index(item)+1]
+                label='RUNTIME:tag:'+entry.restore.TAG;actions=[]
+                def record():obj.j['runtimeCleanupAttempted'].append(item)
+                def save():
+                    if not dispatched and obj.j['runtimeCleanupAttempted']:t['wall']=1101.
+                def action():
+                    obj.cap.dispatch_serial+=1;actions.append('DISPATCH');raise OSError('synthetic refusal')
+                obj.save=save
+                with patch.object(a,'inspect'):
+                    with self.assertRaises(Exception):obj.cleanup_mutation(label,record,action,16)
+                self.assertEqual(obj.j['runtimeCleanupAttempted'],[item])
+                self.assertEqual(actions,['DISPATCH'] if dispatched else [])
+                obj.independent_cleanup=True
+                self.assertEqual(obj.cleanup_first_dispatch(label),not dispatched)
+                self.assertFalse(obj.cleanup_first_dispatch(label))
 
     def test_cleanup_intent_expiry_before_after_persistence_and_after_dispatch(self):
         for boundary in ('before','persisted','dispatched'):

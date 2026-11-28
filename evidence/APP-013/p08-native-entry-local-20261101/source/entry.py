@@ -15,7 +15,7 @@ from pathlib import Path
 from authority import (Capability, committed, digest, load, auth_timing,
     AUTH_POST_SETTLE_SECONDS, AUTH_SETUP_SECONDS, AUTH_PARENT_EXIT_RESERVE_SECONDS)
 from private_inventory import Stop, need, inspect, read, reserve, purge
-from native_io import NativeIO, PreflightIO, load_acl
+from native_io import NativeIO, PreflightIO, load_acl, AUTH_TAG_CLEANUP_SECONDS
 from handoff import Handoff
 
 readbacks = load('p08-native-closeout-local-20261031/source/adapter.py', 'entry_readback_contract')
@@ -770,6 +770,11 @@ class Coordinator(c.Coordinator):
                 self.j['unknown'].append('CHILD_PROCESS_CLOSEOUT_UNCONFIRMED')
             self.save()
         return super().closeout(independent=independent)
+
+    def cleanup_mutation(self, label, record, action, seconds):
+        if self.auth_only and label == 'RUNTIME:tag:' + self.modules['restore'].TAG:
+            seconds = max(seconds, AUTH_TAG_CLEANUP_SECONDS)
+        return super().cleanup_mutation(label, record, action, seconds)
 
     def cleanup_admit(self, seconds=0):
         if self.auth_only:

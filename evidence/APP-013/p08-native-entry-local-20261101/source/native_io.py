@@ -11,6 +11,9 @@ import urllib.request
 from authority import load, HERE, APP, digest
 from private_inventory import need
 
+AUTH_TAG_COMMAND_SECONDS = 30
+AUTH_TAG_CLEANUP_SECONDS = AUTH_TAG_COMMAND_SECONDS + 8
+
 
 def load_acl():
     relative = 'p08-narrow-access-check-local-20261101/source/access_check.py'
@@ -92,10 +95,17 @@ class NativeIO:
                        argv == ['/opt/homebrew/bin/gcloud', *self.restore.command(
                            {**self.cap.plan, 'iam': self.cap.plan.get('iam', [])},
                            'tag', self.restore.TAG, True), '--format=json'])
+        auth_tag = self.auth_only() and (forward_tag or (
+            kind == 'cli' and self.cleanup is True and type(argv) is list and
+            argv[:4] == ['/opt/homebrew/bin/gcloud', 'run', 'services', 'update-traffic'] and
+            argv == ['/opt/homebrew/bin/gcloud', *self.restore.command(
+                {**self.cap.plan, 'iam': self.cap.plan.get('iam', [])},
+                'tag', self.restore.TAG, False), '--format=json']))
         try:
             if self.auth_only():
                 r = self._owned_process(argv, input_bytes or b'', env,
-                    min(8, deadline - self.cap.clock()), self.cleanup, 65536, kind, total=True,
+                    min(AUTH_TAG_COMMAND_SECONDS if auth_tag else 8, deadline - self.cap.clock()),
+                    self.cleanup, 65536, kind, total=True,
                     output_codes=({'stdout':'DATABASE_OUTPUT_LIMIT','stderr':'DATABASE_ERROR_OUTPUT_LIMIT'}
                         if kind == 'sql' else {'stdout':'RUNTIME_TAG_OUTPUT_LIMIT' if forward_tag else 'NATIVE_COMMAND_REFUSED',
                                               'stderr':'NATIVE_COMMAND_REFUSED'}))
