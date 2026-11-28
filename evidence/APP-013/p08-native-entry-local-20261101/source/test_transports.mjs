@@ -222,3 +222,38 @@ test('AP2 native bounded timeout remains one request and cannot become HTTP evid
  assert.deepEqual(ports.fetcher.failureDiagnostic(error),{phase:'REQUEST',category:'TIMEOUT',validation:null});
  assert.equal(calls,1);
 });
+
+for(const primary of [false,true])test('TC1 native hanging cancellation is bounded and preserves primary failure: '+primary,async t=>{
+ const r=fixture(t),cap=authorizeChild(r.envelopePath,'--run'),base=fixturePorts(r);
+ const original=Date.now,offset=Date.parse(cap.e.plan.window.cleanupEnd)-original()-100;
+ t.mock.method(Date,'now',()=>original()+offset);
+ const failure=Object.assign(Error('PRIVATE_PRIMARY'),{code:'PRIVATE_UNTRUSTED'});let calls=0,cancels=0;
+ const ports=createPorts(cap,r.credentials,{...base,fetcher:async()=>{calls++;return {ok:true,status:200,
+  body:{getReader:()=>({read:async()=>{if(primary)throw failure;return {done:true};},
+   cancel:()=>{cancels++;return new Promise(()=>{});}})}};}});
+ const start=performance.now();let caught;
+ await assert.rejects(()=>ports.fetcher('https://identitytoolkit.googleapis.com/v1/projects/signmons/accounts:lookup',{}),error=>{caught=error;return true;});
+ assert.ok(performance.now()-start<1500);assert.equal(calls,1);assert.equal(cancels,1);assert.equal(cap.requests,2);
+ if(primary){assert.equal(caught,failure);assert.equal(ports.fetcher.failureDiagnostic(caught).category,'TRANSPORT');}
+ else {assert.equal(caught.code,'NATIVE_IO_TIMEOUT');assert.equal(ports.fetcher.failureDiagnostic(caught).category,'TIMEOUT');}
+});
+
+test('TC1 native cancellation refusal prevents success without another reservation',async t=>{
+ const r=fixture(t),cap=authorizeChild(r.envelopePath,'--run');let calls=0,cancels=0;
+ const failure=Error('PRIVATE_CANCEL');
+ const ports=createPorts(cap,r.credentials,{...fixturePorts(r),fetcher:async()=>{calls++;return {ok:true,status:200,
+  body:{getReader:()=>({read:async()=>({done:true}),cancel:async()=>{cancels++;throw failure;}})}};}});
+ await assert.rejects(()=>ports.fetcher('https://identitytoolkit.googleapis.com/v1/projects/signmons/accounts:lookup',{}),error=>error===failure);
+ assert.equal(calls,1);assert.equal(cancels,1);assert.equal(cap.requests,2);
+ assert.deepEqual(ports.fetcher.failureDiagnostic(failure),{phase:'RESPONSE_READ',category:'TRANSPORT',validation:null});
+});
+
+test('TC1 native body validation survives cancellation refusal without private diagnostics',async t=>{
+ const r=fixture(t),cap=authorizeChild(r.envelopePath,'--run');let cancels=0;
+ const ports=createPorts(cap,r.credentials,{...fixturePorts(r),fetcher:async()=>({ok:true,status:200,
+  body:{getReader:()=>({read:async()=>({done:false,value:Buffer.alloc(65537)}),
+   cancel:async()=>{cancels++;throw Error('PRIVATE_CANCEL');}})}})});
+ let caught;await assert.rejects(()=>ports.fetcher('https://identitytoolkit.googleapis.com/v1/projects/signmons/accounts:lookup',{}),error=>{caught=error;return error.code==='AUTH_OUTPUT_LIMIT';});
+ assert.equal(cancels,1);assert.equal(cap.requests,2);
+ assert.deepEqual(ports.fetcher.failureDiagnostic(caught),{phase:'RESPONSE_READ',category:'RESPONSE_VALIDATION',validation:'BODY_BOUND'});
+});

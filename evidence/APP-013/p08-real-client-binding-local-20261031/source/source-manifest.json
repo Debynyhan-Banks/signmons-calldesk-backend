@@ -2,22 +2,22 @@
   "files": {
     "bound-child.mjs": "7f452f72018dffef175d14d736d25baf72d4be5b6c6d21e126ef88aedb9d5d5e",
     "bound-clients.mjs": "7d4d07a3c237060edf9177517f96bcbeafb359d9f93049bbc043b09235ef53b1",
-    "bound_handoff.py": "4586c8161ba09d0acd1d193025be262ae5589a48dbb79694563913f635be35bf",
+    "bound_handoff.py": "525616b28f9fee2502d92eb0956aad6b988acea57bb4b9fa27b04f9bc82457c9",
     "recovery-sequence.mjs": "3919b7971929563fde5164d6d1e4ff6083b2bac662c5c501f207534016e2ca70",
     "test_bound.mjs": "034bc80f782f2afce90a93cf35780fcdb57105581b562f62499d227145aa270d",
     "test_bound.py": "c67a04b7b0d5d28410d80f04828a86020c74a0f81e148951bc20cfc218b4252c"
   },
   "sourceLocks": {
-    "adapter": "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c",
-    "authority": "ee11bdf0bcd06beba64c1f9cd0c32b84b56e1b1bac42c68fc9c2f9a9d27aaf27",
+    "adapter": "edf593e30a6fe6c147a6a7063a9512da1b9c6300d6cd22d6ab0ccf80070ce4c1",
+    "authority": "8ab176ba2acbddd591063700eab56161b3589017fe0e2ebaa3bdbf4d3473bbe9",
     "bridge": "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce",
     "bridge_plan": "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27",
     "client": "127a37aa0c1bf3b65b068dc7cebd153a005822a3c015c6635329d957415bfbdd",
-    "coordinator": "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70",
+    "coordinator": "829b0ea7d693862c78a4febd774229ba7c101fba059462476101059bdd86b8ab",
     "historical_adapters": "ee4906f969ae40e40b4c4a066829afc63257c62a8e9e60fcdbc1ea376b91855a",
     "historical_launch": "180346d1874efa61986ea79575407af8669e940ec076639f828bbf2b65c0516a",
     "sequence": "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c",
-    "serialized_handoff": "845cb9ea0856935c248563468c90546a8c68df15a49bba092ff2c4e09c89934b"
+    "serialized_handoff": "9e74e9a25c5a11cb9200c2a5517e6800c0be77e263a4e6312db0806a5d34663e"
   },
   "status": "DISABLED_LOCAL_ONLY"
 }

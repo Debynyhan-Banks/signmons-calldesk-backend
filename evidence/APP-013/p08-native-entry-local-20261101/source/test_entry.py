@@ -70,6 +70,9 @@ class EntryTests(unittest.TestCase):
             def pause(seconds):
                 self.settle_sleeps.append(seconds);elapsed[0]+=seconds
             controller.pause=pause
+            if getattr(controller.cap,'phase',None) is not None:
+                controller.cap.phase_last=0.
+                controller.cap.phase_monotonic_end=max(0,controller.cap.phase_end-controller.clock())
         timing=patch.object(entry.Coordinator,'__init__',timed_init)
         timing.start();self.addCleanup(timing.stop)
         self.acl=entry.load_acl();self.role_reads=0;self.role_mutator=None
@@ -2943,7 +2946,15 @@ const cleanup=[];try {
 class AQ1AuthorityRecoveryTests(unittest.TestCase):
     def fixture(self):
         f=ConnectedEntryTests();f.setUp(timing=True);self.addCleanup(f.doCleanups)
-        f.e['purpose']='NATIVE_AUTH_QUALIFICATION_ONLY';f.seal();return f
+        f.e['purpose']='NATIVE_AUTH_QUALIFICATION_ONLY'
+        for field in ('cutoff','workEnd','cleanupEnd','purgeEnd'):
+            stamp=entry.restore.timestamp(f.e['plan']['window'][field])+120
+            f.e['plan']['window'][field]=datetime.datetime.fromtimestamp(stamp,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        stamp=entry.restore.timestamp(f.e['payment']['workEnd'])+120
+        f.e['payment']['workEnd']=datetime.datetime.fromtimestamp(stamp,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        f.e['qualification']['qualifiedUntil']=f.e['plan']['window']['cleanupEnd']
+        f.e['qualification']['scopeSha256']=a.digest({k:f.e[k] for k in ('plan','target','database','resources','limits','payment')})
+        f.seal();return f
 
     def test_aq1_external_decision_and_committed_source_are_exact(self):
         f=self.fixture();f.e['execution']='EXTERNAL'
@@ -3003,7 +3014,7 @@ class AQ1AuthorityRecoveryTests(unittest.TestCase):
         f.e['payment']['workEnd']=datetime.datetime.fromtimestamp(time.time()+1300,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         f.e['qualification']['scopeSha256']=a.digest({k:f.e[k] for k in ('plan','target','database','resources','limits','payment')})
         f.seal();f.run_entry();j=read(f.root/'journal.json')
-        self.assertEqual(j['failure'],'DEADLINE');self.assertFalse(j['runtimeOwned'])
+        self.assertEqual(j['failure'],'START_CUTOFF');self.assertFalse(j['runtimeOwned']);self.assertFalse(j['runtimeAttempted'])
         final=f.run_entry('closeout');self.assertTrue(final['privateInputsAbsent']);self.assertEqual(final['residuals'],[])
 
     def test_aq1_contradictory_payment_records_never_become_clean_authentication_proof(self):
@@ -3017,3 +3028,269 @@ class AQ1AuthorityRecoveryTests(unittest.TestCase):
                 self.assertFalse(final['authProofReady'] or final['paymentReadyForAcceptance'])
                 self.assertTrue(final['privateInputsAbsent'])
                 self.assertFalse(any(f.f.runtime_state.values()))
+
+
+class TC1TimingTests(unittest.TestCase):
+    def phase_cap(self):
+        clock={'wall':1000.,'mono':10.}
+        cap=object.__new__(a.Capability)
+        cap.e={'version':2,'purpose':'NATIVE_AUTH_QUALIFICATION_ONLY'}
+        cap.auth_only=True;cap.mode='run';cap.phase=None;cap.last=1000.
+        cap.clock=lambda:clock['wall'];cap.monotonic=lambda:clock['mono']
+        cap.times={'start':900.,'cutoff':3900.,'workEnd':4000.,'cleanupEnd':4660.}
+        cap.root=Path('/synthetic');cap.plan={'operationId':'synthetic'}
+        cap.coordinator=SimpleNamespace(abort=False)
+        return cap,clock
+
+    def test_shared_auth_budget_and_purpose(self):
+        cap,t=self.phase_cap()
+        cap.e['payment']={'workEnd':'1970-01-01T01:05:00Z'}
+        value=a.auth_timing(cap.e,cap.times)
+        self.assertEqual(value,{'setupSeconds':780,'settleSeconds':420,'postSettleSeconds':600,
+            'forwardSeconds':1800,'forwardEnd':3900.,'latestAdmission':2100.})
+        with self.assertRaisesRegex(Stop,'AUTH_TIMING_PURPOSE'):
+            a.auth_timing({**cap.e,'purpose':'OTHER'},cap.times)
+
+    def test_setup_wall_monotonic_expiry_and_independent_horizon(self):
+        for clock in ('wall','mono'):
+            cap,t=self.phase_cap();cap.set_phase('SETUP',1780.)
+            with patch.object(a,'inspect'):
+                t[clock]+=779.;self.assertGreater(cap.gate(),t['wall'])
+                t[clock]+=1.
+                with self.assertRaisesRegex(Stop,'ENTRY_DEADLINE'):cap.gate()
+        cap,t=self.phase_cap();cap.set_phase('MAIN_CLOSEOUT',3996.)
+        with patch.object(a,'inspect'):
+            t['wall']=3996.;t['mono']=3006.
+            with self.assertRaisesRegex(Stop,'ENTRY_DEADLINE'):cap.gate(True)
+            cap.mode='closeout';cap.phase=None
+            self.assertEqual(cap.gate(True),4660.)
+
+    def test_phase_transition_cannot_hide_monotonic_rollback(self):
+        cap,t=self.phase_cap();cap.set_phase('SETUP',1780.);t['mono']-=1
+        with self.assertRaisesRegex(Stop,'CLOCK_ROLLBACK'):cap.set_phase('FORWARD',3900.)
+
+    def test_actual_handoff_selects_caps_without_changing_payment(self):
+        import handoff
+        cases=[(1,None,'--run',30),(2,None,'--run',500),
+            (2,'NATIVE_AUTH_QUALIFICATION_ONLY','--run',240),
+            (2,'NATIVE_AUTH_QUALIFICATION_ONLY','--payment-preflight',30),
+            (2,'NATIVE_AUTH_QUALIFICATION_ONLY','--closeout',30),
+            (2,'NATIVE_AUTH_QUALIFICATION_ONLY','--readback',30)]
+        for version,purpose,mode,expected in cases:
+            with self.subTest(version=version,purpose=purpose,mode=mode):
+                calls=[];e={'version':version}
+                if purpose:e['purpose']=purpose
+                cap=SimpleNamespace(e=e,root=Path('/synthetic'),clock=lambda:1000.,
+                    times={'workEnd':1500.},spend=lambda *args:1500.,gate=lambda *args:1500.,
+                    coordinator=SimpleNamespace(j={'nativeEntry':{'calls':{'child':1}}}))
+                def child(argv,**kwargs):
+                    calls.append(kwargs['timeout']);raise subprocess.TimeoutExpired(argv,kwargs['timeout'])
+                h=object.__new__(handoff.Handoff);h.cap=cap
+                h.io=SimpleNamespace(credentials=lambda:{'password':'synthetic','accessToken':'synthetic'},child=child)
+                h._journal=lambda:{};h._merge_failed_payment_child=lambda _:None
+                h._record_child_observation=lambda _:None
+                with self.assertRaisesRegex(handoff.old.Stop,'CHILD_TIMEOUT'):h.invoke_child(None,mode)
+                self.assertEqual(calls,[expected])
+
+
+    def cleanup_controller(self):
+        cap,t=self.phase_cap();cap.set_phase('MAIN_CLOSEOUT',1100.)
+        cap.dispatch_serial=0
+        obj=object.__new__(entry.Coordinator);obj.cap=cap;obj.auth_only=True
+        obj.independent_cleanup=False;obj.abort=False;obj.clock=cap.clock;obj.monotonic=cap.monotonic
+        cap.e['limits']={'cli':10,'https':10,'sql':10,'child':6}
+        item=list(entry.restore.operations({'iam':[]}))[0]
+        obj.j={'nativeEntry':{'parent':{'pid':123,'startedAt':1000.},'calls':dict.fromkeys(('cli','https','sql','child'),0),'dispatchSerial':0},
+            'runtimeAttempted':[list(item)],'runtimeCleanupAttempted':[]};obj.save=lambda:None
+        return obj,t
+
+    def test_cleanup_intent_expiry_before_after_persistence_and_after_dispatch(self):
+        for boundary in ('before','persisted','dispatched'):
+            with self.subTest(boundary=boundary):
+                obj,t=self.cleanup_controller();item=obj.j['runtimeAttempted'][0];label='RUNTIME:'+':'.join(item);actions=[]
+                def record():obj.j['runtimeCleanupAttempted'].append(list(item))
+                def save():
+                    if boundary=='persisted' and obj.j['runtimeCleanupAttempted']:t['wall']=1101.
+                def action():
+                    obj.cap.dispatch_serial+=1;actions.append('DISPATCH');raise OSError('synthetic refusal')
+                obj.save=save
+                if boundary=='before':t['wall']=1101.
+                with patch.object(a,'inspect'):
+                    with self.assertRaises(Exception):obj.cleanup_mutation(label,record,action,16)
+                if boundary=='before':
+                    self.assertEqual(obj.j['runtimeCleanupAttempted'],[])
+                else:self.assertEqual(obj.j['runtimeCleanupAttempted'],[item])
+                self.assertEqual(actions,['DISPATCH'] if boundary=='dispatched' else [])
+                obj.independent_cleanup=True
+                self.assertEqual(obj.cleanup_first_dispatch(label),boundary=='persisted')
+                self.assertFalse(obj.cleanup_first_dispatch(label))
+
+    def test_key_private_intent_permits_only_positive_first_independent_dispatch(self):
+        for proven in (False,True):
+            with self.subTest(proven=proven):
+                p=object.__new__(entry.Ports);calls=[]
+                state={'uid':'synthetic-uid','etag':'synthetic-etag','deleteIntent':True,'deleteOperation':None,'phase':'DELETE_INTENT'}
+                parent={'pid':123,'startedAt':1000.};counts=dict.fromkeys(('cli','https','sql','child'),0)
+                marker={'label':'KEY','parent':parent,'dispatchSerial':0,'calls':counts}
+                native={'parent':parent,'calls':counts,'dispatchSerial':0,'cleanupNotDispatched':[marker] if proven else [],
+                    'cleanupFirstDispatchConsumed':[{'label':'KEY','markerSha256':a.digest(marker)}] if proven else []}
+                p.cap=SimpleNamespace(e={'purpose':'NATIVE_AUTH_QUALIFICATION_ONLY','limits':dict.fromkeys(('cli','https','sql','child'),8)},
+                    mode='closeout',gate=lambda *_:None,cleanup_first_grants={'KEY'} if proven else set(),
+                    coordinator=SimpleNamespace(j={'nativeEntry':native,'keyCreateAttempted':True,'keyDeleteAttempted':True}))
+                p.owned_uid=state['uid'];p.owned_etag=state['etag']
+                p._load_lifecycle=lambda:dict(state)
+                p._save_lifecycle=lambda value:state.update(value)
+                def delete(etag):calls.append('DELETE');return {'name':'operations/synthetic','done':True}
+                p.key_adapter=SimpleNamespace(key_delete=delete)
+                p.operation=lambda *args:None
+                p.key_get=lambda:{'uid':p.owned_uid,'deleted':bool(calls)}
+                if proven:self.assertTrue(p.key_delete(p.owned_etag))
+                else:
+                    with self.assertRaisesRegex(entry.c.Stop,'KEY_DELETE_UNCONFIRMED'):p.key_delete(p.owned_etag)
+                self.assertEqual(calls,['DELETE'] if proven else [])
+                self.assertTrue(state['deleteIntent'])
+                if proven:
+                    self.assertNotIn('KEY',p.cap.cleanup_first_grants)
+                    state['deleteOperation']=None;state['phase']='DELETE_INTENT';p.cap.cleanup_first_grants={'KEY'}
+                    p.key_get=lambda:{'uid':p.owned_uid,'deleted':False}
+                    def lost(etag):calls.append('DELETE');raise TimeoutError('synthetic lost response')
+                    p.key_adapter.key_delete=lost
+                    for attempt in range(2):
+                        with self.assertRaisesRegex(entry.c.Stop,'KEY_DELETE_UNCONFIRMED'):p.key_delete(p.owned_etag)
+                    self.assertEqual(calls,['DELETE','DELETE'])
+
+
+    def test_cleanup_marker_corruption_never_authorizes_first_dispatch(self):
+        obj,t=self.cleanup_controller();item=obj.j['runtimeAttempted'][0]
+        label='RUNTIME:'+':'.join(item);obj.j['runtimeCleanupAttempted']=[item]
+        obj.cleanup_unissued(label,0);good=copy.deepcopy(obj.j)
+        changes=[lambda n:n['cleanupNotDispatched'].append(copy.deepcopy(n['cleanupNotDispatched'][0])),
+            lambda n:n['cleanupNotDispatched'][0].update(label='RUNTIME:foreign:resource'),
+            lambda n:n['cleanupNotDispatched'][0].update(dispatchSerial=99),
+            lambda n:n['cleanupNotDispatched'][0]['parent'].update(pid=456),
+            lambda n:n.update(cleanupFirstDispatchConsumed=[{'label':label,'markerSha256':'0'*64}]),
+            lambda n:n.update(cleanupNotDispatched='untrusted')]
+        for change in changes:
+            obj.j=copy.deepcopy(good);change(obj.j['nativeEntry']);obj.independent_cleanup=True
+            with self.subTest(change=change):
+                with self.assertRaisesRegex(Stop,'CLEANUP_PROVENANCE'):obj.cleanup_first_dispatch(label)
+
+    def test_all_sampled_wall_times_detect_rollback(self):
+        cap,t=self.phase_cap();cap.set_phase('SETUP',1780.)
+        with patch.object(a,'inspect'):
+            t['wall']=1100.;cap.phase_deadline()
+            t['wall']=1050.
+            with self.assertRaisesRegex(Stop,'CLOCK_ROLLBACK'):cap.gate()
+
+
+class TC1OwnedJournalTests(unittest.TestCase):
+    def fixture(self, scenario='normal', linger=False):
+        f=ConnectedEntryTests();f.setUp(timing=True);self.addCleanup(f.doCleanups)
+        f.e['purpose']='NATIVE_AUTH_QUALIFICATION_ONLY'
+        iso=lambda seconds:datetime.datetime.fromtimestamp(f.f.now+seconds,datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        f.e['plan']['window'].update(cutoff=iso(2100),workEnd=iso(2220),cleanupEnd=iso(2880),purgeEnd=iso(3000))
+        f.e['payment']['workEnd']=iso(2160);f.e['qualification']['qualifiedUntil']=iso(2880)
+        f.e['qualification']['scopeSha256']=a.digest({k:f.e[k] for k in ('plan','target','database','resources','limits','payment')})
+        f.scenario=scenario;f.seal();original=f.factory;owners=[]
+        def factory(cap):
+            io=original(cap);owned=object.__new__(entry.NativeIO)
+            owned.cap=cap;owned.cleanup=cap.mode!='run';owned.child_processes=set();owned.child_cleanup_unconfirmed=False
+            owned.token='';owned.password='';owners.append(owned)
+            def child(argv,**kwargs):
+                mode=argv[-1];owned.cleanup=io.cleanup or mode in ('--closeout','--readback')
+                script=str(a.HERE/'fixture_child.mjs')
+                argv=[argv[0],script,mode,scenario]
+                if (linger and mode=='--run') or (getattr(f,'interrupt_closeout',False) and cap.mode=='closeout' and mode=='--readback'):
+                    code='process.argv='+json.dumps(argv)+';await import('+json.dumps(Path(script).as_uri())+');setTimeout(()=>{},30000);'
+                    argv=[argv[0],'--input-type=module','-e',code];kwargs['timeout']=1.5 if linger else 30
+                timer=None
+                if getattr(f,'interrupt_closeout',False) and cap.mode=='closeout' and mode=='--readback':
+                    import threading,signal
+                    timer=threading.Timer(.5,lambda:os.kill(os.getpid(),signal.SIGTERM));timer.start()
+                try:return owned.child(argv,**kwargs)
+                finally:
+                    if timer is not None:timer.cancel();timer.join()
+                    io.child_parent_baseline=getattr(owned,'child_parent_baseline',None)
+            io.child=child;io.closure=owned.closure;io.clear=owned.clear
+            return io
+        f.factory=factory
+        return f,owners
+
+    def test_actual_owned_node_success_keeps_auth_payment_and_closed_inventory(self):
+        f,owners=self.fixture();work=f.run_entry();j=read(f.root/'journal.json')
+        self.assertTrue(j['authProofAccepted']);self.assertTrue(j['authClient']['authenticated'])
+        self.assertEqual(j['payment']['phase'],'QUALIFIED');self.assertFalse(j['payment']['enableIntent'])
+        self.assertTrue(j['nativeEntry']['mainClosure']['groupsAbsent'])
+        self.assertTrue(all(row['state']=='CLOSED' for row in j['nativeEntry']['ownedChildren']))
+        self.assertTrue(all(row['journalMerge']=='ACCEPTED' for row in j['nativeEntry']['childObservations']))
+        self.assertFalse(work['authProofReady']);self.assertFalse(work['paymentObserved'])
+        final=f.run_entry('closeout');self.assertEqual(final['residuals'],[])
+        self.assertTrue(final['privateInputsAbsent'])
+        self.assertTrue(all(not owner.child_processes for owner in owners))
+
+    def test_actual_owned_node_failure_lost_output_and_timeout_keep_committed_state(self):
+        for scenario,linger,expected in [('auth_sign_http403',False,'RETURNED'),('lost_output',False,'REFUSED'),('normal',True,'TIMEOUT')]:
+            with self.subTest(scenario=scenario,linger=linger):
+                f,owners=self.fixture(scenario,linger);work=f.run_entry();j=read(f.root/'journal.json')
+                run=next(row for row in j['nativeEntry']['childObservations'] if row['mode']=='--run')
+                self.assertEqual(run['processOutcome'],expected);self.assertEqual(run['journalMerge'],'ACCEPTED')
+                self.assertIn('authClient',j);self.assertIn('payment',j)
+                self.assertTrue(all(row['state']=='CLOSED' for row in j['nativeEntry']['ownedChildren']))
+                if scenario=='auth_sign_http403':self.assertEqual(j['authClient']['authStage'],'SIGN')
+                self.assertFalse(work['authProofReady']);self.assertFalse(work['paymentObserved'])
+                self.assertTrue(all(not owner.child_processes for owner in owners))
+
+
+    def test_actual_independent_sigterm_closes_owned_node_and_consumes_attempt(self):
+        import signal
+        f,owners=self.fixture();f.run_entry();f.interrupt_closeout=True
+        previous=signal.getsignal(signal.SIGTERM)
+        result=f.run_entry('closeout')
+        self.assertIn('INDEPENDENT_CLOSEOUT_DEFERRED',result['residuals'])
+        self.assertFalse(result['authProofReady']);self.assertTrue(result['privateInputsAbsent'])
+        self.assertTrue(all(not owner.child_processes for owner in owners))
+        self.assertEqual(signal.getsignal(signal.SIGTERM),previous)
+        count=len(owners)
+        with self.assertRaises(Exception):f.run_entry('closeout')
+        self.assertEqual(len(owners),count)
+
+    def test_snapshot_refuses_any_unowned_parent_delta(self):
+        import handoff
+        h=object.__new__(handoff.Handoff)
+        h.cap=SimpleNamespace(e={'purpose':'NATIVE_AUTH_QUALIFICATION_ONLY'},mode='run')
+        before={'phase':'BEFORE','nativeEntry':{'dispatchSerial':0,'ownedChildren':[]}}
+        row={'ordinal':1,'kind':'CHILD','pid':123,'pgid':123,'state':'SPAWNED'}
+        good={'phase':'BEFORE','nativeEntry':{'dispatchSerial':1,'ownedChildren':[row]}}
+        for change in (lambda value:value.update(phase='FORGED'),
+                       lambda value:value['nativeEntry'].update(dispatchSerial=2),
+                       lambda value:value['nativeEntry']['ownedChildren'][0].update(kind='CLI')):
+            snapshot=copy.deepcopy(good);change(snapshot)
+            h.io=SimpleNamespace(child_parent_baseline=(1,snapshot))
+            with self.assertRaisesRegex(Stop,'CHILD_PARENT_SNAPSHOT'):h._owned_parent_snapshot(before,1)
+        h.io=SimpleNamespace(child_parent_baseline=(1,good))
+        self.assertEqual(h._owned_parent_snapshot(before,1),good)
+
+
+    def test_native_external_closeout_requires_complete_absent_ownership(self):
+        cap=SimpleNamespace(root=Path('/synthetic'),plan={'operationId':'synthetic'},envelope_hash='a'*64,
+            e={'sourceCommit':'b'*40,'limits':{'cli':4,'https':4,'sql':4,'child':4}},
+            times={'start':1000.,'workEnd':2000.,'cleanupEnd':2660.},clock=lambda:2000.)
+        parent={'pid':123,'startedAt':1100.}
+        rows=[{'ordinal':1,'kind':'CLI','pid':456,'pgid':456,'state':'CLOSED'}]
+        proof={'version':1,'operationId':'synthetic','envelopeSha256':'a'*64,'sourceCommit':'b'*40,
+            'parent':parent,'ownedChildren':rows,'inventoryComplete':True,'groupsAbsent':True,'acknowledgedAt':1998.}
+        native={'parent':parent,'ownedChildren':rows,'mainClosure':proof,'calls':{'cli':1,'https':0,'sql':0,'child':0}}
+        with patch.object(entry,'read',return_value={'nativeEntry':native}),             patch.object(entry.os,'killpg',side_effect=ProcessLookupError),             patch.object(entry.os,'kill',side_effect=ProcessLookupError):
+            self.assertEqual(entry.verify_main_closure(cap),proof)
+        for defect in ('empty','duplicate','uncounted','foreign','livechild','liveparent','late'):
+            bad=copy.deepcopy(native);clock=cap.clock
+            if defect=='empty':bad['ownedChildren']=[];bad['mainClosure']['ownedChildren']=[]
+            if defect=='duplicate':
+                row={**bad['ownedChildren'][0],'ordinal':2};bad['ownedChildren'].append(row)
+                bad['mainClosure']['ownedChildren']=bad['ownedChildren'];bad['calls']['cli']=2
+            if defect=='uncounted':bad['calls']['cli']=0
+            if defect=='foreign':bad['mainClosure']['sourceCommit']='c'*40
+            if defect=='late':cap.clock=lambda:2000.001
+            with self.subTest(defect=defect),patch.object(entry,'read',return_value={'nativeEntry':bad}),                 patch.object(entry.os,'killpg',side_effect=None if defect=='livechild' else ProcessLookupError),                 patch.object(entry.os,'kill',side_effect=None if defect=='liveparent' else ProcessLookupError):
+                with self.assertRaises(Stop):entry.verify_main_closure(cap)
+            cap.clock=clock

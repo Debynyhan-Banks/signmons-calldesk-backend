@@ -5,6 +5,31 @@ import {gate, need} from './authority_bridge.mjs';
 const require = createRequire(new URL('../../../../package.json', import.meta.url));
 const exec = promisify(execFile);
 
+// One response deadline covers headers, every body read and normal disposal.
+// Disposal after a primary failure has only its own one-second local allowance.
+// Neither this helper nor disposal reserves another provider request.
+export function responseDeadline(until, guard, code) {
+  const wall=Date.now(), mono=performance.now();let last=wall;
+  const phaseEnd=mono+(until-wall), responseEnd=Math.min(phaseEnd,mono+5000), timeouts=new WeakSet();
+  const expired=()=>{const error=Object.assign(Error(code),{code});timeouts.add(error);return error;};
+  const remaining=end=>{
+    const now=Date.now();need(now>=last,'CLOCK_ROLLBACK');last=now;guard();
+    const left=Math.min(end-performance.now(),until-now);
+    if(left<=0)throw expired();return left;
+  };
+  async function wait(fn,end=responseEnd) {
+    let timer;
+    try {
+      const left=remaining(end);
+      const value=await Promise.race([Promise.resolve().then(()=>{remaining(end);return fn();}),
+        new Promise((_,reject)=>{timer=setTimeout(()=>reject(expired()),Math.max(1,Math.ceil(left)));})]);
+      remaining(end);return value;
+    } finally {clearTimeout(timer);}
+  }
+  return {wait,dispose:(fn,failed)=>wait(fn,Math.min(failed?phaseEnd:responseEnd,performance.now()+1000)),
+    isTimeout:error=>error && (typeof error==='object'||typeof error==='function') && timeouts.has(error)};
+}
+
 // Canonical User versions are UTC TIMESTAMP(3), not local wall-clock instants.
 // Scope this parser to these clients; unrelated OIDs and binary formats retain pg defaults.
 function timestampUTC(value) {
@@ -81,32 +106,37 @@ export function createPorts(cap, credentials, injected = {}) {
   const realFetch=injected.fetcher ?? fetch;
   async function fetcher(url,options) {
     let phase='GUARD',category='GUARD',validation=null,signal;
+    let responseBound;
     try {
       const u=new URL(url);
       need(u.protocol==='https:' && !u.username && !u.password && !u.hash &&
         (['identitytoolkit.googleapis.com','iamcredentials.googleapis.com','apikeys.googleapis.com'].includes(u.hostname) ||
          url===cap.e.runtimeOrigin+'/jobs/dispatch-board/'+cap.e.plan.jobId), 'AUTH_HOST_SCOPE');
       phase='REQUEST';category='TRANSPORT';
-      const response=await bounded(()=>{signal=AbortSignal.timeout(timeout(true));
+      responseBound=responseDeadline(deadline(true),()=>gate(cap,true),'NATIVE_IO_TIMEOUT');
+      const wait=fn=>{spend();return responseBound.wait(fn);};
+      const response=await wait(()=>{signal=AbortSignal.timeout(timeout(true));
         return realFetch(url,{...options,redirect:'error',signal});});
       let text;
       phase='RESPONSE_READ';
       if (response.body?.getReader) {
-        const reader=response.body.getReader();let size=0;const chunks=[];
+        const reader=response.body.getReader();let size=0;const chunks=[];let failed=false;
         try {while(true){category='TRANSPORT';validation=null;
-          const r=await bounded(()=>reader.read());if(r.done)break;
+          const r=await wait(()=>reader.read());if(r.done)break;
           size+=r.value.byteLength;category='RESPONSE_VALIDATION';validation='BODY_BOUND';
           need(size<=65536,'AUTH_OUTPUT_LIMIT');chunks.push(Buffer.from(r.value));}}
-        finally {await reader.cancel().catch(()=>{});}
+        catch(error){failed=true;throw error;}
+        finally {try {await responseBound.dispose(()=>reader.cancel(),failed);}
+          catch(error){if(!failed){category='TRANSPORT';validation=null;throw error;}}}
         phase='TEXT_DECODE';category='RESPONSE_VALIDATION';validation='TEXT_DECODE';
         text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
-      } else {text=await bounded(()=>response.text());category='RESPONSE_VALIDATION';validation='BODY_BOUND';
+      } else {text=await wait(()=>response.text());category='RESPONSE_VALIDATION';validation='BODY_BOUND';
         need(Buffer.byteLength(text)<=65536,'AUTH_OUTPUT_LIMIT');}
       category='RESPONSE_VALIDATION';validation='RESPONSE_SHAPE';
       return {ok:response.ok,status:Number.isInteger(response.status) && response.status>=100 && response.status<=599 ? response.status : null,text:async()=>text};
     } catch(error) {
       if(error && (typeof error==='object'||typeof error==='function')) {
-        const timedOut=timeoutErrors.has(error)||(signal?.aborted===true && signal.reason===error);
+        const timedOut=timeoutErrors.has(error)||responseBound?.isTimeout(error)||(signal?.aborted===true && signal.reason===error);
         transportFailures.set(error,Object.freeze({phase,category:timedOut?'TIMEOUT':category,
           validation:timedOut?null:validation}));
       }

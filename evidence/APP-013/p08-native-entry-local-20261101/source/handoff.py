@@ -3,7 +3,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
-from authority import HERE, load, digest
+from authority import HERE, load, digest, AUTH_RUN_SECONDS, AUTH_PREFLIGHT_SECONDS
 from private_inventory import need, read, reserve
 
 old = load('p08-real-client-binding-local-20261031/source/bound_handoff.py', 'entry_existing_handoff')
@@ -135,6 +135,28 @@ class Handoff(old.Handoff):
                 self.cap.coordinator.j['unknown'].append('PAYMENT_JOURNAL_UNCONFIRMED')
         return observation['journalMerge']
 
+    def _owned_parent_snapshot(self, before, child_call):
+        value = getattr(self.io, 'child_parent_baseline', None)
+        if value is None: return before
+        self.io.child_parent_baseline = None
+        call, snapshot = value
+        need(self.cap.e.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY' and call == child_call,
+             'CHILD_PARENT_SNAPSHOT')
+        inventory = 'ownedChildren' if self.cap.mode == 'run' else 'independentChildren'
+        rows = snapshot.get('nativeEntry', {}).get(inventory)
+        previous = before.get('nativeEntry', {}).get(inventory, [])
+        need(type(rows) is list and len(rows) == len(previous) + 1 and rows[:-1] == previous,
+             'CHILD_PARENT_SNAPSHOT')
+        row = rows[-1]
+        need(set(row) == {'ordinal','kind','pid','pgid','state'} and row['ordinal'] == len(rows) and
+             row['kind'] == 'CHILD' and row['state'] == 'SPAWNED' and type(row['pid']) is int and
+             row['pid'] > 0 and row['pgid'] == row['pid'], 'CHILD_PARENT_SNAPSHOT')
+        expected = json.loads(json.dumps(before))
+        expected['nativeEntry'][inventory] = rows
+        expected['nativeEntry']['dispatchSerial'] = before['nativeEntry'].get('dispatchSerial', 0) + 1
+        need(expected == snapshot, 'CHILD_PARENT_SNAPSHOT')
+        return snapshot
+
     def invoke_child(self, receipt, mode):
         need(mode in CHILD_MODES, 'CHILD_MODE')
         cleanup = mode not in ('--run', '--payment-preflight')
@@ -152,23 +174,31 @@ class Handoff(old.Handoff):
             credentials = None
             node = '/Users/debynyhanbanks/.nvm/versions/node/v24.12.0/bin/node'
             need(Path(node).is_file(), 'NODE_REQUIRED')
+            allowance = 30 if self.cap.e['version'] == 1 or cleanup else self.cap.times['workEnd'] - self.cap.clock()
+            if self.cap.e.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY':
+                allowance = AUTH_RUN_SECONDS if mode == '--run' else AUTH_PREFLIGHT_SECONDS if mode == '--payment-preflight' else 30
+                deadline = min(deadline, self.cap.gate(cleanup))
+            need(deadline > self.cap.clock(), 'CHILD_DEADLINE')
             try:
                 result = self.io.child([node, str(HERE / 'native_child.mjs'), mode],
                     input=json.dumps(request, separators=(',', ':')), text=True, capture_output=True,
-                    timeout=max(.01, min(30 if self.cap.e['version'] == 1 or cleanup else self.cap.times['workEnd'] - self.cap.clock(), deadline - self.cap.clock())),
+                    timeout=max(.01, min(allowance, deadline - self.cap.clock())),
                     env={'PATH': '/usr/bin:/bin:/opt/homebrew/bin', 'LANG': 'C'})
             except subprocess.TimeoutExpired:
+                before = self._owned_parent_snapshot(before, observation['childCall'])
                 observation.update(processOutcome='TIMEOUT', code='CHILD_TIMEOUT')
                 merged = self._merge_failed_payment_child(before)
                 if merged in JOURNAL_OUTCOMES:
                     observation['journalMerge'] = merged
                 raise old.Stop('CHILD_TIMEOUT') from None
             except BaseException:
+                before = self._owned_parent_snapshot(before, observation['childCall'])
                 observation.update(processOutcome='EXIT_UNKNOWN', code='CHILD_EXIT_UNKNOWN')
                 merged = self._merge_failed_payment_child(before)
                 if merged in JOURNAL_OUTCOMES:
                     observation['journalMerge'] = merged
                 raise old.Stop('CHILD_EXIT_UNKNOWN') from None
+            before = self._owned_parent_snapshot(before, observation['childCall'])
             value, refusal = child_output(result)
             returncode = getattr(result, 'returncode', None)
             observation.update(processOutcome=('RETURNED' if returncode == 0 else 'REFUSED') if type(returncode) is int else 'EXIT_UNKNOWN',

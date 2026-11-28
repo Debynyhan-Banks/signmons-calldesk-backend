@@ -195,8 +195,33 @@ class Coordinator:
             try: self.save()
             except BaseException: self.j["unknown"].append("JOURNAL_PERSISTENCE")
         finally:
-            for sig, handler in previous.items(): signal.signal(sig, handler)
-        return self.closeout()
+            if not getattr(self, 'cooperative_cleanup', False):
+                for sig, handler in previous.items(): signal.signal(sig, handler)
+        try:
+            return self.closeout()
+        finally:
+            if getattr(self, 'cooperative_cleanup', False):
+                for sig, handler in previous.items(): signal.signal(sig, handler)
+
+    # AQ1 supplies phase-aware hooks. Historical/payment coordinators keep their
+    # existing ordering, deadlines and no-retry behavior.
+    def cleanup_admit(self, seconds=0): pass
+    def cleanup_deferred(self, error): return False
+    def cleanup_marker(self): return None
+    def cleanup_unissued(self, label, marker): pass
+    def cleanup_first_dispatch(self, label): return False
+    def cleanup_stop_label(self): return 'MAIN_CLOSEOUT_DEFERRED'
+
+    def cleanup_mutation(self, label, record, action, seconds):
+        self.cleanup_admit(seconds)
+        marker = self.cleanup_marker()
+        record(); self.save()
+        try:
+            self.cleanup_admit()
+            return action()
+        except BaseException:
+            self.cleanup_unissued(label, marker)
+            raise
 
     def closeout(self, independent=False):
         reserve(self.dir / ("independent-closeout.json" if independent else "closeout.json"),
@@ -209,47 +234,59 @@ class Coordinator:
             need(self.j.get("iamAttempted") in ([], ["lookup"], ["lookup", "signing"]), "JOURNAL_IAM_SCOPE")
         residual = list(self.j["unknown"])
         def check(label, fn):
-            try: need(fn() is True, "CLOSEOUT_READBACK")
-            except BaseException: residual.append(label)
-        if self.j["authAttempted"]:
-            if not self.j["authProofAccepted"]:
-                check("AUTH_REVOKE", lambda: self.invoke("close_authentication", self.runtime_plan(), owner=self.runtime, cleanup=True))
-            check("ACCOUNT_SESSION", lambda: self.invoke("account_closeout", owner=self.access, cleanup=True))
-            if self.j["childResultSha256"] is None: residual.append("AUTH_OUTCOME_UNKNOWN")
-        if self.j["keyCreateAttempted"]:
-            def key_close():
-                need(self.j["keyUidSha256"] is not None, "KEY_CREATE_UNKNOWN")
-                current = self.invoke("key_get", owner=self.access, cleanup=True)
-                need(self.key_metadata(current, current.get("deleted") is True) == self.j["keyUidSha256"], "KEY_DRIFT")
-                if current["deleted"] is True: return True
-                need(not self.j["keyDeleteAttempted"], "KEY_DELETE_UNCERTAIN")
-                self.j["keyDeleteAttempted"] = True; self.save()
-                self.invoke("key_delete", current["etag"], owner=self.access, cleanup=True)
-                return self.key_metadata(self.invoke("key_get", owner=self.access, cleanup=True), True) == self.j["keyUidSha256"]
-            check("OWNED_KEY", key_close)
-        for kind in reversed(self.j["iamAttempted"]):
-            def iam_close(kind=kind):
-                state = self.invoke("binding_state", kind, owner=self.access, cleanup=True)
-                need(state in ("ABSENT", "OWNED"), "IAM_DRIFT")
-                if state == "ABSENT": return True
-                need(kind not in self.j["iamCleanupAttempted"], "IAM_REMOVE_UNCERTAIN")
-                self.j["iamCleanupAttempted"].append(kind); self.save()
-                self.invoke("unbind", kind, owner=self.access, cleanup=True)
-                return self.invoke("binding_state", kind, owner=self.access, cleanup=True) == "ABSENT"
-            check("IAM_" + kind, iam_close)
-        for kind, name in reversed(self.j["runtimeAttempted"]):
-            def runtime_close(kind=kind, name=name):
-                item = [kind, name]
-                if item in self.j["runtimeCleanupAttempted"]:
+            try:
+                self.cleanup_admit()
+                need(fn() is True, "CLOSEOUT_READBACK")
+            except BaseException as error:
+                if self.cleanup_deferred(error): raise
+                residual.append(label)
+        try:
+            if self.j["authAttempted"]:
+                if not self.j["authProofAccepted"]:
+                    check("AUTH_REVOKE", lambda: self.invoke("close_authentication", self.runtime_plan(), owner=self.runtime, cleanup=True))
+                check("ACCOUNT_SESSION", lambda: self.invoke("account_closeout", owner=self.access, cleanup=True))
+                if self.j["childResultSha256"] is None: residual.append("AUTH_OUTCOME_UNKNOWN")
+            if self.j["keyCreateAttempted"]:
+                def key_close():
+                    need(self.j["keyUidSha256"] is not None, "KEY_CREATE_UNKNOWN")
+                    current = self.invoke("key_get", owner=self.access, cleanup=True)
+                    need(self.key_metadata(current, current.get("deleted") is True) == self.j["keyUidSha256"], "KEY_DRIFT")
+                    if current["deleted"] is True: return True
+                    need(not self.j["keyDeleteAttempted"] or self.cleanup_first_dispatch('KEY'), "KEY_DELETE_UNCERTAIN")
+                    self.cleanup_mutation('KEY', lambda:self.j.update(keyDeleteAttempted=True),
+                        lambda:self.invoke("key_delete", current["etag"], owner=self.access, cleanup=True), 122)
+                    return self.key_metadata(self.invoke("key_get", owner=self.access, cleanup=True), True) == self.j["keyUidSha256"]
+                check("OWNED_KEY", key_close)
+            for kind in reversed(self.j["iamAttempted"]):
+                def iam_close(kind=kind):
+                    state = self.invoke("binding_state", kind, owner=self.access, cleanup=True)
+                    need(state in ("ABSENT", "OWNED"), "IAM_DRIFT")
+                    if state == "ABSENT": return True
+                    need(kind not in self.j["iamCleanupAttempted"] or self.cleanup_first_dispatch('IAM:'+kind), "IAM_REMOVE_UNCERTAIN")
+                    self.cleanup_mutation('IAM:'+kind,
+                        lambda:self.j['iamCleanupAttempted'].append(kind) if kind not in self.j['iamCleanupAttempted'] else None,
+                        lambda:self.invoke("unbind", kind, owner=self.access, cleanup=True), 16)
+                    return self.invoke("binding_state", kind, owner=self.access, cleanup=True) == "ABSENT"
+                check("IAM_" + kind, iam_close)
+            for kind, name in reversed(self.j["runtimeAttempted"]):
+                def runtime_close(kind=kind, name=name):
+                    item = [kind, name]
+                    label = 'RUNTIME:'+kind+':'+name
+                    if item in self.j["runtimeCleanupAttempted"] and not self.cleanup_first_dispatch(label):
+                        return self.invoke("readback", kind, name, False, self.runtime_plan(), owner=self.runtime, cleanup=True) is True
+                    self.cleanup_mutation(label,
+                        lambda:self.j['runtimeCleanupAttempted'].append(item) if item not in self.j['runtimeCleanupAttempted'] else None,
+                        lambda:self.invoke("change", kind, name, False, self.runtime_plan(), owner=self.runtime, cleanup=True),
+                        53 if kind == 'identity' else 16)
                     return self.invoke("readback", kind, name, False, self.runtime_plan(), owner=self.runtime, cleanup=True) is True
-                self.j["runtimeCleanupAttempted"].append(item); self.save()
-                self.invoke("change", kind, name, False, self.runtime_plan(), owner=self.runtime, cleanup=True)
-                return self.invoke("readback", kind, name, False, self.runtime_plan(), owner=self.runtime, cleanup=True) is True
-            check("RUNTIME_" + kind + ":" + name, runtime_close)
-        check("RUNTIME_FINAL", lambda: self.invoke("retired", self.runtime_plan(), owner=self.runtime, cleanup=True))
-        check("TRAFFIC_PRIVATE_PLANS", lambda: self.invoke("runtime_closeout", owner=self.access, cleanup=True))
-        if self.j["serviceEnableAttempted"]:
-            check("SERVICE_RETAINED", lambda: self.invoke("api_keys_state", owner=self.access, cleanup=True) == "ENABLED")
+                check("RUNTIME_" + kind + ":" + name, runtime_close)
+            check("RUNTIME_FINAL", lambda: self.invoke("retired", self.runtime_plan(), owner=self.runtime, cleanup=True))
+            check("TRAFFIC_PRIVATE_PLANS", lambda: self.invoke("runtime_closeout", owner=self.access, cleanup=True))
+            if self.j["serviceEnableAttempted"]:
+                check("SERVICE_RETAINED", lambda: self.invoke("api_keys_state", owner=self.access, cleanup=True) == "ENABLED")
+        except BaseException as error:
+            if not self.cleanup_deferred(error): raise
+            residual.append(self.cleanup_stop_label())
         self.j["phase"] = "CLOSED"; self.j["residuals"] = sorted(set(residual)); self.save()
         return {"status": "LOCAL_COORDINATOR_CLOSED" if not residual else "LOCAL_COORDINATOR_CONTAINMENT_UNCONFIRMED",
                 "liveAuthorization": False, "authProofReady": False, "residuals": self.j["residuals"],

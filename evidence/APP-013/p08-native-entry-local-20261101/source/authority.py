@@ -58,6 +58,21 @@ def committed(repo, commit, path):
 
 
 PREFLIGHT_LIMITS = {'cli':40, 'https':1, 'sql':3, 'child':0}
+AUTH_SETUP_SECONDS = 780
+AUTH_RUN_SECONDS = 240
+AUTH_PREFLIGHT_SECONDS = 30
+AUTH_POST_SETTLE_SECONDS = 600
+IAM_SETTLE_SECONDS = 420
+AUTH_PARENT_EXIT_RESERVE_SECONDS = 4
+
+def auth_timing(envelope, times):
+    need(envelope.get('version') == 2 and envelope.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY', 'AUTH_TIMING_PURPOSE')
+    import datetime
+    forward = min(times['workEnd'], datetime.datetime.fromisoformat(envelope['payment']['workEnd'].replace('Z', '+00:00')).timestamp())
+    total = AUTH_SETUP_SECONDS + IAM_SETTLE_SECONDS + AUTH_POST_SETTLE_SECONDS
+    return {'setupSeconds': AUTH_SETUP_SECONDS, 'settleSeconds': IAM_SETTLE_SECONDS,
+            'postSettleSeconds': AUTH_POST_SETTLE_SECONDS, 'forwardSeconds': total,
+            'forwardEnd': forward, 'latestAdmission': min(times['cutoff'], forward) - total}
 
 class Capability:
     def __init__(self, envelope, root, mode=None, clock=time.time, read_commit=committed, continuing=False):
@@ -150,15 +165,46 @@ class Capability:
         self.times, self.last, self.coordinator = times, clock(), None
         self.envelope_hash = digest(e)
         self.local_approval, self.modules, self.c = local_approval, modules, c
+        self.auth_only = auth_only
+        self.monotonic = time.monotonic
+        self.phase = None
+        self.dispatch_serial = 0
+        self.cleanup_first_grants = set()
 
-    def gate(self, cleanup=False):
+    def set_phase(self, name, deadline):
+        now = self.monotonic()
+        need(now >= getattr(self, 'phase_last', now), 'CLOCK_ROLLBACK')
+        wall = self.checked_wall()
+        self.phase = name
+        self.phase_end = deadline
+        self.phase_last = now
+        self.phase_monotonic_end = self.phase_last + max(0, deadline - wall)
+
+    def checked_wall(self):
         now = self.clock()
         need(now >= self.last, 'CLOCK_ROLLBACK'); self.last = now
-        need(self.times['start'] <= now < self.times['cleanupEnd' if cleanup else 'workEnd'], 'ENTRY_DEADLINE')
+        return now
+
+    def phase_deadline(self, cleanup=False, wall=None):
+        wall = self.checked_wall() if wall is None else wall
+        deadline = self.times['cleanupEnd' if cleanup else 'workEnd']
+        if self.auth_only and self.phase is not None:
+            now = self.monotonic()
+            need(now >= self.phase_last, 'CLOCK_ROLLBACK'); self.phase_last = now
+            deadline = min(deadline, self.phase_end,
+                           wall + self.phase_monotonic_end - now)
+        return deadline
+
+    def gate(self, cleanup=False):
+        now = self.checked_wall()
+        deadline = self.phase_deadline(cleanup, now)
+        need(self.times['start'] <= now < deadline, 'ENTRY_DEADLINE')
         need(cleanup or self.mode in ('run', 'preflight'), 'CLOSEOUT_ONLY')
         need(cleanup or self.coordinator is None or not self.coordinator.abort, 'INTERRUPTED')
+        need(not (self.auth_only and self.phase in ('MAIN_CLOSEOUT','INDEPENDENT_CLOSEOUT') and
+                  self.coordinator is not None and self.coordinator.abort), 'INTERRUPTED')
         inspect(self.root, self.plan['operationId'])
-        return self.times['cleanupEnd' if cleanup else 'workEnd']
+        return deadline
 
     def spend(self, kind, cleanup=False):
         deadline = self.gate(cleanup)

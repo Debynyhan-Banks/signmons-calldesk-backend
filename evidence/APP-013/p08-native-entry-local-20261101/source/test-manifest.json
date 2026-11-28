@@ -6,14 +6,14 @@
     "fixture_envelope.py": "3495b9fa9a5822029c26ad10854c044477232067b75f0b51fb12066c0e541742",
     "fixture_ports.mjs": "1a0f46a688c4090bcd7ab2a704a5ae59f7ec71bba89b04b4bbc9b950c9119c4d",
     "postgres_driver.mjs": "3ff902f711a7ccfc97a84df798fddf2bfe0c3fc46dc3ecc7b3acb9240061b034",
-    "test_child_cleanup.py": "87a63259fadd2f3f3ab72629f24da4ba6b455ff763fbbe1f863ef15c96e189de",
-    "test_connected_payment.mjs": "8be1f1a34e793ca45c8d02a94a51b32d3524da810e12df372082a1fcb70f579c",
-    "test_entry.py": "e52fb7426792a653d5edff12c54d99724e090d3b4d9213e95b0913e981b18398",
+    "test_child_cleanup.py": "094324bd5a512f05685c7a4edee1bbfb753d3a10ca6281f7e452c664f9b56a6e",
+    "test_connected_payment.mjs": "0f36d55a91dd6ab00eede098f1a884288c3e1062d09b539643da1472a02e86c7",
+    "test_entry.py": "74fdf63c00f43589c0a09e0f8de86b7286e3ed3d8678a8acbc67d8d6949bb575",
     "test_key_lifecycle.py": "875fe1b8b1a34374118ac904255e3c116e9524308c3348d77d1b67b36b9ccfd6",
     "test_native_postgres.py": "4abdd64770526ecd81d99d700c5ab1d36e1f67f18265eb38cf79274abb3a7896",
     "test_private_inventory_cc1.py": "ff50193e6f48428a77a3a0068e71c9afec698b75b05e03a10584bd554cf7cd3f",
-    "test_transports.mjs": "70a1b90fb91db45f52ed7fa8847a6ead89f10868f0f1c923566005c14f6bf002"
+    "test_transports.mjs": "8843e7d4abc41a46a16d388832b3e85565c52d66dfc6936ce0148bcfd04b446f"
   },
-  "runtimeManifestSha256": "6696f95cb2f0eb08d5896a5bfcd6bf93287e0702968e4a9f9292506ad0d02912",
+  "runtimeManifestSha256": "a9ded0a8347397ccf10e3c8d9e4f7e4cdcc372824413ee2e7e2910d667e1f3bc",
   "status": "LOCAL_TEST_PROVENANCE_ONLY"
 }

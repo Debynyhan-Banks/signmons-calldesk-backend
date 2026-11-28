@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync,unlinkSync,chmodSync,linkSync} from 'node:fs'
 import {randomUUID} from 'node:crypto';
 import {hash,authorizeChild} from './authority_bridge.mjs';
 import {runChild} from './native_child.mjs';
-import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,endpointComparison,stripeSecretName,completedPaymentCloseout,createPaymentPorts,runPayment,PaymentJournal} from './connected_payment.mjs';
+import {EVENTS,paymentContext,recoveryPaymentBinding,endpoint,endpointComparison,stripeSecretName,completedPaymentCloseout,createPaymentPorts,runPayment,PaymentJournal,boundedPaymentResponse} from './connected_payment.mjs';
 import {SQL} from '../../p08-coordinator-auth-local-20261031/source/client.mjs';
 import {fixture,portsFor,runConnected} from './fixture_connected.mjs';
 for(const scenario of ['normal','unpaid','lost_create','lost_enable','foreign_endpoint','disable_failed'])test('actual native child payment and cleanup: '+scenario,async t=>{
@@ -162,6 +162,69 @@ for (const scenario of ['denied','missing_payload','malformed_json','live_key','
 const receiptPath=(f,name)=>f.r.envelopePath.replace('envelope.json',name);
 const readReceipt=(f,name)=>JSON.parse(readFileSync(receiptPath(f,name)));
 const writeReceipt=(f,name,value)=>writeFileSync(receiptPath(f,name),JSON.stringify(value),{mode:0o600});
+
+for(const boundary of ['request','text','read','cancel','dripping'])test('TC1 payment full response bounds ignored abort at '+boundary,async()=>{
+ let sends=0,reservations=0,reads=0,cancels=0,signal;
+ const hanging=()=>new Promise(()=>{}),start=performance.now();
+ const send=async(_url,options)=>{
+  sends++;signal=options.signal;if(boundary==='request')return hanging();
+  if(boundary==='text')return {ok:true,status:200,text:hanging};
+  return {ok:true,status:200,body:{getReader:()=>({read:async()=>{
+   reads++;if(boundary==='read')return hanging();
+   if(boundary==='dripping'){await new Promise(resolve=>setTimeout(resolve,10));return {done:false,value:Buffer.from('x')};}
+   return {done:true};
+  },cancel:async()=>{cancels++;if(boundary==='cancel')return hanging();}})}};
+ };
+ await assert.rejects(()=>boundedPaymentResponse(send,'https://synthetic.invalid',{},spend=>{if(spend)reservations++;},Date.now()+100),{code:'PAYMENT_IO_TIMEOUT'});
+ assert.ok(performance.now()-start<1500);assert.equal(sends,1);assert.equal(reservations,1);
+ assert.ok(signal instanceof AbortSignal);if(boundary==='cancel')assert.equal(cancels,1);
+ if(boundary==='dripping')assert.ok(reads>1,'progress must not reset the response deadline');
+});
+
+for(const kind of ['read','validation','interrupt'])for(const cancellation of ['reject','hang'])test('TC1 payment retains '+kind+' failure with '+cancellation+' disposal',async()=>{
+ const primary=kind==='interrupt'?new DOMException('synthetic interruption','AbortError'):Error('PRIVATE_PRIMARY');
+ let requests=0,cancels=0,reservations=0;
+ const send=async()=>{requests++;return {ok:true,status:200,body:{getReader:()=>({read:async()=>{
+  if(kind==='validation')return {done:false,value:Buffer.alloc(65537)};throw primary;
+ },cancel:async()=>{cancels++;if(cancellation==='hang')return new Promise(()=>{});throw Error('PRIVATE_CANCEL');}})}};};
+ const start=performance.now();
+ await assert.rejects(()=>boundedPaymentResponse(send,'https://synthetic.invalid',{},spend=>{if(spend)reservations++;},Date.now()+100),
+  error=>kind==='validation'?error.code==='PAYMENT_OUTPUT_LIMIT':error===primary);
+ assert.ok(performance.now()-start<1500);assert.equal(requests,1);assert.equal(cancels,1);assert.equal(reservations,1);
+});
+
+test('TC1 payment cancellation refusal fails closed and all owned timers are cleared',async t=>{
+ const originalSet=setTimeout,originalClear=clearTimeout,active=new Set();
+ t.mock.method(globalThis,'setTimeout',(fn,ms,...args)=>{const handle=originalSet(fn,ms,...args);active.add(handle);return handle;});
+ t.mock.method(globalThis,'clearTimeout',handle=>{active.delete(handle);return originalClear(handle);});
+ const primary=Error('PRIVATE_CANCEL');let reservations=0,cancels=0;
+ const send=async()=>({ok:true,status:200,body:{getReader:()=>({read:async()=>({done:true}),cancel:async()=>{cancels++;throw primary;}})}});
+ await assert.rejects(()=>boundedPaymentResponse(send,'https://synthetic.invalid',{},spend=>{if(spend)reservations++;},Date.now()+500),error=>error===primary);
+ assert.equal(cancels,1);assert.equal(reservations,1);assert.equal(active.size,0);
+});
+
+test('TC1 payment success closes once and backward time cannot authorize success',async t=>{
+ let reads=0,cancels=0,reservations=0;
+ const send=async()=>({ok:true,status:200,body:{getReader:()=>({read:async()=>++reads===1?{done:false,value:Buffer.from('{}')}:{done:true},cancel:async()=>{cancels++;}})}});
+ const result=await boundedPaymentResponse(send,'https://synthetic.invalid',{},spend=>{if(spend)reservations++;},Date.now()+500);
+ assert.equal(await result.text(),'{}');assert.equal(result.status,200);assert.equal(cancels,1);assert.equal(reservations,1);
+ const original=Date.now;let rollback=0;t.mock.method(Date,'now',()=>original()-rollback);
+ await assert.rejects(()=>boundedPaymentResponse(async()=>{rollback=100;return {text:async()=>'{}'};},'https://synthetic.invalid',{},()=>{},original()+500),{code:'CLOCK_ROLLBACK'});
+});
+
+test('TC1 payment request and failed-disposal timers retain five-second and one-second ceilings',async t=>{
+ const original=setTimeout,budgets=[];
+ t.mock.method(globalThis,'setTimeout',(fn,ms,...args)=>{budgets.push(ms);return original(fn,Math.min(ms,40),...args);});
+ let sends=0,cancels=0,reservations=0;
+ const send=async()=>{sends++;return {ok:true,status:200,body:{getReader:()=>({read:()=>new Promise(()=>{}),
+  cancel:()=>{cancels++;return new Promise(()=>{});}})}};};
+ const start=performance.now();
+ await assert.rejects(()=>boundedPaymentResponse(send,'https://synthetic.invalid',{},spend=>{if(spend)reservations++;},Date.now()+20000),{code:'PAYMENT_IO_TIMEOUT'});
+ assert.equal(sends,1);assert.equal(cancels,1);assert.equal(reservations,1);assert.equal(budgets.length,3);
+ assert.ok(budgets.slice(0,2).every(value=>value>4900&&value<=5000));assert.ok(budgets[2]>900&&budgets[2]<=1000);
+ assert.ok(performance.now()-start<1500);
+});
+
 async function nextChild(f,mode,ports){
  const j=readReceipt(f,'journal.json');j.nativeEntry.calls.child++;
  writeReceipt(f,'journal.json',j);

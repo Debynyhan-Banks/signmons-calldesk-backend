@@ -14,10 +14,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 APP = HERE.parent.parent
 LOCKS = {
-    "coordinator": (APP / "p08-live-binder-local-20261029/source/coordinator.py", "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"),
+    "coordinator": (APP / "p08-live-binder-local-20261029/source/coordinator.py", "829b0ea7d693862c78a4febd774229ba7c101fba059462476101059bdd86b8ab"),
     "bridge": (APP / "p08-native-bridge-local-20261029/source/bridge.py", "58835555ea5d062bd84af91ace67c71762b9332a2f6fd9bf31ecec08c7a7dfce"),
-    "adapter": (APP / "p08-native-closeout-local-20261031/source/adapter.py", "c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c"),
-    "authority": (APP / "p08-coordinator-auth-local-20261031/source/authority.mjs", "ee11bdf0bcd06beba64c1f9cd0c32b84b56e1b1bac42c68fc9c2f9a9d27aaf27"),
+    "adapter": (APP / "p08-native-closeout-local-20261031/source/adapter.py", "edf593e30a6fe6c147a6a7063a9512da1b9c6300d6cd22d6ab0ccf80070ce4c1"),
+    "authority": (APP / "p08-coordinator-auth-local-20261031/source/authority.mjs", "8ab176ba2acbddd591063700eab56161b3589017fe0e2ebaa3bdbf4d3473bbe9"),
     "sequence": (APP / "p08-coordinator-auth-local-20261031/source/sequence.mjs", "cf8e1d6a7143874871fdf602afc1e8e9bf6afb51724c587d3eef1eb59d792f9c"),
     "client": (APP / "p08-coordinator-auth-local-20261031/source/client.mjs", "127a37aa0c1bf3b65b068dc7cebd153a005822a3c015c6635329d957415bfbdd"),
     "bridge_plan": (APP / "p08-authentication-local-20261026/source/reuse/plan.json", "7e4f1d228944e7cc6c02fa103acceb7fce7cdd6fa907cab4365cc22d6efc4f27"),

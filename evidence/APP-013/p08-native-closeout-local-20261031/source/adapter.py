@@ -13,7 +13,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 COORDINATOR = HERE.parent.parent / "p08-live-binder-local-20261029/source/coordinator.py"
-COORDINATOR_SHA = "1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70"
+COORDINATOR_SHA = "829b0ea7d693862c78a4febd774229ba7c101fba059462476101059bdd86b8ab"
 PRIVATE_NAMES = frozenset({"launch-plan.json", "restore-plan.json", "auth-plan.json",
                            "auth-result-authenticate.json", "auth-result-closeout-only.json"})
 

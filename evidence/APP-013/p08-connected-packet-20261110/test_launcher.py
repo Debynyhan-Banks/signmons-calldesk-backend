@@ -24,7 +24,8 @@ class LauncherBoundaryTests(unittest.TestCase):
             if auth_only:native['purpose']='NATIVE_AUTH_QUALIFICATION_ONLY'
             if malformed:malformed(native)
             cap=SimpleNamespace(root=root/'guard')
-            def wait(gov,path,expected,start,cutoff):
+            cap.root.mkdir();(cap.root/'guard-envelope.json').write_text('{}')
+            def wait(gov,path,expected,start,cutoff,clock=None):
                 stage='native' if 'NATIVE' in path else 'qualification'
                 sequence.append(stage+'-wait')
                 if diagnostic and stage=='native':
@@ -73,8 +74,8 @@ class LauncherBoundaryTests(unittest.TestCase):
                 finally:sequence.append('connected-cleanup')
             def cleanup(_):sequence.append('prequalification-purge');return {'rawFilesAbsent':True}
             output=io.StringIO()
-            with patch.object(packet,'capture_attended_confirmation',side_effect=capture),patch.object(packet,'construct',return_value=(cap,envelope)),patch.object(packet,'wait_committed_decision',side_effect=wait),patch.object(packet,'execute_connected',side_effect=execute),patch.object(packet.q,'QualificationCapability',return_value=SimpleNamespace(prepare=lambda:None)),patch.object(packet.q,'qualification_cleanup_scope',return_value={'synthetic':True}),patch.object(packet.q,'private_json',return_value={}),patch.object(packet.q,'BindingRecoveryCapability',return_value=cap),patch.object(packet.q,'closeout_binding_recovery',side_effect=cleanup),contextlib.redirect_stdout(output):
-                code=launcher.main(spec,governance=repo,review=review,read_hidden=lambda _: 'we_synthetic',session_consent={} if attended else None)
+            with patch.object(packet,'verify_recovered_auth_opening'),patch.object(packet,'auth_timing',return_value={'latestAdmission':15}),patch.object(packet,'capture_attended_confirmation',side_effect=capture),patch.object(packet,'construct',return_value=(cap,envelope)),patch.object(packet,'wait_committed_decision',side_effect=wait),patch.object(packet,'execute_connected',side_effect=execute),patch.object(packet.q,'QualificationCapability',return_value=SimpleNamespace(prepare=lambda:None)),patch.object(packet.q,'qualification_cleanup_scope',return_value={'synthetic':True}),patch.object(packet.q,'private_json',return_value={}),patch.object(packet.q,'BindingRecoveryCapability',return_value=cap),patch.object(packet.q,'closeout_binding_recovery',side_effect=cleanup),contextlib.redirect_stdout(output):
+                code=launcher.main(spec,governance=repo,review=review,read_hidden=lambda _: 'we_synthetic',session_consent={} if attended else None,clock=lambda:now[0])
             self.assertNotIn('PRIVATE_SENTINEL',output.getvalue())
             if expire=='qualification':self.assertIn('CONNECTED_STAGE_QUALIFICATION_APPROVAL',output.getvalue())
             return code,sequence
@@ -145,7 +146,7 @@ class SafePreparationFailureTests(unittest.TestCase):
     def output_for(self,error):
         output=io.StringIO()
         with patch.object(packet,'construct',side_effect=error),patch.object(packet,'execute_connected') as dispatch,contextlib.redirect_stdout(output):
-            result=launcher.main({'recoveryId':'synthetic'},read_hidden=lambda _: 'we_SECRET_CANARY')
+            result=launcher.main({'recoveryId':'synthetic','window':{'cutoff':'1970-01-01T00:00:15Z'}},read_hidden=lambda _: 'we_SECRET_CANARY',clock=lambda:10)
         self.assertEqual(result,2);dispatch.assert_not_called()
         self.assertNotIn('SECRET_CANARY',output.getvalue())
         return output.getvalue()
@@ -191,11 +192,12 @@ class SafePreparationFailureTests(unittest.TestCase):
             self.assertEqual(launcher.safe_failure_code(ValueError('SECRET_CANARY')),'ValueError')
 
     def test_native_failure_after_recovery_binding_still_runs_independent_purge(self):
-        cap=SimpleNamespace(root=Path('/private/tmp/synthetic-ep1'))
+        temporary=tempfile.TemporaryDirectory(prefix='p08-ep1-fixture-',dir='/private/tmp');self.addCleanup(temporary.cleanup)
+        cap=SimpleNamespace(root=Path(temporary.name));(cap.root/'guard-envelope.json').write_text('{}')
         e={'nativeScope':{},'plan':{'nativeScopeSha256':'a'*64}}
         error=packet.q.current_module('authority').Stop('PAYMENT_TIMING')
         output=io.StringIO()
         with patch.object(packet,'construct',return_value=(cap,e)),patch.object(packet.q,'qualification_cleanup_scope',return_value={}),patch.object(packet.q,'QualificationCapability',side_effect=error),patch.object(packet.q,'private_json',return_value={}),patch.object(packet.q,'BindingRecoveryCapability',return_value=cap),patch.object(packet.q,'closeout_binding_recovery',return_value={'rawFilesAbsent':True}) as close,patch.object(packet,'execute_connected') as dispatch,contextlib.redirect_stdout(output):
-            self.assertEqual(launcher.main({'recoveryId':'synthetic'},read_hidden=lambda _: 'we_synthetic'),2)
+            self.assertEqual(launcher.main({'recoveryId':'synthetic','window':{'cutoff':'1970-01-01T00:00:15Z'}},read_hidden=lambda _: 'we_synthetic',clock=lambda:10),2)
         close.assert_called_once_with(cap);dispatch.assert_not_called()
         self.assertEqual(output.getvalue(),'CONNECTED_STAGE_PACKET_PREPARATION\nCONNECTED_STOP_PAYMENT_TIMING\nRECOVERY_PURGE_VERIFIED\n')

@@ -561,6 +561,8 @@ class NativeIO:
 
     def https(self, descriptor, token, deadline):
         from urllib.parse import urlsplit
+        import signal,time
+        need(signal.getitimer(signal.ITIMER_REAL)==(0.0,0.0),'HTTPS_REFUSED')
         need(not self.closed and self.clock()<deadline and isinstance(token,str),'HTTPS_DEADLINE')
         u=urlsplit(descriptor.get('url',''));need(u.scheme=='https' and u.hostname in {
           'serviceusage.googleapis.com','cloudresourcemanager.googleapis.com','iam.googleapis.com',
@@ -581,20 +583,42 @@ class NativeIO:
             headers={'Authorization':'Bearer '+token,'Content-Type':'application/json','x-goog-user-project':model.PROJECT})
         class NoRedirect(urllib.request.HTTPRedirectHandler):
             def redirect_request(self,*args,**kwargs):return None
-        response=None
+        response=None;failure=None;result=None
+        acl=current_module('acl')
+        started=self.clock();last=started;phase_end=time.monotonic()+deadline-started
+        def remaining(limit):
+            nonlocal last
+            now=self.clock()
+            need(now>=last,'HTTPS_DEADLINE');last=now
+            value=min(limit,deadline-now,phase_end-time.monotonic())
+            need(value>0,'HTTPS_DEADLINE')
+            return value
         try:
-            with current_module('acl').http_deadline(max(.01,min(15,deadline-self.clock()))):
-                try:response=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect()).open(request,timeout=max(.01,min(15,deadline-self.clock())))
+            seconds=remaining(15)
+            with acl.http_deadline(seconds):
+                try:response=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect()).open(request,timeout=seconds)
                 except urllib.error.HTTPError as error:response=error
                 raw=response.read(MAX_OUTPUT+1);status=response.status
-                need(self.clock()<deadline,'HTTPS_DEADLINE')
+                remaining(15)
                 need(len(raw)<=MAX_OUTPUT,'HTTPS_OUTPUT_OVERSIZE')
                 need(not 300<=status<400,'HTTPS_REDIRECT')
-                return {'status':status,'body':raw or b'{}'}
-        except model.Stop:raise
-        except Exception:raise model.Stop('HTTPS_REFUSED') from None
+                result={'status':status,'body':raw or b'{}'}
+                try:response.close()
+                except (KeyboardInterrupt,SystemExit):raise
+                except BaseException:raise model.Stop('HTTPS_RESPONSE_CLOSE_UNCONFIRMED') from None
+                response=None
+                remaining(15)
+        except BaseException as error:
+            failure=error if isinstance(error,(model.Stop,KeyboardInterrupt,SystemExit)) else model.Stop('HTTPS_REFUSED')
         finally:
-            if response is not None:response.close()
+            if response is not None:
+                try:
+                    with acl.http_deadline(remaining(1)):response.close()
+                except BaseException as error:
+                    if failure is None:
+                        failure=error if isinstance(error,(KeyboardInterrupt,SystemExit)) else model.Stop('HTTPS_RESPONSE_CLOSE_UNCONFIRMED')
+        if failure is not None:raise failure from None
+        return result
 
     def sql(self, descriptor, password, deadline):
         need(not self.closed and self.clock() < deadline and isinstance(password, str) and password, "SQL_DEADLINE")
@@ -1795,9 +1819,14 @@ def recovery_values(cap,owner,project,raw):
 
 
 def run_binding_recovery(cap,io):
-    import fcntl,signal
+    import fcntl,signal,math
     need(type(cap) is BindingRecoveryCapability and cap.mode=='recover' and
          ((cap.external and type(io) is BindingRecoveryIO) or (not cap.external and getattr(io,'proof',None) is True)),'RECOVERY_PORT')
+    started_at=cap.clock()
+    need(type(started_at) in (int,float) and math.isfinite(started_at),'RECOVERY_START_TIME')
+    need(started_at>=cap.last,'CLOCK_ROLLBACK')
+    need(cap.times['start']<=started_at<cap.times['cutoff'],'RECOVERY_CUTOFF')
+    cap.last=started_at
     initialize_recovery(cap);fd=os.open(cap.root/'entry.lock',os.O_WRONLY|os.O_NOFOLLOW)
     password=None;values=None;guard=None;failure=None;residuals=[];cleaning=False
     def interrupted(*_):
@@ -1850,7 +1879,8 @@ def run_binding_recovery(cap,io):
                 try:guard.wait(timeout=5)
                 except subprocess.TimeoutExpired:residuals.append('PURGE_GUARD_UNCONFIRMED')
             need(purge_recovery_files(cap)['rawFilesAbsent'],'PRIVATE_PURGE_UNCONFIRMED')
-        result={'status':status,'execution':cap.e['execution'],'liveObserved':cap.external and cap.observed,'executionReady':False,
+        result={'operationId':cap.e['operationId'],'sourceCommit':cap.e['sourceCommit'],'scopeSha256':cap.hash,'startedAt':started_at,
+            'status':status,'execution':cap.e['execution'],'liveObserved':cap.external and cap.observed,'executionReady':False,
             'failure':failure,'residuals':residuals,'purgeEnd':cap.e['window']['purgeEnd'],'candidate':None}
         model.reserve(cap.root/'recovery-result.json',result);return result,guard
     finally:
@@ -1977,9 +2007,10 @@ def closeout_binding_recovery(cap):
     finally:password=None;fcntl.flock(fd,fcntl.LOCK_UN);os.close(fd)
 
 
-def recovery_main(argv):
+def recovery_main(argv, *, before_recover=None):
     modes={'--recover-binding-inputs':'recover','--closeout-binding-inputs':'closeout','--binding-input-purge-guard':'guard'}
     need(len(argv)==2 and argv[0] in modes,'RECOVERY_ARGUMENTS');mode=modes[argv[0]];path=Path(argv[1])
+    need(before_recover is None or (mode=='recover' and callable(before_recover)),'RECOVERY_PRE_DISPATCH_SCOPE')
     if mode=='recover':
         need(path.name=='envelope.json' and path.parent.parent==Path('/private/tmp') and
              re.fullmatch(r'p08-binding-request-[0-9a-f-]{36}',path.parent.name),'RECOVERY_INPUT_PATH')
@@ -1987,6 +2018,9 @@ def recovery_main(argv):
         try:
             e=private_json(path);need(path.parent.name=='p08-binding-request-'+e['operationId'],'RECOVERY_INPUT_SCOPE')
             cap=BindingRecoveryCapability(e);need(cap.external,'RECOVERY_EXTERNAL_ONLY')
+            # The connected opening must bind the capability actually dispatched,
+            # not an earlier read of a replaceable envelope pathname.
+            if before_recover is not None:before_recover(cap)
             path.unlink();path.parent.rmdir()
             result,_=run_binding_recovery(cap,BindingRecoveryIO(cap))
             if result['failure']=='RECOVERY_PASSWORD_TIMEOUT':print('RECOVERY_PASSWORD_TIMEOUT')

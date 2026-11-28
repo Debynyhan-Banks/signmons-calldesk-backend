@@ -11,8 +11,8 @@ const LOCKS = Object.freeze({
   authAuthority: ['p08-authentication-local-20261026/source/auth-authority.mjs', '51c5250ace4ff095a7cc2e5b6f4e099a863389fa095c2bfe26151c832480d965'],
   authController: ['p08-authentication-local-20261026/source/auth-controller.mjs', '57ab0853630112145e81e10143b05099b2a446f7f450d0eff4598540528ef0c4'],
   operatorBridge: ['p08-authentication-local-20261026/source/reuse/operator-bridge.mjs', 'ab76b595592ea1e5a3c73ebe7ce0320faf2e388db40d4354216d9892a8120e71'],
-  coordinator: ['p08-live-binder-local-20261029/source/coordinator.py', '1eecc5241794cfed6d892db4385039274539e47b183f1d934899549eb5560f70'],
-  readbacks: ['p08-native-closeout-local-20261031/source/adapter.py', 'c463671302f8d858d51063e94d7baaa6c0c72a395f505f5fa0a502674d8e532c'],
+  coordinator: ['p08-live-binder-local-20261029/source/coordinator.py', '829b0ea7d693862c78a4febd774229ba7c101fba059462476101059bdd86b8ab'],
+  readbacks: ['p08-native-closeout-local-20261031/source/adapter.py', 'edf593e30a6fe6c147a6a7063a9512da1b9c6300d6cd22d6ab0ccf80070ce4c1'],
 });
 const caps = new WeakMap();
 const uuid = v => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(v);

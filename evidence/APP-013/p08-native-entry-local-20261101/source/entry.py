@@ -12,7 +12,8 @@ from types import SimpleNamespace
 import sys
 import time
 from pathlib import Path
-from authority import Capability, committed, digest, load
+from authority import (Capability, committed, digest, load, auth_timing,
+    AUTH_POST_SETTLE_SECONDS, AUTH_SETUP_SECONDS, AUTH_PARENT_EXIT_RESERVE_SECONDS)
 from private_inventory import Stop, need, inspect, read, reserve, purge
 from native_io import NativeIO, PreflightIO, load_acl
 from handoff import Handoff
@@ -53,6 +54,46 @@ TAG_FAILURE_CODES = frozenset({
     'RUNTIME_TAG_COMMAND_REFUSED', 'RUNTIME_TAG_OUTPUT_LIMIT',
     'RUNTIME_TAG_OUTPUT_ENCODING', 'RUNTIME_TAG_JSON_PARSE', 'RUNTIME_TAG_ACK_SHAPE',
 })
+
+def cleanup_provenance(cap, journal):
+    native = journal.get('nativeEntry', {})
+    records = native.get('cleanupNotDispatched', [])
+    consumed = native.get('cleanupFirstDispatchConsumed', [])
+    attempted = journal.get('runtimeAttempted', [])
+    retired = journal.get('runtimeCleanupAttempted', [])
+    expected = [list(x) for x in restore.operations({**getattr(cap,'plan',{}), 'iam':[]})]
+    iam = journal.get('iamAttempted', []); removed = journal.get('iamCleanupAttempted', [])
+    need(type(attempted) is list and attempted == expected[:len(attempted)] and type(retired) is list and
+         all(type(row) is list and row in attempted for row in retired) and
+         len(retired) == len({tuple(row) for row in retired}) and
+         iam in ([], ['lookup'], ['lookup','signing']) and type(removed) is list and
+         all(row in iam for row in removed) and len(removed) == len(set(removed)), 'CLEANUP_PROVENANCE')
+    allowed = {'RUNTIME:'+kind+':'+name for kind,name in retired}
+    allowed.update('IAM:'+kind for kind in removed)
+    if journal.get('keyCreateAttempted') is True and journal.get('keyDeleteAttempted') is True: allowed.add('KEY')
+    counts = native.get('calls', {})
+    serial = native.get('dispatchSerial', 0)
+    need(type(records) is list and type(consumed) is list and len(records) <= len(allowed) and
+         len(consumed) <= len(records) and type(serial) is int and 0 <= serial <= sum(counts.values()),
+         'CLEANUP_PROVENANCE')
+    by_label = {}
+    for row in records:
+        need(type(row) is dict and set(row) == {'label','parent','dispatchSerial','calls'} and
+             type(row['label']) is str and row['label'] in allowed and row['label'] not in by_label and
+             type(row['parent']) is dict and set(row['parent']) == {'pid','startedAt'} and
+             row['parent'] == native.get('parent') and type(row['parent']['pid']) is int and row['parent']['pid'] > 0 and
+             type(row['parent']['startedAt']) in (int,float) and math.isfinite(row['parent']['startedAt']) and
+             type(row['dispatchSerial']) is int and 0 <= row['dispatchSerial'] <= serial and
+             type(row['calls']) is dict and set(row['calls']) == {'cli','https','sql','child'} and
+             all(type(v) is int and 0 <= v <= counts.get(k,-1) <= cap.e['limits'][k] for k,v in row['calls'].items()) and
+             row['dispatchSerial'] <= sum(row['calls'].values()), 'CLEANUP_PROVENANCE')
+        by_label[row['label']] = row
+    used = set()
+    for row in consumed:
+        need(type(row) is dict and set(row) == {'label','markerSha256'} and type(row['label']) is str and row['label'] in by_label and
+             row['label'] not in used and row['markerSha256'] == digest(by_label[row['label']]), 'CLEANUP_PROVENANCE')
+        used.add(row['label'])
+    return by_label, used
 
 
 class RuntimeAdapter(restore.NativeAdapter):
@@ -313,7 +354,7 @@ class Ports(bridge.Ports):
         def gate(cleanup=False): self.cap.gate(self.io.cleanup)
         def invoke(fn, *args, **kwargs):
             gate(); value = fn(*args); gate(); return value
-        deadline = self.cap.times['cleanupEnd' if self.io.cleanup else 'workEnd']
+        deadline = self.cap.gate(self.io.cleanup)
         waiter = SimpleNamespace(a=self.key_adapter, j={}, save=lambda: None, gate=gate,
                                  t={'workEnd': deadline, 'cleanupEnd': deadline},
                                  clock=self.cap.clock, pause=self.pause, invoke=invoke)
@@ -389,11 +430,18 @@ class Ports(bridge.Ports):
 
     def key_delete(self, etag):
         failure = None
+        markers, consumed = (cleanup_provenance(self.cap, self.cap.coordinator.j)
+            if self.cap.e.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY' else ({}, set()))
+        grants = getattr(self.cap, 'cleanup_first_grants', set())
+        granted = 'KEY' in grants
+        grants.discard('KEY')  # One first request, never an enduring retry permission.
         try:
             self.cap.gate(True)
             receipt = self._load_lifecycle()
+            first_unissued = (self.cap.e.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY' and
+                self.cap.mode == 'closeout' and granted and 'KEY' in markers and 'KEY' in consumed and receipt['deleteOperation'] is None)
             need(receipt['uid'] == self.owned_uid and etag == self.owned_etag == receipt['etag'] and
-                 not receipt['deleteIntent'], 'KEY_DELETE_OWNERSHIP')
+                 (not receipt['deleteIntent'] or first_unissued), 'KEY_DELETE_OWNERSHIP')
             receipt.update(phase='DELETE_INTENT', deleteIntent=True)
             self._save_lifecycle(receipt)
             initial = self.key_adapter.key_delete(etag)
@@ -487,6 +535,18 @@ class Coordinator(c.Coordinator):
         self.settling_attempted = False
         self.identity_pending = None
         self.identity_transitions_used = set()
+        self.auth_only = cap.e.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY'
+        self.cooperative_cleanup = self.auth_only
+        self.independent_cleanup = False
+        if getattr(self, 'auth_only', False):
+            self.POST_SETTLE_SECONDS = AUTH_POST_SETTLE_SECONDS
+            cap.monotonic = lambda:self.monotonic()
+            if cap.mode == 'run':
+                timing = auth_timing(cap.e, cap.times)
+                self.native_latest_admission = timing['latestAdmission']
+                cap.set_phase('SETUP', min(cap.clock() + AUTH_SETUP_SECONDS,
+                    min(cap.times['cutoff'], self.forward_end) - self.SETTLE_SECONDS - self.POST_SETTLE_SECONDS))
+                self.j['nativeEntry'].update(parent={'pid':os.getpid(), 'startedAt':cap.clock()}, ownedChildren=[], dispatchSerial=0)
 
     def identity_scope(self, method, args, owner, cleanup):
         return (self.cap.e.get('version') == 2 and
@@ -599,6 +659,9 @@ class Coordinator(c.Coordinator):
         c.need(not self.settling_attempted, 'IAM_SETTLE_ALREADY_ATTEMPTED')
         self.settling_attempted = True
         c.need(self.j.get('iamOwned') == ['lookup', 'signing'], 'IAM_READBACK')
+        if getattr(self, 'auth_only', False):
+            self.cap.gate()
+            self.cap.set_phase('FORWARD', self.forward_end)
         self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
         until = self.monotonic() + self.SETTLE_SECONDS
         while True:
@@ -622,6 +685,9 @@ class Coordinator(c.Coordinator):
             # Refuse an already-short session before the inherited coordinator
             # records any mutation intent; recheck immediately before dispatch.
             if method == 'preflight' and owner is self.runtime and self.cap.mode == 'run':
+                if getattr(self, 'auth_only', False):
+                    c.need(self.clock() <= self.native_latest_admission, 'START_CUTOFF')
+                    self.require_child_entry(AUTH_SETUP_SECONDS + self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS)
                 self.require_child_entry(self.SETTLE_SECONDS + self.POST_SETTLE_SECONDS +
                                          (self.IDENTITY_READBACK_SECONDS if self.cap.e.get('version') == 2 else 0))
             if method == 'change' and owner is self.runtime and not self.mutation_admitted:
@@ -675,6 +741,10 @@ class Coordinator(c.Coordinator):
 
     def closeout(self, independent=False):
         self.io.cleanup = True
+        self.independent_cleanup = independent
+        if self.auth_only:
+            self.cap.set_phase('INDEPENDENT_CLOSEOUT' if independent else 'MAIN_CLOSEOUT',
+                self.times['cleanupEnd' if independent else 'workEnd'] - AUTH_PARENT_EXIT_RESERVE_SECONDS)
         if independent:
             need(not (self.dir / 'independent-closeout.json').exists(), 'INDEPENDENT_ALREADY_CONSUMED')
             self.j = read(self.dir / 'journal.json')
@@ -685,6 +755,9 @@ class Coordinator(c.Coordinator):
                      for k,v in native['calls'].items()), 'INDEPENDENT_BINDING')
             need(self.j.get('operationId') == self.plan['operationId'] and
                  self.j.get('planSha256') == c.digest(self.plan), 'FOREIGN_JOURNAL')
+            if self.auth_only:
+                cleanup_provenance(self.cap, self.j)
+                self.cap.dispatch_serial = native.get('dispatchSerial', 0)
         if self.j.get('keyCreateAttempted'):
             try:
                 self.access.recover_key()
@@ -697,6 +770,68 @@ class Coordinator(c.Coordinator):
                 self.j['unknown'].append('CHILD_PROCESS_CLOSEOUT_UNCONFIRMED')
             self.save()
         return super().closeout(independent=independent)
+
+    def cleanup_admit(self, seconds=0):
+        if self.auth_only:
+            try:
+                deadline = self.cap.gate(True)
+                c.need(not self.abort and deadline - self.clock() >= seconds, 'MAIN_CLOSEOUT_DEFERRED')
+            except BaseException:
+                raise c.Stop('MAIN_CLOSEOUT_DEFERRED') from None
+
+    def cleanup_deferred(self, error):
+        if not self.auth_only: return False
+        return (getattr(error, 'args', ()) == ('MAIN_CLOSEOUT_DEFERRED',) or self.abort or
+                self.clock() >= self.cap.phase_end or self.monotonic() >= self.cap.phase_monotonic_end)
+
+    def cleanup_stop_label(self):
+        return 'INDEPENDENT_CLOSEOUT_DEFERRED' if self.independent_cleanup else 'MAIN_CLOSEOUT_DEFERRED'
+
+    def cleanup_marker(self):
+        return self.cap.dispatch_serial if self.auth_only else None
+
+    def cleanup_unissued(self, label, marker):
+        if self.auth_only and marker == self.cap.dispatch_serial:
+            rows = self.j['nativeEntry'].setdefault('cleanupNotDispatched', [])
+            if not any(row['label'] == label for row in rows):
+                native = self.j['nativeEntry']
+                rows.append({'label':label, 'parent':dict(native['parent']), 'dispatchSerial':marker,
+                             'calls':dict(native['calls'])})
+            cleanup_provenance(self.cap, self.j)
+            self.save()
+
+    def cleanup_first_dispatch(self, label):
+        if not self.auth_only or not self.independent_cleanup: return False
+        native = self.j['nativeEntry']
+        records, used = cleanup_provenance(self.cap, self.j)
+        consumed = native.setdefault('cleanupFirstDispatchConsumed', [])
+        if label not in records or label in used: return False
+        consumed.append({'label':label,'markerSha256':digest(records[label])}); self.save()
+        if not hasattr(self.cap, 'cleanup_first_grants'): self.cap.cleanup_first_grants = set()
+        self.cap.cleanup_first_grants.add(label)
+        return True
+
+    def acknowledge_main_closure(self):
+        if not self.auth_only: return
+        if self.io.proof and not hasattr(self.io, 'closure'): return
+        complete, rows = self.io.closure()
+        if self.cap.mode != 'run':
+            if not complete:
+                self.j['residuals'].append('CHILD_PROCESS_CLOSEOUT_UNCONFIRMED')
+                self.save()
+            return
+        now = self.clock()
+        native = self.j['nativeEntry']
+        if (not complete or now > self.times['workEnd'] - 2 or
+                rows != native.get('ownedChildren')):
+            if 'CHILD_PROCESS_CLOSEOUT_UNCONFIRMED' not in self.j['residuals']:
+                self.j['residuals'].append('CHILD_PROCESS_CLOSEOUT_UNCONFIRMED')
+            self.save(); return
+        native['mainClosure'] = {'version':1, 'operationId':self.plan['operationId'],
+            'envelopeSha256':self.cap.envelope_hash, 'sourceCommit':self.cap.e['sourceCommit'],
+            'parent':dict(native['parent']), 'ownedChildren':rows,
+            'inventoryComplete':True, 'groupsAbsent':True, 'acknowledgedAt':now}
+        self.save()
 
 
 def run_preflight_entry(envelope_path, mode, io_factory=None, clock=time.time, read_commit=committed):
@@ -792,6 +927,51 @@ def run_preflight_entry(envelope_path, mode, io_factory=None, clock=time.time, r
         fcntl.flock(lock,fcntl.LOCK_UN);os.close(lock)
 
 
+def verify_main_closure(cap):
+    """Local ownership proof only; never infer detached-child absence from exit."""
+    journal = read(cap.root / 'journal.json'); native = journal.get('nativeEntry', {})
+    proof = native.get('mainClosure', {})
+    need(set(proof) == {'version','operationId','envelopeSha256','sourceCommit','parent',
+        'ownedChildren','inventoryComplete','groupsAbsent','acknowledgedAt'} and
+        proof.get('version') == 1 and proof.get('operationId') == cap.plan['operationId'] and
+        proof.get('envelopeSha256') == cap.envelope_hash and proof.get('sourceCommit') == cap.e['sourceCommit'] and
+        proof.get('inventoryComplete') is True and proof.get('groupsAbsent') is True,
+        'MAIN_CLOSURE_UNCONFIRMED')
+    parent = proof['parent']; rows = proof['ownedChildren']
+    counts = native.get('calls', {})
+    need(type(counts) is dict and set(counts) == {'cli','https','sql','child'} and
+         all(type(v) is int and 0 <= v <= cap.e['limits'][k] for k,v in counts.items()), 'MAIN_CLOSURE_UNCONFIRMED')
+    need(parent == native.get('parent') and set(parent) == {'pid','startedAt'} and
+        type(parent['pid']) is int and parent['pid'] > 0 and
+        type(parent['startedAt']) in (int,float) and type(proof['acknowledgedAt']) in (int,float) and
+        cap.times['start'] <= parent['startedAt'] <= proof['acknowledgedAt'] <= cap.times['workEnd'] - 2 and
+        cap.clock() >= proof['acknowledgedAt'] and cap.times['cleanupEnd'] - cap.clock() >= 660,
+        'MAIN_CLOSURE_UNCONFIRMED')
+    need(type(rows) is list and rows == native.get('ownedChildren') and
+        len(rows) <= sum(cap.e['limits'][k] for k in ('cli','sql','child')), 'MAIN_CLOSURE_UNCONFIRMED')
+    need(bool(rows) or all(counts[k] == 0 for k in ('cli','sql','child')), 'MAIN_CLOSURE_UNCONFIRMED')
+    kinds = dict.fromkeys(('CLI','SQL','CHILD'),0); groups = set()
+    for index,row in enumerate(rows,1):
+        need(type(row) is dict and set(row) == {'ordinal','kind','pid','pgid','state'} and
+            type(row['ordinal']) is int and row['ordinal'] == index and row['kind'] in kinds, 'MAIN_CLOSURE_UNCONFIRMED')
+        kinds[row['kind']] += 1
+        need(kinds[row['kind']] <= counts[row['kind'].lower()], 'MAIN_CLOSURE_UNCONFIRMED')
+        if row['state'] == 'NOT_STARTED':
+            need(row['pid'] is None and row['pgid'] is None, 'MAIN_CLOSURE_UNCONFIRMED')
+        else:
+            need(row['state'] == 'CLOSED' and type(row['pid']) is int and row['pid'] > 0 and
+                type(row['pgid']) is int and row['pgid'] == row['pid'] and row['pgid'] not in groups and
+                row['pid'] != parent['pid'], 'MAIN_CLOSURE_UNCONFIRMED')
+            groups.add(row['pgid'])
+            try: os.killpg(row['pgid'], 0)
+            except ProcessLookupError: pass
+            else: raise Stop('MAIN_CHILD_STILL_PRESENT')
+    try: os.kill(parent['pid'], 0)
+    except ProcessLookupError: pass
+    else: raise Stop('MAIN_PARENT_STILL_PRESENT')
+    return proof
+
+
 def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, read_commit=committed):
     path = Path(envelope_path)
     need(path.name == 'envelope.json', 'ENVELOPE_PATH')
@@ -801,10 +981,13 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
     io = io_factory(cap)
     need(cap.external is (not io.proof), 'TRANSPORT_AUTHORITY_MISMATCH')
     lock_fd = os.open(cap.root / 'entry.lock', os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    previous_signals = {}
     try:
         try: fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError: raise Stop('ENTRY_ALREADY_RUNNING') from None
         inspect(cap.root, cap.plan['operationId'])
+        if cap.external and cap.e.get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY' and mode == 'closeout':
+            verify_main_closure(cap)
         runtime = RuntimeAdapter(cap, io, clock=clock)
         runtime.q = cap.e['qualification']
         handoff = Handoff(cap, io)
@@ -812,11 +995,18 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
         runtime.close_authentication = lambda plan, deadline: handoff.closeout_only()
         ports = Ports(cap, io, handoff, runtime)
         controller = Coordinator(cap, io, runtime, ports)
+        if controller.auth_only:
+            import signal
+            previous_signals = {sig:signal.getsignal(sig) for sig in (signal.SIGINT,signal.SIGTERM)}
+            for sig in previous_signals:
+                signal.signal(sig, lambda *_:setattr(controller,'abort',True))
         handoff.attach(controller)
         if mode == 'closeout':
             attempt = read(cap.root / 'attempt.json')
             need(attempt == {'operationId': cap.plan['operationId'], 'planSha256': digest(cap.plan)}, 'ATTEMPT_BINDING')
         result = controller.run() if mode == 'run' else controller.closeout(independent=True)
+        controller.acknowledge_main_closure()
+        result['residuals'] = list(controller.j.get('residuals', result['residuals']))
         residuals = list(result['residuals'])
         if cap.e['version'] == 2:
             payment = controller.j.get('payment')
@@ -883,6 +1073,8 @@ def run_entry(envelope_path, mode='run', io_factory=NativeIO, clock=time.time, r
         return result
     finally:
         io.clear()
+        if previous_signals:
+            for sig,handler in previous_signals.items():signal.signal(sig,handler)
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         os.close(lock_fd)
 

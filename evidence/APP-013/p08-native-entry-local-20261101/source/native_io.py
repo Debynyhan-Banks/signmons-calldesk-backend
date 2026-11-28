@@ -50,6 +50,40 @@ class NativeIO:
                     'CLOUDSDK_CORE_LOG_HTTP': 'false'})
         return env
 
+    def auth_only(self):
+        return getattr(self.cap, 'e', {}).get('purpose') == 'NATIVE_AUTH_QUALIFICATION_ONLY'
+
+    def dispatch(self):
+        if self.auth_only():
+            need(not self.child_cleanup_unconfirmed and not self.child_processes, 'CHILD_PROCESS_CLOSEOUT_UNCONFIRMED')
+            self.cap.gate(self.cleanup)
+            self.cap.dispatch_serial += 1
+            self.cap.coordinator.j['nativeEntry']['dispatchSerial'] = self.cap.dispatch_serial
+            self.cap.coordinator.save()
+
+    def _inventory(self):
+        key = 'ownedChildren' if self.cap.mode == 'run' else 'independentChildren'
+        return self.cap.coordinator.j['nativeEntry'].setdefault(key, [])
+
+    def _reserve_process(self, kind):
+        if not self.auth_only(): return None
+        need(not self.child_cleanup_unconfirmed and not self.child_processes, 'CHILD_PROCESS_CLOSEOUT_UNCONFIRMED')
+        rows = self._inventory()
+        need(len(rows) < sum(self.cap.e['limits'][k] for k in ('cli', 'sql', 'child')), 'CHILD_INVENTORY_LIMIT')
+        row = {'ordinal':len(rows)+1, 'kind':kind.upper(), 'pid':None, 'pgid':None, 'state':'RESERVED'}
+        rows.append(row); self.cap.coordinator.save()
+        return row
+
+    def closure(self):
+        """Only the handles created by this process may be reaped or acknowledged."""
+        for process in list(self.child_processes):
+            if hasattr(process, '_p08_finish_end'): del process._p08_finish_end
+            if not self._finish_child(process): self.child_cleanup_unconfirmed = True
+        rows = self._inventory()
+        complete = not self.child_processes and all(
+            row['state'] in ('CLOSED', 'NOT_STARTED') for row in rows)
+        return complete, json.loads(json.dumps(rows))
+
     def _run(self, argv, kind, input_bytes=None, extra=None):
         deadline = self.cap.spend(kind, self.cleanup)
         env = self.env(); env.update(extra or {})
@@ -59,8 +93,15 @@ class NativeIO:
                            {**self.cap.plan, 'iam': self.cap.plan.get('iam', [])},
                            'tag', self.restore.TAG, True), '--format=json'])
         try:
-            r = subprocess.run(argv, input=input_bytes, capture_output=True, env=env,
-                               timeout=max(.01, min(8, deadline - self.cap.clock())))
+            if self.auth_only():
+                r = self._owned_process(argv, input_bytes or b'', env,
+                    min(8, deadline - self.cap.clock()), self.cleanup, 65536, kind, total=True,
+                    output_codes=({'stdout':'DATABASE_OUTPUT_LIMIT','stderr':'DATABASE_ERROR_OUTPUT_LIMIT'}
+                        if kind == 'sql' else {'stdout':'RUNTIME_TAG_OUTPUT_LIMIT' if forward_tag else 'NATIVE_COMMAND_REFUSED',
+                                              'stderr':'NATIVE_COMMAND_REFUSED'}))
+            else:
+                r = subprocess.run(argv, input=input_bytes, capture_output=True, env=env,
+                                   timeout=max(.01, min(8, deadline - self.cap.clock())))
         except subprocess.TimeoutExpired:
             raise __import__('private_inventory').Stop('DATABASE_PROCESS_TIMEOUT' if kind == 'sql' else
                 'RUNTIME_TAG_COMMAND_TIMEOUT' if forward_tag else 'NATIVE_COMMAND_UNCONFIRMED') from None
@@ -107,9 +148,12 @@ class NativeIO:
         self.token = token
 
     def credentials(self):
+        if self.auth_only() and not self.password:
+            need(signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0), 'INPUT_TIMER_COLLISION')
         self.ensure_owner()
         if not self.password:
             deadline = self.cap.gate(self.cleanup)
+            if self.auth_only(): deadline = min(deadline, self.cap.clock() + 120)
             with self.legacy.phase_guard(deadline, cleanup=self.cleanup):
                 self.password = self.legacy.private_input('Enter current CHILD administrator password (hidden): ')
             need(isinstance(self.password, str) and 0 < len(self.password) <= 4096, 'PASSWORD_SHAPE')
@@ -199,6 +243,7 @@ class NativeIO:
             # Keep open, body consumption, validation and normal close in one timer.
             with acl.http_deadline(remaining):
                 try:
+                    self.dispatch()
                     response = urllib.request.build_opener(NoRedirect).open(request, timeout=remaining)
                     status = response.status
                 except urllib.error.HTTPError as error:
@@ -257,6 +302,7 @@ class NativeIO:
         if process not in self.child_processes:
             return False
         until = time.monotonic() + min(2, max(0, self.cap.times['cleanupEnd'] - self.cap.clock()))
+        until = min(until, getattr(process, '_p08_finish_end', until))
         try:
             if self._child_group_alive(process, until):
                 os.killpg(process.pid, signal.SIGTERM)
@@ -271,6 +317,12 @@ class NativeIO:
             absent = not self._child_group_alive(process, until)
             if absent:
                 self.child_processes.remove(process)
+                row = getattr(process, '_p08_inventory', None)
+                if row is not None:
+                    row['state'] = 'CLOSED'
+                    # The Node child owns auth/payment journal fields until
+                    # Handoff merges them. Do not overwrite its final write.
+                    if row['kind'] != 'CHILD': self.cap.coordinator.save()
             return absent and process.returncode is not None and self.cap.clock() < self.cap.times['cleanupEnd']
         except (OSError, subprocess.TimeoutExpired, __import__('private_inventory').Stop):
             return False
@@ -290,11 +342,19 @@ class NativeIO:
         need(type(timeout) in (int, float) and math.isfinite(timeout) and timeout > 0, 'CHILD_TIMEOUT_BOUND')
         data = kwargs['input'].encode('utf-8')
         need(0 < len(data) <= 131072, 'CHILD_INPUT_BOUNDS')
+        self.child_parent_baseline = None
+        result = self._owned_process(argv, data, kwargs['env'], timeout,
+            self.cleanup or argv[-1] in ('--closeout', '--readback'), 8192, 'child')
+        return subprocess.CompletedProcess(argv, result.returncode,
+            result.stdout.decode('utf-8', 'strict'), result.stderr.decode('utf-8', 'strict'))
+
+    def _owned_process(self, argv, data, env, timeout, cleanup, output_limit, kind, total=False, output_codes=None):
+        need(math.isfinite(timeout) and timeout > 0, 'CHILD_PROCESS_DEADLINE')
         # Reserve the existing independent-cleanup horizon; never extend work or cleanup.
         remaining = self.cap.times['cleanupEnd'] - self.cap.clock() - 2
         need(remaining > 0, 'CHILD_PROCESS_DEADLINE')
-        hard_end = time.monotonic() + min(timeout, remaining)
-        cleanup = self.cleanup or argv[-1] in ('--closeout', '--readback')
+        end = time.monotonic() + min(timeout, remaining)
+        hard_end = end - min(2, timeout / 2) if total else end
         self.cap.gate(cleanup)
         process = None
         selector = None
@@ -303,10 +363,28 @@ class NativeIO:
         offset = 0
         failure = None
         last = self.cap.clock()
+        row = self._reserve_process(kind)
         try:
+            try:
+                need(time.monotonic() < hard_end, 'CHILD_PROCESS_DEADLINE')
+                self.dispatch()
+                need(time.monotonic() < hard_end, 'CHILD_PROCESS_DEADLINE')
+            except BaseException:
+                if row is not None:
+                    row['state'] = 'NOT_STARTED'; self.cap.coordinator.save()
+                raise
             process = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, env=kwargs['env'], start_new_session=True)
+                stderr=subprocess.PIPE, env=env, start_new_session=True)
             self.child_processes.add(process)
+            if total: process._p08_finish_end = end
+            if row is not None:
+                process._p08_inventory = row
+                row.update(pid=process.pid, pgid=process.pid, state='SPAWNED'); self.cap.coordinator.save()
+                if kind == 'child':
+                    # No request byte has reached the child yet. Capture the
+                    # exact parent-owned transition before releasing stdin.
+                    self.child_parent_baseline = (self.cap.coordinator.j['nativeEntry']['calls']['child'],
+                        json.loads(json.dumps(self.cap.coordinator.j)))
             selector = selectors.DefaultSelector()
             for stream, event, name in ((process.stdin, selectors.EVENT_WRITE, 'stdin'),
                     (process.stdout, selectors.EVENT_READ, 'stdout'),
@@ -330,18 +408,20 @@ class NativeIO:
                             stream.close()
                             data = b''
                     else:
-                        chunk = os.read(stream.fileno(), min(8192, 8193 - sizes[name]))
+                        chunk = os.read(stream.fileno(), min(8192, output_limit + 1 - sizes[name]))
                         if not chunk:
                             selector.unregister(stream)
                         else:
                             sizes[name] += len(chunk)
-                            need(sizes[name] <= 8192, 'CHILD_OUTPUT_LIMIT')
+                            need(sizes[name] <= output_limit, (output_codes or {}).get(name, 'CHILD_OUTPUT_LIMIT'))
                             chunks[name].append(chunk)
             code = process.wait(timeout=max(.001, hard_end - time.monotonic()))
         except BaseException as error:
             failure = error
         finally:
             data = b''
+            if process is None and row is not None and row['state'] == 'RESERVED':
+                self.child_cleanup_unconfirmed = True
             try:
                 if selector is not None: selector.close()
             finally:
@@ -354,12 +434,11 @@ class NativeIO:
         if failure is not None:
             for value in chunks.values(): value.clear()
             raise failure
-        return subprocess.CompletedProcess(argv, code,
-            b''.join(chunks['stdout']).decode('utf-8', 'strict'),
-            b''.join(chunks['stderr']).decode('utf-8', 'strict'))
+        return subprocess.CompletedProcess(argv, code, b''.join(chunks['stdout']), b''.join(chunks['stderr']))
 
     def clear(self):
         self.token = ''; self.password = ''
+        self.child_parent_baseline = None
 
 
 class PreflightIO(NativeIO):

@@ -1360,6 +1360,99 @@ time.sleep(20)
         self.assertTrue(launch.private_json(self.root/'purge-result.json')['rawFilesAbsent'])
 
 
+class RecoveryStartedAtTests(unittest.TestCase):
+    setUp=BindingRecoveryTests.setUp
+    envelope=BindingRecoveryTests.envelope
+    seal=BindingRecoveryTests.seal
+    cleanup=BindingRecoveryTests.cleanup
+    run_recovery=BindingRecoveryTests.run_recovery
+
+    def test_actual_start_is_recorded_with_exact_operation_and_source_not_window_start(self):
+        actual=time.time()+.25;self.cap.clock=lambda:actual
+        result,_=self.run_recovery()
+        self.assertEqual(result['status'],'HANDOFF_RETAINED')
+        self.assertEqual(result['startedAt'],actual);self.assertNotEqual(result['startedAt'],self.cap.times['start'])
+        self.assertEqual(result['operationId'],self.e['operationId']);self.assertEqual(result['sourceCommit'],self.e['sourceCommit'])
+        self.assertEqual(result['scopeSha256'],self.cap.hash)
+        self.assertEqual(launch.private_json(self.root/'recovery-result.json'),result)
+        self.assertEqual(len(self.io.calls),4);self.assertEqual(len(self.fresh.calls),1)
+
+    def test_failed_recovery_keeps_its_original_start_and_binding(self):
+        actual=time.time()+.25;self.cap.clock=lambda:actual
+        self.io.overrides['owner']=[{'account':'foreign@example.invalid','status':'ACTIVE'}]
+        result,_=self.run_recovery()
+        self.assertEqual(result['status'],'BINDING_INPUT_RECOVERY_UNQUALIFIED')
+        self.assertEqual(result['startedAt'],actual);self.assertEqual(result['scopeSha256'],self.cap.hash)
+
+    def test_expired_nonfinite_and_rollback_start_refuse_before_initialization_or_io(self):
+        for value,code in [(True,'RECOVERY_START_TIME'),(float('nan'),'RECOVERY_START_TIME'),(float('inf'),'RECOVERY_START_TIME'),
+                           (self.cap.last-1,'CLOCK_ROLLBACK'),(self.cap.times['cutoff'],'RECOVERY_CUTOFF')]:
+            with self.subTest(value=value):
+                self.cap.clock=lambda:value
+                with self.assertRaisesRegex(model.Stop,'^'+code+'$'):self.run_recovery()
+                self.assertFalse(self.root.exists());self.assertEqual(self.io.calls,[]);self.assertEqual(self.guards,[])
+
+
+class RecoveryPreDispatchTests(unittest.TestCase):
+    """Actual request consumption/callback ordering with inert capability and I/O ports."""
+    def request(self,value):
+        import shutil
+        path=Path('/private/tmp/p08-binding-request-'+value['operationId'])/'envelope.json'
+        path.parent.mkdir(mode=0o700);model.reserve(path,value)
+        self.addCleanup(lambda:shutil.rmtree(path.parent,ignore_errors=True))
+        return path
+
+    def test_replaced_input_is_checked_at_actual_capability_before_recovery_io(self):
+        import uuid
+        from types import SimpleNamespace
+        for field in ('operationId','sourceCommit','purgeEnd'):
+            expected={'operationId':str(uuid.uuid4()),'sourceCommit':'a'*40,'purgeEnd':2000.}
+            actual={**expected,field:str(uuid.uuid4()) if field=='operationId' else 'b'*40 if field=='sourceCommit' else 2100.}
+            # The actual request path must match its own operation. Opening still
+            # belongs to expected; the callback must examine the final loaded cap.
+            path=self.request({**expected,'operationId':actual['operationId']})
+            initial=launch.private_json(path)
+            path.write_text(json.dumps(actual));events=[]
+            def capability(value):
+                events.append('capability');return SimpleNamespace(external=True,e=value)
+            def opening(cap):
+                events.append('opening');self.assertEqual(cap.e,actual)
+                launch.need(all(cap.e[k]==expected[k] for k in expected),'PACKET_OPENING_BINDING')
+            with self.subTest(field=field),patch.object(launch,'BindingRecoveryCapability',side_effect=capability),\
+                 patch.object(launch,'BindingRecoveryIO') as io_port,patch.object(launch,'run_binding_recovery') as run:
+                with self.assertRaisesRegex(model.Stop,'^PACKET_OPENING_BINDING$'):
+                    launch.recovery_main(['--recover-binding-inputs',str(path)],before_recover=opening)
+                io_port.assert_not_called();run.assert_not_called()
+            self.assertEqual(events,['capability','opening']);self.assertFalse(path.parent.exists())
+            if field!='operationId':self.assertNotEqual(initial,actual)
+
+    def test_opening_receives_same_actual_cap_as_dispatch_and_default_is_unchanged(self):
+        import uuid
+        from types import SimpleNamespace
+        for with_callback in (False,True):
+            value={'operationId':str(uuid.uuid4())};path=self.request(value);events=[]
+            cap=SimpleNamespace(external=True,e=value);io_port=object()
+            def opening(actual):
+                self.assertIs(actual,cap);self.assertTrue(path.exists());events.append('opening')
+            def port(actual):self.assertIs(actual,cap);events.append('io');return io_port
+            def run(actual,io_value):
+                self.assertIs(actual,cap);self.assertIs(io_value,io_port);events.append('run')
+                return {'failure':None,'status':'HANDOFF_RETAINED'},None
+            with self.subTest(callback=with_callback),contextlib.redirect_stdout(io.StringIO()),\
+                 patch.object(launch,'BindingRecoveryCapability',return_value=cap),\
+                 patch.object(launch,'BindingRecoveryIO',side_effect=port),patch.object(launch,'run_binding_recovery',side_effect=run):
+                self.assertEqual(launch.recovery_main(['--recover-binding-inputs',str(path)],
+                    **({'before_recover':opening} if with_callback else {})),0)
+            self.assertEqual(events,(['opening'] if with_callback else [])+['io','run']);self.assertFalse(path.parent.exists())
+
+    def test_callback_cannot_be_used_on_guard_or_closeout(self):
+        for mode in ('--binding-input-purge-guard','--closeout-binding-inputs'):
+            with self.subTest(mode=mode),patch.object(launch,'BindingRecoveryCapability') as cap:
+                with self.assertRaisesRegex(model.Stop,'^RECOVERY_PRE_DISPATCH_SCOPE$'):
+                    launch.recovery_main([mode,'/private/tmp/synthetic'],before_recover=lambda _:None)
+                cap.assert_not_called()
+
+
 class BindingRecoveryAuthorityTests(unittest.TestCase):
     def setUp(self):
         import shutil
@@ -1689,6 +1782,155 @@ class SDKDiagnosticTests(unittest.TestCase):
         self.assertEqual(p.returncode,-9,p.stderr.decode());self.assertFalse(directory.exists());self.assertTrue((self.root/'cli-attempt-01.json').exists());self.assertFalse((self.root/'cli-result-01.json').exists())
         p=subprocess.run([launch.sys.executable,'-I','-B','-c',restart_child_code(self.repo),str(model.ROOT),'--closeout-current',str(self.root)],capture_output=True,timeout=15)
         self.assertEqual(p.returncode,2,p.stderr.decode());r=json.loads((self.root/'recovery-result.json').read_text());self.assertEqual(r['residuals'],['OWNED_PROCESS_HISTORY_UNKNOWN']);self.assertIsNone(r['candidate'])
+
+
+class QualificationHttpDeadlineTests(unittest.TestCase):
+    """Real alarm boundaries around in-memory HTTP responses; no external I/O."""
+    def setUp(self):
+        import signal
+        self.signal=signal;self.offset=0
+        self.io=object.__new__(launch.NativeIO)
+        self.io.closed=False;self.io.clock=lambda:time.time()+self.offset
+        self.deadline=time.time()+30;self.calls=[]
+        self.descriptor=launch.current_https_contract('123456789012','signmons-p08-'+'0'*32)[0]
+        self.acl=launch.current_module('acl')
+        original=launch.current_module
+        mocked=patch.object(launch,'current_module',side_effect=lambda name:self.acl if name=='acl' else original(name))
+        mocked.start();self.addCleanup(mocked.stop)
+        self.handler=signal.getsignal(signal.SIGALRM)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL),(0.0,0.0))
+
+    @contextlib.contextmanager
+    def accelerated(self):
+        original=self.acl.http_deadline;budgets=[]
+        @contextlib.contextmanager
+        def bounded(seconds):
+            budgets.append(seconds)
+            with original(min(.04,seconds)):yield
+        with patch.object(self.acl,'http_deadline',bounded):yield budgets
+
+    def invoke(self,response=None,error=None,opened=None):
+        def opening(*args,**kwargs):
+            self.calls.append(kwargs['timeout'])
+            if opened:return opened()
+            if error is not None:raise error
+            return response
+        with patch('urllib.request.build_opener') as opener:
+            opener.return_value.open.side_effect=opening
+            return self.io.https(self.descriptor,'synthetic-token',self.deadline)
+
+    def assert_restored(self):
+        self.assertEqual(self.signal.getitimer(self.signal.ITIMER_REAL),(0.0,0.0))
+        self.assertIs(self.signal.getsignal(self.signal.SIGALRM),self.handler)
+
+    def test_success_and_rejected_output_close_before_success(self):
+        for body,status,expected in ((b'{}',200,None),(b'',204,None),(b'x'*65537,200,'HTTPS_OUTPUT_OVERSIZE'),(b'{}',302,'HTTPS_REDIRECT')):
+            with self.subTest(status=status,expected=expected):
+                response=io.BytesIO(body);response.status=status
+                with self.accelerated() as budgets:
+                    if expected:
+                        with self.assertRaisesRegex(model.Stop,'^'+expected+'$'):self.invoke(response)
+                    else:self.assertEqual(self.invoke(response),{'status':status,'body':body or b'{}'})
+                self.assertTrue(response.closed);self.assertEqual(budgets,[15]+([1] if expected else []))
+                self.assert_restored()
+
+    def test_open_timeout_is_one_request_and_restores_alarm(self):
+        with self.accelerated() as budgets:
+            with self.assertRaisesRegex(model.Stop,'^HTTPS_REFUSED$'):self.invoke(opened=lambda:time.sleep(5))
+        self.assertEqual(self.calls,[15]);self.assertEqual(budgets,[15]);self.assert_restored()
+
+    def test_hanging_and_dripping_read_have_one_wall_deadline(self):
+        for dripping in (False,True):
+            self.calls.clear()
+            class Response:
+                status=200;closed=False
+                def read(self,size):
+                    if not dripping:time.sleep(5)
+                    while True:time.sleep(.003)
+                def close(self):self.closed=True
+            response=Response();started=time.monotonic()
+            with self.accelerated() as budgets:
+                with self.assertRaisesRegex(model.Stop,'^HTTPS_REFUSED$'):self.invoke(response)
+            self.assertLess(time.monotonic()-started,1);self.assertEqual(budgets,[15,1])
+            self.assertEqual(len(self.calls),1);self.assertTrue(response.closed);self.assert_restored()
+
+    def test_normal_and_leftover_close_hang_cannot_report_success(self):
+        class Response:
+            status=200;closes=0
+            def read(self,size):return b'{}'
+            def close(self):self.closes+=1;time.sleep(5)
+        response=Response();started=time.monotonic()
+        with self.accelerated() as budgets:
+            with self.assertRaisesRegex(model.Stop,'^HTTPS_RESPONSE_CLOSE_UNCONFIRMED$'):self.invoke(response)
+        self.assertEqual(budgets,[15,1]);self.assertEqual(response.closes,2);self.assertEqual(len(self.calls),1)
+        self.assertLess(time.monotonic()-started,1);self.assert_restored()
+
+    def test_primary_failure_and_interrupt_survive_failed_leftover_close(self):
+        for primary in (OSError('PRIVATE_PRIMARY'),model.Stop('HTTPS_OUTPUT_OVERSIZE'),KeyboardInterrupt(),SystemExit(7)):
+            for hanging in (False,True):
+                with self.subTest(primary=type(primary).__name__,hanging=hanging):
+                    class Response:
+                        status=200
+                        def read(self,size):raise primary
+                        def close(self):
+                            if hanging:time.sleep(5)
+                            raise OSError('PRIVATE_CLOSE')
+                    with self.accelerated():
+                        with self.assertRaises(model.Stop if isinstance(primary,OSError) else type(primary)) as caught:self.invoke(Response())
+                    if isinstance(primary,OSError):self.assertEqual(str(caught.exception),'HTTPS_REFUSED')
+                    else:self.assertIs(caught.exception,primary)
+                    self.assertNotIn('PRIVATE_',str(caught.exception));self.assert_restored()
+
+    def test_http_error_body_is_closed_and_read_timeout_retains_refusal(self):
+        import urllib.error
+        body=io.BytesIO(b'{"error":{}}');error=urllib.error.HTTPError(self.descriptor['url'],403,'synthetic',{},body)
+        self.assertEqual(self.invoke(error=error)['status'],403);self.assertTrue(body.closed)
+        class Body:
+            closed=False
+            def read(self,size):time.sleep(5)
+            def close(self):self.closed=True
+        body=Body();error=urllib.error.HTTPError(self.descriptor['url'],403,'synthetic',{},body)
+        with self.accelerated():
+            with self.assertRaisesRegex(model.Stop,'^HTTPS_REFUSED$'):self.invoke(error=error)
+        self.assertTrue(body.closed);self.assert_restored()
+
+    def test_phase_expiry_never_adds_local_disposal_time(self):
+        class Response:
+            status=200;closes=0
+            def read(self,size):time.sleep(5)
+            def close(self):self.closes+=1
+        response=Response();self.deadline=time.time()+.04
+        with self.assertRaisesRegex(model.Stop,'^HTTPS_REFUSED$'):self.invoke(response)
+        self.assertEqual(response.closes,0);self.assertLessEqual(self.calls[0],.04);self.assert_restored()
+        self.calls.clear()
+        with self.assertRaisesRegex(model.Stop,'^HTTPS_DEADLINE$'):self.invoke()
+        self.assertEqual(self.calls,[])
+
+    def test_active_alarm_is_refused_before_opener_and_preserved(self):
+        def handler(*args):pass
+        self.signal.signal(self.signal.SIGALRM,handler);self.signal.setitimer(self.signal.ITIMER_REAL,20)
+        try:
+            with self.assertRaisesRegex(model.Stop,'^HTTPS_REFUSED$'):self.invoke()
+            self.assertEqual(self.calls,[]);self.assertIs(self.signal.getsignal(self.signal.SIGALRM),handler)
+            self.assertGreater(self.signal.getitimer(self.signal.ITIMER_REAL)[0],19)
+        finally:
+            self.signal.setitimer(self.signal.ITIMER_REAL,0);self.signal.signal(self.signal.SIGALRM,self.handler)
+
+    def test_clock_rollback_refuses_success_without_replacing_primary_failure(self):
+        owner=self
+        class Response:
+            status=200;closed=False
+            def read(self,size):owner.offset=-1;return b'{}'
+            def close(self):self.closed=True
+        response=Response()
+        with self.assertRaisesRegex(model.Stop,'^HTTPS_DEADLINE$'):self.invoke(response)
+        self.assertFalse(response.closed);self.assert_restored()
+
+    def test_sampled_rollback_above_initial_clock_still_refuses_success(self):
+        response=io.BytesIO(b'{}');response.status=200;self.deadline=200
+        with patch.object(self.io,'clock',side_effect=[100,100,110,105,105]):
+            with self.assertRaisesRegex(model.Stop,'^HTTPS_DEADLINE$'):self.invoke(response)
+        self.assertFalse(response.closed);self.assert_restored()
 
 
 class ServiceProjectionTests(unittest.TestCase):

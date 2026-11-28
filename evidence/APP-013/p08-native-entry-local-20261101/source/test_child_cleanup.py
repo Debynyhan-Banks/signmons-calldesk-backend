@@ -396,3 +396,84 @@ class ResponseCleanupTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TC1OwnershipTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture=ChildCleanupTests();self.fixture.setUp();self.addCleanup(self.fixture.doCleanups)
+        self.io=self.fixture.io
+        cap=self.io.cap;cap.mode='run';cap.dispatch_serial=0
+        cap.e={'version':2,'purpose':'NATIVE_AUTH_QUALIFICATION_ONLY',
+            'limits':{'cli':8,'sql':8,'child':8}}
+        cap.coordinator=SimpleNamespace(j={'nativeEntry':{'ownedChildren':[]}},save=lambda:None)
+        self.rows=cap.coordinator.j['nativeEntry']['ownedChildren']
+
+    def test_cli_total_bound_reaps_term_ignoring_descendant_and_pipe_holder(self):
+        for code in (self.fixture.child_code('sys.exit(0)',held=True),
+                     self.fixture.child_code('signal.signal(signal.SIGTERM,signal.SIG_IGN);time.sleep(30)')):
+            with self.subTest(code=code[-30:]):
+                start=time.monotonic()
+                with patch.object(native_io.subprocess,'Popen',side_effect=self.fixture.owned_spawn):
+                    with self.assertRaises(subprocess.TimeoutExpired):
+                        self.io._owned_process([sys.executable,'-c',code],b'',{},1.,False,65536,'cli',total=True)
+                self.assertLess(time.monotonic()-start,1.4)
+                self.fixture.assert_closed()
+                self.assertEqual(self.rows[-1]['state'],'CLOSED')
+        complete,rows=self.io.closure()
+        self.assertTrue(complete);self.assertEqual(rows,self.rows)
+        self.assertEqual([row['ordinal'] for row in rows],[1,2])
+        self.assertEqual({row['kind'] for row in rows},{'CLI'})
+
+    def test_predispatch_expiry_records_positive_not_started_without_process(self):
+        closed=[False]
+        def save():
+            if self.rows:closed[0]=True
+        def gate(cleanup=False):
+            if closed[0]:raise Stop('ENTRY_DEADLINE')
+        self.io.cap.coordinator.save=save;self.io.cap.gate=gate
+        with patch.object(native_io.subprocess,'Popen',side_effect=AssertionError('must not spawn')):
+            with self.assertRaisesRegex(Stop,'ENTRY_DEADLINE'):
+                self.io._owned_process(['synthetic'],b'',{},1.,False,65536,'sql',total=True)
+        self.assertEqual(self.io.cap.dispatch_serial,0)
+        self.assertEqual(self.rows,[{'ordinal':1,'kind':'SQL','pid':None,'pgid':None,'state':'NOT_STARTED'}])
+        self.assertTrue(self.io.closure()[0])
+
+    def test_unconfirmed_spawn_blocks_closure_and_further_processes(self):
+        with patch.object(native_io.subprocess,'Popen',side_effect=OSError('synthetic')):
+            with self.assertRaises(OSError):
+                self.io._owned_process(['synthetic'],b'',{},1.,False,65536,'sql',total=True)
+        self.assertFalse(self.io.closure()[0])
+        with patch.object(native_io.subprocess,'Popen',side_effect=AssertionError('must not spawn')):
+            with self.assertRaisesRegex(Stop,'CHILD_PROCESS_CLOSEOUT_UNCONFIRMED'):
+                self.io._owned_process(['synthetic'],b'',{},1.,False,65536,'sql',total=True)
+
+    def test_owned_inventory_bound_refuses_before_spawn(self):
+        self.io.cap.e['limits']={'cli':0,'sql':0,'child':0}
+        with patch.object(native_io.subprocess,'Popen',side_effect=AssertionError('must not spawn')):
+            with self.assertRaisesRegex(Stop,'CHILD_INVENTORY_LIMIT'):
+                self.io._owned_process(['synthetic'],b'',{},1.,False,65536,'sql',total=True)
+
+
+    def test_cli_sql_output_limits_preserve_safe_categories(self):
+        self.io.env=lambda:{}
+        def spend(kind,cleanup):return time.time()+8
+        self.io.cap.spend=spend
+        cases=[('sql','stdout','DATABASE_OUTPUT_LIMIT'),('sql','stderr','DATABASE_ERROR_OUTPUT_LIMIT'),
+               ('cli','stdout','NATIVE_COMMAND_REFUSED'),('cli','stderr','NATIVE_COMMAND_REFUSED')]
+        for kind,stream,code in cases:
+            with self.subTest(kind=kind,stream=stream),                 patch.object(native_io.subprocess,'Popen',side_effect=self.fixture.owned_spawn):
+                with self.assertRaisesRegex(Stop,code):
+                    self.io._run([sys.executable,'-c',f'import sys;sys.{stream}.write("x"*70000)'],kind)
+                self.fixture.assert_closed()
+
+    def test_tag_output_limit_category_reaches_owned_transport(self):
+        self.io.env=lambda:{};self.io.cap.spend=lambda *args:time.time()+8
+        self.io.cap.plan={'iam':[]}
+        vector=['run','services','update-traffic','synthetic']
+        self.io.restore=SimpleNamespace(TAG='synthetic',command=lambda *args:vector)
+        def run(*args,**kwargs):
+            self.assertEqual(kwargs['output_codes']['stdout'],'RUNTIME_TAG_OUTPUT_LIMIT')
+            raise Stop(kwargs['output_codes']['stdout'])
+        with patch.object(self.io,'_owned_process',side_effect=run):
+            with self.assertRaisesRegex(Stop,'RUNTIME_TAG_OUTPUT_LIMIT'):
+                self.io._run(['/opt/homebrew/bin/gcloud',*vector,'--format=json'],'cli')

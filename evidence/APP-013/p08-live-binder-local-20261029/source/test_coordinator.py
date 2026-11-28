@@ -166,3 +166,53 @@ class CoordinatorTests(unittest.TestCase):
 
 
 if __name__ == "__main__": unittest.main()
+
+
+class TC1CleanupTests(unittest.TestCase):
+    def setUp(self):
+        self.f=CoordinatorTests();self.f.setUp();self.addCleanup(self.f.tearDown)
+
+    def test_phase_yield_preserves_remaining_first_cleanup_actions(self):
+        f=self.f;controller=f.make();stopped=[False];changes=[]
+        original=f.runtime.change
+        def change(kind,name,enabled,*args,**kwargs):
+            changes.append((kind,name,enabled));result=original(kind,name,enabled,*args,**kwargs)
+            if not enabled:stopped[0]=True
+            return result
+        f.runtime.change=change
+        def admit(seconds=0):
+            if stopped[0]:raise c.Stop('MAIN_CLOSEOUT_DEFERRED')
+        controller.cleanup_admit=admit
+        controller.cleanup_deferred=lambda error:error.args==('MAIN_CLOSEOUT_DEFERRED',)
+        first=controller.run()
+        self.assertIn('MAIN_CLOSEOUT_DEFERRED',first['residuals'])
+        journal=c.private_file(f.directory/'journal.json')
+        self.assertEqual(len(journal['runtimeCleanupAttempted']),1)
+        self.assertTrue(any(f.runtime.state.values()))
+        final=f.make(closeout=True).closeout(independent=True)
+        self.assertEqual(final['residuals'],[])
+        self.assertFalse(any(f.runtime.state.values()))
+        retired=[(kind,name) for kind,name,enabled in changes if not enabled]
+        self.assertEqual(len(retired),len(set(retired)))
+
+    def test_cooperative_handler_stays_installed_through_normal_closeout(self):
+        f=self.f;controller=f.make();controller.cooperative_cleanup=True
+        previous=signal.getsignal(signal.SIGTERM);observed=[];closeout=controller.closeout
+        def closing(*args,**kwargs):
+            handler=signal.getsignal(signal.SIGTERM);observed.append(handler)
+            self.assertNotEqual(handler,previous)
+            handler(signal.SIGTERM,None);self.assertTrue(controller.abort)
+            return closeout(*args,**kwargs)
+        controller.closeout=closing
+        controller.run()
+        self.assertEqual(len(observed),1)
+        self.assertEqual(signal.getsignal(signal.SIGTERM),previous)
+
+    def test_interrupted_independent_attempt_is_not_replayed(self):
+        f=self.f;f.make().run();operation=f.make(closeout=True)
+        operation.cleanup_admit=lambda seconds=0:(_ for _ in ()).throw(c.Stop('MAIN_CLOSEOUT_DEFERRED'))
+        operation.cleanup_deferred=lambda error:error.args==('MAIN_CLOSEOUT_DEFERRED',)
+        operation.cleanup_stop_label=lambda:'INDEPENDENT_CLOSEOUT_DEFERRED'
+        result=operation.closeout(independent=True)
+        self.assertIn('INDEPENDENT_CLOSEOUT_DEFERRED',result['residuals'])
+        with self.assertRaises(FileExistsError):f.make(closeout=True).closeout(independent=True)

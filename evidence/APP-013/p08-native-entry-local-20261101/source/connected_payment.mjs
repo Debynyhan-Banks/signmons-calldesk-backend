@@ -4,6 +4,7 @@ import {dirname,join} from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {hash,need,gate} from './authority_bridge.mjs';
+import {responseDeadline} from './transports.mjs';
 const require=createRequire(new URL('../../../../package.json',import.meta.url));
 export const EVENTS=Object.freeze(['charge.refunded','checkout.session.async_payment_failed',
   'checkout.session.async_payment_succeeded','checkout.session.completed','checkout.session.expired',
@@ -308,15 +309,17 @@ if(process.argv[1]===fileURLToPath(import.meta.url)){
 export async function boundedPaymentResponse(send,url,options,guard,until){
     guard(true);
     need(Date.now()<until,'PAYMENT_DEADLINE');
+    const bound=responseDeadline(until,()=>guard(false),'PAYMENT_IO_TIMEOUT');
     const signal=AbortSignal.timeout(Math.max(1,Math.min(5000,until-Date.now())));
-    const response=await send(url,{...options,redirect:'error',signal});
+    const response=await bound.wait(()=>send(url,{...options,redirect:'error',signal}));
     let text;
-    if(response.body?.getReader){const reader=response.body.getReader(),chunks=[];let size=0;
+    if(response.body?.getReader){const reader=response.body.getReader(),chunks=[];let size=0,failed=false;
       try {while(true){guard(false);need(!signal.aborted,'PAYMENT_IO_TIMEOUT');
-        const r=await reader.read();if(r.done)break;size+=r.value.byteLength;need(size<=65536,'PAYMENT_OUTPUT_LIMIT');chunks.push(Buffer.from(r.value));}
+        const r=await bound.wait(()=>reader.read());if(r.done)break;size+=r.value.byteLength;need(size<=65536,'PAYMENT_OUTPUT_LIMIT');chunks.push(Buffer.from(r.value));}
         text=new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks));
-      }finally{await reader.cancel().catch(()=>{});}
-    }else{text=await response.text();need(Buffer.byteLength(text)<=65536,'PAYMENT_OUTPUT_LIMIT');}
+      }catch(error){failed=true;throw error;}
+      finally{try{await bound.dispose(()=>reader.cancel(),failed);}catch(error){if(!failed)throw error;}}
+    }else{text=await bound.wait(()=>response.text());need(Buffer.byteLength(text)<=65536,'PAYMENT_OUTPUT_LIMIT');}
     guard(false);need(Date.now()<until && !signal.aborted,'PAYMENT_IO_TIMEOUT');
     return {ok:response.ok,status:response.status,text:async()=>text};
   }
